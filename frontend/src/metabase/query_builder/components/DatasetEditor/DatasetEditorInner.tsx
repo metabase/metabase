@@ -21,6 +21,7 @@ import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import CS from "metabase/css/core/index.css";
+import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { getShallowFields } from "metabase/metadata-store";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { TagEditorSidebar } from "metabase/parameters/components/TagEditor/TagEditorSidebar";
@@ -696,8 +697,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         buttons={[
           <Button
             key="cancel"
-            variant="subtle"
-            size="sm"
+            variant="on-dark-secondary"
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
           <Tooltip
@@ -715,8 +715,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
-              variant="filled"
-              size="sm"
+              variant="on-dark-primary"
             />
           </Tooltip>,
         ]}
@@ -786,6 +785,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                       <HasResultsAlertPrompt question={question} />
                     )
                   }
+                  errorAction={<FixSqlQueryButton />}
                 />
               )}
             </DebouncedFrame>

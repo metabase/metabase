@@ -13,7 +13,7 @@ import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 
-import { issueTypeOptions } from "./feedback-issue-types";
+import { getIssueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -111,7 +111,7 @@ export const MetabotFeedbackModal = ({
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={issueTypeOptions}
+                  data={getIssueTypeOptions()}
                 />
               </Stack>
             )}
@@ -138,7 +138,7 @@ export const MetabotFeedbackModal = ({
             </Text>
 
             <Group justify="flex-end" gap="lg" mt="lg">
-              <Button variant="subtle" onClick={onClose}>
+              <Button variant="subtle" color="neutral" onClick={onClose}>
                 {t`Cancel`}
               </Button>
               <Button variant="filled" type="submit">{c(

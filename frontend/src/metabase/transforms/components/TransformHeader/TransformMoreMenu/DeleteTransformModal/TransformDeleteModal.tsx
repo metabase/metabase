@@ -123,7 +123,7 @@ function DeleteTransformForm({
             <FormSubmitButton
               label={getSubmitButtonLabel(transform, shouldDeleteTarget)}
               variant="filled"
-              color="feedback-negative"
+              color="negative"
             />
           </Group>
         </Stack>

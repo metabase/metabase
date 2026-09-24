@@ -97,6 +97,7 @@ export function initializePlugin() {
     PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
     PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
       CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
-    PLUGIN_COLLECTIONS.INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE = t`This instance analytics collection is read-only for admin users`;
+    PLUGIN_COLLECTIONS.getInstanceAnalyticsAdminReadonlyMessage = () =>
+      t`This instance analytics collection is read-only for admin users`;
   }
 }

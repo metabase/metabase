@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { RowValue } from "metabase-types/api";
 
@@ -96,7 +96,7 @@ export function getDimensionFormatter(
 
   return (value: RowValue) => {
     if (value == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return String(formatValue(value, dimensionColSettings));

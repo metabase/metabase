@@ -1,6 +1,7 @@
 (ns metabase.transforms.models.transform-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -294,6 +295,20 @@
             (is (contains? stale-ids missed-schedule-id)))
           (testing "the schedule exception does not shield never-run transforms"
             (is (contains? stale-ids never-scheduled-id))))))))
+
+(deftest last-run-hydration-omits-heartbeat-test
+  (testing "the `:last_run` hydrated onto a transform leaves out the run's internal `last_heartbeat`"
+    (mt/with-temp [:model/Transform    {transform-id :id} {}
+                   :model/TransformRun {run-id :id}       {:transform_id        transform-id
+                                                           :transform_name      "heartbeat"
+                                                           :transform_entity_id "eid"
+                                                           :status              "started"
+                                                           :is_active           true
+                                                           :run_method          "manual"
+                                                           :last_heartbeat      (t/offset-date-time)}]
+      (let [last-run (:last_run (t2/hydrate (t2/select-one :model/Transform transform-id) :last_run))]
+        (is (=? {:id run-id, :transform_id transform-id} last-run))
+        (is (not (contains? last-run :last_heartbeat)))))))
 
 (deftest source-references-gate-transform-permissions-test
   (testing "A Card the source query names is required to read, write or create the transform"

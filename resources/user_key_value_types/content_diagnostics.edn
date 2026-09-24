@@ -1,5 +1,5 @@
 [:map
- [:value [:map
+ [:value [:map {:closed true}
           [:entity_types {:optional true} [:sequential [:enum "question" "model" "metric" "dashboard" "document" "transform" "collection"]]]
           [:include_personal_collections {:optional true} :boolean]
           [:threshold_days {:optional true} [:int {:min 1}]]

@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupCardQueryDownloadEndpoint,
   setupLastDownloadFormatEndpoints,
@@ -7,7 +8,6 @@ import {
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card, Dataset } from "metabase-types/api";
 import {
@@ -42,7 +42,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
     }),
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");

@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   currency,
   getCurrency,
@@ -540,7 +540,7 @@ export const getTitleForColumn = (
   const pivoted = isPivoted(series, settings);
 
   if (pivoted) {
-    return displayNameForColumn(column) || NULL_DISPLAY_VALUE;
+    return displayNameForColumn(column) || getNullDisplayValue();
   }
 
   return (

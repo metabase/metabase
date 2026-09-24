@@ -1,15 +1,12 @@
 (ns metabase-enterprise.remote-sync.source.ingestable
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase.app-db.core :as app-db]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
+   [metabase.util.yaml :as yaml])
   (:import
    (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)
    (org.yaml.snakeyaml.error MarkedYAMLException)))
@@ -78,35 +75,23 @@
     (serialization/ingest-errors ingestable)))
 
 (defn wrap-progress-ingestable
-  "Wraps an Ingestable to track and update progress during ingestion.
+  "Wraps `ingestable` so that ingesting the n-th of its N entities reports the fraction `lo` + n/N * (`hi` - `lo`)
+  through `report`, a fn of a fraction such as one from `make-progress-reporter`.
 
-  Takes a task-id (the integer ID of the RemoteSyncTask model to update with progress), a normalize value (the
-  maximum progress ratio value, with progress calculated as a fraction of this number), and an ingestable (an
-  Ingestable object to wrap with progress tracking).
-
-  Returns a CallbackIngestable instance that updates task progress as items are ingested."
-  [task-id normalize ingestable]
-  (let [total (count (serialization/ingest-list ingestable))
+  A failed report is logged and ignored so it can never abort the load it tracks; a cancellation raised by the
+  report (see `update-progress!`) propagates and stops the load."
+  [report [lo hi] ingestable]
+  (let [total (max 1 (count (serialization/ingest-list ingestable)))
         calls (atom 0)]
     (letfn [(progress-callback [item _]
               (when item
-                (let [progress (* (/ (swap! calls inc) total) normalize)]
-                  ;; Progress reporting must never abort the ingestion it tracks. The update runs on a
-                  ;; separate connection, which on some app DBs can contend with the in-flight load (e.g.
-                  ;; a MySQL lock-wait timeout), so swallow DB failures and keep going — but still honor a
-                  ;; cancellation signal, which `update-progress!` raises to stop the task.
-                  (try
-                    (if (app-db/in-transaction?)
-                      ;; The separate connection cannot see the task row if the ambient transaction created it, so it
-                      ;; would block on that row until innodb_lock_wait_timeout before failing. Nobody outside the
-                      ;; transaction can observe progress until it commits anyway, so stay on the current connection.
-                      (remote-sync.task/update-progress! task-id progress)
-                      (t2/with-connection [_conn (app-db/app-db)]
-                        (remote-sync.task/update-progress! task-id progress)))
-                    (catch Exception e
-                      (if (:cancelled? (ex-data e))
-                        (throw e)
-                        (log/warn (u/strip-error e "Failed to report import progress; continuing"))))))))]
+                (try
+                  ;; counted down from hi so the last entity lands on hi exactly, not a rounding neighbour
+                  (report (- hi (* (- hi lo) (/ (- total (swap! calls inc)) total))))
+                  (catch Exception e
+                    (if (:cancelled? (ex-data e))
+                      (throw e)
+                      (log/warn (u/strip-error e "Failed to report import progress; continuing")))))))]
       (->CallbackIngestable ingestable progress-callback))))
 
 ;; Wraps another Ingestable and filters the `list-files` content to only content that has the specified

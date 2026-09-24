@@ -64,16 +64,15 @@
   1000)
 
 (mr/def ::values-from-card-query.options
-  [:map
-   ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
-   ;; filter clause. :eyeroll:
-   [:query-string {:optional true} :any]
+  [:map {:closed true}
+   [:query-string {:optional true} [:maybe ms/FieldValue]]
    ;; when present, the matching column is added as a second breakout so that each row becomes a
    ;; [value label] pair used for remapping
    [:label-field {:optional true} [:maybe [:or :mbql.clause/field :mbql.clause/expression]]]
    ;; when present, restrict the values to an exact match on the value column (used to fetch the
    ;; remapped label for a single selected value)
-   [:exact-value {:optional true} :any]])
+   [:exact-value {:optional true} [:maybe [:or ms/FieldValue [:sequential ms/FieldValue]]]]
+   [:stage-number {:optional true} [:maybe :int]]])
 
 (mu/defn- card-query :- [:maybe ::lib.schema/query]
   "Build the lib query for the value-source Card identified by `card-id`. `query` is the Card's own `:dataset_query`,
@@ -135,13 +134,24 @@
       (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
         (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
+(defn- run-values-query
+  "Run a value-source `query` through the QP. Permission errors raised by the QP (e.g. the user cannot read a Card the
+  value-source Card's query nests) carry no HTTP status, so surface them as a 403 rather than a 500."
+  [query]
+  (try
+    (qp/process-query query)
+    (catch clojure.lang.ExceptionInfo e
+      (if (:permissions-error? (ex-data e))
+        (throw (ex-info (ex-message e) {:status-code 403} e))
+        (throw e)))))
+
 (mu/defn- values-from-card* :- ms/FieldValuesResult
   "Core of [[values-from-card]], working off a prebuilt value-source `query`."
   [query     :- [:maybe ::lib.schema/query]
    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
    opts      :- [:maybe ::values-from-card-query.options]]
   (let [mbql-query (values-from-card-query query field-ref opts)
-        result     (some-> mbql-query qp/process-query)
+        result     (some-> mbql-query run-values-query)
         values     (some-> result result->rows)]
     {:values          (or values [])
      ;; If the row_count returned = the limit we specified, then it's probably has more than that.
@@ -162,13 +172,14 @@
   {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
-  ([card field-ref]
+  ([card      :- :metabase.queries.schema/card
+    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]]
    (values-from-card card field-ref nil))
 
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (values-from-card* (card-query (:id card) (not-empty (:dataset_query card))) field-ref opts)))
+   (values-from-card* (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query)) field-ref opts)))
 
 (defn- can-get-card-values?
   "Whether the prebuilt value-source `query` exposes the `value-field` column."
@@ -190,30 +201,50 @@
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
+(def ^:private input-box-by-default-types
+  "Parameter types whose widget is an Input box unless `values_query_type` says otherwise.
+  Mirrors `getDefaultQueryType` in `parameter-source.ts`."
+  #{:string/contains :string/does-not-contain :string/starts-with :string/ends-with
+    :number/<= :number/>= :number/between})
+
+(defn- input-box?
+  "Is `parameter`'s widget an Input box (`values_query_type` `none`), the setting that says to offer no list of values?
+  The frontend never asks for values for such a widget, so the values routes should not hand them out either."
+  [parameter]
+  (let [query-type (some-> (:values_query_type parameter) keyword)]
+    (or (= query-type :none)
+        (and (nil? query-type)
+             (contains? input-box-by-default-types (some-> (:type parameter) keyword))))))
+
 (mu/defn parameter->values :- ms/FieldValuesResult
-  "Given a parameter with a custom-values source, return the values.
+  "Given a parameter with a custom-values source, return the values. A parameter whose widget is an Input box offers
+  no values, whatever its source.
 
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
   [parameter          :- ::parameters.schema/resolved-parameter
    query-string       :- [:maybe ms/NonBlankString]
-   default-case-thunk :- [:=> [:cat :any] ms/FieldValuesResult]]
-  (case (:values_source_type parameter)
-    :static-list (static-list-values parameter query-string)
-    :card        (let [config (:values_source_config parameter)
-                       card   (parameters.db/card (:card_id config))]
-                   (when-not (mi/can-read? card)
-                     (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                   (or (when-not (:archived card)
-                         (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
-                           (when (can-get-card-values? query (:value_field config))
-                             (card-values query config query-string))))
-                       (default-case-thunk)))
-    nil          (default-case-thunk)
-    (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
-                    {:status-code 400
-                     :parameter   parameter}))))
+   default-case-thunk :- [:=> [:cat :any] [:map {:closed true}
+                                           [:has_more_values :boolean]
+                                           [:values ms/FieldValuesList]]]]
+  (if (input-box? parameter)
+    {:values [], :has_more_values false}
+    (case (:values_source_type parameter)
+      :static-list (static-list-values parameter query-string)
+      :card        (let [config (:values_source_config parameter)
+                         card   (parameters.db/card (:card_id config))]
+                     (when-not (mi/can-read? card)
+                       (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                     (or (when-not (:archived card)
+                           (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
+                             (when (can-get-card-values? query (:value_field config))
+                               (card-values query config query-string))))
+                         (default-case-thunk)))
+      nil          (default-case-thunk)
+      (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
+                      {:status-code 400
+                       :parameter   parameter})))))
 
 (defn pk-of-fk-pk-field-ids
   "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and
@@ -250,11 +281,12 @@
   "For a card source configured with a `:label_field`, fetch the [value label] pair for a single
   `value` by querying the card filtered to that exact value. Returns nil when there is no label
   field, the card is unreadable/archived, or no matching row is found."
-  [{config :values_source_config :as _param} value]
+  [{config :values_source_config :as _param} :- ::parameters.schema/parameter
+   value                                     :- [:or ms/FieldValue [:sequential ms/FieldValue]]]
   (when-let [label-field (:label_field config)]
     (when-let [card (parameters.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
-        (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
+        (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
           (when (can-get-card-values? query (:value_field config))
             (first (:values (values-from-card* query
                                                (lib/->mbql5 (:value_field config))
@@ -267,7 +299,7 @@
 
   `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
   [param              :- ::parameters.schema/resolved-parameter
-   value
+   value              :- [:or ms/FieldValue [:sequential ms/FieldValue]]
    default-case-thunk :- [:=> [:cat] :any]]
   (case (:values_source_type param)
     :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))

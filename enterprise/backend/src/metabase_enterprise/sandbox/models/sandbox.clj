@@ -19,7 +19,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -46,7 +48,7 @@
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]
   (into {} (for [col (request/as-admin
-                       ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
+                       (qp.preprocess/query->expected-cols
                         {:database (database/table-id->database-id table-id)
                          :type     :query
                          :query    {:source-table table-id}}))]
@@ -127,14 +129,15 @@
   "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
   that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
   the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
-  ([{card-id :card_id, table-id :table_id}]
+  ([{card-id :card_id, table-id :table_id} :- [:or ::sandbox.schema/sandbox ::sandbox.schema/sandbox.update]]
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
      (when-let [result-metadata (not-empty (sandbox.db/card-result-metadata card-id))]
        (check-columns-match-table table-id result-metadata))))
 
-  ([table-id :- ::lib.schema.id/table result-metadata-columns]
+  ([table-id :- ::lib.schema.id/table
+    result-metadata-columns :- [:maybe ::queries.schema/card.result-metadata]]
    (let [table-cols (table-field-names->cols table-id)]
      (doseq [col   result-metadata-columns
              :let  [table-col (get table-cols (:name col))]
@@ -219,6 +222,14 @@
                                  :user-id api/*current-user-id*})
          inserted-sandbox)))))
 
+(defn- normalize-sandbox-attribute-remappings
+  "Normalize `:attribute_remappings` on a Sandbox map, if present. `before-insert`/`before-update` hooks see this
+  column in whatever raw, not-yet-normalized shape the caller supplied it in."
+  [sandbox-like]
+  (cond-> sandbox-like
+    (contains? sandbox-like :attribute_remappings)
+    (update :attribute_remappings sandbox.schema/normalize-attribute-remappings)))
+
 (t2/define-before-insert :model/Sandbox
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
@@ -226,7 +237,7 @@
     (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
-    (check-columns-match-table gtap)))
+    (check-columns-match-table (normalize-sandbox-attribute-remappings gtap))))
 
 (t2/define-before-update :model/Sandbox
   [{:keys [id], :as updates}]
@@ -238,4 +249,4 @@
                         {:id          id
                          :status-code 400})))
       (when (:card_id updates)
-        (check-columns-match-table updated)))))
+        (check-columns-match-table (normalize-sandbox-attribute-remappings updated))))))

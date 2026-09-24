@@ -12,7 +12,11 @@ export function getMcpAppsUserAndSettingsFetchErrorType(
     return "network";
   }
 
-  if ("status" in error && error.status === 401) {
+  // 401: the credential was rejected. 404: it was minted for an MCP session that has
+  // since expired or does not match the one the iframe is holding. Both are fixed by
+  // asking the client to render the visualization again. A 403 means MCP is switched
+  // off instance-wide, which the "network" message covers.
+  if ("status" in error && (error.status === 401 || error.status === 404)) {
     return "auth";
   }
 

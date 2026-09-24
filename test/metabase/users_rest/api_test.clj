@@ -12,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
+   [metabase.session.models.session :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -1709,6 +1710,59 @@
         (auth-identity/set-password! (:id user) "def")
         (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                                                     :old_password "def"})))))))
+
+(defn- generate-session!
+  [user-id auth-identity-id & {:keys [mfa_auth_identity_id]}]
+  (let [session-id (session/generate-session-id)
+        session-key (str (random-uuid))
+        session-key-hashed (session/hash-session-key session-key)]
+    (t2/insert! :model/Session {:id session-id
+                                :key_hashed session-key-hashed
+                                :user_id user-id
+                                :auth_identity_id auth-identity-id
+                                :mfa_auth_identity_id mfa_auth_identity_id})
+    session-key))
+
+(deftest reset-password-propagates-mfa-test
+  (testing "PUT /api/user/:id/password"
+    (testing "Test that the session returned has the same MFA method as the initial session"
+      (mt/when-ee-evailable
+       (mt/with-premium-features #{:multi-factor-auth}
+         (mt/with-temp [:model/User user {:is_superuser false}]
+           (auth-identity/set-password! (:id user) "def")
+           (let [user-id               (:id user)
+                 auth-identity         (t2/select-one :model/AuthIdentity :user_id user-id)
+                 totp-auth-identity-id (t2/insert-returning-pk! :model/AuthIdentity {:user_id  user-id
+                                                                                     :provider "totp"})
+                 original-session-key  (generate-session! user-id
+                                                          (:id auth-identity)
+                                                          :mfa_auth_identity_id totp-auth-identity-id)
+                 original-session      (t2/select-one
+                                        :model/Session
+                                        :key_hashed (session/hash-session-key original-session-key))
+                 resp                  (mt/client original-session-key
+                                                  :put 200 (format "user/%d/password" user-id)
+                                                  {:password "abc123!!DEF"
+                                                   :old_password "def"})]
+             (is (=? {:session_id string/valid-uuid?
+                      :success true}
+                     resp))
+             ;; Original session should be gone
+             (is (not (t2/exists?
+                       :model/Session
+                       :key_hashed (session/hash-session-key original-session-key))))
+             (let [new-session-key  (:session_id resp)
+                   new-session      (t2/select-one
+                                     :model/Session
+                                     :key_hashed (session/hash-session-key new-session-key))]
+               ;; Both the new and the old session should have an mfa id
+               (is (some? (:mfa_auth_identity_id original-session)))
+               (is (some? (:mfa_auth_identity_id new-session)))
+               ;; Which is the same
+               (is (= (:mfa_auth_identity_id original-session)
+                      (:mfa_auth_identity_id new-session)))
+               ;; But they should be distinct sessions
+               (is (not= (:id original-session) (:id new-session)))))))))))
 
 (deftest reset-password-invalidates-existing-sessions-test
   (testing "PUT /api/user/:id/password invalidates the user's existing sessions"

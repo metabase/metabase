@@ -8,6 +8,7 @@
   docstring for the pipeline shape and the separation rules."
   (:require
    [clojure.set :as set]
+   [medley.core :as m]
    [metabase.system.core :as system]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.source :as source]
@@ -42,42 +43,37 @@
     [:sequential {:description (str "Limits tables and metrics to library collections. "
                                     "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
      CollectionRef]]
-   [:question-collection-refs {:optional true}
-    [:sequential {:description (str "Includes saved questions from collections. "
-                                    "Each reference accepts `{:id <collection-id>}` or `{:entity-id <collection-entity-id>}`.")}
-     CollectionRef]]
    [:include-data-library? {:optional true}
     [:boolean {:description "Whether to include the root data library."}]]
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description (str "Whether to include readable models with actions when no "
-                                 "database scope is given. A `:database` scope always includes "
-                                 "that database's models, regardless of this option.")}]]])
+    [:boolean {:description (str "Include models with actions. Database scope filters models; "
+                                 "library scope does not. Without a scope, returns models only.")}]]])
 
 (def Items
   "Fetched schema entities, ready for pure assembly by [[create-schema]].
 
   Each entry holds entity maps shaped by the `metabase.typed-schemas.schema.*`
-  builders; `:key` on each entity seeds the generated object keys."
+  builders; `:key` on each entity seeds the generated object keys. `:errors`
+  describes entities that could not be built (currently only models)."
   [:map {:closed true}
-   [:questions [:sequential :map]]
    [:models    [:sequential :map]]
    [:tables    [:sequential :map]]
-   [:metrics   [:sequential :map]]])
+   [:metrics   [:sequential :map]]
+   [:errors    [:sequential :map]]])
 
 (defn- invalid-options!
   [message]
   (throw (ex-info message {:status-code 400})))
 
 (defn- validate-options!
-  [{:keys [database library-collection-refs question-collection-refs
+  [{:keys [database library-collection-refs
            include-data-library? include-metric-library?] :as options}]
   (when-not (mr/validate SemanticSchemaOptions options)
     (invalid-options! "Invalid semantic schema options."))
   (let [include-library-root? (or include-data-library? include-metric-library?)
         collection-scoped?    (or (seq library-collection-refs)
-                                  (seq question-collection-refs)
                                   include-library-root?)]
     (when (and collection-scoped? database)
       (invalid-options!
@@ -95,14 +91,6 @@
     {:tables  (source/tables source nil table-ids)
      :metrics metrics}))
 
-(defn- models-for-scope
-  "Returns model schemas scoped to `database-ids`, or all readable models when requested without a database scope."
-  [source database-ids include-models?]
-  (cond
-    database-ids    (source/models source database-ids)
-    include-models? (source/models source nil)
-    :else           []))
-
 (defn fetch-items
   "Fetches the schema entities selected by [[SemanticSchemaOptions]].
 
@@ -114,16 +102,14 @@
   ([options]
    (fetch-items options source/app-db-source))
   ([options source]
-   (let [{:keys [database library-collection-refs question-collection-refs
+   (let [{:keys [database library-collection-refs
                  include-data-library? include-metric-library? include-models?]
           :or {library-collection-refs  []
-               question-collection-refs []
                include-data-library?    false
                include-metric-library?  false
                include-models?          false}} options]
      (validate-options! (assoc options
                                :library-collection-refs library-collection-refs
-                               :question-collection-refs question-collection-refs
                                :include-data-library? include-data-library?
                                :include-metric-library? include-metric-library?
                                :include-models? include-models?))
@@ -132,23 +118,23 @@
                                                           :include-data-library? include-data-library?
                                                           :include-metric-library? include-metric-library?})
            database-ids            (source/database-ids source database)
-           question-collection-ids (source/collection-ids source question-collection-refs)
-           models                  (models-for-scope source database-ids include-models?)]
+           {model-schemas :models
+            model-errors  :errors} (if include-models?
+                                     ;; database-ids scopes the models; nil reads all of them
+                                     (source/models source database-ids)
+                                     {:models [] :errors []})]
        (if (or library-scope
-               (seq question-collection-refs)
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope
                                           (library-items source library-scope))]
-           {:questions (if (seq question-collection-refs)
-                         (source/questions source nil question-collection-ids)
-                         [])
-            :models    (vec models)
+           {:models    (vec model-schemas)
             :tables    (vec tables)
-            :metrics   (vec metrics)})
-         {:questions (source/questions source database-ids nil)
-          :models    (vec models)
+            :metrics   (vec metrics)
+            :errors    (vec model-errors)})
+         {:models    (vec model-schemas)
           :tables    (source/tables source database-ids nil)
-          :metrics   (source/metrics source database-ids nil)})))))
+          :metrics   (source/metrics source database-ids nil)
+          :errors    (vec model-errors)})))))
 
 (defn create-schema
   "Assembles fetched [[Items]] into the semantic schema value rendered by
@@ -158,12 +144,14 @@
   to the current time and the configured site URL."
   ([items]
    (create-schema items nil))
-  ([{:keys [questions models tables metrics]} {:keys [generated-at instance-url]}]
-   (array-map
-    :schemaVersion 2
-    :generatedAt   (str (or generated-at (Instant/now)))
-    :metabase      {:instanceUrl (or instance-url (system/site-url))}
-    :questions     (common/keyed-map questions)
-    :models        (common/keyed-model-map models)
-    :tables        (common/keyed-map tables)
-    :metrics       (common/keyed-map metrics))))
+  ([{:keys [models tables metrics errors]} {:keys [generated-at instance-url]}]
+   (m/assoc-some
+    (array-map
+     :schemaVersion 2
+     :generatedAt   (str (or generated-at (Instant/now)))
+     :metabase      {:instanceUrl (or instance-url (system/site-url))}
+     :models        (common/keyed-model-map models)
+     :tables        (common/keyed-map tables)
+     :metrics       (common/keyed-map metrics))
+    ;; Omit when empty so healthy responses carry no `errors` key.
+    :errors (not-empty (vec errors)))))

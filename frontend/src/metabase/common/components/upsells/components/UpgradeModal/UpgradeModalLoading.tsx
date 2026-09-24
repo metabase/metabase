@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
-import { useGetSettingsQuery } from "metabase/settings";
+import { useGetSettingsQuery, useTokenRefreshUntil } from "metabase/settings";
 import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
@@ -44,7 +43,7 @@ export function UpgradeModalLoading({
         </Stack>
 
         <Flex justify="center" w="100%">
-          <Button variant="filled" color="core-brand" disabled>
+          <Button variant="filled" color="brand" disabled>
             {t`Done`}
           </Button>
         </Flex>
@@ -83,7 +82,7 @@ export function UpgradeModalLoading({
       <Flex justify="center" w="100%">
         <Button
           variant="filled"
-          color="core-brand"
+          color="brand"
           onClick={() => {
             onDone();
             window.location.reload();

@@ -40,16 +40,23 @@
     error))
 
 (defmulti default-schema
-  "Returns the default schema for a given database driver.
+  "The schema an unqualified table reference resolves to for `database`, or nil when the driver has none.
+
+  Implementations may connect to the database; callers should use the value persisted by metadata sync instead of
+  invoking this method directly.
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
+  {:added "0.57.0" :arglists '([driver database])}
+  (fn [driver _database] (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
 (defmethod default-schema :sql
-  [_]
+  [_driver _database]
   "public")
+
+(defmethod default-schema :default
+  [_driver _database]
+  nil)
 
 (defmulti reserved-literal
   "Checks whether a particular name is actually a literal value in a given sql dialect.

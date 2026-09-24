@@ -8,7 +8,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private FindStaleContentArgs
-  [:map
+  [:map {:closed true}
    [:collection-ids [:or
                      {:doc "Collection IDs to search: a set (a nil member means the root), or :all for instance-wide."}
                      [:= :all]

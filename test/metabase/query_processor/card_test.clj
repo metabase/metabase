@@ -39,6 +39,15 @@
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
 
+(deftest empty-query-card-is-handed-to-the-runner-test
+  (testing "a Card without a query is handed to the `:make-run` runner instead of being rejected as not found"
+    (mt/test-driver :h2
+      (mt/with-temp [:model/Card card {}]
+        (is (=? {:viz-settings {}
+                 :middleware   {:js-int-to-string? true}}
+                (mt/as-admin
+                  (qp.card/process-query-for-card card :api :make-run (constantly (fn [query _info] query))))))))))
+
 (defn field-filter-query
   "An MBQL 5 native query with a Field Filter (`:dimension`) parameter."
   []

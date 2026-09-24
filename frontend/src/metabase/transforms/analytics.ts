@@ -93,7 +93,7 @@ export function trackTransformRunsViewToggled({
 export function trackTransformCreate({
   creationType,
 }: {
-  creationType: "query" | "native" | "python" | "saved-question" | "metabot";
+  creationType: "query" | "native" | "python" | "saved-question";
 }) {
   trackSimpleEvent({
     event: "transform_create",

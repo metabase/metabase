@@ -61,6 +61,7 @@
     :model/ExplorationThreadTimeline         metabase.explorations.models.exploration-thread-timeline
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
+    :model/TableUserSettings                 metabase.warehouse-schema.models.table-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
@@ -148,6 +149,8 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
+    :model/TransformTest                     metabase-enterprise.transform-testing.models
+    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily

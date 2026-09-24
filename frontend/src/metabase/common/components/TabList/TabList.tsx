@@ -2,11 +2,12 @@ import type { HTMLAttributes, ReactNode, Ref, UIEventHandler } from "react";
 import { forwardRef, useContext, useMemo } from "react";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { Box, Flex } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import { TabContext } from "../Tab";
 
-import { TabListContent, TabListRoot } from "./TabList.styled";
+import S from "./TabList.module.css";
 
 export interface TabListProps<T> extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -18,7 +19,7 @@ export interface TabListProps<T> extends Omit<
   children?: ReactNode;
 }
 
-const TabListInner = forwardRef(function TabGroup<T>(
+export const TabList = forwardRef(function TabGroup<T>(
   { value, onChange, onScroll, children, ...props }: TabListProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -32,18 +33,19 @@ const TabListInner = forwardRef(function TabGroup<T>(
   const activeContext = outerContext.isDefault ? innerContext : outerContext;
 
   return (
-    <TabListRoot {...props} role="tablist">
-      <TabListContent ref={ref} onScroll={onScroll}>
+    <Box pos="relative" {...props} role="tablist">
+      <Flex
+        className={S.content}
+        ref={ref}
+        h="100%"
+        align="end"
+        onScroll={onScroll}
+      >
         {/* Unjustified type cast. FIXME */}
         <TabContext.Provider value={activeContext as TabContextType}>
           {children}
         </TabContext.Provider>
-      </TabListContent>
-    </TabListRoot>
+      </Flex>
+    </Box>
   );
-});
-
-export const TabList = Object.assign(TabListInner, {
-  Root: TabListRoot,
-  Content: TabListContent,
 });

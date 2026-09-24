@@ -10,45 +10,6 @@ on:
         description: Run the full suite regardless of the diff (master / release branches, ci:run-all label).
         type: boolean
         default: false
-  # Run one driver job on demand, against the ref you dispatch on, optionally under a profiler.
-  # Everything else about the job -- credentials, services, test args, quarantine gating -- is
-  # whatever the normal CI run uses, because it is the same job.
-  workflow_dispatch:
-    inputs:
-      driver:
-        description: 'Which driver job to run. Only this one runs; the usual decision rules are bypassed.'
-        type: choice
-        required: true
-        options:
-          - athena
-          - bigquery
-          - clickhouse
-          - databricks
-          - druid-jdbc
-          - h2
-          - mongo
-          - mongo-sharded-cluster
-          - mongo-ssl
-          - mysql-mariadb
-          - oracle
-          - postgres
-          - presto-jdbc
-          - redshift
-          - snowflake
-          - sparksql
-          - sqlite
-          - sqlserver
-          - vertica
-      tests:
-        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.driver.bigquery-cloud-sdk-test/sync-test. Bare namespaces work too. Blank runs the job''s usual set.'
-        type: string
-        required: false
-        default: ''
-      profile:
-        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
-        type: boolean
-        required: false
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -60,14 +21,6 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Both read by the test-driver action, which is what actually runs the tests. Set here rather than
-  # passed as inputs to each job so that turning either on is one line, not one line per driver.
-  # Empty (and so off) on workflow_call, where neither input exists.
-  #
-  # ONLY_TESTS replaces the job's own test selection, so every matrix leg of the chosen driver runs
-  # the whole list -- BigQuery, for instance, has three legs.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   # This job determines which driver tests should run based on PR context.
@@ -117,7 +70,7 @@ jobs:
             --force-run="${FORCE_RUN}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
-            --only-driver="${ONLY_DRIVER}"
+            --only-driver="${PROFILE_DRIVER}"
           )
           echo "Running:"
           echo "./bin/mage -driver-decisions ${MAGE_ARGS[*]}"
@@ -132,7 +85,9 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref || github.ref_name }}
           FORCE_RUN: ${{ inputs.force-run }}
-          ONLY_DRIVER: ${{ inputs.driver }}
+          # Set only by test.profile-backend.yml. Absent on a normal CI run, which leaves the decision rules
+          # alone; mage rejects a name that is not a driver.
+          PROFILE_DRIVER: ${{ github.event.inputs.db }}
         shell: bash
 
   be-tests-athena-ee:
@@ -168,29 +123,11 @@ jobs:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 70
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
-        job:
-          - name: Driver Tests Part 1
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 2
-              :partition/index 0
-          - name: Driver Tests Part 2
-            test-args: >-
-              :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
-              :fail-fast? true
-              :partition/total 2
-              :partition/index 1
-          - name: Transforms Python Tests
-            test-args: >-
-              :only-tags [:mb/transforms-python-test]
-            needs-python-runner: true
+        runner-index: [0, 1]
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -201,11 +138,43 @@ jobs:
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
-    name: BigQuery ${{ matrix.job.name }}
+    name: BigQuery Driver Tests ${{ matrix.runner-index }}
+    steps:
+    - uses: actions/checkout@v6
+    - name: Test BigQuery Cloud SDK driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-bigquery-cloud-sdk-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+          :fail-fast? true
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
+
+  be-tests-bigquery-transforms-python-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      DRIVERS: bigquery-cloud-sdk
+      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
+      MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
+      MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
+      MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
+      MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
+      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
+    name: BigQuery Transforms Python Tests
     steps:
     - uses: actions/checkout@v6
     - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -213,15 +182,17 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
+        # This is the same as the cloud-sdk job above to preserve quarantine history in ci-conductor.
         junit-name: 'be-tests-bigquery-cloud-sdk-ee'
-        test-args: ${{ matrix.job.test-args }}
-        artifact-suffix: ${{ matrix.job.name }}
+        test-args: >-
+          :only-tags [:mb/transforms-python-test]
+        artifact-suffix: transforms-python
     - name: Cleanup python-runner
-      if: ${{ always() && matrix.job.needs-python-runner == true }}
+      if: ${{ always() }}
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ matrix.job.name }}
+        logs-artifact-suffix: transforms-python
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
@@ -434,9 +405,9 @@ jobs:
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: mysql:8.0
+          - name: MySQL 8
+            junit-name: be-tests-mysql-8-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
@@ -1257,6 +1228,7 @@ jobs:
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
+      - be-tests-bigquery-transforms-python-ee
       - be-tests-clickhouse-ee
       - be-tests-databricks-ee
       - be-tests-druid-jdbc-ee

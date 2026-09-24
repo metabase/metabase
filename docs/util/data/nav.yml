@@ -177,6 +177,8 @@ categories:
 
   - name: "Data modeling"
     pages:
+      - name: "Overview"
+        url: "data-modeling/start"
       - name: "Data studio"
         url: "data-modeling/data-studio"
       - name: "Transforms"
@@ -217,6 +219,8 @@ categories:
             url: "data-modeling/semantic-layer/measures"
           - name: "Segments"
             url: "data-modeling/semantic-layer/segments"
+          - name: "Glossary"
+            url: "data-modeling/semantic-layer/glossary"
       - name: "Tools"
         pages:
           - name: "Schema viewer"
@@ -561,8 +565,10 @@ categories:
             url: "cloud/limitations"
           - name: "Change region"
             url: "cloud/change-region"
-          - name: "IP addresses to whitelist"
+          - name: "Metabase IP addresses"
             url: "cloud/ip-addresses-to-whitelist"
+          - name: "IP allowlist"
+            url: "cloud/ip-allowlist"
           - name: "Migrate from self-hosted to Cloud"
             url: "cloud/migrate/guide"
           - name: "Migrate from Cloud to self-hosted"

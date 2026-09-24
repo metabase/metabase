@@ -147,6 +147,7 @@ export const createMockTokenFeatures = (
   "data-apps": false,
   "transforms-basic": false,
   "transforms-python": false,
+  "transforms-testing": false,
   library: false,
   library_retrieval: false,
   "support-users": false,
@@ -448,5 +449,6 @@ export const createMockSettings = (
   "mcp-apps-cors-custom-origins": "",
   "transforms-meter-locked": null,
   "mfa-enforcement": "off",
+  "mfa-requirement-deadline": null,
   ...opts,
 });

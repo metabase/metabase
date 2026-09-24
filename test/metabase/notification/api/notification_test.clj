@@ -697,6 +697,32 @@
                        (create-notification! user 200)
                        (create-notification! :rasta 403)))))))))))))
 
+(deftest card-notification-permissions-without-ee-code-test
+  (testing "a token advertising :advanced-permissions doesn't lock non-admins out of alerts on a jar with no EE code"
+    ;; Must stay outside `mt/when-ee-evailable`: the OSS CI jobs are the only place this regresses, and that
+    ;; macro compiles its body out of them. The explicit `:subscription` grant keeps the expected status
+    ;; identical on both matrices.
+    (mt/with-model-cleanup [:model/Notification]
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-user-in-groups [group {:name "notification perm, no ee code"}
+                                 user  [group]]
+          (perms/grant-application-permissions! group :subscription)
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id (personal-collection-id user)}]
+            (mt/with-premium-features #{:advanced-permissions}
+              (let [notification (mt/user-http-request user :post 200 "notification"
+                                                       {:payload_type "notification/card"
+                                                        :payload      {:card_id card-id}})
+                    ;; drop creator_id: echoing it back reads as a (superuser-only) owner reassignment
+                    update!      (fn [changes]
+                                   (mt/user-http-request user :put 200 (format "notification/%d" (:id notification))
+                                                         (merge (dissoc notification :creator_id)
+                                                                {:updated_at (t/offset-date-time)}
+                                                                changes)))]
+                (testing "the creator can update it"
+                  (update! {}))
+                (testing "and archive it"
+                  (is (=? {:active false} (update! {:active false}))))))))))))
+
 (deftest update-card-notification-permissions-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-user-in-groups [group {:name "test notification perm"}
@@ -928,6 +954,28 @@
               (send! :crowberto 200))
             (testing "a non-admin user cannot"
               (send! :rasta 403))))))))
+
+(deftest send-unsaved-notification-existing-channel-permissions-test
+  (testing "POST /api/notification/send naming an existing channel by channel_id requires channel write permission"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card    {card-id :id} {}
+                     :model/Channel {chn-id :id}  {:type    :channel/http
+                                                   :details {:url         "https://example.com/webhook"
+                                                             :auth-method "none"}}]
+        (let [send! (fn [user-or-id channel-id expected-status]
+                      (mt/with-dynamic-fn-redefs [notification/send-notification! (fn [& _args] :done)]
+                        (mt/user-http-request user-or-id :post expected-status "notification/send"
+                                              {:payload_type  :notification/card
+                                               :handlers      [{:channel_type :channel/http
+                                                                :channel_id   channel-id}]
+                                               :subscriptions []
+                                               :payload       {:card_id card-id}})))]
+          (testing "an admin can send to an existing channel"
+            (send! :crowberto chn-id 200))
+          (testing "a non-admin user cannot"
+            (send! :rasta chn-id 403))
+          (testing "a non-admin user gets the same 403 for a channel id that doesn't exist"
+            (send! :rasta Integer/MAX_VALUE 403)))))))
 
 (deftest list-notifications-basic-test
   (testing "GET /api/notification"

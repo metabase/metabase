@@ -491,6 +491,30 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
     }
 
     @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono"),
+        local("JetBrainsMono-Regular"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Regular.woff2")
+          format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono Bold"),
+        local("JetBrainsMono-Bold"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Bold.woff2")
+          format("woff2");
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
       font-family: "Roboto Mono";
       src:
         local("Roboto Mono Bold"),

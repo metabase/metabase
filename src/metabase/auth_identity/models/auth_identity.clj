@@ -111,7 +111,7 @@
   ([user-id  :- ms/PositiveInt
     password :- ms/NonBlankString
     opts     :- [:maybe
-                 [:map
+                 [:map {:closed true}
                   [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
    ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
    ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired
