@@ -8,7 +8,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.test.data :as data]))
+   [metabase.test.data :as data]
+   [toucan2.core :as t2]))
 
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."
@@ -78,4 +79,5 @@
      (insert-rows-and-sync! [0 1 2 3]) ; insert 4 rows"
   [values]
   (jdbc/execute! *conn* [(insert-sql values)])
-  (sync/sync-database! (data/db)))
+  ;; `(data/db)` is the map from before the first sync; its stale `initial_sync_status` would skip the FieldValues scan
+  (sync/sync-database! (t2/select-one :model/Database (data/id))))

@@ -13,13 +13,11 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
@@ -70,8 +68,8 @@
   "Perform all the different sync operations synchronously for `database`.
 
   By default, does a `:full` sync that performs all the different sync operations consecutively. You may instead
-  specify only a `:schema` sync that will sync just the schema but skip analysis. A `:full` sync of a Database whose
-  initial sync is not complete skips the FieldValues scan.
+  specify only a `:schema` sync that will sync just the schema but skip analysis. A `:full` sync skips the FieldValues
+  scan when the `:initial_sync_status` of `database` is not `\"complete\"`.
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
@@ -83,8 +81,7 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (tracing/with-span :sync "sync.database" {:db/id (:id database)}
      (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-       ;; read the status from the app DB: the metadata phase marks it complete, and callers may hold a stale map
-       (->> (scan-phases scan (= "complete" (:initial_sync_status (sync.db/database (u/the-id database)))))
+       (->> (scan-phases scan (= "complete" (:initial_sync_status database)))
             (keep (partial do-phase! database))
             (doall))))))
 
