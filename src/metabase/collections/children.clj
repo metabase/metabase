@@ -585,6 +585,8 @@
       (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
+      ;; UNION queries can erase SQLite's declared BOOLEAN type, including joined table columns.
+      (update :is_upload api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
@@ -1030,7 +1032,7 @@
            [:last-edited-at :desc] [(case db-type
                                       :mysql    [:%isnull.last_edit_timestamp]
                                       :postgres [:last_edit_timestamp :desc-nulls-last]
-                                      :h2       nil)
+                                      (:h2 :sqlite) nil)
                                     [:last_edit_timestamp :desc]
                                     [:%lower.name :asc]]
            [:last-edited-by :asc]  [(if (= db-type :mysql)
@@ -1045,12 +1047,12 @@
            [:last-edited-by :desc] [(case db-type
                                       :mysql    [:%isnull.last_edit_last_name]
                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                      :h2       nil)
+                                      (:h2 :sqlite) nil)
                                     [:last_edit_last_name :desc]
                                     (case db-type
                                       :mysql    [:%isnull.last_edit_first_name]
                                       :postgres [:last_edit_last_name :desc-nulls-last]
-                                      :h2       nil)
+                                      (:h2 :sqlite) nil)
                                     [:last_edit_first_name :desc]
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
