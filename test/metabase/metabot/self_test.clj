@@ -24,6 +24,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
@@ -1596,8 +1597,11 @@
                                                    :model "test-model" :id "msg-1"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
-              (let [events       (snowplow-test/pop-event-data-and-user-id!)
+              (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
+                                   (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :debug]]
+                                     (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
+                                     [(tracing.tu/finished-spans exporter) (messages)]))
+                    events       (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)
                     tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:user-id (str rasta-id)
@@ -1624,8 +1628,10 @@
                                  "result"        "error"
                                  "event_details" {"tool_name" "unknown"}}}]
                         tool-events))
-                (is (not (str/includes? (pr-str events) "jane_doe"))
-                    "a name the model made up never reaches analytics")))))))))
+                (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
+                (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
+                    "a name the model made up never reaches analytics, spans or logs")))))))))
 
 (deftest call-llm-structured-snowplow-test
   (llm.tu/with-default-connections
