@@ -153,7 +153,14 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers.get().get("[role='textbox']");
     },
     value() {
-      return helpers.get().codeMirrorText();
+      // `invoke` chains are queries, so a chained assertion re-reads the text on every retry
+      return helpers
+        .get()
+        .invoke("find", ".cm-line")
+        .invoke("toArray")
+        .invoke("filter", (line) => !line.querySelector(".cm-placeholder"))
+        .invoke("map", (line) => line.textContent ?? "")
+        .invoke("join", "\n");
     },
     completions() {
       return cy.get(".cm-tooltip-autocomplete").should("be.visible");
