@@ -4,6 +4,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
+   [clj-http.client :as http]
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -338,23 +339,42 @@
       (is (some? candidates))
       (is (= :wif (-> candidates first meta :auth))))))
 
+(defn- mint-github-actions-oidc-token
+  "Returns a JWT for `audience` from the GitHub Actions OIDC endpoint, or nil when not running
+  under a GH Actions job with `id-token: write`."
+  [audience]
+  (let [req-token (System/getenv "ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+        req-url   (System/getenv "ACTIONS_ID_TOKEN_REQUEST_URL")]
+    (when (and (not (str/blank? req-token)) (not (str/blank? req-url)))
+      (let [{:keys [status body]} (http/get (str req-url "&audience=" audience)
+                                            {:headers          {"Authorization" (str "Bearer " req-token)}
+                                             :throw-exceptions false})]
+        (when (= 200 status)
+          (:value (json/decode+kw body)))))))
+
 (deftest ^:synchronized snowflake-wif-live-test
   ;; End-to-end test against a real Snowflake WIF-configured service user.
-  ;; Skips silently unless MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT
-  ;; on disk. In CI, the snowflake driver job in .github/workflows/drivers.yml
-  ;; mints a GitHub Actions OIDC token into that file before invoking this test.
+  ;;
+  ;; In CI (GH Actions Snowflake Driver Tests job) we mint a fresh OIDC token on-demand — GH's
+  ;; tokens live 15 minutes and the full snowflake suite runs > 30 minutes, so a token minted at
+  ;; job start would be expired before this test fires. Locally, if
+  ;; MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT on disk, we use that as a fallback. Skips
+  ;; silently when neither source is available.
   (mt/test-driver
     :snowflake
-    (when-let [token-file (tx/db-test-env-var :snowflake :wif-token-file)]
+    (when-let [token (or (mint-github-actions-oidc-token "snowflakecomputing.com")
+                         (some-> (tx/db-test-env-var :snowflake :wif-token-file)
+                                 slurp
+                                 str/trim))]
       (let [wif-user (tx/db-test-env-var-or-throw :snowflake :wif-user)
-            details  {:account             (tx/db-test-env-var-or-throw :snowflake :wif-account)
-                      :user                wif-user
-                      :warehouse           (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
-                      :db                  (tx/db-test-env-var-or-throw :snowflake :wif-db)
-                      :role                (tx/db-test-env-var :snowflake :wif-role)
-                      :auth-mode           "wif"
-                      :wif-provider        "OIDC"
-                      :wif-token-file-path token-file}]
+            details  {:account      (tx/db-test-env-var-or-throw :snowflake :wif-account)
+                      :user         wif-user
+                      :warehouse    (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
+                      :db           (tx/db-test-env-var-or-throw :snowflake :wif-db)
+                      :role         (tx/db-test-env-var :snowflake :wif-role)
+                      :auth-mode    "wif"
+                      :wif-provider "OIDC"
+                      :wif-token    token}]
         (testing "can-connect? via WIF"
           (is (true? (driver/can-connect? :snowflake details))))
         (testing "session identifies as the WIF service user (proves auth flowed through WIF, not a fallback)"

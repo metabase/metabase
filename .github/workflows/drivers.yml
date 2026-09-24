@@ -1009,10 +1009,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
 
-      # Workload Identity Federation live test (metabase.driver.snowflake-test/snowflake-wif-live-test).
-      # Account and warehouse reuse the existing secrets; user / db / role are hardcoded literals matching
-      # the Snowflake-side CREATE USER. The token file is populated by the "Mint OIDC token" step below
-      # in the Driver Tests matrix cell; the test skips itself when MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE is unset.
+      # Workload Identity Federation live test.
       MB_SNOWFLAKE_TEST_WIF_ACCOUNT:   ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
       MB_SNOWFLAKE_TEST_WIF_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
       MB_SNOWFLAKE_TEST_WIF_USER:      METABASE WIF
@@ -1026,20 +1023,6 @@ jobs:
       uses: ./.github/actions/setup-python-runner
       with:
         metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-    # TODO(pre-merge): tighten the `if:` to
-    #   matrix.job.name == 'Driver Tests' && github.event_name == 'push'
-    # once the WIF live test has been validated on the PR branch.
-    - name: Mint GitHub Actions OIDC token for Snowflake WIF
-      if: ${{ matrix.job.name == 'Driver Tests' }}
-      run: |
-        set -euo pipefail
-        curl -sSLf \
-          -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=snowflakecomputing.com" \
-          | jq -er '.value' > /tmp/snowflake-oidc-token
-        chmod 600 /tmp/snowflake-oidc-token
-        echo "MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE=/tmp/snowflake-oidc-token" >> "$GITHUB_ENV"
-        echo "Minted OIDC token: $(wc -c < /tmp/snowflake-oidc-token) bytes."
     - name: Test Snowflake driver
       id: test-driver
       uses: ./.github/actions/test-driver
