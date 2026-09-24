@@ -123,7 +123,8 @@
   (testing "builds chart draft payload from a query on a model"
     (let [mp (mt/metadata-provider)]
       (mt/with-current-user (mt/user->id :crowberto)
-        (mt/with-temp [:model/Card model {:type :model, :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+        (mt/with-temp [:model/Card model {:type          :model
+                                          :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
           (let [result (document-tools/document-construct-model-chart-tool
                         {:name "Test Name"
                          :description "Test Desc"
