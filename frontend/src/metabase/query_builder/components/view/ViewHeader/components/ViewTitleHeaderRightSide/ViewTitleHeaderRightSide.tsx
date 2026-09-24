@@ -24,6 +24,7 @@ import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
 import { ToggleNativeQueryPreview } from "../ToggleNativeQueryPreview";
+import { ToggleNodeBuilder } from "../ToggleNodeBuilder";
 
 import { QuestionSharingMenu } from "./QuestionSharingMenu/QuestionSharingMenu";
 
@@ -196,6 +197,10 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       <Box className={ViewTitleHeaderS.Divider} />
+      {ToggleNodeBuilder.shouldRender({
+        question,
+        queryBuilderMode,
+      }) && <ToggleNodeBuilder />}
       {ToggleNativeQueryPreview.shouldRender({
         question,
         queryBuilderMode,
