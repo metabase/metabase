@@ -82,6 +82,7 @@
   [index-table search-ctx]
   (->> (specialization/base-query index-table (:search-string search-ctx) search-ctx [[[:distinct :model] :model]])
        (add-collection-join-and-where-clauses search-ctx)
+       (add-table-where-clauses search-ctx)
        (#(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                search-ctx
                                :search_index.model
