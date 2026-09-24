@@ -1,4 +1,7 @@
-import { getDeduplicatedTableColumnSettings } from "metabase/viz-core";
+import {
+  getDeduplicatedTableColumnSettings,
+  insertNewColumnSettings,
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import {
   getColumnKey,
@@ -139,16 +142,15 @@ function syncColumns<T>({
     return settings;
   }, []);
   const remappedNames = new Set(remappedSettings.map(getColumnName));
-  const addedSettings = newColumns
-    .filter(
-      (column) =>
-        !oldNameByKey[column.key] &&
-        !remappedNames.has(column.name) &&
-        shouldCreateSetting(column),
-    )
-    .map(createSetting);
 
-  return [...remappedSettings, ...addedSettings];
+  return insertNewColumnSettings(remappedSettings, newColumns, {
+    getColumnName,
+    isNewColumn: (column) =>
+      !oldNameByKey[column.key] &&
+      !remappedNames.has(column.name) &&
+      shouldCreateSetting(column),
+    createSetting,
+  });
 }
 
 type SyncColumnNamesOpts = {
