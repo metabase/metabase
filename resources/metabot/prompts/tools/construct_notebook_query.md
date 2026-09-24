@@ -13,10 +13,10 @@ Return:
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["count", {}]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 Every clause is `["op", {}, ...args]` with a mandatory `{}` options map at position 1; every field reference uses a 4-segment portable FK in the last slot. These are the two most-violated rules.
@@ -48,7 +48,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
 ```
 
-The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
+The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
 
 Inside later stages, refer to a column produced by the previous stage by **string name** instead of a portable FK: `["field", {}, "count"]`, `["field", {}, "PRODUCT_ID"]`.
 
@@ -68,14 +68,14 @@ Filter (comparison + boolean combination):
 
 ```json
 "filters": [["and", {},
-  [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
+  [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+  ["=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "STATUS"]], "paid"]]]
 ```
 
 Aggregation (on a field, plus `count`):
 
 ```json
-"aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]],
+"aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]],
                 ["count", {}]]
 ```
 
@@ -83,13 +83,13 @@ Breakout with temporal bucket:
 
 ```json
 "breakout": [["field", {"temporal-unit": "month"},
-              ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]
+              ["Sample Database", null, "ORDERS", "CREATED_AT"]]]
 ```
 
 Order by — direction wraps a ref; works on field refs or aggregation refs:
 
 ```json
-"order-by": [["desc", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
+"order-by": [["desc", {}, ["field", {}, ["Sample Database", null, "ORDERS", "CREATED_AT"]]],
              ["desc", {}, ["aggregation", {}, 0]]]
 ```
 
@@ -110,8 +110,8 @@ Define custom columns inside a stage using `expressions` and reference by name w
 ```json
 "expressions": {
   "Subtotal": ["+", {},
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]],
-               ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TAX"]]]
+               ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]],
+               ["field", {}, ["Sample Database", null, "ORDERS", "TAX"]]]
 },
 "aggregation": [["sum", {}, ["expression", {}, "Subtotal"]]]
 ```
@@ -125,14 +125,14 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
   "alias": "Products",
   "strategy": "left-join",
   "stages": [{"lib/type": "mbql.stage/mbql",
-              "source-table": ["Sample Database", "PUBLIC", "PRODUCTS"]}],
+              "source-table": ["Sample Database", null, "PRODUCTS"]}],
   "conditions": [["=", {},
-    ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]],
+    ["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]],
     ["field", {"join-alias": "Products"},
-     ["Sample Database", "PUBLIC", "PRODUCTS", "ID"]]]]
+     ["Sample Database", null, "PRODUCTS", "ID"]]]]
 }],
 "breakout": [["field", {"join-alias": "Products"},
-              ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+              ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - `alias` is a free-choice string; use it consistently in conditions, breakout, aggregation, order-by.
@@ -145,9 +145,9 @@ The sequential form `[["expression", {}, "Name", expr], ...]` is also accepted a
 Reference a field on a related table directly — when the source has exactly one FK to that target, the tool auto-fills `source-field` and performs the implicit join:
 
 ```json
-"source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+"source-table": ["Sample Database", null, "ORDERS"],
 "aggregation": [["count", {}]],
-"breakout": [["field", {}, ["Sample Database", "PUBLIC", "PRODUCTS", "CATEGORY"]]]
+"breakout": [["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]]]
 ```
 
 - **Multiple FKs** to the target → `:ambiguous-fk` lists them. Retry with explicit `{"source-field": ["DB", "SCH", "SRC", "FK_COL"]}` on the field.
@@ -167,9 +167,9 @@ Post-aggregation filter — count orders per product, keep only those with > 10:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+   "source-table": ["Sample Database", null, "ORDERS"],
    "aggregation": [["count", {}]],
-   "breakout": [["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "PRODUCT_ID"]]]},
+   "breakout": [["field", {}, ["Sample Database", null, "ORDERS", "PRODUCT_ID"]]]},
   {"lib/type": "mbql.stage/mbql",
    "filters": [[">", {}, ["field", {}, "count"], 10]]}
 ]
@@ -180,10 +180,10 @@ Re-aggregate — average daily total by month:
 ```json
 "stages": [
   {"lib/type": "mbql.stage/mbql",
-   "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
-   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+   "source-table": ["Sample Database", null, "ORDERS"],
+   "aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]]],
    "breakout": [["field", {"temporal-unit": "day"},
-                 ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]},
+                 ["Sample Database", null, "ORDERS", "CREATED_AT"]]]},
   {"lib/type": "mbql.stage/mbql",
    "aggregation": [["avg", {}, ["field", {}, "sum"]]],
    "breakout": [["field", {"temporal-unit": "month"}, ["field", {}, "CREATED_AT"]]]}
