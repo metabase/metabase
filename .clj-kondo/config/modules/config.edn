@@ -3554,6 +3554,7 @@
            metabot
            premium-features
            request
+           startup
            task
            util}
    :model-imports #{:model/ApiKeyUsageLog}}

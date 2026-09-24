@@ -432,3 +432,33 @@
           (#'ee-usage/flush-usage-logs!)
           (is (= n (t2/count :model/ApiKeyUsageLog :api_key_id api-key-id)))
           (finally (t2/delete! :model/ApiKeyUsageLog :api_key_id api-key-id)))))))
+
+;;; ------------------------------------------ flush scheduling ------------------------------------------
+;; JVM-local, not Quartz — see `start-flush!`'s docstring. Both writes coalesce in the same shared atoms
+;; every other test in this namespace uses, so `stop-flush!` (called liberally below) is just the same
+;; force-flush every other test already does, wrapped with idempotent executor teardown.
+
+(deftest start-flush!-is-idempotent-test
+  (testing "a second call shuts down the executor it just created instead of replacing the one already running"
+    (#'ee-usage/stop-flush!) ; clean slate, in case an earlier boot already started the real flush loop
+    (try
+      (is (true? (#'ee-usage/start-flush!)) "the first call creates the executor")
+      (is (false? (#'ee-usage/start-flush!)) "a second call is a no-op")
+      (finally (#'ee-usage/stop-flush!)))))
+
+(deftest stop-flush!-force-flushes-pending-state-test
+  (testing "stop-flush! flushes a pending last_used_at stamp without waiting for the interval"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/ApiKey {api-key-id :id} {::api-keys/unhashed-key "mb_9999999999"
+                                                     :name                   (mt/random-name)
+                                                     :user_id                (mt/user->id :crowberto)
+                                                     :creator_id             (mt/user->id :crowberto)
+                                                     :updated_by_id          (mt/user->id :crowberto)}]
+        (let [route (unique-route)]
+          (try
+            (is (nil? (last-used-at api-key-id)))
+            (record! (request-info route :api-key-id api-key-id))
+            (is (nil? (last-used-at api-key-id)) "not flushed yet — still coalescing")
+            (#'ee-usage/stop-flush!)
+            (is (some? (last-used-at api-key-id)) "stop-flush! force-flushed it")
+            (finally (t2/delete! :model/ApiKeyUsageLog :route_template route))))))))
