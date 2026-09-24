@@ -12,6 +12,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 import {
   createAdHocCard,
@@ -52,17 +53,11 @@ const RESULT_WITH_ANSWER = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockColumn({ name: "count" })],
     rows: [[10]],
-    referenced_entities: {
-      card: {
-        1: {
-          status: "completed",
-          data: {
-            cols: [createMockColumn({ name: "total" })],
-            rows: [[42]],
-          },
-        },
-      },
-    },
+    referenced_entities: createMockReferencedEntitiesResults({
+      id: 1,
+      column: "total",
+      value: 42,
+    }),
   }),
 });
 

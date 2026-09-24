@@ -3,6 +3,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -128,17 +129,10 @@ describe("SCALAR_CHART_DEFINITION", () => {
 
     it("refuses to render when a referenced value is not a number", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [["x"]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: "x",
+        }),
       });
 
       expect(() =>

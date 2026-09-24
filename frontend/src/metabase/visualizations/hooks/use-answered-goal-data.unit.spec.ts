@@ -10,6 +10,8 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
+  createMockReferencedEntityResult,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -25,10 +27,7 @@ const DATA = createMockDatasetData({
 const CARD_9: ReferencedEntity = { type: "card", id: 9 };
 
 const CARD_9_ANSWER = {
-  9: {
-    status: "completed" as const,
-    data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-  },
+  9: createMockReferencedEntityResult({ column: "goal", value: 250 }),
 };
 
 interface SetupOpts {
@@ -91,10 +90,7 @@ describe("useAnsweredGoalData", () => {
 
   it("keeps answers the dataset already has when merging in fresh ones", async () => {
     const measureAnswer = {
-      4: {
-        status: "completed" as const,
-        data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
-      },
+      4: createMockReferencedEntityResult({ column: "sum", value: 10 }),
     };
     const data = createMockDatasetData({
       ...DATA,
@@ -153,17 +149,11 @@ describe("useAnsweredGoalData", () => {
 
       return {
         data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              [entity.id]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "goal" })],
-                  rows: [[entity.id]],
-                },
-              },
-            },
-          },
+          referenced_entities: createMockReferencedEntitiesResults({
+            id: entity.id,
+            column: "goal",
+            value: entity.id,
+          }),
         }),
       };
     });

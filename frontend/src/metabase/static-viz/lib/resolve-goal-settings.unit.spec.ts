@@ -4,6 +4,7 @@ import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -40,14 +41,9 @@ describe("resolveGoalSettings", () => {
     });
 
     it("substitutes the referenced value", () => {
-      const answered = createData({
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-          },
-        },
-      });
+      const answered = createData(
+        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+      );
       const series = createSeries(answered, display);
 
       expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({

@@ -17,6 +17,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
@@ -41,14 +42,10 @@ const ROWS = [
 const GOAL_LABEL = "Target";
 const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
-const ANSWERED: ReferencedEntitiesResults = {
-  card: {
-    9: {
-      status: "completed",
-      data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-    },
-  },
-};
+const ANSWERED = createMockReferencedEntitiesResults({
+  column: "goal",
+  value: 250,
+});
 
 const FAILED: ReferencedEntitiesResults = {
   card: { 9: { status: "failed", error: "boom" } },

@@ -12,6 +12,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -468,17 +469,11 @@ describe("Scalar conditional colors", () => {
 
   function createReferencedEntitiesAnswer(goal: number): Partial<DatasetData> {
     return {
-      referenced_entities: {
-        card: {
-          [GOAL_REF.id]: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: GOAL_REF.column })],
-              rows: [[goal]],
-            },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: GOAL_REF.id,
+        column: GOAL_REF.column,
+        value: goal,
+      }),
     };
   }
 

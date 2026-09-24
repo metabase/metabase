@@ -8,7 +8,6 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import type {
   DatasetData,
   RawSeries,
-  ReferencedEntitiesResults,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -16,6 +15,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { StaticVisualization } from "../StaticVisualization";
@@ -41,7 +41,10 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   (display) => {
     it("draws the goal line at the value answered by the dataset", () => {
       const svg = toSvg(
-        createSeries(display, createReferencedEntitiesResults(250)),
+        createSeries(
+          display,
+          createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
+        ),
       );
 
       expect(svg).toContain(GOAL_LABEL);
@@ -70,10 +73,14 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
 describe("static normalized stacked bar chart with a dynamic goal", () => {
   it("reads the answered goal as a percentage of the stack", () => {
     const svg = toSvg(
-      createSeries("bar", createReferencedEntitiesResults(50), {
-        "graph.metrics": ["count", "sum"],
-        "stackable.stack_type": "normalized",
-      }),
+      createSeries(
+        "bar",
+        createMockReferencedEntitiesResults({ column: "goal", value: 50 }),
+        {
+          "graph.metrics": ["count", "sum"],
+          "stackable.stack_type": "normalized",
+        },
+      ),
     );
 
     expect(svg).toContain(GOAL_LABEL);
@@ -109,19 +116,6 @@ function getGoalLineY(svg: string) {
   }
 
   return Number(match[1]);
-}
-
-function createReferencedEntitiesResults(
-  value: number,
-): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
 }
 
 function createSeries(

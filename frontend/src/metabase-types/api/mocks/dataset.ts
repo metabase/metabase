@@ -6,7 +6,11 @@ import type {
   EmbedDatasetData,
   ErrorEmbedDataset,
   Field,
+  ReferencedEntitiesResults,
+  ReferencedEntityResult,
+  ReferencedEntityType,
   ResultsMetadata,
+  RowValue,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -163,3 +167,30 @@ export const createMockResultsMetadata = (
   columns,
   ...opts,
 });
+
+type MockReferencedEntityResultOpts = {
+  column?: string;
+  value?: RowValue;
+};
+
+export const createMockReferencedEntityResult = ({
+  column = "goal",
+  value = 250,
+}: MockReferencedEntityResultOpts = {}): ReferencedEntityResult => ({
+  status: "completed",
+  data: { cols: [createMockColumn({ name: column })], rows: [[value]] },
+});
+
+type MockReferencedEntitiesResultsOpts = MockReferencedEntityResultOpts & {
+  type?: ReferencedEntityType;
+  id?: number;
+};
+
+export const createMockReferencedEntitiesResults = ({
+  type = "card",
+  id = 9,
+  ...opts
+}: MockReferencedEntitiesResultsOpts = {}): ReferencedEntitiesResults => {
+  const results = { [id]: createMockReferencedEntityResult(opts) };
+  return type === "card" ? { card: results } : { measure: results };
+};
