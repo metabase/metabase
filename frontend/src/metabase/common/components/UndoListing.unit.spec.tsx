@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Undo } from "metabase/redux/store/undo";
+import { addUndo } from "metabase/redux/undo";
 
 import { UndoListing } from "./UndoListing";
 
@@ -96,6 +97,94 @@ describe("UndoListing", () => {
     await waitFor(() => {
       expect(action).toHaveBeenCalled();
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("auto-dismiss", () => {
+    const TIMEOUT = 5000;
+
+    async function advanceTime(ms: number) {
+      await act(async () => {
+        jest.advanceTimersByTime(ms);
+      });
+    }
+
+    // a dismissed toast stays mounted until its exit transition finishes,
+    // so settle it before asserting either way
+    async function expectDismissed() {
+      await advanceTime(1000);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    }
+
+    async function expectStillOpen() {
+      await advanceTime(1000);
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    }
+
+    async function setupTimed(undo: Partial<Undo> = {}) {
+      jest.useFakeTimers();
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const { store } = renderWithProviders(<UndoListing />);
+
+      await act(async () => {
+        store.dispatch(addUndo({ message: "Saved", ...undo }));
+      });
+      // let the toast's enter transition start
+      await advanceTime(10);
+      expect(screen.getByRole("status")).toBeInTheDocument();
+
+      return { user };
+    }
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("dismisses the toast after the default timeout", async () => {
+      await setupTimed();
+
+      await advanceTime(TIMEOUT);
+
+      await expectDismissed();
+    });
+
+    it.each([{ showProgress: false }, { showProgress: true }])(
+      "keeps the toast open while hovered (%o)",
+      async (undo) => {
+        const { user } = await setupTimed(undo);
+
+        await user.hover(screen.getByRole("status"));
+        await advanceTime(TIMEOUT * 2);
+        await expectStillOpen();
+
+        await user.unhover(screen.getByRole("status"));
+        await advanceTime(TIMEOUT);
+        await expectDismissed();
+      },
+    );
+
+    it("keeps the toast open while it has keyboard focus", async () => {
+      const { user } = await setupTimed({ actions: [jest.fn()] });
+
+      await user.tab();
+      expect(screen.getByRole("button", { name: "Undo" })).toHaveFocus();
+      await advanceTime(TIMEOUT * 2);
+      await expectStillOpen();
+
+      await user.tab();
+      await advanceTime(TIMEOUT);
+      await expectDismissed();
+    });
+
+    it("stays paused when the pointer leaves while it still has focus", async () => {
+      const { user } = await setupTimed({ actions: [jest.fn()] });
+
+      await user.hover(screen.getByRole("status"));
+      await user.tab();
+      await user.unhover(screen.getByRole("status"));
+      await advanceTime(TIMEOUT * 2);
+
+      await expectStillOpen();
     });
   });
 });

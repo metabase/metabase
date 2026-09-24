@@ -39,6 +39,7 @@ export const addUndo = createThunkAction(ADD_UNDO, (undo: Partial<Undo>) => {
       ref: createRef(),
       icon,
       canDismiss,
+      timeout,
       timeoutId,
       startedAt: Date.now(),
     };
@@ -201,7 +202,7 @@ export function undoReducer(
     }
 
     return state.map((undo) => {
-      if (undo.id === payload.id) {
+      if (undo.id === payload.id && undo.pausedAt == null) {
         return {
           ...undo,
           pausedAt: Date.now(),
