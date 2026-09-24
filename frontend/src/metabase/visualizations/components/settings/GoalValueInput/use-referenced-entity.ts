@@ -10,7 +10,7 @@ export function useReferencedEntity(
   entity: GoalForeignEntityRef | null,
 ): ReferencedEntityInfo {
   const { data: card, isError: isCardError } = useGetCardQuery(
-    entity?.type === "card" ? { id: entity.id } : skipToken,
+    entity?.type === "card" ? { id: entity.id, ignore_error: true } : skipToken,
   );
   const { data: measure, isError: isMeasureError } = useGetMeasureQuery(
     entity?.type === "measure" ? entity.id : skipToken,

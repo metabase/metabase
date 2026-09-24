@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { api } from "metabase/api/client";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetData,
@@ -749,6 +750,41 @@ describe("GoalValueInput", () => {
         name: "Couldn't load this source",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("does not trigger the global permission error for a source the user can't access", async () => {
+    const on403 = jest.fn();
+    api.on(403, on403);
+    fetchMock.get("path:/api/card/9", 403);
+    setup({
+      data: createMockDatasetData({
+        ...DATA,
+        referenced_entities: {
+          card: {
+            9: {
+              status: "completed",
+              data: {
+                cols: [createMockColumn({ name: "total" })],
+                rows: [[250]],
+              },
+            },
+          },
+        },
+      }),
+      value: { type: "card", id: 9, column: "total" },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Change value source" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", {
+        name: "Couldn't load this source",
+      }),
+    ).toBeInTheDocument();
+    api.off(403, on403);
+    expect(on403).not.toHaveBeenCalled();
   });
 
   it("says so when the picked source has no numeric columns", async () => {
