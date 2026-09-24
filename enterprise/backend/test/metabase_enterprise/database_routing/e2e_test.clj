@@ -227,7 +227,7 @@
                                               :cache-strategy {:type             :ttl
                                                                :multiplier       60
                                                                :avg-execution-ms 1000
-                                                               :min-duration-ms  1}})
+                                                               :min_duration_ms  1}})
                            :data
                            :rows))))
               (mt/with-test-user :crowberto
@@ -239,7 +239,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}}))))
+                                                            :min_duration_ms  1}}))))
               (mt/with-test-user :rasta
                 (is (=? {:data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
@@ -248,7 +248,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}})))
+                                                            :min_duration_ms  1}})))
                 (is (=? {:cache/details {:cached true}
                          :data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
@@ -257,7 +257,7 @@
                                            :cache-strategy {:type             :ttl
                                                             :multiplier       60
                                                             :avg-execution-ms 1000
-                                                            :min-duration-ms  1}})))))))))))
+                                                            :min_duration_ms  1}})))))))))))
 
 (deftest get-field-values-endpoint-works
   (mt/with-premium-features #{:database-routing}
