@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 
 import { getBrokenUpTextMatcher, waitFor } from "__support__/ui";
 
@@ -30,6 +30,29 @@ describe("HelpText (OSS)", () => {
       "href",
       "https://www.metabase.com/docs/latest/questions/query-builder/expressions/concat.html",
     );
+  });
+
+  it("should keep documentation link clicks from reaching the editor (metabase#54638)", async () => {
+    await setup({
+      enclosingFunction: {
+        name: "case",
+      },
+    });
+
+    const onDocumentMouseDown = jest.fn();
+    document.addEventListener("mousedown", onDocumentMouseDown);
+
+    const link = screen.getByRole("link", { name: /Learn more/ });
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/docs/latest/questions/query-builder/expressions/case.html",
+    );
+
+    fireEvent.mouseDown(link);
+    expect(onDocumentMouseDown).not.toHaveBeenCalled();
+
+    document.removeEventListener("mousedown", onDocumentMouseDown);
   });
 
   it("should handle expression function without arguments", async () => {
