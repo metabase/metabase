@@ -18,14 +18,15 @@
     (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/styles.abc123def.css"}))))
   (testing "Resources in /app/dist/ with hex hash prefix are cacheable"
     (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/abc123def456.png"}))))
-  (testing "Font files are cacheable"
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.ttf"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.otf"})))
-    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.eot"}))))
+  (testing "Fonts the build emits are cacheable at either output location"
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/dist/fonts/Lato-Regular.cc2c3b4a.woff2"})))
+    (is (some? (req.util/cacheable? {:request-method :get :uri "/app/embedding-sdk/fonts/Lato-Regular.cc2c3b4a.woff2"})))
+    (testing "but only when the name carries a content hash"
+      (is (not (req.util/cacheable? {:request-method :get :uri "/app/embedding-sdk/fonts/Lato-Regular.woff2"})))))
   (testing "Non-GET requests are not cacheable"
-    (is (not (req.util/cacheable? {:request-method :post :uri "/app/fonts/Lato/lato.woff2"}))))
+    (is (not (req.util/cacheable? {:request-method :post :uri "/app/dist/fonts/Lato/x.cc2c3b4a.woff2"}))))
+  (testing "The unhashed source path is no longer served, so it is not cacheable"
+    (is (not (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"}))))
   (testing "Other paths are not cacheable"
     (is (not (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
     (is (not (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))

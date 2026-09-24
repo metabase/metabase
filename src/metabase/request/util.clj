@@ -78,8 +78,8 @@
         (re-matches #"^/app/dist/.+\.[a-f0-9]+\.(js|css)$" uri)
         ;; any resource that is named as a cache-busting hex string (e.g. images)
         (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
-        ;; font files are static and should be cached
-        (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
+        ;; fonts the build emits carry a content hash in the name
+        (re-matches #"^/app/(?:dist|embedding-sdk)/fonts/.+\.[a-f0-9]{8,}\.(woff2?|ttf|otf|eot|svg)$" uri))))
 
 (def https-state
   "Whether the original request reached us over HTTPS: `:https`, `:http`, or `:unknown`. Require `:https` to skip a

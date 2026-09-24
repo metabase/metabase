@@ -38,3 +38,16 @@
     (is (u.fonts/available-font? "Lato")))
   (testing "An invalid font on the system returns `false`."
     (is (not (u.fonts/available-font? "Comic Sans")))))
+
+(deftest reads-fonts-from-the-build-output-test
+  (testing "the whitelabel picker still lists every bundled family"
+    (is (= 21 (count (u.fonts/available-fonts))))
+    (is (contains? (set (u.fonts/available-fonts)) "PT Serif"))
+    (is (contains? (set (u.fonts/available-fonts)) "Slabo 27px")))
+  (testing "hashed files resolve to a web path"
+    (is (re-matches #"/app/dist/fonts/Lato/lato-v16-latin-regular\.[a-f0-9]+\.woff2"
+                    (u.fonts/hashed-font-url-path "Lato" "lato-v16-latin-regular" "woff2")))
+    (is (re-matches #"/app/dist/fonts/PT_Serif/PTSerif-Bold\.[a-f0-9]+\.woff2"
+                    (u.fonts/hashed-font-url-path "PT Serif" "PTSerif-Bold" "woff2"))))
+  (testing "a face that does not exist resolves to nil rather than a broken URL"
+    (is (nil? (u.fonts/hashed-font-url-path "Slabo 27px" "Slabo27px-Bold" "woff2")))))

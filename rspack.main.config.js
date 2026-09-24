@@ -243,6 +243,22 @@ const config = {
         resourceQuery: { not: [/component|source/] },
       },
       {
+        test: /\.(woff2?|ttf|otf|eot|svg)$/,
+        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        type: "asset/resource",
+        generator: {
+          // Keep the family directory: the backend derives the whitelabel font
+          // list from these directory names.
+          /** @param {{ filename: string }} pathData */
+          filename: (pathData) => {
+            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
+            const segments = pathData.filename.split("/");
+            const family = segments[segments.length - 2];
+            return `fonts/${family}/[name].[contenthash:8][ext]`;
+          },
+        },
+      },
+      {
         test: /\.css$/,
         use: [
           {
