@@ -52,6 +52,7 @@
    :databaseId     1
    :sourceTableId  10
    :description    "Total order revenue"
+   :filters        ["Status is paid" "Created At is in the previous 30 days"]
    :mappedTableIds [10 20]
    :dimensions     {"paymentMethod" payment-method-dimension
                     "franchiseName" franchise-name-dimension}})
@@ -78,6 +79,7 @@
     ;; Emit comments to provide context for agents
     (is (str/includes? body "// Description: Saved orders"))
     (is (str/includes? body "// Description: Total order revenue"))
+    (is (str/includes? body "// Filters: Status is paid; Created At is in the previous 30 days"))
     (is (str/includes? body "// Display name: Payment Method"))
     (is (str/includes? body "// Semantic type: type/Category"))
     ;; Emit metadata needed for the Lib.createTestQuery DSL
@@ -87,7 +89,8 @@
     (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "mappedTableIds: [ 10, 20 ]"))
     ;; Comment-only metadata should not become runtime fields.
-    (is (not (str/includes? body "displayName: \"Payment Method\"")))))
+    (is (not (str/includes? body "displayName: \"Payment Method\"")))
+    (is (not (str/includes? body "filters:")))))
 
 (deftest typescript-renderer-compacts-metric-dimensions-test
   (let [body (typed-schemas/render-typescript compacting-schema)]

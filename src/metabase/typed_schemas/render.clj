@@ -38,7 +38,7 @@
                       :comment [:entityId :description]}
    :metric           {:runtime [:type :id :name :databaseId :sourceTableId :sourceCardId
                                 :mappedTableIds :columns :dimensions]
-                      :comment [:entityId :description :verified :sourceTable]}
+                      :comment [:entityId :description :filters :verified :sourceTable]}
    :metric-dimension {:runtime [:type :id :fieldId :metricId :tableId :sourceName :sourceFieldId
                                 :name :jsType :baseType :effectiveType :defaultTemporalBucket]
                       :comment [:displayName :description :semanticType :unit]}
@@ -62,6 +62,7 @@
    :displayName   "Display name"
    :effectiveType "Effective type"
    :entityId      "Entity ID"
+   :filters       "Filters"
    :schemaName    "Schema"
    :semanticType  "Semantic type"
    :sourceTable   "Source table"
@@ -99,6 +100,7 @@
     (map? value) (->> [(:databaseName value) (:schemaName value) (:tableName value)]
                       (keep identity)
                       (str/join "."))
+    (sequential? value) (str/join "; " value)
     :else (str value)))
 
 (defn- entity-comments
