@@ -142,13 +142,7 @@
   (interpose-fn
    xs
    #(-parens % engine sb args)
-   #(append! sb " AND "))
-  ;; (let [xs' (into [::interpose " AND "]
-  ;;                 (map (fn [x]
-  ;;                        [::parens x]))
-  ;;                 xs)]
-  ;;   (-compile xs' engine sb args))
-  )
+   #(append! sb " AND ")))
 
 (defn- -or [xs engine sb args]
   (interpose-fn
@@ -171,10 +165,7 @@
     :and            (-and fn-args engine sb args)
     :or             (-or fn-args engine sb args)
     (:< :<= :> :>=) (-binary-fn f fn-args engine sb args)
-    :in             (-in fn-args engine sb args)
-    ;; ::parens        (-parens (first fn-args) engine sb args)
-    ;; ::interpose     (-interpose (first fn-args) (rest fn-args) engine sb args)
-    ))
+    :in             (-in fn-args engine sb args)))
 
 (defn- -vector [xs engine sb args]
   (if (keyword? (first xs))
