@@ -30,17 +30,12 @@ import { Toolbar } from "./components/Toolbar";
 import { WireEdge } from "./components/WireEdge";
 import { NodeBuilderContext, type NodeBuilderContextType } from "./context";
 import {
-  TAIL_KINDS,
-  type TailKind,
   decorateEdge,
   graphKey,
   isNodeCollapsed,
   isTableNode,
-  ladderStages,
   layoutNodes,
-  lockTailWires,
   seedGraph,
-  tailLadder,
 } from "./graph";
 import { useBlockEditing } from "./hooks/use-block-editing";
 import { useCanvasEditing } from "./hooks/use-canvas-editing";
@@ -151,7 +146,7 @@ function NodeBuilderCanvas({
     (query: Lib.Query) => {
       const seed = seedGraph(query);
       const seedNodes = layoutNodes(seed.nodes, seed.edges);
-      const seedEdges = lockTailWires(seed.edges, seed.nodes);
+      const seedEdges = seed.edges;
       setNodes(seedNodes);
       setEdges(seedEdges);
       beginSettling(graphKey(seedNodes, seedEdges));
@@ -175,13 +170,8 @@ function NodeBuilderCanvas({
     setNodes,
     setEdges,
     readOnly,
-    scheduleFitView,
   });
-  const drop = useNodeDrop({
-    nodes,
-    setNodes,
-    addTailBlock: canvas.addTailBlock,
-  });
+  const drop = useNodeDrop({ nodes, setNodes });
 
   const { visualizeQuestion } = useRunVisualization({
     question,
@@ -223,13 +213,6 @@ function NodeBuilderCanvas({
 
   const areAllCollapsed = nodes.every(isNodeCollapsed);
 
-  // The dock adds to the last stage of the ladder; a kind already there is out.
-  const presentTailKinds = useMemo<TailKind[]>(() => {
-    const stages = ladderStages(tailLadder(nodes, edges));
-    const last = stages[stages.length - 1] ?? [];
-    return TAIL_KINDS.filter((kind) => last.some((node) => node.type === kind));
-  }, [nodes, edges]);
-
   const contextValue = useMemo<NodeBuilderContextType>(
     () => ({
       compiled,
@@ -246,7 +229,6 @@ function NodeBuilderCanvas({
       onStrategyChange: blocks.changeStrategy,
       onConditionsChange: blocks.changeConditions,
       onRemoveNode: canvas.removeNode,
-      onAddStageBlock: canvas.addStageBlock,
       onToggleCollapsed: blocks.toggleCollapsed,
       onLimitChange: blocks.changeLimit,
       onOrderBysChange: blocks.changeOrderBys,
@@ -328,7 +310,7 @@ function NodeBuilderCanvas({
             </Panel>
             {!readOnly && (
               <Panel position="top-center" className={S.dockPanel}>
-                <NodeDock disabledTypes={presentTailKinds} />
+                <NodeDock />
               </Panel>
             )}
           </ReactFlow>

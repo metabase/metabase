@@ -12,7 +12,6 @@ import {
   JOIN_COLOR,
   LIMIT_COLOR,
   SORT_COLOR,
-  SOURCE_COLOR,
   SUMMARIZE_COLOR,
   TABLE_COLOR,
 } from "./constants";
@@ -29,7 +28,7 @@ export function createEdge(connection: Connection): BuilderEdge {
 }
 
 // Ids carry their block kind as a prefix, which is all a colour needs.
-export function nodeColorById(nodeId: string, sourceNodeId: string | null) {
+export function nodeColorById(nodeId: string) {
   if (nodeId.startsWith("join-")) {
     return JOIN_COLOR;
   }
@@ -48,11 +47,11 @@ export function nodeColorById(nodeId: string, sourceNodeId: string | null) {
   if (nodeId.startsWith("limit-")) {
     return LIMIT_COLOR;
   }
-  return nodeId === sourceNodeId ? SOURCE_COLOR : TABLE_COLOR;
+  return TABLE_COLOR;
 }
 
-export function edgeColor(edge: BuilderEdge, sourceNodeId: string | null) {
-  return nodeColorById(edge.source, sourceNodeId);
+export function edgeColor(edge: BuilderEdge) {
+  return nodeColorById(edge.source);
 }
 
 // Wires in the compiled query are solid and animated; the rest are dashed. A
@@ -63,7 +62,7 @@ export function decorateEdge(
 ): BuilderEdge {
   const isActive = compiled.activeEdgeIds.has(edge.id);
   const isSelected = edge.selected === true;
-  const color = edgeColor(edge, compiled.sourceNodeId);
+  const color = edgeColor(edge);
   const sourceStage = compiled.stagesByNodeId.get(edge.source)?.stageIndex ?? 0;
   const targetStage =
     compiled.stagesByNodeId.get(edge.target)?.stageIndex ?? sourceStage;

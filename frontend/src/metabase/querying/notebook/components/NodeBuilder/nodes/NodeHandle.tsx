@@ -7,7 +7,6 @@ import {
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import { useNodeBuilderContext } from "../context";
 import { nodeColorById } from "../graph";
 
 import S from "./nodes.module.css";
@@ -29,12 +28,11 @@ export function NodeHandle({
   isConnectable,
   style,
 }: NodeHandleProps) {
-  const { compiled } = useNodeBuilderContext();
   const connections = useNodeConnections({ handleType: type, handleId: id });
   const isConnected = connections.length > 0;
   const incomingColor =
     type === "target" && isConnected
-      ? nodeColorById(connections[0].source, compiled.sourceNodeId)
+      ? nodeColorById(connections[0].source)
       : null;
   // CSS custom properties are not part of React's CSSProperties type.
   const handleStyle = {

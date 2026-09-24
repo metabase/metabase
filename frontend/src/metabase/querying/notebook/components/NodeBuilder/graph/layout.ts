@@ -5,41 +5,38 @@ import type { XYPosition } from "@xyflow/react";
 
 import type { BuilderEdge, BuilderNode, DockNodeType } from "../types";
 
-import type { TailKind } from "./ladder";
 import { isJoinNode, isResultNode, isUtilityNode } from "./nodes";
 
-export const TABLE_WIDTH = 288;
+const TABLE_WIDTH = 288;
 
-export const JOIN_WIDTH = 384;
+const JOIN_WIDTH = 384;
 
 // Tables start collapsed to their header.
-export const TABLE_HEIGHT = 64;
+const TABLE_HEIGHT = 64;
 
-export const JOIN_HEIGHT = 300;
+const JOIN_HEIGHT = 300;
 
-export const RESULT_HEIGHT = 260;
+const RESULT_HEIGHT = 260;
 
-export const UTILITY_HEIGHT = 180;
-
-// Chips that drop a block of their own; the rest slot in at the end of the chain.
-export type DroppableNodeType = Exclude<DockNodeType, TailKind>;
+const UTILITY_HEIGHT = 180;
 
 // Size of a freshly dropped, still blank block, used to land it centred on
 // the cursor before react-flow has measured it.
-export const DOCK_NODE_SIZES: Record<
-  DroppableNodeType,
-  { width: number; height: number }
-> = {
-  table: { width: TABLE_WIDTH, height: 330 },
-  join: { width: JOIN_WIDTH, height: 200 },
-  expression: { width: TABLE_WIDTH, height: 200 },
-  filter: { width: TABLE_WIDTH, height: 200 },
-};
+const DOCK_NODE_SIZES: Record<DockNodeType, { width: number; height: number }> =
+  {
+    table: { width: TABLE_WIDTH, height: 330 },
+    join: { width: JOIN_WIDTH, height: 200 },
+    expression: { width: TABLE_WIDTH, height: 200 },
+    filter: { width: TABLE_WIDTH, height: 200 },
+    summarize: { width: TABLE_WIDTH, height: 240 },
+    sort: { width: TABLE_WIDTH, height: 180 },
+    limit: { width: TABLE_WIDTH, height: 140 },
+  };
 
 // react-flow positions a node by its top-left corner; a drop should land the
 // block's centre under the cursor.
 export function centeredPosition(
-  type: DroppableNodeType,
+  type: DockNodeType,
   cursor: XYPosition,
 ): XYPosition {
   const { width, height } = DOCK_NODE_SIZES[type];

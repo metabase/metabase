@@ -36,14 +36,13 @@ export const SummarizeNode = memo(function SummarizeNode({
     isMetric,
     onSummarizeChange,
     onRemoveNode,
-    onAddStageBlock,
     onToggleCollapsed,
   } = useNodeBuilderContext();
   const isCollapsed = data.collapsed ?? false;
   const isActive = compiled.activeNodeIds.has(id);
   const stage = compiled.stagesByNodeId.get(id);
   const stageIndex = stage?.stageIndex ?? 0;
-  const query = isActive ? (stage?.query ?? null) : null;
+  const query = stage?.query ?? null;
   const aggregationStart = stage?.aggregationStart ?? 0;
   const breakoutStart = stage?.breakoutStart ?? 0;
   const orderByStart = stage?.orderByStart ?? 0;
@@ -175,7 +174,7 @@ export const SummarizeNode = memo(function SummarizeNode({
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed },
-        { [S.draft]: !isActive },
+        { [S.draft]: !query },
       )}
       style={nodeStyle}
       data-testid="node-builder-summarize-node"
@@ -196,7 +195,7 @@ export const SummarizeNode = memo(function SummarizeNode({
         icon="sum"
         title={t`Summarize`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={!query}
         isCollapsed={isCollapsed}
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}
@@ -310,42 +309,6 @@ export const SummarizeNode = memo(function SummarizeNode({
                       />
                     </Popover.Dropdown>
                   </Popover>
-                )}
-                {!readOnly && !isMetric && (
-                  <div className={S.stageActions}>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      leftSection={<Icon name="join_inner" size={10} />}
-                      onClick={() => onAddStageBlock(id, "join")}
-                    >
-                      {t`Join the results`}
-                    </Button>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      leftSection={<Icon name="add_data" size={10} />}
-                      onClick={() => onAddStageBlock(id, "expression")}
-                    >
-                      {t`Add a column to the results`}
-                    </Button>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      leftSection={<Icon name="filter" size={10} />}
-                      onClick={() => onAddStageBlock(id, "filter")}
-                    >
-                      {t`Filter the results`}
-                    </Button>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      leftSection={<Icon name="sum" size={10} />}
-                      onClick={() => onAddStageBlock(id, "summarize")}
-                    >
-                      {t`Summarize the results`}
-                    </Button>
-                  </div>
                 )}
               </>
             ) : (

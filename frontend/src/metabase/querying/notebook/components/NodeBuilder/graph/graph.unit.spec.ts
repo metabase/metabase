@@ -15,12 +15,13 @@ import {
 
 import {
   compileGraph,
+  createFilterNode,
+  createJoinNode,
+  createSortNode,
+  createSummarizeNode,
   getUnsupportedReason,
-  ladderStages,
-  ladderSuccessorId,
+  isValidConnection,
   seedGraph,
-  tailLadder,
-  withDependentTail,
 } from "./index";
 
 const provider = createMetadataProvider();
@@ -367,7 +368,6 @@ describe("custom column round trips", () => {
     const expressionNode = seed.nodes.find(
       (node) => node.type === "expression",
     );
-    expect(expressionNode?.data).toMatchObject({ afterSummarize: true });
     expect(
       compiled.stagesByNodeId.get(expressionNode?.id ?? "")?.stageIndex,
     ).toBe(1);
@@ -411,7 +411,6 @@ describe("multi-stage round trips", () => {
       "result",
     ]);
     const filterNode = seed.nodes.find((node) => node.type === "filter");
-    expect(filterNode?.data).toMatchObject({ afterSummarize: true });
     expect(compiled.stagesByNodeId.get(filterNode?.id ?? "")?.stageIndex).toBe(
       1,
     );
@@ -494,7 +493,7 @@ describe("multi-stage round trips", () => {
     expectRoundTrip(query);
   });
 
-  it("the ladder knows its stages, successors and dependants", () => {
+  it("wires may cross into the next stage only after a summarize", () => {
     const query = createQuery({
       stages: [
         {
@@ -503,35 +502,95 @@ describe("multi-stage round trips", () => {
           breakouts: [byMonth],
           orderBys: [{ type: "column", name: "count" }],
         },
-        { filters: [countOver(10)], aggregations: [count] },
       ],
     });
     const { nodes, edges } = seedGraph(query);
-    const ladder = tailLadder(nodes, edges);
-    expect(ladder.map((node) => node.type)).toEqual([
-      "summarize",
-      "sort",
-      "filter",
-      "summarize",
-    ]);
-    const stages = ladderStages(ladder);
-    expect(stages.map((stage) => stage.map((node) => node.type))).toEqual([
-      ["summarize", "sort"],
-      ["filter", "summarize"],
-    ]);
-    // A limit on stage 1 goes before the next stage's first block.
-    expect(ladderSuccessorId(stages, 0, "limit")).toBe(stages[1][0].id);
-    // A sort on the last stage goes last.
-    expect(ladderSuccessorId(stages, 1, "sort")).toBe("result");
-    // Removing the first summarize takes the whole next stage along.
-    const removed = withDependentTail(nodes, edges, new Set([ladder[0].id]));
-    expect([...removed].sort()).toEqual(
-      [ladder[0].id, ladder[2].id, ladder[3].id].sort(),
+    const [table, summarize, sort] = nodes;
+    const filter = createFilterNode({ x: 0, y: 0 });
+    const join = createJoinNode({ x: 0, y: 0 });
+    const all = [...nodes, filter, join];
+    const wire = (source: string, target: string, targetHandle = "in") =>
+      isValidConnection(
+        { source, sourceHandle: "out", target, targetHandle },
+        all,
+        edges,
+      );
+    // After a summarize, a filter or a join starts the next stage.
+    expect(wire(summarize.id, filter.id)).toBe(true);
+    expect(wire(sort.id, filter.id)).toBe(true);
+    expect(wire(sort.id, join.id, "lhs")).toBe(true);
+    // Without one, the stage order holds.
+    expect(wire(table.id, filter.id)).toBe(true);
+    expect(wire(sort.id, table.id)).toBe(false);
+    expect(
+      isValidConnection(
+        {
+          source: sort.id,
+          sourceHandle: "out",
+          target: filter.id,
+          targetHandle: "in",
+        },
+        [table, createSortNode({ x: 0, y: 0 }), filter],
+        [],
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("blocks off the result's path", () => {
+  it("compile against their inputs without lighting up", () => {
+    const query = createQuery({
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    });
+    const seed = seedGraph(query);
+    const table = seed.nodes[0];
+    const summarize = createSummarizeNode({ x: 0, y: 0 });
+    const compiled = compileGraph(
+      [...seed.nodes, summarize],
+      [
+        ...seed.edges,
+        {
+          id: "side",
+          source: table.id,
+          sourceHandle: "out",
+          target: summarize.id,
+          targetHandle: "in",
+        },
+      ],
+      () => provider,
     );
-    // Removing the sort takes nothing else.
-    expect(withDependentTail(nodes, edges, new Set([ladder[1].id]))).toEqual(
-      new Set([ladder[1].id]),
+    expect(compiled.error).toBeNull();
+    const stage = compiled.stagesByNodeId.get(summarize.id);
+    expect(stage?.stageIndex).toBe(0);
+    expect(stage && Lib.sourceTableOrCardId(stage.query)).toBe(ORDERS_ID);
+    expect(compiled.activeNodeIds.has(summarize.id)).toBe(false);
+    expect(compiled.activeNodeIds.has(table.id)).toBe(true);
+  });
+
+  it("still compile when nothing reaches the result", () => {
+    const query = createQuery({
+      stages: [{ source: { type: "table", id: ORDERS_ID } }],
+    });
+    const seed = seedGraph(query);
+    const table = seed.nodes[0];
+    const filter = createFilterNode({ x: 0, y: 0 });
+    const compiled = compileGraph(
+      [...seed.nodes, filter],
+      [
+        {
+          id: "side",
+          source: table.id,
+          sourceHandle: "out",
+          target: filter.id,
+          targetHandle: "in",
+        },
+      ],
+      () => provider,
     );
+    expect(compiled.query).toBeNull();
+    expect(compiled.error).not.toBeNull();
+    expect(compiled.stagesByNodeId.has(filter.id)).toBe(true);
+    expect(compiled.activeNodeIds.size).toBe(0);
   });
 });
 
@@ -638,8 +697,7 @@ describe("getUnsupportedReason", () => {
       "result",
     ]);
     const joinNode = seed.nodes.find((node) => node.type === "join");
-    expect(joinNode?.data).toMatchObject({ afterSummarize: true });
-    expect(compiled.joinIndexByNodeId.get(joinNode?.id ?? "")).toEqual({
+    expect(compiled.joinIndexByNodeId.get(joinNode?.id ?? "")).toMatchObject({
       stageIndex: 1,
       joinIndex: 0,
     });

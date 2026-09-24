@@ -508,11 +508,3 @@
 .draftHeader .stageChip {
   background: color-mix(in srgb, var(--node-color), transparent 85%);
 }
-
-.stageActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  padding-top: 0.25rem;
-  border-top: 1px solid var(--mb-color-border-neutral);
-}

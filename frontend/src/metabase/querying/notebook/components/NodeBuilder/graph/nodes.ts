@@ -56,7 +56,7 @@ export function isSummarizeNode(node: BuilderNode): node is SummarizeFlowNode {
   return node.type === "summarize";
 }
 
-export type UtilityNode =
+type UtilityNode =
   | ExpressionFlowNode
   | FilterFlowNode
   | SummarizeFlowNode
@@ -110,14 +110,14 @@ export function withCollapsed(
   return { ...node, data: { ...node.data, collapsed } } as BuilderNode;
 }
 
-export let nodeCounter = 0;
+let nodeCounter = 0;
 
-export function nextNodeId(kind: DockNodeType) {
+function nextNodeId(kind: DockNodeType) {
   nodeCounter += 1;
   return `${kind}-${Date.now()}-${nodeCounter}`;
 }
 
-export const DRAG_HANDLE = `.${DRAG_HANDLE_CLASS}`;
+const DRAG_HANDLE = `.${DRAG_HANDLE_CLASS}`;
 
 export const ORIGIN: XYPosition = { x: 0, y: 0 };
 
@@ -160,42 +160,39 @@ export function createJoinNode(
   strategy: Lib.JoinStrategy | null = null,
   conditions: Lib.JoinCondition[] | null = null,
   seededJoin: Lib.Join | null = null,
-  afterSummarize = false,
 ): JoinFlowNode {
   return {
     id: nextNodeId("join"),
     type: "join",
     position,
     dragHandle: DRAG_HANDLE,
-    data: { strategy, conditions, seededJoin, afterSummarize, version: 0 },
+    data: { strategy, conditions, seededJoin, version: 0 },
   };
 }
 
 export function createExpressionNode(
   position: XYPosition,
   expressions: NamedExpression[] = [],
-  afterSummarize = false,
 ): ExpressionFlowNode {
   return {
     id: nextNodeId("expression"),
     type: "expression",
     position,
     dragHandle: DRAG_HANDLE,
-    data: { expressions, afterSummarize, version: 0 },
+    data: { expressions, version: 0 },
   };
 }
 
 export function createFilterNode(
   position: XYPosition,
   filters: Lib.FilterClause[] = [],
-  afterSummarize = false,
 ): FilterFlowNode {
   return {
     id: nextNodeId("filter"),
     type: "filter",
     position,
     dragHandle: DRAG_HANDLE,
-    data: { filters, afterSummarize, version: 0 },
+    data: { filters, version: 0 },
   };
 }
 
@@ -246,4 +243,37 @@ export function graphKey(nodes: BuilderNode[], edges: BuilderEdge[]): string {
     .join("|");
   const edgeKey = edges.map((edge) => edge.id).join("|");
   return `${nodeKey}#${edgeKey}`;
+}
+
+// Blocks that work on a summarize's results, and so start the next stage.
+export function startsNextStage(node: BuilderNode): boolean {
+  return (
+    isJoinNode(node) ||
+    isExpressionNode(node) ||
+    isFilterNode(node) ||
+    isSummarizeNode(node)
+  );
+}
+
+// A blank block of the given kind, as the dock drops it.
+export function createBlankNode(
+  kind: DockNodeType,
+  position: XYPosition,
+): BuilderNode {
+  switch (kind) {
+    case "table":
+      return createTableNode(position, null);
+    case "join":
+      return createJoinNode(position);
+    case "expression":
+      return createExpressionNode(position);
+    case "filter":
+      return createFilterNode(position);
+    case "summarize":
+      return createSummarizeNode(position);
+    case "sort":
+      return createSortNode(position);
+    case "limit":
+      return createLimitNode(position);
+  }
 }

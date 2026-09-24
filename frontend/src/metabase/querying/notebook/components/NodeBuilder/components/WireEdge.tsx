@@ -54,7 +54,7 @@ export function WireEdge({
             className={S.stageLabel}
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-              color: style?.stroke,
+              background: style?.stroke,
             }}
           >
             {stageLabel}

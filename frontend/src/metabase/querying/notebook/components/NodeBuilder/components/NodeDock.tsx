@@ -30,11 +30,8 @@ const LABELS: Record<DockNodeType, () => string> = {
   limit: () => t`Limit`,
 };
 
-type NodeDockProps = {
-  disabledTypes?: DockNodeType[];
-};
-
-export function NodeDock({ disabledTypes = [] }: NodeDockProps) {
+// One chip per block kind; dragging one onto the canvas drops a blank block.
+export function NodeDock() {
   const handleDragStart = (event: DragEvent, type: DockNodeType) => {
     // react-dnd's HTML5 backend listens on window and cancels native drags it did not start.
     event.stopPropagation();
@@ -45,25 +42,17 @@ export function NodeDock({ disabledTypes = [] }: NodeDockProps) {
   return (
     <div className={S.dock} data-testid="node-builder-dock">
       <div className={S.dockChips}>
-        {CHIPS.map(({ type, icon, className }) => {
-          const isDisabled = disabledTypes.includes(type);
-          return (
-            <div
-              key={type}
-              className={cx(S.dockChip, className, {
-                [S.dockChipDisabled]: isDisabled,
-              })}
-              draggable={!isDisabled}
-              title={isDisabled ? t`Already on the canvas` : undefined}
-              onDragStart={
-                isDisabled ? undefined : (event) => handleDragStart(event, type)
-              }
-            >
-              <Icon name={icon} size={14} />
-              <span>{LABELS[type]()}</span>
-            </div>
-          );
-        })}
+        {CHIPS.map(({ type, icon, className }) => (
+          <div
+            key={type}
+            className={cx(S.dockChip, className)}
+            draggable
+            onDragStart={(event) => handleDragStart(event, type)}
+          >
+            <Icon name={icon} size={14} />
+            <span>{LABELS[type]()}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

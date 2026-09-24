@@ -27,11 +27,6 @@ export type NodeBuilderContextType = {
   onStrategyChange: (nodeId: string, strategy: Lib.JoinStrategy) => void;
   onConditionsChange: (nodeId: string, conditions: Lib.JoinCondition[]) => void;
   onRemoveNode: (nodeId: string) => void;
-  // Adds a block that works on a summarize's results, on the next stage.
-  onAddStageBlock: (
-    summarizeNodeId: string,
-    kind: "expression" | "filter" | "summarize" | "join",
-  ) => void;
   onToggleCollapsed: (nodeId: string) => void;
   onLimitChange: (nodeId: string, limit: number | null) => void;
   onOrderBysChange: (nodeId: string, orderBys: Lib.OrderByClause[]) => void;

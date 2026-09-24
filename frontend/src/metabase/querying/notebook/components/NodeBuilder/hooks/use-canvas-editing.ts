@@ -8,13 +8,10 @@ import {
 } from "react";
 
 import {
-  type LadderKind,
-  canConnect,
+  RESULT_NODE_ID,
   connectWire,
-  insertTailBlock,
-  planDeletion,
+  isValidConnection as isValidWire,
   reconnectWire,
-  redirectToTailHead,
   removeNodes,
 } from "../graph";
 import type { BuilderEdge, BuilderNode } from "../types";
@@ -25,7 +22,6 @@ type Options = {
   setNodes: Dispatch<SetStateAction<BuilderNode[]>>;
   setEdges: Dispatch<SetStateAction<BuilderEdge[]>>;
   readOnly: boolean;
-  scheduleFitView: () => void;
 };
 
 // Wires and blocks: everything that changes the shape of the graph. The
@@ -36,7 +32,6 @@ export function useCanvasEditing({
   setNodes,
   setEdges,
   readOnly,
-  scheduleFitView,
 }: Options) {
   const graph = useCallback(
     () => ({ nodes: nodesRef.current, edges: edgesRef.current }),
@@ -52,36 +47,14 @@ export function useCanvasEditing({
     [graph, setNodes, setEdges],
   );
 
-  const addTailBlock = useCallback(
-    (kind: LadderKind, afterSummarizeId?: string) => {
-      const next = insertTailBlock(graph(), kind, afterSummarizeId);
-      if (!next) {
-        return;
-      }
-      setNodes(next.nodes);
-      setEdges(next.edges);
-      // The chain just grew to the right; bring all of it back into view.
-      scheduleFitView();
-    },
-    [graph, setNodes, setEdges, scheduleFitView],
-  );
-
-  // Blocks that work on a summarize's results go on the stage after it.
-  const addStageBlock = useCallback(
-    (summarizeNodeId: string, kind: LadderKind) =>
-      addTailBlock(kind, summarizeNodeId),
-    [addTailBlock],
-  );
-
   const isValidConnection = useCallback(
     (connection: Connection | BuilderEdge) =>
-      !readOnly && canConnect(connection, graph()),
-    [readOnly, graph],
+      !readOnly && isValidWire(connection, nodesRef.current, edgesRef.current),
+    [readOnly, nodesRef, edgesRef],
   );
 
   const connect = useCallback(
-    (rawConnection: Connection) => {
-      const connection = redirectToTailHead(rawConnection, graph());
+    (connection: Connection) => {
       if (isValidConnection(connection)) {
         setEdges(connectWire(graph(), connection));
       }
@@ -90,8 +63,7 @@ export function useCanvasEditing({
   );
 
   const reconnect = useCallback(
-    (oldEdge: BuilderEdge, rawConnection: Connection) => {
-      const connection = redirectToTailHead(rawConnection, graph());
+    (oldEdge: BuilderEdge, connection: Connection) => {
       if (isValidConnection(connection)) {
         setEdges(reconnectWire(graph(), oldEdge, connection));
       }
@@ -101,38 +73,15 @@ export function useCanvasEditing({
 
   // The result block is permanent; everything else can go.
   const beforeDelete = useCallback<OnBeforeDelete<BuilderNode, BuilderEdge>>(
-    async ({ nodes: toDelete, edges: edgesToDelete }) => {
-      const { nodes, edges, bridges } = planDeletion(
-        graph(),
-        toDelete,
-        edgesToDelete,
-      );
-      if (bridges.length > 0) {
-        setEdges((prevEdges) => [...prevEdges, ...bridges]);
-      }
-      return { nodes, edges };
-    },
-    [graph, setEdges],
+    async ({ nodes, edges }) => ({
+      nodes: nodes.filter((node) => node.id !== RESULT_NODE_ID),
+      edges,
+    }),
+    [],
   );
 
   return useMemo(
-    () => ({
-      removeNode,
-      addTailBlock,
-      addStageBlock,
-      isValidConnection,
-      connect,
-      reconnect,
-      beforeDelete,
-    }),
-    [
-      removeNode,
-      addTailBlock,
-      addStageBlock,
-      isValidConnection,
-      connect,
-      reconnect,
-      beforeDelete,
-    ],
+    () => ({ removeNode, isValidConnection, connect, reconnect, beforeDelete }),
+    [removeNode, isValidConnection, connect, reconnect, beforeDelete],
   );
 }

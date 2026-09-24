@@ -10,7 +10,6 @@ export const STAGE_INDEX = 0;
 export const FIT_VIEW_OPTIONS = { padding: 0.2, maxZoom: 1, duration: 300 };
 
 // One hue per block kind; the values live on the builder root in NodeBuilder.module.css.
-export const SOURCE_COLOR = "var(--builder-table)";
 
 export const TABLE_COLOR = "var(--builder-table)";
 

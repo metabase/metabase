@@ -38,7 +38,7 @@ export const ExpressionNode = memo(function ExpressionNode({
   const isActive = compiled.activeNodeIds.has(id);
   const stage = compiled.stagesByNodeId.get(id);
   const stageIndex = stage?.stageIndex ?? 0;
-  const query = isActive ? (stage?.query ?? null) : null;
+  const query = stage?.query ?? null;
   const ownStart = stage?.expressionStart ?? 0;
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -122,7 +122,7 @@ export const ExpressionNode = memo(function ExpressionNode({
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed },
-        { [S.draft]: !isActive },
+        { [S.draft]: !query },
       )}
       style={nodeStyle}
       data-testid="node-builder-expression-node"
@@ -141,11 +141,9 @@ export const ExpressionNode = memo(function ExpressionNode({
       />
       <NodeHeader
         icon="add_data"
-        title={
-          data.afterSummarize ? t`Custom column on results` : t`Custom column`
-        }
+        title={t`Custom column`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={!query}
         isCollapsed={isCollapsed}
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}

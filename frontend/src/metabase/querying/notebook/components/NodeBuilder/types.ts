@@ -41,8 +41,6 @@ export type JoinNodeData = {
   conditions: Lib.JoinCondition[] | null;
   // The join as loaded from the question: its alias is what downstream clauses point at.
   seededJoin: Lib.Join | null;
-  // Joins a summarize's results, so it lives in the ladder after it.
-  afterSummarize?: boolean;
   version: number;
   // Folded to its header. Unset means the block kind's default.
   collapsed?: boolean;
@@ -69,8 +67,6 @@ export type NamedExpression = {
 export type ExpressionNodeData = {
   // Custom columns, re-applied to the compiled query on every rebuild.
   expressions: NamedExpression[];
-  // Adds columns to a summarize's results, so it lives in the ladder after it.
-  afterSummarize?: boolean;
   version: number;
   // Folded to its header. Unset means the block kind's default.
   collapsed?: boolean;
@@ -78,9 +74,6 @@ export type ExpressionNodeData = {
 
 export type FilterNodeData = {
   filters: Lib.FilterClause[];
-  // Filters the results of a summarize, so it lives in the ladder after it
-  // and on the next stage of the query.
-  afterSummarize?: boolean;
   version: number;
   // Folded to its header. Unset means the block kind's default.
   collapsed?: boolean;

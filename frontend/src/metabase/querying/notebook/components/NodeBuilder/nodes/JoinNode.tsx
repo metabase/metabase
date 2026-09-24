@@ -48,8 +48,9 @@ export const JoinNode = memo(function JoinNode({ id, data }: JoinNodeProps) {
   const hasLhs = lhsConnections.length > 0;
   const hasRhs = rhsConnections.length > 0;
 
-  const query = compiled.query;
   const joinRef = compiled.joinIndexByNodeId.get(id);
+  // The chain's query right after this join, whether or not it reaches the result.
+  const query = joinRef?.query ?? null;
   const stageIndex = joinRef?.stageIndex ?? STAGE_INDEX;
   const join = useMemo(
     () =>

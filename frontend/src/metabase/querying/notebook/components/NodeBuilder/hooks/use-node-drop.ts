@@ -9,40 +9,26 @@ import {
 } from "react";
 
 import { NODE_TYPE_DRAG_TYPE } from "../components/NodeDock";
-import {
-  type LadderKind,
-  TAIL_KINDS,
-  type TailKind,
-  centeredPosition,
-  createExpressionNode,
-  createFilterNode,
-  createJoinNode,
-  createTableNode,
-  recenterDropped,
-} from "../graph";
+import { centeredPosition, createBlankNode, recenterDropped } from "../graph";
 import type { BuilderNode, DockNodeType } from "../types";
-
-function isTailKind(type: DockNodeType): type is TailKind {
-  return TAIL_KINDS.some((kind) => kind === type);
-}
 
 const DOCK_TYPES: readonly DockNodeType[] = [
   "table",
   "join",
   "expression",
   "filter",
-  ...TAIL_KINDS,
+  "summarize",
+  "sort",
+  "limit",
 ];
 
 type Options = {
   nodes: BuilderNode[];
   setNodes: Dispatch<SetStateAction<BuilderNode[]>>;
-  addTailBlock: (kind: LadderKind) => void;
 };
 
-// Dropping a chip from the dock: free blocks land centred under the cursor,
-// tail blocks slot into the ladder on their own.
-export function useNodeDrop({ nodes, setNodes, addTailBlock }: Options) {
+// Dropping a chip from the dock lands a blank block centred under the cursor.
+export function useNodeDrop({ nodes, setNodes }: Options) {
   const { screenToFlowPosition } = useReactFlow();
   // Cursor points of dropped blocks that still need exact centring once
   // react-flow reports their real size.
@@ -65,27 +51,18 @@ export function useNodeDrop({ nodes, setNodes, addTailBlock }: Options) {
       }
       event.preventDefault();
       event.stopPropagation();
-      if (isTailKind(nodeType)) {
-        addTailBlock(nodeType);
-        return;
-      }
       const cursor = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
-      const position = centeredPosition(nodeType, cursor);
-      const node =
-        nodeType === "join"
-          ? createJoinNode(position)
-          : nodeType === "filter"
-            ? createFilterNode(position)
-            : nodeType === "expression"
-              ? createExpressionNode(position)
-              : createTableNode(position, null);
+      const node = createBlankNode(
+        nodeType,
+        centeredPosition(nodeType, cursor),
+      );
       pendingCentersRef.current.set(node.id, cursor);
       setNodes((prevNodes) => [...prevNodes, node]);
     },
-    [screenToFlowPosition, addTailBlock, setNodes],
+    [screenToFlowPosition, setNodes],
   );
 
   // The estimate used at drop time is close; once the block is measured, put

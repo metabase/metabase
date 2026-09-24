@@ -9,7 +9,6 @@ import { getDefaultJoinStrategy } from "../../JoinStep/JoinDraft/utils";
 import type { BuilderEdge, BuilderNode, TableFlowNode } from "../types";
 
 import { RESULT_NODE_ID, STAGE_INDEX } from "./constants";
-import { startsNextStage } from "./ladder";
 import {
   isExpressionNode,
   isFilterNode,
@@ -18,6 +17,7 @@ import {
   isSummarizeNode,
   isTableNode,
   isUtilityNode,
+  startsNextStage,
 } from "./nodes";
 
 // The query as it stands right after a utility block, and where that block's
@@ -34,7 +34,13 @@ export type StageInfo = {
   orderByStart: number;
 };
 
-export type JoinRef = { stageIndex: number; joinIndex: number };
+// Where a join sits in the compiled query, with the chain's query right
+// after it, so the block can read it even off the result's path.
+export type JoinRef = {
+  query: Lib.Query;
+  stageIndex: number;
+  joinIndex: number;
+};
 
 export type CompiledGraph = {
   // Null while nothing complete feeds the result.
@@ -61,7 +67,7 @@ export const EMPTY_COMPILED_GRAPH: CompiledGraph = {
   error: null,
 };
 
-export function keepColumns(
+function keepColumns(
   query: Lib.Query,
   columns: Lib.ColumnMetadata[],
   excludedColumns: string[],
@@ -73,7 +79,7 @@ export function keepColumns(
   );
 }
 
-export function applySourceExclusions(
+function applySourceExclusions(
   query: Lib.Query,
   excludedColumns: string[],
 ): Lib.Query {
@@ -87,7 +93,7 @@ export function applySourceExclusions(
     : query;
 }
 
-export function applyJoinExclusions(
+function applyJoinExclusions(
   baseQuery: Lib.Query,
   join: Lib.Join,
   table: Lib.Joinable,
@@ -110,7 +116,7 @@ export function applyJoinExclusions(
 
 // Suggested FK conditions, or a first-column placeholder the user fixes on
 // the node. `null` when not even that is possible.
-export function buildJoinConditions(
+function buildJoinConditions(
   query: Lib.Query,
   table: Lib.Joinable,
   stageIndex = STAGE_INDEX,
@@ -133,7 +139,7 @@ export function buildJoinConditions(
   return [Lib.joinConditionClause(operator, lhs, rhs)];
 }
 
-export type Chain = {
+type Chain = {
   query: Lib.Query;
   joinCount: number;
   databaseId: DatabaseId;
@@ -157,12 +163,6 @@ export function compileGraph(
     );
 
   const resultEdge = inputEdge(RESULT_NODE_ID, "in");
-  if (!resultEdge) {
-    return {
-      ...EMPTY_COMPILED_GRAPH,
-      error: t`Connect a table or a join to the result`,
-    };
-  }
 
   const joinIndexByNodeId = new Map<string, JoinRef>();
   const tableJoinIndexByNodeId = new Map<string, JoinRef>();
@@ -191,10 +191,13 @@ export function compileGraph(
       throw new Error(t`The graph loops back on itself`);
     }
     visiting.add(nodeId);
-    const chain = resolveUncached(nodeId);
-    visiting.delete(nodeId);
-    resolved.set(nodeId, chain);
-    return chain;
+    try {
+      const chain = resolveUncached(nodeId);
+      resolved.set(nodeId, chain);
+      return chain;
+    } finally {
+      visiting.delete(nodeId);
+    }
   };
 
   const resolveUncached = (nodeId: string): Chain => {
@@ -241,12 +244,6 @@ export function compileGraph(
       if (!rhsNode || !isTableNode(rhsNode)) {
         throw new Error(t`The right input of a join must be a table`);
       }
-      // A join added to the ladder waits for its table without breaking the
-      // rest of the query: until then the chain passes straight through it.
-      if (node.data.afterSummarize && rhsNode.data.table == null) {
-        activeEdgeIds.add(lhsEdge.id);
-        return base;
-      }
       const { table, databaseId } = pickedTable(rhsNode);
       if (databaseId !== base.databaseId) {
         throw new Error(t`Joins must stay within one database`);
@@ -282,7 +279,7 @@ export function compileGraph(
         stageIndex,
       );
       const query = Lib.join(baseQuery, stageIndex, join);
-      const ref = { stageIndex, joinIndex: joinCount };
+      const ref = { query, stageIndex, joinIndex: joinCount };
       joinIndexByNodeId.set(nodeId, ref);
       tableJoinIndexByNodeId.set(rhsNode.id, ref);
       activeNodeIds.add(nodeId);
@@ -387,24 +384,45 @@ export function compileGraph(
     );
   };
 
-  try {
-    const chain = resolve(resultEdge.source);
-    activeEdgeIds.add(resultEdge.id);
-    activeNodeIds.add(RESULT_NODE_ID);
-    return {
-      query: chain.query,
-      stagesByNodeId,
-      sourceNodeId,
-      joinIndexByNodeId,
-      tableJoinIndexByNodeId,
-      activeNodeIds,
-      activeEdgeIds,
-      error: null,
-    };
-  } catch (error) {
-    return {
-      ...EMPTY_COMPILED_GRAPH,
-      error: error instanceof Error ? error.message : String(error),
-    };
+  let query: Lib.Query | null = null;
+  let error: string | null = null;
+  if (!resultEdge) {
+    error = t`Connect a table or a join to the result`;
+  } else {
+    try {
+      const chain = resolve(resultEdge.source);
+      activeEdgeIds.add(resultEdge.id);
+      activeNodeIds.add(RESULT_NODE_ID);
+      query = chain.query;
+    } catch (caught) {
+      error = caught instanceof Error ? caught.message : String(caught);
+    }
   }
+
+  // Blocks off the result's path still compile as far as their own inputs
+  // reach, so they can be configured before they are wired on. They are not
+  // active: only the result's chain lights up.
+  const resultSourceNodeId = sourceNodeId;
+  const activeNodes = new Set(activeNodeIds);
+  const activeEdges = new Set(activeEdgeIds);
+  nodes.forEach((node) => {
+    if ((isJoinNode(node) || isUtilityNode(node)) && !resolved.has(node.id)) {
+      try {
+        resolve(node.id);
+      } catch {
+        // An input is missing or broken; the block stays a draft.
+      }
+    }
+  });
+
+  return {
+    query,
+    stagesByNodeId,
+    sourceNodeId: query ? resultSourceNodeId : null,
+    joinIndexByNodeId,
+    tableJoinIndexByNodeId,
+    activeNodeIds: query ? activeNodes : new Set<string>(),
+    activeEdgeIds: query ? activeEdges : new Set<string>(),
+    error,
+  };
 }

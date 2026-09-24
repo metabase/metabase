@@ -12,7 +12,7 @@ import * as Lib from "metabase-lib";
 
 import { SourceList } from "../components/SourceList";
 import { useNodeBuilderContext } from "../context";
-import { SOURCE_COLOR, STAGE_INDEX, TABLE_COLOR } from "../graph";
+import { STAGE_INDEX, TABLE_COLOR } from "../graph";
 import type { TableFlowNode } from "../types";
 
 import { NodeHandle } from "./NodeHandle";
@@ -50,8 +50,9 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
       updateNodeInternals(id);
     }
   }, [table, id, updateNodeInternals]);
-  const query = compiled.query;
   const joinRef = compiled.tableJoinIndexByNodeId.get(id);
+  // The source reads the result's query; a joined table reads its join's chain.
+  const query = joinRef?.query ?? compiled.query;
   const joinIndex = joinRef?.joinIndex;
   const joinStageIndex = joinRef?.stageIndex ?? STAGE_INDEX;
 
@@ -126,7 +127,7 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
 
   // CSS custom properties are not part of React's CSSProperties type.
   const nodeStyle = {
-    "--node-color": isSource ? SOURCE_COLOR : TABLE_COLOR,
+    "--node-color": TABLE_COLOR,
   } as CSSProperties;
 
   return (
@@ -134,7 +135,7 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed && table != null },
-        { [S.draft]: !isActive },
+        { [S.draft]: table == null },
       )}
       style={nodeStyle}
       data-testid="node-builder-table-node"
@@ -151,7 +152,7 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
         icon="table2"
         title={table ? tableName : t`Table`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={table == null}
         isCollapsed={isCollapsed}
         onToggleCollapsed={() => onToggleCollapsed(id)}
         onRemove={readOnly ? undefined : () => onRemoveNode(id)}

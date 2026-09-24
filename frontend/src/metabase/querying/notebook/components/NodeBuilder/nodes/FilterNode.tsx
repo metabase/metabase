@@ -34,7 +34,7 @@ export const FilterNode = memo(function FilterNode({
   const isActive = compiled.activeNodeIds.has(id);
   const stage = compiled.stagesByNodeId.get(id);
   const stageIndex = stage?.stageIndex ?? 0;
-  const query = isActive ? (stage?.query ?? null) : null;
+  const query = stage?.query ?? null;
   const ownStart = stage?.filterStart ?? 0;
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -87,7 +87,7 @@ export const FilterNode = memo(function FilterNode({
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed },
-        { [S.draft]: !isActive },
+        { [S.draft]: !query },
       )}
       style={nodeStyle}
       data-testid="node-builder-filter-node"
@@ -106,9 +106,9 @@ export const FilterNode = memo(function FilterNode({
       />
       <NodeHeader
         icon="filter"
-        title={data.afterSummarize ? t`Filter results` : t`Filter`}
+        title={t`Filter`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={!query}
         isCollapsed={isCollapsed}
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}

@@ -32,6 +32,7 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
     useNodeBuilderContext();
   const isCollapsed = data.collapsed ?? false;
   const isActive = compiled.activeNodeIds.has(id);
+  const isCompiled = compiled.stagesByNodeId.has(id);
   const stageIndex = compiled.stagesByNodeId.get(id)?.stageIndex ?? 0;
   const [value, setValue] = useState(formatLimit(data.limit));
 
@@ -72,7 +73,7 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed },
-        { [S.draft]: !isActive },
+        { [S.draft]: !isCompiled },
       )}
       style={nodeStyle}
       data-testid="node-builder-limit-node"
@@ -93,7 +94,7 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
         icon="list"
         title={t`Limit`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={!isCompiled}
         isCollapsed={isCollapsed}
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}

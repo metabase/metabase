@@ -31,7 +31,7 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
   const isActive = compiled.activeNodeIds.has(id);
   const stage = compiled.stagesByNodeId.get(id);
   const stageIndex = stage?.stageIndex ?? 0;
-  const query = isActive ? (stage?.query ?? null) : null;
+  const query = stage?.query ?? null;
   const ownStart = stage?.orderByStart ?? 0;
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -106,7 +106,7 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
       className={cx(
         S.node,
         { [S.collapsed]: isCollapsed },
-        { [S.draft]: !isActive },
+        { [S.draft]: !query },
       )}
       style={nodeStyle}
       data-testid="node-builder-sort-node"
@@ -127,7 +127,7 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
         icon="sort"
         title={t`Sort`}
         subtitle={subtitle}
-        isDraft={!isActive}
+        isDraft={!query}
         isCollapsed={isCollapsed}
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}

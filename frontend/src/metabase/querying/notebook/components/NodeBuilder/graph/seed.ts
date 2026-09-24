@@ -106,8 +106,9 @@ export function seedGraph(rawQuery: Lib.Query): {
     prevId = node.id;
   };
 
-  // Stage 0 filters are free blocks in the chain; from the next stage on a
-  // filter works on a summarize's results and sits in the ladder after it.
+  // Every stage's clauses become blocks on the chain, in stage order; a
+  // filter, custom column, summarize or join after a summarize marks the
+  // next stage.
   Lib.stageIndexes(query).forEach((stageIndex) => {
     if (stageIndex > 0) {
       Lib.joins(query, stageIndex).forEach((join) => {
@@ -129,7 +130,6 @@ export function seedGraph(rawQuery: Lib.Query): {
           Lib.joinStrategy(join),
           Lib.joinConditions(join),
           join,
-          true,
         );
         nodes.push(tableNode, joinNode);
         edges.push(
@@ -154,11 +154,11 @@ export function seedGraph(rawQuery: Lib.Query): {
       clause,
     }));
     if (expressions.length > 0) {
-      append(createExpressionNode(ORIGIN, expressions, stageIndex > 0));
+      append(createExpressionNode(ORIGIN, expressions));
     }
     const filters = Lib.filters(query, stageIndex);
     if (filters.length > 0) {
-      append(createFilterNode(ORIGIN, filters, stageIndex > 0));
+      append(createFilterNode(ORIGIN, filters));
     }
     const aggregations = Lib.aggregations(query, stageIndex);
     const breakoutColumns = Lib.breakouts(query, stageIndex)

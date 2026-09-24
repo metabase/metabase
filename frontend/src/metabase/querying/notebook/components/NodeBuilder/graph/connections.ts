@@ -9,15 +9,17 @@ import {
   isFilterNode,
   isJoinNode,
   isResultNode,
+  isSummarizeNode,
   isTableNode,
   isUtilityNode,
   stageRank,
+  startsNextStage,
 } from "./nodes";
 
-export const CHAIN_INPUT_HANDLES = new Set(["lhs", "rhs", "in"]);
+const CHAIN_INPUT_HANDLES = new Set(["lhs", "rhs", "in"]);
 
 // Following input wires upstream from `source`, does it ever reach `target`?
-export function createsLoop(
+function createsLoop(
   source: string,
   target: string,
   edges: BuilderEdge[],
@@ -48,9 +50,54 @@ export function createsLoop(
   return false;
 }
 
-// Right inputs take a table; left inputs take a table or a join. Utility
-// blocks take the chain in stage order and feed the result or a later block.
-// Nothing may loop back on itself.
+// Where a chain stands at a block: how far along the stage order its current
+// stage has come, and whether that stage already summarizes.
+type ChainState = { rank: number; hasSummarize: boolean };
+
+const FRESH: ChainState = { rank: 0, hasSummarize: false };
+
+// Walks the chain upstream from a block, the same way the compiler does, so a
+// new wire can be judged by what feeds it rather than by the block alone.
+function chainStateAt(
+  nodeId: string,
+  nodes: BuilderNode[],
+  edges: BuilderEdge[],
+  seen: Set<string> = new Set(),
+): ChainState {
+  const node = nodes.find((candidate) => candidate.id === nodeId);
+  if (!node || seen.has(nodeId)) {
+    return FRESH;
+  }
+  seen.add(nodeId);
+  const feeding = (handle: string) =>
+    edges.find(
+      (edge) => edge.target === nodeId && edge.targetHandle === handle,
+    );
+  if (isJoinNode(node)) {
+    const lhs = feeding("lhs");
+    const base = lhs ? chainStateAt(lhs.source, nodes, edges, seen) : FRESH;
+    // A join after a summarize opens the next stage.
+    return base.hasSummarize ? FRESH : base;
+  }
+  if (isUtilityNode(node)) {
+    const input = feeding("in");
+    const base = input ? chainStateAt(input.source, nodes, edges, seen) : FRESH;
+    const rank = stageRank(node);
+    if (startsNextStage(node) && base.hasSummarize) {
+      return { rank, hasSummarize: isSummarizeNode(node) };
+    }
+    return {
+      rank: Math.max(base.rank, rank),
+      hasSummarize: base.hasSummarize || isSummarizeNode(node),
+    };
+  }
+  return FRESH;
+}
+
+// Right inputs take a table; left inputs take a table, a join, or anything
+// once its stage summarizes. Utility blocks take the chain in stage order:
+// custom columns, filters, summarize, sort, limit, with the order starting
+// over after a summarize. Nothing may loop back on itself.
 export function isValidConnection(
   connection: Connection | BuilderEdge,
   nodes: BuilderNode[],
@@ -71,24 +118,30 @@ export function isValidConnection(
   if (isResultNode(targetNode)) {
     return targetHandle === "in";
   }
+  if (createsLoop(source, target, edges)) {
+    return false;
+  }
+  const state = chainStateAt(source, nodes, edges);
   if (isUtilityNode(targetNode)) {
-    const sourceRank = stageRank(sourceNode);
+    if (targetHandle !== "in") {
+      return false;
+    }
+    if (state.hasSummarize && startsNextStage(targetNode)) {
+      return true;
+    }
     const targetRank = stageRank(targetNode);
-    // Earlier steps feed later ones; only custom columns and filters chain
-    // onto their own kind.
-    const isOrdered =
-      sourceRank < targetRank ||
-      (sourceRank === targetRank &&
-        (isFilterNode(targetNode) || isExpressionNode(targetNode)));
     return (
-      targetHandle === "in" && isOrdered && !createsLoop(source, target, edges)
+      state.rank < targetRank ||
+      (state.rank === targetRank &&
+        (isFilterNode(targetNode) || isExpressionNode(targetNode)))
     );
   }
-  if (!isJoinNode(targetNode) || stageRank(sourceNode) !== 0) {
+  if (!isJoinNode(targetNode)) {
     return false;
   }
   if (targetHandle === "rhs") {
     return isTableNode(sourceNode);
   }
-  return targetHandle === "lhs" && !createsLoop(source, target, edges);
+  // Joins come first on a stage: a fresh chain, or one whose stage summarizes.
+  return targetHandle === "lhs" && (state.rank === 0 || state.hasSummarize);
 }
