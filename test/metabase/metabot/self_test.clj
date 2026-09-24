@@ -1336,6 +1336,39 @@
                 "the provider error message is surfaced, not hidden behind 'no tool call'")
             (is (= "llm-stream-error" (:error-code (ex-data e))))))))))
 
+(deftest call-llm-structured-text-reply-test
+  (llm.tu/with-default-connections
+    (let [schema {:type                 "object"
+                  :properties           {"title" {:type "string"}
+                                         "tags"  {:type "array" :items {:type "string"}}
+                                         "score" {:type "number" :minimum 0 :maximum 1}}
+                  :required             ["title"]
+                  :additionalProperties false}
+          answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
+          reply  (fn [text] {:type :text :id "t1" :text text})
+          call!  (fn [& parts]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response
+                                                                                  (cons {:type :start :id "m1"} parts)))]
+                     (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
+                                               schema 0.3 1024 {:tag "metabot_agent"})))]
+      (testing "a model that answers in text instead of calling the tool has its JSON used"
+        (are [text] (= answer (call! (reply text)))
+          (json/encode answer)
+          (str "Here you go:\n```json\n" (json/encode answer) "\n```")))
+      (testing "a text reply without JSON matching the schema still fails"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          "Q2 revenue"
+          "{\"title\": \"Q2 revenue\""
+          (json/encode {:tags ["revenue"]})
+          (json/encode {:title "Q2 revenue" :note "x"})
+          (json/encode {:title 42})
+          (json/encode {:title "Q2 revenue" :tags [1]})
+          (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "a tool call is used as is, whatever text comes with it"
+        (is (= {:title "From the tool"}
+               (call! (reply (json/encode answer))
+                      {:type :tool-input :id "c1" :function "structured_output" :arguments {:title "From the tool"}})))))))
+
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
     (testing "a retryable failure AFTER parts were emitted does not replay the stream (no duplicate output / re-run tools)"

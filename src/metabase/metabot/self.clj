@@ -10,6 +10,7 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
@@ -31,7 +32,9 @@
    [metabase.metabot.usage :as usage]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -561,6 +564,34 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- json-schema->malli
+  "Malli equivalent of `json-schema`, for the JSON Schema subset [[core/LLMRequestOpts]] accepts as `:schema`."
+  [{:keys [type properties required additionalProperties items minimum maximum]}]
+  (cond-> [:and (case type
+                  "object"  (into [:map {:closed (false? additionalProperties)}]
+                                  (for [[k v] properties]
+                                    [(keyword k) {:optional (not-any? #{(name k)} required)} (json-schema->malli v)]))
+                  "array"   [:sequential (if items (json-schema->malli items) :any)]
+                  "string"  :string
+                  "integer" :int
+                  "number"  number?
+                  "boolean" :boolean
+                  :any)]
+    minimum (conj [:>= minimum])
+    maximum (conj [:<= maximum])))
+
+(defn- structured-output-in-text
+  "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
+  Tries the whole reply, then each fenced code block in it. Nil when none of them matches."
+  [parts json-schema]
+  (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
+        schema (json-schema->malli json-schema)]
+    (some (fn [candidate]
+            (let [value (try (json/decode+kw candidate) (catch Exception _ nil))]
+              (when (mr/validate schema value)
+                value)))
+          (cons text (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text))))))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -649,8 +680,12 @@
                               {:parts parts :error error :error-code "llm-stream-error"}))
 
               :else
-              (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+              (if-let [output (structured-output-in-text parts json-schema)]
+                (do (log/debug "LLM answered in text instead of calling the structured-output tool"
+                               {:provider provider :model model :tag (:tag opts)})
+                    {:result output :parts parts})
+                (throw (ex-info "LLM returned no tool call in structured response"
+                                {:parts parts}))))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.
@@ -671,8 +706,9 @@
                     tracking fields and [[call-llm-structured-with-trace]] for
                     `:required-permission`.
 
-  Returns the parsed JSON map from the forced tool call. For access to the
-  full streamed trace (non-tool text), see
+  Returns the parsed JSON map from the forced tool call. When the model answers
+  in text instead, the JSON in that text is returned if it matches `json-schema`.
+  For access to the full streamed trace (non-tool text), see
   [[call-llm-structured-with-trace]]."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (:result (call-llm-structured-with-trace
