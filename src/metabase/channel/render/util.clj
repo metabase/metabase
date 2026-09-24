@@ -19,16 +19,17 @@
        (filter (complement string?))))
 
 (defn- value-source->card-id
-  "Extracts the card entity_id out of a visualizer value source map
-   e.g. {:sourceId 'card:UfzksyybSdOZv1wM7jYnn', ...} -> 'UfzksyybSdOZv1wM7jYnn'"
+  "Extracts the numeric card id out of a visualizer value source map, e.g. {:sourceId 'card:191', ...} -> 191.
+   `sourceId` always carries the card's real (numeric) :id here -- see [[frontend/src/metabase/visualizer/utils/data-source.ts]]'s
+   `createDataSource`, which is what actually produces these -- never its :entity_id (metabase#76922)."
   [{:keys [sourceId]}]
-  (second (str/split sourceId #":")))
+  (parse-long (second (str/split sourceId #":"))))
 
 (defn- name-source->card-id
-  "Extracts card entity_id from a name source string e.g. '$_card:UfzksyybSdOZv1wM7jYnn_name'"
+  "Extracts a card's numeric id from a name source string, e.g. '$_card:191_name' -> 191 (metabase#76922)."
   [value]
   (try
-    (second (re-find #":([^_]+)_" value))
+    (some-> (re-find #":([^_]+)_" value) second parse-long)
     (catch Exception _
       nil)))
 
@@ -92,8 +93,8 @@
    Returns nil for string mappings (name references) or when required data is missing."
   [mapping series-data]
   (when-not (string? mapping) ;; Skip string values which are name references
-    (let [card-entity-id (value-source->card-id mapping)
-          card-with-data (u/find-first-map series-data [:card :entity_id] card-entity-id)
+    (let [card-id        (value-source->card-id mapping)
+          card-with-data (u/find-first-map series-data [:card :id] card-id)
           original-column (u/find-first-map
                            (get-in card-with-data [:data :cols])
                            [:name]
@@ -191,8 +192,8 @@
         ;; Create map from virtual column name e.g. 'COLUMN_1' to a vector of values only for value sources
         remapped-col-name->vals     (reduce
                                      (fn [acc {:keys [name originalName] :as source-mapping}]
-                                       (let [ref-card-entity-id (value-source->card-id source-mapping)
-                                             card-with-data   (u/find-first-map series-data [:card :entity_id] ref-card-entity-id)
+                                       (let [ref-card-id      (value-source->card-id source-mapping)
+                                             card-with-data   (u/find-first-map series-data [:card :id] ref-card-id)
                                              card-cols        (get-in card-with-data [:data :cols])
                                              card-rows        (get-in card-with-data [:data :rows])
                                              col-idx-in-card  (first (u/find-first-map-indexed card-cols [:name] originalName))]
@@ -209,9 +210,9 @@
                                          (->> source-mappings
                                               (mapcat
                                                (fn [source-mapping]
-                                                 ;; Source is a name reference string, lookup card by entity_id to get its name
-                                                 (if-let [card-entity-id (name-source->card-id source-mapping)]
-                                                   (let [card (:card (u/find-first-map series-data [:card :entity_id] card-entity-id))]
+                                                 ;; Source is a name reference string, lookup card by id to get its name
+                                                 (if-let [card-id (name-source->card-id source-mapping)]
+                                                   (let [card (:card (u/find-first-map series-data [:card :id] card-id))]
                                                      (some-> (:name card) vector))
                                                    ;; Source is actual column data
                                                    (get remapped-col-name->vals (:name source-mapping)))))
