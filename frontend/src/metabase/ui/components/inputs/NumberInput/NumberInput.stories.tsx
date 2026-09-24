@@ -264,8 +264,6 @@ export const Overview = {
   },
   parameters: {
     pseudo: {
-      // Mantine forwards rest props to the input element, so the hook sits on
-      // the same element the :hover / :focus-within rules do.
       hover: 'input[data-state-row="hover"]',
       focusWithin: [
         'input[data-state-row="focus"]',
