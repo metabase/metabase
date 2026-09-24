@@ -557,6 +557,48 @@ describe("scenarios > organization > timelines > dashboard", () => {
       .should("be.visible");
   });
 
+  it("should bring a card's events back on the dashboard when its question is reverted", () => {
+    cy.intercept("POST", "/api/revision/revert").as("revertRevision");
+
+    createReleaseTimeline().then(({ timeline }) =>
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          ...questionDetails,
+          visualization_settings: {
+            "timeline.selected_timeline_ids": [timeline.id],
+          },
+        },
+      }).then(({ body: { card_id, dashboard_id } }) => {
+        cy.wrap(card_id).as("questionId");
+        cy.wrap(dashboard_id).as("dashboardId");
+      }),
+    );
+
+    cy.get<DashboardId>("@dashboardId").then(H.visitDashboard);
+    eventChip(0, "RC1").should("be.visible");
+
+    cy.log("hide the event on the question, which the dashboard follows");
+    H.visitQuestion("@questionId");
+    cy.findByTestId("view-footer").icon("calendar").click();
+    H.rightSidebar().within(() => H.toggleTimelineEventVisibility("RC1"));
+    H.saveSavedQuestion();
+
+    cy.get<DashboardId>("@dashboardId").then(H.visitDashboard);
+    eventChip(0, "RC1").should("not.exist");
+
+    cy.log("reverting the question restores what the dashboard shows");
+    H.visitQuestion("@questionId");
+    H.questionInfoButton().click();
+    H.sidesheet().within(() => {
+      cy.findByRole("tab", { name: "History" }).click();
+      cy.findAllByTestId("question-revert-button").first().click();
+    });
+    cy.wait("@revertRevision").its("response.statusCode").should("eq", 200);
+
+    cy.get<DashboardId>("@dashboardId").then(H.visitDashboard);
+    eventChip(0, "RC1").should("be.visible");
+  });
+
   it("should not let a user revert a public dashboard to a version with a restricted timeline card", () => {
     cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
     H.createCollection({ name: "Restricted" }).then(({ body: { id } }) => {
