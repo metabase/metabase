@@ -355,19 +355,29 @@
     (dissoc details :schema)
     details))
 
+(defn- infer-auth-mode
+  "Returns \"password\" or \"key-pair\" implied by the auth-related keys in `details`,
+  or nil when none are present."
+  [{:keys [password use-password private-key-id private-key-path private-key-value]}]
+  (cond
+    (and (true? use-password) password)                    "password"
+    (false? use-password)                                  "key-pair"
+    (or private-key-id private-key-path private-key-value) "key-pair"
+    password                                               "password"))
+
 (defn- resolve-credentials
-  [{:keys [auth-mode password use-password] :as details}]
-  (case auth-mode
+  "Set the JDBC credential properties. WIF is explicit (:auth-mode must be `\"wif\"`), because it has
+  no field-based signal to infer from. Otherwise re-derive password vs key-pair from the current
+  details so callers that only tweak :use-password / :password / :private-key-* don't have to keep
+  :auth-mode in sync."
+  [{:keys [auth-mode] :as details}]
+  (case (or (when (= "wif" auth-mode) "wif")
+            (infer-auth-mode details)
+            auth-mode
+            "key-pair")
     "wif"      (resolve-wif-credentials details)
     "password" (-> details (dissoc :private-key) resolve-private-key)
-    "key-pair" (-> details (dissoc :password) resolve-private-key)
-    (-> details
-        (cond-> use-password
-          (dissoc :private-key))
-        ;; password takes precedence if `use-password` is missing
-        (cond-> (or (false? use-password) (not password))
-          (dissoc :password))
-        resolve-private-key)))
+    "key-pair" (-> details (dissoc :password) resolve-private-key)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
   [_ {:keys [account additional-options host use-hostname], :as details}]
@@ -1106,16 +1116,6 @@
            ;; jdbc/query is used to see if we throw, we want to ignore the results
            (jdbc/query spec (format "SHOW SCHEMAS IN DATABASE %s;" (quote-schema db)))
            true))))
-
-(defn- infer-auth-mode
-  "Returns \"password\" or \"key-pair\" implied by the auth-related keys in `details`,
-  or nil when none are present."
-  [{:keys [password use-password private-key-id private-key-path private-key-value]}]
-  (cond
-    (true? use-password)                                   "password"
-    (false? use-password)                                  "key-pair"
-    (or private-key-id private-key-path private-key-value) "key-pair"
-    password                                               "password"))
 
 (defn- normalize-details
   "Normalize a Snowflake details map: merge regionid into account, infer use-password and auth-mode.
