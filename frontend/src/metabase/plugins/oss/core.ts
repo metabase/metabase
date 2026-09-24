@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
+import bridgeImage from "img/bridge.svg?url";
 import type { AdminPathKey, State } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard, DraftDashboardSubscription } from "metabase-types/api";
@@ -33,12 +34,12 @@ interface PluginDashboardSubscriptionParametersSectionOverride {
 }
 
 const defaultLandingPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 
 const defaultLoginPageIllustration = {
-  src: "app/img/bridge.svg",
+  src: bridgeImage,
   isDefault: true,
 };
 
