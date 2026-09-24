@@ -1587,7 +1587,7 @@
                                                  [{:type :start :id "msg-1"}
                                                   {:type :tool-input :id "call-1" :function "get-time"
                                                    :arguments {:tz "UTC"}}
-                                                  {:type :tool-input :id "call-2" :function "analyze_chart"
+                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
                                                    :arguments {}}
                                                   {:type :usage :usage {:promptTokens        950
                                                                         :completionTokens    20
@@ -1622,8 +1622,10 @@
                                     "event_details" {"tool_name" "get-time"}}}
                          {:data {"event"         "agent_used_tool"
                                  "result"        "error"
-                                 "event_details" {"tool_name" "analyze_chart"}}}]
-                        tool-events))))))))))
+                                 "event_details" {"tool_name" "unknown"}}}]
+                        tool-events))
+                (is (not (str/includes? (pr-str events) "jane_doe"))
+                    "a name the model made up never reaches analytics")))))))))
 
 (deftest call-llm-structured-snowplow-test
   (llm.tu/with-default-connections
