@@ -6,7 +6,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.typed-schemas.schema.common :as schema.common]
-   [metabase.typed-schemas.schema.model :as schema.model]))
+   [metabase.typed-schemas.schema.model :as schema.model]
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (comment mt/keep-me)
 
@@ -81,22 +83,40 @@
               (get-in (schema.model/model-schema model)
                       [:actions "updateBird" :parameters]))))))
 
-(deftest action-detail-schema-resolves-template-tag-types-test
-  (let [parameter {:id     "p1"
-                   :slug   "store"
-                   :name   "Store"
-                   :target [:variable [:template-tag "store"]]}
-        tag       {:name "store", :type :text}]
-    (doseq [[shape template-tags] {"map"    {"store" tag}
-                                   "vector" [tag]}]
-      (testing (str "template tags stored as a " shape)
-        (is (=? {:parameters [{:slug "store", :jsType "string"}]}
-                (#'schema.model/action-detail-schema
-                 {:id            7
-                  :name          "Fire"
-                  :type          :query
-                  :parameters    [parameter]
-                  :dataset_query {:stages [{:template-tags template-tags}]}})))))))
+(deftest model-schema-supports-legacy-stored-template-tag-maps-test
+  ;; since Metabase 63, normalized template tags use vectors.
+  ;; older stored actions may still contain maps.
+  (let [mp           (mt/metadata-provider)
+        sql          "UPDATE birds SET name = {{name}}"
+        template-tag {:id           "bird-name"
+                      :name         "name"
+                      :display-name "Name"
+                      :type         :text}
+        tags         {"name" template-tag}]
+    (doseq [[format stored-query]
+            [["legacy" {:database (mt/id)
+                        :type     :native
+                        :native   {:query sql, :template-tags tags}}]
+             ["MBQL 5" {:database (mt/id)
+                        :lib/type :mbql/query
+                        :stages   [{:lib/type :mbql.stage/native, :native sql, :template-tags tags}]}]]]
+      (testing (str format " action saved before template tags became sequences")
+        (mt/with-actions [model {:name          "Bird model"
+                                 :type          :model
+                                 :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                          {action-id :action-id} {:name          "Update bird"
+                                                  :database_id   (mt/id)
+                                                  :dataset_query (lib/native-query mp sql)
+                                                  :parameters    [{:id     "name"
+                                                                   :name   "Name"
+                                                                   :type   :category
+                                                                   :target [:variable [:template-tag "name"]]}]}]
+          (t2/update! :query_action :action_id action-id {:dataset_query (json/encode stored-query)})
+          (is (=? [template-tag]
+                  (get-in (actions/select-action :id action-id) [:dataset_query :stages 0 :template-tags])))
+          (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
+                  (get-in (schema.model/model-schema model)
+                          [:actions "updateBird" :parameters]))))))))
 
 (deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
