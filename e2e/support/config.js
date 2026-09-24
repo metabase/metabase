@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 
 import { plugin as cypressGrepPlugin } from "@cypress/grep/plugin";
@@ -51,8 +52,35 @@ const cypressSplit = require("cypress-split");
 const {
   sideEffectFreeModulesPlugin,
 } = require("../../frontend/build/shared/esbuild/side-effect-free-modules-plugin");
+const {
+  ClassDictionary,
+  dumpBackend,
+} = require("../coverage/journey-capture-backend");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
+
+// Journey-capture runs keep raw per-test data in the layout described in e2e/journey-capture/README.md.
+const isJourneyCapture =
+  isInstrumented && process.env.JOURNEY_CAPTURE === "true";
+// "test", "baseline" or "snapshot", set by the workflow for each Cypress run.
+const JOURNEY_ROLE = process.env.JOURNEY_CAPTURE_ROLE || "test";
+const JOURNEY_ROUND = process.env.JOURNEY_CAPTURE_ROUND || null;
+// A second pass over the same tests with different capture settings, kept apart as `tests-<variant>/`.
+const JOURNEY_VARIANT = process.env.JOURNEY_CAPTURE_VARIANT || null;
+const JOURNEY_KEEP_TEST_EXEC = process.env.JOURNEY_KEEP_TEST_EXEC === "true";
+const backendCoveragePort = isJourneyCapture
+  ? Number(process.env.JOURNEY_BACKEND_COVERAGE_PORT) || null
+  : null;
+const JOURNEY_STEP_SNAPSHOTS = isJourneyCapture
+  ? process.env.JOURNEY_STEP_SNAPSHOTS || "none"
+  : "none";
+// The browser asks for a backend dump at every step cut by POSTing here.
+const stepDumpPort =
+  backendCoveragePort && JOURNEY_STEP_SNAPSHOTS !== "none"
+    ? Number(process.env.JOURNEY_STEP_DUMP_PORT) || null
+    : null;
+const STEP_DUMP_PATH = "/__journey-capture/backend-dump";
+
 // The Cypress config process runs with cwd = this file's directory
 // (e2e/support), so @cypress/code-coverage writes .nyc_output/out.json here.
 // NYC_OUTPUT_FILE is anchored to __dirname to read from that same place;
@@ -63,6 +91,12 @@ const COVERAGE_MANIFEST_RAW_DIR = path.resolve(
   "../coverage-manifest-raw",
 );
 const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
+const RAW_DIR = isJourneyCapture
+  ? path.resolve(
+      process.env.JOURNEY_CAPTURE_DIR ||
+        path.resolve(__dirname, "../journey-capture-raw"),
+    )
+  : COVERAGE_MANIFEST_RAW_DIR;
 
 // Function metadata (name + line per Istanbul function index), accumulated
 // across the specs this process runs and shipped with the raw shard artifact.
@@ -73,7 +107,7 @@ const NYC_OUTPUT_FILE = path.resolve(__dirname, ".nyc_output/out.json");
 // artifacts can merge into one directory without clobbering each other —
 // consumers shallow-merge all fnmap-*.json (same file => identical entries).
 const FNMAP_FILE = path.join(
-  COVERAGE_MANIFEST_RAW_DIR,
+  RAW_DIR,
   `fnmap-${require("node:crypto").randomUUID()}.json`,
 );
 
@@ -90,9 +124,248 @@ const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 // each flush.
 let perTestEntries = [];
 
+// Journey-capture entries also carry `attempt`, `state`, `attemptId`, `events`, `steps`, `capture` and `backend`.
+// `backend.beforeTest` holds what the backend ran between the previous test's dump and this test's first root beforeEach,
+// `backend.test` what it ran from there to this test's last afterEach.
+let pendingBackendBeforeTest = null;
+let backendDictionary = null;
+
+// Every dump resets the agent, so dumps run one at a time in request order to keep their windows back to back.
+let backendQueue = Promise.resolve();
+function enqueueBackendDump(dumpFn) {
+  const result = backendQueue.then(dumpFn);
+  backendQueue = result.catch(() => {});
+  return result;
+}
+
+// Journey tasks resolve by this deadline even when a dump hangs, so a stuck agent can't fail a test.
+const BACKEND_DEADLINE_MS = 60000;
+const STEP_DUMP_WAIT_MS = 10000;
+
+function withDeadline(promise, ms, fallback) {
+  let timer;
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((resolve) => {
+      timer = setTimeout(() => resolve(fallback()), ms);
+    }),
+  ]);
+}
+
+// Step dumps requested by the browser, per test attempt, until recordTestCapture collects them.
+const stepDumps = new Map();
+const collectedAttempts = new Set();
+let lateStepDumpRequests = 0;
+
+function stepDumpState(attemptId) {
+  let state = stepDumps.get(attemptId);
+  if (!state) {
+    state = { received: 0, results: [], onReceive: null };
+    stepDumps.set(attemptId, state);
+  }
+  return state;
+}
+
+function startStepDumpListener(port) {
+  const server = http.createServer((req, res) => {
+    res.writeHead(204, { "Access-Control-Allow-Origin": "*" });
+    res.end();
+    const url = new URL(req.url, "http://127.0.0.1");
+    if (url.pathname !== STEP_DUMP_PATH) {
+      return;
+    }
+    const attemptId = url.searchParams.get("attempt");
+    // A request that arrives after its test was written skips the dump, so its code stays in the agent for the next dump.
+    if (collectedAttempts.has(attemptId)) {
+      lateStepDumpRequests += 1;
+      return;
+    }
+    const step = Number(url.searchParams.get("step"));
+    const seq = Number(url.searchParams.get("seq"));
+    const sentAt = Number(url.searchParams.get("sent"));
+    const receivedAt = Date.now();
+    const state = stepDumpState(attemptId);
+    state.received += 1;
+    state.onReceive?.();
+    enqueueBackendDump(async () => {
+      const startedAt = Date.now();
+      const record = await dumpBackendNow(
+        JOURNEY_KEEP_TEST_EXEC
+          ? `backend/exec/${journeyEntryDir()}/steps/${attemptId}/${step}.exec`
+          : undefined,
+      );
+      state.results.push({
+        step,
+        seq,
+        sentAt,
+        receivedAt,
+        startedAt,
+        latencyMs: record.window ? record.window.end - sentAt : null,
+        ...record,
+      });
+    });
+  });
+  server.on("error", (error) => {
+    console.error("[journey-capture] step dump listener failed", error);
+  });
+  server.listen(port, "127.0.0.1");
+  server.unref();
+}
+
+// Waits until the browser's step dump requests for this attempt have arrived and run.
+async function collectStepDumps(attemptId, expected) {
+  const state = stepDumpState(attemptId);
+  if (state.received < expected) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, STEP_DUMP_WAIT_MS);
+      state.onReceive = () => {
+        if (state.received >= expected) {
+          clearTimeout(timer);
+          resolve();
+        }
+      };
+    });
+  }
+  collectedAttempts.add(attemptId);
+  stepDumps.delete(attemptId);
+  await backendQueue;
+  return state;
+}
+
+function journeyEntryDir() {
+  if (JOURNEY_ROLE === "baseline") {
+    return path.join("baselines", JOURNEY_ROUND || "unknown");
+  }
+  if (JOURNEY_ROLE === "snapshot") {
+    return "snapshots";
+  }
+  return JOURNEY_VARIANT ? `tests-${JOURNEY_VARIANT}` : "tests";
+}
+
+async function dumpBackendNow(execFile) {
+  try {
+    backendDictionary ??= new ClassDictionary(RAW_DIR);
+    return await dumpBackend({
+      port: backendCoveragePort,
+      rawDir: RAW_DIR,
+      dictionary: backendDictionary,
+      execFile,
+    });
+  } catch (error) {
+    return { error: String(error?.message ?? error) };
+  }
+}
+
+function dumpBackendSegment(spec, segment) {
+  const keepExec = JOURNEY_ROLE === "baseline" || JOURNEY_KEEP_TEST_EXEC;
+  const specDir = String(spec).replace(/[\\/]/g, "__");
+  return enqueueBackendDump(() =>
+    dumpBackendNow(
+      keepExec
+        ? `backend/exec/${journeyEntryDir()}/${specDir}/${perTestEntries.length}-${segment}.exec`
+        : undefined,
+    ),
+  );
+}
+
+// With step snapshots on, every cut carries the backend dump taken for it, and the final cut gets the test dump.
+// `backend.test` is then the union of the cuts, since each cut's dump reset the agent.
+function attachStepDumps(steps, stepState, testDump) {
+  const cuts = steps.cuts;
+  for (const result of stepState?.results ?? []) {
+    if (cuts[result.step]) {
+      cuts[result.step].backend = result;
+    }
+  }
+  if (cuts.length > 0) {
+    cuts[cuts.length - 1].backend = testDump;
+  }
+  const dumps = cuts.map((cut) => cut.backend).filter((dump) => dump?.window);
+  const classes = new Set(dumps.flatMap((dump) => dump.classes));
+  return {
+    window:
+      dumps.length > 0
+        ? {
+            start: Math.min(...dumps.map((dump) => dump.window.start)),
+            end: Math.max(...dumps.map((dump) => dump.window.end)),
+          }
+        : null,
+    classes: [...classes].sort((a, b) => a - b),
+    fromSteps: true,
+  };
+}
+
+async function journeyBackend({ spec, attemptId, capture, steps }, stats) {
+  const drainStarted = Date.now();
+  const stepState = steps
+    ? await collectStepDumps(attemptId, capture?.dumpRequests ?? 0)
+    : null;
+  stats.drainMs = Date.now() - drainStarted;
+  stats.stepDumpsReceived = stepState?.received ?? 0;
+  const testDump = await dumpBackendSegment(spec, "test");
+  return {
+    beforeTest: pendingBackendBeforeTest,
+    test: steps ? attachStepDumps(steps, stepState, testDump) : testDump,
+  };
+}
+
+async function recordJourneyTest({
+  spec,
+  attempt,
+  state,
+  events,
+  durationMs,
+  attemptId,
+  capture,
+  steps,
+  ...rest
+}) {
+  const stats = { ...capture, lateStepDumpRequests };
+  lateStepDumpRequests = 0;
+  let backend;
+  if (backendCoveragePort) {
+    try {
+      backend = await withDeadline(
+        journeyBackend({ spec, attemptId, capture, steps }, stats),
+        BACKEND_DEADLINE_MS,
+        () => ({ error: "backend dumps timed out" }),
+      );
+    } catch (error) {
+      backend = { error: String(error?.message ?? error) };
+    }
+  }
+  pendingBackendBeforeTest = null;
+  perTestEntries.push({
+    ...rest,
+    attempt,
+    state,
+    attemptId,
+    durationMs,
+    capture: stats,
+    events,
+    steps: steps ? { mode: JOURNEY_STEP_SNAPSHOTS, ...steps } : undefined,
+    backend,
+  });
+  return null;
+}
+
 const perTestCaptureTasks = {
-  recordTestCapture({ title, f, routes, pages }) {
+  recordTestCapture({ title, f, routes, pages, ...journey }) {
+    if (isJourneyCapture) {
+      return recordJourneyTest({ title, f, routes, pages, ...journey });
+    }
     perTestEntries.push({ title, f, routes, pages });
+    return null;
+  },
+
+  async resetBackendCoverage({ spec }) {
+    if (backendCoveragePort) {
+      pendingBackendBeforeTest = await withDeadline(
+        dumpBackendSegment(spec, "before-test"),
+        BACKEND_DEADLINE_MS,
+        () => ({ error: "backend dump timed out" }),
+      );
+    }
     return null;
   },
 
@@ -122,6 +395,10 @@ function appendFnMap(coverage) {
       entry[idx] = {
         name: fn.name,
         line: fn.decl?.start?.line ?? fn.loc?.start?.line ?? null,
+        // The release cljs output puts a whole namespace on a few lines, so its functions differ only by column.
+        ...(isJourneyCapture && {
+          column: fn.decl?.start?.column ?? fn.loc?.start?.column ?? null,
+        }),
       };
     }
     fnMap[file] = entry;
@@ -130,6 +407,27 @@ function appendFnMap(coverage) {
   if (changed) {
     fs.writeFileSync(FNMAP_FILE, JSON.stringify(fnMap));
   }
+}
+
+function writeJourneyEntry(spec, coverage, tests) {
+  const dir = path.join(RAW_DIR, journeyEntryDir());
+  fs.mkdirSync(dir, { recursive: true });
+  const entry = {
+    kind: JOURNEY_ROLE,
+    ...(JOURNEY_ROLE === "baseline" && {
+      baseline: {
+        name: path.basename(spec.relative).replace(/\.cy\..*$/, ""),
+        round: JOURNEY_ROUND,
+      },
+    }),
+    ...(JOURNEY_VARIANT && { variant: JOURNEY_VARIANT }),
+    stepSnapshots: JOURNEY_STEP_SNAPSHOTS,
+    spec: spec.relative,
+    coverage,
+    tests,
+  };
+  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+  fs.writeFileSync(path.join(dir, entryName), JSON.stringify(entry));
 }
 
 // Persists raw __coverage__ counters per spec, plus the per-test breakdown
@@ -144,12 +442,16 @@ function writeSpecCoverageEntry(spec) {
   perTestEntries = [];
 
   if (!fs.existsSync(NYC_OUTPUT_FILE)) {
+    // Journey-capture tests still carry events and backend coverage without any FE coverage.
+    if (isJourneyCapture) {
+      writeJourneyEntry(spec, {}, tests);
+    }
     return;
   }
 
   const coverage = JSON.parse(fs.readFileSync(NYC_OUTPUT_FILE, "utf8"));
 
-  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+  fs.mkdirSync(RAW_DIR, { recursive: true });
   appendFnMap(coverage);
 
   // The manifest builder only needs per-file function counters to compute the
@@ -163,12 +465,16 @@ function writeSpecCoverageEntry(spec) {
     trimmed[file] = { f: fc.f };
   }
 
-  fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
-  const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
-  fs.writeFileSync(
-    path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
-    JSON.stringify({ spec: spec.relative, coverage: trimmed, tests }),
-  );
+  if (isJourneyCapture) {
+    writeJourneyEntry(spec, trimmed, tests);
+  } else {
+    fs.mkdirSync(COVERAGE_MANIFEST_RAW_DIR, { recursive: true });
+    const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
+    fs.writeFileSync(
+      path.join(COVERAGE_MANIFEST_RAW_DIR, entryName),
+      JSON.stringify({ spec: spec.relative, coverage: trimmed, tests }),
+    );
+  }
 
   fs.unlinkSync(NYC_OUTPUT_FILE);
 }
@@ -206,6 +512,12 @@ const defaultConfig = {
     // Lets @cypress/code-coverage/support skip its hooks entirely on
     // uninstrumented runs, instead of logging a warning on every spec.
     coverage: isInstrumented,
+    journeyCapture: isJourneyCapture,
+    backendCoverage: backendCoveragePort != null,
+    stepSnapshots: JOURNEY_STEP_SNAPSHOTS,
+    stepDumpUrl: stepDumpPort
+      ? `http://127.0.0.1:${stepDumpPort}${STEP_DUMP_PATH}`
+      : null,
   },
 
   allowCypressEnv: false,
@@ -332,6 +644,10 @@ const defaultConfig = {
 
     if (isInstrumented) {
       coverageTask(on, config);
+    }
+
+    if (stepDumpPort) {
+      startStepDumpListener(stepDumpPort);
     }
 
     // Surface the resolved Cypress retry ceiling so the ci-conductor reporter

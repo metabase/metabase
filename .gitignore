@@ -58,6 +58,7 @@ cypress.env.json
 # Coverage artifacts
 /e2e/coverage-manifest-raw
 /e2e/coverage-manifest
+/e2e/journey-capture-raw
 /e2e/coverage/analysis
 /e2e/coverage/spec-file-manifest.json
 /e2e/coverage/spec-test-manifest.json

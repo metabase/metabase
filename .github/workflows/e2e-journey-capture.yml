@@ -1,0 +1,392 @@
+name: E2E Journey Capture
+
+# On-demand instrumented e2e run that keeps raw per-test data for offline analysis:
+# frontend function counters, an ordered event stream, backend class hits from a JaCoCo agent,
+# and optionally the code each test ran between steps.
+# The artifact format is described in e2e/journey-capture/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Specs to run: comma-separated paths or globs (empty runs every spec)"
+        type: string
+        default: ""
+      shards:
+        description: "Number of shards"
+        type: number
+        default: 100
+      edition:
+        description: "Edition to build"
+        type: choice
+        options: ["ee", "oss"]
+        default: "ee"
+      grep_tags:
+        description: "Cypress grep tags"
+        type: string
+        default: "-@mongo+-@python+-@OSS"
+      idle_seconds:
+        description: "Length of each backend idle window, in seconds"
+        type: number
+        default: 5
+      backend_coverage:
+        description: "Record backend class hits with a JaCoCo agent"
+        type: boolean
+        default: true
+      cljs_coverage:
+        description: "Instrument the browser copy of the cljs code (metabase.lib and others)"
+        type: boolean
+        default: true
+      step_snapshots:
+        description: "Cut each test into code deltas at navigations, then also assertions, then also commands"
+        type: choice
+        options: ["none", "navigations", "assertions", "commands"]
+        default: "assertions"
+      compare_step_snapshots:
+        description: "Run each shard's tests a second time without step snapshots, to measure their cost"
+        type: boolean
+        default: false
+      keep_test_exec:
+        description: "Also keep a raw JaCoCo .exec file per test (large, meant for small runs)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: e2e-journey-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+# Runs without dispatch inputs (a push trigger) use the smoke-test values after each `||`.
+env:
+  SCHEMA_VERSION: 1
+  JACOCO_VERSION: "0.8.15"
+  JACOCO_AGENT_SHA256: "fb5b0036a0899ea97edfa0fc2c7985b55f3f7c5695028163e5e60d4f3cf6075d"
+  JACOCO_PORT: 6300
+  JACOCO_INCLUDES: "metabase.*:metabase_enterprise.*"
+  STEP_DUMP_PORT: 6301
+  SPEC_FILTER: ${{ github.event_name != 'workflow_dispatch' && 'e2e/test/scenarios/question/saved.cy.spec.js,e2e/test/scenarios/custom-column/cc-typing-suggestion.cy.spec.js' || inputs.spec }}
+  SHARDS: ${{ inputs.shards || 2 }}
+  EDITION: ${{ inputs.edition || 'ee' }}
+  GREP_TAGS: ${{ inputs.grep_tags || '-@mongo+-@python+-@OSS' }}
+  IDLE_SECONDS: ${{ inputs.idle_seconds || 5 }}
+  BACKEND_COVERAGE: ${{ (github.event_name != 'workflow_dispatch' || inputs.backend_coverage) && 'true' || 'false' }}
+  CLJS_COVERAGE: ${{ (github.event_name != 'workflow_dispatch' || inputs.cljs_coverage) && 'true' || 'false' }}
+  KEEP_TEST_EXEC: ${{ (github.event_name != 'workflow_dispatch' || inputs.keep_test_exec) && 'true' || 'false' }}
+  STEP_SNAPSHOTS: ${{ inputs.step_snapshots || 'assertions' }}
+  COMPARE_STEP_SNAPSHOTS: ${{ (github.event_name != 'workflow_dispatch' || inputs.compare_step_snapshots) && 'true' || 'false' }}
+  RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && 30 || 7 }}
+
+jobs:
+  build-instrumented:
+    name: Build instrumented uberjar
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      # build.clj forwards both flags to the rspack build.
+      - name: Build instrumented uberjar
+        env:
+          MB_EDITION: ${{ env.EDITION }}
+          INSTRUMENT_COVERAGE: "true"
+          INSTRUMENT_CLJS_COVERAGE: ${{ env.CLJS_COVERAGE }}
+        run: ./bin/build.sh
+      - name: Upload instrumented uberjar
+        uses: actions/upload-artifact@v7
+        with:
+          name: journey-capture-uberjar
+          path: target/uberjar/metabase.jar
+          retention-days: 1
+      # The release cljs output is minified, so cljs function positions only map back to source through these maps.
+      - name: Upload cljs output and source maps
+        if: env.CLJS_COVERAGE == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: journey-capture-cljs
+          path: |
+            target/cljs_release/metabase*.js
+            target/cljs_release/metabase*.js.map
+          retention-days: ${{ env.RETENTION_DAYS }}
+          if-no-files-found: warn
+      - name: Generate OpenAPI route table
+        run: bun run generate-openapi
+      - name: Upload OpenAPI route table
+        uses: actions/upload-artifact@v7
+        with:
+          name: journey-capture-openapi
+          path: resources/openapi/openapi.json
+          retention-days: ${{ env.RETENTION_DAYS }}
+
+  setup:
+    name: Build shard matrix
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - id: gen
+        run: |
+          matrix=$(node -e "console.log(JSON.stringify({split_index:[...Array(Number(process.env.SHARDS)).keys()]}))")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  shard:
+    name: Shard ${{ matrix.split_index }}
+    needs: [build-instrumented, setup]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    env:
+      DISPLAY: ""
+      TERM: xterm
+      TZ: US/Pacific
+      MB_EDITION: ${{ inputs.edition || 'ee' }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
+      INSTRUMENT_COVERAGE: "true"
+      JOURNEY_CAPTURE: "true"
+      JOURNEY_CAPTURE_DIR: ${{ github.workspace }}/e2e/journey-capture-raw
+      # Baselines and snapshot creators keep whole-test dumps, only the shard's tests are cut into steps.
+      JOURNEY_STEP_SNAPSHOTS: none
+    steps:
+      - name: Record start time
+        run: echo "JOURNEY_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: true
+          webhook: true
+          snowplow: true
+          postgres: true
+          mysql: true
+          mongo: true
+
+      - name: Download instrumented uberjar
+        uses: actions/download-artifact@v8
+        with:
+          name: journey-capture-uberjar
+          path: target/uberjar
+
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+
+      - name: Compile CLJS
+        run: bun run build-pure:cljs
+
+      # cypress-split resolves SPEC against the Cypress config process's working directory, which is e2e/support.
+      - name: Resolve spec filter
+        run: |
+          absolute=""
+          IFS=',' read -ra entries <<< "$SPEC_FILTER"
+          for entry in "${entries[@]}"; do
+            entry="$(echo "$entry" | xargs)"
+            [ -n "$entry" ] && absolute="${absolute:+$absolute,}$GITHUB_WORKSPACE/$entry"
+          done
+          echo "SPEC_ABSOLUTE=$absolute" >> "$GITHUB_ENV"
+
+      - name: Download JaCoCo agent
+        if: env.BACKEND_COVERAGE == 'true'
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/jacocoagent.jar" \
+            "https://repo1.maven.org/maven2/org/jacoco/org.jacoco.agent/${JACOCO_VERSION}/org.jacoco.agent-${JACOCO_VERSION}-runtime.jar"
+          echo "${JACOCO_AGENT_SHA256}  $RUNNER_TEMP/jacocoagent.jar" | sha256sum -c -
+          echo "JOURNEY_BACKEND_COVERAGE_PORT=${JACOCO_PORT}" >> "$GITHUB_ENV"
+          echo "JOURNEY_STEP_DUMP_PORT=${STEP_DUMP_PORT}" >> "$GITHUB_ENV"
+
+      # The runner starts `java -jar` and overwrites JDK_JAVA_OPTIONS, while JAVA_TOOL_OPTIONS reaches the JVM untouched.
+      # It is set on this step only, so no other JVM of the job loads the agent.
+      - name: Run Metabase
+        env:
+          JAVA_TOOL_OPTIONS: ${{ env.BACKEND_COVERAGE == 'true' && format('-javaagent:{0}/jacocoagent.jar=output=tcpserver,address=127.0.0.1,port={1},includes={2},dumponexit=false', runner.temp, env.JACOCO_PORT, env.JACOCO_INCLUDES) || '' }}
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: "Baseline: backend boot"
+        if: env.BACKEND_COVERAGE == 'true'
+        continue-on-error: true
+        run: node e2e/coverage/journey-capture-backend.js backend-boot
+
+      - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          JOURNEY_CAPTURE_ROLE: snapshot
+        run: node e2e/runner/run_cypress_ci.js snapshot
+
+      - name: "Baseline: backend idle window (start)"
+        if: env.BACKEND_COVERAGE == 'true'
+        continue-on-error: true
+        run: |
+          node e2e/coverage/journey-capture-backend.js backend-unattributed start
+          sleep "$IDLE_SECONDS"
+          node e2e/coverage/journey-capture-backend.js backend-idle start
+
+      - name: "Baseline: boot coverage (start)"
+        id: baselines-start
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          JOURNEY_CAPTURE_ROLE: baseline
+          JOURNEY_CAPTURE_ROUND: start
+        run: node e2e/runner/run_cypress_ci.js e2e --config-file e2e/support/cypress-journey-baselines.config.js
+
+      - name: Run shard ${{ matrix.split_index }}
+        id: tests
+        continue-on-error: true
+        env:
+          SPLIT: ${{ env.SHARDS }}
+          SPLIT_INDEX: ${{ matrix.split_index }}
+          SPLIT_SUMMARY: false
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          JOURNEY_CAPTURE_ROLE: test
+          JOURNEY_STEP_SNAPSHOTS: ${{ env.STEP_SNAPSHOTS }}
+          JOURNEY_KEEP_TEST_EXEC: ${{ env.KEEP_TEST_EXEC }}
+        run: |
+          export SPEC="$SPEC_ABSOLUTE"
+          node e2e/runner/run_cypress_ci.js e2e --expose grepTags="$GREP_TAGS"
+
+      # Runs after the main pass, on a backend the main pass has warmed up, so the measured cost is an upper bound.
+      - name: Run shard ${{ matrix.split_index }} without step snapshots
+        id: tests-control
+        if: env.COMPARE_STEP_SNAPSHOTS == 'true' && env.STEP_SNAPSHOTS != 'none'
+        continue-on-error: true
+        env:
+          SPLIT: ${{ env.SHARDS }}
+          SPLIT_INDEX: ${{ matrix.split_index }}
+          SPLIT_SUMMARY: false
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          JOURNEY_CAPTURE_ROLE: test
+          JOURNEY_CAPTURE_VARIANT: control
+          JOURNEY_KEEP_TEST_EXEC: ${{ env.KEEP_TEST_EXEC }}
+        run: |
+          export SPEC="$SPEC_ABSOLUTE"
+          node e2e/runner/run_cypress_ci.js e2e --expose grepTags="$GREP_TAGS"
+
+      - name: "Baseline: boot coverage (end)"
+        id: baselines-end
+        continue-on-error: true
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          JOURNEY_CAPTURE_ROLE: baseline
+          JOURNEY_CAPTURE_ROUND: end
+        run: node e2e/runner/run_cypress_ci.js e2e --config-file e2e/support/cypress-journey-baselines.config.js
+
+      - name: "Baseline: backend idle window (end)"
+        if: env.BACKEND_COVERAGE == 'true'
+        continue-on-error: true
+        run: |
+          node e2e/coverage/journey-capture-backend.js backend-unattributed end
+          sleep "$IDLE_SECONDS"
+          node e2e/coverage/journey-capture-backend.js backend-idle end
+
+      - name: Write run metadata
+        if: always()
+        env:
+          INPUTS_JSON: ${{ toJSON(inputs) }}
+          SHARD_INDEX: ${{ matrix.split_index }}
+          BASELINES_START: ${{ steps.baselines-start.outcome }}
+          TESTS: ${{ steps.tests.outcome }}
+          TESTS_CONTROL: ${{ steps.tests-control.outcome }}
+          BASELINES_END: ${{ steps.baselines-end.outcome }}
+        run: |
+          mkdir -p "$JOURNEY_CAPTURE_DIR"
+          cp e2e/journey-capture/README.md "$JOURNEY_CAPTURE_DIR/README.md"
+          raw_bytes=$(du -sb "$JOURNEY_CAPTURE_DIR" | cut -f1)
+          gzip_bytes=$(tar -czf - -C "$JOURNEY_CAPTURE_DIR" . | wc -c)
+          jq -n \
+            --argjson schemaVersion "$SCHEMA_VERSION" \
+            --arg sha "$GITHUB_SHA" \
+            --arg ref "$GITHUB_REF" \
+            --arg event "$GITHUB_EVENT_NAME" \
+            --arg runId "$GITHUB_RUN_ID" \
+            --arg runAttempt "$GITHUB_RUN_ATTEMPT" \
+            --argjson shardIndex "$SHARD_INDEX" \
+            --argjson shardCount "$SHARDS" \
+            --argjson inputs "${INPUTS_JSON:-null}" \
+            --arg spec "$SPEC_FILTER" \
+            --arg edition "$EDITION" \
+            --arg grepTags "$GREP_TAGS" \
+            --argjson idleSeconds "$IDLE_SECONDS" \
+            --argjson backend "$BACKEND_COVERAGE" \
+            --argjson cljs "$CLJS_COVERAGE" \
+            --argjson keepTestExec "$KEEP_TEST_EXEC" \
+            --arg stepSnapshots "$STEP_SNAPSHOTS" \
+            --argjson compareStepSnapshots "$COMPARE_STEP_SNAPSHOTS" \
+            --arg jacocoVersion "$JACOCO_VERSION" \
+            --arg jacocoIncludes "$JACOCO_INCLUDES" \
+            --arg java "$(java -version 2>&1 | head -n 1)" \
+            --arg startedAt "$JOURNEY_STARTED_AT" \
+            --arg finishedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg baselinesStart "$BASELINES_START" \
+            --arg tests "$TESTS" \
+            --arg testsControl "$TESTS_CONTROL" \
+            --arg baselinesEnd "$BASELINES_END" \
+            --argjson rawBytes "$raw_bytes" \
+            --argjson gzipBytes "$gzip_bytes" \
+            '{
+              schema: "metabase-e2e-journey-capture",
+              schemaVersion: $schemaVersion,
+              sha: $sha, ref: $ref, event: $event, runId: $runId, runAttempt: $runAttempt,
+              shard: {index: $shardIndex, count: $shardCount},
+              inputs: $inputs,
+              effective: {spec: $spec, edition: $edition, grepTags: $grepTags, idleSeconds: $idleSeconds},
+              capture: {
+                frontendFunctions: true,
+                cljsFunctions: $cljs,
+                events: true,
+                stepSnapshots: $stepSnapshots,
+                controlPassWithoutSteps: $compareStepSnapshots,
+                backend: (if $backend then {agent: "jacoco", version: $jacocoVersion, includes: $jacocoIncludes, granularity: "class", keepTestExec: $keepTestExec} else null end)
+              },
+              java: $java,
+              startedAt: $startedAt, finishedAt: $finishedAt,
+              outcomes: {baselinesStart: $baselinesStart, tests: $tests, testsControl: $testsControl, baselinesEnd: $baselinesEnd},
+              sizeBeforeMetadata: {rawBytes: $rawBytes, gzipBytes: $gzipBytes}
+            }' > "$JOURNEY_CAPTURE_DIR/meta.json"
+          {
+            echo "### Shard $SHARD_INDEX"
+            echo ""
+            echo "Raw: $raw_bytes bytes, gzipped: $gzip_bytes bytes"
+            echo ""
+            echo '```'
+            du -sh "$JOURNEY_CAPTURE_DIR"/* 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Prints per-shard counts, the step consistency check and the timing against the control pass.
+      - name: Summarize capture
+        if: always()
+        continue-on-error: true
+        run: |
+          node e2e/coverage/journey-capture.mjs "$JOURNEY_CAPTURE_DIR" --subtract | tee "$JOURNEY_CAPTURE_DIR/summary.txt"
+          {
+            echo '```'
+            cat "$JOURNEY_CAPTURE_DIR/summary.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload shard capture
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: journey-capture-shard-${{ matrix.split_index }}
+          path: e2e/journey-capture-raw/
+          retention-days: ${{ env.RETENTION_DAYS }}
+          if-no-files-found: warn

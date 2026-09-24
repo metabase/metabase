@@ -67,6 +67,28 @@ const TEST_CUSTOM_DOMAINS =
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 
+// The main JS rule excludes /cljs/, so the metabase namespaces of the shadow-cljs output get their own coverage rule.
+const CLJS_COVERAGE_RULE = {
+  test: /[\\/]cljs_release[\\/]metabase\.[^\\/]+\.js$/,
+  use: [
+    {
+      loader: "builtin:swc-loader",
+      options: {
+        isModule: "unknown",
+        jsc: {
+          parser: { syntax: "ecmascript" },
+          target: "esnext",
+          experimental: {
+            plugins: [["swc-plugin-coverage-instrument", {}]],
+          },
+        },
+        sourceMaps: true,
+      },
+    },
+  ],
+  type: "javascript/auto",
+};
+
 const SWC_LOADER = {
   loader: "builtin:swc-loader",
   options: {
@@ -237,6 +259,10 @@ const config = {
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
+      ...(process.env.INSTRUMENT_COVERAGE === "true" &&
+      process.env.INSTRUMENT_CLJS_COVERAGE === "true"
+        ? [CLJS_COVERAGE_RULE]
+        : []),
       {
         test: /\.(svg|png)$/,
         type: "asset/resource",
