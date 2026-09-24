@@ -36,16 +36,11 @@
               (dh/with-timeout {:interrupt? true
                                 :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
                 (log/info "Auto-importing remote-sync collections")
-                (let [result (impl/import! snapshot task-id)]
-                  (impl/handle-task-result! result task-id)
-                  (when (= :success (:status result))
-                    ;; events/publish-event! rethrows handler exceptions; don't let an audit-log
-                    ;; failure mark an already-successful import as failed
-                    (try
-                      (impl/publish-sync-event! :event/remote-sync-import task-id
-                                                {:branch branch :auto true} nil)
-                      (catch Exception e
-                        (log/errorf "Failed to publish remote-sync audit event: %s" (ex-message e))))))))))))))
+                (impl/run-task-body! task-id nil
+                                     (fn [task-id] (impl/import! snapshot task-id))
+                                     :on-success (fn [task-id _result]
+                                                   (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                                             {:branch branch :auto true} nil)))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

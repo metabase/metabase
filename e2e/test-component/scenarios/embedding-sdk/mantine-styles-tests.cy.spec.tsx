@@ -70,14 +70,14 @@ describe("scenarios > embedding-sdk > mantine styles leakage", () => {
     getSdkRoot().within(() => {
       cy.get("button")
         .contains("Filter")
-        .should("have.css", "color", "rgb(255, 0, 0)");
+        .should("have.css", "color", "color(srgb 0.72 0 0)");
 
       cy.findByTestId("notebook-button").click();
 
       cy.findByRole("button", { name: "Visualize" }).should(
         "have.css",
         "background-color",
-        "rgb(255, 0, 0)",
+        "color(srgb 0.72 0 0)",
       );
     });
   });

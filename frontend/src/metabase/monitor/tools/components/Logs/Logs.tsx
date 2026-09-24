@@ -83,12 +83,13 @@ export const Logs = ({
                   placeholder={t`Filter logs`}
                   rightSection={
                     query.length > 0 ? (
+                      // TODO: replace with ActionIcon (GDGT-2457)
                       <Button
                         aria-label={t`Clear`}
-                        c="text-primary"
                         leftSection={<Icon name="close" />}
-                        size="xs"
                         variant="subtle"
+                        color="neutral"
+                        size="sm"
                         onClick={() => {
                           patchUrlState({ query: "" });
                           refollow();
@@ -140,7 +141,6 @@ export const Logs = ({
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
-                  variant="default"
                 >{t`Customize log levels`}</Button>
 
                 <Button

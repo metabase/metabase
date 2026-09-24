@@ -117,13 +117,16 @@ export function useLoadQuestion({
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
   const shouldLoadQuestion = questionId != null || deserializedCard != null;
-  const [isQuestionLoading, setIsQuestionLoading] =
-    useState(shouldLoadQuestion);
+  const [isLoadInFlight, setIsLoadInFlight] = useState(shouldLoadQuestion);
+
+  const isQuestionLoading = isLoadInFlight || !shouldLoadQuestion;
 
   const [, loadAndQueryQuestion] = useAsyncFn(async () => {
-    if (shouldLoadQuestion) {
-      setIsQuestionLoading(true);
+    if (!shouldLoadQuestion) {
+      return {};
     }
+
+    setIsLoadInFlight(true);
 
     try {
       const questionState = await dispatch(
@@ -152,7 +155,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(results);
 
-      setIsQuestionLoading(false);
+      setIsLoadInFlight(false);
       return { ...results, originalQuestion };
     } catch (err) {
       // Ignore cancelled requests (e.g. when the component unmounts, or when a
@@ -160,7 +163,7 @@ export function useLoadQuestion({
       // shared `controllerRef`). React simulates unmounting on strict mode,
       // therefore "Question not found" will be shown without this.
       if (isAbortError(err)) {
-        setIsQuestionLoading(false);
+        setIsLoadInFlight(false);
         return {};
       }
 
@@ -180,7 +183,7 @@ export function useLoadQuestion({
         parameterValues: undefined,
       });
 
-      setIsQuestionLoading(false);
+      setIsLoadInFlight(false);
       return {};
     }
   }, [

@@ -541,6 +541,7 @@
    [:added-indexes          {:optional true} :int]
    [:cloud                  {:optional true} :boolean]
    [:created                {:optional true} :int]
+   [:default-schema         {:optional true} [:maybe :string]]
    [:deleted                {:optional true} :int]
    [:errors                 {:optional true} :int]
    [:failed-fingerprints    {:optional true} :int]

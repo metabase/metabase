@@ -68,7 +68,6 @@ export function CollectionTypeFilter({
       >
         <Popover.Target>
           <Button
-            variant="default"
             leftSection={<Icon name="filter" aria-hidden />}
             onClick={toggle}
             aria-label={isFiltering ? t`Filter, filters applied` : undefined}
