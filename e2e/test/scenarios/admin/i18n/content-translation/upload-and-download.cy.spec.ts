@@ -97,7 +97,6 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
         );
-        cy.signInAsNormalUser();
         assertOnlyTheseTranslationsAreStored(portugueseFieldNames, "pt-BR");
       });
 
@@ -143,16 +142,6 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
           .should("exist");
       });
 
-      it("rejects a CSV upload with invalid locale in one row", () => {
-        uploadTranslationDictionary(invalidLocaleXX);
-        cy.findAllByRole("alert")
-          .contains(/couldn.*t upload the file/)
-          .should("exist");
-        cy.findAllByRole("alert")
-          .contains(/Row 2: Invalid locale: xx/)
-          .should("exist");
-      });
-
       it("erases previously stored translations when a new CSV is uploaded", () => {
         uploadTranslationDictionary(germanFieldNames);
         assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
@@ -176,10 +165,10 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
           .should("exist");
         cy.log("The first error is in row 2 (the first row is the header)");
         cy.findAllByRole("alert")
-          .contains(/Row 2: Invalid locale/)
+          .contains(/Row 2: Invalid locale: ze/)
           .should("exist");
         cy.findAllByRole("alert")
-          .contains(/Row 5: Invalid locale/)
+          .contains(/Row 5: Invalid locale: qe/)
           .should("exist");
       });
 

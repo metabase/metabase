@@ -285,7 +285,7 @@ describe("scenarios > admin > datamodel", () => {
       });
 
       it(
-        "should allow hiding and restoring all tables in a single-schema database",
+        "should allow hiding and restoring all tables in a multi-schema database",
         { tags: ["@external"] },
         () => {
           H.restore("postgres-writable");
@@ -521,18 +521,8 @@ describe("scenarios > admin > datamodel", () => {
     });
 
     describe("Sorting", () => {
-      it("should allow sorting fields as in the database", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
+      it("should allow sorting fields alphabetically", () => {
+        cy.log("fields are sorted as in the database by default");
         H.openProductsTable();
         H.assertTableData({
           columns: [
@@ -546,9 +536,7 @@ describe("scenarios > admin > datamodel", () => {
             "Created At",
           ],
         });
-      });
 
-      it("should allow sorting fields alphabetically", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -556,6 +544,10 @@ describe("scenarios > admin > datamodel", () => {
         });
 
         TableSection.getSortButton().click();
+        TableSection.getSortOrderInput()
+          .findByDisplayValue("database")
+          .should("be.checked");
+
         TableSection.getSortOrderInput()
           .findByLabelText("Alphabetical order")
           .click();
@@ -610,52 +602,7 @@ describe("scenarios > admin > datamodel", () => {
         });
       });
 
-      it("should allow sorting fields in the custom order", () => {
-        H.DataModel.visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: PRODUCTS_ID,
-        });
-
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("database")
-          .should("be.checked");
-
-        TableSection.getSortableField("ID").as("dragElement");
-        H.moveDnDKitElementByAlias("@dragElement", {
-          vertical: 50,
-        });
-        cy.wait("@updateFieldOrder");
-        verifyAndCloseToast("Field order updated");
-
-        cy.log(
-          "should not show loading state after an update (metabase#56482)",
-        );
-        cy.findByTestId("loading-indicator", { timeout: 0 }).should(
-          "not.exist",
-        );
-
-        TableSection.getSortOrderInput()
-          .findByDisplayValue("custom")
-          .should("be.checked");
-
-        H.openProductsTable();
-        H.assertTableData({
-          columns: [
-            "Ean",
-            "ID",
-            "Title",
-            "Category",
-            "Vendor",
-            "Price",
-            "Rating",
-            "Created At",
-          ],
-        });
-      });
-
-      it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
+      it("should allow sorting fields in a custom order and switching back to predefined order (metabase#56482)", () => {
         H.DataModel.visit({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
@@ -723,6 +670,21 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getSortableFields().should(($items) => {
           expect($items[0].textContent).to.equal("Ean");
           expect($items[1].textContent).to.equal("ID");
+        });
+
+        cy.log("custom order is applied in the query builder");
+        H.openProductsTable();
+        H.assertTableData({
+          columns: [
+            "Ean",
+            "ID",
+            "Title",
+            "Category",
+            "Vendor",
+            "Price",
+            "Rating",
+            "Created At",
+          ],
         });
       });
     });
