@@ -392,7 +392,7 @@
   (-> (merge base (select-keys row [:duration_ms]))
       (update :details with-slow-culprits culprits)))
 
-(defmethod finalize-finding :duplicated [_ base row {:keys [entities]}]
+(defmethod finalize-finding :duplicate_name [_ base row {:keys [entities]}]
   (-> (merge base (select-keys row [:duplicate_count]))
       (update :details with-duplicate-peers (:entity_type row) entities)))
 

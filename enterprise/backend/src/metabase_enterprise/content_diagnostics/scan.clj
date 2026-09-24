@@ -35,7 +35,7 @@
   all-clean scan still resolves the previous scan's findings."
   [{:name "stale"      :finding-types #{:stale}      :run stale/checker}
    {:name "slow"       :finding-types #{:slow}       :run slow/checker}
-   {:name "duplicated" :finding-types #{:duplicated} :run duplicated/checker}
+   {:name "duplicated" :finding-types #{:duplicate_name} :run duplicated/checker}
    ;; the imbalanced family: three independent checkers (one namespace each under checkers/imbalanced/)
    ;; with no cross-type precedence, so one entity can carry several of these finding types at once;
    ;; each declared type scopes its own supersession

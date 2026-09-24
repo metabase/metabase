@@ -141,7 +141,7 @@ export function createMockContentDiagnosticsDuplicatedFinding(
 ): ContentDiagnosticsDuplicatedFinding {
   return {
     id: 1,
-    finding_type: "duplicated",
+    finding_type: "duplicate_name",
     entity_type: "card",
     entity_id: 10,
     detected_at: "2026-06-01T00:00:00Z",

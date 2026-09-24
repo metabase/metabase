@@ -1,6 +1,7 @@
-import type {
-  ContentDiagnosticsFilterType,
-  ContentDiagnosticsNonCollectionFilterType,
+import {
+  CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES,
+  type ContentDiagnosticsFilterType,
+  type ContentDiagnosticsNonCollectionFilterType,
 } from "metabase-types/api";
 
 export type ContentDiagnosticsBaseFilterOptions<
@@ -30,6 +31,15 @@ export type ImbalancedContentFilterOptions =
 export type ContentDiagnosticsParamsOptions = {
   withSetLastUsedParams?: boolean;
 };
+
+/** `duplicated` is an umbrella tab over the duplicated finding types. */
+export const CONTENT_DIAGNOSTICS_TABS = [
+  "stale",
+  "slow",
+  "duplicated",
+  ...CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES,
+] as const;
+export type ContentDiagnosticsTab = (typeof CONTENT_DIAGNOSTICS_TABS)[number];
 
 export type ContentDiagnosticsFilterDimension =
   | "entity_type"

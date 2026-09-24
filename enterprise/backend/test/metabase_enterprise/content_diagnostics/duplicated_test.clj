@@ -23,12 +23,12 @@
   (str "cd-" (mt/random-name)))
 
 (defn- duplicated-findings-by-entity!
-  "Run a scan and index its `:duplicated` findings by `[entity-type entity-id]`."
+  "Run a scan and index its `:duplicate_name` findings by `[entity-type entity-id]`."
   []
   (let [scan-id (:scan_id (scan/scan!))]
     (into {}
           (map (juxt (juxt :entity_type :entity_id) identity))
-          (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :duplicated))))
+          (t2/select :model/ContentDiagnosticsFinding :scan_id scan-id :finding_type :duplicate_name))))
 
 ;;; --------------------------------------------- checker --------------------------------------------------
 
@@ -289,10 +289,30 @@
                 (is (some? (:invalidated_at (t2/select-one :model/ContentDiagnosticsFinding :id (:id fa)))))
                 (is (some? (:invalidated_at (t2/select-one :model/ContentDiagnosticsFinding :id (:id fb)))))
                 (is (empty? (t2/select :model/ContentDiagnosticsFinding
-                                       :finding_type :duplicated :invalidated_at nil
+                                       :finding_type :duplicate_name :invalidated_at nil
                                        :entity_type :card :entity_id [:in [card-a card-b]])))))))))))
 
 ;;; ------------------------------------------------- API --------------------------------------------------
+
+(deftest duplicated-finding-type-test
+  (testing "the `duplicated` umbrella stores and serves the `duplicate_name` finding type"
+    (mt/with-premium-features #{:content-diagnostics}
+      (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
+        (let [prefix (scope-prefix)
+              nm     (str prefix " Sales Model")]
+          (mt/with-temp
+            [:model/Collection {coll-id :id} {:name "Analytics"}
+             :model/Card {card-a :id} {:collection_id coll-id :name nm}
+             :model/Card _             {:collection_id coll-id :name nm}]
+            (scan/scan!)
+            (testing "the checker writes `duplicate_name`"
+              (is (= #{:duplicate_name}
+                     (t2/select-fn-set :finding_type :model/ContentDiagnosticsFinding
+                                       :entity_type :card :entity_id card-a))))
+            (let [resp (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
+                                             :query prefix)]
+              (is (= 2 (:total resp)))
+              (is (= #{"duplicate_name"} (into #{} (map :finding_type) (:data resp)))))))))))
 
 (deftest duplicated-api-hydration-test
   (testing "GET /duplicated serves findings with hydrated context + same-type peers"
@@ -349,7 +369,7 @@
                            :entity_type     etype
                            :entity_id       eid
                            :entity_name     (str prefix "-" (name etype))
-                           :finding_type    :duplicated
+                           :finding_type    :duplicate_name
                            :duplicate_count 1
                            :details         {:normalized_name      "x"
                                              :duplicate_entity_ids []}}))
@@ -391,7 +411,7 @@
                                                              :entity_id       eid
                                                              :entity_name     (str prefix " " nm)
                                                              :entity_kind     etype
-                                                             :finding_type    :duplicated
+                                                             :finding_type    :duplicate_name
                                                              :duplicate_count dup-count
                                                              :details         {:normalized_name      nm
                                                                                :duplicate_entity_ids []}})))
@@ -434,7 +454,7 @@
                 (t2/insert! :model/ContentDiagnosticsFinding
                             {:scan_id "p" :entity_type :card :entity_id cid
                              :entity_name (str prefix "-" cid)
-                             :finding_type :duplicated :duplicate_count 1
+                             :finding_type :duplicate_name :duplicate_count 1
                              :details {:normalized_name "x" :duplicate_entity_ids []}}))
               (let [page (fn [limit offset]
                            (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/duplicated"
@@ -463,7 +483,7 @@
                                  :model/ContentDiagnosticsFinding
                                  {:scan_id "perm" :entity_type :card :entity_id open-card
                                   :entity_name (str prefix "-card")
-                                  :finding_type :duplicated :duplicate_count 1
+                                  :finding_type :duplicate_name :duplicate_count 1
                                   :details {:normalized_name      "x"
                                             :duplicate_entity_ids [secret-card]}}))
                   finding (fn [user]
@@ -494,7 +514,7 @@
                                      :model/ContentDiagnosticsFinding
                                      {:scan_id "pc" :entity_type :card :entity_id flagged
                                       :entity_name (str prefix "-card")
-                                      :finding_type :duplicated :duplicate_count 2
+                                      :finding_type :duplicate_name :duplicate_count 2
                                       :details {:normalized_name      "x"
                                                 :duplicate_entity_ids [reg-peer pers-peer]}}))
                     peer-ids (fn [& kvs]
@@ -584,7 +604,7 @@
                   dup-fid   (first (t2/insert-returning-pks! :model/ContentDiagnosticsFinding
                                                              {:scan_id "x" :entity_type :card :entity_id dup-card
                                                               :entity_name (str prefix "-dup")
-                                                              :finding_type :duplicated :duplicate_count 1
+                                                              :finding_type :duplicate_name :duplicate_count 1
                                                               :details {:normalized_name      "x"
                                                                         :duplicate_entity_ids []}}))
                   ids (fn [path] (set (map :id (:data (mt/user-http-request :rasta :get 200 path :query prefix)))))]
