@@ -80,7 +80,7 @@ Filter (comparison + boolean combination):
 ```json
 "filters": [["and", {},
   [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "STATUS"]], "paid"]]]
+  ["=", {}, ["field", {}, ["Sample Database", null, "PRODUCTS", "CATEGORY"]], "Gizmo"]]]
 ```
 
 Aggregation (on a field, plus `count`):
