@@ -1244,3 +1244,53 @@
                 :widget-type  :string/contains
                 :id           string?}]
               (lib/template-tags query))))))
+
+(defn- orders-column
+  [column-name]
+  {:type :column :name column-name :table-id (meta/id :orders)})
+
+(defn- orders-then
+  [first-stage second-stage]
+  (lib.query.test-spec/test-query
+   meta/metadata-provider
+   {:stages [(assoc first-stage :source {:type :table :id (meta/id :orders)})
+             second-stage]}))
+
+(deftest ^:parallel test-query-later-stage-prefers-result-column-over-implicitly-joinable-test
+  (testing "USER_ID in the result makes PEOPLE.CREATED_AT joinable next to the CREATED_AT result column"
+    (is (=? [[:> {} [:field {} "CREATED_AT"] "2024-01-01"]]
+            (lib/filters
+             (orders-then {:aggregations [{:type :operator :operator :count :args []}]
+                           :breakouts    [(assoc (orders-column "CREATED_AT") :unit :month)
+                                          (orders-column "USER_ID")]}
+                          {:filters [{:type     :operator
+                                      :operator :>
+                                      :args     [{:type :column :name "CREATED_AT"}
+                                                 {:type :literal :value "2024-01-01"}]}]})
+             1)))))
+
+(deftest ^:parallel test-query-later-stage-resolves-repeated-aggregations-by-result-name-test
+  (let [sums (fn [order-by-name]
+               (lib/order-bys
+                (orders-then {:aggregations [{:type :operator :operator :sum :args [(orders-column "TOTAL")]}
+                                             {:type :operator :operator :sum :args [(orders-column "SUBTOTAL")]}]
+                              :breakouts    [(orders-column "PRODUCT_ID")]}
+                             {:order-bys [{:type :column :name order-by-name :direction :desc}]})
+                1))]
+    (testing "the first aggregation keeps its name"
+      (is (=? [[:desc {} [:field {} "sum"]]] (sums "sum"))))
+    (testing "the second is returned as sum_2"
+      (is (=? [[:desc {} [:field {} "sum_2"]]] (sums "sum_2"))))))
+
+(deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
+  (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; the FK they were reached through picks one"
+    (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
+            (lib/filters
+             (orders-then {:aggregations [{:type :operator :operator :count :args []}]
+                           :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
+                                          {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}
+                          {:filters [{:type     :operator
+                                      :operator :<
+                                      :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                                 {:type :literal :value 10}]}]})
+             1)))))
