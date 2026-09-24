@@ -25,6 +25,8 @@
    {:id "openai.gpt-5.5" :object "model" :status "available"}
    {:id "anthropic.claude-haiku-4-5" :object "model" :status "available"}
    {:id "openai.gpt-oss-120b" :object "model" :status "available"}
+   {:id "openai.gpt-5.999-example" :object "model" :status "available"}
+   {:id "anthropic.claude-example-future" :object "model" :status "available"}
    {:id "deepseek.v3.2" :object "model" :status "available"}
    {:id "anthropic.claude-opus-4-8" :object "model" :status "available"}
    {:id "anthropic.claude-fable-5" :object "model" :status "available"}
@@ -44,6 +46,7 @@
       (is (true? (#'bedrock/supported-model? {:id id})) id)))
   (testing "non-whitelisted models are not supported, even for supported vendors"
     (doseq [id ["anthropic.claude-3-5-sonnet" "openai.gpt-oss-120b"
+                "anthropic.claude-example-future" "openai.gpt-5.999-example"
                 "qwen.qwen3-next-80b-a3b-instruct" "deepseek.v3.2"]]
       (is (false? (#'bedrock/supported-model? {:id id})) id))))
 
@@ -259,42 +262,44 @@
     (bedrock/bedrock-raw (merge {:credentials credentials} opts))))
 
 (deftest anthropic-model-dispatches-to-messages-api-test
-  (let [req  (captured-raw-request! {:model "anthropic.claude-haiku-4-5"
-                                     :system "be brief"
-                                     :input  [{:role :user :content "hi"}]})
-        body (json/decode+kw (:body req))]
-    (is (= "https://bedrock-mantle.us-east-1.api.aws/anthropic/v1/messages" (:url req)))
-    (testing "the unsigned anthropic-version header is sent alongside the signed SigV4 headers"
-      (is (=? {"anthropic-version"    "2023-06-01"
-               "Host"                 "bedrock-mantle.us-east-1.api.aws"
-               "Content-Type"         "application/json"
-               "x-amz-content-sha256" #"^[0-9a-f]{64}$"
-               "Authorization"        #"^AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/.*SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date.*"}
-              (:headers req))))
-    (testing "body is an Anthropic Messages request without the top-level cache_control mantle rejects"
-      (is (=? {:model    "anthropic.claude-haiku-4-5"
-               :stream   true
-               :system   [{:type "text" :text "be brief" :cache_control {:type "ephemeral"}}]
-               :messages [{:role "user" :content [{:type "text" :text "hi"}]}]}
-              body))
-      (is (not (contains? body :cache_control))))))
+  (doseq [model ["anthropic.claude-haiku-4-5" "anthropic.claude-example-future"]]
+    (let [req  (captured-raw-request! {:model model
+                                       :system "be brief"
+                                       :input  [{:role :user :content "hi"}]})
+          body (json/decode+kw (:body req))]
+      (is (= "https://bedrock-mantle.us-east-1.api.aws/anthropic/v1/messages" (:url req)))
+      (testing "the unsigned anthropic-version header is sent alongside the signed SigV4 headers"
+        (is (=? {"anthropic-version"    "2023-06-01"
+                 "Host"                 "bedrock-mantle.us-east-1.api.aws"
+                 "Content-Type"         "application/json"
+                 "x-amz-content-sha256" #"^[0-9a-f]{64}$"
+                 "Authorization"        #"^AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/.*SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date.*"}
+                (:headers req))))
+      (testing "body is an Anthropic Messages request without the top-level cache_control mantle rejects"
+        (is (=? {:model    model
+                 :stream   true
+                 :system   [{:type "text" :text "be brief" :cache_control {:type "ephemeral"}}]
+                 :messages [{:role "user" :content [{:type "text" :text "hi"}]}]}
+                body))
+        (is (not (contains? body :cache_control)))))))
 
 (deftest openai-model-dispatches-to-responses-api-test
-  (let [req  (captured-raw-request! {:model      "openai.gpt-5.5"
-                                     :system      "be brief"
-                                     :input       [{:role :user :content "hi"}]
-                                     :temperature 0.3
-                                     :max-tokens  128})
-        body (json/decode+kw (:body req))]
-    (is (= "https://bedrock-mantle.us-east-1.api.aws/openai/v1/responses" (:url req)))
-    (is (=? {:model             "openai.gpt-5.5"
-             :stream            true
-             :instructions      "be brief"
-             :max_output_tokens 128
-             :input             [{:role "user" :content "hi"}]}
-            body))
-    (testing "temperature is omitted for openai.-prefixed reasoning models"
-      (is (not (contains? body :temperature))))))
+  (doseq [model ["openai.gpt-5.5" "openai.gpt-5.999-example"]]
+    (let [req  (captured-raw-request! {:model      model
+                                       :system      "be brief"
+                                       :input       [{:role :user :content "hi"}]
+                                       :temperature 0.3
+                                       :max-tokens  128})
+          body (json/decode+kw (:body req))]
+      (is (= "https://bedrock-mantle.us-east-1.api.aws/openai/v1/responses" (:url req)))
+      (is (=? {:model             model
+               :stream            true
+               :instructions      "be brief"
+               :max_output_tokens 128
+               :input             [{:role "user" :content "hi"}]}
+              body))
+      (testing "temperature is omitted for openai.-prefixed reasoning models"
+        (is (not (contains? body :temperature)))))))
 
 (defn- captured-body!
   "The decoded request body `bedrock-raw` would send for `opts`, with a stock user message."
