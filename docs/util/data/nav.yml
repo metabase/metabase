@@ -491,6 +491,8 @@ categories:
             url: "people-and-groups/changing-password-complexity"
           - name: "Session expiration"
             url: "people-and-groups/changing-session-expiration"
+          - name: "Two-factor authentication"
+            url: "people-and-groups/two-factor-authentication"
           - name: "Google Sign-In"
             url: "people-and-groups/google-sign-in"
           - name: "LDAP"
