@@ -51,7 +51,7 @@
     "@modelcontextprotocol/ext-apps": "^1.3.2",
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.12.0",
-    "@snowplow/browser-tracker": "3.2.0",
+    "@snowplow/browser-tracker": "4.10.2",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.2",
     "@tiptap/core": "^3.31.3",

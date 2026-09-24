@@ -53,8 +53,8 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   describe("initSdkTracker", () => {
     // Assert only the flags whose absence fails silently in a customer's prod app:
     // proxy path (CSP), server anonymisation (privacy), and no host-page storage.
-    // CORS: 3.1.6 hardcoded withCredentials=true with no config option; 3.2.0 added
-    // withCredentials as a config, so we pin it false to satisfy wildcard CORS on the proxy.
+    // CORS: v4 sends credentials by default, so we omit them to satisfy wildcard CORS on the proxy.
+    // Storage: v4 probes the root domain with a test cookie unless told not to.
     // The rest is cosmetic config, not a safety contract.
     it("configures the proxy path, anonymises, and touches no storage", async () => {
       const { initSdkTracker } = await loadModule();
@@ -75,7 +75,8 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
           postPath: "/api/analytics-proxy",
           stateStorageStrategy: "none",
           anonymousTracking: { withServerAnonymisation: true },
-          withCredentials: false,
+          discoverRootDomain: false,
+          credentials: "omit",
         }),
       );
     });
