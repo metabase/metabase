@@ -20,6 +20,8 @@
      So the nicely-formatted SQL in error messages doesn't get wrapped into a big blob in the `*cider-error*` buffer."
   (:refer-clojure :exclude [compile])
   (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.db :as app-db.db]
@@ -28,6 +30,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
+   [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.model :as t2.model])
   (:import
@@ -89,6 +92,40 @@
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(t2/table-name (t2.model/resolve-model dest-entity))
                [:= (qualify source-entity fk) (qualify dest-entity pk)]]})
+
+;;; ---------------------------------------- Named queries and parameters ----------------------------------------
+
+(defn do-with-params
+  "Implementation of [[with-params]]."
+  [params thunk]
+  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options* :params params)]
+    (thunk)))
+
+(defmacro with-params
+  "Bind `params` for the `[:param k]` placeholders of the Honey SQL queries in `body`, replacing rather than merging
+  into the params of an enclosing [[with-params]].
+
+    (with-params {:field-id 1}
+      (t2/select-one :model/Field {:where [:= :id [:param :field-id]]}))"
+  [params & body]
+  `(do-with-params ~params (^:once fn* [] ~@body)))
+
+(def ^:private query-name-line
+  #";;\s*name:\s*(\S+)\s*")
+
+(mu/defn read-queries :- [:map-of :keyword :map]
+  "The Honey SQL queries of the EDN file on the classpath at `resource-path`, keyed by the name the `;; name: <name>`
+  line above each one gives it."
+  [resource-path :- ms/NonBlankString]
+  (-> (reduce (fn [{:keys [query-name] :as acc} line]
+                (if-let [[_ new-name] (re-matches query-name-line line)]
+                  (assoc acc :query-name (keyword new-name))
+                  (cond-> acc
+                    query-name (update-in [:queries query-name] str line \newline))))
+              {:queries {}}
+              (str/split-lines (slurp (io/resource resource-path))))
+      :queries
+      (update-vals edn/read-string)))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."

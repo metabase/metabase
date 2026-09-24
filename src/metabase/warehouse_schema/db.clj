@@ -14,6 +14,10 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [toucan2.core :as t2]))
 
+(def ^:private queries
+  "The Honey SQL queries this namespace keeps in `db.edn` next to it."
+  (app-db/read-queries "metabase/warehouse_schema/db.edn"))
+
 (def field-order-rule
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
@@ -353,12 +357,8 @@
   "The values and human-readable values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id` if it has
   human-readable values, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/FieldValues :values :human_readable_values]
-                 {:where [:and
-                          [:= :type "full"]
-                          [:= :field_id field-id]
-                          [:not= :human_readable_values nil]
-                          [:not= :human_readable_values "{}"]]}))
+  (app-db/with-params {:field-id field-id}
+    (t2/select-one :model/FieldValues (:full-field-values-with-human-readable-values queries))))
 
 (mu/defn field-values-last-used-at
   "The latest `last_used_at` of any FieldValues of the ::warehouse-schema.schema/field with `field-id`."

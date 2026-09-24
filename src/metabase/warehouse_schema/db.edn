@@ -1,0 +1,7 @@
+;; name: full-field-values-with-human-readable-values
+{:select [:values :human_readable_values]
+ :where  [:and
+          [:= :type "full"]
+          [:= :field_id [:param :field-id]]
+          [:not= :human_readable_values nil]
+          [:not= :human_readable_values "{}"]]}

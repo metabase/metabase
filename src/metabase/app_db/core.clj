@@ -73,16 +73,19 @@
  [metabase.app-db.query
   compile
   current-timestamp-string
+  do-with-params
   isa
   join
   qualify
   query
+  read-queries
   select-or-insert!
   streaming-reducible
   streaming-reducible-query
   type-keyword->descendants
   update-or-insert!
-  with-conflict-retry]
+  with-conflict-retry
+  with-params]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
  [liquibase
