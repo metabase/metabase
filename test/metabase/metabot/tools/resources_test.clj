@@ -1319,7 +1319,7 @@
       (testing "a field with more values than the sample says how many it has"
         (let [output (read-field :people :state)]
           (is (str/includes? output "This list shows 30 of the field's 49 values."))
-          (is (str/includes? output "match text case-insensitively"))))
+          (is (str/includes? output "Filter on the user's value with exact equality"))))
       (testing "a field whose values all fit in the sample doesn't"
         (let [output (read-field :products :category)]
           (is (str/includes? output "| Widget |"))
