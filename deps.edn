@@ -182,7 +182,7 @@
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter
-  org.xerial/sqlite-jdbc                    {:mvn/version "3.50.3.0"}           ; SQLite driver -- ships in core because the bundled Sample Database runs on it
+  org.xerial/sqlite-jdbc                    {:mvn/version "3.51.3.0"}           ; SQLite app DB + Sample Database; includes the WAL-reset fix
   potemkin/potemkin                         {:mvn/version "0.4.8"               ; utility macros & fns
                                              :exclusions  [riddley/riddley]}
   pretty/pretty                             {:mvn/version "1.0.5"}              ; protocol for defining how custom types should be pretty printed

@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.app-db.spec :as mdb.spec]
+   [metabase.app-db.sqlite :as sqlite]
    [metabase.app-db.update-h2 :as update-h2]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
@@ -74,14 +75,21 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (doto (if properties
-            (DriverManager/getConnection url (ensure-azure-managed-identity-password properties))
-            (DriverManager/getConnection url))
-      ;; MySQL/MariaDB default to REPEATABLE_READ which ends up making everything SLOW because it locks all the time.
-      ;; Postgres defaults to READ_COMMITTED. Explicitly set transaction isolation for new connections so we can make
-      ;; sure we're using READ_COMMITTED. See https://metaboat.slack.com/archives/C04DN5VRQM6/p1718912820432359 for more
-      ;; info.
-      (.setTransactionIsolation java.sql.Connection/TRANSACTION_READ_COMMITTED)))
+    (let [connection (if properties
+                       (DriverManager/getConnection url (ensure-azure-managed-identity-password properties))
+                       (DriverManager/getConnection url))]
+      (try
+        (if (str/starts-with? url "jdbc:sqlite:")
+          (sqlite/initialize-connection! connection)
+          ;; MySQL/MariaDB default to REPEATABLE_READ which ends up making everything SLOW because it locks all the time.
+          ;; Postgres defaults to READ_COMMITTED. Explicitly set transaction isolation for new connections so we can make
+          ;; sure we're using READ_COMMITTED. See https://metaboat.slack.com/archives/C04DN5VRQM6/p1718912820432359 for more
+          ;; info.
+          (.setTransactionIsolation connection java.sql.Connection/TRANSACTION_READ_COMMITTED))
+        connection
+        (catch Throwable e
+          (.close connection)
+          (throw e)))))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]

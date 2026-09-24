@@ -21,6 +21,12 @@
           :subname     db}
          (dissoc opts :db)))
 
+(defmethod spec :sqlite
+  [_ {:keys [db] :or {db "metabase.sqlite"}}]
+  {:classname "org.sqlite.JDBC"
+   :subprotocol "sqlite"
+   :subname db})
+
 (defn make-subname
   "Make a subname for the given `host`, `port`, and `db` params.  Iff `db` is not blank, then a slash will
   precede it in the subname."

@@ -11,6 +11,7 @@
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [honey.sql :as sql]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations :as custom-migrations]
@@ -19,10 +20,11 @@
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.sqlite :as sqlite]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
-   [metabase.util.honey-sql-2]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -30,7 +32,10 @@
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.jdbc.query :as t2.jdbc.query]
+   [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.realize :as t2.realize])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource WrapperConnectionPoolDataSource)
    (liquibase.exception LockException)))
@@ -41,7 +46,7 @@
   ;; load our custom migrations
   custom-migrations/keep-me
   ;; needed so the `:h2` dialect gets registered with Honey SQL
-  metabase.util.honey-sql-2/keep-me)
+  h2x/keep-me)
 
 (defn- print-migrations-and-quit-if-needed!
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
@@ -337,7 +342,7 @@
 
 (defn- clause-order-fn-for-application-db [clauses]
   (case (mdb.connection/db-type)
-    (:postgres :h2) clauses
+    (:postgres :h2 :sqlite) clauses
     :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
                       (f clauses))))
 
@@ -357,6 +362,20 @@
         {:read-columns mdb.jdbc-protocols/read-columns
          :label-fn     u/lower-case-en})
 
+(defn- sqlite-current-datetime-forms
+  "Translate app DB NOW expressions at query-build time, including static model defaults.
+  Literal/parameter containers are opaque: their contents are data, not SQL expressions."
+  [form]
+  (cond
+    (or (= form :%now) (= form [:now]))
+    (h2x/current-datetime-honeysql-form :sqlite)
+
+    (and (sequential? form) (contains? #{:lift :inline :raw :param} (first form)))
+    form
+
+    :else
+    (walk/walk sqlite-current-datetime-forms identity form)))
+
 (methodical/defmethod t2.pipeline/build :around :default
   "Normally, our Honey SQL 2 `:dialect` is set to `::application-db`; however, Toucan 2 does need to know the actual
   dialect to do special query building magic. When building a Honey SQL form, make sure `:dialect` is bound to the
@@ -364,7 +383,48 @@
   [query-type model parsed-args resolved-query]
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :dialect (mdb.connection/quoting-style (mdb.connection/db-type)))]
-    (next-method query-type model parsed-args resolved-query)))
+    (let [query (next-method query-type model parsed-args resolved-query)
+          query (cond-> query
+                  (= :sqlite (mdb.connection/db-type)) sqlite-current-datetime-forms
+                  (and (= :sqlite (mdb.connection/db-type))
+                       (map? query)
+                       (some #(isa? query-type %)
+                             [:toucan.query-type/insert.* :toucan.query-type/update.* :toucan.query-type/delete.*])
+                       (or (isa? query-type :toucan.result-type/pks)
+                           (isa? query-type :toucan.result-type/instances)))
+                  (assoc :returning (if (isa? query-type :toucan.result-type/pks)
+                                      (t2.model/primary-keys model)
+                                      [:*])))]
+      (if (and (= :sqlite (mdb.connection/db-type)) (map? query) (:for query))
+        (do
+          ;; SQLite app DB transactions use BEGIN IMMEDIATE, reserving the single writer before reading.
+          ;; This is stronger than a row lock, including for callers requesting SKIP LOCKED.
+          (when-not (mdb.connection/in-transaction?)
+            (throw (ex-info "SQLite locking reads require an application database transaction."
+                            {:query-type query-type})))
+          (dissoc query :for))
+        query))))
+
+(methodical/defmethod t2.pipeline/transduce-execute-with-connection :around :default
+  "SQLite getGeneratedKeys exposes only last_insert_rowid, without model column names or bulk keys.
+  Read DML RETURNING's actual result set instead, including deleted instances.
+
+  Buffer SQLite app DB results before model hooks or reducers run. An open SELECT holds a WAL read
+  snapshot: if another connection writes before a consumer starts its own transaction on the reader,
+  even BEGIN IMMEDIATE fails with SQLITE_BUSY_SNAPSHOT. Closing the result set first avoids this.
+  This deliberately makes SQLite app DB reducers eager; it does not affect warehouse streaming."
+  [rf conn query-type model sql-args]
+  (if (sqlite/connection? conn)
+    (let [;; Finish RETURNING too: SQLite cannot open a savepoint with an active write statement,
+          ;; and after-insert/update hooks routinely perform nested transactions.
+          rows (t2.jdbc.query/reduce-jdbc-query ((map t2.realize/realize) conj) [] conn model sql-args
+                                                {:return-keys false})
+          rf (if (and (isa? query-type :toucan.statement-type/DML)
+                      (isa? query-type :toucan.result-type/pks))
+               ((map (t2.model/select-pks-fn model)) rf)
+               rf)]
+      (transduce identity rf rows))
+    (next-method rf conn query-type model sql-args)))
 
 (methodical/defmethod t2.pipeline/build :after [#_query-type :toucan.query-type/delete.*
                                                 #_model      :default
