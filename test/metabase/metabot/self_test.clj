@@ -1357,6 +1357,10 @@
         (are [text] (= answer (call! (reply text)))
           (json/encode answer)
           (fenced (json/encode answer))))
+      (testing "a line break the model left unescaped inside a string doesn't stop the JSON from being used"
+        (are [text] (= {:title "Q2 revenue\nby region"} (call! (reply text)))
+          "{\"title\": \"Q2 revenue\nby region\"}"
+          (fenced "{\"title\": \"Q2 revenue\nby region\"}")))
       (testing "a text reply without JSON matching the schema still fails"
         (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
           "Q2 revenue"
