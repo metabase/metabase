@@ -11,7 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
-   [metabase.util.log :as log]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -60,7 +60,4 @@
            :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]})
         query-result))
     (catch Exception e
-      (log/errorf "Failed to construct slackbot notebook query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-or-api-error e))))

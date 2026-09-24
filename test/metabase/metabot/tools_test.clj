@@ -188,10 +188,10 @@
     (is (= "You don't have permissions to do that."
            (construct-tool-output-for-thrown
             (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "anything else without `:agent-error?` still gets the generic wrapper"
-    (is (= "Failed to construct notebook query: something went sideways"
-           (construct-tool-output-for-thrown
-            (ex-info "something went sideways" {:status-code 400}))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
+                          (construct-tool-output-for-thrown
+                           (ex-info "something went sideways" {}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"
