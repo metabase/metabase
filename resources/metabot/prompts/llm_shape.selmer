@@ -307,7 +307,9 @@ Here are the search results:
 The following sample values show the data format in this field. The actual dataset may contain
 other values following the same pattern:
 
-{{sample_values_table|safe}}
+{{sample_values_table|safe}}{% if sample_values_total %}
+
+This list shows {{sample_values_shown}} of the field's {{sample_values_total}}{% if sample_values_more %}+{% endif %} values. The rest can include the value the user asked for, or another casing or spelling of a listed value. Don't assume a value is missing or swap in the closest listed one; match text case-insensitively.{% endif %}
 {% else %}
 **Sample Values**
 This field hasn't been sampled yet. Continue without samples.

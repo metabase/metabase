@@ -1311,6 +1311,20 @@
         (#'read-resource/dispatch "metabase://table/3/fields/c75/17")
         (is (= ["3" "c75/17"] @calls))))))
 
+(deftest read-table-field-partial-values-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [read-field (fn [table field]
+                       (:output (read-resource/read-resource
+                                 {:uris [(str "metabase://table/" (mt/id table) "/fields/" (mt/id table field))]})))]
+      (testing "a field with more values than the sample says how many it has"
+        (let [output (read-field :people :state)]
+          (is (str/includes? output "This list shows 30 of the field's 49 values."))
+          (is (str/includes? output "match text case-insensitively"))))
+      (testing "a field whose values all fit in the sample doesn't"
+        (let [output (read-field :products :category)]
+          (is (str/includes? output "| Widget |"))
+          (is (not (str/includes? output "This list shows"))))))))
+
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {}

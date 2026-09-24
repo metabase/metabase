@@ -892,15 +892,19 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly.
+   Matches Python FieldValuesMetadata.llm_representation exactly, plus a note on how many values the
+   field has when only some of them are listed.
    Note: Tables are used with |safe in the template, so values must be escaped."
-  [{:keys [field_values statistics]}]
+  [{:keys [field_values field_values_total has_more_values statistics]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
                                {:value "Value"}
                                {:value-fn escape-value}))
+        shown               (count field_values)
+        partial?            (and field_values_total
+                                 (or has_more_values (< shown field_values_total)))
 
         stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
         stats-table (when (seq stats-map)
@@ -911,6 +915,9 @@
     (render-llm-template
      :field_values_metadata
      {:sample_values_table sample-values-table
+      :sample_values_shown shown
+      :sample_values_total (when partial? field_values_total)
+      :sample_values_more  has_more_values
       :stats_table         stats-table})))
 
 (defn field-metadata->xml
