@@ -11,7 +11,6 @@ export type NodeBuilderContextType = {
   readOnly: boolean;
   isMetric: boolean;
   isRunnable: boolean;
-  isShining: boolean;
   sources: SourceItem[];
   databases: Database[];
   isLoadingSources: boolean;

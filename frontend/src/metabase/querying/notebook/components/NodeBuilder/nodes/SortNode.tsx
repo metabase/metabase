@@ -7,7 +7,6 @@ import { QueryColumnPicker } from "metabase/querying/common/components/QueryColu
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { SORT_COLOR } from "../graph";
 import type { SortFlowNode } from "../types";
@@ -124,7 +123,6 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
         id="out"
         isConnectable={false}
       />
-      <Shine />
       <NodeHeader
         icon="sort"
         title={t`Sort`}

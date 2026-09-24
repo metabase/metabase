@@ -11,7 +11,6 @@ import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { EXPRESSION_COLOR } from "../graph";
 import type { ExpressionFlowNode } from "../types";
@@ -140,7 +139,6 @@ export const ExpressionNode = memo(function ExpressionNode({
         id="out"
         isConnectable={!readOnly}
       />
-      <Shine />
       <NodeHeader
         icon="add_data"
         title={

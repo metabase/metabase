@@ -10,7 +10,6 @@ import { t } from "ttag";
 import { Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { Shine } from "../components/Shine";
 import { SourceList } from "../components/SourceList";
 import { useNodeBuilderContext } from "../context";
 import { SOURCE_COLOR, STAGE_INDEX, TABLE_COLOR } from "../graph";
@@ -148,7 +147,6 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
           isConnectable={!readOnly}
         />
       )}
-      <Shine />
       <NodeHeader
         icon="table2"
         title={table ? tableName : t`Table`}

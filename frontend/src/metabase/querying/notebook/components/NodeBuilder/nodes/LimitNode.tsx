@@ -11,7 +11,6 @@ import { t } from "ttag";
 
 import { TextInput } from "metabase/ui";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { LIMIT_COLOR } from "../graph";
 import type { LimitFlowNode } from "../types";
@@ -90,7 +89,6 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
         id="out"
         isConnectable={false}
       />
-      <Shine />
       <NodeHeader
         icon="list"
         title={t`Limit`}

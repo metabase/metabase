@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -37,11 +37,4 @@ export function useQuestionSync({
       updateQuestion(question.setQuery(compiled.query));
     }
   }, [compiled, question, updateQuestion, isEnabled]);
-
-  // For queries pushed by other means, so the next compile does not push them again.
-  const markSynced = useCallback((query: Lib.Query) => {
-    lastSyncedRef.current = JSON.stringify(Lib.toLegacyQuery(query));
-  }, []);
-
-  return { markSynced };
 }

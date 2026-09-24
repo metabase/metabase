@@ -8,7 +8,6 @@ import { QueryColumnPicker } from "metabase/querying/common/components/QueryColu
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { SUMMARIZE_COLOR } from "../graph";
 import type { SummarizeFlowNode } from "../types";
@@ -193,7 +192,6 @@ export const SummarizeNode = memo(function SummarizeNode({
         id="out"
         isConnectable={false}
       />
-      <Shine />
       <NodeHeader
         icon="sum"
         title={t`Summarize`}

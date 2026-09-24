@@ -9,7 +9,6 @@
   --builder-limit: hsla(205, 8%, 43%, 1);
   --builder-result: var(--mb-color-accent1-dark);
   /* Prettify's pink, shared by its icon and the fireworks. */
-  --builder-sparkle: hsla(334, 80%, 68%, 1);
 
   position: relative;
   display: flex;
@@ -244,43 +243,6 @@
   visibility: hidden;
 }
 
-.vibes {
-  transition: transform 80ms ease;
-}
-
-.vibes:active {
-  transform: scale(0.95);
-}
-
-.vibesPressed .sparkle {
-  animation: sparkle-pop 450ms ease-out;
-}
-
-@keyframes sparkle-pop {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-
-  40% {
-    transform: scale(1.5) rotate(20deg);
-  }
-
-  100% {
-    transform: scale(1) rotate(0deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vibesPressed .sparkle {
-    animation: none;
-  }
-}
-
-/* The palette's pink (base scale "flamingo", step 40) is not exposed as a token yet. */
-.sparkle {
-  color: var(--builder-sparkle);
-}
-
 /* A centered React Flow panel only gets half the canvas to shrink into; size it to its content instead. */
 .dockPanel {
   width: max-content;
@@ -299,10 +261,6 @@
   border: 1px solid var(--mb-color-border-neutral);
   background: var(--mb-color-background_page-primary);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-.dockLabel {
-  white-space: nowrap;
 }
 
 .dockChips {

@@ -13,7 +13,7 @@ import {
   useNodesState,
 } from "@xyflow/react";
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
@@ -25,8 +25,6 @@ import type { DatabaseId } from "metabase-types/api";
 import { useRunVisualization } from "../Notebook/use-run-visualization";
 
 import S from "./NodeBuilder.module.css";
-import { Fireworks } from "./components/Fireworks";
-import { LoadMbqlModal } from "./components/LoadMbqlModal";
 import { NodeDock } from "./components/NodeDock";
 import { Toolbar } from "./components/Toolbar";
 import { WireEdge } from "./components/WireEdge";
@@ -49,7 +47,6 @@ import { useCanvasEditing } from "./hooks/use-canvas-editing";
 import { useCompiledGraph } from "./hooks/use-compiled-graph";
 import { useScheduledFitView } from "./hooks/use-fit-view";
 import { useHistory } from "./hooks/use-history";
-import { useLoadMbql } from "./hooks/use-load-mbql";
 import { useNodeDrop } from "./hooks/use-node-drop";
 import { useQuestionSync } from "./hooks/use-question-sync";
 import { useSources } from "./hooks/use-sources";
@@ -80,10 +77,6 @@ const EDGE_TYPES = { wire: WireEdge };
 const PRO_OPTIONS = { hideAttribution: true };
 const CONNECTION_LINE_STYLE = { strokeWidth: 2.5, strokeDasharray: "6 4" };
 const DELETE_KEYS = ["Backspace", "Delete"];
-// Sweep duration plus the trailing band's delay, see nodes.module.css.
-const SHINE_DURATION_MS = 1100;
-// The shine runs on every click; the fireworks stay rare.
-const FIREWORKS_COOLDOWN_MS = 20_000;
 
 export type NodeBuilderProps = {
   question: Question;
@@ -139,7 +132,7 @@ function NodeBuilderCanvas({
     compiled,
     compiledKeyRef,
   });
-  const { markSynced } = useQuestionSync({
+  useQuestionSync({
     compiled,
     question,
     updateQuestion,
@@ -175,16 +168,6 @@ function NodeBuilderCanvas({
     }
   }, [question, seedFrom]);
 
-  // Replaces the canvas with the given query and pushes it to the question.
-  const reseedFrom = useCallback(
-    (query: Lib.Query) => {
-      seedFrom(query);
-      markSynced(query);
-      updateQuestion(question.setQuery(query));
-    },
-    [seedFrom, markSynced, updateQuestion, question],
-  );
-
   const blocks = useBlockEditing({ nodesRef, setNodes });
   const canvas = useCanvasEditing({
     nodesRef,
@@ -199,8 +182,6 @@ function NodeBuilderCanvas({
     setNodes,
     addTailBlock: canvas.addTailBlock,
   });
-  const loadMbql = useLoadMbql({ question, onLoaded: reseedFrom });
-  const [isLoadMbqlOpen, setIsLoadMbqlOpen] = useState(false);
 
   const { visualizeQuestion } = useRunVisualization({
     question,
@@ -216,17 +197,7 @@ function NodeBuilderCanvas({
     [visualizeRef],
   );
 
-  const [isShining, setIsShining] = useState(false);
-  const [fireworksKey, setFireworksKey] = useState(0);
-  const lastFireworksAtRef = useRef(0);
-  const handleVibes = useCallback(() => {
-    setIsShining(true);
-    window.setTimeout(() => setIsShining(false), SHINE_DURATION_MS);
-    const now = Date.now();
-    if (now - lastFireworksAtRef.current >= FIREWORKS_COOLDOWN_MS) {
-      lastFireworksAtRef.current = now;
-      setFireworksKey((key) => key + 1);
-    }
+  const handlePrettify = useCallback(() => {
     setNodes((prevNodes) => layoutNodes(prevNodes, edgesRef.current));
     scheduleFitView();
   }, [edgesRef, setNodes, scheduleFitView]);
@@ -265,7 +236,6 @@ function NodeBuilderCanvas({
       readOnly,
       isMetric,
       isRunnable,
-      isShining,
       sources,
       databases,
       isLoadingSources,
@@ -289,7 +259,6 @@ function NodeBuilderCanvas({
       readOnly,
       isMetric,
       isRunnable,
-      isShining,
       sources,
       databases,
       isLoadingSources,
@@ -351,11 +320,10 @@ function NodeBuilderCanvas({
                 areAllCollapsed={areAllCollapsed}
                 onUndo={history.undo}
                 onRedo={history.redo}
-                onLoadMbql={() => setIsLoadMbqlOpen(true)}
                 onToggleCollapseAll={() =>
                   blocks.setAllCollapsed(!areAllCollapsed)
                 }
-                onVibes={handleVibes}
+                onPrettify={handlePrettify}
               />
             </Panel>
             {!readOnly && (
@@ -364,13 +332,7 @@ function NodeBuilderCanvas({
               </Panel>
             )}
           </ReactFlow>
-          <Fireworks burstKey={fireworksKey} />
         </div>
-        <LoadMbqlModal
-          opened={isLoadMbqlOpen}
-          onClose={() => setIsLoadMbqlOpen(false)}
-          onSubmit={loadMbql}
-        />
       </div>
     </NodeBuilderContext.Provider>
   );

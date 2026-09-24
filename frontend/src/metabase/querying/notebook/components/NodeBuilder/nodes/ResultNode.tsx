@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { Button, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { RESULT_COLOR, getCanvasColumnIcon } from "../graph";
 import type { ResultFlowNode } from "../types";
@@ -70,7 +69,6 @@ export const ResultNode = memo(function ResultNode({
         id="in"
         isConnectable={!readOnly}
       />
-      <Shine />
       <NodeHeader
         icon="table"
         title={t`Result`}

@@ -1,12 +1,9 @@
 import cx from "classnames";
-import { useState } from "react";
 import { t } from "ttag";
 
 import { Button, Group, Icon } from "metabase/ui";
 
 import S from "../NodeBuilder.module.css";
-
-import { Shine } from "./Shine";
 
 type ToolbarProps = {
   readOnly: boolean;
@@ -15,9 +12,8 @@ type ToolbarProps = {
   areAllCollapsed: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  onLoadMbql: () => void;
   onToggleCollapseAll: () => void;
-  onVibes: () => void;
+  onPrettify: () => void;
 };
 
 // The buttons in the canvas's bottom-right corner.
@@ -28,15 +24,11 @@ export function Toolbar({
   areAllCollapsed,
   onUndo,
   onRedo,
-  onLoadMbql,
   onToggleCollapseAll,
-  onVibes,
+  onPrettify,
 }: ToolbarProps) {
-  const [isVibesPressed, setIsVibesPressed] = useState(false);
-
   return (
     <div className={S.toolbar}>
-      <Shine />
       <Group gap="xs" wrap="nowrap">
         {!readOnly && (
           <>
@@ -58,15 +50,6 @@ export function Toolbar({
               leftSection={<Icon name="redo" size={12} />}
               onClick={onRedo}
             />
-            <Button
-              size="xs"
-              variant="default"
-              className={S.toolbarButton}
-              leftSection={<Icon name="clipboard" size={12} />}
-              onClick={onLoadMbql}
-            >
-              {t`Load MBQL`}
-            </Button>
           </>
         )}
         <Button
@@ -96,17 +79,11 @@ export function Toolbar({
         <Button
           size="xs"
           variant="default"
-          className={cx(S.toolbarButton, S.vibes, {
-            [S.vibesPressed]: isVibesPressed,
-          })}
-          leftSection={<Icon name="sparkles" size={16} className={S.sparkle} />}
-          onClick={() => {
-            setIsVibesPressed(true);
-            onVibes();
-          }}
-          onAnimationEnd={() => setIsVibesPressed(false)}
+          className={S.toolbarButton}
+          leftSection={<Icon name="grid" size={12} />}
+          onClick={onPrettify}
         >
-          {t`Vibes`}
+          {t`Prettify`}
         </Button>
       </Group>
     </div>

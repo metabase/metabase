@@ -7,7 +7,6 @@ import { FilterPicker } from "metabase/querying/filters/components/FilterPicker"
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { FILTER_COLOR } from "../graph";
 import type { FilterFlowNode } from "../types";
@@ -105,7 +104,6 @@ export const FilterNode = memo(function FilterNode({
         id="out"
         isConnectable={!readOnly}
       />
-      <Shine />
       <NodeHeader
         icon="filter"
         title={data.afterSummarize ? t`Filter results` : t`Filter`}

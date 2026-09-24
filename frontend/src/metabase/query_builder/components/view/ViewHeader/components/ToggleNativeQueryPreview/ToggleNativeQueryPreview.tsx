@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { LiveDot } from "metabase/querying/notebook/components/NodeBuilder/components/LiveDot";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
@@ -67,7 +66,6 @@ export const ToggleNativeQueryPreview = ({
           variant="subtle"
           size="compact-sm"
           leftSection={<Icon name="code_block" />}
-          rightSection={<LiveDot />}
           aria-label={buttonText}
           aria-pressed={isShowingNotebookNativePreview}
           onClick={handleClick}

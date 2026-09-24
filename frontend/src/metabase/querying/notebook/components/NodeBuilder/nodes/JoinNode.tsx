@@ -8,7 +8,6 @@ import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { getJoinStrategyIcon } from "../../JoinStep/utils";
-import { Shine } from "../components/Shine";
 import { useNodeBuilderContext } from "../context";
 import { JOIN_COLOR, STAGE_INDEX } from "../graph";
 import type { JoinFlowNode } from "../types";
@@ -226,7 +225,6 @@ export const JoinNode = memo(function JoinNode({ id, data }: JoinNodeProps) {
         id="out"
         isConnectable={!readOnly}
       />
-      <Shine />
       <NodeHeader
         title={titleRow}
         subtitle={subtitle}

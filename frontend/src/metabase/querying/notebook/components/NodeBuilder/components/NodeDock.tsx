@@ -2,13 +2,11 @@ import cx from "classnames";
 import type { DragEvent } from "react";
 import { t } from "ttag";
 
-import { Icon, Text } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "../NodeBuilder.module.css";
 import type { DockNodeType } from "../types";
-
-import { Shine } from "./Shine";
 
 export const NODE_TYPE_DRAG_TYPE = "application/x-metabase-node-type";
 
@@ -46,7 +44,6 @@ export function NodeDock({ disabledTypes = [] }: NodeDockProps) {
 
   return (
     <div className={S.dock} data-testid="node-builder-dock">
-      <Shine />
       <div className={S.dockChips}>
         {CHIPS.map(({ type, icon, className }) => {
           const isDisabled = disabledTypes.includes(type);
@@ -68,9 +65,6 @@ export function NodeDock({ disabledTypes = [] }: NodeDockProps) {
           );
         })}
       </div>
-      <Text fz="xs" fw={600} c="text-secondary" className={S.dockLabel}>
-        {t`Drag a block onto the canvas`}
-      </Text>
     </div>
   );
 }
