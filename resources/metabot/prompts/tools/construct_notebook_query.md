@@ -64,10 +64,17 @@ Field options (all optional):
 
 ## Per-clause examples
 
-Filter (comparison + boolean combination):
+Filters — one entry per condition; entries are ANDed together:
 
 ```json
-"filters": [["and", {},
+"filters": [[">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
+            ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]
+```
+
+Use `and` / `or` only inside a single entry when the condition needs OR logic, e.g. "paid, or over 100":
+
+```json
+"filters": [["or", {},
   [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
   ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
 ```
@@ -277,6 +284,10 @@ Shape rules:
 - **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
 
+Editing an existing query (the user asks to change, add, or remove part of the question they're viewing):
+- **Start from the query shown in context and change only what the user asked for.** Copy every other clause unchanged — same filters, breakouts, aggregations, and order.
+- **Keep each existing filter as its own `filters:` entry.** To change one filter, replace just that entry. Never merge it with another filter into an `and` — the notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
+
 Anti-hallucination:
 - **Don't subtract dates** with `-`. Use `["datetime-diff", {}, <left>, <right>, "<unit>"]` for the integer count of units between two temporal values.
 - **For multi-value categorical filters, use `in` / `not-in`**, not `=` with a list literal. The tool rewrites the list form, but write canonical: `["in", {}, <field>, "a", "b"]`.
@@ -320,7 +331,7 @@ Anti-hallucination:
 ### Filters
 
 Boolean:
-- `["and", {}, <pred>, <pred>, ...]` — min 2 args.
+- `["and", {}, <pred>, <pred>, ...]` — min 2 args. Only inside a single filter entry (e.g. nested in `or`); for plain "A and B" write two separate `filters:` entries.
 - `["or", {}, <pred>, <pred>, ...]` — min 2 args.
 - `["not", {}, <pred>]`
 

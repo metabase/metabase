@@ -975,6 +975,40 @@
     (&recur (assoc &match "fields" [single-clause]))))
 
 ;;; ============================================================
+;;; Pass 1.95 -- split top-level `and` filters into separate `filters:` entries.
+;;;
+;;; A stage's `filters:` entries are already implicitly ANDed, so
+;;; `filters: [["and", {}, A, B]]` means the same as `filters: [A, B]`. The two differ in the
+;;; notebook editor, though: a compound `and` is not a standard filter, so it renders as a single
+;;; custom expression holding both conditions. When the LLM rewrites a query to change one
+;;; filter, it tends to fold that filter and an unrelated sibling into one `and`, and the user
+;;; sees their filters merged into a custom expression (BOT-1446).
+;;;
+;;; We flatten a top-level `and` (and any `and` directly nested inside it) into its operands.
+;;; `and` nested under `or` / `not` is left alone - that's real boolean logic. Idempotent: after
+;;; flattening, no top-level entry is an `and`.
+;;; ============================================================
+
+(defn- and-filter-clause?
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (= "and" (nth clause 0))
+       (map? (nth clause 1))))
+
+(defn- and-filter-operands
+  [clause]
+  (if (and-filter-clause? clause)
+    (mapcat and-filter-operands (drop 2 clause))
+    [clause]))
+
+(defn- split-top-level-and-filters*
+  [form]
+  (match/replace form
+    {"filters" (filters :guard (and (sequential? filters) (some and-filter-clause? filters)))}
+    (&recur (assoc &match "filters" (into [] (mapcat and-filter-operands) filters)))))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -2469,6 +2503,7 @@
       swap-between-bounds*
       normalise-case-clauses*
       normalise-fields-shape*
+      split-top-level-and-filters*
       normalize-expressions-shape*
       ensure-lib-types*))
 
@@ -2493,6 +2528,8 @@
        join slip `\"mbql.join/join\"` → `\"mbql/join\"`);
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
+    1.95. split a top-level `and` in `filters:` into separate entries, so the notebook editor
+       shows them as individual filters rather than one merged custom expression;
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
