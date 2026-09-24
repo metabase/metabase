@@ -94,8 +94,7 @@
   (let [{action-type :type, action-id :id} action]
     (actions/check-actions-enabled! action)
     (let [model (actions.db/card (:model_id action))
-          ;; the query executes against its own :database; fall back to the derived column if absent
-          action-db-id (or (:database (:dataset_query action)) (:database_id action))]
+          action-db-id (action/query->database-id (:dataset_query action) (:database_id action))]
       (when (and (= action-type :query) (not= (:database_id model) action-db-id))
         ;; the above check checks the db of the model. We check the db of the query action here
         (actions/check-actions-enabled-for-database!
