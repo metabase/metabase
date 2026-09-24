@@ -60,7 +60,7 @@
       (is (= "construct-notebook-query-core" (name (:id s))))
       (is (string? (:title s)))
       (is (str/includes? (:description s) "construct_notebook_query"))
-      (is (= ["construct_notebook_query"] (:tools s)))
+      (is (= ["construct_notebook_query" "document_construct_model_chart"] (:tools s)))
       (is (str/includes? (:body s) "Universal clause shape"))
       ;; the YAML frontmatter delimiter must not leak into the body
       (is (not (str/starts-with? (:body s) "---"))))))

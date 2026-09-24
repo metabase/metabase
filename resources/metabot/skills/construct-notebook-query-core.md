@@ -2,7 +2,7 @@
 id: construct-notebook-query-core
 title: Construct notebook query — core
 description: Building or editing a notebook (MBQL) query with construct_notebook_query — load before your first query so you get the clause shape, field references, and the rules/anti-patterns right.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 60
 ---
 # Construct Query Reference — Core
@@ -18,6 +18,8 @@ Return:
 - `visualization`: optional `{"chart_type": "bar"}` (sibling of `query`, never embedded inside it).
 
 > The Slackbot variant of this tool has a different contract: `reasoning` is **required**, `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
+
+> `document_construct_model_chart` takes the same `query`, with `name` instead of `title` and a required `viz_settings` instead of `visualization`.
 
 ## Minimal example — count of orders by month
 
