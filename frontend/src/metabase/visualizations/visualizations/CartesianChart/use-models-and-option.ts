@@ -35,16 +35,17 @@ export function useModelsAndOption(
     timelineEvents,
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    isFullscreen,
-    gridSize,
+    isDashboard,
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
+  containerSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
-    isFullscreen,
+    isDashboard,
+    containerSize,
   });
 
   const seriesToRender = useMemo(
@@ -84,7 +85,6 @@ export function useModelsAndOption(
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
-      gridSize,
     );
 
     if (model.dimensionModel.column) {
@@ -100,7 +100,6 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
-    gridSize,
     tc,
   ]);
 

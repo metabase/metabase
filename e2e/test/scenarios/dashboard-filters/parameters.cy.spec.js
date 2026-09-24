@@ -1955,7 +1955,11 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.getDashboardCard(0).within(() => {
         cy.findByText("Count").should("exist");
-        cy.findAllByText("4,000").filter(":visible").should("have.length", 2); // y-axis label + filter
+        H.filterWidget()
+          .filter(":visible")
+          .findByText("4,000")
+          .should("be.visible");
+        H.echartsContainer().findByText("4.0k").should("be.visible");
         cy.findByText("Category").should("not.exist");
 
         cy.findByText("Doohickey").should("be.visible");

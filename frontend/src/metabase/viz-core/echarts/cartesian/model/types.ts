@@ -187,12 +187,14 @@ export type YAxisModel = {
   formatter: AxisFormatter;
   formatGoal: AxisFormatter;
   splitNumber?: number;
+  hasResponsiveTicks?: boolean;
   isNormalized?: boolean;
 };
 
 export type TrendLinesModel = {
   dataset: ChartDataset;
   seriesModels: TrendLineSeriesModel[];
+  extents: SeriesExtents;
 };
 
 export type StackDisplay = "bar" | "area";

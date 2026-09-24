@@ -180,8 +180,8 @@ describe("scenarios > visualizations > waterfall", () => {
         });
 
         // y-axis labels (some)
-        ["0", "300,000", "900,000", "1,800,000"].forEach((label) => {
-          cy.findByText(label).should("exist");
+        ["0", "450.0k", "900.0k", "1.8M"].forEach((label) => {
+          cy.findByText(label).should("be.visible");
         });
       });
     }

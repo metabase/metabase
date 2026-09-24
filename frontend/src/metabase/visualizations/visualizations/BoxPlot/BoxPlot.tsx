@@ -79,7 +79,11 @@ function BoxPlotInner({
     [originalSettings, height, width, autoAdjustSettings],
   );
 
-  const renderingContext = useBrowserRenderingContext({ fontFamily });
+  const renderingContext = useBrowserRenderingContext({
+    fontFamily,
+    isDashboard,
+    containerSize: { width, height },
+  });
 
   const showWarning = useCallback(
     (warning: string) => onRender?.({ warnings: [warning] }),
@@ -93,8 +97,15 @@ function BoxPlotInner({
         settings,
         Array.from(hiddenSeries),
         showWarning,
+        renderingContext.cartesianSize,
       ),
-    [rawSeriesWithRemappings, settings, hiddenSeries, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSeries,
+      showWarning,
+      renderingContext.cartesianSize,
+    ],
   );
 
   const description = settings["card.description"];
