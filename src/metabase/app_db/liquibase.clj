@@ -8,6 +8,7 @@
    [metabase.app-db.db :as app-db.db]
    [metabase.app-db.liquibase.h2 :as liquibase.h2]
    [metabase.app-db.liquibase.mysql :as liquibase.mysql]
+   [metabase.app-db.liquibase.sqlite :as liquibase.sqlite]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -86,8 +87,14 @@
 
 (defn- decide-liquibase-file
   [^Connection conn ^Database database]
-  (if (fresh-install? conn database)
+  (cond
+    (= "sqlite" (.getShortName database))
+    "liquibase_sqlite.yaml"
+
+    (fresh-install? conn database)
     changelog-file
+
+    :else
     (let [latest-migration (->> (jdbc/query {:connection conn}
                                             [(format "select id from %s order by dateexecuted desc limit 1"
                                                      (.getDatabaseChangeLogTableName database))])
@@ -127,7 +134,9 @@
             ^String (decide-liquibase-file conn database)
             (ClassLoaderResourceAccessor. (classloader/the-classloader))
             database)
-    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)))
+    (.setObjectQuotingStrategy (.getDatabaseChangeLog <>) ObjectQuotingStrategy/QUOTE_ALL_OBJECTS)
+    (when (= "sqlite" (.getShortName database))
+      (liquibase.sqlite/remove-baselined-changesets! (.getDatabaseChangeLog <>)))))
 
 (mu/defn do-with-liquibase
   "Impl for [[with-liquibase-macro]]."
@@ -195,10 +204,17 @@
   skip creating and releasing migration locks, which is both slightly dangerous and a waste of time when we won't be
   using them.
 
-  IMPORTANT: this function takes `data-source` but not `liquibase` because `.listUnrunChangeSets` is buggy. See #38257."
-  [^DataSource data-source]
-  (with-liquibase [liquibase data-source]
-    (.listUnrunChangeSets liquibase nil (LabelExpression.))))
+  Existing backends use a fresh Liquibase instance because `.listUnrunChangeSets` is buggy. See #38257.
+  During migration, pass the active `liquibase` as a second argument so SQLite can reuse its writer connection."
+  ([^DataSource data-source]
+   (with-liquibase [liquibase data-source]
+     (.listUnrunChangeSets liquibase nil (LabelExpression.))))
+  ([^DataSource data-source ^Liquibase liquibase]
+   ;; SQLite has a single writer. The migration connection may already own its writer reservation,
+   ;; so opening another connection to check/create Liquibase tables would deadlock against ourselves.
+   (if (= "sqlite" (.getShortName (.getDatabase liquibase)))
+     (.listUnrunChangeSets liquibase nil (LabelExpression.))
+     (unrun-migrations data-source))))
 
 (defn- migration-lock-exists?
   "Is a migration lock in place for `liquibase`?"
@@ -362,13 +378,13 @@
   "Run any unrun `liquibase` migrations, if needed."
   [^Liquibase liquibase ^DataSource data-source]
   (log/info "Checking if Database has unrun migrations...")
-  (if (seq (unrun-migrations data-source))
+  (if (seq (unrun-migrations data-source liquibase))
     (do
       (log/info "Database has unrun migrations. Checking if migration lock is taken...")
       (with-scope-locked liquibase
         ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
         ;; sure something still needs to be done...
-        (let [to-run-migrations      (unrun-migrations data-source)
+        (let [to-run-migrations      (unrun-migrations data-source liquibase)
               unrun-migrations-count (count to-run-migrations)]
           (if (pos? unrun-migrations-count)
             (let [^Contexts contexts nil
@@ -415,7 +431,7 @@
   ;; This implicitly clears the lock, so it needs to execute first.
   (.clearCheckSums liquibase)
   (with-scope-locked liquibase
-    (when (seq (unrun-migrations data-source))
+    (when (seq (unrun-migrations data-source liquibase))
       (let [change-log     (.getDatabaseChangeLog liquibase)
             fail-on-errors (mapv (fn [^ChangeSet change-set] [change-set (.getFailOnError change-set)])
                                  (.getChangeSets change-log))
@@ -542,6 +558,10 @@
      (throw (IllegalArgumentException.
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
+   (when (and (= "sqlite" (.getShortName (.getDatabase liquibase)))
+              (< target-version liquibase.sqlite/baseline-major-version))
+     (throw (ex-info "SQLite application databases cannot be downgraded below the v65 baseline."
+                     {:target-version target-version :minimum-version liquibase.sqlite/baseline-major-version})))
    (with-scope-locked liquibase
      ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
      ;; to be considered)

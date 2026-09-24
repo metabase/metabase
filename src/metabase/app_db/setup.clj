@@ -52,7 +52,7 @@
   "If we are not doing auto migrations then print out migration SQL for user to run manually. Then throw an exception to
   short circuit the setup process and make it clear we can't proceed."
   [liquibase data-source]
-  (when (seq (liquibase/unrun-migrations data-source))
+  (when (seq (liquibase/unrun-migrations data-source liquibase))
     (log/info (str "Database Upgrade Required"
                    "\n\n"
                    "NOTICE: Your database requires updates to work with this version of Metabase."
