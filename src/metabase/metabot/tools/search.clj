@@ -592,24 +592,20 @@
   (if-let [invalid (invalid-entity-types entity_types allowed-types)]
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
                   ". Allowed types: " (str/join ", " allowed-types) ".")}
-    (try
-      (let [results (search (merge {:semantic-queries semantic_queries
-                                    :term-queries    keyword_queries
-                                    :entity-types    (or (seq entity_types) (vec allowed-types))
-                                    :metabot-id      shared/*metabot-id*
-                                    :limit           (min max-search-limit
-                                                          (or limit default-search-limit))}
-                                   search-opts))]
-        {:output (format-search-output results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}
-         :data-parts [(streaming/search-results-part
-                       {:total_count (count results)
-                        :results (mapv search-result->item results)})]})
-      (catch Exception e
-        (log/error (str "Error in " label ": " (ex-message e)))
-        {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}))))
+    (let [results (search (merge {:semantic-queries semantic_queries
+                                  :term-queries    keyword_queries
+                                  :entity-types    (or (seq entity_types) (vec allowed-types))
+                                  :metabot-id      shared/*metabot-id*
+                                  :limit           (min max-search-limit
+                                                        (or limit default-search-limit))}
+                                 search-opts))]
+      {:output (format-search-output results)
+       :structured-output {:result-type :search
+                           :data results
+                           :total_count (count results)}
+       :data-parts [(streaming/search-results-part
+                     {:total_count (count results)
+                      :results (mapv search-result->item results)})]})))
 
 (def ^:private semantic-queries-schema
   [:sequential {:error/message "must be an array of strings"}

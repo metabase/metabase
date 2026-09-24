@@ -492,6 +492,12 @@
           (is (thrown? Exception
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
+(deftest search-failure-throws-test
+  (testing "an exception from search propagates out of the tool"
+    (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
+                            (search/search-tool {:keyword_queries ["x"]}))))))
+
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
     (doseq [[field value message]
