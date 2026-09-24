@@ -35,7 +35,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (com.fasterxml.jackson.core JsonFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -580,6 +582,17 @@
     minimum (conj [:>= minimum])
     maximum (conj [:<= maximum])))
 
+(defn- json-document
+  "Decodes `s` with keyword keys if it is one JSON value with only whitespace around it, else returns nil."
+  [^String s]
+  (try
+    (with-open [parser (.createParser (JsonFactory.) s)]
+      (.nextToken parser)
+      (.skipChildren parser)
+      (when (nil? (.nextToken parser))
+        (json/decode+kw s)))
+    (catch Exception _ nil)))
+
 (defn- structured-output-in-text
   "JSON matching `json-schema` in the text reply of a model that didn't call the structured-output tool.
   Tries the whole reply, then each fenced code block in it. Nil when none of them matches."
@@ -587,7 +600,7 @@
   (let [text   (str/join (keep #(when (= :text (:type %)) (:text %)) parts))
         schema (json-schema->malli json-schema)]
     (some (fn [candidate]
-            (let [value (try (json/decode+kw candidate) (catch Exception _ nil))]
+            (let [value (json-document candidate)]
               (when (mr/validate schema value)
                 value)))
           (cons text (map second (re-seq #"(?is)```(?:json)?\s*(.*?)```" text))))))

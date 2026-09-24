@@ -1346,15 +1346,17 @@
                   :additionalProperties false}
           answer {:title "Q2 revenue" :tags ["revenue"] :score 0.5}
           reply  (fn [text] {:type :text :id "t1" :text text})
+          fenced (fn [json-text] (str "Here you go:\n```json\n" json-text "\n```"))
           call!  (fn [& parts]
-                   (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response
-                                                                                  (cons {:type :start :id "m1"} parts)))]
+                   (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                               (constantly (test-util/mock-llm-response
+                                                            (cons {:type :start :id "m1"} parts)))]
                      (self/call-llm-structured "openrouter/test-model" [{:role "user" :content "test"}]
                                                schema 0.3 1024 {:tag "metabot_agent"})))]
       (testing "a model that answers in text instead of calling the tool has its JSON used"
         (are [text] (= answer (call! (reply text)))
           (json/encode answer)
-          (str "Here you go:\n```json\n" (json/encode answer) "\n```")))
+          (fenced (json/encode answer))))
       (testing "a text reply without JSON matching the schema still fails"
         (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
           "Q2 revenue"
@@ -1364,10 +1366,19 @@
           (json/encode {:title 42})
           (json/encode {:title "Q2 revenue" :tags [1]})
           (json/encode {:title "Q2 revenue" :score 2})))
+      (testing "JSON followed by anything but whitespace is not used, in the whole reply or in a fence"
+        (are [text] (thrown-with-msg? clojure.lang.ExceptionInfo #"no tool call" (call! (reply text)))
+          (str (json/encode answer) " Hope that helps!")
+          (str (json/encode answer) (json/encode {:title "Other"}))
+          (fenced (str (json/encode answer) " Hope that helps!"))
+          (fenced (str (json/encode answer) (json/encode {:title "Other"})))))
       (testing "a tool call is used as is, whatever text comes with it"
         (is (= {:title "From the tool"}
                (call! (reply (json/encode answer))
-                      {:type :tool-input :id "c1" :function "structured_output" :arguments {:title "From the tool"}})))))))
+                      {:type      :tool-input
+                       :id        "c1"
+                       :function  "structured_output"
+                       :arguments {:title "From the tool"}})))))))
 
 (deftest call-llm-does-not-replay-after-partial-emission-test
   (llm.tu/with-default-connections
