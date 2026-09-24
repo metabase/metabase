@@ -203,35 +203,53 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
   });
 
   it("filters on one of two result columns with the same name", () => {
-    const staticQuery = defineQuery({
-      source: tableSource,
-      aggregations: [aggregations.count()],
-      breakouts: [breakout(productsIdField), breakout(peopleIdField)],
-    });
-    const dynamicQuery = { filters: [filter(peopleIdField, "<", 10)] };
+    // Generated joined fields are metric dimensions, and the skill requires
+    // their metric in the same query. The metric is what loads the metadata of
+    // the tables its foreign keys point to.
+    createQuestion({
+      name: "Orders count",
+      type: "metric",
+      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
+    }).then(({ body: metric }) => {
+      const ordersCount = {
+        type: "metric" as const,
+        id: metric.id,
+        sourceTableId: ORDERS_ID,
+        mappedTableIds: [ORDERS_ID],
+        columns: [{ name: "count", jsType: "number" as const }],
+      };
+      const staticQuery = defineQuery({
+        source: tableSource,
+        aggregations: [ordersCount],
+        breakouts: [breakout(productsIdField), breakout(peopleIdField)],
+      });
+      const dynamicQuery = { filters: [filter(peopleIdField, "<", 10)] };
 
-    expectRuntimeClauses({
-      cardQuery: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
-          ["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }],
-        ],
-      },
-      useQueryStates: (cardId) => ({
-        fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
-        fromCard: useMetabaseQuery(
-          asCardQuery<typeof staticQuery>(cardId),
-          dynamicQuery,
-        ),
-      }),
-      check: ({ rawRows }) => {
-        const outside = rawRows.find(([, peopleId]) => Number(peopleId) >= 10);
-        return outside
-          ? `row with people ID >= 10: ${JSON.stringify(outside)}`
-          : null;
-      },
+      expectRuntimeClauses({
+        cardQuery: {
+          "source-table": ORDERS_ID,
+          aggregation: [["metric", metric.id]],
+          breakout: [
+            ["field", PRODUCTS.ID, { "source-field": ORDERS.PRODUCT_ID }],
+            ["field", PEOPLE.ID, { "source-field": ORDERS.USER_ID }],
+          ],
+        },
+        useQueryStates: (cardId) => ({
+          fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
+          fromCard: useMetabaseQuery(
+            asCardQuery<typeof staticQuery>(cardId),
+            dynamicQuery,
+          ),
+        }),
+        check: ({ rawRows }) => {
+          const outside = rawRows.find(
+            ([, peopleId]) => Number(peopleId) >= 10,
+          );
+          return outside
+            ? `row with people ID >= 10: ${JSON.stringify(outside)}`
+            : null;
+        },
+      });
     });
   });
 
