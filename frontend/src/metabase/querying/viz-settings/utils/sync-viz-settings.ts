@@ -56,16 +56,28 @@ export function syncVizSettingsWithSeries(
 
   const newColumns = getSeriesColumns(newSingleSeries);
   const oldColumns = getSeriesColumns(oldSingleSeries);
-  return syncVizSettings(settings, newColumns, oldColumns);
+  return syncVizSettings(settings, newColumns, oldColumns, {
+    placeNewColumnsInQueryOrder: true,
+  });
 }
+
+export type SyncVizSettingsOpts = {
+  placeNewColumnsInQueryOrder?: boolean;
+};
 
 export function syncVizSettings(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
+  options: SyncVizSettingsOpts = {},
 ): VisualizationSettings {
   let nextSettings = settings;
-  nextSettings = syncTableColumns(nextSettings, newColumns, oldColumns);
+  nextSettings = syncTableColumns(
+    nextSettings,
+    newColumns,
+    oldColumns,
+    options,
+  );
   nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
   nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
   nextSettings = syncPivotColumnSplit(nextSettings, newColumns, oldColumns);
@@ -110,6 +122,7 @@ type SyncColumnsOpts<T> = {
   setColumnName: (setting: T, newName: string) => T;
   createSetting: (column: ColumnInfo) => T;
   shouldCreateSetting?: (column: ColumnInfo) => boolean | undefined;
+  placeNewColumnsInQueryOrder?: boolean;
 };
 
 function syncColumns<T>({
@@ -120,6 +133,7 @@ function syncColumns<T>({
   setColumnName,
   createSetting,
   shouldCreateSetting = () => false,
+  placeNewColumnsInQueryOrder = false,
 }: SyncColumnsOpts<T>): T[] {
   const newNameByKey = Object.fromEntries(
     newColumns.map((column) => [column.key, column.name]),
@@ -142,13 +156,21 @@ function syncColumns<T>({
     return settings;
   }, []);
   const remappedNames = new Set(remappedSettings.map(getColumnName));
+  const isNewColumn = (column: ColumnInfo) =>
+    !oldNameByKey[column.key] &&
+    !remappedNames.has(column.name) &&
+    shouldCreateSetting(column);
+
+  if (!placeNewColumnsInQueryOrder) {
+    return [
+      ...remappedSettings,
+      ...newColumns.filter(isNewColumn).map(createSetting),
+    ];
+  }
 
   return insertNewColumnSettings(remappedSettings, newColumns, {
     getColumnName,
-    isNewColumn: (column) =>
-      !oldNameByKey[column.key] &&
-      !remappedNames.has(column.name) &&
-      shouldCreateSetting(column),
+    isNewColumn,
     createSetting,
   });
 }
@@ -181,6 +203,7 @@ function syncTableColumns(
   settings: VisualizationSettings,
   newColumns: ColumnInfo[],
   oldColumns: ColumnInfo[],
+  { placeNewColumnsInQueryOrder }: SyncVizSettingsOpts,
 ): VisualizationSettings {
   const columnSettings = settings["table.columns"];
   if (!columnSettings) {
@@ -197,6 +220,7 @@ function syncTableColumns(
       setColumnName: (setting, newName) => ({ ...setting, name: newName }),
       createSetting: (column) => ({ name: column.name, enabled: true }),
       shouldCreateSetting: () => true,
+      placeNewColumnsInQueryOrder,
     }),
   };
 }

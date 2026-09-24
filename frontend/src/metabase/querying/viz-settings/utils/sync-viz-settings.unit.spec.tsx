@@ -70,8 +70,8 @@ describe("syncVizSettings", () => {
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "ID", enabled: true },
-          { name: "ID_2", enabled: true },
           { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
         ],
       });
     });
@@ -93,7 +93,9 @@ describe("syncVizSettings", () => {
         ],
       });
 
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns, {
+        placeNewColumnsInQueryOrder: true,
+      });
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "a", enabled: true },
@@ -123,7 +125,9 @@ describe("syncVizSettings", () => {
         ],
       });
 
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns, {
+        placeNewColumnsInQueryOrder: true,
+      });
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "d", enabled: true },
@@ -151,7 +155,9 @@ describe("syncVizSettings", () => {
         ],
       });
 
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns, {
+        placeNewColumnsInQueryOrder: true,
+      });
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "z", enabled: true },
@@ -177,7 +183,9 @@ describe("syncVizSettings", () => {
         ],
       });
 
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
+      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns, {
+        placeNewColumnsInQueryOrder: true,
+      });
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "a", enabled: true },
@@ -330,8 +338,8 @@ describe("syncVizSettings", () => {
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "ID", enabled: true },
-          { name: "ID_2", enabled: true },
           { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
         ],
       });
     });
@@ -396,30 +404,7 @@ describe("syncVizSettings", () => {
 
       const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
       expect(newSettings).toEqual({
-        "graph.metrics": ["ID", "ID_2", "ID_3"],
-      });
-    });
-
-    it("should place a new aggregation in query order relative to existing metrics", () => {
-      const oldColumns: ColumnInfo[] = [
-        { name: "CREATED_AT", key: "CREATED_AT" },
-        { name: "sum", key: "sum", isAggregation: true },
-        { name: "avg", key: "avg", isAggregation: true },
-      ];
-      const newColumns: ColumnInfo[] = [
-        { name: "CREATED_AT", key: "CREATED_AT" },
-        { name: "count", key: "count", isAggregation: true },
-        { name: "sum", key: "sum", isAggregation: true },
-        { name: "avg", key: "avg", isAggregation: true },
-        { name: "max", key: "max", isAggregation: true },
-      ];
-      const oldSettings = createMockVisualizationSettings({
-        "graph.metrics": ["sum"],
-      });
-
-      const newSettings = syncVizSettings(oldSettings, newColumns, oldColumns);
-      expect(newSettings).toEqual({
-        "graph.metrics": ["count", "sum", "max"],
+        "graph.metrics": ["ID", "ID_3", "ID_2"],
       });
     });
 
@@ -610,8 +595,8 @@ describe("syncVizSettingsWithQuery", () => {
       expect(newSettings).toEqual({
         "table.columns": [
           { name: "ID", enabled: true },
-          { name: "ID_2", enabled: true },
           { name: "ID_3", enabled: false },
+          { name: "ID_2", enabled: true },
         ],
       });
     });
@@ -732,6 +717,35 @@ describe("syncVizSettingsWithSeries", () => {
           { name: "ID", enabled: true },
           { name: "ID_2", enabled: false },
           { name: "ID_3", enabled: true },
+        ],
+      });
+    });
+
+    it("should place a new column at its query position (metabase#82476)", () => {
+      const seriesWithNewMiddleColumn: Series = [
+        {
+          card: createMockCard(),
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({ name: "ID", source: "native" }),
+              createMockColumn({ name: "NEW", source: "native" }),
+              createMockColumn({ name: "ID_2", source: "native" }),
+            ],
+          }),
+        },
+      ];
+
+      const newSettings = syncVizSettingsWithSeries(
+        oldSettings,
+        query,
+        seriesWithNewMiddleColumn,
+        oldSeries,
+      );
+      expect(newSettings).toEqual({
+        "table.columns": [
+          { name: "ID", enabled: true },
+          { name: "NEW", enabled: true },
+          { name: "ID_2", enabled: false },
         ],
       });
     });
