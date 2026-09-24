@@ -48,8 +48,11 @@ describe("scenarios > data apps > semantic schema", () => {
       "GET",
       "/api/typed-schemas/v1/typescript?include-metric-library=true",
     ).then(({ body }) => {
-      expect(body).to.contain(`// Description: ${METRIC_DESCRIPTION}`);
-      expect(body).to.match(/^\s*\/\/ Filters?: .*Created At/m);
+      expect(body).to.match(
+        new RegExp(
+          `// Description: ${METRIC_DESCRIPTION}\\n\\s*// Filters: [^\\n]*Created At[^\\n]*\\n(\\s*//[^\\n]*\\n)*\\s*revenue: \\{`,
+        ),
+      );
     });
   });
 });

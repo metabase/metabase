@@ -71,7 +71,7 @@
    {column-name :name, index :index, :as column-spec} :- ::lib.schema.test-spec/test-order-by-spec]
   (let [scoped  (filterv (partial matches-scope? query column-spec) available-columns)
         by-name (filterv #(= column-name (:name %)) scoped)
-        columns (if (or (= 1 (count by-name)) (some? index))
+        columns (if (some? index)
                   by-name
                   (or (previous-stage-column-matches column-name scoped) by-name))]
     (case (count columns)

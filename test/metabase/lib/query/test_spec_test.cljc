@@ -1282,6 +1282,22 @@
     (testing "the second is returned as sum_2"
       (is (=? [[:desc {} [:field {} "sum_2"]]] (sums "sum_2"))))))
 
+(deftest ^:parallel test-query-later-stage-prefers-result-name-over-joinable-column-name-test
+  (testing "a result column wins even when a joinable column's plain name is the result name"
+    (let [mp (lib.tu/merged-mock-metadata-provider
+              meta/metadata-provider
+              {:fields [{:id (meta/id :products :title) :name "sum_2"}]})]
+      (is (=? [[:desc {} [:field {} "sum_2"]]]
+              (lib/order-bys
+               (lib.query.test-spec/test-query
+                mp
+                {:stages [{:source       {:type :table :id (meta/id :orders)}
+                           :aggregations [{:type :operator :operator :sum :args [(orders-column "TOTAL")]}
+                                          {:type :operator :operator :sum :args [(orders-column "SUBTOTAL")]}]
+                           :breakouts    [(orders-column "PRODUCT_ID")]}
+                          {:order-bys [{:type :column :name "sum_2" :direction :desc}]}]})
+               1))))))
+
 (deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
   (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; the FK they were reached through picks one"
     (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]

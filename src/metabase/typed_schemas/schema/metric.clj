@@ -24,7 +24,7 @@
 
 (defn- metric-filters
   "Returns the display names of the filters `card`'s query applies. The schema exposes a metric only as an
-  aggregation, so these are the one hint that it counts a subset of the rows."
+  aggregation, so they are the only hint that it counts a subset of the rows."
   [card]
   (when-let [query-definition (not-empty (:dataset_query card))]
     (try
