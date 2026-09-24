@@ -2,12 +2,11 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotCustomizationPage } from "./MetabotCustomizationPage";
@@ -27,9 +26,8 @@ function setup({
     "metabot-show-illustrations": showIllustrations,
   });
 
-  setupPropertiesEndpoints(settings);
+  setupStatefulSettingsEndpoints(settings);
   setupSettingsEndpoints([]);
-  setupUpdateSettingEndpoint();
 
   // Seed the store state too: without it, the render harness seeds the
   // settings bootstrap with *defaults*, and assertions can run against the
@@ -54,10 +52,6 @@ describe("MetabotCustomizationPage", () => {
     expect(
       screen.queryByRole("button", { name: /Remove custom icon/ }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Metabot illustrations")).not.toBeInTheDocument();
-    expect(
-      screen.queryByAltText("Metabot illustration preview"),
-    ).not.toBeInTheDocument();
   });
 
   it("shows the remove button and illustrations toggle when a custom icon is set", async () => {
@@ -80,7 +74,7 @@ describe("MetabotCustomizationPage", () => {
     expect(preview).toHaveAttribute("src", "data:image/png;base64,abc123");
   });
 
-  it("shows the illustrations toggle when illustrations are off, even with the default icon", async () => {
+  it("keeps the illustrations toggle after turning illustrations on with the default icon", async () => {
     setup({ showIllustrations: false });
 
     const toggle = await screen.findByRole("switch", {
@@ -93,5 +87,10 @@ describe("MetabotCustomizationPage", () => {
       { method: "PUT" },
     );
     expect(await call?.request?.json()).toEqual({ value: true });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("switch", { name: /Show Metabot illustrations/ }),
+      ).toBeChecked(),
+    );
   });
 });

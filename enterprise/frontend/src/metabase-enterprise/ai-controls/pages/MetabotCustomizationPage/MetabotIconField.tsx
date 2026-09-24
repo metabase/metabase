@@ -34,7 +34,6 @@ export function MetabotIconField() {
   const [iconError, setIconError] = useState("");
 
   const isDefaultIcon = !metabotIcon || metabotIcon === "metabot";
-  const isIllustrationsSectionVisible = !isDefaultIcon || !showIllustrations;
   const iconPreviewSrc =
     !isDefaultIcon && typeof metabotIcon === "string" ? metabotIcon : null;
 
@@ -162,40 +161,38 @@ export function MetabotIconField() {
           </Flex>
         )}
       </Flex>
-      {isIllustrationsSectionVisible && (
-        <Stack mt="xl" gap="sm">
-          <Text fz="md" fw="bold">
-            {t`Metabot illustrations`}
-          </Text>
-          <Group gap="xl" align="center" wrap="nowrap">
-            <Flex align="center" gap="sm" flex="1" miw={0}>
-              <Box
-                component="img"
-                src={EmptyDashboardBot}
-                alt={t`Metabot illustration preview`}
-                w="3rem"
-                h="3rem"
-                flex="0 0 auto"
-              />
-              <Text fz="md" c="text-secondary" flex="1">
-                {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
-              </Text>
-            </Flex>
-            <Switch
-              aria-label={t`Show Metabot illustrations`}
-              checked={!!showIllustrations}
-              onChange={(e) =>
-                updateShowIllustrations({
-                  key: "metabot-show-illustrations",
-                  value: e.currentTarget.checked,
-                  toast: false,
-                })
-              }
-              disabled={isLoadingIllustrations}
+      <Stack mt="xl" gap="sm">
+        <Text fz="md" fw="bold">
+          {t`Metabot illustrations`}
+        </Text>
+        <Group gap="xl" align="center" wrap="nowrap">
+          <Flex align="center" gap="sm" flex="1" miw={0}>
+            <Box
+              component="img"
+              src={EmptyDashboardBot}
+              alt={t`Metabot illustration preview`}
+              w="3rem"
+              h="3rem"
+              flex="0 0 auto"
             />
-          </Group>
-        </Stack>
-      )}
+            <Text fz="md" c="text-secondary" flex="1">
+              {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
+            </Text>
+          </Flex>
+          <Switch
+            aria-label={t`Show Metabot illustrations`}
+            checked={!!showIllustrations}
+            onChange={(e) =>
+              updateShowIllustrations({
+                key: "metabot-show-illustrations",
+                value: e.currentTarget.checked,
+                toast: false,
+              })
+            }
+            disabled={isLoadingIllustrations}
+          />
+        </Group>
+      </Stack>
     </Stack>
   );
 }
