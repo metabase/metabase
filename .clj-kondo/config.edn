@@ -808,6 +808,7 @@
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?
    metabase.util.match/replace                                                                                               hooks.metabase.util.match/replace
+   metabase.util.match/replace-all                                                                                           hooks.metabase.util.match/replace-all
    metabase.util.match/replace-in                                                                                            hooks.metabase.util.match/replace-in
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color

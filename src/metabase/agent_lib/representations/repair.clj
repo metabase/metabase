@@ -69,10 +69,10 @@
 (defn- ensure-clause-options*
   "Fix a clause-like vector missing options map at position 2 in nested clause-like vectors."
   [form]
-  (match/replace form
+  (match/replace-all form
     (:and [op] (_ :guard clause-like?)) [op {}]
-    (:and [op nil & _] (_ :guard clause-like?)) (&recur (assoc &match 1 {}))
-    (:and [op (non-map :guard (not (map? non-map))) & args] (_ :guard clause-like?)) (&recur (into [op {} non-map] args))))
+    (:and [op nil & _] (_ :guard clause-like?)) (assoc &match 1 {})
+    (:and [op (non-map :guard (not (map? non-map))) & args] (_ :guard clause-like?)) (into [op {} non-map] args)))
 
 ;;; ============================================================
 ;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
@@ -94,9 +94,9 @@
 
 (defn- unwrap-nested-field-clauses*
   [form]
-  (match/replace form
+  (match/replace-all form
     ["field" (outer :guard map?) ["field" (inner :guard map?) target]]
-    (&recur ["field" (into inner outer) target])))
+    ["field" (into inner outer) target]))
 
 ;;; ============================================================
 ;;; Pass 1.75 -- strip stray double-quotes from portable-FK field references.
@@ -135,9 +135,9 @@
 
 (defn- dequote-field-targets*
   [form]
-  (match/replace form
+  (match/replace-all form
     ["field" (opts :guard map?) (target :guard vector?)]
-    ["field" opts (&recur (dequote-field-target target))]))
+    ["field" opts (dequote-field-target target)]))
 
 ;;; ============================================================
 ;;; Pass 1.81 -- canonicalise common operator-name aliases.
@@ -199,13 +199,13 @@
 
 (defn- rewrite-operator-name-aliases*
   [form]
-  (match/replace form
+  (match/replace-all form
     [(op :guard (and (string? op)
                      (let [lower (u/lower-case-en op)]
                        (and (contains? operator-name-aliases lower)
                             (not= op (operator-name-aliases lower))))))
      (_ :guard map?) & _]
-    (&recur (assoc &match 0 (operator-name-aliases (u/lower-case-en op))))))
+    (assoc &match 0 (operator-name-aliases (u/lower-case-en op)))))
 
 ;;; ============================================================
 ;;; Pass 1.8 -- canonicalise temporal-bucket extraction aliases.
@@ -232,9 +232,9 @@
 
 (defn- rewrite-temporal-bucket-aliases*
   [form]
-  (match/replace form
+  (match/replace-all form
     [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) (_ :guard map?) & _]
-    (&recur (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op))))))
+    (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op)))))
 
 ;;; ============================================================
 ;;; Pass 1.815 -- drop unsupported `get-day-of-week` week-mode arguments.
@@ -304,9 +304,9 @@
 
 (defn- rewrite-direction-aliases*
   [form]
-  (match/replace form
+  (match/replace-all form
     [(head :guard direction-clause-head?) (_ :guard map?) _]
-    (&recur (assoc &match 0 (get direction-aliases (u/lower-case-en head))))))
+    (assoc &match 0 (get direction-aliases (u/lower-case-en head)))))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- rewrite known misspelled `lib/type` markers to their canonical value.
@@ -322,9 +322,9 @@
 
 (defn- rewrite-lib-type-aliases*
   [form]
-  (match/replace form
+  (match/replace-all form
     {"lib/type" (canonical :guard lib-type-aliases)}
-    (&recur (assoc &match "lib/type" (lib-type-aliases canonical)))))
+    (assoc &match "lib/type" (lib-type-aliases canonical))))
 
 ;;; ============================================================
 ;;; Pass 1.88 -- merge a trailing extra options-map into the position-1 options.
@@ -420,12 +420,9 @@
 
 (defn- merge-trailing-options*
   [form]
-  (match/replace form
+  (match/replace-all form
     (_ :guard needs-trailing-options-merge?)
-    ;; &recur: dropping the trailing element changes the count, so the guard no longer fires
-    ;; on the result -- this just resumes descent into the clause's own args, where a nested
-    ;; clause might need the same fix.
-    (&recur (merge-trailing-options &match))))
+    (merge-trailing-options &match)))
 
 ;;; ============================================================
 ;;; Pass 1.89 -- merge a trailing options-map into position-1 on N-ary string-search filters
@@ -467,9 +464,9 @@
 
 (defn- merge-string-filter-trailing-options*
   [form]
-  (match/replace form
+  (match/replace-all form
     (_ :guard needs-string-filter-options-merge?)
-    (&recur (merge-trailing-options &match))))
+    (merge-trailing-options &match)))
 
 ;;; ============================================================
 ;;; Pass 1.84 -- normalise alternative `case` / `if` argument shapes.
@@ -577,12 +574,12 @@
     _ nil))
 
 (defn- normalise-case-clauses* [form]
-  (match/replace form
+  (match/replace-all form
     [(head :guard #{"case" "if"}) (opts :guard map?) & args]
     (let [canonical-args (if-let [[branches default] (classify-case-args args)]
                            (canonical-case-args branches default)
                            args)]
-      (into [head opts] (map #(&recur % nil)) canonical-args))))
+      (into [head opts] canonical-args))))
 
 ;;; ============================================================
 ;;; Pass 1.82 -- normalise filter clauses where the LLM passed a values-list as a single
@@ -680,14 +677,13 @@
   otherwise mis-identify a 2-element values-list (e.g. `[\"alice\" \"bob\"]`) as a bare
   clause and corrupt it by inserting `{}` between the two scalars."
   [form]
-  (match/replace form
+  (match/replace-all form
     (_ :guard in-not-in-values-list-clause)
     (let [[head opts lhs values] (in-not-in-values-list-clause &match)]
-      (&recur (splat-in-values-clause head opts lhs values)))
-
+      (splat-in-values-clause head opts lhs values))
     (_ :guard eq-values-list-clause)
     (let [[head opts lhs values] (eq-values-list-clause &match)]
-      (&recur (splat-in-values-clause (=->in-head head) opts lhs values)))))
+      (splat-in-values-clause (=->in-head head) opts lhs values))))
 
 ;;; ============================================================
 ;;; Pass 1.83 -- unwrap boolean wrapper clauses.
@@ -730,8 +726,8 @@
 
 (defn- unwrap-boolean-wrappers*
   [form]
-  (match/replace form
-    (_ :guard boolean-wrapper-clause?) (&recur (unwrap-boolean-wrapper &match))))
+  (match/replace-all form
+    (_ :guard boolean-wrapper-clause?) (unwrap-boolean-wrapper &match)))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
@@ -795,11 +791,9 @@
 
 (defn- swap-between-bounds*
   [form]
-  (match/replace form
+  (match/replace-all form
     (_ :guard swappable-between-clause?)
-    ;; &recur: after the swap the bounds compare in order, so `swappable-between-clause?` no
-    ;; longer fires on the result -- this just resumes descent into the clause.
-    (&recur (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3))))))
+    (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3)))))
 
 ;;; ============================================================
 ;;; Pass 1.86 -- wrap bare ISO-date string bounds in `between` clauses as
@@ -863,9 +857,7 @@
 
 (defn- wrap-iso-date-bounds*
   [form]
-  ;; No `&recur`: a wrapped ISO bound becomes an `absolute-datetime` clause, which is itself
-  ;; temporal-shaped, so `between-needs-iso-wrap-clause?` would fire on the result forever.
-  (match/replace form
+  (match/replace-all form
     (_ :guard between-needs-iso-wrap-clause?)
     (-> &match
         (assoc 3 (wrap-iso-date (nth &match 3)))
@@ -969,10 +961,10 @@
 
 (defn- normalise-fields-shape*
   [form]
-  (match/replace form
+  (match/replace-all form
     {"fields" (:and single-clause
                     [(_ :guard string?) (_ :guard map?) & _])}
-    (&recur (assoc &match "fields" [single-clause]))))
+    (assoc &match "fields" [single-clause])))
 
 ;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
@@ -1012,14 +1004,14 @@
   into the canonical sequential shape with `lib/expression-name` stamped from the map key.
   Idempotent: sequential input passes through unchanged."
   [form]
-  (match/replace form
+  (match/replace-all form
     {"expressions" (exprs :guard map?)}
-    (&recur (assoc &match "expressions"
-                   (into []
-                         (keep (fn [[expr-name clause]]
-                                 (when (expression-clause? clause)
-                                   (stamp-expression-name clause expr-name))))
-                         exprs)))))
+    (assoc &match "expressions"
+           (into []
+                 (keep (fn [[expr-name clause]]
+                         (when (expression-clause? clause)
+                           (stamp-expression-name clause expr-name))))
+                 exprs))))
 
 ;;; ============================================================
 ;;; Pass 1.9 -- stamp top-level `database:` from the first stage
@@ -1128,11 +1120,11 @@
        (or (top-level-query-map? m) (join-like-map? m) (stage-like-map? m))))
 
 (defn- ensure-lib-types* [form]
-  (match/replace form
+  (match/replace-all form
     (_ :guard needs-lib-type-marker?)
-    (&recur (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
-                                           (join-like-map? &match) "mbql/join"
-                                           (stage-like-map? &match) "mbql.stage/mbql")))))
+    (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
+                                   (join-like-map? &match) "mbql/join"
+                                   (stage-like-map? &match) "mbql.stage/mbql"))))
 
 ;;; ============================================================
 ;;; Pass 2.7 -- rewrite inline aggregation expressions in `order-by` to aggregation refs
@@ -1168,9 +1160,9 @@
   Uses the same `clause-like?` predicate as the options-insertion pass, so FK-paths and
   non-clause vectors are left alone."
   [form]
-  (match/replace form
+  (match/replace-all form
     (:and (_ :guard clause-like?) [op (_ :guard map?) & args])
-    (&recur (into [op] args))))
+    (into [op] args)))
 
 (defn- ensure-aggregation-uuid
   "Return a tuple `[stamped-aggregation uuid]`. If the aggregation already has a `lib/uuid` in
