@@ -263,6 +263,12 @@
           (is (= {"s7" {:line 2}} (:sessions (scan/starting-state persist server-d [legacy]))))
           (is (not (fs/exists? legacy)))
           (is (= {} (:sessions (scan/starting-state persist server-e [legacy]))))))
+      (testing "a new server doesn't take the shared file over while another server has its own, even before that one scans"
+        (let [server-f (str (fs/path dir "scan-state.claude.http-f-80.edn"))]
+          (spit legacy (pr-str {:version 1 :sessions {"stale" {:line 99}}}))
+          (is (= {} (:sessions (scan/starting-state {} server-f [legacy]))))
+          (is (= {} (:sessions (scan/starting-state persist server-f [legacy]))))
+          (is (not (fs/exists? legacy)))))
       (testing "once a server's own file exists, it wins"
         (spit legacy (pr-str {:version 1 :sessions {"s9" {:line 1}}}))
         (is (= {"s1" {:line 40}} (:sessions (scan/starting-state persist server-a [legacy])))))

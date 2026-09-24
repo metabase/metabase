@@ -143,15 +143,23 @@
     (edn/read-string (slurp file))
     {:version 1 :sessions {}}))
 
+(defn- keyed-state-files
+  "State files kept per server beside `shared`, the single file from before there was one per server."
+  [shared]
+  (let [base (str/replace (str (fs/file-name shared)) #"\.edn$" "")]
+    (fs/glob (or (fs/parent shared) ".") (str base ".*.edn"))))
+
 (defn starting-state
   "Saved progress to start from. A default state file that doesn't exist yet takes over the first of `earlier` that
   does, instead of rescanning everything. Taking over moves the file. The last of `earlier`, the single file from
-  before there was one per server, is also retired as soon as any server has its own file, so no later server can
-  start from progress that isn't its own."
+  before there was one per server, is never taken over once any server has its own file, and a persistent scan then
+  retires it, so no server can start from progress that isn't its own."
   [{:keys [explicit? persist?]} state-file earlier]
-  (let [previous (when-not (or explicit? (fs/exists? state-file))
-                   (first (filter fs/exists? earlier)))
-        shared   (last earlier)]
+  (let [shared      (last earlier)
+        ;; A server may have its own file from before shared files were retired, so both can exist.
+        superseded? #(and shared (seq (keyed-state-files shared)))
+        previous    (when-not (or explicit? (fs/exists? state-file))
+                      (first (filter fs/exists? (cond-> earlier (superseded?) butlast))))]
     (cond
       (nil? previous) nil
       ;; A dry run changes nothing, so it reads the earlier file where it is.
@@ -162,7 +170,7 @@
                           (try
                             (fs/move previous state-file {:atomic-move true})
                             (catch java.nio.file.NoSuchFileException _))))
-    (when (and persist? (not explicit?) shared (fs/exists? state-file) (fs/exists? shared))
+    (when (and persist? (not explicit?) shared (fs/exists? shared) (superseded?))
       (try
         (fs/move shared (str shared ".retired") {:atomic-move true :replace-existing true})
         (catch java.nio.file.NoSuchFileException _)))
