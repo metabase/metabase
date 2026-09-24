@@ -1,3 +1,5 @@
+import mapImage from "assets/img/map.svg?url";
+
 import { SkeletonImage } from "./MapSkeleton.styled";
 
 const MapSkeleton = (): JSX.Element => {
@@ -7,7 +9,7 @@ const MapSkeleton = (): JSX.Element => {
       viewBox="0 0 242 157"
       preserveAspectRatio="xMidYMid"
     >
-      <use xlinkHref="/app/assets/img/map.svg" />
+      <use xlinkHref={mapImage} />
     </SkeletonImage>
   );
 };
