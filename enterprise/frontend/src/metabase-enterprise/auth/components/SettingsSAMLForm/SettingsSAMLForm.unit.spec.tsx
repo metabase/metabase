@@ -288,7 +288,7 @@ describe("SettingsSAMLForm", () => {
       });
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).not.toBeChecked();
       expect(
         screen.getByRole("link", { name: "managed by SCIM" }),
@@ -314,7 +314,7 @@ describe("SettingsSAMLForm", () => {
       );
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).toHaveAccessibleDescription(/managed by SCIM/);
       expect(
         screen.queryByText("Using MB_SAML_USER_PROVISIONING_ENABLED"),
@@ -418,7 +418,9 @@ describe("SettingsSAMLForm", () => {
       expect(saveButton()).toBeEnabled();
 
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
 
       expect(saveButton()).toBeDisabled();
       await userEvent.click(groupMappingSwitch());

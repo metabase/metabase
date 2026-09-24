@@ -211,7 +211,7 @@ describe("SettingsOIDCForm", () => {
       expect(
         screen.queryByRole("button", { name: "Save changes" }),
       ).not.toBeInTheDocument();
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       // the page banner names the env var, so the card does not repeat it
       expect(
         screen.queryByText("Using MB_OIDC_PROVIDERS"),
@@ -224,7 +224,7 @@ describe("SettingsOIDCForm", () => {
       // provisioning is its own setting, so its switch stays live
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeEnabled();
+      ).not.toHaveAttribute("aria-disabled");
     });
 
     it("locks an empty page too, since a new provider would be ignored as well", async () => {
@@ -389,7 +389,10 @@ describe("SettingsOIDCForm", () => {
     it("saves right away without touching the page form", async () => {
       await setup({ providers: [EXISTING_PROVIDER] });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
+      await waitFor(() => {
+        expect(toggle).toBeEnabled();
+        expect(toggle).not.toHaveAttribute("aria-disabled");
+      });
 
       await userEvent.click(toggle);
 
@@ -473,9 +476,10 @@ describe("SettingsOIDCForm", () => {
         screen.getByRole("switch", { name: "User provisioning" }),
       );
 
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).not.toBeChecked();
-      expect(groupMappingSwitch()).toBeEnabled();
     });
 
     it("holds the switch while a mapping write is in flight", async () => {
@@ -586,11 +590,15 @@ describe("SettingsOIDCForm", () => {
       expect(saveButton()).toBeEnabled();
 
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
 
       expect(saveButton()).toBeDisabled();
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(attributeInput()).toHaveValue("roles");
     });
 

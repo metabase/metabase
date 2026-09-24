@@ -159,8 +159,6 @@ export const SettingsLdapForm = () => {
         initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
         validationSchema={schema}
-        // the save button locks on an invalid value, so the field has to say why before it loses focus
-        validateOnMount
         enableReinitialize
       >
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (

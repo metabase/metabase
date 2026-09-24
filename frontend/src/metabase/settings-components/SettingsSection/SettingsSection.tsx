@@ -93,10 +93,8 @@ type SwitchSettingsSectionProps = {
   checked: boolean;
   // greys the whole card, locks the switch and keeps the children hidden
   disabled?: boolean;
-  // locks the switch alone, for instance while an env var owns the value
+  // locks the switch alone but keeps it focusable, since a disabled switch would drop focus mid-write
   switchDisabled?: boolean;
-  // holds the switch while its write is in flight, staying focusable so a keyboard user keeps their place
-  switchBusy?: boolean;
   // the env var that owns the value, which locks the switch and is named under the description
   lockedEnvName?: string;
   onChange: (checked: boolean) => void;
@@ -111,7 +109,6 @@ export function SwitchSettingsSection({
   checked,
   disabled = false,
   switchDisabled = false,
-  switchBusy = false,
   lockedEnvName,
   onChange,
   children,
@@ -119,11 +116,11 @@ export function SwitchSettingsSection({
 }: SwitchSettingsSectionProps) {
   const inputId = useId();
   const descriptionId = useId();
-  const isSwitchLocked = disabled || switchDisabled || lockedEnvName != null;
+  const isSwitchLocked = switchDisabled || lockedEnvName != null;
 
   const handleChange = (nextChecked: boolean) => {
     // aria-disabled keeps the switch focusable, so it cannot block the event on its own
-    if (switchBusy) {
+    if (isSwitchLocked) {
       return;
     }
     onChange(nextChecked);
@@ -148,9 +145,7 @@ export function SwitchSettingsSection({
             <Text
               component="label"
               htmlFor={inputId}
-              className={
-                isSwitchLocked || switchBusy ? undefined : S.TitleLabel
-              }
+              className={disabled || isSwitchLocked ? undefined : S.TitleLabel}
               inherit
             >
               {title}
@@ -174,10 +169,16 @@ export function SwitchSettingsSection({
           id={inputId}
           aria-describedby={descriptionId}
           checked={checked}
-          disabled={isSwitchLocked}
-          aria-disabled={switchBusy || undefined}
+          disabled={disabled}
+          aria-disabled={isSwitchLocked || undefined}
           classNames={
-            switchBusy ? { root: S.BusySwitch, track: S.BusyTrack } : undefined
+            isSwitchLocked
+              ? {
+                  root: S.LockedSwitch,
+                  track: S.LockedTrack,
+                  thumb: S.LockedThumb,
+                }
+              : undefined
           }
           onChange={(event) => handleChange(event.currentTarget.checked)}
           onKeyDown={handleKeyDown}

@@ -79,8 +79,8 @@ export function MappingEditorRow({
         {/* one wrapping row, buttons last, so a narrowing row sheds the buttons before the picker */}
         <Flex align="center" gap="lg" wrap="wrap">
           <TextInput
-            flex="1 1 10rem"
-            miw={0}
+            flex={1}
+            miw="10rem"
             aria-label={nameLabel}
             // Mantine owns aria-describedby on its inputs, so the reason is linked as the error message instead
             aria-errormessage={nameError == null ? undefined : errorId}
@@ -100,8 +100,8 @@ export function MappingEditorRow({
             className={S.editorArrow}
           />
           <MultiSelect
-            flex="1 1 14rem"
-            miw={0}
+            flex={1}
+            miw="14rem"
             classNames={{ inputField: S.groupsSearchField }}
             aria-label={t`${applicationName} groups`}
             placeholder={

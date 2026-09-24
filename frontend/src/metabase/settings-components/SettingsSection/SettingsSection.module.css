@@ -108,9 +108,15 @@
   cursor: pointer;
 }
 
-/* a switch held during its write stays focusable, so it dims here rather than through :disabled */
-/* the root class scopes the rule above the theme's track class, whatever the stylesheet order */
-.BusySwitch .BusyTrack {
-  opacity: 0.6;
-  cursor: default;
+/* a locked switch stays focusable, so it takes the disabled look here rather than through :disabled */
+/* the doubled class out-ranks the theme's checked rule, whatever the stylesheet order */
+.LockedSwitch .LockedTrack.LockedTrack {
+  background-color: var(--mb-color-switch-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+.LockedSwitch .LockedThumb {
+  background-color: var(--mb-color-switch_thumb-disabled);
+  box-shadow: none;
 }

@@ -109,7 +109,7 @@ describe("SettingsLdapForm (EE)", () => {
       expect(filterInput).toHaveAttribute("placeholder", "(member={dn})");
     });
 
-    it("says why an unbalanced filter blocks saving, without waiting for a blur", async () => {
+    it("rejects an unbalanced membership filter", async () => {
       await setup(
         { "ldap-configured?": true, "ldap-group-sync": true },
         {
@@ -123,6 +123,7 @@ describe("SettingsLdapForm (EE)", () => {
         screen.getByRole("textbox", { name: /Group membership filter/ }),
         "(objectClass=group",
       );
+      await userEvent.tab();
 
       expect(
         await screen.findByText("Check your parentheses"),

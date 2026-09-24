@@ -90,7 +90,6 @@ type SwitchSetupOptions = {
   checked?: boolean;
   disabled?: boolean;
   switchDisabled?: boolean;
-  switchBusy?: boolean;
   lockedEnvName?: string;
   note?: React.ReactNode;
 };
@@ -99,7 +98,6 @@ const getSwitchSection = ({
   checked = false,
   disabled,
   switchDisabled,
-  switchBusy,
   lockedEnvName,
   note,
 }: SwitchSetupOptions = {}) => {
@@ -112,7 +110,6 @@ const getSwitchSection = ({
       checked={checked}
       disabled={disabled}
       switchDisabled={switchDisabled}
-      switchBusy={switchBusy}
       lockedEnvName={lockedEnvName}
       onChange={onChange}
     >
@@ -163,42 +160,40 @@ describe("SwitchSettingsSection", () => {
     expect(getSwitch()).toBeDisabled();
   });
 
-  it("locks the switch on its own when something else owns the value", () => {
-    setupSwitch({ checked: true, switchDisabled: true });
-
-    expect(getSwitch()).toBeDisabled();
-    // the card is not dimmed, so the mappings stay readable
-    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
-  });
-
-  it("locks the switch and names the env var that owns the value", () => {
-    setupSwitch({ checked: true, lockedEnvName: "MB_LDAP_GROUP_SYNC" });
-
-    expect(getSwitch()).toBeDisabled();
-    expect(getSwitch()).toHaveAccessibleDescription(/Using MB_LDAP_GROUP_SYNC/);
-    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
-  });
-
-  // disabling a focused switch blurs it, so a write holds it with aria-disabled instead
-  it("holds the switch during a write without taking its focus away", async () => {
-    const { element, onChange } = getSwitchSection({ switchBusy: true });
+  // disabling a focused switch blurs it, so the lock uses aria-disabled and ignores clicks instead
+  it("locks the switch on its own without taking its focus away", async () => {
+    const { element, onChange } = getSwitchSection({
+      checked: true,
+      switchDisabled: true,
+    });
     const { rerender } = renderWithProviders(element);
     const toggle = getSwitch();
     toggle.focus();
 
     expect(toggle).toBeEnabled();
     expect(toggle).toHaveAttribute("aria-disabled", "true");
-    expect(toggle).toHaveFocus();
+    // the card is not dimmed, so the mappings stay readable
+    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
 
     await userEvent.click(toggle);
 
     expect(onChange).not.toHaveBeenCalled();
     expect(toggle).toHaveFocus();
 
-    rerender(getSwitchSection({ switchBusy: false }).element);
+    rerender(
+      getSwitchSection({ checked: true, switchDisabled: false }).element,
+    );
 
     expect(toggle).not.toHaveAttribute("aria-disabled");
     expect(toggle).toHaveFocus();
+  });
+
+  it("locks the switch and names the env var that owns the value", () => {
+    setupSwitch({ checked: true, lockedEnvName: "MB_LDAP_GROUP_SYNC" });
+
+    expect(getSwitch()).toHaveAttribute("aria-disabled", "true");
+    expect(getSwitch()).toHaveAccessibleDescription(/Using MB_LDAP_GROUP_SYNC/);
+    expect(screen.getByText("Mapping editor")).toBeInTheDocument();
   });
 
   it("reports the clicked value", async () => {

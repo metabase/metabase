@@ -75,9 +75,10 @@ export function UserProvisioningSection({
       checked={checked}
       disabled={disabled}
       // the lock is only known once the settings list has loaded
-      switchDisabled={hasLockedNote || isLoading}
-      // holding the switch for the write is what makes a debounce unnecessary
-      switchBusy={updateSettingResult.isLoading}
+      // holding the switch through the write is what makes a debounce unnecessary
+      switchDisabled={
+        hasLockedNote || isLoading || updateSettingResult.isLoading
+      }
       onChange={onChange}
     />
   );

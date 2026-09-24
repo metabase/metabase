@@ -48,7 +48,6 @@ export function SettingsGroupMappingSection({
     settingDetails,
     updateSetting,
     updateSettingResult,
-    isLoading,
     isFetching,
     startedTimeStamp,
   } = useAdminSetting(syncSettingKey);
@@ -79,10 +78,8 @@ export function SettingsGroupMappingSection({
       lockedEnvName={envName}
       checked={checked}
       disabled={disabled}
-      // the env lock is only known once the settings list has loaded
-      switchDisabled={isLoading}
-      // a refetch still in flight could answer with the value from before the write
-      switchBusy={isFetching || updateSettingResult.isLoading}
+      // a fetch still in flight could answer with the value from before the write
+      switchDisabled={isFetching || updateSettingResult.isLoading}
       onChange={onChange}
       {...boxProps}
     >

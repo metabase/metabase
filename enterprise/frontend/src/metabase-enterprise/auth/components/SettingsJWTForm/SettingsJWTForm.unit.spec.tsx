@@ -511,7 +511,7 @@ describe("SettingsJWTForm", () => {
       expect(toggle).not.toBeChecked();
       expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
       expect(toggle).toBeChecked();
-      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
     it("ignores clicks while the write is in flight", async () => {
@@ -602,7 +602,7 @@ describe("SettingsJWTForm", () => {
 
       // the effective value comes from the session properties, the admin list nils it
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).toBeChecked();
       expect(toggle).toHaveAccessibleDescription(
         /Using MB_JWT_USER_PROVISIONING_ENABLED/,

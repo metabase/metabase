@@ -142,8 +142,7 @@ export function OidcGroupMappingSection({
       description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
       checked={checked}
       disabled={provider == null}
-      switchDisabled={isLocked}
-      switchBusy={isWriting}
+      switchDisabled={isLocked || isWriting}
       onChange={onChange}
       {...boxProps}
     >
