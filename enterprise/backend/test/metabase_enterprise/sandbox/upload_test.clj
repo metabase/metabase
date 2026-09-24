@@ -68,3 +68,21 @@
                 (is (= nil
                        (:based_on_upload (get-card))
                        (:based_on_upload (get-collection-item))))))))))))
+
+(deftest can-upload-false-for-sandboxed-user-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/dataset dataset
+      (upload-test/with-uploads-enabled!
+        (testing "Sanity check: an unsandboxed user with unrestricted access can upload"
+          (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                         :create-queries :query-builder}}
+            (is (true? (:can_upload (mt/user-http-request :rasta :get 200 (str "database/" (mt/id))))))))
+        (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+          (testing "GET /api/database/:id"
+            (is (false? (:can_upload (mt/user-http-request :rasta :get 200 (str "database/" (mt/id)))))))
+          (testing "GET /api/database"
+            (is (false? (->> (mt/user-http-request :rasta :get 200 "database")
+                             :data
+                             (filter #(= (mt/id) (:id %)))
+                             first
+                             :can_upload)))))))))
