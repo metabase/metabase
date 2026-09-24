@@ -17,9 +17,6 @@
   request and adds negligible latency. The two writes are independent of each other's success or
   failure, even though callers only see a single [[record-api-key-usage!]] entry point."
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.schedule.simple :as simple]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.api-keys.db :as ee.api-keys.db]
    [metabase.analytics.core :as analytics]
@@ -28,11 +25,11 @@
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
-   [metabase.task.core :as task]
+   [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (org.quartz DisallowConcurrentExecution)))
+   (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -73,8 +70,8 @@
   "How many rows the pending usage-log queue holds before a new row is dropped rather than queued."
   500)
 
-(def ^:private usage-log-flush-interval-seconds
-  "How often pending usage-log rows flush to the database."
+(def ^:private flush-interval-seconds
+  "How often pending usage-log rows and last_used_at stamps flush to the database."
   10)
 
 (def ^:private not-null-columns
@@ -89,16 +86,19 @@
 
 (defn- offer-usage-log!
   "Appends `row` to the pending batch, unless it's already at [[usage-log-batch-capacity]] — a full
-  queue drops the row (logged) rather than blocking the request thread waiting for room. The `swap!`
-  CAS retry is itself non-blocking: contention just means more retries, never a park on I/O."
+  queue drops the row (logged) rather than blocking the request thread waiting for room. Uses
+  `swap-vals!` rather than a `volatile!` set from inside the `swap!` function: under CAS contention
+  `swap!` can invoke that function more than once, so an early attempt that sees the queue full and
+  flags a drop can still lose the race to a retry that finds room and conjes the row — logging
+  \"Dropping\" for a row that was actually queued. Comparing the before/after values instead only
+  reports a drop for the transition that actually won."
   [row]
-  (let [dropped? (volatile! false)]
-    (swap! pending-usage-logs
-           (fn [rows]
-             (if (>= (count rows) usage-log-batch-capacity)
-               (do (vreset! dropped? true) rows)
-               (conj rows row))))
-    (when @dropped?
+  (let [[old new] (swap-vals! pending-usage-logs
+                              (fn [rows]
+                                (if (>= (count rows) usage-log-batch-capacity)
+                                  rows
+                                  (conj rows row))))]
+    (when (identical? old new)
       (log/warn "Dropping API key usage log row; the pending queue is full"))))
 
 (defn- flush-usage-logs!
@@ -112,28 +112,6 @@
         (catch Throwable e
           (log/warn e "Failed to insert API key usage log rows"))))))
 
-(def ^:private usage-log-flush-job-key (jobs/key "metabase.task.api-keys.usage-log-flush.job"))
-(def ^:private usage-log-flush-trigger-key (triggers/key "metabase.task.api-keys.usage-log-flush.trigger"))
-
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Flush pending API key usage log rows"}
-  ApiKeyUsageLogFlush [_ctx]
-  (flush-usage-logs!))
-
-(defmethod task/init! ::ApiKeyUsageLogFlush
-  [_]
-  (let [job     (jobs/build
-                 (jobs/of-type ApiKeyUsageLogFlush)
-                 (jobs/with-identity usage-log-flush-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity usage-log-flush-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                  (simple/schedule
-                   (simple/with-interval-in-seconds usage-log-flush-interval-seconds)
-                   (simple/repeat-forever))))]
-    (task/schedule-task! job trigger)))
-
 ;;; ---------------------------------------------- last_used_at ----------------------------------------------------
 
 ;; A coalescing map, not a Grouper queue of events: a Grouper queue keeps every event until it flushes, so a hot
@@ -142,10 +120,6 @@
 ;; a scheduled task flushes the current contents on a fixed interval. `reset-vals!` atomically swaps in a fresh
 ;; empty map and returns the one it replaced, so a request arriving mid-flush lands in the new map and is picked up
 ;; next interval, never lost and never blocking the flush.
-
-(def ^:private last-used-flush-interval-seconds
-  "How often pending last_used_at stamps flush to the database."
-  10)
 
 ;; api-key-id -> the latest `occurred-at` seen for it since the last flush.
 (defonce ^:private pending-last-used-at (atom {}))
@@ -171,27 +145,59 @@
         (catch Throwable e
           (log/warn e "Failed to update API key last_used_at"))))))
 
-(def ^:private last-used-flush-job-key (jobs/key "metabase.task.api-keys.last-used-flush.job"))
-(def ^:private last-used-flush-trigger-key (triggers/key "metabase.task.api-keys.last-used-flush.trigger"))
+;;; -------------------------------------------- flush scheduling ---------------------------------------------------
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Flush pending API key last_used_at stamps"}
-  ApiKeyLastUsedAtFlush [_ctx]
-  (flush-last-used-at!))
+;; A JVM-local scheduled executor, not Quartz: pending-usage-logs and pending-last-used-at are per-JVM
+;; atoms, but our Quartz is clustered (JDBC job store), so a recurring trigger only ever fires on one
+;; node. A node that never wins trigger acquisition would never flush its own in-memory state — its
+;; usage-log queue would fill and drop every row, and its last_used_at stamps would never reach the
+;; DB. Each node instead runs its own single-threaded executor for its own pending state, mirroring
+;; `metabase.mq.publish-buffer`.
 
-(defmethod task/init! ::ApiKeyLastUsedAtFlush
+(defn- safe-flush!
+  "Runs both flush functions, swallowing any throwable. `scheduleAtFixedRate` silently stops
+  rescheduling a task that throws an uncaught exception, which would freeze the flusher for the rest
+  of the JVM's life; each flush function already catches its own errors, but this is a second line of
+  defense so a future change to either can't silently kill the flush loop."
+  []
+  (try
+    (flush-usage-logs!)
+    (flush-last-used-at!)
+    (catch Throwable e
+      (log/error e "Unexpected error in API key usage flush; flusher continues"))))
+
+(defonce ^:private flush-executor (atom nil))
+
+(defn- start-flush!
+  "Starts a daemon thread that flushes pending usage-log rows and last_used_at stamps every
+  [[flush-interval-seconds]]. Idempotent. Returns `true` if THIS call created the executor, `false`
+  if one was already running."
+  []
+  (let [exec (Executors/newSingleThreadScheduledExecutor
+              (reify ThreadFactory
+                (newThread [_ r]
+                  (doto (Thread. r "api-key-usage-flush")
+                    (.setDaemon true)))))]
+    (if (compare-and-set! flush-executor nil exec)
+      (do (.scheduleAtFixedRate exec ^Runnable safe-flush! flush-interval-seconds flush-interval-seconds TimeUnit/SECONDS)
+          true)
+      (do (.shutdown exec) false))))
+
+(defn- stop-flush!
+  "Stops the flush thread, then force-flushes anything still pending so a graceful shutdown doesn't
+  lose the last interval's worth of rows/stamps."
+  []
+  (when-let [^ScheduledExecutorService exec (first (reset-vals! flush-executor nil))]
+    (.shutdownNow exec))
+  (safe-flush!))
+
+(defmethod startup/def-startup-logic! ::ApiKeyUsageFlush
   [_]
-  (let [job     (jobs/build
-                 (jobs/of-type ApiKeyLastUsedAtFlush)
-                 (jobs/with-identity last-used-flush-job-key))
-        trigger (triggers/build
-                 (triggers/with-identity last-used-flush-trigger-key)
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                  (simple/schedule
-                   (simple/with-interval-in-seconds last-used-flush-interval-seconds)
-                   (simple/repeat-forever))))]
-    (task/schedule-task! job trigger)))
+  (start-flush!))
+
+(defmethod startup/def-shutdown-logic! ::ApiKeyUsageFlush
+  [_]
+  (stop-flush!))
 
 ;;; ------------------------------------------------- entry point ---------------------------------------------------
 
