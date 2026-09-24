@@ -172,7 +172,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         <Menu.Target>
           {appsSection ? (
             <ActionIcon
-              size="2.25rem"
+              size="2rem"
               p="sm"
               variant="outline"
               bd="1px solid var(--mb-color-border-neutral)"

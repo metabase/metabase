@@ -42,8 +42,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -239,7 +238,7 @@
                 :truncated    false}]
     (common/success-content
      (message/msg ["%s" "Query validated, not executed — execute or save it later by passing this query_handle."]
-                  (message/raw (json/encode counts))))))
+                  (message/data counts)))))
 
 (defn- execute-response!
   [session-id serialized-query prompt row-limit]
@@ -264,7 +263,7 @@
                            :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (steering-line returned next-cursor))
+       (message/msg ["%s" "%s"] (message/data payload) (steering-line returned next-cursor))
        payload))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -447,7 +446,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
      (message/msg ["%s" (str "SQL accepted, not executed — template tags and permissions "
                              "were checked; the SQL text itself was not validated. Execute, "
                              "save, or visualize it later by passing this query_handle.")]
-                  (message/raw (json/encode counts))))))
+                  (message/data counts)))))
 
 (defn- execute-sql-response!
   [session-id serialized-query prompt row-limit hint]
@@ -464,7 +463,7 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                           :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (sql-steering-line returned))
+       (message/msg ["%s" "%s"] (message/data payload) (sql-steering-line returned))
        payload))))
 
 (def ^:private execute-sql-args-schema
@@ -674,5 +673,5 @@ Dialect (JSON): tables and columns go by NUMERIC ID (from browse_data list_table
                            :rows rows)]
     (common/success-content
      (if truncated?
-       (message/msg ["%s" "%s"] (message/raw (json/encode payload)) (saved-question-steering-line returned))
+       (message/msg ["%s" "%s"] (message/data payload) (saved-question-steering-line returned))
        payload))))
