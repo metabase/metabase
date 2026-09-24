@@ -2,7 +2,7 @@
 import { Global, css } from "@emotion/react";
 import { useMemo } from "react";
 
-import "metabase/css/core/fonts.css";
+import "fonts.css";
 import { useSelector } from "metabase/redux";
 import { getFontFiles } from "metabase/styled-components/selectors";
 

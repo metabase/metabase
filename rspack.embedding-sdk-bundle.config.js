@@ -1,5 +1,6 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
+
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const rspack = require("@rspack/core");
@@ -34,6 +35,7 @@ const {
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 const {
   COMPRESSION_CONFIG,
@@ -141,30 +143,41 @@ const config = {
         test: /\.(svg|png)$/,
         // SVG font faces live under frontend/fonts and must stay files: inlining them
         // adds close to a megabyte of base64 to this bundle.
-        exclude: /[\\/]frontend[\\/]fonts[\\/]/,
+        exclude: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/inline",
         resourceQuery: { not: [/component|source/] },
       },
       {
         // Fonts are emitted as files, never inlined: base64 would add megabytes.
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
           // The app build owns these files. Emitting them here as well would race
           // with its `clean`, and would leave removed fonts behind if that clean
           // had to skip the directory. This build only needs the URL.
           emit: false,
-          // Keep the family directory: the backend derives the whitelabel font
-          // list from these directory names.
           /** @param {{ filename: string }} pathData */
-          filename: (pathData) => {
-            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
-            const segments = pathData.filename.split("/");
-            const family = segments[segments.length - 2];
-            return `../dist/fonts/${family}/[name].[contenthash:8][ext]`;
-          },
+          filename: (pathData) => fontAssetName(pathData, "../dist/fonts"),
         },
+      },
+      {
+        // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
+        // loader, so css-loader sees the rewritten stylesheet and resolves its
+        // url() against the generated chunks.
+        test: /[\\/]frontend[\\/]fonts[\\/]fonts\.css$/,
+        enforce: "pre",
+        use: [
+          {
+            loader:
+              __dirname +
+              "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
+            options: {
+              fontsDir: __dirname + "/frontend/fonts",
+              outputDir: __dirname + "/node_modules/.cache/font-subsets",
+            },
+          },
+        ],
       },
       {
         test: /\.css$/,
@@ -304,6 +317,12 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin({
+      // Holds the place for `import "fonts.css"`. The font-subset loader
+      // discards this and builds every rule from frontend/fonts.
+      [__dirname + "/frontend/fonts/fonts.css"]:
+        "/* built by FontSubsetLoader */\n",
+    }),
     ...bundleStatsPlugins("stats-embedding-sdk.json"),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     new NodePolyfillPlugin(), // for crypto, among others

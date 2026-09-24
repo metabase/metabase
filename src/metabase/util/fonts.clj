@@ -60,6 +60,9 @@
   [font-name stem ext]
   (let [dir (str bundled-fonts-resource "/" (font-dirname font-name))]
     (when (io/resource dir)
+      ;; A face the build splits by `unicode-range` emits its latin chunk under the name the
+      ;; whole face would have had, so this matches it and never the `.rest.` chunk, which
+      ;; carries no latin glyphs and would render nothing in a rule with no `unicode-range`.
       (let [pattern (re-pattern (str (Pattern/quote stem) "\\.[a-f0-9]+\\." ext))]
         (u.files/with-open-path-to-resource [path dir]
           (some (fn [^Path p]

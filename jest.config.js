@@ -68,10 +68,18 @@ const config = {
         "<rootDir>/enterprise/frontend/src/embedding-sdk-package",
         "<rootDir>/enterprise/frontend/src/embedding-sdk-ee",
         "<rootDir>/enterprise/frontend/src/custom-viz",
+        "<rootDir>/frontend/build",
         "<rootDir>/frontend/lint/tests",
         "<rootDir>/.github",
         MEMORY_TEST_PATTERN,
       ],
+    },
+    {
+      ...nodeProject,
+      // Build tooling reads real files and, for fonts, drives a WebAssembly
+      // decoder that rejects a jsdom Buffer.
+      displayName: "build-tooling",
+      testMatch: ["<rootDir>/frontend/build/**/*.unit.spec.{js,jsx,ts,tsx}"],
     },
     {
       ...nodeProject,

@@ -7,12 +7,6 @@ const rspack = require("@rspack/core");
 const { ReactRefreshRspackPlugin } = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
-const {
-  COMPRESSION_CONFIG,
-} = require("./frontend/build/shared/rspack/compression");
-const {
-  bundleStatsPlugins,
-} = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
   IS_DEV_MODE,
@@ -20,6 +14,12 @@ const {
   WEBPACK_BUNDLE,
 } = require("./frontend/build/shared/constants");
 const { BABEL_CONFIG } = require("./frontend/build/shared/rspack/babel-config");
+const {
+  bundleStatsPlugins,
+} = require("./frontend/build/shared/rspack/bundle-stats");
+const {
+  COMPRESSION_CONFIG,
+} = require("./frontend/build/shared/rspack/compression");
 const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
@@ -27,6 +27,7 @@ const {
 const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const { fontAssetName } = require("./frontend/build/shared/rspack/fonts");
 const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
@@ -240,19 +241,30 @@ const config = {
       },
       {
         test: /\.(woff2?|ttf|otf|eot|svg)$/,
-        include: /[\\/]frontend[\\/]fonts[\\/]/,
+        include: /[\\/](?:frontend[\\/]fonts|font-subsets)[\\/]/,
         type: "asset/resource",
         generator: {
-          // Keep the family directory: the backend derives the whitelabel font
-          // list from these directory names.
           /** @param {{ filename: string }} pathData */
-          filename: (pathData) => {
-            // e.g. frontend/fonts/PT_Serif/PTSerif-Bold.woff2 -> PT_Serif
-            const segments = pathData.filename.split("/");
-            const family = segments[segments.length - 2];
-            return `fonts/${family}/[name].[contenthash:8][ext]`;
-          },
+          filename: (pathData) => fontAssetName(pathData, "fonts"),
         },
+      },
+      {
+        // Rewrites the bundled @font-face rules into per-range chunks. A `pre`
+        // loader, so css-loader sees the rewritten stylesheet and resolves its
+        // url() against the generated chunks.
+        test: /[\\/]frontend[\\/]fonts[\\/]fonts\.css$/,
+        enforce: "pre",
+        use: [
+          {
+            loader:
+              __dirname +
+              "/frontend/build/shared/rspack/loaders/font-subset-loader.js",
+            options: {
+              fontsDir: __dirname + "/frontend/fonts",
+              outputDir: __dirname + "/node_modules/.cache/font-subsets",
+            },
+          },
+        ],
       },
       {
         test: /\.css$/,
@@ -362,6 +374,12 @@ const config = {
   },
 
   plugins: [
+    new rspack.experiments.VirtualModulesPlugin({
+      // Holds the place for `import "fonts.css"`. The font-subset loader
+      // discards this and builds every rule from frontend/fonts.
+      [__dirname + "/frontend/fonts/fonts.css"]:
+        "/* built by FontSubsetLoader */\n",
+    }),
     ...bundleStatsPlugins("stats-main.json"),
     // Extracts initial CSS into a standard stylesheet that can be loaded in parallel with JavaScript
     new rspack.CssExtractRspackPlugin({
