@@ -21,6 +21,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {
   gauge: ["gauge.segments"],
+  line: ["graph.goal_value"],
   scalar: ["scalar.segments"],
 };
 

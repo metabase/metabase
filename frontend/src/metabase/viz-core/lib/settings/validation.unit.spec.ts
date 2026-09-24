@@ -1,4 +1,3 @@
-import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
 import type {
   Series,
   VisualizationDisplay,
@@ -75,9 +74,7 @@ describe("validateGoalReferences", () => {
     });
   });
 
-  describe("for a display that resolves graph goals", () => {
-    mockDynamicGoalSettingKeys(["graph.goal_value"]);
-
+  describe("for a line chart", () => {
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
         validateGoalReferences(createSeries(), {

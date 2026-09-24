@@ -1,6 +1,6 @@
 (ns metabase.query-processor.card
   "Code for running a query in the context of a specific Card."
-  (:refer-clojure :exclude [mapv select-keys not-empty])
+  (:refer-clojure :exclude [mapv select-keys not-empty get-in])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -35,7 +35,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
-   [metabase.util.performance :refer [mapv select-keys not-empty]]))
+   [metabase.util.performance :refer [mapv select-keys not-empty get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -367,12 +367,15 @@
                       (:visualization_settings dashcard))
         card-viz    (:visualization_settings card)
         merged-viz  (m/deep-merge card-viz dash-viz)
+        ;; a visualizer dashcard runs one query per card it combines; its primary card's result carries the goals
+        visualizer-viz (when (= card-id (:card_id dashcard))
+                         (get-in dash-viz [:visualization :settings]))
         ;; We need to check this here because dashcards don't get selected until this point
         qp          (if (= :pivot (:display card))
                       qp.pivot/run-pivot-query
                       (or qp process-query-for-card-default-qp))
         ;; wrapping the qp (rather than the `:make-run`) covers every card/dashcard/embed/public endpoint
-        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp card-viz dash-viz)
+        qp          (qp.referenced-entities/maybe-wrap-qp-for-goals qp card-viz dash-viz visualizer-viz)
         runner      (make-run qp export-format)
         query       (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                         (assoc :viz-settings merged-viz)
