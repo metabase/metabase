@@ -1,0 +1,65 @@
+name: Profile Backend
+
+# The only on-demand entry point for the backend test suites. Dispatching this workflow runs one
+# job of one suite against the ref you dispatch on, under clj-async-profiler, and attaches a
+# flamegraph to the job.
+#
+# The suite workflows below are called unchanged: services, matrix legs, test args and quarantine
+# gating are whatever the normal CI run uses, because they are the same jobs. They declare nothing
+# for this feature -- they read `suite`, `db` and `tests` off `github.event.inputs`, which inside a
+# called workflow is this dispatch's payload.
+#
+# `suite` picks the workflow, `db` picks the leg within it. `db` is free text so that adding a
+# driver or an app-DB leg needs no edit here; an unknown driver fails the drivers run through
+# mage's `--only-driver`, and an unknown app-DB or semantic-search leg matches nothing and runs no
+# jobs.
+#
+# Renaming an input here means updating every reader -- `grep -rn github.event.inputs .github/`.
+# Nothing enforces that, deliberately: a stale name reads as empty, which runs every leg of the
+# suite unprofiled, on the run you are watching. It cannot affect a normal CI run, where those
+# references are empty either way.
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Which suite to profile.'
+        type: choice
+        required: true
+        options:
+          - backend
+          - app-db
+          - drivers
+          - semantic-search
+      db:
+        description: 'Which leg of the suite: app-db takes mariadb, mysql or postgres; drivers takes a driver name, e.g. bigquery or mongo-ssl; semantic-search takes h2, mariadb, mysql, postgres or appdb-mode. Ignored by backend. Blank runs the whole suite -- every leg for app-db and semantic-search, mage''s usual decisions for drivers.'
+        type: string
+        required: false
+        default: ''
+      tests:
+        description: 'Optional: profile only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank profiles the leg''s usual set.'
+        type: string
+        required: false
+        default: ''
+
+# These jobs gate on `inputs.suite` -- this workflow's own input. Only the called workflows reach
+# for `github.event.inputs.*`, because `inputs` there is their own `workflow_call` signature.
+jobs:
+  backend:
+    if: ${{ inputs.suite == 'backend' }}
+    uses: ./.github/workflows/backend.yml
+    secrets: inherit
+
+  app-db:
+    if: ${{ inputs.suite == 'app-db' }}
+    uses: ./.github/workflows/app-db.yml
+    secrets: inherit
+
+  drivers:
+    if: ${{ inputs.suite == 'drivers' }}
+    uses: ./.github/workflows/drivers.yml
+    secrets: inherit
+
+  semantic-search:
+    if: ${{ inputs.suite == 'semantic-search' }}
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit

@@ -23,7 +23,7 @@ export const UnsubscribeConfirmModal = ({
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
         variant="filled"
-        color="feedback-negative"
+        color="negative"
         onClick={onConfirm}
       >{t`Unsubscribe`}</Button>
     </Flex>

@@ -32,13 +32,19 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   border: ["border", "border-neutral"],
   filter: ["filter", "core-filter"],
   summarize: ["summarize", "core-summarize"],
-  "text-primary": ["text-primary"],
+  "text-primary": [
+    "text-primary",
+    "button_label-default-neutral-default",
+    "button_label-light-neutral-default",
+    "button_label-subtle-neutral-default",
+  ],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary", "text-disabled"],
   background: [
     "background-primary",
     "background_page-primary",
     "background_surface-primary",
+    "button-default-neutral-default",
   ],
   "background-secondary": [
     "background-secondary",

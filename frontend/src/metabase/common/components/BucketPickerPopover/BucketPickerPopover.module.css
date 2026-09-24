@@ -1,7 +1,9 @@
 .triggerButton {
+  --bucket-trigger-color: var(--mb-color-text-disabled-inverse);
+  --bucket-trigger-hover-color: var(--mb-color-text-primary-inverse);
+
   border-radius: 0;
   visibility: hidden;
-  color: var(--mb-color-text-disabled-inverse);
   border-left: 2px solid var(--mb-color-border-neutral-subtle);
 }
 
@@ -9,19 +11,19 @@
   visibility: visible;
 }
 
-.triggerButton:hover {
-  color: var(--mb-color-text-primary-inverse);
-}
-
 /* No hover on touch devices, so always show the button with readable text */
 @media (hover: none) and (pointer: coarse) {
   .triggerButton {
-    visibility: visible;
-    color: var(--select-list-item-text-color, var(--mb-color-core-brand));
-  }
+    --bucket-trigger-color: var(
+      --select-list-item-text-color,
+      var(--mb-color-core-brand)
+    );
+    --bucket-trigger-hover-color: var(
+      --select-list-item-text-color,
+      var(--mb-color-core-brand)
+    );
 
-  .chevronIcon {
-    color: var(--select-list-item-text-color, var(--mb-color-core-brand));
+    visibility: visible;
   }
 }
 
@@ -31,7 +33,6 @@
 }
 
 .chevronIcon {
-  color: var(--mb-color-text-primary-inverse);
   flex: 0 0 auto;
 }
 

@@ -17,20 +17,29 @@ import {
   provideTableIndexTags,
 } from "./tags";
 
+export type ListTableIndexesResult = {
+  indexes: TableIndexEntry[];
+  warehouseError: string | null;
+};
+
 export const indexManagerApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listTableIndexes: builder.query<TableIndexEntry[], ListTableIndexesRequest>(
-      {
-        query: (params) => ({
-          method: "GET",
-          url: "/api/index",
-          params,
-        }),
-        transformResponse: (response: ListTableIndexesResponse) =>
-          response.data,
-        providesTags: (indexes = []) => provideTableIndexListTags(indexes),
-      },
-    ),
+    listTableIndexes: builder.query<
+      ListTableIndexesResult,
+      ListTableIndexesRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/index",
+        params,
+      }),
+      transformResponse: (response: ListTableIndexesResponse) => ({
+        indexes: response.data,
+        warehouseError: response.warehouse_error ?? null,
+      }),
+      providesTags: (result) =>
+        provideTableIndexListTags(result?.indexes ?? []),
+    }),
     getTableIndex: builder.query<TableIndexRequest, TableIndexRequestId>({
       query: (id) => ({
         method: "GET",
