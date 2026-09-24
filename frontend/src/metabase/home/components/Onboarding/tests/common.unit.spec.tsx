@@ -358,7 +358,12 @@ describe("Onboarding", () => {
     });
 
     it("'data-studio' CTA should be visible to non-admin analysts", () => {
-      setup({ isAdmin: false, isAnalyst: true, openItem: "data-studio" });
+      setup({
+        isAdmin: false,
+        isAnalyst: true,
+        openItem: "data-studio",
+        tokenFeatures: { advanced_permissions: true },
+      });
 
       const cta = within(screen.getByTestId("data-studio-cta")).getByRole(
         "link",
