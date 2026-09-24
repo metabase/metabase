@@ -332,7 +332,7 @@
                       :unrestricted
                       database-id
                       %)
-             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." (str %))
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))
 

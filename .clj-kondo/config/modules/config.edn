@@ -413,6 +413,7 @@
            premium-features
            query-processor
            settings
+           startup
            system
            task
            timeline
@@ -807,6 +808,7 @@
            premium-features
            query-processor
            settings
+           startup
            system
            util
            warehouse-schema
@@ -955,6 +957,7 @@
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
+           metabase.indexed-entities.core
            metabase.indexed-entities.init}
    :uses #{analytics
            api
@@ -2199,6 +2202,7 @@
            collections
            dashboards
            driver
+           indexed-entities
            legacy-mbql
            lib
            lib-be
@@ -2218,7 +2222,6 @@
                     :model/Database
                     :model/Field
                     :model/ModelIndex
-                    :model/ModelIndexValue
                     :model/Query
                     :model/Revision
                     :model/Segment

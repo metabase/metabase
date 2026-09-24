@@ -126,6 +126,12 @@
   "Runs check-embedding-enabled-for-object for a given Dashboard id"
   (partial check-embedding-enabled-for-object :model/Dashboard))
 
+(mu/defn check-active-card
+  "Check that the Card with `card-id` exists and is not archived. A trashed Card keeps its DashboardCard rows, so the
+  dashcard routes have to treat it as absent rather than serving its results."
+  [card-id :- ms/PositiveInt]
+  (api/check-404 (t2/exists? :model/Card :id card-id :archived false)))
+
 (defn- resolve-card-parameters
   "Returns parameters for a card (HUH?)" ; TODO - better docstring
   [card-or-id]

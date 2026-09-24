@@ -1,4 +1,5 @@
 import {
+  type AlertUpgradeVersion,
   type EngineKey,
   type ScheduleDayType,
   engineKeys,
@@ -20,4 +21,19 @@ export function isEngineKey(value: string | undefined): value is EngineKey {
 
 export function isScheduleDay(value: string): value is ScheduleDayType {
   return SCHEDULE_DAY.includes(value as ScheduleDayType);
+}
+
+export function isAlertUpgradeVersion(
+  value: unknown,
+): value is AlertUpgradeVersion {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "min" in value &&
+    typeof value.min === "string" &&
+    "fixed" in value &&
+    typeof value.fixed === "string" &&
+    "message" in value &&
+    typeof value.message === "string"
+  );
 }

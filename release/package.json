@@ -2,22 +2,20 @@
   "name": "release-helper",
   "version": "1.0.0",
   "description": "",
+  "license": "AGPL-3.0-or-later",
+  "author": "Metabase",
   "type": "module",
   "main": "run/build.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "generate-changelog": "tsx generate-changelog.ts",
+    "alert-upgrade-versions": "tsx alert-upgrade-versions.ts",
     "format": "oxfmt --write",
     "release-offline": "tsx release-offline.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration",
     "type-check": "tsc --noEmit"
   },
-  "author": "Metabase",
-  "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@octokit/rest": "^21.1.1",
     "@slack/web-api": "^7.13",
@@ -45,5 +43,8 @@
   "resolutions": {
     "axios": "^1.12.0",
     "form-data": "^4.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
