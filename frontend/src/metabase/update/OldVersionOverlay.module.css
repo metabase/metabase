@@ -1,0 +1,42 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  /* Above dialog portals, without intercepting their pointer or keyboard input. */
+  z-index: 2147483647;
+  pointer-events: none;
+  user-select: none;
+  backdrop-filter: sepia(0.65);
+}
+
+.web {
+  position: absolute;
+  width: clamp(5rem, 15vw, 13rem);
+  height: auto;
+  stroke: var(--mb-color-text-primary);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  opacity: 0.28;
+}
+
+.topLeft {
+  top: 0;
+  left: 0;
+}
+
+.topRight {
+  top: 0;
+  right: 0;
+  transform: rotate(90deg);
+}
+
+.bottomLeft {
+  bottom: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.bottomRight {
+  bottom: 0;
+  right: 0;
+  transform: rotate(180deg);
+}

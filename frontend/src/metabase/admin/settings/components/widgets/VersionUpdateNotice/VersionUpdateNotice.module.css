@@ -1,5 +1,6 @@
-.container {
-  background-color: var(--mb-color-core-summarize);
+/* the message row holds buttons, so center the icon on it instead of the first text line */
+.alertWrapper {
+  align-items: center;
 }
 
 .message {

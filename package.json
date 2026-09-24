@@ -39,6 +39,7 @@
     "@emotion/styled": "^11.11.0",
     "@floating-ui/dom": "^1.7.4",
     "@floating-ui/react": "^0.27.16",
+    "@fontsource/press-start-2p": "^5.3.0",
     "@juggle/resize-observer": "^3.4.0",
     "@lezer/highlight": "^1.2.1",
     "@lezer/lr": "^1.4.2",

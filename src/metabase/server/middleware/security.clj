@@ -356,7 +356,7 @@
                                  ;; separately from `'self'` (which stays for the host-side SDK calls).
                                  (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
-                  :media-src    ["www.metabase.com"]}]
+                  :media-src    ["'self'" "www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (def ^:private csp-unsafe-char-re

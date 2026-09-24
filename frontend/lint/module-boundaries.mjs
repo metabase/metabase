@@ -253,6 +253,7 @@ const elements = [
     enforcePublicApi: true,
   }),
   createElement({ type: "feature", name: "setup" }),
+  createElement({ type: "feature", name: "update" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
