@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
-   [metabase.collections.core :as collections]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -164,6 +163,12 @@
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select [model :id :name] :id [:in ids]))
 
+(mu/defn archived-by-id
+  "A map of ID to the `:archived` flag of the instances of `model` with `ids`."
+  [model :- :keyword
+   ids   :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn :archived model :id [:in ids]))
+
 (mu/defn instances-in-collections
   "The instances of `model` in the Collections with `collection-ids`, excluding those archived under the optional
   `archived-key` column."
@@ -321,8 +326,9 @@
   "Matches `collections` and all of their descendants."
   [collections]
   (into [:or [:in :id (map :id collections)]]
-        (for [collection collections]
-          [:like :location (str (collections/location-path collection) "%")])))
+        (for [{:keys [id location]} collections]
+          ;; the location its children have, so a nested collection's descendants match too
+          [:like :location (str location id "/%")])))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
@@ -532,6 +538,13 @@
   "The `:id` and `:status` of the RemoteSyncObjects of the Collections with `collection-ids` and their contents."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/RemoteSyncObject :id :status] {:where (contents-rso-expr collection-ids)}))
+
+(mu/defn content-rsos
+  "The `:id`, `:model_type`, `:model_id`, `:model_collection_id`, and `:status` of the RemoteSyncObjects of the
+  Collections with `collection-ids` and of their contents."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (t2/select [:model/RemoteSyncObject :id :model_type :model_id :model_collection_id :status]
+             {:where (contents-rso-expr collection-ids)}))
 
 (mu/defn removed-content-rso-ids
   "The IDs of the RemoteSyncObjects pending removal among those of the Collections with `collection-ids` and their
