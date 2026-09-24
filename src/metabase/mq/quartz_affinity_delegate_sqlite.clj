@@ -1,12 +1,14 @@
-(ns metabase.mq.quartz-affinity-delegate-postgres
-  "Affinity `DriverDelegate` for Postgres: a `PostgreSQLDelegate` subclass (Metabase uses
-  `PostgreSQLDelegate` on Postgres for BLOB handling) that overrides only `selectTriggerToAcquire`,
-  re-issuing the acquire query with this node's queue capability spliced into its `WHERE` clause.
+(ns metabase.mq.quartz-affinity-delegate-sqlite
+  "Affinity `DriverDelegate` for SQLite: a `StdJDBCDelegate` subclass that overrides only
+  `selectTriggerToAcquire`, re-issuing the acquire query with this node's queue capability spliced into
+  its `WHERE` clause. See [[metabase.mq.quartz-affinity]] for the why and how.
 
-  Identical to `metabase.mq.quartz-affinity-delegate-std` except for the base class — keep the two in
-  sync. See [[metabase.mq.quartz-affinity]]."
-  (:gen-class :extends org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
-              :name metabase.mq.QueueAffinityPostgresDelegate
+  This is `gen-class`, so it is AOT-compiled in the uberjar and runtime-compiled in dev by
+  [[metabase.mq.quartz-affinity/install-delegate!]]. Keep this namespace tiny — all logic lives in
+  `metabase.mq.quartz-affinity` — and keep it in sync with `metabase.mq.quartz-affinity-delegate-postgres`
+  (the two differ only in their base class)."
+  (:gen-class :extends org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+              :name metabase.mq.QueueAffinitySqliteDelegate
               :exposes-methods {rtp superRtp})
   (:require
    [metabase.mq.quartz-affinity :as quartz-affinity]

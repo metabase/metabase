@@ -106,34 +106,40 @@
 (defn initialize-job!
   "Initialize a schedule for a transform job."
   [{job-id :id :keys [schedule]}]
-  (log/info "Initializing schedule for transform job" job-id)
-  (let [job (jobs/build
-             (jobs/with-identity (job-key job-id))
-             (jobs/with-description (str "Run Transform job " job-id))
-             (jobs/using-job-data {"job-id" job-id})
-             (jobs/of-type RunTransforms)
-             (jobs/store-durably))
-        trigger (build-trigger job-id schedule)]
-    (task/schedule-task! job trigger)))
+  (task/do-after-app-db-commit
+   (fn []
+     (log/info "Initializing schedule for transform job" job-id)
+     (let [job (jobs/build
+                (jobs/with-identity (job-key job-id))
+                (jobs/with-description (str "Run Transform job " job-id))
+                (jobs/using-job-data {"job-id" job-id})
+                (jobs/of-type RunTransforms)
+                (jobs/store-durably))
+           trigger (build-trigger job-id schedule)]
+       (task/schedule-task! job trigger)))))
 
 (defn update-job!
   "Update the trigger for a transform job."
   [job-id schedule]
-  (log/info "Updating schedule for transform job" job-id "to" schedule)
-  (let [existing-trigger (first (task/existing-triggers (job-key job-id) (trigger-key job-id)))]
-    (if (not= schedule (:schedule existing-trigger))
-      (do
-        (when existing-trigger
-          (delete-trigger! existing-trigger))
-        (when schedule
-          (create-trigger! job-id schedule)))
-      (log/info "No changes to the trigger for transform job" job-id))))
+  (task/do-after-app-db-commit
+   (fn []
+     (log/info "Updating schedule for transform job" job-id "to" schedule)
+     (let [existing-trigger (first (task/existing-triggers (job-key job-id) (trigger-key job-id)))]
+       (if (not= schedule (:schedule existing-trigger))
+         (do
+           (when existing-trigger
+             (delete-trigger! existing-trigger))
+           (when schedule
+             (create-trigger! job-id schedule)))
+         (log/info "No changes to the trigger for transform job" job-id))))))
 
 (defn delete-job!
   "Delete a job."
   [job-id]
-  (log/info "Deleting schedule for transform job" job-id)
-  (task/delete-task! (job-key job-id) (trigger-key job-id)))
+  (task/do-after-app-db-commit
+   (fn []
+     (log/info "Deleting schedule for transform job" job-id)
+     (task/delete-task! (job-key job-id) (trigger-key job-id)))))
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")

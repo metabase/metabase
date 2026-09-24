@@ -16,6 +16,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.classloader.core :as classloader]
+   [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
    (java.math BigDecimal)
@@ -106,19 +107,14 @@
 (def ^:private delegate-class-name
   "Affinity `DriverDelegate` subclass to use per app-db type. Postgres must extend `PostgreSQLDelegate`
   (BLOB handling); H2/MySQL extend `StdJDBCDelegate`."
-  {:postgres "metabase.mq.QueueAffinityPostgresDelegate"})
+  {:postgres "metabase.mq.QueueAffinityPostgresDelegate"
+   :sqlite "metabase.mq.QueueAffinitySqliteDelegate"})
 
 (def ^:private default-delegate-class-name "metabase.mq.QueueAffinityStdDelegate")
 
-(def ^:private base-delegate-class-name
-  "The plain Quartz delegate to fall back to (no affinity) if the affinity subclass can't be
-  loaded/compiled — so the scheduler always starts. Mirrors Metabase's normal per-DB choice."
-  {:postgres "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"})
-
-(def ^:private default-base-delegate-class-name "org.quartz.impl.jdbcjobstore.StdJDBCDelegate")
-
 (def ^:private delegate-ns
-  {"metabase.mq.QueueAffinityPostgresDelegate" 'metabase.mq.quartz-affinity-delegate-postgres
+  {"metabase.mq.QueueAffinitySqliteDelegate" 'metabase.mq.quartz-affinity-delegate-sqlite
+   "metabase.mq.QueueAffinityPostgresDelegate" 'metabase.mq.quartz-affinity-delegate-postgres
    "metabase.mq.QueueAffinityStdDelegate"      'metabase.mq.quartz-affinity-delegate-std})
 
 (def ^:private driver-delegate-property "org.quartz.jobStore.driverDelegateClass")
@@ -156,7 +152,7 @@
   (let [class-name (try
                      (ensure-delegate-loadable! db-type)
                      (catch Throwable t
-                       (let [fallback (get base-delegate-class-name db-type default-base-delegate-class-name)]
+                       (let [fallback (task/install-secure-delegate! db-type)]
                          (log/warn (str "Could not install Quartz queue-affinity delegate; falling back to "
                                         fallback " (queue node-affinity disabled): " (ex-message t)))
                          fallback)))]

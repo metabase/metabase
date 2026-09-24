@@ -64,8 +64,9 @@
   "FOR UPDATE clause for the recovery sweep: SKIP LOCKED on Postgres/MySQL so concurrent sweeps on
   different nodes claim disjoint rows; plain FOR UPDATE on H2."
   []
-  (if (#{:postgres :mysql} (mdb/db-type))
-    [:update :skip-locked]
+  (case (mdb/db-type)
+    (:postgres :mysql) [:update :skip-locked]
+    :sqlite nil
     [:update]))
 
 (defn insert-batch!
@@ -142,43 +143,55 @@
     (analytics/inc! :metabase-mq/batches-retried {:channel queue_name :reason "outbox-recovery"})
     (update acc :bumps conj {:id id :next-attempt-at (.plusMillis now delay-ms)})))
 
-(defn- recover-page!
-  "Runs one transaction of the recovery sweep over up to [[recovery-page-size]] *due* rows, in id order
+(defonce ^:private sqlite-recovery-lock (Object.))
+
+(defn- do-recover-page!
+  "Runs one page of the recovery sweep over up to [[recovery-page-size]] *due* rows, in id order
   starting after `after-id` (keyset pagination). Publishes each row independently: published rows are
   deleted; rows that hit a *message-specific* failure are bumped and backed off ([[bump-failed-row]]).
 
   Returns `[recovered next-after-id]`, where `next-after-id` is the id to resume the next page from, or
   nil when the page was empty (no more due rows) OR the backend was found unavailable (stop the sweep)."
   [after-id]
-  (t2/with-transaction [_conn]
-    (let [now    (Instant/now)
-          now-ts now
-          rows (mq.db/due-outbox-rows after-id
-                                      now-ts
-                                      (.minusMillis now recovery-age-ms)
-                                      recovery-page-size
-                                      (for-update-clause))
-          {:keys [recover-ids bumps backend-down?]}
-          (reduce (fn [acc {:keys [id queue_name payload] :as row}]
-                    (try
-                      (transport/publish-encoded! (keyword "queue" queue_name) payload)
-                      (update acc :recover-ids conj id)
-                      (catch Exception e
-                        (if (q.backend/backend-unavailable? e)
-                          ;; backend is down — stop now (leave this row untouched) rather than bumping
-                          ;; every remaining row and hammering a backend we already know is unavailable.
-                          (reduced (assoc acc :backend-down? true))
-                          (bump-failed-row acc now row e)))))
-                  {:recover-ids [] :bumps [] :backend-down? false}
-                  rows)]
-      ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
-      (when (seq recover-ids) (mq.db/delete-outbox-rows! recover-ids))
-      (doseq [{:keys [id next-attempt-at]} bumps]
-        (mq.db/bump-outbox-row! id next-attempt-at))
-      (when backend-down?
-        (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
-      ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.
-      [(count recover-ids) (when (and (not backend-down?) (seq rows)) (:id (last rows)))])))
+  (let [now    (Instant/now)
+        now-ts now
+        rows (mq.db/due-outbox-rows after-id
+                                    now-ts
+                                    (.minusMillis now recovery-age-ms)
+                                    recovery-page-size
+                                    (for-update-clause))
+        {:keys [recover-ids bumps backend-down?]}
+        (reduce (fn [acc {:keys [id queue_name payload] :as row}]
+                  (try
+                    (transport/publish-encoded! (keyword "queue" queue_name) payload)
+                    (update acc :recover-ids conj id)
+                    (catch Exception e
+                      (if (q.backend/backend-unavailable? e)
+                        ;; backend is down — stop now (leave this row untouched) rather than bumping
+                        ;; every remaining row and hammering a backend we already know is unavailable.
+                        (reduced (assoc acc :backend-down? true))
+                        (bump-failed-row acc now row e)))))
+                {:recover-ids [] :bumps [] :backend-down? false}
+                rows)]
+    ;; published rows are removed; message-specific failures have their attempt count bumped and next retry scheduled.
+    (when (seq recover-ids) (mq.db/delete-outbox-rows! recover-ids))
+    (doseq [{:keys [id next-attempt-at]} bumps]
+      (mq.db/bump-outbox-row! id next-attempt-at))
+    (when backend-down?
+      (log/info "Outbox recovery: backend unavailable, remaining rows retry next run"))
+    ;; nil next-after-id stops the sweep: no more due rows, or the backend is down.
+    [(count recover-ids) (when (and (not backend-down?) (seq rows)) (:id (last rows)))]))
+
+(defn- recover-page! [after-id]
+  (if (= (mdb/db-type) :sqlite)
+    ;; Only one process owns SQLite. Serialize sweep pages in that process, and release the read
+    ;; connection before publishing through Quartz's separate connection. Keeping a read transaction
+    ;; open across publication would prevent promoting it to a writer after Quartz commits in WAL mode.
+    ;; A crash between publish and delete still gives the existing at-least-once delivery guarantee.
+    (locking sqlite-recovery-lock
+      (do-recover-page! after-id))
+    (t2/with-transaction [_conn]
+      (do-recover-page! after-id))))
 
 (defn recover-outbox!
   "Republishes outbox rows a crash left behind — rows older than [[recovery-age-ms]] (the normal
