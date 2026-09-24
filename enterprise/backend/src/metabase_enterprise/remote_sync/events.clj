@@ -11,10 +11,10 @@
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
-   - Table (when published in a remote-synced collection)
-   - Field, Segment (when belonging to a published table in a remote-synced collection)
+   - Table and TableUserSettings, which also carries a Field's own edits (when published in a remote-synced collection)
+   - Segment, Measure (when belonging to a published table in a remote-synced collection)
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
-   - NativeQuerySnippet, snippets-namespace Collections (when Library is remote-synced)"
+   - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
@@ -26,8 +26,18 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defn enable-snippet-tracking!
-  "Mark all existing snippets and snippets-namespace collections as 'create' for initial sync."
+(defn- glossary-tracking-rows
+  "A 'create' ledger row for each of the glossary `entries`."
+  [entries timestamp]
+  (for [entry entries]
+    {:model_type        "Glossary"
+     :model_id          (:id entry)
+     :model_name        (:term entry)
+     :status            "create"
+     :status_changed_at timestamp}))
+
+(defn enable-library-tracking!
+  "Mark all existing snippets, snippets-namespace collections, and glossary entries as 'create' for initial sync."
   []
   (let [timestamp (t/offset-date-time)
         rows      (concat
@@ -43,36 +53,44 @@
                       :model_name          (:name snippet)
                       :model_collection_id (:collection_id snippet)
                       :status              "create"
-                      :status_changed_at   timestamp}))]
+                      :status_changed_at   timestamp})
+                   (glossary-tracking-rows (remote-sync.db/glossary-entries) timestamp))]
     (when (seq rows)
       (remote-sync.db/insert-rsos! rows))))
 
-(defn disable-snippet-tracking!
-  "Remove all snippet-related tracking entries."
+(defn backfill-glossary-tracking!
+  "Insert a 'create' ledger row for every glossary entry that has none, so an instance upgraded with the Library
+  already synced still pushes its entries. Returns the number of rows inserted."
+  []
+  (let [rows (vec (glossary-tracking-rows (remote-sync.db/untracked-glossary-entries) (t/offset-date-time)))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn disable-library-tracking!
+  "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
   (let [snippet-coll-ids (remote-sync.db/snippet-collection-ids)]
     (remote-sync.db/delete-rsos-of-type! "NativeQuerySnippet")
+    (remote-sync.db/delete-rsos-of-type! "Glossary")
     (when (seq snippet-coll-ids)
       (remote-sync.db/delete-rsos-of-models! "Collection" snippet-coll-ids))))
 
 ;;; ----------------------------------------- Helper Functions ---------------------------------------------------------
 
 (defn- resolve-status
-  "Suppresses a no-op 'update' based on status and content_hash, otherwise keep status unchanged."
+  "Suppresses a no-op 'update' whose content_hash and stored file_path both still match, otherwise keeps status
+  unchanged."
   [model-type model-id status existing]
-  (cond
-    (not= "update" status)
+  (if (or (not= "update" status)
+          (nil? (:content_hash existing)))
     status
-
-    (nil? (:content_hash existing))
-    status
-
-    (not= (:content_hash existing)
-          (source/row->content-hash {:model_type model-type :model_id model-id}))
-    status
-
-    :else ;; hash has not changed
-    "synced"))
+    (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+      (if (and (= (:content_hash existing) content-hash)
+               (or (nil? (:file_path existing))
+                   (= (:file_path existing) path)))
+        "synced"
+        status))))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -244,7 +262,7 @@
 
 ;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
 
-(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field)]
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection :model/Field :model/Table)]
   (register-events-for-spec! model-spec))
 
 ;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
@@ -262,19 +280,20 @@
   (remote-sync.db/collection-name-and-id id))
 
 (defn- handle-library-sync-status-change!
-  "When the Library collection's is_remote_synced status changes, trigger snippet sync tracking.
-   This ensures all snippets are tracked/untracked when Library sync is enabled/disabled."
+  "When the Library collection's is_remote_synced status changes, trigger Library content sync tracking.
+   This ensures all snippets and glossary entries are tracked/untracked when Library sync is enabled/disabled."
   [is-now-synced?]
-  (let [snippets-already-tracked? (remote-sync.db/rso-of-type-exists? "NativeQuerySnippet")]
+  (let [library-already-tracked? (or (remote-sync.db/rso-of-type-exists? "NativeQuerySnippet")
+                                     (remote-sync.db/rso-of-type-exists? "Glossary"))]
     (cond
-      (and is-now-synced? (not snippets-already-tracked?))
+      (and is-now-synced? (not library-already-tracked?))
       (do
-        (log/info "Library collection became remote-synced, enabling snippet sync tracking")
-        (enable-snippet-tracking!))
-      (and (not is-now-synced?) snippets-already-tracked?)
+        (log/info "Library collection became remote-synced, enabling Library content sync tracking")
+        (enable-library-tracking!))
+      (and (not is-now-synced?) library-already-tracked?)
       (do
-        (log/info "Library collection is no longer remote-synced, disabling snippet sync tracking")
-        (disable-snippet-tracking!)))))
+        (log/info "Library collection is no longer remote-synced, disabling Library content sync tracking")
+        (disable-library-tracking!)))))
 
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
@@ -300,27 +319,51 @@
         (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
 
-;;; ----------------------------------------- FieldUserSettings Tracking -----------------------------------------------
-;; When a field is updated in a published table, also track any FieldUserSettings row for that field.
-;; FieldUserSettings has no separate event; it piggybacks on :event/field-update.
+;;; ----------------------------------------- TableUserSettings Tracking -----------------------------------------------
 
+(def ^:private table-spec (get spec/remote-sync-specs :model/Table))
 (def ^:private field-spec (get spec/remote-sync-specs :model/Field))
+
+(defn- hydrate-table-user-settings-details
+  "The RemoteSyncObject details of the Table with `table-id`, as its own `:table_id`/`:table_name`."
+  [table-id]
+  (let [details (spec/hydrate-model-details table-spec table-id)]
+    (assoc details :table_id (:id details) :table_name (:name details))))
+
+(defn- sync-table-user-settings!
+  "Track the Table's TableUserSettings when eligible and any of its user settings exist, else mark it removed."
+  [table-id eligible?]
+  (cond
+    (and eligible? (remote-sync.db/user-settings-exist-for-table? table-id))
+    (create-or-update-remote-sync-object-entry!
+     "TableUserSettings" table-id "update" hydrate-table-user-settings-details)
+
+    (and (not eligible?)
+         (remote-sync.db/rso-exists? "TableUserSettings" table-id))
+    (create-or-update-remote-sync-object-entry!
+     "TableUserSettings" table-id "removed" hydrate-table-user-settings-details)))
 
 (events/derive! :event/field-update ::field-update-event)
 (events/derive! ::field-update-event :metabase/event)
 
 (methodical/defmethod events/publish-event! ::field-update-event
   [_topic {:keys [object]}]
-  (let [field-id  (:id object)
-        eligible? (spec/check-eligibility field-spec object)]
-    (cond
-      (and eligible? (remote-sync.db/field-user-settings-exist? field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "update"
-       (fn [id] (spec/hydrate-model-details field-spec id)))
+  (when-let [table-id (:table_id object)]
+    (sync-table-user-settings! table-id (spec/check-eligibility field-spec object))))
 
-      (and (not eligible?)
-           (remote-sync.db/rso-exists? "FieldUserSettings" field-id))
-      (create-or-update-remote-sync-object-entry!
-       "FieldUserSettings" field-id "removed"
-       (fn [id] (spec/hydrate-model-details field-spec id))))))
+(defn- handle-table-event!
+  "The generic Table handler plus the Table's TableUserSettings; one handler, since a second primary method on the
+  same events would displace the generic one."
+  [topic {:keys [object] :as event}]
+  (handle-model-event-from-spec table-spec topic event)
+  (sync-table-user-settings! (:id object) (spec/check-eligibility table-spec object)))
+
+(let [event-kws (spec/event-keywords table-spec)
+      parent-kw (:parent event-kws)]
+  (events/derive! parent-kw :metabase/event)
+  (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+    (events/derive! event-kw parent-kw))
+  (methodical/add-primary-method!
+   #'events/publish-event!
+   parent-kw
+   (fn [topic event] (handle-table-event! topic event))))

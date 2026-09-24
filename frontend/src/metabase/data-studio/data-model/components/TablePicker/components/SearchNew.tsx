@@ -145,7 +145,7 @@ export function SearchNew({
     return tables.filter((table) => allowedDatabaseIds.has(table.db_id));
   }, [allowedDatabaseIds, tables]);
 
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading = isLoadingTables || isFetchingTables || isLoadingDatabases;
 
   const resultTree = useMemo(
     () => buildResultTree(filteredTables),

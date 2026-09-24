@@ -5,6 +5,7 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
+   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
@@ -175,14 +176,23 @@
     {:previous (select-keys previous-object shared-updated-keys)
      :new (select-keys object shared-updated-keys)}))
 
+(defn- stringify-keys
+  "Recursively turns the keyword keys of maps nested inside `x` into strings, keeping their namespaces."
+  [x]
+  (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
+
+(def ^:private AuditedInstance
+  "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."
+  [:map {:closed false, ::mr/deliberately-open true, :description "an audited entity"}])
+
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
-                        [:object           {:optional true} [:maybe :map]]
-                        [:previous-object  {:optional true} [:maybe :map]]
+                        [:object           {:optional true} [:maybe AuditedInstance]]
+                        [:previous-object  {:optional true} [:maybe AuditedInstance]]
                         [:user-id          {:optional true} [:maybe pos-int?]]
                         [:model            {:optional true} [:maybe [:or :keyword :string]]]
                         [:model-id         {:optional true} [:maybe pos-int?]]
-                        [:details          {:optional true} [:maybe :map]]
+                        [:details          {:optional true} [:maybe ms/AuditLogDetails]]
                         [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event
@@ -205,11 +215,12 @@
       :user-id           (or (:user-id params) current-user-id)
       :model-name        (model-name (or (:model params) object))
       :model-id          (or (:model-id params) (u/id object))
-      :details           (merge {}
-                                (:details params)
-                                (if (not-empty previous-object)
-                                  (prepare-update-event-data object-details previous-details)
-                                  object-details))})))
+      :details           (stringify-keys
+                          (merge {}
+                                 (:details params)
+                                 (if (not-empty previous-object)
+                                   (prepare-update-event-data object-details previous-details)
+                                   object-details)))})))
 
 (mu/defn record-event!
   "Records an event in the Audit Log.

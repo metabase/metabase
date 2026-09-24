@@ -1,7 +1,7 @@
 import { waitFor } from "@testing-library/react";
 
 import { findRequests } from "__support__/server-mocks";
-import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
+import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user";
 
 import { setup } from "./setup";
 
@@ -24,8 +24,8 @@ describe("DashboardHeader", () => {
 
     it("should not fetch pulse form_input when user cannot manage subscriptions", async () => {
       const original =
-        PLUGIN_APPLICATION_PERMISSIONS.selectors.canManageSubscriptions;
-      PLUGIN_APPLICATION_PERMISSIONS.selectors.canManageSubscriptions = () =>
+        PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions;
+      PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions = () =>
         false;
 
       try {
@@ -37,7 +37,7 @@ describe("DashboardHeader", () => {
           expect(requests).toHaveLength(0);
         });
       } finally {
-        PLUGIN_APPLICATION_PERMISSIONS.selectors.canManageSubscriptions =
+        PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions =
           original;
       }
     });

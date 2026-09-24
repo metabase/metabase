@@ -1,20 +1,20 @@
 import { AccordionList } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Box, Icon } from "metabase/ui";
-import type Schema from "metabase-lib/v1/metadata/Schema";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { SchemaId } from "metabase-types/api";
 
 import { CONTAINER_WIDTH } from "../constants";
+import type { DataSelectorSchema } from "../types";
 
 type DataSelectorSchemaPickerProps = {
   hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   isLoading: boolean;
-  schemas: Schema[];
+  schemas: DataSelectorSchema[];
   selectedSchemaId?: SchemaId;
-  onChangeSchema: (schema?: Schema) => void;
+  onChangeSchema: (schema?: DataSelectorSchema) => void;
 };
 
 export const DataSelectorSchemaPicker = ({
@@ -44,7 +44,7 @@ export const DataSelectorSchemaPicker = ({
         sections={sections}
         searchable={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
-        itemIsSelected={(item: { schema: Schema }) =>
+        itemIsSelected={(item: { schema: DataSelectorSchema }) =>
           item?.schema.id === selectedSchemaId
         }
         renderItemIcon={() => <Icon name="folder" size={16} />}

@@ -203,7 +203,6 @@ export function TableAttributesEditBulk({
             {canPublish && !remoteSyncReadOnly && (
               <Button
                 flex={1}
-                p="sm"
                 leftSection={<Icon name="publish" />}
                 onClick={() => setModalType(hasLibrary ? "publish" : "library")}
               >
@@ -213,7 +212,6 @@ export function TableAttributesEditBulk({
             {canPublish && !remoteSyncReadOnly && hasLibrary && (
               <Button
                 flex={1}
-                p="sm"
                 leftSection={<Icon name="unpublish" />}
                 onClick={() => setModalType("unpublish")}
               >

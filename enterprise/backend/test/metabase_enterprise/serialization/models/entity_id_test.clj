@@ -24,13 +24,12 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
     ;; serdes path nests under that entity, so it has no generated entity_id.
     :model/OsiAiContext
     ;; Settings have human-selected unique names.
-    :model/Setting
-    ;; Glossary items have unique `term` key
-    :model/Glossary})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -138,6 +137,8 @@
     :model/TaskRun
     :model/Tenant
     :model/TimelineEvent
+    ;; Run history is intentionally not serialized.
+    :model/TransformTestRun
     ;; TODO we should remove these models from here once serialization is supported
     :model/TransformRun
     :model/TransformRunCancelation
@@ -164,7 +165,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt" "FieldUserSettings"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

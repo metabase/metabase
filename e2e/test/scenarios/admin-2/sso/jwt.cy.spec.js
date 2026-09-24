@@ -47,12 +47,15 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
-    cy.findByTestId("jwt-user-provisioning-enabled?-setting")
-      .findByText(/^Disabled/)
-      .click();
+    cy.findByRole("switch", { name: "User provisioning" })
+      .should("be.checked")
+      .click({ force: true });
     cy.wait("@updateSetting");
 
     H.undoToast().findByText("Changes saved").should("be.visible");
+    cy.findByRole("switch", { name: "User provisioning" }).should(
+      "not.be.checked",
+    );
   });
 
   it("should allow to reset jwt settings", () => {

@@ -4,6 +4,10 @@ import type { ForeignKey, Table, TableId } from "metabase-types/api";
 
 import { setupFieldEndpoints } from "./field";
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function setupTableEndpoints(
   table: Table,
   foreignKeys: ForeignKey[] = [],
@@ -62,17 +66,15 @@ export function setupTableSearchEndpoint(tables: Table[]) {
     name,
     response: (call) => {
       const url = new URL(call.url);
-      const term = url.searchParams.get("term");
-
-      // Convert wildcard pattern to regex (support * as wildcard)
-      const searchPattern = term?.toLowerCase().replace(/\*/g, ".*"); // Convert \* back to .* for wildcard matching
-
-      const regex = new RegExp(searchPattern ?? "");
+      const term = url.searchParams.get("term") ?? "";
+      const searchPattern = term.split("*").map(escapeRegExp).join(".*");
+      const namePattern = new RegExp(`^${searchPattern}`, "i");
+      const displayNamePattern = new RegExp(`(?:^| )${searchPattern}`, "i");
 
       return tables.filter(
         (table) =>
-          regex.test(table.name.toLowerCase()) ||
-          regex.test(table.display_name?.toLowerCase() ?? ""),
+          namePattern.test(table.name) ||
+          displayNamePattern.test(table.display_name ?? ""),
       );
     },
   });

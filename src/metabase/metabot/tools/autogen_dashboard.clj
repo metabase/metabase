@@ -119,7 +119,7 @@
 
 (def ^:private autogen-dashboard-schema
   [:map {:closed true}
-   [:source [:map
+   [:source [:map {:closed true}
              [:table_id {:optional true} [:maybe :int]]
              [:model_id {:optional true} [:maybe :int]]
              [:metric_id {:optional true} [:maybe :int]]

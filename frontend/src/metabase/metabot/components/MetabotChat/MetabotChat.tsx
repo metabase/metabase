@@ -138,14 +138,13 @@ export const MetabotChat = ({
                   />
                 ) : (
                   <Text c="text-disabled" maw="12rem" ta="center" lh="lg">
-                    {config.emptyText ??
-                      (showIllustrations
-                        ? t`I can help you explore your metrics and models.`
-                        : t`Explore your metrics and models with AI.`)}
+                    {showIllustrations
+                      ? t`I can help you explore your metrics and models.`
+                      : t`Explore your metrics and models with AI.`}
                   </Text>
                 )}
               </Flex>
-              {isConfigured && !config.hideSuggestedPrompts && (
+              {isConfigured && (
                 <Stack
                   gap="sm"
                   className={Styles.promptSuggestionsContainer}
@@ -155,8 +154,6 @@ export const MetabotChat = ({
                     {suggestedPrompts.map(({ prompt }, index) => (
                       <Box key={index}>
                         <Button
-                          fz="sm"
-                          size="xs"
                           onClick={() => metabot.submitInput(prompt)}
                           className={Styles.promptSuggestionButton}
                         >
@@ -178,9 +175,7 @@ export const MetabotChat = ({
               {/* conversation messages */}
               <Messages
                 messages={metabot.messages}
-                onRetryMessage={
-                  config.preventRetryMessage ? undefined : metabot.retryMessage
-                }
+                onRetryMessage={metabot.retryMessage}
                 onContinueMessage={metabot.submitInput}
                 onRefreshConversation={() => {
                   metabot.setPrompt("");

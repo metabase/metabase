@@ -1128,7 +1128,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
     cy.signOut();
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("/app/locales/de.json").as("deLocale");
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
     H.visitEmbeddedPage(
       {

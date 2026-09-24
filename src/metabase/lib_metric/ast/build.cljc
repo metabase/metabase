@@ -431,7 +431,7 @@
 
     :else
     (let [op       (arithmetic-operator expression)
-          children (drop 2 expression)]
+          children (perf/dropv 2 expression)]
       {:node/type :expression/arithmetic
        :operator  op
        :children  (perf/mapv #(build-expression-ast % metadata-provider filters projections) children)})))

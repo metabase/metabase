@@ -169,7 +169,6 @@ const TableSectionBase = ({
                 {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
                   <Button
                     flex="1"
-                    size="md"
                     variant={table.is_published ? "default" : "filled"}
                     leftSection={
                       <Icon
@@ -189,8 +188,6 @@ const TableSectionBase = ({
                       to={dependencyGraph({
                         entry: { id: Number(table.id), type: "table" },
                       })}
-                      p="sm"
-                      w="2.5rem"
                       flex="0 1 auto"
                       leftSection={<Icon name="dependencies" />}
                       aria-label={t`Dependency graph`}
@@ -200,7 +197,7 @@ const TableSectionBase = ({
                   </Tooltip>
                 )}
 
-                <Box style={{ flexGrow: 0, width: 40 }}>
+                <Box style={{ flexGrow: 0 }}>
                   <TableLink table={table} />
                 </Box>
                 <TableActionsMenu table={table} />
@@ -219,8 +216,6 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="lg">
               <Group gap="lg" justify="flex-start" wrap="nowrap">
-                {isUpdatingSorting && <Loader size="xs" />}
-
                 {!isSorting && hasFields && (
                   <ResponsiveButton
                     icon="sort_arrows"
@@ -243,6 +238,8 @@ const TableSectionBase = ({
                     onClick={() => setIsSorting(false)}
                   >{t`Done`}</ResponsiveButton>
                 )}
+
+                {isUpdatingSorting && <Loader size="xs" />}
               </Group>
 
               {!hasFields && (
@@ -334,9 +331,6 @@ function TableLink({ table }: { table: Table }) {
         to={url}
         aria-label={t`Go to this table`}
         leftSection={<Icon name="external" size={16} />}
-        style={{
-          width: "100%",
-        }}
       />
     </Tooltip>
   );

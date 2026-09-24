@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
    [metabase.search.spec :as search.spec]
@@ -18,6 +19,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -344,9 +346,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
@@ -483,7 +496,7 @@
                                         ;; the importer skips ref resolution.
                                         (-> source
                                             (assoc :serdes/unresolved true)
-                                            (m/update-existing :query assoc :database nil)
+                                            (m/update-existing :query #(-> % (dissoc :lib/metadata) (assoc :database nil)))
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
                                                                #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
@@ -491,17 +504,20 @@
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
-                                        (dissoc source :serdes/unresolved)
+                                        (-> source
+                                            (dissoc :serdes/unresolved)
+                                            (m/update-existing :query dissoc :lib/metadata))
                                         (-> source
                                             (m/update-existing :query serdes/import-mbql)
                                             (m/update-existing :source-database import-maybe-int-database-fk)
                                             (m/update-existing :source-tables
                                                                (fn [entries]
-                                                                 (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
-                                                                      (mapv (fn [entry]
-                                                                              (-> entry
-                                                                                  (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                                                 (let [entries (cond-> entries (map? entries) (update-keys name))]
+                                                                   (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                        (mapv (fn [entry]
+                                                                                (-> entry
+                                                                                    (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                    (m/update-existing :database_id import-maybe-int-database-fk))))))))
                                             (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}

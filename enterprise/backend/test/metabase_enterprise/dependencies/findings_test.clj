@@ -372,12 +372,12 @@
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (let [wanted #{card1-id card2-id}
-                upsert-analysis! deps.findings/upsert-analysis!]
-            (with-redefs [deps.findings/upsert-analysis!
-                          (fn [instance]
-                            (when (wanted (:id instance))
-                              (swap! providers conj (:lib/metadata (:dataset_query instance))))
-                            (upsert-analysis! instance))]
+                upsert-analysis! (mt/original-fn #'deps.findings/upsert-analysis!)]
+            (mt/with-dynamic-fn-redefs [deps.findings/upsert-analysis!
+                                        (fn [instance]
+                                          (when (wanted (:id instance))
+                                            (swap! providers conj (:lib/metadata (:dataset_query instance))))
+                                          (upsert-analysis! instance))]
               (deps.findings/analyze-batch! :card 500)))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))

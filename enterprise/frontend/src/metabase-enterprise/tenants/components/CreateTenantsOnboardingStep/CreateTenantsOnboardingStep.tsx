@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
+import { createEmptyTenantDraft } from "metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,
@@ -128,7 +128,7 @@ export const CreateTenantsOnboardingStep = ({
         {tenants.map((tenant, index) => (
           <Paper key={index} withBorder p="lg" radius="sm">
             <Stack gap="lg">
-              <Group justify="space-between" align="flex-start">
+              <Group justify="space-between" align="center">
                 <TextInput
                   value={tenant.name}
                   onChange={(e) =>
@@ -139,16 +139,16 @@ export const CreateTenantsOnboardingStep = ({
                   fw="bold"
                   classNames={{ input: S.TenantNameInput }}
                 />
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {tenants.length > 1 && (
                   <Button
                     variant="subtle"
-                    color="text-secondary"
-                    p={0}
+                    color="neutral"
+                    size="sm"
+                    leftSection={<Icon name="close" />}
                     onClick={() => removeTenantCard(index)}
                     aria-label={t`Remove tenant`}
-                  >
-                    <Icon name="close" size={16} />
-                  </Button>
+                  />
                 )}
               </Group>
 
@@ -191,11 +191,10 @@ export const CreateTenantsOnboardingStep = ({
 
       <Flex justify="space-between" align="center">
         <Button
-          variant="subtle"
+          variant="transparent"
+          size="compact-md"
           leftSection={<Icon name="add" size={16} />}
           onClick={addTenantCard}
-          p={0}
-          fw="bold"
         >
           {t`New tenant`}
         </Button>

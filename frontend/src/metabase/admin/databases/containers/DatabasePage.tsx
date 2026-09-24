@@ -2,9 +2,9 @@ import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
+import { SettingsSection } from "metabase/settings-components";
 import {
   Box,
   Button,
@@ -76,14 +76,13 @@ export function DatabasePage() {
               <Text>
                 {t`Need a hand?`}{" "}
                 <Button
-                  h="auto"
                   onClick={onHelpButtonClick}
-                  p={0}
                   style={{ verticalAlign: "baseline" }}
-                  variant="subtle"
+                  variant="transparent"
+                  size="compact-md"
+                  rightSection={<Icon name="chevronright" size={12} />}
                 >
                   {t`Help is here`}
-                  <Icon name="chevronright" size={12} ml="xxs" />
                 </Button>
               </Text>
             )}

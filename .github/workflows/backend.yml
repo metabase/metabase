@@ -23,22 +23,6 @@ on:
         type: boolean
         default: false
 
-  # Run the backend test suite on demand, against the ref you dispatch on, optionally under a
-  # profiler. Everything else about the jobs -- matrix legs, tag filters, quarantine gating -- is
-  # whatever the normal CI run uses, because they are the same jobs.
-  workflow_dispatch:
-    inputs:
-      tests:
-        description: 'Optional: run only these tests, comma- or space-separated, e.g. metabase.query-processor-test/some-test. Bare namespaces work too. Blank runs each leg''s usual set.'
-        type: string
-        required: false
-        default: ''
-      profile:
-        description: 'Profile the test run and attach a flamegraph to the job. Adds sampling overhead.'
-        type: boolean
-        required: false
-        default: false
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-backend
   cancel-in-progress: true
@@ -49,13 +33,6 @@ concurrency:
 env:
   CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
   CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
-  # Both read by the be-tests run step below. Set here rather than passed per job so that turning
-  # either on is one line. Empty (and so off) on workflow_call, where neither input exists.
-  #
-  # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole list: the
-  # partition args no longer apply, and legs that hold none of the named tests run nothing.
-  PROFILE_TESTS: ${{ inputs.profile }}
-  ONLY_TESTS: ${{ inputs.tests }}
 
 jobs:
   project-checks:
@@ -374,6 +351,16 @@ jobs:
           else
             $BASE :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]' ${{ matrix.job.test-args }}
           fi
+        env:
+          # Both derived from test.profile-backend.yml, the sole dispatcher; its runs always profile. On a
+          # normal CI run there are no dispatch inputs, so these render `false` and empty and the
+          # leg's own selection stands.
+          #
+          # ONLY_TESTS replaces the leg's own test selection, so every matrix leg runs the whole
+          # list: the partition args no longer apply, and legs that hold none of the named tests run
+          # nothing.
+          PROFILE_TESTS: ${{ github.event.inputs.suite != '' }}
+          ONLY_TESTS: ${{ github.event.inputs.tests }}
         # Keep this step continue-on-error because the quarantine logic controls whether it ultimately fails.
         continue-on-error: true
 

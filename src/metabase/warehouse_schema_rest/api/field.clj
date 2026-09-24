@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema-rest.api.field
   (:require
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -52,6 +53,7 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
@@ -160,7 +162,9 @@
                   [:settings           {:optional true} [:maybe ms/VisualizationSettings]]
                   [:nfc_path           {:optional true} [:maybe [:sequential ms/NonBlankString]]]
                   [:json_unfolding     {:optional true} [:maybe :boolean]]]]
-  (let [field             (t2/hydrate (api/write-check :model/Field id) :dimensions)
+  (let [field             (-> (warehouse-schema-rest.db/field id)
+                              api/write-check
+                              (t2/hydrate :dimensions))
         new-semantic-type (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
         (cond (not (contains? body :coercion_strategy))
@@ -187,24 +191,18 @@
                (not removed-fk?)
                (not= (:display_name field) display-name))
       (warehouse-schema-rest.db/rename-dimension-for-field! id display-name))
-    ;; everything checks out, now update the field
-    (api/check-500
-     (t2/with-transaction [_conn]
-       (when removed-fk?
-         (clear-dimension-on-fk-change! field))
-       (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
-       (let [body (assoc body
-                         :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                         :effective_type effective-type
-                         :coercion_strategy coercion-strategy)]
-         (schema.field-user-settings/upsert-user-settings field body)
-         (warehouse-schema-rest.db/update-field!
-          id
-          (u/select-keys-when body
-                              {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
-                                          :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding
-                                          :data_sensitivity}
-                               :non-nil #{:display_name :visibility_type :settings}})))))
+    (t2/with-transaction [_conn]
+      (when removed-fk?
+        (clear-dimension-on-fk-change! field))
+      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+      (schema.field-user-settings/upsert-user-settings
+       field
+       (cond-> body
+         (or removed-fk? (contains? body :fk_target_field_id))
+         (assoc :fk_target_field_id (when-not removed-fk? fk-target-field-id))
+
+         (contains? body :coercion_strategy)
+         (assoc :effective_type effective-type :coercion_strategy coercion-strategy))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
@@ -227,6 +225,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
@@ -290,6 +289,7 @@
   "If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field (or
   remapped Field), and (if defined by a User) a map of human-readable remapped values. If `has_field_values` is not
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
@@ -318,7 +318,7 @@
    _query-params
    {value-pairs :values} :- [:map {:closed true}
                              [:values ms/FieldValuesList]]]
-  (let [field (api/write-check :model/Field id)]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (api/check (field-values/field-should-have-field-values? field)
                [400 (str "You can only update the human readable values of a mapped values of a Field whose value of "
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
@@ -380,6 +380,7 @@
 (api.macros/defendpoint :get "/:id/search/:search-id"
   "Search for values of a Field with `search-id` that start with `value`. See docstring for
   [[metabase.parameters.field/search-values]] for a more detailed explanation."
+  {:scope api-scope/data-app}
   [{:keys [id search-id]} :- [:map {:closed true}
                               [:id        ms/PositiveInt]
                               [:search-id ms/PositiveInt]]
@@ -399,13 +400,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/remapping/:remapped-id"
   "Fetch remapped Field values."
+  {:scope api-scope/data-app}
   [{:keys [id remapped-id]} :- [:map {:closed true}
                                 [:id          ms/PositiveInt]
                                 [:remapped-id ms/PositiveInt]]
    {:keys [value]} :- [:map {:closed true}
                        [:value ms/NonBlankString]]]
-  (let [field          (api/read-check :model/Field id)
-        remapped-field (api/read-check :model/Field remapped-id)
+  (let [field          (-> (warehouse-schema-rest.db/field id) api/check-404 api/read-check)
+        remapped-field (-> (warehouse-schema-rest.db/field remapped-id) api/check-404 api/read-check)
         value          (parameters.field/parse-query-param-value-for-field field value)]
     (parameters.field/remapped-value field remapped-field value)))
 
@@ -415,6 +417,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

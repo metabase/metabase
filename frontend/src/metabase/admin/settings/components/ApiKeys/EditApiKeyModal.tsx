@@ -20,7 +20,7 @@ import {
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
-import { API_KEY_VALIDATION_SCHEMA } from "./utils";
+import { getApiKeyValidationSchema } from "./utils";
 
 const { fontFamilyMonospace } = getThemeOverrides();
 
@@ -142,7 +142,7 @@ export const EditApiKeyModal = ({
         <FormProvider
           initialValues={{ ...apiKey, group_id: apiKey.group.id }}
           onSubmit={handleSubmit}
-          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          validationSchema={getApiKeyValidationSchema()}
         >
           {({ dirty }) => (
             <Form>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
@@ -90,8 +90,8 @@ function PickerControl({
         rightSection={<Icon name="chevrondown" size={12} />}
         size="lg"
         variant="filled"
+        flex="1 1 auto"
         classNames={{
-          root: S.ButtonRoot,
           label: S.ButtonLabel,
         }}
         w="100%"
@@ -145,10 +145,7 @@ function TargetClickMappings({
       ? { id: clickBehavior.targetId }
       : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => {
-    return card ? buildQuestion(card) : undefined;
-  }, [card, buildQuestion]);
+  const question = useQuestionFromCard(card);
 
   const object = isDashboard ? dashboard : question;
   const isLoading = isDashboard ? dashboardIsLoading : cardIsLoading;

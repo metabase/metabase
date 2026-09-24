@@ -176,6 +176,7 @@ type MetabaseEmbeddingColorKeyV2 = Exclude<
   | "feedback-warning-strong"
   | "illustration-secondary-brand"
   | "illustration-tertiary-brand"
+  | "input-background"
   | "input-focus"
   | "modal-overlay"
   | "shadow-default"

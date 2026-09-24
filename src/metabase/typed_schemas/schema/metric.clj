@@ -2,6 +2,7 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
+   [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -271,10 +272,27 @@
      :mappedTableIds (not-empty mapped-table-ids)
      :dimensions (not-empty (common/keyed-map dimension-schemas)))))
 
+(defn- references-saved-card?
+  "Whether `metric`'s query depends on a saved card anywhere, not only as its stage-0 source.
+
+   `all-source-card-ids` throws on anything that is not an MBQL 5 query, and a `dataset_query` the app
+   DB fails to deserialize arrives as `{}`; report no references for those and leave them to
+   `metric-details`, which is what decides whether a metric it cannot read is emitted."
+  [metric]
+  (let [query (:dataset_query metric)]
+    (and (= (:lib/type query) :mbql/query)
+         (boolean (seq (lib/all-source-card-ids query))))))
+
 (defn metric-schemas
   "Returns metric schemas, with optional database and collection scopes."
   [database-ids collection-ids]
-  (for [card (schema.common/select-schema-cards :metric database-ids collection-ids)
-        :let [details (metric-details card)]
+  (for [metric (remove source-card-id
+                       (schema.common/select-schema-cards :metric database-ids collection-ids))
+        ;; Sync only supports metrics that resolve entirely from tables, and the CLI aborts
+        ;; `sync-resources` on one that does not. `source-card-id` sees only stage 0, so a
+        ;; table-sourced metric joining a saved question reached the CLI and failed there;
+        ;; check the whole query for saved-card dependencies to match what sync accepts.
+        :when (not (references-saved-card? metric))
+        :let [details (metric-details metric)]
         :when details]
-    (metric-schema details card)))
+    (metric-schema details metric)))

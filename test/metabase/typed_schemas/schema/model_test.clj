@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.model :as schema.model]))
@@ -18,6 +20,67 @@
             {:id   42
              :name "Orders model"})))))
 
+(deftest model-schema-supports-persisted-mbql5-template-tags-test
+  (let [mp           (mt/metadata-provider)
+        action-query (lib/native-query mp "UPDATE birds SET name = {{name}}")]
+    (mt/with-actions [model {:name          "Bird model"
+                             :type          :model
+                             :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                      {action-id :action-id} {:name          "Update bird"
+                                              :database_id   (mt/id)
+                                              :dataset_query action-query
+                                              ;; :category has no JS type of its own, so the result depends on the
+                                              ;; persisted template tag's type
+                                              :parameters    [{:id     "name"
+                                                               :name   "Name"
+                                                               :type   :category
+                                                               :target [:variable [:template-tag "name"]]}]}]
+      (let [action (actions/select-action :id action-id)]
+        (is (sequential? (get-in action [:dataset_query :stages 0 :template-tags])))
+        (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
+                (get-in (schema.model/model-schema model)
+                        [:actions "updateBird" :parameters])))))))
+
+(deftest model-schema-resolves-field-filter-widget-type-test
+  (testing "a field filter's value type comes from its widget type, through a :dimension parameter target"
+    (let [mp           (mt/metadata-provider)
+          action-query (-> (lib/native-query mp "UPDATE birds SET name = 'x' WHERE {{created_at}}")
+                           (lib/with-template-tags
+                             {"created_at" {:name         "created_at"
+                                            :display-name "Created At"
+                                            :type         :dimension
+                                            :widget-type  :date/single
+                                            :dimension    (lib/ref (lib.metadata/field mp (mt/id :categories :name)))}}))]
+      (mt/with-actions [model {:name          "Bird model"
+                               :type          :model
+                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))}
+                        {action-id :action-id} {:name          "Update bird"
+                                                :database_id   (mt/id)
+                                                :dataset_query action-query
+                                                :parameters    [{:id     "created_at"
+                                                                 :name   "Created At"
+                                                                 :type   :category
+                                                                 :target [:dimension [:template-tag "created_at"]]}]}]
+        (is (= :dimension (get-in (actions/select-action :id action-id) [:dataset_query :stages 0 :template-tags 0 :type])))
+        (is (=? [{:slug "created_at", :displayName "Created At", :jsType "Date"}]
+                (get-in (schema.model/model-schema model)
+                        [:actions "updateBird" :parameters])))))))
+
+(deftest model-schema-tolerates-empty-action-query-test
+  (testing "an action whose stored query degraded to {} still builds instead of failing the whole model"
+    (mt/with-actions [model {:name          "Bird model"
+                             :type          :model
+                             :dataset_query (let [mp (mt/metadata-provider)]
+                                              (lib/query mp (lib.metadata/table mp (mt/id :categories))))}
+                      {action-id :action-id} {:name          "Update bird"
+                                              :database_id   (mt/id)
+                                              :dataset_query {}
+                                              :parameters    [{:id "name", :name "Name", :type :text}]}]
+      (is (= {} (:dataset_query (actions/select-action :id action-id))))
+      (is (=? [{:slug "name", :displayName "Name", :jsType "string"}]
+              (get-in (schema.model/model-schema model)
+                      [:actions "updateBird" :parameters]))))))
+
 (deftest model-schemas-includes-only-actionable-models-test
   (with-redefs [schema.common/select-schema-cards
                 (constantly [{:id 42 :name "Model 42"}
@@ -32,7 +95,7 @@
                               :parameters []}])]
     ;; only model 42 has an action, so model 43 is omitted
     (is (= ["model42"]
-           (map :key (schema.model/model-schemas #{1} nil))))))
+           (map :key (:models (schema.model/model-schemas #{1} nil)))))))
 
 ; Ensures we are not doing N+1 queries for action rows and details
 (deftest model-schemas-bulk-loads-actions-test
@@ -47,16 +110,103 @@
                   actions/select-actions-non-http-for-models (fn [known-models model-ids]
                                                                (swap! action-details-calls conj [known-models model-ids])
                                                                [])]
-      (is (= [] (vec (schema.model/model-schemas #{1} nil))))
+      (is (= {:models [] :errors []} (schema.model/model-schemas #{1} nil)))
       (is (= [#{42 43}] @action-rows-calls))
       (is (= [[models #{42 43}]]
              @action-details-calls)))))
 
+(deftest model-schemas-collects-broken-model-errors-test
+  (testing "a broken model becomes an :errors entry while healthy models still build"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}
+                               {:id 43 :name "Broken model"}])
+                  schema.model/action-rows
+                  (constantly [{:id 5 :model_id 42 :name "Create" :type :query}
+                               ;; model 43's action row resolves to no action details
+                               {:id 6 :model_id 43 :name "Broken action" :type :broken}])
+                  actions/select-actions-non-http-for-models
+                  (constantly [{:id         5
+                                :model_id   42
+                                :name       "Create"
+                                :type       :query
+                                :parameters []}])]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+        (is (= ["model42"] (map :key models)))
+        (is (=? [{:type      "modelError"
+                  :modelId   43
+                  :modelName "Broken model"
+                  :message   #".*Broken model.*could not be resolved.*"}]
+                errors))))))
+
+(deftest model-schemas-falls-back-when-bulk-lookup-fails-test
+  (testing "a broken model poisoning the bulk action lookup does not hide other models"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}
+                               {:id 43 :name "Broken model"}])
+                  ;; bulk lookup blows up for the whole batch
+                  actions/select-actions-non-http-for-models
+                  (fn [_known-models model-ids]
+                    (cond
+                      (< 1 (count model-ids))
+                      (throw (ex-info "bulk lookup exploded" {}))
+
+                      (= model-ids #{42})
+                      [{:id 5 :model_id 42 :name "Create" :type :query :parameters []}]
+
+                      :else
+                      (throw (ex-info "action lookup failed" {:status-code 500}))))
+                  ;; per-model fallback: model 42 resolves, model 43 still fails
+                  schema.model/action-rows
+                  (fn [model-ids]
+                    (if (contains? model-ids 42)
+                      [{:id 5 :model_id 42 :name "Create" :type :query}]
+                      []))]
+      (let [{:keys [models errors]} (schema.model/model-schemas #{1} nil)]
+        (is (= ["model42"] (map :key models)))
+        (is (=? [{:type      "modelError"
+                  :modelId   43
+                  :modelName "Broken model"
+                  :message   #".*Broken model.*action lookup failed.*"}]
+                errors))))))
+
+(deftest model-schemas-does-not-swallow-interruption-test
+  (testing "an interruption while bulk-resolving actions propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models
+                  (fn [& _] (throw (InterruptedException. "cancelled")))]
+      (let [thrown (is (thrown? clojure.lang.ExceptionInfo
+                                (schema.model/model-schemas #{1} nil)))]
+        (is (instance? InterruptedException (ex-cause thrown))))))
+  (testing "an interruption wrapped in the structured error propagates instead of collecting an error"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models (constantly [])
+                  schema.model/model-action-schemas
+                  (fn [& _] (throw (ex-info "cancelled" {} (InterruptedException. "cancelled"))))]
+      (let [thrown (is (thrown? clojure.lang.ExceptionInfo
+                                (schema.model/model-schemas #{1} nil)))]
+        (is (instance? InterruptedException (ex-cause thrown)))))))
+
+(deftest model-schemas-propagates-unexpected-errors-test
+  (testing "an unexpected, unstructured failure propagates instead of downgrading to partial data"
+    (with-redefs [schema.common/select-schema-cards
+                  (constantly [{:id 42 :name "Model 42"}])
+                  schema.model/action-rows (constantly [])
+                  actions/select-actions-non-http-for-models (constantly [])
+                  schema.model/model-action-schemas
+                  (fn [& _] (throw (NullPointerException. "boom")))]
+      (is (thrown? NullPointerException
+                   (schema.model/model-schemas #{1} nil))))))
+
 (deftest model-schema-surfaces-action-selection-errors-test
   (with-redefs [schema.model/action-rows (constantly [])
-                actions/select-actions (fn [& _]
-                                         (throw (ex-info "action lookup failed"
-                                                         {:status-code 500})))]
+                actions/select-actions-non-http-for-models
+                (fn [& _]
+                  (throw (ex-info "action lookup failed"
+                                  {:status-code 500})))]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]
@@ -69,9 +219,10 @@
               (ex-data exception))))))
 
 (deftest model-schema-surfaces-action-rendering-errors-test
-  (with-redefs [actions/select-actions (constantly [{:id   200
-                                                     :name "Broken action"
-                                                     :type :query}])
+  (with-redefs [actions/select-actions-non-http-for-models
+                (constantly [{:id   200
+                              :name "Broken action"
+                              :type :query}])
                 schema.model/action-rows (constantly [{:id   200
                                                        :name "Broken action"
                                                        :type :query}])
@@ -96,7 +247,7 @@
   (with-redefs [schema.model/action-rows (constantly [{:id   200
                                                        :name "Broken action"
                                                        :type :broken}])
-                actions/select-actions (constantly [])]
+                actions/select-actions-non-http-for-models (constantly [])]
     (let [exception (is (thrown? clojure.lang.ExceptionInfo
                                  (schema.model/model-schema {:id   100
                                                              :name "Broken model"})))]

@@ -15,7 +15,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]])
+   [metabase.util.performance :refer [get-in]]
+   [metabase.warehouses.schema :as warehouses.schema])
   (:import
    (java.sql Connection DatabaseMetaData ResultSet)))
 
@@ -311,7 +312,7 @@
   eager -- satisfying [[metabase.driver/do-with-resilient-connection]], which requires an eager `f` -- while
   the connection is opened lazily at reduction time (with a fresh connection, outside the resilient scope)."
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or :int :map]]
+   db-or-id-or-spec :- [:or :int ::warehouses.schema/database]]
   {:tables
    (reify clojure.lang.IReduceInit
      (reduce [_this rf init]

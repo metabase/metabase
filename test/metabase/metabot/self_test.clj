@@ -77,6 +77,13 @@
               (#'self/parse-provider-model "deepseek/deepseek-v4-flash")))
       (is (=? {:provider "google" :model "google/gemini-3.5-flash" :ai-proxy? false}
               (#'self/parse-provider-model "google/google/gemini-3.5-flash"))))
+    (testing "resolves the provider type, not the admin's name for the connection"
+      (llm.tu/with-connections [{:key    "openrouter-1"
+                                 :type   "openrouter"
+                                 :name   "openrouter-1"
+                                 :config {:api-key "sk-or-v1-test"}}]
+        (is (=? {:provider "openrouter" :model "anthropic/claude-sonnet-4.6" :ai-proxy? false}
+                (#'self/parse-provider-model "openrouter-1/anthropic/claude-sonnet-4.6")))))
     (testing "a vLLM served model is often a Hugging Face repo id, so the model segment keeps its slashes"
       (llm.tu/with-connections [(llm.tu/connection "vllm")]
         (is (=? {:provider "vllm" :model "mlx-community/Qwen3-14B-4bit" :ai-proxy? false}
@@ -160,6 +167,22 @@
                   (is (= (when fast? "fast") (get-in @captured [:body :speed])))
                   (is (= (when fast? "fast-mode-2026-02-01")
                          (get-in @captured [:headers "anthropic-beta"]))))))))))))
+
+(deftest call-llm-serves-azure-and-google-connections-test
+  (testing "the Azure and Google adapters accept their connection's resolved config, registry defaults included"
+    (llm.tu/with-default-connections
+      (doseq [[model-ref url-part] [["azure/openai/gpt-4.1-mini"                 "/v1/responses"]
+                                    ["azure/anthropic/claude-deployment"         "/v1/messages"]
+                                    ["google/google/gemini-3.5-flash"            "projects/my-project/locations/global"]
+                                    ["google/anthropic/claude-haiku-4-5@20251001" "/publishers/anthropic/models/claude-haiku-4-5@20251001"]]]
+        (testing model-ref
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [self.core/sse-reducible identity
+                                        http/request            (fn [req]
+                                                                  (reset! captured req)
+                                                                  {:status 200 :body []})]
+              (run! identity (self/call-llm model-ref nil [{:role :user :content "hi"}] {} {:tag "agent"}))
+              (is (str/includes? (str (:url @captured)) url-part)))))))))
 
 (deftest request-timeout-settings-test
   (testing "request seeds timeouts from the llm-*-timeout-ms settings, read at call time"
@@ -1358,7 +1381,7 @@
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels {:model "openrouter/test-model" :source "metabot_agent"}]
+        (let [labels {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}]
           (testing "increments llm-requests and observes duration on success"
             (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (test-util/mock-llm-response [{:type :start :id "m1"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
@@ -1454,13 +1477,22 @@
                                                        :model "test-model"}]))]
               (run! identity (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"})))
             (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-creation-tokens labels)))
-            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels)))))))))
+            (is (zero? (mt/metric-value system :metabase-metabot/llm-cache-read-tokens labels))))
+          (testing "labels a managed-proxy call with the metabase provider"
+            (mt/with-dynamic-fn-redefs [self.claude/claude
+                                        (constantly (test-util/mock-llm-response
+                                                     [{:type :start :id "m1"}
+                                                      {:type :usage :usage {:promptTokens 10 :completionTokens 5}}]))]
+              (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+            (let [managed-labels (assoc labels :model "metabase/anthropic/claude-haiku-4-5" :provider "metabase")]
+              (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests managed-labels)))
+              (is (== 10 (mt/metric-value system :metabase-metabot/llm-input-tokens managed-labels))))))))))
 
 (deftest call-llm-structured-prometheus-test
   (llm.tu/with-default-connections
     (mt/with-prometheus-system! [_ system]
       (mt/with-dynamic-fn-redefs [self/retry-delay-ms (constantly 0)]
-        (let [labels        {:model "openrouter/test-model" :source "metabot_agent"}
+        (let [labels        {:model "openrouter/test-model" :source "metabot_agent" :provider "openrouter"}
               success-mock  (test-util/mock-llm-response
                              [{:type :start :id "m1"}
                               {:type :tool-input :id "call-1" :function "json"
@@ -1616,6 +1648,35 @@
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
 
+;;; ===================== Usage Log Tests =====================
+
+(deftest call-llm-usage-log-test
+  (testing "call-llm and call-llm-structured log the provider type and the model as the provider names it"
+    (llm.tu/with-connections [(assoc (llm.tu/connection "openrouter") :key "openrouter-1")
+                              (llm.tu/connection "metabase")]
+      (let [model-ref "openrouter-1/anthropic/claude-sonnet-4.6"
+            response  (test-util/mock-llm-response
+                       [{:type :start :id "m1"}
+                        {:type :tool-input :id "call-1" :function "json" :arguments {:answer "42"}}
+                        {:type :usage :usage {:promptTokens 10 :completionTokens 5}}])
+            logged    (atom [])]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly response)
+                                    self.claude/claude    (constantly response)
+                                    usage/log-ai-usage!   #(swap! logged conj %)]
+          (run! identity (self/call-llm model-ref nil [] {} {:tag "metabot_agent"}))
+          (self/call-llm-structured model-ref [{:role "user" :content "test"}]
+                                    {:type "object" :properties {:answer {:type "string"}}} 0.3 1024
+                                    {:tag "metabot_agent"})
+          (run! identity (self/call-llm "metabase/anthropic/claude-haiku-4-5" nil [] {} {:tag "metabot_agent"})))
+        (is (=? (concat (repeat 2 {:model      model-ref
+                                   :provider   "openrouter"
+                                   :model-name "anthropic/claude-sonnet-4.6"})
+                        [{:model      "metabase/anthropic/claude-haiku-4-5"
+                          :provider   "anthropic"
+                          :model-name "claude-haiku-4-5"
+                          :ai-proxied true}])
+                @logged))))))
+
 ;;; ----- gating: usage-limit + permission checks in call-llm-structured-with-trace -----
 ;;; (UXW-4126) The structured-with-trace path enforces usage limits unconditionally and
 ;;; an optional `:required-permission` against the current user's metabot perms.
@@ -1635,10 +1696,11 @@
   (testing "When check-usage-limits! returns a message, the call throws an ex-info with
             :type :metabot/usage-limit-reached *before* hitting the provider adapter."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits!
-                    (fn [] "you've used all of your AI tokens")
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
           (is (= :metabot/usage-limit-reached (:type (ex-data ex))))
           (is (= "ai_usage_limit_reached" (:error-code (ex-data ex))))
@@ -1649,14 +1711,15 @@
   (testing ":required-permission is checked against the caller's metabot perms; a missing
             grant throws :metabot/permission-denied before the provider adapter is hit."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot                :yes
-                                :permission/metabot-sql-generation :yes
-                                :permission/metabot-nlq            :yes
-                                :permission/metabot-other-tools    :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
           (is (= :metabot/permission-denied (:type (ex-data ex))))
           (is (= :permission/metabot-other-tools (:required-permission (ex-data ex))))
@@ -1665,12 +1728,13 @@
 (deftest call-llm-structured-with-trace-throws-on-base-permission-denied-test
   (testing "When `:required-permission` is set but the base :permission/metabot is denied,
             the call throws with :required-permission :permission/metabot."
-    (with-redefs [usage/check-usage-limits! (constantly nil)
-                  scope/resolve-user-permissions
-                  (fn [_uid] {:permission/metabot                :no
-                              :permission/metabot-sql-generation :yes
-                              :permission/metabot-nlq            :yes
-                              :permission/metabot-other-tools    :yes})]
+    (mt/with-dynamic-fn-redefs
+      [usage/check-usage-limits! (constantly nil)
+       scope/resolve-user-permissions
+       (fn [_uid] {:permission/metabot                :no
+                   :permission/metabot-sql-generation :yes
+                   :permission/metabot-nlq            :yes
+                   :permission/metabot-other-tools    :yes})]
       (let [ex (try-structured-call {:required-permission :permission/metabot-other-tools})]
         (is (= :metabot/permission-denied (:type (ex-data ex))))
         (is (= :permission/metabot (:required-permission (ex-data ex)))
@@ -1681,16 +1745,17 @@
             Granting the base perm lets the call proceed to the adapter."
     (let [resolve-calls (atom 0)
           adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid]
-                      (swap! resolve-calls inc)
-                      {:permission/metabot :yes})
-                    ;; Throw inside the adapter so we don't depend on parts-shape details —
-                    ;; we just want to verify the base perm check passed and the call
-                    ;; reached the provider.
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) (throw (ex-info "adapter reached" {})))]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid]
+           (swap! resolve-calls inc)
+           {:permission/metabot :yes})
+         ;; Throw inside the adapter so we don't depend on parts-shape details —
+         ;; we just want to verify the base perm check passed and the call
+         ;; reached the provider.
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) (throw (ex-info "adapter reached" {})))]
         (try-structured-call {})
         (is (pos? @resolve-calls)
             "the base :permission/metabot check resolves perms even when no :required-permission is set")
@@ -1701,11 +1766,12 @@
   (testing "Without `:required-permission`, the base :permission/metabot is still enforced;
             a denial throws :metabot/permission-denied."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
           (is (= :metabot/permission-denied (:type (ex-data ex))))
           (is (= :permission/metabot (:required-permission (ex-data ex))))
@@ -1716,10 +1782,11 @@
             that yields a single :error part with error-code ai_usage_limit_reached
             and never opens the provider stream."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits!
-                    (fn [] "you've used all of your AI tokens")
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits!
+         (fn [] "you've used all of your AI tokens")
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
                                             nil [] {} {} nil))]
           (is (= 1 (count parts)))
@@ -1732,14 +1799,15 @@
             grant yields a single :error part with error-code permission_denied,
             without opening the provider stream."
     (let [adapter-calls (atom 0)]
-      (with-redefs [usage/check-usage-limits! (constantly nil)
-                    scope/resolve-user-permissions
-                    (fn [_uid] {:permission/metabot                :yes
-                                :permission/metabot-sql-generation :yes
-                                :permission/metabot-nlq            :yes
-                                :permission/metabot-other-tools    :no})
-                    self.claude/claude
-                    (fn [& _] (swap! adapter-calls inc) [])]
+      (mt/with-dynamic-fn-redefs
+        [usage/check-usage-limits! (constantly nil)
+         scope/resolve-user-permissions
+         (fn [_uid] {:permission/metabot                :yes
+                     :permission/metabot-sql-generation :yes
+                     :permission/metabot-nlq            :yes
+                     :permission/metabot-other-tools    :no})
+         self.claude/claude
+         (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"
                                             nil [] {}
                                             {:required-permission :permission/metabot-other-tools}
@@ -1754,39 +1822,44 @@
 (deftest llm-call-unavailable-reason-test
   (let [perm :permission/metabot-other-tools]
     (testing "nil (and llm-call-available? true) when every check passes"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly nil)
-                    scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly scope/all-yes-permissions)]
         (is (nil? (self/llm-call-unavailable-reason perm)))
         (is (true? (self/llm-call-available? perm)))))
     (testing ":metabot-disabled when Metabot is off"
-      (with-redefs [metabot.settings/metabot-enabled? (constantly false)]
+      (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
         (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))
         (is (false? (self/llm-call-available? perm)))))
     (testing ":no-llm when no provider is configured"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly false)]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly false)]
         (is (= :no-llm (self/llm-call-unavailable-reason perm)))))
     (testing ":usage-limit when over the AI usage limit"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly "You've used all your tokens")]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly "You've used all your tokens")]
         (is (= :usage-limit (self/llm-call-unavailable-reason perm)))))
     (testing ":permission-denied when the current user lacks the required permission"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly true)
-                    metabot.settings/llm-metabot-configured? (constantly true)
-                    usage/check-usage-limits!                (constantly nil)
-                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
-                                                                                perm :no))]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly true)
+         metabot.settings/llm-metabot-configured? (constantly true)
+         usage/check-usage-limits!                (constantly nil)
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
         (is (= :permission-denied (self/llm-call-unavailable-reason perm)))
         (is (false? (self/llm-call-available? perm)))))
     (testing "checks short-circuit in order: disabled before usage/permission"
-      (with-redefs [metabot.settings/metabot-enabled?        (constantly false)
-                    metabot.settings/llm-metabot-configured? (constantly false)
-                    usage/check-usage-limits!                (constantly "limit")
-                    scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
-                                                                                perm :no))]
+      (mt/with-dynamic-fn-redefs
+        [metabot.settings/metabot-enabled?        (constantly false)
+         metabot.settings/llm-metabot-configured? (constantly false)
+         usage/check-usage-limits!                (constantly "limit")
+         scope/resolve-user-permissions           (constantly (assoc scope/all-yes-permissions
+                                                                     perm :no))]
         (is (= :metabot-disabled (self/llm-call-unavailable-reason perm)))))))
 
 (deftest ^:parallel body-preview-test

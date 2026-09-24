@@ -69,9 +69,9 @@
                                        remote-sync-token  "valid-token"
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                    source.git/branches          (fn [_] ["main"])]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                  source.git/branches          (fn [_] ["main"])]
         (is (= {:status "success"}
                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})))))))
 
@@ -85,9 +85,9 @@
                                          remote-sync-token  "valid-token"
                                          remote-sync-branch ""
                                          remote-sync-type   :read-write]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                      source.git/branches          (fn [_] (swap! branches-calls inc) [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                    source.git/branches          (fn [_] (swap! branches-calls inc) [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection" {})
           (is (= 1 @branches-calls)
               "Test Connection must call git/branches even when check-git-settings! skips the remote check"))))))
@@ -98,9 +98,9 @@
                                        remote-sync-token  "rotated-token"
                                        remote-sync-branch ""
                                        remote-sync-type   :read-write]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source.git/git-source        (fn [_ _ _ _] {:fake-source true})
-                    source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source.git/git-source        (fn [_ _ _ _] {:fake-source true})
+                                  source.git/branches          (fn [_] (throw (ex-info "Authentication failed" {})))]
         (is (= "Authentication failed: Please check your git credentials"
                (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))))
 
@@ -111,11 +111,11 @@
                                          remote-sync-token  "saved-token"
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [url _ token _]
-                                                     (reset! captured {:url url :token token})
-                                                     {:fake-source true})
-                      source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [url _ token _]
+                                                                   (reset! captured {:url url :token token})
+                                                                   {:fake-source true})
+                                    source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-url   "https://github.com/other/repo.git"
                                  :remote-sync-token "new-token"})
@@ -129,11 +129,11 @@
                                          remote-sync-token  full-token
                                          remote-sync-branch "main"
                                          remote-sync-type   :read-only]
-        (with-redefs [settings/check-git-settings! (constantly nil)
-                      source.git/git-source        (fn [_ _ token _]
-                                                     (reset! captured token)
-                                                     {:fake-source true})
-                      source.git/branches          (fn [_] [])]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                    source.git/git-source        (fn [_ _ token _]
+                                                                   (reset! captured token)
+                                                                   {:fake-source true})
+                                    source.git/branches          (fn [_] [])]
           (mt/user-http-request :crowberto :post 200 "ee/remote-sync/test-connection"
                                 {:remote-sync-token (setting/obfuscate-value full-token)})
           (is (= full-token @captured)
@@ -158,11 +158,11 @@
                                        remote-sync-branch "main"
                                        remote-sync-type   :read-only]
       (testing "Authentication failure maps to credentials error"
-        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Authentication failed" {})))]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Authentication failed" {})))]
           (is (= "Authentication failed: Please check your git credentials"
                  (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {})))))
       (testing "Repository-not-found maps to URL error"
-        (with-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (throw (ex-info "Repository not found" {})))]
           (is (= "Repository not found: Please check the repository URL"
                  (mt/user-http-request :crowberto :post 400 "ee/remote-sync/test-connection" {}))))))))
 
@@ -238,6 +238,19 @@
               (is (true? (:conflicts resp)))
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
+
+(deftest import-without-expected-branch-succeeds-test
+  (testing "GHY-4636: `mb git-sync import` sends only `branch`; the import must run without `expected_branch`"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (=? {:status "success" :task_id int?} resp))
+            (is (remote-sync.task/successful? completed-task))))))))
 
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
@@ -693,6 +706,32 @@
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
+(deftest export-after-collection-rename-moves-contents-test
+  (testing "GHY-4642: pushing after a synced collection is renamed moves its contents' files under the new collection path"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection 2" :location "/"}
+                     :model/Card _ {:name "Question 2" :collection_id coll-id}]
+        (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+              repo-files #(set (source.p/list-files (source.p/snapshot source)))
+              push!      #(wait-for-task-completion
+                           (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                        settings/check-and-update-remote-settings! (constantly nil)
+                                        impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/collection_2.yaml"
+                       "collections/main/collection_2/question_2.yaml"}
+                     (repo-files)))
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:name "Marketing Reports"})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/marketing_reports.yaml"
+                       "collections/main/marketing_reports/question_2.yaml"}
+                     (repo-files))))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test
@@ -755,7 +794,66 @@
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-closes-a-stale-open-task-test
+  (testing "GET /api/ee/remote-sync/current-task closes an open task whose owner is gone and returns it cancelled"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
+      (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                     :started_at old-time
+                                                     :last_progress_report_at old-time}]
+        (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+          (is (=? {:id id
+                   :status "cancelled"
+                   :cancelled true
+                   :ended_at some?
+                   :error_message #"^Sync was interrupted.*"}
+                  first-response))
+          (testing "a second GET returns the same closed row"
+            (is (=? (select-keys first-response [:id :status :cancelled :ended_at :error_message])
+                    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))))
+
+(deftest current-task-leaves-a-live-task-running-test
+  (testing "GET /api/ee/remote-sync/current-task returns a task with a fresh heartbeat as running even when its progress is stale"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                   :started_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_progress_report_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_heartbeat_at :%now}]
+      (is (=? {:id id :status "running" :ended_at nil}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
+(deftest current-task-carries-the-trimmed-initiating-user-test
+  (testing "GET /api/ee/remote-sync/current-task carries the initiating user as id, first_name, last_name, email only"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [user (:initiated_by_user (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))]
+        (is (= {:id         (mt/user->id :rasta)
+                :first_name "Rasta"
+                :last_name  "Toucan"
+                :email      "rasta@metabase.com"}
+               user))))))
+
+(deftest current-task-initiating-user-is-nil-for-system-tasks-test
+  (testing "GET /api/ee/remote-sync/current-task carries a nil initiating user for a task with no initiator (auto-import)"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by nil
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+        (is (contains? response :initiated_by_user))
+        (is (nil? (:initiated_by_user response)))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-carries-the-trimmed-initiating-user-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel returns the cancelled task with its trimmed initiating user"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (is (=? {:status            "cancelled"
+               :initiated_by_user {:id (mt/user->id :rasta) :email "rasta@metabase.com"}}
+              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"))))))
 
 (deftest cancel-task-requires-superuser-test
   (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"
@@ -1070,7 +1168,7 @@
                                             :started_at     (t/offset-date-time)
                                             :progress       0.0}]
       (let [check-git-call-count (atom 0)]
-        (with-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+        (mt/with-dynamic-fn-redefs [settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
           (mt/with-temporary-setting-values [remote-sync-url    "file://my/repo.git"
                                              remote-sync-token  nil
                                              remote-sync-type   :read-only
@@ -1189,15 +1287,16 @@
             (is (= "Uses content that is not remote synced." (:error response)))
             (testing "the structured failure survives the endpoint's rewrap, keyed by error_code"
               (is (=? {:error_code "unsynced-dependencies"
-                       :errors     {:collections [{:collection   {:id remote-synced-coll-id :name "Remote Synced"}
-                                                   :dependencies [{:model      "card"
-                                                                   :id         source-card-id
-                                                                   :name       "Source Card"
-                                                                   :collection {:id regular-coll-id :name "Regular"}
-                                                                   :remedy     {:type       "collection"
-                                                                                :collection {:id       regular-coll-id
-                                                                                             :name     "Regular"
-                                                                                             :personal false}}}]}]}}
+                       :errors     {:required [{:remedy       {:type       "collection"
+                                                               :collection {:id       regular-coll-id
+                                                                            :name     "Regular"
+                                                                            :personal false}}
+                                                :syncable     true
+                                                :blocks       [{:id remote-synced-coll-id :name "Remote Synced"}]
+                                                :dependencies [{:model      "card"
+                                                                :id         source-card-id
+                                                                :name       "Source Card"
+                                                                :collection {:id regular-coll-id :name "Regular"}}]}]}}
                       response)))
             (testing "the body is the ex-data itself, not a stacktrace dump"
               (is (nil? (:trace response)))
@@ -1746,9 +1845,9 @@
   (testing "PUT /api/ee/remote-sync/settings does not mark collections as synced when settings validation fails"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings!
-                      (fn [_] (throw (ex-info "Authentication is required" {:status-code 400})))
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings!
+                                    (fn [_] (throw (ex-info "Authentication is required" {:status-code 400})))
+                                    impl/finish-remote-config! (constantly nil)]
           (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                 {:remote-sync-url   "https://github.com/test/private-repo.git"
                                  :remote-sync-type  :read-write

@@ -8,10 +8,10 @@
    [java-time.api :as t]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -61,7 +61,7 @@
 
 (defn native-query-transform?
   "Check if this is a native query transform.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  For query sources, `:query` must be in MBQL 5 format."
   [transform]
   (when (query-transform? transform)
     (let [query (-> transform :source :query)]
@@ -152,20 +152,10 @@
 
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
 
-(defn normalize-transform
-  "Normalize a transform's source query, similar to how transforms are normalized when read from the database.
-  This should be called on transforms before processing them to ensure queries are in the expected format."
-  [transform]
-  (if (and (map? transform)
-           (type-is? transform :transform)
-           (get-in transform [:source :query]))
-    (update-in transform [:source :query] lib-be/normalize-query)
-    transform))
-
 (defn transform-source-type
   "Returns the type of a transform's source: :python, :native, or :mbql.
   Throws if the source type cannot be detected.
-  Note: The transform should be normalized (via `normalize-transform`) before calling this function."
+  For query sources, `:query` must be in MBQL 5 format."
   [source]
   (cond
     (type-is? source :python) :python
@@ -192,7 +182,7 @@
    This handles the case where transforms create tables without explicit schema
    but the driver needs a schema to find the table during sync."
   [driver database table]
-  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+  (when-let [default-schema (:default_schema database)]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
       default-schema)))
 
@@ -410,7 +400,7 @@
    :lo                         values in the source table must be > this :value.
    :hi                         values in the source table must be <= this :value.
    :rows-available             count of source rows in (lo, hi] from the same scan; nil if unavailable."
-  [{:keys [source] :as transform}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform]
   (let [{:keys [checkpoint-filter-field-id lookback]} (:source-incremental-strategy source)]
     (validate-incremental-source! transform)
     (when checkpoint-filter-field-id
@@ -482,7 +472,7 @@
 
 (mu/defn validate-transform-query :- [:maybe [:map [:error :string]]]
   "Verifies that a query transform's query can actually be run as is.  Returns nil on success and an error map on failure."
-  [{:keys [source]}]
+  [{:keys [source]} :- ::transforms-base.schema/transform]
   (case (keyword (:type source))
     :query
     (try
@@ -583,19 +573,20 @@
 ;;; ------------------------------------------------- Table DDL -------------------------------------------------
 
 (mr/def ::column-definition
-  [:map
+  [:map {:closed true}
    [:name :string]
    [:type ::lib.schema.common/base-type]
-   [:nullable? {:optional true} :boolean]])
+   [:nullable? {:optional true} :boolean]
+   [:database-type {:optional true} [:maybe :string]]])
 
 (mr/def ::table-definition
-  [:map
+  [:map {:closed true}
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]
    ;; Inline indexes to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
    ;; drivers that don't inline anything ignore it. Populated from a transform's declared indexes by the manager.
-   [:indexes {:optional true} [:sequential :map]]])
+   [:indexes {:optional true} [:sequential ::indexes.schema/index-structured]]])
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
@@ -684,6 +675,15 @@
                                                   (= status :failed)
                                                   (assoc :error_message "Index was not found on the target table after the transform ran."))))))
 
+(defn- mark-indexes-unverifiable!
+  "Fail the still-running `managed` requests with the driver's reason when the warehouse read that verification needs
+  has failed. Only running rows change, so the run's generic `finally` backstop finds nothing left to relabel."
+  [driver managed schema table-name ^Throwable t]
+  (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s: %s" schema table-name (ex-message t))
+  (table-index/mark-unverified-running-indexes-failed!
+   (into #{} (map :id) managed)
+   (str "Couldn't read the table's indexes to verify this one: " (reconcile/driver-error-message driver t))))
+
 (defn verify-managed-indexes!
   "Reconcile each index request against what's physically in the warehouse and set its `:status`.
   Only runs on full-create runs (same guard as [[apply-target-indexes!]])."
@@ -696,11 +696,13 @@
       (when-let [managed (seq managed)]
         (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
-          (if-some [warehouse-indexes (reconcile/fetch-warehouse-indexes database schema table-name)]
+          (when-some [warehouse-indexes (try
+                                          (reconcile/fetch-warehouse-indexes database schema table-name)
+                                          (catch Exception e
+                                            (mark-indexes-unverifiable! (:engine database) managed schema table-name e)
+                                            nil))]
             (apply-index-outcomes!
-             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))
-            (log/warnf "verify-managed-indexes!: could not read indexes for %s.%s; leaving %d request(s) unchanged"
-                       schema table-name (count managed))))))))
+             (reconcile/classify-index-outcomes managed (reconcile/warehouse-key-set warehouse-indexes)))))))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
@@ -797,11 +799,13 @@
   (and (map? v) (nil? (:table_id v))))
 
 (mr/def ::source-table-entry
-  "A source table entry in the array format. Combines alias with table reference."
+  "A source table entry in the array format. Combines alias with table reference. Callers may supply just
+  `:table_id` (looked up to fill in `:database_id`/`:schema`/`:table`) or just
+  `:database_id`/`:schema`/`:table` (looked up to fill in `:table_id`), so only `:alias` is required."
   [:map {:closed true}
    [:alias :string]
-   [:database_id :int]
-   [:schema [:maybe :string]]
+   [:database_id {:optional true} [:maybe :int]]
+   [:schema {:optional true} [:maybe :string]]
    [:table {:optional true} :string]
    [:table_id {:optional true} [:maybe :int]]])
 
@@ -811,7 +815,7 @@
   For entries with only :database_id/:schema/:table, looks up :table_id.
   Throws if an integer table ID references a non-existent table.
   Map refs with non-existent tables get nil table_id (resolved later at execute time)."
-  [source-tables :- [:sequential [:map [:alias :string]]]]
+  [source-tables :- [:sequential ::source-table-entry]]
   (let [;; Entries that have table_id but lack table metadata need lookup
         needs-metadata   (filter (fn [e] (and (:table_id e) (not (:table e)))) source-tables)
         int-id->metadata (when (seq needs-metadata)
@@ -869,7 +873,13 @@
   Handles both int values (`{alias: table_id}`) and ref map values (`{alias: {:database_id ...}}`.
   Accepts both keyword and string keys for alias.
   Enriches entries with full metadata via [[normalize-source-tables]]."
-  [m :- [:map-of [:or :string :keyword] [:or :int :map]]]
+  [m :- [:map-of :string
+         [:or :int
+          [:map {:closed true}
+           [:database_id {:optional true} [:maybe :int]]
+           [:schema      {:optional true} [:maybe :string]]
+           [:table       {:optional true} [:maybe :string]]
+           [:table_id    {:optional true} [:maybe :int]]]]]]
   (normalize-source-tables
    (mapv (fn [[alias v]]
            (if (int? v)

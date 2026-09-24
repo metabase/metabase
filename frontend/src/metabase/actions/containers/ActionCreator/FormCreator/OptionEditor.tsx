@@ -122,7 +122,7 @@ export const OptionPopover = ({
             {t`Press enter to add another option`}
           </AddMorePrompt>
           {hasError && <ErrorMessage>{error}</ErrorMessage>}
-          <Button disabled={!canSave} onClick={handleSave} size="sm">
+          <Button disabled={!canSave} onClick={handleSave}>
             {t`Save`}
           </Button>
         </OptionEditorContainer>
