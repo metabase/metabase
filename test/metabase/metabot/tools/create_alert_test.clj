@@ -4,6 +4,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.tools.create-alert
     :as metabot.tools.create-alert]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]))
 
 (defn- alert-data [card-id]
@@ -74,3 +75,20 @@
                                     channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
           (is (= {:error "no slack channel found with this name"}
                  (invoke-tool (assoc base-data :slack-channel "no-such-channel")))))))))
+
+(deftest create-alert-tool-errors-test
+  (let [create-alert! #(binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
+                         (metabot.tools.create-alert/create-alert-tool
+                          {:card_id        %
+                           :send_condition "has_result"
+                           :schedule       {:frequency "daily" :hour 9}}))]
+    (testing "a card the user can't read goes back to the agent as output"
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Card {card-id :id} {}]
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= "You don't have permissions to do that."
+                     (:output (create-alert! card-id)))))))))
+    (testing "an unexpected error propagates to the agent loop"
+      (mt/with-dynamic-fn-redefs [metabot.tools.create-alert/create-alert (fn [_] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (create-alert! 1)))))))

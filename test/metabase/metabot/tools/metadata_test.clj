@@ -102,3 +102,12 @@
             (is (= [] (:models structured-output)))
             (is (= [] (:metrics structured-output)))
             (is (= 2 (count (:errors structured-output))))))))))
+
+(deftest list-available-fields-tool-errors-test
+  (let [list-fields #(metadata-tools/list-available-fields-tool {:table_ids % :model_ids [] :metric_ids []})]
+    (testing "too many ids go back to the agent as output"
+      (is (= {:output "Too many table IDs provided (6). Limit to 5."}
+             (list-fields [1 2 3 4 5 6]))))
+    (testing "an unexpected error propagates to the agent loop"
+      (mt/with-dynamic-fn-redefs [metadata-tools/validate-id-count (fn [& _] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (list-fields [])))))))

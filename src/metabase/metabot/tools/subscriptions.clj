@@ -8,7 +8,6 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -117,7 +116,4 @@
                           (:day_of_month schedule) (-> (assoc :day-of-month (keyword (:day_of_month schedule)))
                                                        (dissoc :day_of_month))))})
     (catch Exception e
-      (log/errorf "Error creating dashboard subscription: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-or-api-error e))))

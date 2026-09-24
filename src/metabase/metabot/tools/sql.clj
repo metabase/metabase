@@ -13,7 +13,6 @@
    [metabase.metabot.tools.sql.replace :as replace-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -187,10 +186,7 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error editing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to edit SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Replace SQL query
@@ -236,7 +232,4 @@
           {:output (format-validation-error-output instr)
            :instructions instr})))
     (catch Exception e
-      (log/errorf "Error replacing SQL query: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to replace SQL query: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

@@ -9,7 +9,6 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -107,5 +106,4 @@
           {:output (:error result)}
           {:output (or (:output result) "Dashboard subscription created successfully.")}))
       (catch Exception e
-        (log/errorf "Failed to create dashboard subscription: %s" (ex-message e))
-        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+        (metabot.tools.u/handle-agent-or-api-error e)))))

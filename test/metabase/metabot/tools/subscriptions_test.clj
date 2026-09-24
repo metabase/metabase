@@ -176,3 +176,19 @@
                          :slack_channel "no-such-channel"
                          :schedule      {:frequency "daily" :hour 9}})]
             (is (= {:error "no slack channel found with this name"} result))))))))
+
+(deftest create-dashboard-subscription-tool-errors-test
+  (let [subscribe! #(agent-subscriptions/create-dashboard-subscription-tool
+                     {:dashboard_id  %
+                      :slack_channel "data-team"
+                      :schedule      {:frequency "daily" :hour 9}})]
+    (testing "a dashboard the user can't read goes back to the agent as output"
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+            (mt/with-current-user (mt/user->id :rasta)
+              (is (= "You don't have permissions to do that."
+                     (:output (subscribe! dash-id)))))))))
+    (testing "an unexpected error propagates to the agent loop"
+      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription (fn [_] (throw (ex-info "boom" {})))]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (subscribe! 1)))))))

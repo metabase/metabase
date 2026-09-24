@@ -11,7 +11,6 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -147,5 +146,4 @@
           {:output (:error result)}
           {:output (or (:output result) "Alert created successfully.")}))
       (catch Exception e
-        (log/errorf "Failed to create alert: %s" (ex-message e))
-        {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))
+        (metabot.tools.u/handle-agent-or-api-error e)))))
