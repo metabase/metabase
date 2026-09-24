@@ -13,6 +13,7 @@ export type PickedItem = {
 
 export type ReferencedEntityInfo = {
   name: string | undefined;
+  url: string | undefined;
   columns: ColumnOption[];
   isLoading: boolean;
   hasError: boolean;
