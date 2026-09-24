@@ -567,13 +567,18 @@
               (last result))))))
 
 (deftest ^:parallel tool-executor-xf-test-7
-  (testing "tool-executor-xf ignores unknown tool names"
+  (testing "tool-executor-xf answers a call to an unknown tool with an error listing the tools it can call"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
-                   {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
+                   {:type :tool-input :id "call-1" :function "analyze_chart" :arguments {:chart_config_id "abc"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
-      (is (= chunks result)
-          "Unknown tools should be ignored, chunks pass through unchanged"))))
+      (is (=? (conj (vec chunks)
+                    {:type       :tool-output-available
+                     :toolCallId "call-1"
+                     :toolName   "analyze_chart"
+                     :error      {:message (str "Tool `analyze_chart` does not exist. "
+                                                "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
+              result)))))
 
 ;;; tool argument validation tests
 
@@ -1572,7 +1577,7 @@
 
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
-    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
+    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
       (let [rasta-id (mt/user->id :rasta)]
         ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
         ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
@@ -1582,6 +1587,8 @@
                                                  [{:type :start :id "msg-1"}
                                                   {:type :tool-input :id "call-1" :function "get-time"
                                                    :arguments {:tz "UTC"}}
+                                                  {:type :tool-input :id "call-2" :function "analyze_chart"
+                                                   :arguments {}}
                                                   {:type :usage :usage {:promptTokens        950
                                                                         :completionTokens    20
                                                                         :cacheCreationTokens 50
@@ -1612,7 +1619,10 @@
                                     "result"        "success"
                                     "duration_ms"   nat-int?
                                     "session_id"    "00000000-0000-0000-0000-000000000002"
-                                    "event_details" {"tool_name" "get-time"}}}]
+                                    "event_details" {"tool_name" "get-time"}}}
+                         {:data {"event"         "agent_used_tool"
+                                 "result"        "error"
+                                 "event_details" {"tool_name" "analyze_chart"}}}]
                         tool-events))))))))))
 
 (deftest call-llm-structured-snowplow-test

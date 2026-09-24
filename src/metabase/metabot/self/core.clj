@@ -931,7 +931,7 @@
   mismatch is returned to the model as a repair-oriented error.
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
-  [tool-call-id tool-name tool chunks]
+  [tool-call-id tool-name tools chunks]
   (ait/with-tool-call {:ai/tool-name    tool-name
                        :ai/tool-call-id tool-call-id}
     (with-span :info {:name         :metabot.agent/run-tool
@@ -943,7 +943,11 @@
                          (cond-> chunk
                            (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
             results  (try
-                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                       (let [tool      (or (get tools tool-name)
+                                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
+                                                                (str/join ", " (sort (keys tools))) ".")
+                                                           {:agent-error? true})))
+                             {:keys [arguments]} (into {} (aisdk-xf) chunks)
                              arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                              arguments (coerce-stringified-scalars tool arguments)
                              decode    (tool-decode-fn tool)
@@ -997,8 +1001,7 @@
         ([result {:keys [type toolCallId toolName] :as chunk}]
          (case type
            :tool-input-start
-           (when (contains? tools toolName)
-             (vswap! active assoc toolCallId {:chunks [chunk]}))
+           (vswap! active assoc toolCallId {:chunks [chunk]})
 
            :tool-input-delta
            (when (contains? @active toolCallId)
@@ -1006,8 +1009,7 @@
 
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
+             (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing
