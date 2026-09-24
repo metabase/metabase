@@ -13,9 +13,13 @@
      :query-executions-24h qe-24h}))
 
 (defn query-execution-last-utc-day
-  "Calculate query executions over a window of the the previous UTC day 00:00-23:59"
+  "Calculate query executions over a window of the previous UTC day 00:00-23:59, i.e. `started_at` in
+  `[yesterday 00:00 UTC, today 00:00 UTC)`."
   []
-  (let [yesterday-utc (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
-    (-> (internal-stats.db/query-execution-statistics-on yesterday-utc)
+  (let [utc       (t/zone-offset "+00")
+        today     (t/local-date (t/offset-date-time utc))
+        yesterday (t/minus today (t/days 1))
+        midnight  (fn [date] (t/offset-date-time date (t/local-time 0) utc))]
+    (-> (internal-stats.db/query-execution-statistics-between (midnight yesterday) (midnight today))
         (dissoc :row_count)
         (update-keys #(keyword (str "query_executions_" (name %)))))))

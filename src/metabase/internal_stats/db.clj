@@ -117,10 +117,18 @@
   [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(mu/defn query-execution-statistics-on
-  "The QueryExecution counts per embedding client for executions started on the day of `date`."
-  [date :- ms/TemporalInstant]
-  (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
+(mu/defn query-execution-statistics-between
+  "The QueryExecution counts per embedding client for executions with `started_at` in the half-open range
+  `[started-after, started-before)`.
+
+  Deliberately a plain range on the column: wrapping `started_at` in a function (e.g. casting it to a date) makes the
+  index on it unusable and turns this into a sequential scan of `query_execution`, which on busy instances is hundreds
+  of millions of rows."
+  [started-after  :- ms/TemporalInstant
+   started-before :- ms/TemporalInstant]
+  (t2/select-one query-execution-statistics {:where [:and
+                                                     [:>= :started_at started-after]
+                                                     [:< :started_at started-before]]}))
 
 (defn- and-not-nil
   ([not-nil-field]
