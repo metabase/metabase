@@ -5,25 +5,15 @@ const fontverter = require("fontverter");
 
 // --- How each face is split -------------------------------------------------
 
-// Each bundled face is split in two so a page only downloads what it renders.
-// A latin page fetches the first chunk and nothing else, and Cyrillic or Greek
-// text pulls the second in on demand, so coverage is unchanged.
+// A page downloads only the chunks it renders. The two sets are disjoint and
+// cover everything above the control characters: the second chunk holds only
+// what the first leaves out, so a codepoint claimed by both would render tofu
+// whenever the browser picked the face that lacks it.
 //
-// The two sets are disjoint and together cover everything above the control
-// characters. The second chunk holds only what the first leaves out, so a
-// codepoint claimed by both would render tofu whenever the browser picked the
-// face that lacks it.
-//
-// Latin-1 and the punctuation-through-currency span, rather than Google's latin
-// subset. That set scatters fifteen singletons across the plane, for the euro,
-// dotless i, the arrows and the rest, and its complement comes out just as
-// jagged. Rounding to two blocks costs 6,904 bytes on Noto Sans, the largest
-// family, and turns seventeen ranges a side into two.
-//
-// Two ranges rather than Google's seven: measured across Noto Sans, Inter,
-// Roboto and PT Sans, a third chunk cost 19-52 kB more in total for a latin
-// page 28 bytes smaller, and folding latin-ext into the first chunk more than
-// doubled it.
+// Two ranges, not Google's seven. Measured across Noto Sans, Inter, Roboto and
+// PT Sans, a third chunk cost 19-52 kB more for a latin page 28 bytes smaller,
+// and folding latin-ext into the first more than doubled it. Rounding to two
+// contiguous blocks costs 6,904 bytes on Noto Sans, the largest family.
 const LATIN_RANGES = [
   [0x20, 0xff],
   [0x2000, 0x20bf],
@@ -39,7 +29,7 @@ const hex = (codePoint) => "U+" + codePoint.toString(16).toUpperCase();
 const unicodeRange = (ranges) =>
   ranges.map(([from, to]) => `${hex(from)}-${hex(to)}`).join(", ");
 
-/** Every codepoint in the given ranges, as a string for the subsetter. */
+/** Every codepoint in the ranges, as a string for the subsetter. */
 const characters = (ranges) => {
   let out = "";
   for (const [from, to] of ranges) {
@@ -54,15 +44,13 @@ const characters = (ranges) => {
   return out;
 };
 
-// The rest set spans a million codepoints and every face asks for it, so both
-// are built on first use and kept.
+// The rest set spans a million codepoints and every face asks for it.
 let latin;
 let rest;
 
 // --- What a font says about itself ------------------------------------------
 
-// OpenType name table IDs. `local()` matches a font by its full name or its
-// PostScript name, so these two are what a @font-face rule has to name.
+// `local()` matches a font by its full name or its PostScript name.
 const FULL_NAME = 4;
 const POSTSCRIPT_NAME = 6;
 
@@ -90,8 +78,8 @@ const readNames = (sfnt) => {
   const names = {};
   for (let i = 0; i < count; i++) {
     const record = 6 + i * 12;
-    // Only the Windows records: a Macintosh record may hold UTF-16 while
-    // declaring a single-byte encoding, which decodes to nonsense.
+    // A Macintosh record may hold UTF-16 while declaring a single-byte
+    // encoding, which decodes to nonsense.
     if (table.readUInt16BE(record) !== WINDOWS_PLATFORM) {
       continue;
     }
@@ -106,8 +94,8 @@ const readNames = (sfnt) => {
 };
 
 /**
- * What a face says about itself: the weight it was drawn at and the names a
- * browser will match an installed copy against.
+ * The weight a face was drawn at, and the names a browser matches an installed
+ * copy against.
  *
  * @param {Buffer} font a woff2, woff or sfnt file
  */
@@ -122,7 +110,7 @@ const readFontMetadata = async (font) => {
 
 // --- The @font-face rules ---------------------------------------------------
 
-// Ordered the way a browser should try them: the first it understands wins.
+// The browser takes the first it understands.
 const FORMATS = [
   { extension: "eot", format: "embedded-opentype" },
   { extension: "woff2", format: "woff2" },
@@ -131,14 +119,9 @@ const FORMATS = [
   { extension: "svg", format: "svg" },
 ];
 
-// The default font is on the critical path of every page, so `swap` there would
-// flash a fallback on each load. Every other family is only ever reached by
-// whitelabelling, where the flash is the better trade.
+// The default font is on the critical path of every page, so `swap` there
+// would flash a fallback on each load.
 const DEFAULT_FAMILY = "Lato";
-
-// Wider companions for a family whose shipped files are a lean subset. The
-// subset loader reads them; they are never declared in their own right.
-const COMPANION_DIRECTORY = "full";
 
 const quoted = (family) => (family.includes(" ") ? `"${family}"` : family);
 
@@ -158,7 +141,7 @@ const face = ({ directory, family, stem, weight, localNames, extensions }) => {
     "  font-style: normal;",
     `  font-weight: ${weight};`,
     family === DEFAULT_FAMILY ? null : "  font-display: swap;",
-    // A bare `src` first, for browsers that understand no `format()` at all.
+    // For browsers that understand no `format()` at all.
     extensions.has("eot")
       ? `  src: url("~fonts/${directory}/${stem}.eot");`
       : null,
@@ -186,9 +169,8 @@ const familiesIn = (fontsDir) =>
     );
 
 /**
- * The bundled `@font-face` rules, built from the fonts themselves. Each face
- * names the weight it was drawn at and the names a browser matches an installed
- * copy against, so the stylesheet cannot drift from the files it describes.
+ * The bundled `@font-face` rules, read out of the fonts, so the stylesheet
+ * cannot drift from the files it describes.
  *
  * @param {string} fontsDir
  * @param {(file: string) => void} onRead called with every file consulted
@@ -223,15 +205,13 @@ const buildFontFaces = async (fontsDir, onRead) => {
 /**
  * Output path for a bundled font, under `prefix`.
  *
- * Keeps the family directory, because the backend derives the whitelabel font
- * list from those names, and drops the cache key the subset loader puts in a
- * chunk's filename. That key exists to invalidate the cache on disk. In a URL
- * the content hash already does that job, and a second hash only makes the name
- * harder to read.
+ * The family directory stays, because the backend derives the whitelabel font
+ * list from those names. The loader's cache key does not: the content hash
+ * below already tells two versions apart.
  *
- * The latin chunk takes the name the whole face would have had. It is the one
- * anything outside the stylesheet wants, so every consumer that looked a face
- * up before the split still finds it, and only the second chunk is marked.
+ * The latin chunk takes the name the whole face would have had, so anything
+ * looking a face up outside the stylesheet finds it, and only the second chunk
+ * is marked.
  *
  * @param {{ filename: string }} pathData
  * @param {string} prefix
@@ -253,6 +233,5 @@ module.exports = {
   latinCharacters: () => (latin ??= characters(LATIN_RANGES)),
   restCharacters: () => (rest ??= characters(REST_RANGES)),
   buildFontFaces,
-  COMPANION_DIRECTORY,
   fontAssetName,
 };

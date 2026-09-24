@@ -11,15 +11,14 @@ const {
 } = require("../fonts");
 
 // A face with nothing outside latin still subsets to a small valid font. Below
-// this it carries no real glyphs and declaring it would only add a request that
+// this it carries no real glyphs, and declaring it would add a request that
 // renders nothing.
 const MIN_USEFUL_CHUNK_BYTES = 3000;
 
 const SUBSET_OPTIONS = { targetFormat: "woff2" };
 
 // Chunks are cached under the hash of their source, so everything else that
-// decides their contents belongs in that hash. Without this, editing a range
-// leaves every warm tree serving the chunks built from the old one.
+// decides their contents belongs in that hash too.
 const RECIPE = JSON.stringify([
   LATIN_UNICODE_RANGE,
   REST_UNICODE_RANGE,
@@ -27,15 +26,13 @@ const RECIPE = JSON.stringify([
 ]);
 
 /**
- * Builds the bundled `@font-face` rules from the fonts themselves, then splits
- * each face into a latin chunk and a chunk holding everything else, declared
- * with a `unicode-range`. A page downloads only the chunks it renders, and
- * coverage is unchanged because the browser fetches the second chunk on demand.
+ * Builds the bundled `@font-face` rules, then splits each face into a latin
+ * chunk and a chunk holding everything else, declared with a `unicode-range`.
+ * Coverage is unchanged: the browser fetches the second chunk on demand.
  *
- * The whole stylesheet is this loader's return value. Its resource is a virtual
- * module, so there is no file to drift from the fonts it describes. Subsetting a
- * face costs around 100ms, so the chunks are cached on disk under the hash of
- * their source: a cold build pays about eighteen seconds, later builds nothing.
+ * The whole stylesheet is this loader's return value, and its resource is a
+ * virtual module. Subsetting a face costs around 100ms, so chunks are cached on
+ * disk: a cold build pays about eighteen seconds, later builds nothing.
  */
 module.exports = function fontSubsetLoader() {
   const callback = this.async();
@@ -46,9 +43,8 @@ async function rewrite(loader) {
   const { fontsDir, outputDir } = loader.getOptions();
   const subsetFont = (await import("subset-font")).default;
   fs.mkdirSync(outputDir, { recursive: true });
-  // Nothing about this module comes from its own resource, so everything it is
-  // built from has to invalidate it explicitly. `buildFontFaces` reports each
-  // font it reads.
+  // Nothing here comes from the module's own resource, so everything it is
+  // built from has to invalidate it explicitly.
   loader.addDependency(require.resolve("../fonts"));
   const css = await buildFontFaces(fontsDir, (file) =>
     loader.addDependency(file),
@@ -57,10 +53,8 @@ async function rewrite(loader) {
   const chunksFor = async (rel) => {
     const source = path.join(fontsDir, rel);
     // A face may ship a wider companion under `full/`, covering scripts the web
-    // file omits. Lato does: the shipped file is a lean latin subset, so without
-    // this the default font cannot render Cyrillic at all. The latin chunk still
-    // comes from the lean file, so the critical path is unchanged, and the wider
-    // glyphs only arrive when a page needs them.
+    // file omits. Only the rest chunk is cut from it, so the critical path keeps
+    // the lean file and the wider glyphs arrive only when a page needs them.
     const full = path.join(
       fontsDir,
       path.dirname(rel),
@@ -110,8 +104,8 @@ async function rewrite(loader) {
 
   const splitFace = async (block) => {
     const urls = [...block.matchAll(/url\("~fonts\/([^"]+\.woff2)"\)/g)];
-    // Faces that are not a single woff2, such as the legacy Lato fallbacks with
-    // their eot and svg sources, are passed through untouched.
+    // A face that is not a single woff2, such as the legacy Lato fallbacks,
+    // passes through untouched.
     if (urls.length !== 1) {
       return block;
     }
@@ -152,9 +146,8 @@ async function rewrite(loader) {
 }
 
 /**
- * Both compilers run in parallel and generate the same chunks, so writes go to a
- * unique temporary name and are renamed into place. A reader then sees either
- * the old file or the complete new one, never a half-written font.
+ * Both compilers generate the same chunks in parallel, so a reader must see
+ * either the old file or the complete new one, never a half-written font.
  */
 function writeAtomic(target, contents) {
   const tmp = `${target}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
