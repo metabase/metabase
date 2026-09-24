@@ -11,7 +11,8 @@ import { GOAL_LINE_SERIES_ID, X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartDataset } from "../model/types";
 
-export const GOAL_LINE_DASH = [3, 4];
+export const GOAL_LINE_DASH = [2, 2];
+const GOAL_LINE_WIDTH = 1;
 
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {
@@ -52,6 +53,117 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
   };
 }
 
+function buildGoalLineLabel({
+  labelOnLeft,
+  xStart,
+  xEnd,
+  y,
+  fontSize,
+  settings,
+  renderingContext,
+}: {
+  labelOnLeft: boolean;
+  xStart: number;
+  xEnd: number;
+  y: number;
+  fontSize: number;
+  settings: ComputedVisualizationSettings;
+  renderingContext: RenderingContext;
+}) {
+  return [
+    {
+      type: "text" as const,
+      x: labelOnLeft ? xStart : xEnd,
+      y: y - fontSize - CHART_STYLE.goalLine.label.margin,
+      blur: {
+        style: {
+          opacity: 1,
+        },
+      },
+      style: {
+        align: labelOnLeft ? ("left" as const) : ("right" as const),
+        text: settings["graph.goal_label"] ?? "",
+        fontFamily: renderingContext.fontFamily,
+        fontSize,
+        fontWeight: CHART_STYLE.goalLine.label.weight,
+        fill: renderingContext.getColor("text-secondary"),
+      },
+    },
+  ];
+}
+
+function buildGoalLineMarker({
+  xEnd,
+  y,
+  renderingContext,
+}: {
+  xEnd: number;
+  y: number;
+  renderingContext: RenderingContext;
+}) {
+  const {
+    outerRingRadius,
+    innerRingRadius,
+    ringWidth,
+    backgroundRadius,
+    shadowSpread,
+    hitAreaRadius,
+  } = CHART_STYLE.goalLine.marker;
+  const iconColor = renderingContext.getColor("icon-primary");
+
+  const circle = (
+    r: number,
+    style: { fill: string; stroke?: string; lineWidth?: number },
+  ) => ({
+    type: "circle" as const,
+    shape: { cx: xEnd, cy: y, r },
+    silent: true,
+    blur: {
+      style: {
+        opacity: 1,
+      },
+    },
+    emphasis: {
+      style: { ...style },
+    },
+    style,
+  });
+
+  const shadow = circle(backgroundRadius + shadowSpread, {
+    fill: renderingContext.getColor("shadow-default"),
+  });
+  const background = circle(backgroundRadius, {
+    fill: renderingContext.getColor("background_surface-primary"),
+  });
+  const hoverBackground = {
+    ...circle(backgroundRadius, { fill: "none" }),
+    emphasis: {
+      style: {
+        fill: renderingContext.getColor("background_surface-primary-hover"),
+      },
+    },
+  };
+  const ringStyle = { fill: "none", stroke: iconColor, lineWidth: ringWidth };
+
+  const hitArea = {
+    type: "circle" as const,
+    shape: { cx: xEnd, cy: y, r: hitAreaRadius },
+    style: {
+      fill: iconColor,
+      opacity: 0,
+    },
+  };
+
+  return [
+    shadow,
+    background,
+    hoverBackground,
+    circle(outerRingRadius, ringStyle),
+    circle(innerRingRadius, ringStyle),
+    hitArea,
+  ];
+}
+
 export function getGoalLineSeriesOption(
   { dataset, isNormalized, toEChartsAxisValue, labelOnLeft }: GoalLineParams,
   settings: ComputedVisualizationSettings,
@@ -83,54 +195,62 @@ export function getGoalLineSeriesOption(
         params.coordSys as unknown as EChartsCartesianCoordinateSystem;
       const xStart = coordSys.x;
       const xEnd = coordSys.width + coordSys.x;
+      // Snapped to the pixel grid so the line and its shadow below stay crisp
+      // instead of being anti-aliased into each other.
+      const lineY = Math.round(y - GOAL_LINE_WIDTH / 2) + GOAL_LINE_WIDTH / 2;
 
-      const line = {
+      const getLine = (offsetY: number, stroke: string) => ({
         type: "line" as const,
         shape: {
-          x1: xStart,
+          x1: Math.round(xStart),
           x2: xEnd,
-          y1: y,
-          y2: y,
+          y1: lineY + offsetY,
+          y2: lineY + offsetY,
         },
+        // Only the marker is a hover target, so the line itself is inert.
+        silent: true,
         blur: {
           style: {
             opacity: 1,
           },
         },
+        emphasis: {
+          style: {
+            stroke,
+          },
+        },
         style: {
-          lineWidth: 2,
-          stroke: renderingContext.getColor("text-secondary"),
-          color: renderingContext.getColor("text-secondary"),
+          lineWidth: GOAL_LINE_WIDTH,
+          stroke,
+          color: stroke,
           lineDash: GOAL_LINE_DASH,
         },
-      };
+      });
 
-      const align = labelOnLeft ? ("left" as const) : ("right" as const);
-      const labelX = labelOnLeft ? xStart : xEnd;
-      const labelY = y - fontSize - CHART_STYLE.goalLine.label.margin;
+      const line = getLine(0, renderingContext.getColor("icon-primary"));
+      const lineShadow = getLine(
+        GOAL_LINE_WIDTH,
+        renderingContext.getColor("background_surface-primary"),
+      );
 
-      const label = {
-        type: "text" as const,
-        x: labelX,
-        y: labelY,
-        blur: {
-          style: {
-            opacity: 1,
-          },
-        },
-        style: {
-          align,
-          text: settings["graph.goal_label"] ?? "",
-          fontFamily: renderingContext.fontFamily,
-          fontSize,
-          fontWeight: CHART_STYLE.goalLine.label.weight,
-          fill: renderingContext.getColor("text-secondary"),
-        },
-      };
+      // Static renders have no hover, so they keep the inline label to stay
+      // readable. Interactive charts show the marker and reveal the value on
+      // hover instead.
+      const endDecoration = renderingContext.isStatic
+        ? buildGoalLineLabel({
+            labelOnLeft,
+            xStart,
+            xEnd,
+            y,
+            fontSize,
+            settings,
+            renderingContext,
+          })
+        : buildGoalLineMarker({ xEnd, y: lineY, renderingContext });
 
       return {
         type: "group" as const,
-        children: [line, label],
+        children: [lineShadow, line, ...endDecoration],
       };
     },
   };

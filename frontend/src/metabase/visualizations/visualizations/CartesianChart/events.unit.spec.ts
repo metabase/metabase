@@ -27,6 +27,7 @@ import {
   getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
+  getGoalLineHoverData,
   getSeriesClickData,
   getTooltipModel,
   normalizeDimensionValue,
@@ -903,5 +904,38 @@ describe("getTooltipModel", () => {
       "Doohickey",
       "Gadget",
     ]);
+  });
+});
+
+describe("getGoalLineHoverData", () => {
+  const createGoalHoverEvent = (nodeName: string) =>
+    // Only the nested DOM target is read; building a full ECharts mouse event
+    // here would add noise without improving coverage.
+    ({
+      event: { event: { target: { nodeName } } },
+    }) as unknown as EChartsSeriesMouseEvent;
+
+  const settings = createMockVisualizationSettings({
+    "graph.goal_value": 25000,
+    "graph.goal_label": "Goal",
+  });
+
+  it("shows the goal label and formatted value when the marker is hovered", () => {
+    const hoverData = getGoalLineHoverData(
+      settings,
+      createGoalHoverEvent("path"),
+      (value) => `${value} orders`,
+    );
+
+    expect(hoverData?.data).toEqual([
+      { col: null, key: "Goal", value: "25000 orders" },
+    ]);
+  });
+
+  it("anchors the tooltip to the hovered marker element", () => {
+    const event = createGoalHoverEvent("path");
+    const hoverData = getGoalLineHoverData(settings, event);
+
+    expect(hoverData?.element).toBe(event.event.event.target);
   });
 });
