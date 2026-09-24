@@ -239,6 +239,19 @@
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
 
+(deftest import-without-expected-branch-succeeds-test
+  (testing "GHY-4636: `mb git-sync import` sends only `branch`; the import must run without `expected_branch`"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (=? {:status "success" :task_id int?} resp))
+            (is (remote-sync.task/successful? completed-task))))))))
+
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
     (let [mock-main (test-helpers/create-mock-source)]
@@ -692,6 +705,32 @@
             (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
+
+(deftest export-after-collection-rename-moves-contents-test
+  (testing "GHY-4642: pushing after a synced collection is renamed moves its contents' files under the new collection path"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection 2" :location "/"}
+                     :model/Card _ {:name "Question 2" :collection_id coll-id}]
+        (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+              repo-files #(set (source.p/list-files (source.p/snapshot source)))
+              push!      #(wait-for-task-completion
+                           (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                        settings/check-and-update-remote-settings! (constantly nil)
+                                        impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/collection_2.yaml"
+                       "collections/main/collection_2/question_2.yaml"}
+                     (repo-files)))
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:name "Marketing Reports"})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/marketing_reports.yaml"
+                       "collections/main/marketing_reports/question_2.yaml"}
+                     (repo-files))))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 

@@ -88,8 +88,7 @@ export const SearchUserPicker = ({
                   data-testid="selected-user-button"
                   key={userId}
                   c="core-brand"
-                  px="lg"
-                  py="sm"
+                  px="md"
                   maw="100%"
                   rightSection={<Icon name="close" />}
                   onClick={() => removeUser(user)}

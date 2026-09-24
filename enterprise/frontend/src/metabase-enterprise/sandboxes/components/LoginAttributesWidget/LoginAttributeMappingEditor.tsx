@@ -148,7 +148,7 @@ export const LoginAttributeMappingEditor = ({
                 autoFocus={index === autoFocusIndex}
               />
             </Flex>
-            <Flex gap="sm" w="50%">
+            <Flex gap="sm" w="50%" align="center">
               <ValueInput
                 canDelete={canDeleteThis}
                 canRevert={!!canRevert}
@@ -175,8 +175,8 @@ export const LoginAttributeMappingEditor = ({
         );
       })}
       <Button
-        variant="light"
-        size="xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="add" />}
         onClick={() => {
           handleChange(addEntry(entries));
@@ -253,18 +253,26 @@ const ValueInput = ({
         w="100%"
         {...valueOpts}
       />
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canDelete && (
         <Button
+          variant="subtle"
+          color="neutral"
+          size="sm"
           leftSection={<Icon name="close" />}
           onClick={onDelete}
           data-testid="remove-mapping"
         />
       )}
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       {canRevert && (
         <Tooltip
           label={t`Revert to "${valueOpts?.revert?.value}" value from ${valueOpts?.revert?.source}`}
         >
           <Button
+            variant="subtle"
+            color="neutral"
+            size="sm"
             leftSection={<Icon name="refresh" />}
             onClick={onRevert}
             data-testid="revert-mapping"
