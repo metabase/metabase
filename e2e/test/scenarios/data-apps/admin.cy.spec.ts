@@ -183,7 +183,7 @@ describe("scenarios > data apps > upsell (OSS)", { tags: "@OSS" }, () => {
     cy.visit("/admin/settings/apps");
 
     cy.findByRole("link", { name: /Data apps/ }).within(() => {
-cy.findByTestId("upsell-gem").should("be.visible");
+      cy.findByTestId("upsell-gem").should("be.visible");
     });
   });
 });
