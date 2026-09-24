@@ -1,6 +1,8 @@
 (ns metabase.metabot.tools.document-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
    [metabase.metabot.tools.document :as document-tools]
@@ -118,31 +120,31 @@
         (is (re-find #"missing_table" (:output result)))))))
 
 (deftest document-construct-model-chart-tool-test
-  (testing "builds chart draft payload from model query"
-    (mt/with-dynamic-fn-redefs [construct-tools/construct-notebook-query-tool
-                                (fn [_]
-                                  {:structured-output {:query-id "3"
-                                                       :query {:database 1
-                                                               :type "query"}}})]
-      ;; `construct-notebook-query-tool` is stubbed above, so the YAML string is an opaque
-      ;; placeholder — it only needs to be a string.
-      (let [result (document-tools/document-construct-model-chart-tool
-                    {:name "Test Name"
-                     :description "Test Desc"
-                     :query ""
-                     :viz_settings {:chart_type "bar"}})
-            structured (:structured-output result)]
-        (is (some? structured)
-            "structured-output present -> a successful, terminal-eligible call")
-        (is (= "document_construct_model_chart" (:tool structured)))
-        (is (= "Test Name" (:name structured)))
-        (is (= "Test Desc" (:description structured)))
-        (is (= "bar" (:display structured)))
-        (is (= "bar" (:chart_type structured)))
-        (is (= :chart-draft (:result-type structured)))
-        (is (= {:database 1
-                :type "query"}
-               (:dataset_query structured)))))))
+  (testing "builds chart draft payload from a query on a model"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card model {:type :model, :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+          (let [result (document-tools/document-construct-model-chart-tool
+                        {:name "Test Name"
+                         :description "Test Desc"
+                         :query {:lib/type "mbql/query"
+                                 :stages [{:lib/type "mbql.stage/mbql"
+                                           :source-card (:entity_id model)
+                                           :aggregation [["count" {}]]
+                                           :breakout [["field" {:temporal-unit "month"} "CREATED_AT"]]}]}
+                         :viz_settings {:chart_type "bar"}})
+                structured (:structured-output result)]
+            (is (some? structured)
+                "structured-output present -> a successful, terminal-eligible call")
+            (is (= "document_construct_model_chart" (:tool structured)))
+            (is (= "Test Name" (:name structured)))
+            (is (= "Test Desc" (:description structured)))
+            (is (= "bar" (:display structured)))
+            (is (= "bar" (:chart_type structured)))
+            (is (= :chart-draft (:result-type structured)))
+            (is (=? {:database (mt/id)
+                     :stages [{:source-card (:id model)}]}
+                    (:dataset_query structured)))))))))
 
 (deftest document-construct-model-chart-new-chart-types-test
   (testing "the tool schema accepts newly added chart types"
@@ -155,7 +157,7 @@
         (let [result (document-tools/document-construct-model-chart-tool
                       {:name "Test Name"
                        :description "Test Desc"
-                       :query ""
+                       :query {:lib/type "mbql/query" :stages []}
                        :viz_settings {:chart_type chart-type}})
               structured (:structured-output result)]
           (is (= chart-type (:display structured)))
