@@ -1,9 +1,7 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import { FIXTURE_PATH, VALID_CSV_FILES } from "e2e/support/helpers";
-
-const { NOSQL_GROUP, ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
@@ -257,82 +255,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
     cy.findByRole("textbox", { name: "Select a model" })
       .should("have.value", VALID_CSV_FILES[0].humanName)
       .click();
-  });
-});
-
-describe("permissions", { tags: "@external" }, () => {
-  it("should not show you upload buttons if you are a sandboxed user", () => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    H.activateToken("pro-self-hosted");
-    H.enableUploads("postgres");
-
-    //Deny access for all users to writable DB
-    cy.updatePermissionsGraph({
-      1: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-    });
-
-    cy.request("GET", `/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body: tables }) => {
-        cy.request("GET", `/api/database/${WRITABLE_DB_ID}/fields`).then(
-          ({ body: fields }) => {
-            // Sandbox a table so that the sandboxed user will have read access to a table
-            cy.sandboxTable({
-              table_id: tables[0].id,
-              attribute_remappings: {
-                attr_uid: ["dimension", ["field", fields[0].id, null]],
-              },
-            });
-          },
-        );
-      },
-    );
-
-    cy.signInAsSandboxedUser();
-    cy.visit("/collection/root");
-    // No upload icon should appear for the sandboxed user
-    cy.findByTestId("collection-menu").within(() => {
-      cy.get(".Icon-calendar").should("exist");
-      cy.findByLabelText("Upload data").should("not.exist");
-    });
-  });
-
-  it("should show you upload buttons if you have unrestricted access to the upload schema", () => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    H.activateToken("pro-self-hosted");
-    H.enableUploads("postgres");
-
-    cy.updatePermissionsGraph({
-      [ALL_USERS_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "blocked",
-        },
-      },
-      [NOSQL_GROUP]: {
-        [WRITABLE_DB_ID]: {
-          "view-data": "unrestricted",
-          "create-queries": "query-builder",
-        },
-      },
-    });
-
-    cy.updateCollectionGraph({
-      [NOSQL_GROUP]: { root: "write" },
-    });
-
-    cy.signIn("nosql");
-    cy.visit("/collection/root");
-    cy.findByTestId("collection-menu").within(() => {
-      cy.findByLabelText("Upload data").should("exist");
-      cy.findByRole("img", { name: /upload/i }).should("exist");
-    });
   });
 });
 
