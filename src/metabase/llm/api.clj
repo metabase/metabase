@@ -224,6 +224,7 @@
                 :user-id             api/*current-user-id*
                 :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
                 :model-id            (:model usage)
+                :provider            "anthropic"
                 :prompt-tokens       (:prompt usage)
                 :completion-tokens   (:completion usage)
                 :total-tokens        (+ (:prompt usage) (:completion usage))
@@ -235,6 +236,8 @@
               (metabot/log-ai-usage!
                {:source             "sql-gen"
                 :model              (:model usage)
+                :provider           "anthropic"
+                :model-name         (:model usage)
                 :prompt-tokens      (:prompt usage)
                 :completion-tokens  (:completion usage)})
               (track-sqlgen-event!

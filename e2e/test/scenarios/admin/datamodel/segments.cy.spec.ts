@@ -131,11 +131,11 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       // Detail view
       cy.get("main").findByText("Description").should("be.visible");
-      cy.button("See this segment").should("be.visible");
+      cy.findByRole("link", { name: "See this segment" }).should("be.visible");
 
       // Segment fields
       cy.findByRole("link", { name: /Fields in this segment/ }).click();
-      cy.button("See this segment").should("not.exist");
+      cy.findByRole("link", { name: "See this segment" }).should("not.exist");
       cy.get("main")
         .findByText(`Fields in ${SEGMENT_NAME}`)
         .should("be.visible");

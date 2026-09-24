@@ -1,31 +1,19 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  PLUGIN_TENANTS,
-  type SdkIframeEmbedSetupModalInitialState,
-} from "metabase/plugins";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 
 import type { SetupGuideStep } from "../types";
-
-const SETUP_GUIDE_URLS = {
-  permissions: "/embedding/get-started/permissions",
-  sso: "/embedding/get-started/sso",
-};
 
 export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
   const dispatch = useDispatch();
 
   const openEmbedModal = useCallback(
     (props: { initialState: SdkIframeEmbedSetupModalInitialState }) => {
-      dispatch(
-        setOpenModalWithProps({
-          id: "embed",
-          props,
-        }),
-      );
+      dispatch(openEmbedJsWizard(props.initialState));
     },
     [dispatch],
   );
@@ -43,7 +31,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
           onClick: () => {
             openEmbedModal({ initialState: {} });
           },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -56,7 +44,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
           title: t`Connect a database`,
           description: t`Connect your own database or upload a CSV and start working with your real data.`,
           modal: { type: "add-data", initialTab: "db" },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -69,7 +57,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
           title: t`Create a dashboard`,
           description: t`Automatically generate a dashboard from your data using x-rays.`,
           modal: { type: "xray-dashboard" },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };
@@ -81,8 +69,8 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure data permissions and enable tenants`,
           description: t`Set granular permissions for multi-tenancy to control data access. Share dashboards, questions, and models with external users and allow them to create content, while restricting access to internal or other tenants' data.`,
-          to: SETUP_GUIDE_URLS.permissions,
-          variant: "outline",
+          to: "/admin/embedding/setup-guide/permissions",
+          variant: "default",
           stepId: "data-permissions-and-enable-tenants",
         },
       ],
@@ -95,8 +83,8 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
         {
           title: t`Configure SSO`,
           description: t`Configure JWT authentication to ensure only authorized users can access your embeds.`,
-          to: SETUP_GUIDE_URLS.sso,
-          variant: "outline",
+          to: "/admin/embedding/setup-guide/sso",
+          variant: "default",
           stepId: "sso-configured",
         },
       ],
@@ -117,7 +105,7 @@ export const useGetSetupGuideSteps = (): SetupGuideStep[] => {
               },
             });
           },
-          variant: "outline",
+          variant: "default",
         },
       ],
     };

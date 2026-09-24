@@ -24,6 +24,7 @@
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
+   [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
@@ -42,6 +43,7 @@
    [metabase-enterprise.stale.api]
    [metabase-enterprise.support-access-grants.api]
    [metabase-enterprise.tenants.api]
+   [metabase-enterprise.transform-testing.api]
    [metabase-enterprise.transforms-python.api]
    [metabase-enterprise.transforms.api]
    [metabase-enterprise.upload-management.api]
@@ -79,7 +81,8 @@
    :metabot-v3                (deferred-tru "Metabot")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
    :support-users              (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :transforms-python          (deferred-tru "Transforms Python")
+   :transforms-testing         (deferred-tru "Transforms Testing")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -135,6 +138,7 @@
    "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
+   "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
@@ -148,6 +152,7 @@
    ;; feature gates setup paths. MFA verification lives under /api/session/mfa/* (OSS mount).
    "/mfa"                          metabase-enterprise.mfa.routes/routes
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
+   "/transform-test"               (premium-handler metabase-enterprise.transform-testing.api/routes :transforms-testing)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)
    "/transforms-python"            (premium-handler metabase-enterprise.transforms-python.api/routes :transforms-python)

@@ -18,7 +18,7 @@ import { ExplicitSizeRefreshModeContext } from "metabase/common/components/Expli
 import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -327,7 +327,7 @@ export const CardEmbedComponent = memo(
 
     host.useReportPrefetchLoading(_id, isLoading);
 
-    const buildQuestion = useQuestionFromCard();
+    const buildQuestion = useQuestionFromCardBuilder();
     const datasetError = dataset && getDatasetError(dataset);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState(name || "");
@@ -747,7 +747,7 @@ export const CardEmbedComponent = memo(
                         <CommentsButton
                           // don't use Link component here since it messes with tiptap's link handling
                           disabled={hasUnsavedChanges || !commentsPath}
-                          variant={isOpen ? "filled" : "default"}
+                          active={isOpen}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
                             navigate(commentsPath);

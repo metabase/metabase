@@ -20,7 +20,7 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
+import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -445,8 +445,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                   { index: true, lazy: queryBuilder },
                   { path: "notebook", lazy: queryBuilder },
                   { path: "ask", lazy: metabotQueryBuilder },
-                  // Explorations are intentionally disabled on the v64 release branch. do not uncomment this
-                  // ...toRouteObjects(getExplorationsRoutes()),
+                  ...toRouteObjects(getExplorationsRoutes()),
                   { path: ":slug", lazy: queryBuilder },
                   { path: ":slug/notebook", lazy: queryBuilder },
                   { path: ":slug/metabot", lazy: queryBuilder },
@@ -540,9 +539,6 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),
-
-              // EMBEDDING HUB
-              ...toRouteObjects(getEmbeddingHubRoutes()),
             ],
           },
         ],
