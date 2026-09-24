@@ -329,7 +329,9 @@
   (not (model-supports-temperature? model)))
 
 (mu/defn openai-request-body
-  "Build the OpenAI Responses API request body for an LLM request."
+  "Build the OpenAI Responses API request body for an LLM request.
+
+  `max_output_tokens` is sent only when the caller passes `:max-tokens`."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
     :or   {model "gpt-5.4" reasoning? true}} :- core/LLMRequestOpts]
   (let [input     (cond->> input
@@ -351,6 +353,11 @@
                                         tool_choice tool_choice
                                         :else       "auto")
                          :tools       all-tools)
+      ;; No default cap: OpenAI and Azure meter a sent cap against the rate limit — "Your rate limit is calculated
+      ;; as the maximum of max_tokens and the estimated number of tokens"
+      ;; (https://developers.openai.com/api/docs/guides/rate-limits,
+      ;; https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/quota). Both pages name max_tokens; nothing
+      ;; says the Responses field max_output_tokens is metered differently.
       max-tokens  (assoc :max_output_tokens max-tokens)
 
       ;; encrypted_content lets us replay reasoning items across tool-call
