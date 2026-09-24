@@ -7,6 +7,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -78,9 +79,7 @@ describe("ROW_CHART_DEFINITION", () => {
 
     it("refuses to render when the referenced query failed", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);

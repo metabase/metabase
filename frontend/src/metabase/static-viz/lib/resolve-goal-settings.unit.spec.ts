@@ -4,6 +4,7 @@ import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -61,9 +62,7 @@ describe("resolveGoalSettings", () => {
     });
 
     it("throws for a failed reference", () => {
-      const failed = createData({
-        card: { 9: { status: "failed", error: "boom" } },
-      });
+      const failed = createData(createMockFailedReferencedEntitiesResults());
       const series = createSeries(failed, display);
 
       expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(

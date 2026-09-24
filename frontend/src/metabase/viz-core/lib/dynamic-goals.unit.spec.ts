@@ -8,6 +8,8 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockFailedReferencedEntityResult,
   createMockReferencedEntitiesResults,
   createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
@@ -125,14 +127,10 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        card: {
-          7: {
-            status: "failed",
-            error: "boom",
-          },
-        },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        id: 7,
+        error: "boom",
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "card",
@@ -332,9 +330,7 @@ describe("resolveGoalSegments", () => {
   it("drops segments with a card reference that fail to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
     const segments = resolveGoalSegments(data, [
       {
@@ -350,9 +346,10 @@ describe("resolveGoalSegments", () => {
   it("drops segments with a measure reference that fails to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        measure: { 4: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        type: "measure",
+        id: 4,
+      }),
     });
     const segments = resolveGoalSegments(data, [
       {
@@ -431,9 +428,7 @@ describe("resolveOpenEndedGoalSegments", () => {
   it("drops a segment whose set bound failed to resolve instead of treating it as open", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     const segments = resolveOpenEndedGoalSegments(data, [
@@ -515,9 +510,7 @@ describe("hasFailedGoalValues", () => {
   it("is true when the referenced query failed", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     expect(hasFailedGoalValues(data, getGoalSegmentBounds(SEGMENTS))).toBe(
@@ -754,8 +747,8 @@ describe("getUnansweredGoalEntities", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-        measure: { 4: { status: "failed", error: "boom" } },
+        card: { 9: createMockFailedReferencedEntityResult() },
+        measure: { 4: createMockFailedReferencedEntityResult() },
       },
     });
 
@@ -812,9 +805,7 @@ describe("hasUnansweredGoalReferences", () => {
   it("returns false for a failed reference: the result answered it", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
@@ -870,9 +861,7 @@ describe("hasUnresolvedGoalReferences", () => {
   it("is true for a failed reference, so it gets retried", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
@@ -953,9 +942,7 @@ describe.each(DYNAMIC_GOAL_DISPLAYS)("%s chart goal value", (display) => {
   });
   const failedData = createMockDatasetData({
     ...baseData,
-    referenced_entities: {
-      card: { 9: { status: "failed", error: "boom" } },
-    },
+    referenced_entities: createMockFailedReferencedEntitiesResults(),
   });
 
   it("asks the query for the entity a foreign goal value references", () => {
@@ -1099,7 +1086,7 @@ describe("goal value references", () => {
     referenced_entities: {
       card: {
         1: createMockReferencedEntityResult({ column: "sum", value: 10 }),
-        2: { status: "failed", error: "boom" },
+        2: createMockFailedReferencedEntityResult(),
       },
     },
   });

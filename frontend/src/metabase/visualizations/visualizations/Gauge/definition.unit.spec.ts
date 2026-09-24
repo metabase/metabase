@@ -3,6 +3,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -89,9 +90,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
 
     it("refuses to render when a range's bound will never resolve", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       expect(() =>

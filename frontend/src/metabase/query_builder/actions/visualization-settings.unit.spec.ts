@@ -12,6 +12,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 import {
@@ -65,9 +66,7 @@ const RESULT_WITH_FAILURE = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockColumn({ name: "count" })],
     rows: [[10]],
-    referenced_entities: {
-      card: { 1: { status: "failed", error: "boom" } },
-    },
+    referenced_entities: createMockFailedReferencedEntitiesResults({ id: 1 }),
   }),
 });
 

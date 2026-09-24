@@ -15,6 +15,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
@@ -61,9 +62,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     it("throws for a reference whose query failed", () => {
       expect(() =>
         toSvg(
-          createSeries(display, {
-            card: { 9: { status: "failed", error: "boom" } },
-          }),
+          createSeries(display, createMockFailedReferencedEntitiesResults()),
         ),
       ).toThrow("Couldn't load the value this chart's goal depends on.");
     });

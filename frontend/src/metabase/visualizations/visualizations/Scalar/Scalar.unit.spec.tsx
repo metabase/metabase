@@ -12,6 +12,7 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -438,9 +439,9 @@ describe("Scalar conditional colors", () => {
   it("explains instead of rendering when a range's bound failed to load", () => {
     setup(
       createScalarSeries({
-        referenced_entities: {
-          card: { [GOAL_REF.id]: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults({
+          id: GOAL_REF.id,
+        }),
       }),
       [{ min: GOAL_REF, max: null, color: "green", label: "above goal" }],
     );

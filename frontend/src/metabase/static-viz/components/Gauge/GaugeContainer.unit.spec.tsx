@@ -3,7 +3,10 @@ import ReactDOMServer from "react-dom/server";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { GoalData } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockFailedReferencedEntitiesResults,
+} from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
 import { GAUGE_INNER_RADIUS, GAUGE_OUTER_RADIUS } from "./constants";
@@ -173,9 +176,7 @@ describe("GaugeContainer", () => {
         setup({
           data: {
             ...DATA,
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
+            referenced_entities: createMockFailedReferencedEntitiesResults(),
           },
           segments: [
             {

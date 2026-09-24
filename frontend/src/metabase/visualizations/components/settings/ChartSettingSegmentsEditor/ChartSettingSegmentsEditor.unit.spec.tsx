@@ -19,6 +19,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntityResult,
   createMockMeasure,
   createMockReferencedEntityResult,
   createMockStructuredDatasetQuery,
@@ -166,7 +167,7 @@ describe("ChartSettingSegmentsEditor", () => {
         }
 
         it("reports a referenced query that failed without saying why", () => {
-          setupReference("total", { status: "failed" });
+          setupReference("total", createMockFailedReferencedEntityResult());
 
           expect(
             screen.getByText("Couldn't load this value"),
@@ -188,10 +189,12 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("surfaces the server's explanation for a referenced query that failed", () => {
-          setupReference("total", {
-            status: "failed",
-            error: "Referenced query returned 3 rows",
-          });
+          setupReference(
+            "total",
+            createMockFailedReferencedEntityResult({
+              error: "Referenced query returned 3 rows",
+            }),
+          );
 
           expect(
             screen.getByText("Referenced query returned 3 rows"),

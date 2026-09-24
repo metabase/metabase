@@ -25,6 +25,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -56,9 +57,7 @@ const SETTINGS: VisualizationSettings = {
   "graph.goal_label": GOAL_LABEL,
 };
 
-const FAILED: ReferencedEntitiesResults = {
-  card: { 9: { status: "failed", error: "boom" } },
-};
+const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
   settings?: VisualizationSettings;

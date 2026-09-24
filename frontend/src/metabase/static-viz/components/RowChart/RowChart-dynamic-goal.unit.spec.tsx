@@ -15,6 +15,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -125,9 +126,7 @@ describe("static row chart with a dynamic goal", () => {
   it("throws for a reference whose query failed", () => {
     expect(() =>
       setup({
-        referencedEntities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referencedEntities: createMockFailedReferencedEntitiesResults(),
       }),
     ).toThrow(GOAL_ERROR);
   });

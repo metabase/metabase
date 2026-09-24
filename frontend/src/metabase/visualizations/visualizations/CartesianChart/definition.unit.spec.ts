@@ -9,6 +9,7 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
@@ -67,9 +68,7 @@ describe("definition", () => {
 
         it("refuses to render when the referenced query failed", () => {
           const series = createSeries(display, {
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
+            referenced_entities: createMockFailedReferencedEntitiesResults(),
           });
 
           expect(() =>
@@ -92,9 +91,7 @@ describe("definition", () => {
 
         it("reads the raw series when given a transformed one", () => {
           const rawSeries = createSeries(display, {
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
+            referenced_entities: createMockFailedReferencedEntitiesResults(),
           });
           const transformed = Object.assign(createSeries(display), {
             _raw: rawSeries,

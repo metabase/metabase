@@ -9,6 +9,7 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
@@ -130,9 +131,7 @@ describe("useResolvedGoalSettings", () => {
     it("fails for a reference the dataset reports as failed", () => {
       const data = createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS, data);
