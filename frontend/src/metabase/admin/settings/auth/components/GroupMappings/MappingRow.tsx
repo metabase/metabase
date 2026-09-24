@@ -7,6 +7,16 @@ import type { GroupId } from "metabase-types/api";
 import S from "./GroupMappings.module.css";
 import type { GroupLookup } from "./utils";
 
+type MappingRowProps = {
+  name: string;
+  groupIds: GroupId[];
+  groupLookup: GroupLookup;
+  readOnly: boolean;
+  disabled: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+};
+
 export function MappingRow({
   name,
   groupIds,
@@ -15,15 +25,7 @@ export function MappingRow({
   disabled,
   onEdit,
   onDelete,
-}: {
-  name: string;
-  groupIds: GroupId[];
-  groupLookup: GroupLookup;
-  readOnly: boolean;
-  disabled: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+}: MappingRowProps) {
   return (
     <Flex
       className={S.mappingRow}
@@ -60,13 +62,12 @@ export function MappingRow({
   );
 }
 
-function MappingRowGroups({
-  groupIds,
-  groupLookup,
-}: {
+type MappingRowGroupsProps = {
   groupIds: GroupId[];
   groupLookup: GroupLookup;
-}) {
+};
+
+function MappingRowGroups({ groupIds, groupLookup }: MappingRowGroupsProps) {
   const names = groupIds
     .map((groupId) => {
       const group = groupLookup.getGroup(groupId);

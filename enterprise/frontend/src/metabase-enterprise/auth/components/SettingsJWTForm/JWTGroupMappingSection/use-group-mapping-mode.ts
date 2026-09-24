@@ -7,7 +7,6 @@ export type JWTGroupSyncMode = "automatic" | "manual" | "off";
 
 type GroupMappingModeState = {
   mode: JWTGroupSyncMode;
-  hasMappings: boolean;
   isClearConfirmOpen: boolean;
   select: (nextMode: JWTGroupSyncMode) => Promise<void>;
   confirmClear: () => Promise<void>;
@@ -84,18 +83,17 @@ export function useGroupMappingMode(
   };
 
   const confirmClear = async () => {
-    const saved = await groupMapping.saveSettings(
+    const result = await groupMapping.saveSettings(
       { "jwt-group-sync": true, "jwt-group-mappings": {} },
       { successMessage: t`Changes saved` },
     );
-    if (saved) {
+    if (result.ok) {
       setIsClearConfirmOpen(false);
     }
   };
 
   return {
     mode,
-    hasMappings,
     isClearConfirmOpen,
     select,
     confirmClear,

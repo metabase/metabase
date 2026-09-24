@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import type { MappingsType } from "metabase/admin/types";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
@@ -10,8 +9,10 @@ import {
   useUpdateSettingsMutation,
 } from "metabase/settings";
 
+import type { MappingsType } from "./types";
+import { EMPTY_MAPPINGS } from "./utils";
+
 export type GroupMappingsSettingKey =
-  | "jwt-group-mappings"
   | "ldap-group-mappings"
   | "saml-group-mappings";
 
@@ -19,21 +20,19 @@ export type GroupMappingsSaveResult =
   | { ok: true }
   | { ok: false; error: string };
 
-type SaveOptions = {
+export type SaveOptions = {
   successMessage?: string;
+  // the row editor shows a failure under its field, everything else toasts it
   showErrorToast?: boolean;
 };
 
 export type GroupMappingsState = {
   mappings: MappingsType;
-  isSaving: boolean;
   saveMappings: (
     mappings: MappingsType,
     options?: SaveOptions,
   ) => Promise<GroupMappingsSaveResult>;
 };
-
-const EMPTY_MAPPINGS: MappingsType = {};
 
 export function useGroupMappings({
   settingKey,
@@ -42,7 +41,7 @@ export function useGroupMappings({
 }): GroupMappingsState {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [updateSettings, { isLoading: isSaving }] = useUpdateSettingsMutation();
+  const [updateSettings] = useUpdateSettingsMutation();
   const mappings = useSetting(settingKey) ?? EMPTY_MAPPINGS;
 
   const saveMappings = async (
@@ -79,5 +78,5 @@ export function useGroupMappings({
     return { ok: true };
   };
 
-  return { mappings, isSaving, saveMappings };
+  return { mappings, saveMappings };
 }

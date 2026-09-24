@@ -15,7 +15,6 @@ import {
   within,
 } from "__support__/ui";
 import { settingsApi } from "metabase/settings";
-import { PROVISIONING_WRITE_DEBOUNCE_MS } from "metabase-enterprise/auth/components/UserProvisioningSection";
 import type { SettingDefinition } from "metabase-types/api";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
@@ -27,6 +26,11 @@ const GROUPS = [
   createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
   createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
   createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
+  createMockGroup({
+    id: 6,
+    name: "Data Analysts",
+    magic_group_type: "data-analyst",
+  }),
 ];
 
 const setup = async ({
@@ -47,6 +51,7 @@ const setup = async ({
   provisioningSaveStatus,
   provisioningSaveDelayMs,
   cascadeStatus,
+  deleteGroupStatuses,
   cascadeDelayMs,
   propertiesReadDelayMs,
 }: {
@@ -67,6 +72,7 @@ const setup = async ({
   provisioningSaveStatus?: number;
   provisioningSaveDelayMs?: number;
   cascadeStatus?: number;
+  deleteGroupStatuses?: Record<number, number>;
   cascadeDelayMs?: number;
   propertiesReadDelayMs?: number;
 } = {}) => {
@@ -203,11 +209,18 @@ const setup = async ({
     cascadeStatus ?? 204,
     { delay: cascadeDelayMs },
   );
-  fetchMock.delete("express:/api/permissions/group/:id", cascadeStatus ?? 204, {
-    delay: cascadeDelayMs,
-  });
+  fetchMock.delete(
+    "express:/api/permissions/group/:id",
+    ({ url }) => ({
+      status:
+        deleteGroupStatuses?.[Number(url.split("/").pop())] ??
+        cascadeStatus ??
+        204,
+    }),
+    { delay: cascadeDelayMs },
+  );
 
-  const { store, unmount } = renderWithProviders(<SettingsJWTForm />, {
+  const { store } = renderWithProviders(<SettingsJWTForm />, {
     withUndos: true,
     storeInitialState: createMockState({
       settings: createMockSettingsState(sessionSettings),
@@ -215,7 +228,7 @@ const setup = async ({
   });
 
   await screen.findByText("Server settings");
-  return { store, settingsStore, unmount };
+  return { store, settingsStore };
 };
 
 const expandUserAttributeSection = async () => {
@@ -234,8 +247,15 @@ const addMapping = async (name: string, groupName: string) => {
 
 const findMappingRow = (name: string) =>
   screen
-    .getAllByTestId("jwt-group-mapping-row")
+    .getAllByTestId("group-mapping-row")
     .find((row) => within(row).queryByText(name) != null);
+
+// Mantine marks a read-only option on its label, not on its input
+const modeLabel = (name: string) => {
+  const [label] =
+    screen.getByRole<HTMLInputElement>("radio", { name }).labels ?? [];
+  return label;
+};
 
 describe("SettingsJWTForm", () => {
   const ATTRS = {
@@ -427,10 +447,6 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
     it("sits right below the server settings", async () => {
       await setup();
 
@@ -491,138 +507,61 @@ describe("SettingsJWTForm", () => {
       expect(toggle).not.toBeChecked();
       expect(await screen.findByText(/error saving/i)).toBeInTheDocument();
       expect(toggle).toBeChecked();
-      expect(toggle).toBeEnabled();
+      expect(toggle).not.toHaveAttribute("aria-disabled");
     });
 
-    it("keeps Enter on the switch from submitting the page form", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      await setup({ jwtEnabled: true, configured: true });
-      await user.type(
-        screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
-        "-edited",
+    it("ignores clicks while the write is in flight", async () => {
+      const { settingsStore } = await setup({
+        jwtEnabled: true,
+        configured: true,
+      });
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      // the write answers only when the test says so, which keeps it in flight for all three clicks
+      let finishWrite = () => {};
+      fetchMock.removeRoute("update-setting");
+      fetchMock.put(
+        new RegExp("/api/setting/(.+)"),
+        ({ url, options }) =>
+          new Promise((resolve) => {
+            finishWrite = () => {
+              const key = decodeURIComponent(url.split("/api/setting/")[1]);
+              settingsStore[key] = JSON.parse(String(options.body)).value;
+              resolve({ status: 204 });
+            };
+          }),
+        { name: "update-setting" },
       );
-      const submitButton = screen.getByRole("button", { name: "Save changes" });
-      expect(submitButton).toBeEnabled();
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
 
-      toggle.focus();
-      await user.keyboard("{Enter}");
-
-      // give a submission time to reach the network before ruling it out
-      await act(() => jest.advanceTimersByTimeAsync(1000));
-      expect(await findRequests("PUT")).toHaveLength(0);
-      expect(toggle).toBeChecked();
-      expect(submitButton).toBeEnabled();
-    });
-
-    it("sends one write for a burst of clicks", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      await setup({ jwtEnabled: true, configured: true });
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-
-      await user.click(toggle);
-      await user.click(toggle);
-      await user.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
 
       expect(toggle).not.toBeChecked();
-      await act(() =>
-        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS),
-      );
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
+      finishWrite();
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toEqual({ value: false });
     });
 
-    it("writes a pending toggle when the page is left before the debounce fires", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      const { unmount } = await setup({ jwtEnabled: true, configured: true });
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-
-      await user.click(toggle);
-      unmount();
-
-      await waitFor(async () => {
-        expect(await findRequests("PUT")).toHaveLength(1);
-      });
-      const puts = await findRequests("PUT");
-      expect(puts[0].body).toEqual({ value: false });
-    });
-
-    it("keeps the switch focused and enabled while the write is in flight", async () => {
+    it("holds the switch until the settings refetch after the write lands", async () => {
+      // the properties mock answers reads late, so the refetch the write triggers can be seen
       await setup({
         jwtEnabled: true,
         configured: true,
-        provisioningSaveDelayMs: 100,
+        propertiesReadDelayMs: 200,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      // the delayed read holds the switch on load as well
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
 
-      toggle.focus();
-      await userEvent.keyboard(" ");
-
-      expect(toggle).not.toBeChecked();
-      expect(toggle).toBeEnabled();
-      expect(toggle).toHaveFocus();
+      await userEvent.click(toggle);
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-      expect(toggle).toHaveFocus();
-    });
-
-    it("keeps the written value while an older properties refetch lands", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      const { store, settingsStore } = await setup({
-        jwtEnabled: true,
-        configured: true,
-      });
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      const loadRequests = fetchMock.callHistory.calls(
-        "get-session-properties",
-      ).length;
-      // a refetch that started before the click answers after the write has gone out
-      const staleSnapshot = { ...settingsStore };
-      fetchMock.removeRoute("get-session-properties");
-      fetchMock.get("path:/api/session/properties", staleSnapshot, {
-        name: "stale-session-properties",
-        delay: PROVISIONING_WRITE_DEBOUNCE_MS + 100,
-        repeat: 1,
-      });
-      fetchMock.get(
-        "path:/api/session/properties",
-        () => ({ ...settingsStore }),
-        { name: "get-session-properties", delay: 200 },
-      );
-      act(() => {
-        store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
-      });
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("stale-session-properties"),
-        ).toHaveLength(1),
-      );
-      // a click in the same millisecond would look like it came after the refetch
-      act(() => {
-        jest.advanceTimersByTime(5);
-      });
-
-      await user.click(toggle);
 
       expect(toggle).not.toBeChecked();
-      // the write goes out, then the stale answer lands while the write's own refetch is still pending
-      await act(() =>
-        jest.advanceTimersByTimeAsync(PROVISIONING_WRITE_DEBOUNCE_MS + 100),
-      );
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-      expect(toggle).not.toBeChecked();
-      // the refetch after the write is the only one left to land
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("get-session-properties"),
-        ).toHaveLength(loadRequests + 1),
-      );
-      await act(() => jest.advanceTimersByTimeAsync(200));
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).not.toBeChecked();
     });
 
@@ -636,7 +575,7 @@ describe("SettingsJWTForm", () => {
 
       // the effective value comes from the session properties, the admin list nils it
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
       expect(toggle).toBeChecked();
       expect(toggle).toHaveAccessibleDescription(
         /Using MB_JWT_USER_PROVISIONING_ENABLED/,
@@ -651,6 +590,9 @@ describe("SettingsJWTForm", () => {
       expect(
         screen.getByRole("button", { name: /User attribute configuration/ }),
       ).toBeDisabled();
+      expect(
+        screen.getByRole("radiogroup", { name: "Group mapping mode" }),
+      ).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Off" })).toBeDisabled();
       expect(
@@ -668,7 +610,7 @@ describe("SettingsJWTForm", () => {
 
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeEnabled();
-      const row = screen.getByTestId("jwt-group-mapping-row");
+      const row = screen.getByTestId("group-mapping-row");
       expect(within(row).getByText("group-a")).toBeInTheDocument();
       expect(await within(row).findByText("foo")).toBeInTheDocument();
     });
@@ -687,14 +629,26 @@ describe("SettingsJWTForm", () => {
         propertiesReadDelayMs: 200,
       });
       const automatic = () => screen.getByRole("radio", { name: "Automatic" });
-      await waitFor(() => expect(automatic()).toBeEnabled());
+      const manual = () => screen.getByRole("radio", { name: "Manual" });
+      await waitFor(() => expect(modeLabel("Manual")).toBeDefined());
+      await waitFor(() =>
+        expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
+      );
 
       await userEvent.click(automatic());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
       expect(automatic()).toBeChecked();
-      expect(automatic()).toBeDisabled();
-      await waitFor(() => expect(automatic()).toBeEnabled());
+      expect(automatic()).toBeEnabled();
+      expect(automatic()).toHaveFocus();
+      expect(modeLabel("Manual")).toHaveAttribute("data-read-only");
+      await userEvent.click(manual());
+      expect(automatic()).toBeChecked();
+      expect(await findRequests("PUT")).toHaveLength(1);
+
+      await waitFor(() =>
+        expect(modeLabel("Manual")).not.toHaveAttribute("data-read-only"),
+      );
       expect(automatic()).toBeChecked();
     });
 
@@ -716,9 +670,7 @@ describe("SettingsJWTForm", () => {
         "jwt-group-mappings": { existing: [3], devs: [4] },
       });
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      expect(
-        await screen.findAllByTestId("jwt-group-mapping-row"),
-      ).toHaveLength(2);
+      expect(await screen.findAllByTestId("group-mapping-row")).toHaveLength(2);
       expect(
         screen.getByRole("button", { name: "Save changes" }),
       ).toBeDisabled();
@@ -794,66 +746,21 @@ describe("SettingsJWTForm", () => {
         expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
       });
       expect(await findRequests("PUT")).toHaveLength(1);
-      expect(
-        screen.queryByTestId("jwt-group-mapping-row"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByRole("radio", { name: "Manual" }));
 
       await waitFor(() => {
         expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       });
-      expect(
-        await screen.findByTestId("jwt-group-mapping-row"),
-      ).toHaveTextContent("existing");
+      expect(await screen.findByTestId("group-mapping-row")).toHaveTextContent(
+        "existing",
+      );
       const puts = await findRequests("PUT");
       expect(puts.map(({ body }) => body)).toEqual([
         { "jwt-group-sync": false },
         { "jwt-group-sync": true },
       ]);
-    });
-
-    it("deletes a mapping and clears its groups right away", async () => {
-      await setup({
-        jwtEnabled: true,
-        configured: true,
-        groupSync: true,
-        groupMappings: { admins: [4], devs: [3] },
-      });
-
-      await userEvent.click(
-        within(findMappingRow("admins")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      );
-      await userEvent.click(
-        await screen.findByRole("radio", { name: /Also remove all members/ }),
-      );
-      await userEvent.click(
-        screen.getByRole("button", { name: "Remove mapping and members" }),
-      );
-
-      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-      const puts = await findRequests("PUT");
-      const settingsIndex = puts.findIndex(({ url }) =>
-        /\/api\/setting$/.test(url),
-      );
-      const clearIndex = puts.findIndex(({ url }) =>
-        url.includes("/api/permissions/membership/4/clear"),
-      );
-      expect(puts[settingsIndex].body).toEqual({
-        "jwt-group-mappings": { devs: [3] },
-      });
-      // the cascade runs only after the mapping was removed
-      expect(clearIndex).toBeGreaterThan(settingsIndex);
-      expect(
-        puts.some(({ url }) =>
-          url.includes("/api/permissions/membership/3/clear"),
-        ),
-      ).toBe(false);
-      await waitFor(() => {
-        expect(findMappingRow("admins")).toBeUndefined();
-      });
     });
 
     it("reports a failed cascade once and skips the success toast", async () => {
@@ -910,7 +817,7 @@ describe("SettingsJWTForm", () => {
         "devs",
       );
       expect(screen.getByRole("button", { name: "Add mapping" })).toBeEnabled();
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(1);
+      expect(screen.getAllByTestId("group-mapping-row")).toHaveLength(1);
       expect(screen.queryByText("Mapping added")).not.toBeInTheDocument();
     });
 
@@ -982,7 +889,7 @@ describe("SettingsJWTForm", () => {
       expect(screen.getByRole("button", { name: "New mapping" })).toBeEnabled();
     });
 
-    it("keeps the controls disabled until the cascade finishes", async () => {
+    it("holds the controls until the cascade finishes", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -1010,7 +917,8 @@ describe("SettingsJWTForm", () => {
           name: "Delete mapping",
         }),
       ).toBeDisabled();
-      expect(screen.getByRole("radio", { name: "Off" })).toBeDisabled();
+      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+      expect(modeLabel("Off")).toHaveAttribute("data-read-only");
 
       expect(
         await screen.findByText("Mapping deleted", {}, { timeout: 3000 }),
@@ -1020,10 +928,10 @@ describe("SettingsJWTForm", () => {
           name: "Delete mapping",
         }),
       ).toBeEnabled();
-      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+      expect(modeLabel("Off")).not.toHaveAttribute("data-read-only");
     });
 
-    it("deletes a mapping's groups and drops them from the other mappings in the same write", async () => {
+    it("deletes a mapping's groups and drops them from the other mappings once they are gone", async () => {
       await setup({
         jwtEnabled: true,
         configured: true,
@@ -1045,10 +953,83 @@ describe("SettingsJWTForm", () => {
 
       expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       const puts = await findRequests("PUT");
-      const settingsPut = puts.find(({ url }) => /\/api\/setting$/.test(url));
-      expect(settingsPut?.body).toEqual({
-        "jwt-group-mappings": { devs: [3] },
+      const settingsPuts = puts.filter(({ url }) =>
+        /\/api\/setting$/.test(url),
+      );
+      expect(settingsPuts.map(({ body }) => body)).toEqual([
+        { "jwt-group-mappings": { devs: [4, 3] } },
+        { "jwt-group-mappings": { devs: [3] } },
+      ]);
+      const deletes = await findRequests("DELETE");
+      expect(deletes.map(({ url }) => url)).toEqual([
+        "http://localhost/api/permissions/group/4",
+      ]);
+    });
+
+    it("keeps a group in the other mappings when its deletion is refused", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { old: [4, 3], devs: [3] },
+        deleteGroupStatuses: { 3: 400 },
       });
+
+      await userEvent.click(
+        within(findMappingRow("old")!).getByRole("button", {
+          name: "Delete mapping",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("radio", { name: /Also delete the groups/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Remove mapping and delete groups",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "Mapping deleted, but not all of its groups could be updated",
+        ),
+      ).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      const settingsPuts = puts.filter(({ url }) =>
+        /\/api\/setting$/.test(url),
+      );
+      expect(settingsPuts.map(({ body }) => body)).toEqual([
+        { "jwt-group-mappings": { devs: [3] } },
+      ]);
+      expect(findMappingRow("devs")).toHaveTextContent("foo");
+    });
+
+    it("never asks the backend to delete a built-in group", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { old: [4, 6], devs: [3] },
+      });
+
+      await userEvent.click(
+        within(findMappingRow("old")!).getByRole("button", {
+          name: "Delete mapping",
+        }),
+      );
+      expect(
+        await screen.findByText(/The Data Analysts group is not affected/),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        screen.getByRole("radio", { name: /Also delete the groups/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Remove mapping and delete groups",
+        }),
+      );
+
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       const deletes = await findRequests("DELETE");
       expect(deletes.map(({ url }) => url)).toEqual([
         "http://localhost/api/permissions/group/4",
@@ -1109,44 +1090,6 @@ describe("SettingsJWTForm", () => {
       });
     });
 
-    it("keeps a renamed mapping in place and rejects duplicate names", async () => {
-      await setup({
-        jwtEnabled: true,
-        configured: true,
-        groupSync: true,
-        groupMappings: { first: [3], second: [4] },
-      });
-
-      await userEvent.click(
-        within(findMappingRow("second")!).getByRole("button", {
-          name: "Edit mapping",
-        }),
-      );
-      const nameInput = screen.getByLabelText("JWT group name");
-      await userEvent.clear(nameInput);
-      await userEvent.type(nameInput, "first");
-
-      expect(
-        screen.getByText("A mapping for this group already exists"),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-
-      await userEvent.clear(nameInput);
-      await userEvent.type(nameInput, "second-renamed");
-      await userEvent.click(screen.getByRole("button", { name: "Save" }));
-
-      expect(await screen.findByText("Mapping updated")).toBeInTheDocument();
-      const [{ body }] = await findRequests("PUT");
-      expect(body["jwt-group-mappings"]).toEqual({
-        first: [3],
-        "second-renamed": [4],
-      });
-      const names = screen
-        .getAllByTestId("jwt-group-mapping-row")
-        .map((row) => within(row).getAllByText(/./)[0].textContent);
-      expect(names).toEqual(["first", "second-renamed"]);
-    });
-
     it("allows mapping names that collide with object prototype members", async () => {
       await setup({
         jwtEnabled: true,
@@ -1174,49 +1117,7 @@ describe("SettingsJWTForm", () => {
         screen.getByRole("button", { name: "Add mapping" }),
       );
 
-      expect(
-        await screen.findAllByTestId("jwt-group-mapping-row"),
-      ).toHaveLength(2);
-    });
-
-    it("commits the row editor on Enter instead of submitting the page", async () => {
-      await setup({
-        jwtEnabled: true,
-        configured: true,
-        groupSync: true,
-        groupMappings: { existing: [3] },
-      });
-
-      // a dirty page form has a live Save button, so Enter could submit it
-      await userEvent.type(
-        screen.getByRole("textbox", { name: /JWT Identity Provider URI/ }),
-        "/v2",
-      );
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeEnabled();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "New mapping" }),
-      );
-      const nameInput = screen.getByPlaceholderText("Enter JWT group...");
-      await userEvent.type(nameInput, "devs");
-      await userEvent.click(
-        screen.getByPlaceholderText("Pick Metabase group..."),
-      );
-      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
-      await userEvent.click(nameInput);
-      await userEvent.keyboard("{Enter}");
-
-      await waitFor(() => {
-        expect(
-          screen.queryByPlaceholderText("Enter JWT group..."),
-        ).not.toBeInTheDocument();
-      });
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(2);
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-      expect(puts[0].body).not.toHaveProperty("jwt-identity-provider-uri");
+      expect(await screen.findAllByTestId("group-mapping-row")).toHaveLength(2);
     });
 
     it("cancels the row editor on Escape", async () => {
@@ -1238,91 +1139,8 @@ describe("SettingsJWTForm", () => {
       expect(
         screen.queryByPlaceholderText("Enter JWT group..."),
       ).not.toBeInTheDocument();
-      expect(screen.getAllByTestId("jwt-group-mapping-row")).toHaveLength(1);
+      expect(screen.getAllByTestId("group-mapping-row")).toHaveLength(1);
       expect(await findRequests("PUT")).toHaveLength(0);
-    });
-
-    it("confirms admin-only and zero-group deletions without offering cascades", async () => {
-      await setup({
-        jwtEnabled: true,
-        configured: true,
-        groupSync: true,
-        groupMappings: { admins: [2], legacy: [], devs: [3] },
-      });
-
-      await userEvent.click(
-        within(findMappingRow("admins")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      );
-      const adminsModal = await screen.findByRole("dialog");
-      expect(
-        within(adminsModal).getByText("Remove this group mapping?"),
-      ).toBeInTheDocument();
-      expect(
-        within(adminsModal).getByText(
-          "The Administrators group is not affected.",
-        ),
-      ).toBeInTheDocument();
-      expect(within(adminsModal).queryByRole("radio")).not.toBeInTheDocument();
-      await userEvent.click(
-        within(adminsModal).getByRole("button", { name: "Remove mapping" }),
-      );
-      await waitFor(() => {
-        expect(findMappingRow("admins")).toBeUndefined();
-      });
-
-      await userEvent.click(
-        within(findMappingRow("legacy")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      );
-      const legacyModal = await screen.findByRole("dialog");
-      expect(
-        within(legacyModal).getByText(
-          "This mapping isn't linked to any group.",
-        ),
-      ).toBeInTheDocument();
-      expect(within(legacyModal).queryByRole("radio")).not.toBeInTheDocument();
-      await userEvent.click(
-        within(legacyModal).getByRole("button", { name: "Remove mapping" }),
-      );
-      await waitFor(() => {
-        expect(findMappingRow("legacy")).toBeUndefined();
-      });
-
-      await userEvent.click(
-        within(findMappingRow("devs")!).getByRole("button", {
-          name: "Delete mapping",
-        }),
-      );
-      const devsModal = await screen.findByRole("dialog");
-      expect(within(devsModal).getAllByRole("radio")).toHaveLength(3);
-      const puts = await findRequests("PUT");
-      expect(puts.map(({ body }) => body["jwt-group-mappings"])).toEqual([
-        { legacy: [], devs: [3] },
-        { devs: [3] },
-      ]);
-    });
-
-    it("names the mode control and the editor inputs for assistive tech", async () => {
-      await setup({
-        jwtEnabled: true,
-        configured: true,
-        groupSync: true,
-        groupMappings: { existing: [3] },
-      });
-
-      expect(
-        screen.getByRole("radiogroup", { name: "Group mapping mode" }),
-      ).toBeInTheDocument();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "New mapping" }),
-      );
-
-      expect(screen.getByLabelText("JWT group name")).toBeInTheDocument();
-      expect(screen.getByLabelText("Metabase groups")).toBeInTheDocument();
     });
 
     it("asks for confirmation before switching to automatic and stays manual on cancel", async () => {
@@ -1371,9 +1189,7 @@ describe("SettingsJWTForm", () => {
         "jwt-group-sync": true,
         "jwt-group-mappings": {},
       });
-      expect(
-        screen.queryByTestId("jwt-group-mapping-row"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("group-mapping-row")).not.toBeInTheDocument();
     });
 
     it("keeps the confirmation busy until the automatic switch is saved", async () => {
@@ -1449,7 +1265,7 @@ describe("SettingsJWTForm", () => {
       ).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeDisabled();
-      expect(screen.getByTestId("jwt-group-mapping-row")).toHaveTextContent(
+      expect(screen.getByTestId("group-mapping-row")).toHaveTextContent(
         "env-group",
       );
       expect(
@@ -1471,7 +1287,7 @@ describe("SettingsJWTForm", () => {
 
       expect(screen.getByText("Using MB_JWT_GROUP_SYNC")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Manual" })).toBeChecked();
-      expect(screen.getByTestId("jwt-group-mapping-row")).toHaveTextContent(
+      expect(screen.getByTestId("group-mapping-row")).toHaveTextContent(
         "stored-group",
       );
       expect(

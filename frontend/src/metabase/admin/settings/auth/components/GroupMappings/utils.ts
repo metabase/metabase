@@ -1,10 +1,14 @@
-import type { MappingsType } from "metabase/admin/types";
 import {
+  getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
   isDefaultTenantGroup,
 } from "metabase/common/utils/groups";
 import type { GroupId, GroupListQuery } from "metabase-types/api";
+
+import type { CascadeValue, MappingsType } from "./types";
+
+export const EMPTY_MAPPINGS: MappingsType = {};
 
 /** Rebuilds in place so a renamed mapping keeps its position in the list */
 export function withMappingEntry(
@@ -24,20 +28,26 @@ export function withMappingEntry(
   return Object.fromEntries(entries);
 }
 
-/** Drops one mapping and scrubs deleted group ids from the rest, since the backend keeps their ids */
 export function withoutMapping(
   mappings: MappingsType,
   name: string,
-  deletedGroupIds: GroupId[] = [],
 ): MappingsType {
-  const deleted = new Set(deletedGroupIds);
   return Object.fromEntries(
-    Object.entries(mappings)
-      .filter(([mappingName]) => mappingName !== name)
-      .map(([mappingName, ids]): [string, GroupId[]] => [
-        mappingName,
-        ids.filter((groupId) => !deleted.has(groupId)),
-      ]),
+    Object.entries(mappings).filter(([mappingName]) => mappingName !== name),
+  );
+}
+
+/** Scrubs group ids from every mapping, since the backend keeps the ids of deleted groups in them */
+export function withoutGroups(
+  mappings: MappingsType,
+  groupIds: GroupId[],
+): MappingsType {
+  const removed = new Set(groupIds);
+  return Object.fromEntries(
+    Object.entries(mappings).map(([mappingName, ids]): [string, GroupId[]] => [
+      mappingName,
+      ids.filter((groupId) => !removed.has(groupId)),
+    ]),
   );
 }
 
@@ -45,23 +55,32 @@ export type GroupLookup = ReturnType<typeof createGroupLookup>;
 
 export function createGroupLookup(groups: GroupListQuery[]) {
   const groupsById = new Map(groups.map((group) => [group.id, group]));
-  const isAdminGroupId = (groupId: GroupId) => {
-    const group = groupsById.get(groupId);
-    return group != null && isAdminGroup(group);
+  // the backend refuses to delete any built-in group, and to clear only the Administrators group
+  const isKeptBy = (value: CascadeValue, group: GroupListQuery) => {
+    if (value === "delete") {
+      return group.magic_group_type != null;
+    }
+    return isAdminGroup(group);
   };
   return {
-    // magic groups can't be mapped to
+    // the default groups can't be mapped to
     mappableGroups: groups.filter(
       (group) => !isDefaultGroup(group) && !isDefaultTenantGroup(group),
     ),
     getGroup: (groupId: GroupId) => groupsById.get(groupId),
     existingIds: (groupIds: GroupId[]) =>
       groupIds.filter((groupId) => groupsById.has(groupId)),
-    // cascades never touch the admin group, so it doesn't count as actionable
-    actionableIds: (groupIds: GroupId[]) =>
-      groupIds.filter(
-        (groupId) => groupsById.has(groupId) && !isAdminGroupId(groupId),
-      ),
-    hasAdminGroup: (groupIds: GroupId[]) => groupIds.some(isAdminGroupId),
+    actionableIds: (groupIds: GroupId[], value: CascadeValue) =>
+      groupIds.filter((groupId) => {
+        const group = groupsById.get(groupId);
+        return group != null && !isKeptBy(value, group);
+      }),
+    keptGroupNames: (groupIds: GroupId[], value: CascadeValue) =>
+      groupIds.flatMap((groupId) => {
+        const group = groupsById.get(groupId);
+        return group != null && isKeptBy(value, group)
+          ? [getGroupNameLocalized(group)]
+          : [];
+      }),
   };
 }

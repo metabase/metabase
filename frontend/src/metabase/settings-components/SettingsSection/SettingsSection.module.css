@@ -102,3 +102,21 @@
 .CollapsibleAccordion .CollapsibleControl:disabled::after {
   cursor: default;
 }
+
+/* the title is the switch's label, so it borrows the switch's pointer while the switch is live */
+.TitleLabel {
+  cursor: pointer;
+}
+
+/* a locked switch stays focusable, so it takes the disabled look here rather than through :disabled */
+/* the doubled class out-ranks the theme's checked rule, whatever the stylesheet order */
+.LockedSwitch .LockedTrack.LockedTrack {
+  background-color: var(--mb-color-switch-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+.LockedSwitch .LockedThumb {
+  background-color: var(--mb-color-switch_thumb-disabled);
+  box-shadow: none;
+}
