@@ -268,9 +268,9 @@
   (testing "a symbol naming a column or a table is not reported"
     ;; `value-guard` refuses a marker in these clauses, so reporting one asks for a fix that throws
     ;; at compile. data_studio/db.clj, task_history/db.clj and permissions/db.clj are written this
-    ;; way.
+    ;; way. `:select` is the exception: index 0 of its entries is an expression, so it has its own
+    ;; test in expression-entry-clauses-test.
     (are [form] (empty? (lint-query-call form 'metabase.foo.db))
-      '(t2/query {:select [[output-table-id :table_id]] :from [:t]})
       '(t2/query {:select [:*] :from [[union-query :subquery]]})
       '(t2/query {:select [:*] :from [:t] :order-by [[:sort_key sort-direction]]})
       '(t2/query {:select [:*] :from [:t] :group-by [group-column]})))
@@ -283,3 +283,41 @@
       '(t2/query {:select [:*] :from [:t] :order-by [[[:case [:= :a v] 1 :else 2] :asc]]})
       ;; a subquery carries its own where clause
       '(t2/query {:select [:*] :from [[{:select [:*] :from [:u] :where [:= :k v]} :s]]}))))
+
+(deftest ^:parallel expression-entry-clauses-test
+  (testing "index 0 of an entry is a value slot, because HoneySQL binds a parameter there"
+    ;; `{:select [[[:auto/param "a"] :k]]}` compiles to `SELECT ? AS "K"`, so `value-guard` accepts
+    ;; a marker there. Treating the whole clause as names would hide a request value.
+    (are [form] (=? [{:type    :metabase/unsafe-app-db-query
+                      :message #"`v`.*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/query {:select [[v :label]] :from [:t]})
+      '(t2/query {:select-distinct [[v :label]] :from [:t]})
+      '(t2/query {:insert-into [:t] :returning [[v :label]]})))
+  (testing "the alias, a bare entry and a table entry are names"
+    ;; `value-guard` refuses a marker in each of these, so asking for one would break the query.
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/query {:select [[:key alias-sym]] :from [:t]})
+      '(t2/query {:select [cols] :from [:t]})
+      '(t2/query {:select [:*] :from [[tbl :x]]})))
+  (testing "a computed projection and a subquery entry still reach their values"
+    (are [form] (=? [{:message #"`v`.*"}] (lint-query-call form 'metabase.foo.db))
+      '(t2/query {:select [[[:= :engine v] :is_match]] :from [:t]})
+      '(t2/query {:select [:*] :from [[{:select [:*] :from [:u] :where [:= :k v]} :s]]}))))
+
+(deftest ^:parallel clause-context-survives-assoc-test
+  (testing "a clause key in an assoc call gives its value the clause context back"
+    ;; task_history/db.clj:174 and five other namespaces build `:order-by` this way. Without this
+    ;; the lint asks for a marker on a column name and on a sort direction, and the fix the message
+    ;; names loses the ordering with no error.
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
+      '(t2/query (assoc q :order-by [[sort-column sort-direction] [:id :desc]]))
+      '(t2/query (cond-> q flag (assoc :order-by [[sort-column sort-direction]])))
+      '(t2/query (assoc q :group-by [group-column]))
+      '(t2/query (assoc q :select [[:key alias-sym]]))))
+  (testing "a value clause built the same way is still reported"
+    (is (=? [{:message #"`v`.*"}]
+            (lint-query-call '(t2/query (assoc q :where [:= :k v])) 'metabase.foo.db))))
+  (testing "an expression entry built the same way is still reported"
+    (is (=? [{:message #"`v`.*"}]
+            (lint-query-call '(t2/query (assoc q :select [[v :label]])) 'metabase.foo.db)))))

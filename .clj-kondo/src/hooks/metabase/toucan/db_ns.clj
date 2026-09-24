@@ -60,6 +60,14 @@
     :cross-join :update :insert-into :delete-from :returning :with :with-columns :using
     :order-by :group-by :partition-by :window})
 
+(def ^:private expression-entry-clauses
+  "Identifier clauses where index 0 of an `[expr alias]` entry is an expression, not a name.
+
+  HoneySQL binds a parameter there -- `SELECT ? AS a` -- so the guard accepts a marker, and mirrors
+  this set as `expression-entry-clauses` in `metabase.app-db.value-guard`. Everything after index 0
+  is an alias, and a bare entry is a name; the guard refuses a marker in both."
+  #{:select :select-distinct :select-top :returning :partition-by})
+
 (defn- comparison-node?
   "Whether `node` is a keyword-headed comparison -- the one shape inside an identifier clause that
   does hold values, as in the computed projection `[[:= :engine v] :is_match]`."
@@ -81,6 +89,26 @@
     (hooks/list-node? node)   (mapcat identifier-clause-value-nodes (:children node))
     :else                     nil))
 
+(defn- expression-entry-value-nodes
+  "The value slots of an [[expression-entry-clauses]] clause: index 0 of each `[expr alias]` entry."
+  [node]
+  (when (hooks/vector-node? node)
+    (mapcat (fn [entry]
+              (when (hooks/vector-node? entry)
+                (when-let [expr (first (:children entry))]
+                  ;; Keep the expression AND descend, so a bare symbol is reported and a computed
+                  ;; projection or a subquery sitting there has its own values checked.
+                  (cons expr (value-nodes expr)))))
+            (:children node))))
+
+(defn- clause-value-nodes
+  "The value slots of the value under clause key `clause`."
+  [clause node]
+  (cond
+    (contains? expression-entry-clauses clause) (expression-entry-value-nodes node)
+    (contains? identifier-clauses clause)       (identifier-clause-value-nodes node)
+    :else                                       (value-nodes node)))
+
 (defn- value-nodes
   "The nodes sitting in a value slot of `node`, following the clause shapes a query map uses."
   [node]
@@ -89,9 +117,8 @@
     ;; contributes only what is nested inside it.
     (hooks/map-node? node)
     (mapcat (fn [[k v]]
-              (if (and (hooks/keyword-node? k)
-                       (contains? identifier-clauses (hooks/sexpr k)))
-                (identifier-clause-value-nodes v)
+              (if (hooks/keyword-node? k)
+                (clause-value-nodes (hooks/sexpr k) v)
                 (value-nodes v)))
             (partition 2 (:children node)))
 
@@ -123,8 +150,28 @@
     ;; A clause built conditionally -- `(when flag [:= :col v])`, `(if ... )`, `(cond-> ...)`. The
     ;; value slots are inside, so walk the children rather than stopping. Without this a value
     ;; wrapped in `when` is invisible to the check, which is a false negative in a security lint.
+    ;;
+    ;; An `assoc` call gets its clause context back: `(assoc q :order-by [[col dir]])` is the same
+    ;; clause as `{:order-by [[col dir]]}`, but written outside a map literal, where the walk would
+    ;; otherwise fall back to shape alone and report the column and the direction as values.
+    ;; `cond->` is covered because the walk descends into the nested `assoc`.
     (hooks/list-node? node)
-    (mapcat value-nodes (:children node))
+    (let [children (vec (:children node))
+          assoc?   (= 'assoc (some-> (first children) hooks/sexpr))
+          ;; index of a clause value -> its clause key
+          clauses  (when assoc?
+                     (into {} (keep-indexed (fn [i child]
+                                              (when (and (hooks/keyword-node? child)
+                                                         (contains? identifier-clauses (hooks/sexpr child))
+                                                         (< (inc i) (count children)))
+                                                [(inc i) (hooks/sexpr child)]))
+                                            children)))]
+      (mapcat (fn [i child]
+                (if-let [clause (get clauses i)]
+                  (clause-value-nodes clause child)
+                  (value-nodes child)))
+              (range)
+              children))
 
     :else nil))
 
