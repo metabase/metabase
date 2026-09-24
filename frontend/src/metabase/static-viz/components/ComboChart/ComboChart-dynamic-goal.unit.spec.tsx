@@ -3,7 +3,7 @@
    render, so the "view"/"utils" naming convention doesn't apply. */
 import ReactDOMServer from "react-dom/server";
 
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import type {
   DatasetData,
@@ -36,43 +36,7 @@ const ROWS = [
 
 const GOAL_LABEL = "Target";
 
-function createSeries(
-  display: VisualizationDisplay,
-  referenced_entities?: DatasetData["referenced_entities"],
-  settings?: VisualizationSettings,
-): RawSeries {
-  return [
-    {
-      card: createMockCard({
-        display,
-        visualization_settings: {
-          "graph.dimensions": ["month"],
-          "graph.metrics": ["count"],
-          "graph.show_goal": true,
-          "graph.goal_label": GOAL_LABEL,
-          "graph.goal_value": { type: "card", id: 9, column: "goal" },
-          ...settings,
-        },
-      }),
-      data: createMockDatasetData({
-        cols: COLS,
-        rows: ROWS,
-        referenced_entities,
-      }),
-    },
-  ];
-}
-
-function toSvg(rawSeries: RawSeries) {
-  return ReactDOMServer.renderToStaticMarkup(
-    <StaticVisualization
-      rawSeries={rawSeries}
-      renderingContext={renderingContext}
-    />,
-  );
-}
-
-describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
+describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   "static %s chart with a dynamic goal",
   (display) => {
     it("draws the goal line at the value answered by the dataset", () => {
@@ -158,4 +122,40 @@ function createReferencedEntitiesResults(
       },
     },
   };
+}
+
+function createSeries(
+  display: VisualizationDisplay,
+  referenced_entities?: DatasetData["referenced_entities"],
+  settings?: VisualizationSettings,
+): RawSeries {
+  return [
+    {
+      card: createMockCard({
+        display,
+        visualization_settings: {
+          "graph.dimensions": ["month"],
+          "graph.metrics": ["count"],
+          "graph.show_goal": true,
+          "graph.goal_label": GOAL_LABEL,
+          "graph.goal_value": { type: "card", id: 9, column: "goal" },
+          ...settings,
+        },
+      }),
+      data: createMockDatasetData({
+        cols: COLS,
+        rows: ROWS,
+        referenced_entities,
+      }),
+    },
+  ];
+}
+
+function toSvg(rawSeries: RawSeries) {
+  return ReactDOMServer.renderToStaticMarkup(
+    <StaticVisualization
+      rawSeries={rawSeries}
+      renderingContext={renderingContext}
+    />,
+  );
 }

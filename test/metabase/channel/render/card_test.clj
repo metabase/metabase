@@ -565,7 +565,7 @@
 
 (deftest ^:parallel render-resolves-dynamic-goal-line-test
   (testing "a graph.goal_value entity ref is substituted before the settings reach the JS renderer"
-    (doseq [display [:line :bar]]
+    (doseq [display [:line :bar :row]]
       (testing display
         (let [captured (atom nil)
               card     {:id                     1

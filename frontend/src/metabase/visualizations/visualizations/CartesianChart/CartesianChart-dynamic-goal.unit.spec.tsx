@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_CARTESIAN_DISPLAYS } from "__support__/dynamic-goals";
 import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -23,7 +23,9 @@ registerVisualizations();
 
 // Chart components are loaded on demand. Register them up front so each test
 // renders in one pass and can be run on its own.
-beforeAll(() => loadVisualizationComponents([...DYNAMIC_GOAL_GRAPH_DISPLAYS]));
+beforeAll(() =>
+  loadVisualizationComponents([...DYNAMIC_GOAL_CARTESIAN_DISPLAYS]),
+);
 
 const COLS = [
   createMockColumn({ name: "month", base_type: "type/Text" }),
@@ -61,7 +63,7 @@ async function setup(rawSeries: RawSeries) {
   });
 }
 
-describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)(
+describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   "%s chart dynamic goal",
   (display) => {
     afterEach(() => {

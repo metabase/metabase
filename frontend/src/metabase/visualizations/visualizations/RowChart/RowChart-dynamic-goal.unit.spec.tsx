@@ -1,0 +1,208 @@
+import fetchMock from "fetch-mock";
+
+import {
+  type RowChartSymbol,
+  getExpectedRowChartGoalX,
+  getRowChartGoalLineX,
+  getRowChartSymbols,
+} from "__support__/row-chart";
+import { setupCardDataset } from "__support__/server-mocks";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
+import Visualization from "metabase/visualizations/components/Visualization";
+import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
+import type {
+  RawSeries,
+  ReferencedEntitiesResults,
+  VisualizationSettings,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
+
+registerVisualizations();
+
+// Chart components are loaded on demand. Register the row chart up front so
+// each test renders in one pass and can be run on its own.
+beforeAll(() => loadVisualizationComponents(["row"]));
+
+const COLS = [
+  createMockColumn({ name: "category", base_type: "type/Text" }),
+  createMockColumn({ name: "count", base_type: "type/Integer" }),
+];
+const ROWS = [
+  ["Doohickey", 10],
+  ["Gadget", 20],
+  ["Gizmo", 30],
+];
+const MAX_COUNT = 30;
+const GOAL = 250;
+const GOAL_LABEL = "Target";
+const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
+const SETTINGS: VisualizationSettings = {
+  "graph.dimensions": ["category"],
+  "graph.metrics": ["count"],
+  "graph.show_goal": true,
+  "graph.goal_value": { type: "card", id: 9, column: "goal" },
+  "graph.goal_label": GOAL_LABEL,
+};
+
+const FAILED: ReferencedEntitiesResults = {
+  card: { 9: { status: "failed", error: "boom" } },
+};
+
+type SetupOpts = {
+  settings?: VisualizationSettings;
+  referencedEntities?: ReferencedEntitiesResults;
+};
+
+function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+  const series: RawSeries = [
+    createMockSingleSeries(
+      createMockCard({ display: "row", visualization_settings: settings }),
+      {
+        data: createMockDatasetData({
+          cols: COLS,
+          rows: ROWS,
+          referenced_entities: referencedEntities,
+        }),
+      },
+    ),
+  ];
+
+  renderWithProviders(<Visualization rawSeries={series} />);
+
+  return { series };
+}
+
+describe("row chart dynamic goal", () => {
+  beforeEach(() => {
+    mockGetBoundingClientRect({ width: 800, height: 600 });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("draws the goal line at a static goal value", async () => {
+    setup({ settings: { ...SETTINGS, "graph.goal_value": GOAL } });
+
+    const goalLine = await findGoalLine();
+
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
+  });
+
+  it("draws the goal line at the value answered by the dataset", async () => {
+    setup({ referencedEntities: createReferencedEntitiesResults(GOAL) });
+
+    const goalLine = await findGoalLine();
+
+    expect(goalLine).toHaveTextContent(GOAL_LABEL);
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("reads an answered goal as a percentage of a normalized stack", async () => {
+    setup({
+      settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
+      referencedEntities: createReferencedEntitiesResults(50),
+    });
+
+    const goalLine = await findGoalLine();
+    const [bar] = getGraphicsSymbols("bar");
+    const barX = Number(bar.getAttribute("x"));
+    const barWidth = Number(bar.getAttribute("width"));
+
+    // every normalized bar spans the whole [0, 1] domain, so 50% sits at its middle
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(barX + barWidth / 2, 0);
+  });
+
+  it("re-runs the query with the referenced entity when the dataset has no answer", async () => {
+    setupCardDataset({
+      dataset: {
+        data: createMockDatasetData({
+          cols: COLS,
+          rows: ROWS,
+          referenced_entities: createReferencedEntitiesResults(GOAL),
+        }),
+      },
+    });
+    const { series } = setup();
+
+    const goalLine = await findGoalLine();
+
+    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
+      getExpectedRowChartGoalX(document.body, GOAL, MAX_COUNT),
+      0,
+    );
+    const [call] = fetchMock.callHistory.calls("path:/api/dataset");
+    expect(await call.request?.json()).toEqual(
+      expect.objectContaining({
+        ...series[0].card.dataset_query,
+        referenced_entities: [{ type: "card", id: 9 }],
+      }),
+    );
+  });
+
+  it("shows a loader while the referenced value is being fetched", async () => {
+    fetchMock.post("path:/api/dataset", new Promise(() => {}));
+    setup();
+
+    expect(await screen.findByTestId("loading-indicator")).toBeInTheDocument();
+    expect(getGraphicsSymbols("goal line")).toHaveLength(0);
+  });
+
+  it("shows the failed message when fetching the reference fails", async () => {
+    setupCardDataset({ status: 500 });
+    setup();
+
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+    expect(getGraphicsSymbols("bar")).toHaveLength(0);
+  });
+
+  it("refuses to render when the dataset reports the reference as failed", async () => {
+    setup({ referencedEntities: FAILED });
+
+    expect(await screen.findByText(GOAL_ERROR)).toBeInTheDocument();
+    expect(getGraphicsSymbols("bar")).toHaveLength(0);
+    expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+});
+
+async function findGoalLine() {
+  await waitFor(() => expect(getGraphicsSymbols("goal line")).toHaveLength(1));
+  const [goalLine] = getGraphicsSymbols("goal line");
+  return goalLine;
+}
+
+function getGraphicsSymbols(roleDescription: RowChartSymbol) {
+  return getRowChartSymbols(document.body, roleDescription);
+}
+
+function createReferencedEntitiesResults(
+  value: number,
+): ReferencedEntitiesResults {
+  return {
+    card: {
+      9: {
+        status: "completed",
+        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
+      },
+    },
+  };
+}

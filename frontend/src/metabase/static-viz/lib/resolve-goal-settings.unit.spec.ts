@@ -1,4 +1,4 @@
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
@@ -31,7 +31,7 @@ describe("resolveGoalSettings", () => {
     );
   });
 
-  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
+  describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
       const series = createSeries(createData({}), display);

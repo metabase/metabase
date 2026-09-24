@@ -1,4 +1,4 @@
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
 import type {
   GoalSegment,
@@ -966,6 +966,8 @@ describe("dynamic goal settings per display", () => {
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("line", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("row", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("row", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
     expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
@@ -985,7 +987,7 @@ describe("dynamic goal settings per display", () => {
   });
 });
 
-describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("%s chart goal value", (display) => {
+describe.each(DYNAMIC_GOAL_DISPLAYS)("%s chart goal value", (display) => {
   const card: GoalCard = {
     display,
     visualization_settings: {
@@ -1067,7 +1069,7 @@ describe("needsGraphGoalResolution", () => {
     expect(needsGraphGoalResolution(undefined, shownGoal(ref))).toBe(false);
   });
 
-  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
+  describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
     it("is true for a shown reference", () => {
       expect(needsGraphGoalResolution(display, shownGoal(ref))).toBe(true);
       expect(needsGraphGoalResolution(display, shownGoal("count"))).toBe(true);

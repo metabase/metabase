@@ -1,4 +1,4 @@
-import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import type {
   DatasetData,
   Series,
@@ -78,7 +78,7 @@ describe("validateGoalReferences", () => {
     });
   });
 
-  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
+  describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
         validateGoalReferences(createSeries(FAILED_DATA, display), {
