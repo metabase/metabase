@@ -33,7 +33,7 @@ export function Toolbar({
         {!readOnly && (
           <>
             <Button
-              size="xs"
+              size="sm"
               variant="default"
               className={cx(S.toolbarButton, S.iconButton)}
               aria-label={t`Undo`}
@@ -42,7 +42,7 @@ export function Toolbar({
               onClick={onUndo}
             />
             <Button
-              size="xs"
+              size="sm"
               variant="default"
               className={cx(S.toolbarButton, S.iconButton)}
               aria-label={t`Redo`}
@@ -53,7 +53,7 @@ export function Toolbar({
           </>
         )}
         <Button
-          size="xs"
+          size="sm"
           variant="default"
           className={S.toolbarButton}
           leftSection={
@@ -77,7 +77,7 @@ export function Toolbar({
           </span>
         </Button>
         <Button
-          size="xs"
+          size="sm"
           variant="default"
           className={S.toolbarButton}
           leftSection={<Icon name="grid" size={12} />}

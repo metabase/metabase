@@ -193,7 +193,7 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
                     <Popover.Target>
                       <Button
                         variant="subtle"
-                        size="compact-xs"
+                        size="compact-sm"
                         leftSection={<Icon name="add" size={10} />}
                         onClick={() => openPicker(null)}
                         style={{ alignSelf: "flex-start" }}

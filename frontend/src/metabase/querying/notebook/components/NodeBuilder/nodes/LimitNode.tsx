@@ -106,7 +106,7 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
             <TextInput
               type="number"
               min={1}
-              size="xs"
+              size="sm"
               placeholder={t`Enter a row limit`}
               value={value}
               readOnly={readOnly}

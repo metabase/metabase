@@ -228,7 +228,7 @@ export const SummarizeNode = memo(function SummarizeNode({
                     <Popover.Target>
                       <Button
                         variant="subtle"
-                        size="compact-xs"
+                        size="compact-sm"
                         leftSection={<Icon name="add" size={10} />}
                         onClick={() =>
                           setPicker({ kind: "metric", index: null })
@@ -279,7 +279,7 @@ export const SummarizeNode = memo(function SummarizeNode({
                     <Popover.Target>
                       <Button
                         variant="subtle"
-                        size="compact-xs"
+                        size="compact-sm"
                         leftSection={<Icon name="add" size={10} />}
                         onClick={() =>
                           setPicker({ kind: "breakout", index: null })

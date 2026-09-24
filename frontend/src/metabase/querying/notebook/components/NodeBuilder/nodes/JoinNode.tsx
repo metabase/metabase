@@ -274,7 +274,7 @@ export const JoinNode = memo(function JoinNode({ id, data }: JoinNodeProps) {
                 !readOnly && (
                   <Button
                     variant="subtle"
-                    size="compact-xs"
+                    size="compact-sm"
                     leftSection={<Icon name="add" size={10} />}
                     onClick={() => setIsAddingCondition(true)}
                     style={{ alignSelf: "flex-start" }}

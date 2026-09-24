@@ -190,7 +190,7 @@ export const ExpressionNode = memo(function ExpressionNode({
                   <Popover.Target>
                     <Button
                       variant="subtle"
-                      size="compact-xs"
+                      size="compact-sm"
                       leftSection={<Icon name="add" size={10} />}
                       onClick={() => openEditor(null)}
                       style={{ alignSelf: "flex-start" }}

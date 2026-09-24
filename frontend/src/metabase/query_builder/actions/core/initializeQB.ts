@@ -13,7 +13,6 @@ import {
   selectQuestionFromOpts,
 } from "metabase/metadata-store";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
-import { getUnsupportedReason } from "metabase/querying/notebook/components/NodeBuilder/graph";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
@@ -437,17 +436,6 @@ async function handleQBInit(
   if (isNative) {
     const isEditing = getIsEditingInDashboard(getState());
     uiControls.isNativeEditorOpen = isEditing || !question.isSaved();
-  }
-
-  // Fresh questions open on the join builder canvas; saved ones keep the notebook.
-  const isFreshNotebookQuestion =
-    uiControls.queryBuilderMode === "notebook" &&
-    !isNative &&
-    !question.isSaved() &&
-    getUnsupportedReason(question.query()) == null;
-  if (isFreshNotebookQuestion) {
-    uiControls.isShowingNodeBuilder = true;
-    uiControls.isShowingNotebookNativePreview = true;
   }
 
   if (isNative && isEditable) {
