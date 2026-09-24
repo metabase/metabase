@@ -10,7 +10,8 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import type { GoalCard } from "./dynamic-goals";
+import type { GoalCard } from "../types";
+
 import {
   getGoalSegmentBounds,
   getGoalValues,
