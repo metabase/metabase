@@ -228,7 +228,7 @@
                                 (resolve-goals :visualization_settings)
                                 ;; a visualizer dashcard's chart reads the settings nested here, which toggle their own goals
                                 (m/update-existing-in [:visualization_settings :visualization :settings]
-                                                      #(dynamic-goals/resolve-dynamic-goals % (:referenced_entities data))))
+                                                      dynamic-goals/resolve-dynamic-goals (:referenced_entities data)))
           data          (some-> data (resolve-goals :viz-settings))
           chart-type    (or (detect-pulse-chart-type card dashcard data)
                             (when (is-attached? card)
