@@ -2260,12 +2260,11 @@
                  :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
                  :where  [:= :key "example-dashboard-id"]}))))
 
-;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
-;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the
-;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` (which,
-;;; when this migration was written, filtered by scope) filtered the whole surface away: HTTP 200, an
-;;; empty tools list, nothing logged. It does not self-heal — the refresh grant copies the original scope
-;;; forward and can only narrow — so a refreshing client stays in the zero-tools state indefinitely.
+;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
+;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
+;;; instead, and no legacy scope satisfies any v2 scope. A call short of scope gets a 403 `insufficient_scope`
+;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
+;;; the client's registered scope snapshot includes the v2 scopes.
 ;;;
 ;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
@@ -2277,20 +2276,6 @@
    "agent:sql:run"
    "agent:delivery:write"
    "agent:resource:read"])
-
-;; `agent:resource:read` is excluded: it gates only a resource, so a token holding it alone still
-;; resolves zero *tools*, which is the state this migration exists to end.
-(def ^:private ^:no-doc mcp-v2-tool-scopes
-  (set (remove #{"agent:resource:read"} mcp-v2-scopes)))
-
-(defn- legacy-mcp-scopes?
-  "True when `scopes` looks like a token minted against the pre-v2 scope set: it satisfies no v2 tool
-   and carries at least one scope outside the six. The second half is what keeps this off tokens that
-   are already v2-shaped (or empty), so re-running the migration revokes nothing new."
-  [scopes]
-  (let [scopes (set (filter string? scopes))]
-    (and (not (some mcp-v2-tool-scopes scopes))
-         (boolean (some (complement (set mcp-v2-scopes)) scopes)))))
 
 (defn- json-array-out
   "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
@@ -2304,7 +2289,7 @@
       (vec parsed))))
 
 (define-migration WidenDynamicOAuthClientScopesForMcpV2
-  ;; Step 1 of 2 — raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; Raise the ceiling. Dynamically registered clients snapshot the scope set that
   ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
   ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
   ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
@@ -2321,17 +2306,7 @@
                              :where  [:= :registration_type "dynamic"]})))
 
 (define-migration RevokeLegacyMcpOAuthTokens
-  ;; Step 2 of 2 — force one re-authentication. Both tables must be stamped: leaving the refresh token
-  ;; alive means the client silently refreshes into another legacy-scoped access token instead of
-  ;; re-authenticating. Once both are revoked the next request gets the existing `invalid_token` 401
-  ;; with the discovery challenge — the RFC 6750 path every MCP client already handles.
-  (doseq [table [:oauth_access_token :oauth_refresh_token]]
-    (run! (fn [{:keys [id scope]}]
-            (when (some-> (json-array-out scope) legacy-mcp-scopes?)
-              (t2/query {:update table
-                         :set    {:revoked_at :%now}
-                         :where  [:= :id id]})))
-          ;; Already-revoked rows are skipped, which is also what makes this safe to re-run.
-          (t2/reducible-query {:select [:id :scope]
-                               :from   [table]
-                               :where  [:= :revoked_at nil]}))))
+  ;; Kept as a no-op. Legacy-scoped clients re-authorize on their own through the 403 step-up, and
+  ;; revoking their tokens would instead force them through the refresh-failure path. The changeset
+  ;; stays so that instances which already ran it can still roll back past it.
+  nil)

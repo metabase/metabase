@@ -3020,8 +3020,9 @@
                 "registration snapshot and tokens scoped to it. The v2 surface gates on six coarse scopes that no "
                 "legacy scope satisfies, so without this migration the client gets HTTP 200 with an empty tools list "
                 "and never recovers — the refresh grant can only narrow. The migration widens the ceiling so a "
-                "re-authorization validates, then revokes the legacy-shaped tokens so the client actually "
-                "re-authenticates instead of refreshing.")
+                "re-authorization validates. GHY-4491: the second changeset is a no-op. tools/list now lists every "
+                "tool and a call short of scope gets a 403 insufficient_scope step-up, so a legacy client "
+                "re-authorizes on its own; revoking its tokens would only force it through the refresh-failure path.")
     (impl/test-migrations ["v64.2026-09-09T12:00:00" "v64.2026-09-09T12:00:01"] [migrate!]
       (let [;; The 17 scopes DCR snapshots on v0.63: 15 per-entity agent scopes + 2 mcp-ui resource scopes.
             legacy-scopes   ["agent:sql:construct" "agent:sql:create" "agent:sql:edit" "agent:sql:read"
@@ -3081,9 +3082,9 @@
               (is (every? scopes legacy-scopes)))))
         (testing "a statically registered client is left alone — it did not snapshot via DCR"
           (is (= (set legacy-scopes) (scopes-of :oauth_client static-id :scopes))))
-        (testing "legacy-scoped tokens are revoked — both tables, or the client refreshes instead of re-authing"
-          (is (revoked? :oauth_access_token legacy-access))
-          (is (revoked? :oauth_refresh_token legacy-refresh)))
+        (testing "GHY-4491: legacy-scoped tokens are NOT revoked; the client self-heals through the 403 step-up"
+          (is (not (revoked? :oauth_access_token legacy-access)))
+          (is (not (revoked? :oauth_refresh_token legacy-refresh))))
         (testing "tokens already carrying a v2 tool scope keep working"
           (is (not (revoked? :oauth_access_token v2-access)))
           (is (not (revoked? :oauth_refresh_token v2-refresh))))))))
