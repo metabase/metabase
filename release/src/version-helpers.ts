@@ -109,7 +109,8 @@ export const getVersionFromReleaseBranch = (branch: string) => {
 
 // rolling tags like v0.56.x or v0.51.2.x aren't valid version strings,
 // but we can still read a major version off of them
-const isDotXTag = (tagName: string) => /^(v0|v1)\.\d+(\.\d+)*\.x$/.test(tagName);
+const isDotXTag = (tagName: string) =>
+  /^(v0|v1)\.\d+(\.\d+)*\.x$/.test(tagName);
 
 export const getMajorVersionFromRef = (ref: string) => {
   if (ref.startsWith("refs/tags/")) {
@@ -125,7 +126,7 @@ export const getMajorVersionFromRef = (ref: string) => {
 const getLtsTag = (version: string) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
   return pieces.slice(0, 2).join(".") + "-lts";
-}
+};
 
 export const getDotXs = (version: string, number: number) => {
   const pieces = version.replace(/-.+/, "").split("."); // ignore any -suffixes
@@ -176,7 +177,9 @@ export const getExtraTagsForVersion = async ({
     ...baseTags,
     ...minorTags,
     ...(shouldAddLatestTag({ version, latestMajorVersion }) ? ["latest"] : []),
-    ...(await isLtsVersion({ version }) ? [getLtsTag(ossVersion), getLtsTag(eeVersion)] : [])
+    ...((await isLtsVersion({ version }))
+      ? [getLtsTag(ossVersion), getLtsTag(eeVersion)]
+      : []),
   ];
 };
 

@@ -93,7 +93,9 @@ async function main() {
   const rows = buildRows(conditions, {
     sha: process.env.HEAD_SHA || "",
     subject: process.env.COMMIT_MESSAGE || "",
-    timestamp: new Date(process.env.COMMIT_TIMESTAMP || Date.now()).toISOString(),
+    timestamp: new Date(
+      process.env.COMMIT_TIMESTAMP || Date.now(),
+    ).toISOString(),
   });
 
   console.table(rows);
