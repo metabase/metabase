@@ -211,23 +211,23 @@
   "Record API-key usage analytics for a completed request.
 
   Hands the recorder the raw `request`/`response` plus the handful of values only this middleware can supply:
-  `route-template` (from the carrier — nil for a request that matched no endpoint and for raw-Compojure handlers that
-  bypass `defendpoint`, since neither ever fills it in; a dynamic binding wouldn't survive an async `respond` on
-  another thread, which is why this is a carrier and not `api/*current-route*` or similar), `duration-ms` (time to
-  `respond`, not to the last byte written — for streaming and core.async responses `respond` is called when the
-  response object is created, so this is time-to-response, as it is for the CLI usage log), and `occurred-at`
-  (captured here on the request thread rather than left for the DB to fill in at INSERT time — the row lands via a
-  Grouper batch, up to the batch interval later, so a DB-computed default would record when the batch flushed, not
-  when the request happened).
+  `route-template` (read off the carrier `metabase.server.middleware.route-template-carrier/wrap-route-template-carrier`
+  installed on every request — nil for a request that matched no endpoint and for raw-Compojure handlers that bypass
+  `defendpoint`, since neither ever fills it in; a dynamic binding wouldn't survive an async `respond` on another
+  thread, which is why this is a carrier and not `api/*current-route*` or similar), `duration-ms` (time to `respond`,
+  not to the last byte written — for streaming and core.async responses `respond` is called when the response object
+  is created, so this is time-to-response, as it is for the CLI usage log), and `occurred-at` (captured here on the
+  request thread rather than left for the DB to fill in at INSERT time — the row lands via a scheduled flush, up to
+  the flush interval later, so a DB-computed default would record when the flush ran, not when the request happened).
 
   Best-effort throughout: the recorders swallow their own failures, and this catches anything else, so usage
   analytics can never fail a request or alter its response."
-  [request response route-template-carrier start-time]
+  [request response start-time]
   (when (api-key-request? request)
     (try
       (api-keys.usage/record-api-key-usage!
        request response
-       {:route-template (some-> route-template-carrier deref)
+       {:route-template (some-> (get request api.macros/route-template-carrier-key) deref)
         :duration-ms    (long (u/since-ms start-time))
         :occurred-at    (t/offset-date-time)})
       (catch Throwable e
@@ -272,15 +272,10 @@
         (handler request respond raise)
         (t2/with-call-count [call-count-fn]
           (sql-jdbc.execute.diagnostic/capturing-diagnostic-info [diag-info-fn]
-            (let [;; only API-key requests need to know which route matched, and only they pay for finding out
-                  carrier    (when api-key?
-                               (volatile! nil))
-                  request    (cond-> request
-                               carrier (assoc api.macros/route-template-carrier-key carrier))
-                  start-time (u/start-timer)
+            (let [start-time (u/start-timer)
                   respond*   (fn [response]
                                (when api-key?
-                                 (record-api-key-usage! request response carrier start-time))
+                                 (record-api-key-usage! request response start-time))
                                (when should-log?
                                  (logged-response {:request       request
                                                    :response      response
