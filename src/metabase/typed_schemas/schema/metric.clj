@@ -2,6 +2,7 @@
   "Typed schema generation for metrics and metric dimensions."
   (:require
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.metrics.core :as metrics]
@@ -11,7 +12,8 @@
    [metabase.typed-schemas.db :as typed-schemas.db]
    [metabase.typed-schemas.schema.common :as schema.common]
    [metabase.typed-schemas.schema.table :as schema.table]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,6 +21,21 @@
   "Returns the metric aggregation result column inferred by Lib."
   [card]
   (schema.common/aggregation-result-column (:database_id card) (:dataset_query card)))
+
+(defn- metric-filters
+  "Returns the display names of the filters `card`'s query applies. The schema exposes a metric only as an
+  aggregation, so these are the one hint that it counts a subset of the rows."
+  [card]
+  (when-let [query-definition (not-empty (:dataset_query card))]
+    (try
+      (let [query (lib/query (lib-be/application-database-metadata-provider (:database_id card))
+                             query-definition)]
+        (not-empty (vec (for [stage-number  (range (lib/stage-count query))
+                              filter-clause (lib/filters query stage-number)]
+                          (lib/display-name query stage-number filter-clause)))))
+      (catch Exception e
+        (log/warnf e "Could not describe the filters of metric %s" (:id card))
+        nil))))
 
 (defn- metric-details-error-message
   [card error-message]
@@ -267,6 +284,7 @@
      :sourceCardId source-card-id-value
      :entityId portable_entity_id
      :description description
+     :filters (metric-filters card)
      :verified (when verified true)
      :sourceTable (source-table-schema base_table_portable_fk)
      :mappedTableIds (not-empty mapped-table-ids)
