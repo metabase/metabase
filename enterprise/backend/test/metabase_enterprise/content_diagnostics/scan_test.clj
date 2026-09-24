@@ -1023,7 +1023,7 @@
             (prometheus/clear! :metabase-content-diagnostics/scan-duration-ms)
             (prometheus/clear! :metabase-content-diagnostics/scan-runs)
             ;; `count-persisted!` calls `covered-finding-types` outside any `run-stage!` - no stage in ex-data
-            (with-redefs [scan/covered-finding-types (fn [] (throw (ex-info "boom" {})))]
+            (mt/with-dynamic-fn-redefs [scan/covered-finding-types (fn [] (throw (ex-info "boom" {})))]
               (is (thrown? clojure.lang.ExceptionInfo (scan/scan!))))
             (is (== 1 (runs system "error" "unknown")))
             (is (pos? (duration-ms system "error"))))
