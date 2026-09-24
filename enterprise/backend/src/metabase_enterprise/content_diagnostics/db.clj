@@ -31,20 +31,20 @@
   "The scan-time evidence blob each finding type freezes into `content_diagnostics_finding.details`.
   Closed per type, so a checker can neither persist a key the serve layer never reads nor borrow one
   belonging to a different finding type."
-  {:stale      [:map {:closed true} [:threshold_days :int]]
+  {:stale          [:map {:closed true} [:threshold_days :int]]
    ;; a leaf (card, transform) freezes the threshold it crossed; a container roll-up (dashboard,
    ;; document) names its slow culprit cards instead - never both
-   :slow       [:or
-                [:map {:closed true} [:threshold_ms :int]]
-                [:map {:closed true} [:slow_entity_ids [:sequential ::lib.schema.id/card]]]]
-   :duplicated [:map {:closed true}
-                [:normalized_name      :string]
-                [:duplicate_entity_ids [:sequential ms/PositiveInt]]]
+   :slow           [:or
+                    [:map {:closed true} [:threshold_ms :int]]
+                    [:map {:closed true} [:slow_entity_ids [:sequential ::lib.schema.id/card]]]]
+   :duplicate_name [:map {:closed true}
+                    [:normalized_name      :string]
+                    [:duplicate_entity_ids [:sequential ms/PositiveInt]]]
    ;; `as_of` is the empty card's last clean run - a temporal here, a string in the response, because it
    ;; round-trips through the JSON blob
-   :empty      (conj imbalanced-details [:as_of {:optional true} ms/TemporalInstant])
-   :sparse     imbalanced-details
-   :crowded    imbalanced-details})
+   :empty          (conj imbalanced-details [:as_of {:optional true} ms/TemporalInstant])
+   :sparse         imbalanced-details
+   :crowded        imbalanced-details})
 
 (def ^:private finding-row-columns
   "The columns every finding writes, whatever its type. `detected_at` and `invalidated_at` are absent by
