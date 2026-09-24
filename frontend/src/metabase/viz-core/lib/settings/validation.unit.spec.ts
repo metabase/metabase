@@ -1,4 +1,6 @@
+import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import type {
+  DatasetData,
   Series,
   VisualizationDisplay,
   VisualizationSettings,
@@ -25,7 +27,9 @@ const REFERENCED_SETTINGS: VisualizationSettings = {
 describe("validateGoalReferences", () => {
   it("accepts a static goal", () => {
     expect(() =>
-      validateGoalReferences(createSeries(), { "graph.goal_value": 10 }),
+      validateGoalReferences(createSeries(FAILED_DATA, "line"), {
+        "graph.goal_value": 10,
+      }),
     ).not.toThrow();
   });
 
@@ -74,10 +78,10 @@ describe("validateGoalReferences", () => {
     });
   });
 
-  describe("for a line chart", () => {
+  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
     it("ignores a failed reference when the goal line is hidden", () => {
       expect(() =>
-        validateGoalReferences(createSeries(), {
+        validateGoalReferences(createSeries(FAILED_DATA, display), {
           ...REFERENCED_SETTINGS,
           "graph.show_goal": false,
         }),
@@ -91,13 +95,19 @@ describe("validateGoalReferences", () => {
       });
 
       expect(() =>
-        validateGoalReferences(createSeries(data), REFERENCED_SETTINGS),
+        validateGoalReferences(
+          createSeries(data, display),
+          REFERENCED_SETTINGS,
+        ),
       ).not.toThrow();
     });
 
     it("rejects a reference the data reports as failed", () => {
       expect(() =>
-        validateGoalReferences(createSeries(), REFERENCED_SETTINGS),
+        validateGoalReferences(
+          createSeries(FAILED_DATA, display),
+          REFERENCED_SETTINGS,
+        ),
       ).toThrow("Couldn't load the value this chart's goal depends on.");
     });
 
@@ -106,9 +116,10 @@ describe("validateGoalReferences", () => {
         ...FAILED_DATA,
         referenced_entities: undefined,
       });
-      const transformed = Object.assign(createSeries(transformedData), {
-        _raw: createSeries(),
-      });
+      const transformed = Object.assign(
+        createSeries(transformedData, display),
+        { _raw: createSeries(FAILED_DATA, display) },
+      );
 
       expect(() =>
         validateGoalReferences(transformed, REFERENCED_SETTINGS),
@@ -118,8 +129,8 @@ describe("validateGoalReferences", () => {
 });
 
 function createSeries(
-  data = FAILED_DATA,
-  display: VisualizationDisplay = "line",
+  data: DatasetData,
+  display: VisualizationDisplay,
 ): Series {
   return [createMockSingleSeries({ display }, { data })];
 }

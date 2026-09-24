@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getNumericGoalValue } from "../../../lib/dynamic-goals";
+import { getGoalLineValue } from "../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -182,9 +182,12 @@ const getYAxisTicksWidth = (
     }
   }
 
-  const goalValue = getNumericGoalValue(settings);
+  // Normalized axes are pinned to 0-100%, so a goal can never add a tick
+  const goalValue = axisModel.isNormalized
+    ? null
+    : getGoalLineValue(settings, false);
 
-  if (settings["graph.show_goal"] && goalValue !== null) {
+  if (goalValue !== null) {
     valuesToMeasure.push(goalValue);
   }
 

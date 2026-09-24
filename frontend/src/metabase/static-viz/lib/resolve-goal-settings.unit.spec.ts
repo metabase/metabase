@@ -1,3 +1,4 @@
+import { DYNAMIC_GOAL_GRAPH_DISPLAYS } from "__support__/dynamic-goals";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
 import {
@@ -16,7 +17,7 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
 describe("resolveGoalSettings", () => {
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
-    const series = createSeries(createData({}));
+    const series = createSeries(createData({}), "line");
 
     expect(resolveGoalSettings(series, settings)).toBe(settings);
     expect(resolveGoalSettings(series, {})).toEqual({});
@@ -30,10 +31,10 @@ describe("resolveGoalSettings", () => {
     );
   });
 
-  describe("for a line chart", () => {
+  describe.each(DYNAMIC_GOAL_GRAPH_DISPLAYS)("for a %s chart", (display) => {
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
-      const series = createSeries(createData({}));
+      const series = createSeries(createData({}), display);
 
       expect(resolveGoalSettings(series, settings)).toBe(settings);
     });
@@ -47,7 +48,7 @@ describe("resolveGoalSettings", () => {
           },
         },
       });
-      const series = createSeries(answered);
+      const series = createSeries(answered, display);
 
       expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
         ...REFERENCED_SETTINGS,
@@ -56,7 +57,7 @@ describe("resolveGoalSettings", () => {
     });
 
     it("throws for an unanswered reference", () => {
-      const series = createSeries(createData({}));
+      const series = createSeries(createData({}), display);
 
       expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
         "Couldn't load the value this chart's goal depends on.",
@@ -67,7 +68,7 @@ describe("resolveGoalSettings", () => {
       const failed = createData({
         card: { 9: { status: "failed", error: "boom" } },
       });
-      const series = createSeries(failed);
+      const series = createSeries(failed, display);
 
       expect(() => resolveGoalSettings(series, REFERENCED_SETTINGS)).toThrow(
         "Couldn't load the value this chart's goal depends on.",
@@ -76,10 +77,7 @@ describe("resolveGoalSettings", () => {
   });
 });
 
-function createSeries(
-  data: DatasetData,
-  display: VisualizationDisplay = "line",
-) {
+function createSeries(data: DatasetData, display: VisualizationDisplay) {
   return createMockSingleSeries({ display }, { data });
 }
 

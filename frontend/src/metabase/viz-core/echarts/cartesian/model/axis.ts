@@ -18,6 +18,7 @@ import type {
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
+import { getGoalAxisValue } from "../../../lib/dynamic-goals";
 import { computeNumericDataInterval } from "../../../lib/numeric";
 import { getLineAreaBarComparisonSettings } from "../../../lib/settings";
 import type {
@@ -537,14 +538,17 @@ export function getYAxisModel(
     stackType,
     formattingOptions,
   );
-  const formatGoal = getYAxisFormatter(column, settings, stackType, {
+  const isNormalized = stackType === "normalized";
+  const formatGoalAxisValue = getYAxisFormatter(column, settings, stackType, {
     ...formattingOptions,
     compact: false,
-    scale:
-      stackType === "normalized"
-        ? 1 / 100 // Users enter "50" for "50%" but visualizations use decimals (e.g. 0.5 = 50%) so we need to convert "50" -> 0.5 for percentage-based goals to be displayed correctly
-        : formattingOptions?.scale,
   });
+  const formatGoal: AxisFormatter = (goalValue) =>
+    formatGoalAxisValue(
+      isNumber(goalValue)
+        ? getGoalAxisValue(goalValue, isNormalized)
+        : goalValue,
+    );
 
   return {
     seriesKeys,
@@ -553,7 +557,7 @@ export function getYAxisModel(
     label,
     formatter,
     formatGoal,
-    isNormalized: stackType === "normalized",
+    isNormalized,
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
