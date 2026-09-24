@@ -208,24 +208,37 @@
           (dissoc :private-key-passphrase))
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
+(defn- jwt-expiry-ms
+  "Returns the JWT's `exp` claim as ms-since-epoch, or nil if the token can't be parsed or has no
+  `exp`. Decode-only — no signature verification; the token has already been trusted at this point."
+  [^String jwt]
+  (try
+    (let [[_ payload _] (str/split jwt #"\.")
+          json-str      (String. (.decode (java.util.Base64/getUrlDecoder) ^String payload) "UTF-8")]
+      (some-> (json/decode+kw json-str) :exp long (* 1000)))
+    (catch Throwable _ nil)))
+
 (defn- resolve-wif-credentials
   "Translate WIF details into Snowflake JDBC properties. For OIDC we always pass the token as a
   plain `:token` string; the Snowflake JDBC driver only honors `token_file_path` under the special
   `jdbc:snowflake:auto` URL, which we don't use. `:wif-token-file-path` wins over an inline
-  `:wif-token` — the file is slurped here into the pool spec. Token rotation currently requires
-  the pool to be invalidated by other means (auth failure, manual invalidation)."
+  `:wif-token` — the file is slurped here into the pool spec. When the token carries an `exp`
+  claim we set `:password-expiry-timestamp` so the pool self-invalidates on expiry and rebuilds
+  against a rotated file or a fresh in-process mint."
   [{:keys [wif-provider wif-token wif-token-file-path] :as details}]
-  (let [provider (some-> wif-provider u/upper-case-en)
-        token    (when (= "OIDC" provider)
-                   (cond
-                     (not (str/blank? wif-token-file-path))
-                     (str/trim (slurp wif-token-file-path))
+  (let [provider  (some-> wif-provider u/upper-case-en)
+        token     (when (= "OIDC" provider)
+                    (cond
+                      (not (str/blank? wif-token-file-path))
+                      (str/trim (slurp wif-token-file-path))
 
-                     (not (str/blank? wif-token))
-                     wif-token))
-        wif-spec (cond-> {:authenticator            "WORKLOAD_IDENTITY"
-                          :workloadIdentityProvider provider}
-                   token (assoc :token token))]
+                      (not (str/blank? wif-token))
+                      wif-token))
+        expiry-ms (some-> token jwt-expiry-ms)
+        wif-spec  (cond-> {:authenticator            "WORKLOAD_IDENTITY"
+                           :workloadIdentityProvider provider}
+                    token     (assoc :token token)
+                    expiry-ms (assoc :password-expiry-timestamp expiry-ms))]
     (-> details
         (merge wif-spec)
         (dissoc :wif-provider :wif-token :wif-token-file-path

@@ -268,6 +268,42 @@
                          :wif-token-file-path tok-path))]
         (is (= "from-file" (:token spec)))))))
 
+(defn- fake-jwt
+  "Build a JWT-shaped string with `claims` as the payload. Header and signature are placeholders —
+  the token is only parseable, not verifiable."
+  [claims]
+  (let [encoder (java.util.Base64/getUrlEncoder)
+        encode  (fn [m] (String. (.encode encoder (.getBytes (json/encode m) "UTF-8")) "UTF-8"))]
+    (str (encode {:alg "none"}) "." (encode claims) ".sig")))
+
+(deftest ^:parallel jwt-expiry-ms-test
+  (testing "parses `exp` (seconds since epoch) into milliseconds"
+    (is (= 1700000000000 (#'driver.snowflake/jwt-expiry-ms (fake-jwt {:exp 1700000000 :sub "s"})))))
+  (testing "returns nil when the token has no `exp` claim"
+    (is (nil? (#'driver.snowflake/jwt-expiry-ms (fake-jwt {:sub "s"})))))
+  (testing "returns nil for malformed input (doesn't throw)"
+    (are [input] (nil? (#'driver.snowflake/jwt-expiry-ms input))
+      "not-a-jwt"
+      "onlyone.segment"
+      "a.b.c"                                        ; middle segment isn't valid base64url JSON
+      (str "hdr." (String. (.encode (java.util.Base64/getUrlEncoder) (.getBytes "{not-json" "UTF-8")) "UTF-8") ".sig"))))
+
+(deftest ^:parallel connection-details->spec-wif-sets-expiry-from-jwt-test
+  (testing "when the OIDC token carries `exp`, spec gets :password-expiry-timestamp for pool auto-invalidation"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token    (fake-jwt {:exp 1700000000 :sub "s"})))]
+      (is (= 1700000000000 (:password-expiry-timestamp spec)))))
+  (testing "no exp claim → no :password-expiry-timestamp on the spec"
+    (let [spec (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details
+                       :wif-provider "OIDC"
+                       :wif-token    (fake-jwt {:sub "s"})))]
+      (is (not (contains? spec :password-expiry-timestamp))))))
+
 (deftest ^:parallel connection-details->spec-wif-cloud-providers-test
   (testing "WIF AWS/AZURE/GCP set no client-side credential fields"
     (doseq [provider ["AWS" "AZURE" "GCP"]]
@@ -352,6 +388,18 @@
         (when (= 200 status)
           (:value (json/decode+kw body)))))))
 
+(defn- wif-live-details-with-token
+  "WIF details map for the live tests, `token-source` merged in (`:wif-token` or `:wif-token-file-path`)."
+  [token-source]
+  (merge {:account      (tx/db-test-env-var-or-throw :snowflake :wif-account)
+          :user         (tx/db-test-env-var-or-throw :snowflake :wif-user)
+          :warehouse    (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
+          :db           (tx/db-test-env-var-or-throw :snowflake :wif-db)
+          :role         (tx/db-test-env-var :snowflake :wif-role)
+          :auth-mode    "wif"
+          :wif-provider "OIDC"}
+         token-source))
+
 (deftest ^:synchronized snowflake-wif-live-test
   ;; End-to-end test against a real Snowflake WIF-configured service user.
   ;;
@@ -367,24 +415,51 @@
                                  slurp
                                  str/trim))]
       (let [wif-user (tx/db-test-env-var-or-throw :snowflake :wif-user)
-            details  {:account      (tx/db-test-env-var-or-throw :snowflake :wif-account)
-                      :user         wif-user
-                      :warehouse    (tx/db-test-env-var-or-throw :snowflake :wif-warehouse)
-                      :db           (tx/db-test-env-var-or-throw :snowflake :wif-db)
-                      :role         (tx/db-test-env-var :snowflake :wif-role)
-                      :auth-mode    "wif"
-                      :wif-provider "OIDC"
-                      :wif-token    token}]
+            details  (wif-live-details-with-token {:wif-token token})]
         (testing "can-connect? via WIF"
           (is (true? (driver/can-connect? :snowflake details))))
         (testing "session identifies as the WIF service user (proves auth flowed through WIF, not a fallback)"
           (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)
                 rows (jdbc/query spec ["SELECT CURRENT_USER() AS \"user\""])]
-            (is (= [{:user wif-user}] rows))))
-        ;; TEMPORARY marker — deliberate failure so we can confirm the test body actually ran
-        ;; end-to-end (a passing test with no visible failure is indistinguishable from a silent
-        ;; skip). Remove once we've seen this fire on a CI run.
-        (is false "WIF live test reached the end of the body")))))
+            (is (= [{:user wif-user}] rows))))))))
+
+(deftest ^:synchronized snowflake-wif-live-rotation-test
+  ;; Proves the exp-driven pool rotation path works end-to-end: pool built with token A, we backdate the
+  ;; cached :password-expiry-timestamp to simulate expiry, rotate the file to token B, then a follow-up query rebuilds
+  ;; the pool with the fresh token. Requires the GH Actions OIDC env vars.
+  (mt/test-driver
+    :snowflake
+    (when-let [token-a (mint-github-actions-oidc-token "snowflakecomputing.com")]
+      (mt/with-temp-file [tok-file "wif-tok"]
+        (spit tok-file token-a)
+        (mt/with-temp [:model/Database db {:engine  :snowflake
+                                           :details (wif-live-details-with-token {:wif-token-file-path tok-file})}]
+          (let [wif-user   (tx/db-test-env-var-or-throw :snowflake :wif-user)
+                pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
+                cache-key  [(:id db) :default]
+                query!     (fn []
+                             (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db)
+                                         ["SELECT CURRENT_USER() AS \"user\""]))]
+            (testing "initial query works with token-a"
+              (is (= [{:user wif-user}] (query!))))
+            (let [initial-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+              (is (integer? initial-exp)
+                  ":password-expiry-timestamp propagated from resolve-wif-credentials to the pool spec")
+              (is (< (System/currentTimeMillis) initial-exp)
+                  "initial expiry is in the future — pool wouldn't be invalidated yet")
+              (testing "after simulating expiry + rotating file, next query rebuilds the pool with the new token"
+                ;; Sleep 1.1s so the fresh mint gets a strictly-later `exp` (GH exp is second-precision).
+                (Thread/sleep 1100)
+                (let [token-b (mint-github-actions-oidc-token "snowflakecomputing.com")]
+                  (is (not= token-a token-b) "second mint returns a distinct token")
+                  (spit tok-file token-b)
+                  ;; Backdate the cached expiry — this is what token expiry looks like to `pool-invalidation-reason`.
+                  (swap! pool-cache assoc-in [cache-key :password-expiry-timestamp] 1)
+                  (is (= [{:user wif-user}] (query!))
+                      "query succeeds after simulated expiry — pool must have been rebuilt with token-b")
+                  (let [new-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+                    (is (> new-exp initial-exp)
+                        "new pool's :password-expiry-timestamp reflects the fresher token")))))))))))
 
 (defn- pem->private-key
   [pem]
