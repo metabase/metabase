@@ -145,8 +145,6 @@ function buildGoalLineMarker({
   };
   const ringStyle = { fill: "none", stroke: iconColor, lineWidth: ringWidth };
 
-  // Invisible hover target. It needs a real fill at zero opacity because ECharts
-  // renders "transparent" as fill="none", which receives no pointer events.
   const hitArea = {
     type: "circle" as const,
     shape: { cx: xEnd, cy: y, r: hitAreaRadius },
@@ -216,7 +214,6 @@ export function getGoalLineSeriesOption(
             opacity: 1,
           },
         },
-        // Pinned so hovering the marker does not lighten the line.
         emphasis: {
           style: {
             stroke,

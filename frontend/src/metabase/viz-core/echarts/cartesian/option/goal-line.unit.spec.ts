@@ -20,8 +20,6 @@ const GRID_MARGIN = 50;
 const Y_AXIS_MAX = 100;
 const GOAL_LABEL = "Target";
 
-// The goal sits mid-axis, so its line crosses the chart's vertical center and
-// the marker sits where that line meets the right edge of the plot.
 const MARKER_POSITION = {
   zrX: CHART_WIDTH - GRID_MARGIN,
   zrY: CHART_HEIGHT / 2,
