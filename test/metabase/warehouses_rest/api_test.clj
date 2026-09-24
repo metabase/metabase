@@ -1834,6 +1834,34 @@
             (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
             (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
 
+(deftest initial-sync-skips-field-values-scan-test
+  (testing (str "GHY-3274: the initial sync of a new Database must not scan FieldValues. A new Database has no "
+                "FieldValues (they are made on demand by the `/values` endpoints), so the scan can only issue a "
+                "useless per-Field clear/update attempt for every Field.")
+    (let [details (:details (mt/db))]
+      (mt/with-model-cleanup [:model/Database]
+        (let [db-id (binding [driver.settings/*allow-testing-h2-connections* true]
+                      (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                            (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                              (f)))]
+                        (:id (mt/user-http-request :crowberto :post 200 "database"
+                                                   {:name         (mt/random-name)
+                                                    :engine       "h2"
+                                                    :details      details
+                                                    :is_full_sync true}))))
+              task-runs (fn [task-name]
+                          (->> (mt/user-http-request :crowberto :get 200 "task/" :task task-name :limit 1000)
+                               :data
+                               (filter #(= db-id (:db_id %)))))]
+          (testing "the initial sync ran"
+            (is (= "complete" (:initial_sync_status (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id)))))
+            (is (seq (task-runs "sync-fields")))
+            (is (seq (task-runs "fingerprint-fields"))))
+          (testing "the initial sync did not scan FieldValues"
+            (is (empty? (task-runs "field values scanning")))
+            (is (empty? (task-runs "update-field-values")))
+            (is (empty? (task-runs "delete-expired-advanced-field-values")))))))))
+
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"
     (let [sync-called?  (promise)

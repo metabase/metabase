@@ -253,7 +253,7 @@
         (mt/with-temp [:model/Database db {:engine ::sync-test}]
           (let [results (sync/sync-database! db)]
             (testing "Returns results from sync-database step"
-              (is (= ["metadata" "analyze" "field-values"]
+              (is (= ["metadata" "analyze"]
                      (map :name results)))))
           (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))
                 ;; a full sync runs the analyze step, which scores dimension_interestingness
@@ -350,8 +350,21 @@
       (binding [sync-util/*log-exceptions-and-continue?* true]
         (let [results (sync/sync-database! db)]
           (testing "Skips the metadata step"
-            (is (= ["analyze" "field-values"]
+            (is (= ["analyze"]
                    (map :name results)))))))))
+
+(deftest sync-database!-skips-field-values-until-initial-sync-complete-test
+  (testing (str "GHY-3274: a full sync skips the FieldValues phase while the Database's initial sync is not "
+                "complete, because FieldValues are only created on demand and a new Database has none")
+    (binding [sync-util/*log-exceptions-and-continue?* false]
+      (mt/with-temp [:model/Database db {:engine ::sync-test, :initial_sync_status "incomplete"}]
+        (testing "the initial sync skips the field-values phase"
+          (is (= ["metadata" "analyze"]
+                 (map :name (sync/sync-database! db)))))
+        (testing "a later sync runs it, even when the caller passes the Database map from before the initial sync"
+          (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (u/the-id db))))
+          (is (= ["metadata" "analyze" "field-values"]
+                 (map :name (sync/sync-database! db)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
