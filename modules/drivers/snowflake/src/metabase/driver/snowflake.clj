@@ -209,20 +209,23 @@
       (driver-api/clean-secret-properties-from-details details :snowflake))))
 
 (defn- resolve-wif-credentials
-  "Translate WIF details into Snowflake JDBC properties. For OIDC,
-  `:wif-token-file-path` wins over an inline `:wif-token` so a rotating file
-  (e.g. a Kubernetes projected token) is preferred over a static paste."
+  "Translate WIF details into Snowflake JDBC properties. For OIDC we always pass the token as a
+  plain `:token` string; the Snowflake JDBC driver only honors `token_file_path` under the special
+  `jdbc:snowflake:auto` URL, which we don't use. `:wif-token-file-path` wins over an inline
+  `:wif-token` — the file is slurped here into the pool spec. Token rotation currently requires
+  the pool to be invalidated by other means (auth failure, manual invalidation)."
   [{:keys [wif-provider wif-token wif-token-file-path] :as details}]
   (let [provider (some-> wif-provider u/upper-case-en)
+        token    (when (= "OIDC" provider)
+                   (cond
+                     (not (str/blank? wif-token-file-path))
+                     (str/trim (slurp wif-token-file-path))
+
+                     (not (str/blank? wif-token))
+                     wif-token))
         wif-spec (cond-> {:authenticator            "WORKLOAD_IDENTITY"
                           :workloadIdentityProvider provider}
-                   (and (= "OIDC" provider) (not (str/blank? wif-token-file-path)))
-                   (assoc :token_file_path wif-token-file-path)
-
-                   (and (= "OIDC" provider)
-                        (str/blank? wif-token-file-path)
-                        (not (str/blank? wif-token)))
-                   (assoc :token wif-token))]
+                   token (assoc :token token))]
     (-> details
         (merge wif-spec)
         (dissoc :wif-provider :wif-token :wif-token-file-path

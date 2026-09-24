@@ -243,26 +243,29 @@
       (is (= "eyJhbGciOi.the-jwt.signature" (:token spec)))
       (is (not (contains? spec :token_file_path))))))
 
-(deftest ^:parallel connection-details->spec-wif-oidc-file-path-test
-  (testing "WIF OIDC with a token file path sets :token_file_path (not :token)"
-    (let [spec (sql-jdbc.conn/connection-details->spec
-                :snowflake
-                (assoc wif-base-details
-                       :wif-provider "OIDC"
-                       :wif-token-file-path "/var/run/secrets/tokens/oidc-token"))]
-      (is (= "/var/run/secrets/tokens/oidc-token" (:token_file_path spec)))
-      (is (not (contains? spec :token))))))
+(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-test
+  (testing "WIF OIDC with a token file path slurps the file into :token (Snowflake JDBC ignores token_file_path outside auto mode)"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "eyJhbGciOi.file-jwt.signature\n")
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details
+                         :wif-provider        "OIDC"
+                         :wif-token-file-path tok-path))]
+        (is (= "eyJhbGciOi.file-jwt.signature" (:token spec)) "trailing newline stripped")
+        (is (not (contains? spec :token_file_path)))))))
 
-(deftest ^:parallel connection-details->spec-wif-oidc-file-path-wins-test
-  (testing "file path wins over inline token — enables in-place rotation on K8s"
-    (let [spec (sql-jdbc.conn/connection-details->spec
-                :snowflake
-                (assoc wif-base-details
-                       :wif-provider "OIDC"
-                       :wif-token "eyJhbGciOi.the-jwt.signature"
-                       :wif-token-file-path "/var/run/secrets/tokens/oidc-token"))]
-      (is (= "/var/run/secrets/tokens/oidc-token" (:token_file_path spec)))
-      (is (not (contains? spec :token))))))
+(deftest ^:synchronized connection-details->spec-wif-oidc-file-path-wins-test
+  (testing "file path wins over inline token"
+    (mt/with-temp-file [tok-path "wif-token"]
+      (spit tok-path "from-file")
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details
+                         :wif-provider        "OIDC"
+                         :wif-token           "from-inline"
+                         :wif-token-file-path tok-path))]
+        (is (= "from-file" (:token spec)))))))
 
 (deftest ^:parallel connection-details->spec-wif-cloud-providers-test
   (testing "WIF AWS/AZURE/GCP set no client-side credential fields"
