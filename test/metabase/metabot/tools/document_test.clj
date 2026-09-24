@@ -167,9 +167,9 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= "Not found." (:output (document-tools/document-schema-collect-tool {})))))))
   (testing "an unexpected error propagates to the agent loop"
-    (mt/with-dynamic-fn-redefs [shared/current-context                       (fn [] {:references {"database:1" "Test Database"}})
-                                warehouses/get-database                       (fn [_] (throw (ex-info "boom" {})))
-                                create-sql-query-tools/create-sql-query       (fn [_] (throw (ex-info "boom" {})))
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test Database"}})
+                                warehouses/get-database (fn [_] (throw (ex-info "boom" {})))
+                                create-sql-query-tools/create-sql-query (fn [_] (throw (ex-info "boom" {})))
                                 construct-tools/construct-notebook-query-tool (fn [_] (throw (ex-info "boom" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
                             (document-tools/document-schema-collect-tool {})))

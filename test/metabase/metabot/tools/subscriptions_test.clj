@@ -190,5 +190,6 @@
               (is (= "You don't have permissions to do that."
                      (:output (subscribe! dash-id)))))))))
     (testing "an unexpected error propagates to the agent loop"
-      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription (fn [_] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                  (fn [_] (throw (ex-info "boom" {})))]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (subscribe! 1)))))))
