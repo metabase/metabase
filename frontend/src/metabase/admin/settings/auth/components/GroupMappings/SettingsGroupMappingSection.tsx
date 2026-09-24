@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import { useAdminSetting } from "metabase/settings";
-import {
-  SwitchSettingsSection,
-  useSwitchWrite,
-} from "metabase/settings-components";
+import { useDispatch } from "metabase/redux";
+import { settingsApi, useAdminSetting } from "metabase/settings";
+import { SwitchSettingsSection } from "metabase/settings-components";
 import type { BoxProps } from "metabase/ui";
 
 import { GroupMappingsPanel } from "./GroupMappingsPanel";
@@ -43,44 +41,50 @@ export function SettingsGroupMappingSection({
   onToggle,
   ...boxProps
 }: SettingsGroupMappingSectionProps) {
+  const dispatch = useDispatch();
   const {
     value,
     settingDetails,
     updateSetting,
     updateSettingResult,
     isFetching,
-    startedTimeStamp,
   } = useAdminSetting(syncSettingKey);
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
-  const { checked, onChange } = useSwitchWrite({
-    storedValue: value ?? false,
-    isFetching,
-    startedTimeStamp,
-    write: async (enabled) => {
-      const { error } = await updateSetting({
-        key: syncSettingKey,
-        value: enabled,
-      });
-      if (error) {
-        return false;
-      }
+
+  const handleChange = async (enabled: boolean) => {
+    // show the click at once and let the write's refetch confirm it
+    const patch = dispatch(
+      settingsApi.util.updateQueryData(
+        "getSessionProperties",
+        undefined,
+        (draft) => {
+          draft[syncSettingKey] = enabled;
+        },
+      ),
+    );
+    const { error } = await updateSetting({
+      key: syncSettingKey,
+      value: enabled,
+    });
+    if (error) {
+      patch.undo();
+    } else {
       onToggle?.(enabled);
-      return true;
-    },
-  });
+    }
+  };
 
   return (
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={description}
       lockedEnvName={envName}
-      checked={checked}
+      checked={value ?? false}
       disabled={disabled}
       // a fetch still in flight could answer with the value from before the write
       switchDisabled={isFetching || updateSettingResult.isLoading}
-      onChange={onChange}
+      onChange={handleChange}
       {...boxProps}
     >
       <SettingsGroupMappings

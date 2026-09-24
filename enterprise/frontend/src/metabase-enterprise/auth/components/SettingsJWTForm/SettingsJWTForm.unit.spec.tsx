@@ -447,10 +447,6 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
     it("sits right below the server settings", async () => {
       await setup();
 
@@ -515,80 +511,57 @@ describe("SettingsJWTForm", () => {
     });
 
     it("ignores clicks while the write is in flight", async () => {
-      // fake timers keep the write in flight for as long as the clicks take
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      await setup({
+      const { settingsStore } = await setup({
         jwtEnabled: true,
         configured: true,
-        provisioningSaveDelayMs: 100,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      // the write answers only when the test says so, which keeps it in flight for all three clicks
+      let finishWrite = () => {};
+      fetchMock.removeRoute("update-setting");
+      fetchMock.put(
+        new RegExp("/api/setting/(.+)"),
+        ({ url, options }) =>
+          new Promise((resolve) => {
+            finishWrite = () => {
+              const key = decodeURIComponent(url.split("/api/setting/")[1]);
+              settingsStore[key] = JSON.parse(String(options.body)).value;
+              resolve({ status: 204 });
+            };
+          }),
+        { name: "update-setting" },
+      );
 
-      await user.click(toggle);
-      await user.click(toggle);
-      await user.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
+      await userEvent.click(toggle);
 
       expect(toggle).not.toBeChecked();
       expect(toggle).toHaveAttribute("aria-disabled", "true");
-      await act(() => jest.advanceTimersByTimeAsync(100));
+      finishWrite();
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toEqual({ value: false });
     });
 
-    it("keeps the written value while an older properties refetch lands", async () => {
-      jest.useFakeTimers();
-      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-      const { store, settingsStore } = await setup({
+    it("holds the switch until the settings refetch after the write lands", async () => {
+      // the properties mock answers reads late, so the refetch the write triggers can be seen
+      await setup({
         jwtEnabled: true,
         configured: true,
+        propertiesReadDelayMs: 200,
       });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      const loadRequests = fetchMock.callHistory.calls(
-        "get-session-properties",
-      ).length;
-      // a refetch that started before the click answers after the write has gone out
-      const staleSnapshot = { ...settingsStore };
-      fetchMock.removeRoute("get-session-properties");
-      fetchMock.get("path:/api/session/properties", staleSnapshot, {
-        name: "stale-session-properties",
-        delay: 400,
-        repeat: 1,
-      });
-      fetchMock.get(
-        "path:/api/session/properties",
-        () => ({ ...settingsStore }),
-        { name: "get-session-properties", delay: 200 },
-      );
-      act(() => {
-        store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
-      });
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("stale-session-properties"),
-        ).toHaveLength(1),
-      );
-      // a click in the same millisecond would look like it came after the refetch
-      act(() => {
-        jest.advanceTimersByTime(5);
-      });
+      // the delayed read holds the switch on load as well
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
 
-      await user.click(toggle);
-
-      expect(toggle).not.toBeChecked();
-      // the write goes out, then the stale answer lands while the write's own refetch is still pending
-      await act(() => jest.advanceTimersByTimeAsync(400));
+      await userEvent.click(toggle);
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+
       expect(toggle).not.toBeChecked();
-      // the refetch after the write is the only one left to land
-      await waitFor(() =>
-        expect(
-          fetchMock.callHistory.calls("get-session-properties"),
-        ).toHaveLength(loadRequests + 1),
-      );
-      await act(() => jest.advanceTimersByTimeAsync(200));
+      expect(toggle).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() => expect(toggle).not.toHaveAttribute("aria-disabled"));
       expect(toggle).not.toBeChecked();
     });
 

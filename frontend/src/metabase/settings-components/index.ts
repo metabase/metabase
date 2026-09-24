@@ -14,5 +14,4 @@ export {
   SettingsPageWrapper,
   SettingsSection,
   SwitchSettingsSection,
-  useSwitchWrite,
 } from "./SettingsSection";

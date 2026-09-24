@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useAdminSetting } from "metabase/settings";
-import {
-  SwitchSettingsSection,
-  useSwitchWrite,
-} from "metabase/settings-components";
+import { settingsApi, useAdminSetting } from "metabase/settings";
+import { SwitchSettingsSection } from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
 export type UserProvisioningSettingKey =
@@ -32,32 +29,36 @@ export function UserProvisioningSection({
   lockedNote,
 }: UserProvisioningSectionProps) {
   const applicationName = useSelector(getApplicationName);
+  const dispatch = useDispatch();
   const {
     value,
     settingDetails,
     updateSetting,
     updateSettingResult,
-    isLoading,
     isFetching,
-    startedTimeStamp,
   } = useAdminSetting(settingKey);
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
   // a note built as `condition && <Note/>` is `false` when its condition is off, so coerce rather than compare
   const hasLockedNote = Boolean(lockedNote);
-  const { checked, onChange } = useSwitchWrite({
-    storedValue: value ?? false,
-    isFetching,
-    startedTimeStamp,
-    write: async (enabled) => {
-      const { error } = await updateSetting({
-        key: settingKey,
-        value: enabled,
-      });
-      return error == null;
-    },
-  });
+
+  const handleChange = async (enabled: boolean) => {
+    // show the click at once and let the write's refetch confirm it
+    const patch = dispatch(
+      settingsApi.util.updateQueryData(
+        "getSessionProperties",
+        undefined,
+        (draft) => {
+          draft[settingKey] = enabled;
+        },
+      ),
+    );
+    const { error } = await updateSetting({ key: settingKey, value: enabled });
+    if (error) {
+      patch.undo();
+    }
+  };
 
   return (
     <SwitchSettingsSection
@@ -72,14 +73,13 @@ export function UserProvisioningSection({
           </Box>
         )
       }
-      checked={checked}
+      checked={value ?? false}
       disabled={disabled}
-      // the lock is only known once the settings list has loaded
-      // holding the switch through the write is what makes a debounce unnecessary
+      // held while the settings load or refetch and while the write runs, so no debounce is needed
       switchDisabled={
-        hasLockedNote || isLoading || updateSettingResult.isLoading
+        hasLockedNote || isFetching || updateSettingResult.isLoading
       }
-      onChange={onChange}
+      onChange={handleChange}
     />
   );
 }

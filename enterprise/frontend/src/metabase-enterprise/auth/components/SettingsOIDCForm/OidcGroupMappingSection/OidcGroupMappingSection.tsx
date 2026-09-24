@@ -12,10 +12,7 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import {
-  SwitchSettingsSection,
-  useSwitchWrite,
-} from "metabase/settings-components";
+import { SwitchSettingsSection } from "metabase/settings-components";
 import type { BoxProps } from "metabase/ui";
 import {
   type CustomOidcConfig,
@@ -109,41 +106,53 @@ export function OidcGroupMappingSection({
   ...boxProps
 }: OidcGroupMappingSectionProps) {
   const applicationName = useSelector(getApplicationName);
-  const { isFetching: isProvidersFetching, startedTimeStamp } =
-    useGetCustomOidcProvidersQuery();
+  const dispatch = useDispatch();
+  const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
   const { isSaving, saveGroupSync } = writer;
   // a refetch still in flight could answer with the value from before the write
   // the page form's save carries the group sync too, so the card waits for it as well
   const isWriting = isSaving || isProvidersFetching || isPageSaving;
   const isLocked = lockedEnvName != null;
-  const { checked, onChange } = useSwitchWrite({
-    storedValue: provider?.["group-sync"]?.enabled ?? false,
-    isFetching: isProvidersFetching,
-    startedTimeStamp,
-    write: async (enabled) => {
-      if (provider == null) {
-        return false;
-      }
-      const result = await saveGroupSync(
-        provider,
-        { enabled },
-        { successMessage: t`Changes saved` },
-      );
-      if (result.ok) {
-        onToggle?.(enabled);
-      }
-      return result.ok;
-    },
-  });
+
+  const handleChange = async (enabled: boolean) => {
+    if (provider == null) {
+      return;
+    }
+    // show the click at once, the way the writer shows the saved provider after the write
+    const patch = dispatch(
+      customOidcApi.util.updateQueryData(
+        "getCustomOidcProviders",
+        undefined,
+        (draft) => {
+          const entry = draft.find(
+            (candidate) => candidate.key === provider.key,
+          );
+          if (entry != null) {
+            entry["group-sync"] = toGroupSync(entry["group-sync"], { enabled });
+          }
+        },
+      ),
+    );
+    const result = await saveGroupSync(
+      provider,
+      { enabled },
+      { successMessage: t`Changes saved` },
+    );
+    if (result.ok) {
+      onToggle?.(enabled);
+    } else {
+      patch.undo();
+    }
+  };
 
   return (
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
-      checked={checked}
+      checked={provider?.["group-sync"]?.enabled ?? false}
       disabled={provider == null}
       switchDisabled={isLocked || isWriting}
-      onChange={onChange}
+      onChange={handleChange}
       {...boxProps}
     >
       {provider != null && (
