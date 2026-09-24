@@ -720,6 +720,30 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
+(def ^:private max-dashboard-filters
+  "Cap on the filters listed for a dashboard."
+  50)
+
+(def ^:private max-dashboard-filter-name-length
+  "Cap on a dashboard filter's name."
+  100)
+
+(defn- dashboard-filters->xml
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
+  [[max-dashboard-filters]] of them and says how many were left out."
+  [parameters]
+  (when (seq parameters)
+    (let [total (count parameters)]
+      (str "  <filters>\n"
+           (str/join (for [param (take max-dashboard-filters parameters)]
+                       (str "    <filter id=\"" (escape-xml (:id param))
+                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+           (when (> total max-dashboard-filters)
+             (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
+                  (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
+           "  </filters>\n"))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
    Matches Python Dashboard.llm_representation exactly, except we additionally surface the
@@ -743,14 +767,7 @@
                                                 "      </content>\n"
                                                 "    </tab>\n")))
                                        sorted-tabs))
-                        "  </tabs>\n"))
-        filters-xml (when (seq parameters)
-                      (str "  <filters>\n"
-                           (str/join (for [param parameters]
-                                       (str "    <filter id=\"" (escape-xml (:id param))
-                                            "\" name=\"" (escape-xml (:name param))
-                                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
-                           "  </filters>\n"))]
+                        "  </tabs>\n"))]
     (render-llm-template
      :dashboard
      {:dashboard_id (str id)
@@ -758,7 +775,7 @@
       :dashboard_name name
       :dashboard_description description
       :dashboard_collection_xml (when collection (collection->xml collection))
-      :dashboard_filters_xml filters-xml
+      :dashboard_filters_xml (dashboard-filters->xml parameters)
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
