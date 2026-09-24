@@ -553,7 +553,13 @@
       (is (= 50 (count (re-seq #"<filter " xml))))
       (is (str/includes? xml (str "<filter id=\"p49\" name=\"" (subs long-name 0 100) "...\" type=\"string/=\"/>")))
       (is (str/includes? xml (str "<truncation-note>Showing 50 of 53 filters; "
-                                  "the other 3 are not listed.</truncation-note>"))))))
+                                  "the other 3 are not listed.</truncation-note>")))))
+  (testing "cutting a name never splits an emoji"
+    (let [ascii (apply str (repeat 99 "a"))
+          xml   (llm-shape/dashboard->xml {:id 51 :name "Emoji" :parameters [{:id   "p1"
+                                                                              :name (str ascii "😀")
+                                                                              :type :string/=}]})]
+      (is (str/includes? xml (str "name=\"" ascii "...\""))))))
 
 (deftest ^:parallel user->xml-test
   (testing "formats user matching Python"

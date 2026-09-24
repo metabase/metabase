@@ -190,14 +190,16 @@
     (str/replace s "|" "\\u007c")))
 
 (defn- truncate
-  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+  "Cap `s` at `max-len` characters without splitting a surrogate pair, appending an ellipsis when truncated.
   Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
   Returns nil for nil input."
   [s max-len]
   (when s
     (let [s (str s)]
       (if (> (count s) max-len)
-        (str (subs s 0 max-len) "...")
+        (str (subs s 0 (cond-> max-len
+                         (Character/isHighSurrogate (.charAt s (int (dec max-len)))) dec))
+             "...")
         s))))
 
 (defn- database-type-or-unknown
