@@ -722,8 +722,9 @@
 
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly."
-  [{:keys [id name description verified collection dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
+   dashboard's filters."
+  [{:keys [id name description verified collection parameters dashcards]}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -742,7 +743,14 @@
                                                 "      </content>\n"
                                                 "    </tab>\n")))
                                        sorted-tabs))
-                        "  </tabs>\n"))]
+                        "  </tabs>\n"))
+        filters-xml (when (seq parameters)
+                      (str "  <filters>\n"
+                           (str/join (for [param parameters]
+                                       (str "    <filter id=\"" (escape-xml (:id param))
+                                            "\" name=\"" (escape-xml (:name param))
+                                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+                           "  </filters>\n"))]
     (render-llm-template
      :dashboard
      {:dashboard_id (str id)
@@ -750,6 +758,7 @@
       :dashboard_name name
       :dashboard_description description
       :dashboard_collection_xml (when collection (collection->xml collection))
+      :dashboard_filters_xml filters-xml
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
