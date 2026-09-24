@@ -119,3 +119,74 @@ on each connection, the C extension from `local/vibes_plan_c_extension.md`, or t
 - **JDBC:** `metabase-enterprise.semantic-search.vibes.engine-grammar-test` runs statements with the clause on a
   raw connection, with no proxy. Its tests are no-ops on the stock library. The other vibes tests pass on both
   libraries. The ones specific to the JDBC rewrite pin it with `native-rerank?` redefined to false.
+
+## Examples queries
+
+``` sql
+WITH meetings(description) AS (
+  VALUES
+    ('Emergency response to a production outage'),
+    ('45 minutes to agree that the button should stay blue'),
+    ('A kickoff to schedule the pre-kickoff alignment session'),
+    ('Someone shares a spreadsheet and reads every cell aloud')
+)
+SELECT description
+FROM meetings
+ORDER BY vibes(
+  'this meeting could have been an email',
+  description
+) DESC;
+```
+
+
+``` sql
+WITH expenses(item) AS (
+  VALUES
+    ('Annual accounting software subscription'),
+    ('Three hundred tiny padlocks and a fog machine'),
+    ('A dumpster with heated seats'),
+    ('Noise-cancelling headphones'),
+    ('Overnight shipping on 40 pounds of loose shrimp')
+)
+SELECT item
+FROM expenses
+RERANK BASED ON VIBES(
+  'a raccoon just got a corporate credit card'
+) DESC;
+```
+
+``` sql
+WITH bios(bio) AS (
+  VALUES
+    ('Loves hiking, dogs, and Sunday farmers markets'),
+    ('My ex was crazy. All of them were.'),
+    ('Librarian who bakes bread on weekends'),
+    ('Crypto is not a hobby, it is a lifestyle'),
+    ('Just here to see if my ex is on here'),
+    ('Volunteer firefighter and amateur cellist'),
+    ('Looking for someone who does not mind that I live with my mom and her 11 cats')
+)
+SELECT bio
+FROM bios
+RERANK BASED ON VIBES('red flag') DESC;
+```
+
+
+``` sql
+SELECT c.CATEGORY,
+       (SELECT TITLE FROM PRODUCTS p
+        WHERE p.CATEGORY = c.CATEGORY
+        RERANK BASED ON VIBES('sounds the most luxurious ' || c.CATEGORY) LIMIT 1) AS most_luxurious
+FROM (SELECT DISTINCT CATEGORY FROM PRODUCTS) c
+ORDER BY 1;
+```
+
+``` sql
+SELECT p.TITLE, p.CATEGORY, count(*) AS orders, round(sum(o.TOTAL), 2) AS revenue
+FROM (SELECT ID, TITLE, CATEGORY
+      FROM PRODUCTS
+      RERANK BASED ON VIBES('would make a great gift for a coffee lover') LIMIT 5) AS p
+JOIN ORDERS o ON o.PRODUCT_ID = p.ID
+GROUP BY p.ID
+ORDER BY revenue DESC;
+```
