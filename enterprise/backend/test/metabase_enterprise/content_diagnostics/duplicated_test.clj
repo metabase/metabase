@@ -294,8 +294,8 @@
 
 ;;; ------------------------------------------------- API --------------------------------------------------
 
-(deftest duplicated-finding-type-wire-alias-test
-  (testing "the stored finding_type is the narrow `duplicate_name`, served to clients as `duplicated`"
+(deftest duplicated-finding-type-test
+  (testing "the `duplicated` umbrella stores and serves the `duplicate_name` finding type"
     (mt/with-premium-features #{:content-diagnostics}
       (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
         (let [prefix (scope-prefix)
@@ -305,17 +305,14 @@
              :model/Card {card-a :id} {:collection_id coll-id :name nm}
              :model/Card _             {:collection_id coll-id :name nm}]
             (scan/scan!)
-            (testing "the checker writes the narrow name, and never the legacy one"
+            (testing "the checker writes `duplicate_name`"
               (is (= #{:duplicate_name}
                      (t2/select-fn-set :finding_type :model/ContentDiagnosticsFinding
-                                       :entity_type :card :entity_id card-a)))
-              (is (zero? (t2/count :model/ContentDiagnosticsFinding :finding_type :duplicated))))
+                                       :entity_type :card :entity_id card-a))))
             (let [resp (mt/user-http-request :crowberto :get 200 "ee/content-diagnostics/duplicated"
                                              :query prefix)]
-              (testing "the endpoint still resolves the client-facing name to the stored one"
-                (is (= 2 (:total resp))))
-              (testing "and echoes the client-facing name back, not the stored one"
-                (is (= #{"duplicated"} (into #{} (map :finding_type) (:data resp))))))))))))
+              (is (= 2 (:total resp)))
+              (is (= #{"duplicate_name"} (into #{} (map :finding_type) (:data resp)))))))))))
 
 (deftest duplicated-api-hydration-test
   (testing "GET /duplicated serves findings with hydrated context + same-type peers"

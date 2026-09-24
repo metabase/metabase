@@ -16,12 +16,10 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
-import type {
-  ContentDiagnosticsBaseFinding,
-  ContentDiagnosticsFindingType,
-} from "metabase-types/api";
+import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import { trackContentDiagnosticsEntityOpened } from "../../analytics";
+import type { ContentDiagnosticsTab } from "../types";
 import {
   getBreadcrumbLinks,
   getEntityIcon,
@@ -43,7 +41,7 @@ export type SidebarExtraInfo = {
 
 type DiagnosticsSidebarProps<T extends ContentDiagnosticsBaseFinding> = {
   finding: T;
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   extraInfo?: SidebarExtraInfo;
   children?: ReactNode;
   onClose: () => void;
@@ -80,7 +78,7 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
 
 type SidebarHeaderProps = {
   finding: ContentDiagnosticsBaseFinding;
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   onClose: () => void;
 };
 

@@ -125,7 +125,6 @@
   ;; new finding type left unregistered fails here (and at dispatch), not by silently serving an unfinalized
   ;; row missing its native top-level column / details rewrite.
   ;; This branch serves stale/slow/duplicate_name plus the imbalanced umbrella (empty/sparse/crowded).
-  ;; These are the *stored* names - `duplicate_name` reaches clients as `duplicated`.
   (let [served-finding-types #{:stale :slow :duplicate_name :empty :sparse :crowded}]
     (testing "every served finding-type resolves a method (registry completeness)"
       (doseq [ftype served-finding-types]

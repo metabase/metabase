@@ -10,18 +10,16 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { List } from "metabase/ui";
-import type {
-  ContentDiagnosticsBaseFinding,
-  ContentDiagnosticsFindingType,
-} from "metabase-types/api";
+import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
 import { trackContentDiagnosticsFindingsBulkTrashed } from "../../analytics";
+import type { ContentDiagnosticsTab } from "../types";
 
 import { useBulkTrashFindings } from "./use-bulk-trash-findings";
 
 type ContentDiagnosticsBulkTrashBarProps = {
   selectedFindings: ContentDiagnosticsBaseFinding[];
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   onSettled: (failedFindingIds: number[]) => void;
 };
 

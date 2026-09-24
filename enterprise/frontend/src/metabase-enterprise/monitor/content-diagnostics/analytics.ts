@@ -1,13 +1,13 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type {
-  ContentDiagnosticsEntityType,
-  ContentDiagnosticsFindingType,
-} from "metabase-types/api";
+import type { ContentDiagnosticsEntityType } from "metabase-types/api";
 
-import type { ContentDiagnosticsFilterDimension } from "./components/types";
+import type {
+  ContentDiagnosticsFilterDimension,
+  ContentDiagnosticsTab,
+} from "./components/types";
 
 export const trackContentDiagnosticsTabViewed = (
-  tab: ContentDiagnosticsFindingType,
+  tab: ContentDiagnosticsTab,
 ) => {
   trackSimpleEvent({
     event: "content_diagnostics_tab_viewed",
@@ -20,7 +20,7 @@ export const trackContentDiagnosticsFindingSelected = ({
   entityId,
   entityType,
 }: {
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   entityId: number;
   entityType: ContentDiagnosticsEntityType;
 }) => {
@@ -37,7 +37,7 @@ export const trackContentDiagnosticsEntityOpened = ({
   entityId,
   entityType,
 }: {
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   entityId: number;
   entityType: ContentDiagnosticsEntityType;
 }) => {
@@ -53,7 +53,7 @@ export const trackContentDiagnosticsFiltersChanged = ({
   tab,
   dimension,
 }: {
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   dimension: ContentDiagnosticsFilterDimension;
 }) => {
   trackSimpleEvent({
@@ -64,7 +64,7 @@ export const trackContentDiagnosticsFiltersChanged = ({
 };
 
 export const trackContentDiagnosticsFiltersReset = (
-  tab: ContentDiagnosticsFindingType,
+  tab: ContentDiagnosticsTab,
 ) => {
   trackSimpleEvent({
     event: "content_diagnostics_filters_reset",
@@ -79,7 +79,7 @@ export const trackContentDiagnosticsFindingsBulkTrashed = ({
   durationMs,
   result,
 }: {
-  tab: ContentDiagnosticsFindingType;
+  tab: ContentDiagnosticsTab;
   removedCount: number;
   selectedCount: number;
   durationMs: number;

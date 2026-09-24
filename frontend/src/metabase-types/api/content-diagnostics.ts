@@ -12,10 +12,16 @@ export const CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES = [
 export type ContentDiagnosticsImbalancedFindingType =
   (typeof CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES)[number];
 
+export const CONTENT_DIAGNOSTICS_DUPLICATED_FINDING_TYPES = [
+  "duplicate_name",
+] as const;
+export type ContentDiagnosticsDuplicatedFindingType =
+  (typeof CONTENT_DIAGNOSTICS_DUPLICATED_FINDING_TYPES)[number];
+
 export const CONTENT_DIAGNOSTICS_FINDING_TYPES = [
   "stale",
   "slow",
-  "duplicated",
+  ...CONTENT_DIAGNOSTICS_DUPLICATED_FINDING_TYPES,
   ...CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES,
 ] as const;
 export type ContentDiagnosticsFindingType =
@@ -263,7 +269,7 @@ export type ContentDiagnosticsDuplicatedFindingDetails =
 
 export type ContentDiagnosticsDuplicatedFinding =
   ContentDiagnosticsBaseFinding & {
-    finding_type: "duplicated";
+    finding_type: ContentDiagnosticsDuplicatedFindingType;
     duplicate_count: number;
     details: ContentDiagnosticsDuplicatedFindingDetails;
   };

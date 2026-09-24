@@ -149,7 +149,7 @@
     [:details     SlowDetails]]])
 
 (def ^:private DuplicatedEntity
-  "A hydrated peer of a `duplicated` finding: another entity **of the same type** sharing the flagged
+  "A hydrated peer of a duplicated finding: another entity **of the same type** sharing the flagged
   entity's normalized name. `{id, name, entity_type, card_type?, view_count?}` - `card_type`
   (question/model/metric) only on card peers. Card/dashboard/document peers carry their live
   `view_count` for judging which duplicate is the abandoned one; transforms have no view concept, so
@@ -170,7 +170,7 @@
     [:duplicate_entities [:sequential DuplicatedEntity]]]])
 
 (def ^:private DuplicatedFinding
-  "Response item for a `duplicated` finding: flat identity + a top-level `duplicate_count` + nested typed
+  "Response item for a duplicated finding: flat identity + a top-level `duplicate_count` + nested typed
   `details`. `duplicate_count` is the peer count (cluster size minus 1) and is never null on duplicated
   findings. `details.view_count` is the flagged entity's own live usage counter (present for every type
   but transform). `details.normalized_name` is the normalized name the cluster collided on;
@@ -179,10 +179,6 @@
   is always present)."
   [:merge FindingBase
    [:map
-    ;; the stored `finding_type` is the narrower `duplicate_name`; `duplicated` is the client-facing name
-    ;; this endpoint has always served, pinned here so a missing wire alias fails response validation
-    ;; rather than reaching the client (see `api.common/wire-finding-type`)
-    [:finding_type    [:= :duplicated]]
     ;; peer count (top-level, SQL-filterable/sortable); always present on duplicated findings
     [:duplicate_count :int]
     [:details         DuplicatedDetails]]])
@@ -234,13 +230,17 @@
   `empty`/`sparse`/`crowded`, so it stays a superset of what they emit."
   #{:card :collection :dashboard :document :transform})
 
+(def ^:private duplicated-finding-types
+  "The finding types the `/duplicated` endpoint spans."
+  #{:duplicate_name})
+
 (def ^:private duplicated-sort-column->field
   "Sortable duplicated-list params → their native `content_diagnostics_finding` column. The shared base
   plus the duplicated-specific `duplicate-count` magnitude column."
   (assoc api.common/base-sort-column->field :duplicate-count :duplicate_count))
 
 (def ^:private duplicated-entity-types
-  "Entity types the `duplicated` finding can emit - the shared `api.common/covered-entity-types` plus
+  "Entity types the duplicated finding types can emit - the shared `api.common/covered-entity-types` plus
   `:collection` (its own endpoint enum, not the shared set, so the stale/slow endpoints stay
   collection-free)."
   (conj api.common/covered-entity-types :collection))
@@ -284,7 +284,7 @@
   `duplicate_count` (the peer count - e.g. names shared by 3+ entities = `min-duplicate-count` 2)."
   [{:keys [min-duplicate-count] :as params}]
   (api.common/findings-where
-   "duplicated" params
+   (mapv name duplicated-finding-types) params
    (when min-duplicate-count [:>= :duplicate_count min-duplicate-count])))
 
 (defn- findings-response
@@ -455,12 +455,13 @@
       [:limit        [:maybe :int]]
       [:offset       [:maybe :int]]
       [:last_scan_at [:maybe ms/TemporalInstant]]]
-  "List **duplicated** findings - the latest valid `duplicated` finding per entity, permission-filtered
-  for the current user. Each item is a flat identity + a top-level `duplicate_count` (the number of other
-  same-type entities sharing the normalized name) + a nested `details` (collection, `description`,
-  `owner`, `creator`, `normalized_name`, and the hydrated same-type `duplicate_entities` peers). Card
-  items also carry a top-level `card_type` (`question`|`model`|`metric`) - card findings only,
-  denormalized at scan time. Paginated via `limit`/`offset`; `total` is the full valid count.
+  "List **duplicated** findings - the latest valid finding per (entity, finding-type) across the
+  duplicated finding types (currently just `duplicate_name`), permission-filtered for the current user.
+  Each item is a flat identity + a top-level `duplicate_count` (the number of other same-type entities
+  sharing the normalized name) + a nested `details` (collection, `description`, `owner`, `creator`,
+  `normalized_name`, and the hydrated same-type `duplicate_entities` peers). Card items also carry a
+  top-level `card_type` (`question`|`model`|`metric`) - card findings only, denormalized at scan time.
+  Paginated via `limit`/`offset`; `total` is the full valid count.
 
   Params: `include-personal-collections` (default false) - when false, entities currently in a personal
   collection are excluded and personal-collection peers are omitted from `duplicate_entities`.
