@@ -188,7 +188,11 @@ function ReplaceWithTransformForm({
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={onClose}
+            >{t`Cancel`}</Button>
             <FormSubmitButton
               label={t`Convert to a transform`}
               variant="filled"

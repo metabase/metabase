@@ -54,10 +54,10 @@ export const LegacyPermissionsModal = ({
       <Text mb="1.5rem">
         {t`Your permissions have been automatically converted to the new settings, with no change in data access for your groups.`}
       </Text>
-      <Flex justify="space-between">
+      <Flex justify="space-between" align="center">
         <Button
-          variant="subtle"
-          p={0}
+          variant="transparent"
+          size="compact-md"
           component={Link}
           to={docsUrl}
           target="_blank"

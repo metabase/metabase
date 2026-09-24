@@ -47,7 +47,7 @@ const TimelineEmptyState = ({
         </Text>
       </Box>
       {canWrite && onNewEvent != null && (
-        <Button variant="filled" w="12.5rem" onClick={onNewEvent}>
+        <Button variant="filled" size="lg" w="12.5rem" onClick={onNewEvent}>
           {t`Create event`}
         </Button>
       )}

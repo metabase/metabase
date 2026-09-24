@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; registers the run_saved_question tool for the call-tool seam below
    [metabase.mcp.v2.tools.query]
    [metabase.test :as mt]
@@ -48,7 +49,7 @@
 (defn- response-text
   "A dispatch outcome's text block, or a registry-level rejection's message."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (if error (message/render (:message error)) (-> result :content first :text v2.tu/strip-data-boundary)))
 
 (defn- dispatch-error?
   "Whether a dispatch outcome is an error, at either layer: a registry-level rejection
