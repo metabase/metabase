@@ -17,7 +17,7 @@
   (let [byte-count  (atom 0)
         check-total (fn [current-total]
                       (when (> current-total max-bytes)
-                        (log/info "Results are too large to cache." (u/emoji "😫"))
+                        (log/warn "Results are too large to cache." (u/emoji "😫"))
                         (throw (ex-info (trs "Results are too large to cache.") {:type ::max-bytes}))))]
     (proxy [FilterOutputStream] [os]
       (write
@@ -71,7 +71,6 @@
         (result)))"
   ([f]
    (do-with-serialization f {:max-bytes (* (cache/query-caching-max-kb) 1024)}))
-
   ([f {:keys [max-bytes]}]
    (with-open [bos (ByteArrayOutputStream.)]
      (let [os    (-> (max-bytes-output-stream max-bytes bos)
