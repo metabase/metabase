@@ -46,11 +46,10 @@
   [query                                                      :- ::lib.schema/query
    {:keys [table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
    column                                                     :- ::lib.schema.metadata/column]
-  (cond-> true
-    (some? table-id) (and (= table-id (:table-id column)))
-    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
-    (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
-    (some? display-name) (and (= display-name (:display-name column)))))
+  (and (or (nil? table-id) (= table-id (:table-id column)))
+       (or (nil? source-name) (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
+       (or (nil? source-field-id) (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
+       (or (nil? display-name) (= display-name (:display-name column)))))
 
 (defn- previous-stage-column-matches
   "A later stage sees the previous stage's result columns, and the columns joinable through their FKs, which can share
