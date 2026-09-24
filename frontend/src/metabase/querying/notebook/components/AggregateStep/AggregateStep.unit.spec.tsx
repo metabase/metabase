@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
 import {
   createMockQueryBuilderState,
@@ -10,12 +11,21 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { createMockCard } from "metabase-types/api/mocks";
 import {
+  SAMPLE_PROVIDER,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
+import {
+  createMockCard,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks";
+import {
+  ORDERS,
   ORDERS_ID,
+  SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
@@ -23,6 +33,43 @@ import { DEFAULT_QUESTION, createMockNotebookStep } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 
 import { AggregateStep } from "./AggregateStep";
+
+function createMetricAggregatedQuery() {
+  const metric = createMockCard({
+    id: 1,
+    name: "Revenue",
+    type: "metric",
+    table_id: ORDERS_ID,
+    dataset_query: createMockStructuredDatasetQuery({
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+      },
+    }),
+  });
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+    questions: [metric],
+  });
+
+  return Lib.createTestQuery(createMetadataProvider({ metadata }), {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        aggregations: [{ type: "metric", id: metric.id }],
+        breakouts: [
+          {
+            type: "column",
+            sourceName: "ORDERS",
+            name: "CREATED_AT",
+            unit: "month",
+          },
+        ],
+      },
+    ],
+  });
+}
 
 function createAggregatedQuery() {
   return Lib.createTestQuery(SAMPLE_PROVIDER, {
@@ -195,6 +242,20 @@ describe("AggregateStep", () => {
 
     const nextQuery = getNextQuery();
     expect(Lib.aggregations(nextQuery, 0)).toHaveLength(0);
+  });
+
+  it("should open a metric aggregation with a breakout in the expression editor", async () => {
+    setup({
+      step: createMockNotebookStep({ query: createMetricAggregatedQuery() }),
+    });
+
+    await userEvent.click(screen.getByText("Revenue"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("custom-expression-query-editor")).toHaveValue(
+        "[Revenue]",
+      ),
+    );
   });
 
   describe("metrics", () => {

@@ -5,6 +5,7 @@ import "cypress-iframe";
 import { H } from "e2e/support";
 
 import "./commands/ui/button";
+import "./commands/ui/codeMirrorText";
 import "./commands/ui/icon";
 import "./commands/ui/paste";
 

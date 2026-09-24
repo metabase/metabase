@@ -663,43 +663,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-        },
-        type: "metric",
-        name: "Revenue",
-      },
-      {
-        wrapId: true,
-        idAlias: "metricId",
-      },
-    );
-
-    cy.get("@metricId").then((metricId) => {
-      const questionDetails = {
-        query: {
-          "source-table": ORDERS_ID,
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
-          aggregation: ["metric", metricId],
-        },
-      };
-
-      H.createQuestion(questionDetails, { visitQuestion: true });
-
-      H.openNotebook();
-
-      H.getNotebookStep("summarize").contains("Revenue").click();
-
-      H.CustomExpressionEditor.value().should("equal", "[Revenue]");
-    });
-  });
-
   it("should open only one bucketing popover at a time (metabase#45036)", () => {
     H.visitQuestionAdhoc(
       {

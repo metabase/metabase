@@ -367,8 +367,12 @@ function useExpression({
   );
 
   const handleBlur = useCallback(() => {
+    // `source` is stale until formatting settles; updating now would overwrite the formatted result
+    if (isFormatting) {
+      return;
+    }
     handleUpdate(source, true);
-  }, [handleUpdate, source]);
+  }, [handleUpdate, source, isFormatting]);
 
   const handleFormatExpression = useCallback(() => {
     formatExpression({ initial: false });
