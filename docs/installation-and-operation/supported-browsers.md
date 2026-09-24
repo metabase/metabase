@@ -11,7 +11,7 @@ We try our best to make sure Metabase works in as many browsers as possible, but
 - Chrome (v120+)
 - Firefox (v121+)
 - Microsoft Edge (v120+)
-- Safari (v17+)
+- Safari (v18.2+)
 
 Metabase may run on older versions of these browsers or on browsers not listed above, but your mileage may vary.
 
