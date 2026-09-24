@@ -6,9 +6,6 @@ name: E2E Journey Capture
 # The artifact format is described in e2e/journey-capture/README.md.
 
 on:
-  push:
-    branches:
-      - e2e-journey-capture
   workflow_dispatch:
     inputs:
       spec:
