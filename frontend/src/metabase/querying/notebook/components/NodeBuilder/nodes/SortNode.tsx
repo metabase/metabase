@@ -121,7 +121,7 @@ export const SortNode = memo(function SortNode({ id, data }: SortNodeProps) {
         type="source"
         position={Position.Right}
         id="out"
-        isConnectable={false}
+        isConnectable={!readOnly}
       />
       <NodeHeader
         icon="sort"

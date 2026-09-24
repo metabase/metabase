@@ -88,7 +88,7 @@ export const LimitNode = memo(function LimitNode({ id, data }: LimitNodeProps) {
         type="source"
         position={Position.Right}
         id="out"
-        isConnectable={false}
+        isConnectable={!readOnly}
       />
       <NodeHeader
         icon="list"

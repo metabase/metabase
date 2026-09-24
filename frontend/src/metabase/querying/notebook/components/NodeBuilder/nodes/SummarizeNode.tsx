@@ -189,7 +189,7 @@ export const SummarizeNode = memo(function SummarizeNode({
         type="source"
         position={Position.Right}
         id="out"
-        isConnectable={false}
+        isConnectable={!readOnly}
       />
       <NodeHeader
         icon="sum"
