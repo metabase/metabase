@@ -1,4 +1,5 @@
 import type {
+  CardId,
   Dataset,
   DatasetColumn,
   DatasetData,
@@ -6,9 +7,9 @@ import type {
   EmbedDatasetData,
   ErrorEmbedDataset,
   Field,
+  MeasureId,
   ReferencedEntitiesResults,
   ReferencedEntityResult,
-  ReferencedEntityType,
   ResultsMetadata,
   RowValue,
   TemplateTag,
@@ -178,19 +179,24 @@ export const createMockReferencedEntityResult = ({
   value = 250,
 }: MockReferencedEntityResultOpts = {}): ReferencedEntityResult => ({
   status: "completed",
-  data: { cols: [createMockColumn({ name: column })], rows: [[value]] },
+  data: {
+    cols: [createMockColumn({ name: column })],
+    rows: [[value]],
+  },
 });
 
-type MockReferencedEntitiesResultsOpts = MockReferencedEntityResultOpts & {
-  type?: ReferencedEntityType;
-  id?: number;
-};
+type MockReferencedEntitiesResultsOpts = MockReferencedEntityResultOpts &
+  ({ type?: "card"; id?: CardId } | { type: "measure"; id?: MeasureId });
 
 export const createMockReferencedEntitiesResults = ({
-  type = "card",
+  column,
   id = 9,
-  ...opts
+  type = "card",
+  value,
 }: MockReferencedEntitiesResultsOpts = {}): ReferencedEntitiesResults => {
-  const results = { [id]: createMockReferencedEntityResult(opts) };
+  const results = {
+    [id]: createMockReferencedEntityResult({ column, value }),
+  };
+
   return type === "card" ? { card: results } : { measure: results };
 };
