@@ -237,6 +237,9 @@ const config = {
         test: /\.(svg|png)$/,
         type: "asset/resource",
         resourceQuery: { not: [/component|source/] },
+        // No `[query]`: a `?url` import must emit the same name as the SDK
+        // build references.
+        generator: { filename: "[hash][ext]" },
       },
       {
         test: /\.css$/,

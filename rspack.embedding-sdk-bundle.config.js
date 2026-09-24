@@ -140,7 +140,19 @@ const config = {
       {
         test: /\.(svg|png)$/,
         type: "asset/inline",
-        resourceQuery: { not: [/component|source/] },
+        resourceQuery: { not: [/component|source|url/] },
+      },
+      {
+        // `?url` opts an image out of inlining. The app build owns the emitted
+        // file, this build only needs its URL: `../dist/` resolves from the
+        // SDK's publicPath (`app/embedding-sdk/`) to the app's `app/dist/`.
+        test: /\.(svg|png)$/,
+        resourceQuery: /url/,
+        type: "asset/resource",
+        generator: {
+          emit: false,
+          filename: "../dist/[hash][ext]",
+        },
       },
       {
         test: /\.css$/,
