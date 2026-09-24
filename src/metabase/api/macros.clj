@@ -936,8 +936,9 @@
   any metadata the endpoint's response would have carried. A carrier owned by the outer middleware covers both, the
   same way `log-api-call` already collects DB call counts from deep inside a request.
 
-  The carrier is optional: nothing installs one unless it needs the value, so routing pays a single map lookup. See
-  `metabase.server.middleware.log/log-api-call`, which installs one for API-key-authenticated requests only."
+  The carrier is optional: routing pays a single map lookup regardless, whether or not one is installed. See
+  `metabase.server.middleware.route-template-carrier/wrap-route-template-carrier`, which installs one
+  unconditionally on every request."
   ::route-template-carrier)
 
 (mu/defn- build-ns-handler :- ::handler

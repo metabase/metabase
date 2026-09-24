@@ -4,6 +4,7 @@
    [metabase.api-keys.usage :as api-keys.usage]
    [metabase.api.macros :as api.macros]
    [metabase.server.middleware.log :as mw.log]
+   [metabase.server.middleware.route-template-carrier :as mw.route-template-carrier]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -45,13 +46,14 @@
    :remote-addr           "203.0.113.7"
    :embedding/auth-method "api-key"
    :api-key-id            7
-   :metabase-user-id      3
-   :tenant-id             9})
+   :metabase-user-id      3})
 
 (defn- run-log-api-call!
-  "Send `request` through [[mw.log/log-api-call]] with a downstream handler that stands in for routing — recording
-  `route-template` into the carrier the middleware installed, the way `metabase.api.macros` does — and then responds
-  with `response`. Returns what the API-key usage recorder was called with (`::not-called` if it wasn't) plus the
+  "Send `request` through [[mw.route-template-carrier/wrap-route-template-carrier]] wrapping
+  [[mw.log/log-api-call]] — mirroring their order in the real middleware stack — with a downstream
+  handler that stands in for routing — recording `route-template` into the carrier the outer
+  middleware installed, the way `metabase.api.macros` does — and then responds with `response`.
+  Returns what the API-key usage recorder was called with (`::not-called` if it wasn't) plus the
   final response.
 
   The recorder now takes the raw `request`/`response` plus a small `extra-info` map — see
@@ -67,7 +69,7 @@
     (mt/with-dynamic-fn-redefs [api-keys.usage/record-api-key-usage!
                                 (fn [request response extra-info]
                                   (reset! recorded {:request request, :response response, :extra-info extra-info}))]
-      ((mw.log/log-api-call handler)
+      ((mw.route-template-carrier/wrap-route-template-carrier (mw.log/log-api-call handler))
        request
        #(reset! final-response %)
        identity))
@@ -109,17 +111,6 @@
           (run-log-api-call! (dissoc api-key-request :embedding/auth-method)
                              nil {:status 401, :body "Unauthenticated"})]
       (is (= ::not-called recorded)))))
-
-(deftest log-api-call-does-not-install-a-carrier-for-other-auth-methods-test
-  (testing "nothing but an API-key request pays for route-template tracking"
-    (let [carrier (atom ::not-installed)]
-      ((mw.log/log-api-call (fn [request respond _raise]
-                              (reset! carrier (get request api.macros/route-template-carrier-key))
-                              (respond {:status 200, :body "ok"})))
-       (assoc api-key-request :embedding/auth-method "session")
-       identity
-       identity)
-      (is (nil? @carrier)))))
 
 (deftest log-api-call-records-api-key-usage-without-a-route-template-test
   (testing "a request that matched no endpoint still records the event, with a nil route-template. Whether the
