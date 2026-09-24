@@ -1,0 +1,27 @@
+/* DropArea positions its root relatively and paints nothing, so only the
+   overrides that reach into it need !important or a child selector. */
+.dropTarget {
+  position: absolute !important;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--mantine-spacing-lg));
+  right: calc(-1 * var(--mantine-spacing-lg));
+  pointer-events: none;
+
+  > * {
+    pointer-events: all;
+  }
+}
+
+.indicator {
+  z-index: 1;
+  border-left: 4px solid var(--mb-color-background_page-tertiary);
+}
+
+.hovered {
+  border-left-color: var(--mb-color-core-brand);
+}
+
+.empty {
+  transform: translateY(calc(-1 * var(--mantine-spacing-lg)));
+}
