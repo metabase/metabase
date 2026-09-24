@@ -2,6 +2,7 @@ import type { GoalSettingKey } from "metabase/viz-core/lib/dynamic-goal-settings
 import * as dynamicGoalSettings from "metabase/viz-core/lib/dynamic-goal-settings";
 import type { VisualizationDisplay } from "metabase-types/api";
 
+// "CARTESIAN" here means displays rendered with `CartesianChart` component
 export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "line",
   "bar",
