@@ -1817,7 +1817,7 @@
   (testing (str "GHY-3289: POST /api/database/:id/sync_schema must not read the Database row from the app DB once "
                 "per column. The Database does not change during a sync, so the number of reads should not grow "
                 "with the number of columns.")
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:h2 :postgres}
       (mt/dataset (mt/dataset-definition "ghy_3289_wide"
                                          [["wide_table"
                                            (for [i (range 60)]
@@ -1828,9 +1828,14 @@
               run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
           (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f] (f))
                                       t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
-                                                                        (when (re-find #"(?i)^SELECT \* FROM \"?metabase_database\"? WHERE \"?id\"? = \?$" sql)
+                                                                        ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+                                                                        (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
                                                                           (swap! db-reads inc))
                                                                         (run-query rf init conn model sql-args opts))]
+            (t2/select-one :model/Database :id db-id)
+            (testing "the counter sees a Database read on this app DB"
+              (is (= 1 @db-reads)))
+            (reset! db-reads 0)
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (let [fields (mt/user-http-request :crowberto :get 200 (format "database/%d/fields" db-id))]
             (testing "sync created a field for every column"
