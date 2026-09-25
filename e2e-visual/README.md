@@ -17,6 +17,7 @@ bun run test-visual
 To test against a Storybook that's already running, such as `bun run storybook`, set `STORYBOOK_URL=http://localhost:6006`.
 
 The HTML report is written to `e2e-visual/report/`. Open it with `bunx playwright show-report e2e-visual/report`.
+`e2e-visual/test-results/` has `results.json`, with per-step timings, and `captured/`, with every screenshot the run took.
 
 ## Choosing stories
 

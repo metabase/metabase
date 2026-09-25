@@ -52,10 +52,12 @@ jobs:
         run: bun run build-storybook
 
       - name: Run visual tests
-        run: bun run test-visual:docker
+        run: |
+          echo "CPU cores: $(nproc)"
+          bun run test-visual:docker
 
       - name: Upload report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: visual-test-report

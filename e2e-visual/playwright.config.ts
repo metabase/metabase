@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { defineConfig } from "@playwright/test";
 
-import { SNAPSHOT_DIR, STORYBOOK_STATIC_DIR } from "./paths";
+import { OUTPUT_DIR, SNAPSHOT_DIR, STORYBOOK_STATIC_DIR } from "./paths";
 import {
   STATIC_SERVER_PORT,
   STORYBOOK_URL,
@@ -14,7 +14,7 @@ const isCI = Boolean(process.env.CI);
 export default defineConfig({
   testDir: __dirname,
   testMatch: "stories.spec.ts",
-  outputDir: path.join(__dirname, "test-results"),
+  outputDir: OUTPUT_DIR,
   snapshotDir: SNAPSHOT_DIR,
   snapshotPathTemplate: "{snapshotDir}/{arg}{ext}",
 
@@ -27,6 +27,7 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["html", { outputFolder: path.join(__dirname, "report"), open: "never" }],
+    ["json", { outputFile: path.join(OUTPUT_DIR, "results.json") }],
   ],
 
   expect: {
