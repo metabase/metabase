@@ -11,8 +11,8 @@ tasks:
 
   ci-backend:
     script: |-
-      clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure \
-      -X:dev:test
+      clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood \
+      && clojure -X:dev:test
     options:
       cache: false
 

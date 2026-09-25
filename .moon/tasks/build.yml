@@ -76,9 +76,9 @@ tasks:
   clean-dev-js:
     script: |-
       rm -rf resources/frontend_client/app/dist \
-      resources/frontend_client/app/embedding-sdk \
-      target/classes/frontend_client/app/dist \
-      target/classes/frontend_client/app/embedding-sdk
+             resources/frontend_client/app/embedding-sdk \
+             target/classes/frontend_client/app/dist \
+             target/classes/frontend_client/app/embedding-sdk
     options:
       cache: false
 

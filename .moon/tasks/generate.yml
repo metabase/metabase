@@ -4,8 +4,8 @@ tasks:
   generate-expression-parser:
     script: |-
       lezer-generator --typeScript \
-      frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer \
-      -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
+                      frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer \
+                      -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
     inputs:
       - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
     outputs:
@@ -32,9 +32,9 @@ tasks:
   types-generate-watch:
     script: |-
       npx chokidar 'resources/openapi/openapi.json' \
-      --initial \
-      -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts' \
-      --debounce 1000
+                   --initial \
+                   -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts' \
+                   --debounce 1000
     options:
       persistent: true
       cache: false
