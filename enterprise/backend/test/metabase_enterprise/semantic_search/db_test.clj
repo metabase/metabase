@@ -108,6 +108,11 @@
 
 (def ^:private base-url "jdbc:postgresql://localhost:5432/mb_semantic_search")
 
+(defn- userinfo-url
+  "[[base-url]] with `userinfo` written before the host."
+  [userinfo]
+  (str "jdbc:postgresql://" userinfo "@localhost:5432/mb_semantic_search"))
+
 (deftest probe-jdbc-url-test
   (testing "the probe URL fills in the fail-fast timeouts the one-shot datasource would otherwise lack"
     ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
@@ -169,7 +174,27 @@
                           :sslpassword "k3y@pass"}}
            (select-keys (parse-db-url (str base-url "?user=postgres&password=p%26ss%3Dword&tcpKeepAlive=true"
                                            "&sslpassword=k3y%40pass"))
-                        [:jdbc-url :credentials])))))
+                        [:jdbc-url :credentials]))))
+  (testing "credentials in the host part come off the URL too, with %-escapes decoded and a `+` kept as is"
+    (is (= {:jdbc-url    (str base-url "?tcpKeepAlive=true")
+            :credentials {:user "postgres", :password "p@ss:w+rd"}}
+           (select-keys (parse-db-url (str (userinfo-url "postgres:p%40ss:w+rd") "?tcpKeepAlive=true"))
+                        [:jdbc-url :credentials]))))
+  (testing "an unencoded `@` in a host-part password still leaves the whole password off the URL"
+    (is (=? {:jdbc-url base-url, :credentials {:user "postgres", :password "p@ss"}}
+            (parse-db-url (userinfo-url "postgres:p@ss")))))
+  (testing "host-part credentials come off whatever the scheme, even one no driver accepts"
+    ;; CI spells the scheme `jdbc:postgres:`, and `jdbc:postgresq:` is a typo DriverManager would quote
+    (doseq [scheme ["jdbc:postgres://" "jdbc:postgresq://"]]
+      (is (=? {:jdbc-url    (str scheme "localhost:5432/mb_semantic_search")
+               :credentials {:user "postgres", :password "secret"}}
+              (parse-db-url (str scheme "postgres:secret@localhost:5432/mb_semantic_search"))))))
+  (testing "a credential set both in the host part and in the query throws, without quoting either value"
+    (let [e (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"The pgvector URL sets password both before the host and as a parameter"
+                 (parse-db-url (str (userinfo-url "postgres:secret") "?password=other"))))]
+      (is (not (re-find #"secret|other" (str (ex-message e) (ex-data e))))))))
 
 (deftest parse-db-url-validation-test
   (testing "an unrecognized param throws rather than being silently ignored by pgjdbc"
@@ -181,7 +206,22 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid value for pgvector pool parameter maxPoolSize"
-         (parse-db-url (str base-url "?maxPoolSize=lots"))))))
+         (parse-db-url (str base-url "?maxPoolSize=lots")))))
+  (testing "an `@` outside the host part throws without quoting the URL"
+    (doseq [url ["jdbc:postgresql://alice:se/cret@db/mb"            ; `/` in the password
+                 "jdbc:postgresql://alice:se?cret@db/mb"            ; `?` in the password
+                 "jdbc:postgresql://alice:se?service=cret@db/mb"    ; `?`, putting the `@` in a param
+                 "jdbc:postgresql://alice:secret@db/mb@elsewhere"]] ; `@` in the database name
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
+        (is (=? {:message (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
+                               "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
+                 :data    {}}
+                {:message (ex-message e), :data (ex-data e)}))
+        (is (not (re-find #"cret|elsewhere" (str (ex-message e) (ex-data e))))))))
+  (testing "a malformed %-escape in a credential throws without quoting any of the value"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url (str base-url "?password=hunter%zz"))))]
+      (is (=? {:message "Malformed %-escape in MB_PGVECTOR_DB_URL", :data {}, :cause nil}
+              {:message (ex-message e), :data (ex-data e), :cause (ex-cause e)})))))
 
 (deftest pool-props-applied-by-c3p0-test
   (testing "c3p0 actually understands and applies every pool property name we set"
