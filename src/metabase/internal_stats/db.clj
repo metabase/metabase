@@ -117,10 +117,14 @@
   [started-after :- ms/TemporalInstant]
   (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
 
-(mu/defn query-execution-statistics-on
-  "The QueryExecution counts per embedding client for executions started on the day of `date`."
-  [date :- ms/TemporalInstant]
-  (t2/select-one query-execution-statistics {:where [:= [:cast :started_at :date] [:cast date :date]]}))
+(mu/defn query-execution-statistics-between
+  "The QueryExecution counts per embedding client for executions started in `[start, end)`."
+  [start :- ms/TemporalInstant
+   end   :- ms/TemporalInstant]
+  ;; A bare range on `started_at` lets the DB use `idx_query_execution_started_at`; casting the column would not.
+  (t2/select-one query-execution-statistics {:where [:and
+                                                     [:>= :started_at start]
+                                                     [:< :started_at end]]}))
 
 (defn- and-not-nil
   ([not-nil-field]
