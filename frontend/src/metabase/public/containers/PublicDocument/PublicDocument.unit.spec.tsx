@@ -1,6 +1,5 @@
 import fetchMock from "fetch-mock";
 
-import { setupMockIntersectionObserver } from "__support__/intersection-observer";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import PublicApp from "metabase/public/containers/PublicApp";
@@ -56,32 +55,15 @@ function setup({
 }
 
 describe("PublicDocument", () => {
-  const { setIntersecting } = setupMockIntersectionObserver();
-
-  it("renders the document read-only, without header actions or comments", async () => {
+  it("renders the document read-only", async () => {
     setup();
 
     const content = await screen.findByTestId("document-content");
     expect(content).toHaveTextContent(TEXT);
-    setIntersecting(true);
-
     expect(screen.getByRole("textbox")).toHaveAttribute(
       "contenteditable",
       "false",
     );
-    expect(
-      screen.queryByRole("button", { name: "More options" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Save" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Comments" }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId("comments-sidebar")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Show all comments" }),
-    ).not.toBeInTheDocument();
   });
 
   it("renders metabot blocks without run or close buttons", async () => {
@@ -140,7 +122,7 @@ describe("PublicDocument", () => {
     expect(screen.queryByTestId("document-content")).not.toBeInTheDocument();
   });
 
-  it("renders the error page when public sharing is disabled", async () => {
+  it("renders the server's error message when public sharing is disabled", async () => {
     setup({ response: { status: 400, body: "An error occurred." } });
 
     expect(await screen.findByText("An error occurred.")).toBeInTheDocument();

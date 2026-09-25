@@ -41,17 +41,24 @@ const setup = (documentId: DocumentId | "new") => {
     wrapper,
   });
 
+  const editor = new Editor({ extensions: [Document, Paragraph, Text] });
   act(() => {
-    result.current.setEditorInstance(
-      new Editor({ extensions: [Document, Paragraph, Text] }),
-    );
+    result.current.setEditorInstance(editor);
   });
+
+  const typeInEditor = (text: string) =>
+    act(() => {
+      editor.commands.insertContent(text);
+      result.current.handleChange(editor.getJSON());
+    });
 
   const getToastMessages = () =>
     store.getState().undo.map(({ message }) => message);
 
-  return { result, getToastMessages };
+  return { result, typeInEditor, getToastMessages };
 };
+
+const CONTENT = "Body text";
 
 describe("useDocumentEditor > save errors", () => {
   afterEach(() => {
@@ -60,15 +67,25 @@ describe("useDocumentEditor > save errors", () => {
   });
 
   it("shows an error toast and keeps the save button when creating a document fails", async () => {
-    const { result, getToastMessages } = setup("new");
+    const { result, typeInEditor, getToastMessages } = setup("new");
+    expect(result.current.showSaveButton).toBe(false);
 
-    act(() => result.current.setDocumentTitle("Title"));
+    typeInEditor(CONTENT);
+    expect(result.current.documentTitle).toBe("");
     expect(result.current.showSaveButton).toBe(true);
 
     const saveResult = await act(() => result.current.handleSave(null));
 
     expect(mockCreateDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Title" }),
+      expect.objectContaining({
+        document: expect.objectContaining({
+          content: [
+            expect.objectContaining({
+              content: [{ type: "text", text: CONTENT }],
+            }),
+          ],
+        }),
+      }),
     );
     expect(saveResult).toEqual({ error: SAVE_ERROR });
     expect(getToastMessages()).toEqual(["Error saving document"]);
@@ -80,19 +97,34 @@ describe("useDocumentEditor > save errors", () => {
       `path:/api/document/${DOCUMENT_ID}`,
       createMockDocument({ id: DOCUMENT_ID, name: "Test Document" }),
     );
-    const { result, getToastMessages } = setup(DOCUMENT_ID);
+    const { result, typeInEditor, getToastMessages } = setup(DOCUMENT_ID);
 
     await waitFor(() =>
       expect(result.current.documentData?.id).toBe(DOCUMENT_ID),
     );
+    // The hook captures the loaded editor content as the dirty-check baseline
+    // on the next tick.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(result.current.showSaveButton).toBe(false);
 
-    act(() => result.current.setDocumentTitle("Updated title"));
+    typeInEditor(CONTENT);
+    expect(result.current.documentTitle).toBe("Test Document");
     expect(result.current.showSaveButton).toBe(true);
 
     const saveResult = await act(() => result.current.handleSave());
 
     expect(mockUpdateDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ id: DOCUMENT_ID, name: "Updated title" }),
+      expect.objectContaining({
+        id: DOCUMENT_ID,
+        name: "Test Document",
+        document: expect.objectContaining({
+          content: [
+            expect.objectContaining({
+              content: [{ type: "text", text: CONTENT }],
+            }),
+          ],
+        }),
+      }),
     );
     expect(saveResult).toEqual({ error: SAVE_ERROR });
     expect(getToastMessages()).toEqual(["Error saving document"]);

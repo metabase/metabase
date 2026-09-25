@@ -28,8 +28,23 @@ const addSupportingText = (cardTitle: string) => {
     .click();
 };
 
-const assertAddSupportingTextDisabled = (cardTitle: string) => {
+// The item is also disabled while the card's node view can't resolve its
+// position, which lasts until the node view renders again after it is attached
+// to the editor. The visualization only renders once the attached card reports
+// it is in the viewport, so a visible visualization means the menu reflects
+// the supporting-text rule.
+const assertAddSupportingTextDisabled = ({
+  cardTitle,
+  vizTestId,
+}: {
+  cardTitle: string;
+  vizTestId: "visualization-root" | "table-root";
+}) => {
+  H.getDocumentCard(cardTitle).findByTestId(vizTestId).should("be.visible");
   H.openDocumentCardMenu(cardTitle);
+  H.popover()
+    .findByRole("menuitem", { name: /Replace/ })
+    .should("be.enabled");
   H.popover()
     .findByText("Add supporting text")
     .closest("button")
@@ -76,6 +91,7 @@ describe("documents supporting text", () => {
     cy.log(
       "Backspace in empty supporting text removes it and unwraps the flexContainer",
     );
+    supportingText().find(".node-paragraph").click();
     cy.realPress("Backspace");
     supportingText().should("not.exist");
     flexContainer().should("not.exist");
@@ -92,7 +108,10 @@ describe("documents supporting text", () => {
     supportingText().contains("p", "Lorem ipsum").should("be.visible");
 
     cy.log("A group that already has supporting text can't get another one");
-    assertAddSupportingTextDisabled(ORDERS_BY_YEAR_CARD_TITLE);
+    assertAddSupportingTextDisabled({
+      cardTitle: ORDERS_BY_YEAR_CARD_TITLE,
+      vizTestId: "visualization-root",
+    });
   });
 
   it("should add supporting text to a group, drop it when the group loses its last card, and disallow it in a full group", () => {
@@ -136,7 +155,10 @@ describe("documents supporting text", () => {
     H.documentContent().findByText("Lorem ipsum").should("not.exist");
 
     cy.log("A group with 3 cards can't get supporting text");
-    assertAddSupportingTextDisabled("Orders");
+    assertAddSupportingTextDisabled({
+      cardTitle: "Orders",
+      vizTestId: "table-root",
+    });
   });
 
   it("should allow resizing supporting text and persist width after save", () => {

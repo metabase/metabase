@@ -63,12 +63,14 @@ const ADMIN = createMockUser({
   first_name: "Bobby",
   last_name: "Tables",
   common_name: "Bobby Tables",
+  is_superuser: true,
 });
 const NORMAL_USER = createMockUser({
   id: 2,
   first_name: "Robert",
   last_name: "Tableton",
   common_name: "Robert Tableton",
+  is_superuser: false,
 });
 
 function createComment({
@@ -428,12 +430,17 @@ describe("CommentsSidesheet", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("resolves another user's thread, shows all its comments without a reply editor, and re-opens it", async () => {
+    it("lets a non-admin resolve another user's thread, shows all its comments without a reply editor, and re-opens it", async () => {
       setup({
-        currentUser: ADMIN,
+        currentUser: NORMAL_USER,
         comments: [
-          createComment({ id: 1, text: "Main comment", creator: NORMAL_USER }),
-          createComment({ id: 2, text: "Reply 1", parent_comment_id: 1 }),
+          createComment({ id: 1, text: "Main comment", creator: ADMIN }),
+          createComment({
+            id: 2,
+            text: "Reply 1",
+            parent_comment_id: 1,
+            creator: ADMIN,
+          }),
         ],
       });
 

@@ -89,6 +89,26 @@
       (mt/user-http-request :rasta :put 403 (str "document/" document-id)
                             {:name "Meow"}))))
 
+(deftest put-document-in-root-collection-non-admin-test
+  (testing "PUT /api/document/:id - a non-admin edits a root-collection document only with root curate perms"
+    (mt/with-temp [:model/Document {document-id :id} {:collection_id nil
+                                                      :name "Root Document"
+                                                      :document (documents.test-util/text->prose-mirror-ast "Initial")}]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (testing "without root curate perms"
+          (mt/user-http-request :rasta :put 403 (str "document/" document-id)
+                                {:name "Forbidden"})
+          (is (= "Root Document" (t2/select-one-fn :name :model/Document :id document-id))))
+        (testing "with root curate perms"
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection/root-collection)
+          (is (=? {:name "Updated by rasta"}
+                  (mt/user-http-request :rasta :put 200 (str "document/" document-id)
+                                        {:name     "Updated by rasta"
+                                         :document (documents.test-util/text->prose-mirror-ast "Edited")})))
+          (is (=? {:name     "Updated by rasta"
+                   :document (documents.test-util/text->prose-mirror-ast "Edited")}
+                  (t2/select-one :model/Document :id document-id))))))))
+
 (deftest put-document-archived-test
   (testing "PUT /api/document/:id - cannot update archived document"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Test Document"

@@ -111,9 +111,12 @@ describe("CardEmbedMenuDropdown", () => {
   it("enables every action, including downloads, for people who can edit the document", async () => {
     setup({ canWrite: true });
 
-    [...WRITE_ONLY_ITEMS, "Comment", "Download results"].forEach((name) =>
+    [...WRITE_ONLY_ITEMS, "Download results"].forEach((name) =>
       expect(getMenuItem(name)).toBeEnabled(),
     );
+    const commentItem = getMenuItem("Comment");
+    expect(commentItem).toHaveAttribute("href", "/document/1/comments/abc");
+    expect(commentItem).not.toHaveAttribute("data-disabled");
 
     await expectDownloadFormats();
   });

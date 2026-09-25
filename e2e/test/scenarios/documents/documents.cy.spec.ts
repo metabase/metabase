@@ -281,28 +281,21 @@ describe("documents", () => {
   });
 
   it("should focus the document body from the title and warn before discarding a new document", () => {
-    cy.visit("/");
-    H.newButton("Document").click();
+    cy.visit("/document/new");
     cy.title().should("eq", "New document · Metabase");
 
     cy.findByRole("textbox", { name: "Document Title" }).should("be.focused");
     H.documentSaveButton().should("not.exist");
 
-    cy.log("Pressing Enter on the title focuses the start of the body");
-    cy.findByRole("textbox", { name: "Document Title" }).type(
-      "Doc Title{enter}",
-    );
+    cy.log("Body content alone makes an untitled document dirty");
+    H.documentContent().click();
     H.addToDocument("One{enter}Two");
-
-    cy.findByRole("textbox", { name: "Document Title" })
-      .click()
-      .type("{enter}");
-
-    cy.realType("NEW: ");
-    H.documentContent().should("have.text", "NEW: OneTwo");
     H.documentSaveButton().should("be.visible");
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "",
+    );
 
-    cy.log("Starting another new document warns about unsaved changes");
     H.newButton("Document").click();
     H.expectUnstructuredSnowplowEvent(
       {
@@ -311,9 +304,16 @@ describe("documents", () => {
       1,
     );
     H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
+    H.documentContent().should("have.text", "OneTwo");
 
+    cy.log("Pressing Enter on the title focuses the start of the body");
+    cy.findByRole("textbox", { name: "Document Title" }).type(
+      "Doc Title{enter}",
+    );
+    cy.realType("NEW: ");
     H.documentContent().should("have.text", "NEW: OneTwo");
 
+    cy.log("Starting another new document warns about unsaved changes");
     H.newButton("Document").click();
     H.expectUnstructuredSnowplowEvent(
       {
@@ -395,6 +395,8 @@ describe("documents", () => {
           "contain.text",
           "Sorry, you don’t have permission to see that.",
         );
+        H.documentContent().should("not.exist");
+        cy.findByRole("button", { name: /ellipsis/ }).should("not.exist");
 
         cy.log("A nonexistent document shows the not found page");
         cy.signInAsAdmin();
@@ -548,6 +550,91 @@ describe("documents", () => {
       });
     });
 
+    it("should support formatting via the floating menu", () => {
+      const content = "Some text to play with";
+      const formatButton = (name: RegExp | string) =>
+        H.documentFormattingMenu().findByRole("button", { name });
+      const assertPlainText = () =>
+        H.documentContent().should("contain.text", content);
+
+      H.visitDocument("@documentId");
+      H.documentContent().click();
+      H.addToDocument(content, false);
+      cy.realPress(["Shift", "Home"]);
+      H.documentFormattingMenu().should("be.visible");
+
+      cy.log("Marks toggle on and off");
+      formatButton(/text_bold/).click();
+      H.documentContent().findByRole("strong").should("have.text", content);
+      formatButton(/text_bold/).click();
+      assertPlainText();
+      H.documentContent().findByRole("strong").should("not.exist");
+
+      formatButton(/text_italic/).click();
+      H.documentContent().findByRole("emphasis").should("have.text", content);
+      formatButton(/text_italic/).click();
+      assertPlainText();
+      H.documentContent().findByRole("emphasis").should("not.exist");
+
+      formatButton(/text_strike/).click();
+      H.documentContent().find("s").should("have.text", content);
+      formatButton(/text_strike/).click();
+      assertPlainText();
+      H.documentContent().find("s").should("not.exist");
+
+      formatButton(/format_code/).click();
+      H.documentContent().findByRole("code").should("have.text", content);
+      formatButton(/format_code/).click();
+      assertPlainText();
+      H.documentContent().findByRole("code").should("not.exist");
+
+      cy.log("Block types toggle on and off");
+      formatButton("H1").click();
+      H.documentContent()
+        .findByRole("heading", { level: 1 })
+        .should("have.text", content);
+      formatButton("H1").click();
+      assertPlainText();
+      H.documentContent().findByRole("heading").should("not.exist");
+
+      formatButton("H2").click();
+      H.documentContent()
+        .findByRole("heading", { level: 2 })
+        .should("have.text", content);
+      formatButton("H2").click();
+      assertPlainText();
+      H.documentContent().findByRole("heading").should("not.exist");
+
+      formatButton(/^list/).click();
+      H.documentContent()
+        .findByRole("list")
+        .should("match", "ul")
+        .and("have.text", content);
+      formatButton(/^list/).click();
+      assertPlainText();
+      H.documentContent().findByRole("list").should("not.exist");
+
+      formatButton(/ordered_list/).click();
+      H.documentContent()
+        .findByRole("list")
+        .should("match", "ol")
+        .and("have.text", content);
+      formatButton(/ordered_list/).click();
+      assertPlainText();
+      H.documentContent().findByRole("list").should("not.exist");
+
+      formatButton(/quote/).click();
+      H.documentContent().findByRole("blockquote").should("have.text", content);
+      formatButton(/quote/).click();
+      assertPlainText();
+      H.documentContent().findByRole("blockquote").should("not.exist");
+
+      cy.log("A code block hides the floating menu");
+      formatButton(/code_block/).click();
+      H.documentContent().find("pre").should("have.text", content);
+      H.documentFormattingMenu().should("not.exist");
+    });
+
     describe("Card Embeds", () => {
       beforeEach(() => {
         H.createQuestion(PRODUCTS_AVERAGE_BY_CATEGORY);
@@ -634,7 +721,7 @@ describe("documents", () => {
         assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
-      it("should support adding, editing, replacing, and resizing cards", () => {
+      it("should support adding, editing, and replacing cards", () => {
         H.visitDocument("@documentId");
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -743,27 +830,6 @@ describe("documents", () => {
           .should("not.exist");
 
         H.getDocumentCard("Orders").should("be.visible");
-
-        cy.log("resize a card");
-        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-          const ogHeight = el.height();
-          const resizeNode = H.getDocumentCardResizeContainer(
-            ACCOUNTS_COUNT_BY_CREATED_AT.name,
-          );
-
-          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
-            y: 200,
-          });
-
-          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-            const newHeight = el.height();
-
-            cy.log(`${ogHeight}, ${newHeight}`);
-
-            // Unjustified type cast. FIXME
-            expect(newHeight).to.be.lessThan(ogHeight as number);
-          });
-        });
       });
 
       it("should support renaming cards", () => {
@@ -853,6 +919,39 @@ describe("documents", () => {
             });
         });
       };
+
+      it("should support resizing cards", () => {
+        H.visitDocument("@documentId");
+        H.documentContent().click();
+        H.addToDocument("/", false);
+        H.addToDocument("Accounts", false);
+        H.commandSuggestionDialog().should(
+          "contain.text",
+          ACCOUNTS_COUNT_BY_CREATED_AT.name,
+        );
+        cy.realPress("{downarrow}");
+        H.addToDocument("\n", false);
+
+        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+          const ogHeight = el.height();
+          const resizeNode = H.getDocumentCardResizeContainer(
+            ACCOUNTS_COUNT_BY_CREATED_AT.name,
+          );
+
+          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
+            y: 200,
+          });
+
+          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+            const newHeight = el.height();
+
+            cy.log(`${ogHeight}, ${newHeight}`);
+
+            // Unjustified type cast. FIXME
+            expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
+      });
 
       it("keeps chart widths in sync during flex resize", () => {
         const cardIds: Record<string, { firstId: number; secondId: number }> =

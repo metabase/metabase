@@ -205,7 +205,7 @@
                   part-id      (get-in doc [:content 0 :attrs "_id"])
                   doc-href     (str site-url "/document/" doc-id)
                   comment-href #(format "%s/document/%s/comments/%s#comment-%s" site-url doc-id part-id (:id %))
-                  post!        (fn [user & [parent-id content]]
+                  post!        (fn [{:keys [user parent-id content]}]
                                  (mt/user-http-request user :post 200 "comment/"
                                                        (cond-> {:target_type     "document"
                                                                 :target_id       doc-id
@@ -221,7 +221,7 @@
                                    (is (= "Comment on Lorem ipsum" (:subject email)))
                                    (-> email :body first :content)))]
               (testing "a new thread notifies the document owner"
-                (let [created (post! :rasta)
+                (let [created (post! {:user :rasta})
                       inbox   (take-inbox!)]
                   (is (= #{(:email (mt/fetch-user :crowberto))} (set (keys inbox))))
                   (check-comment-email (email-html inbox :crowberto)
@@ -231,9 +231,9 @@
                                         :comment-href (comment-href created)
                                         :site-url     site-url})))
               (testing "a reply notifies everyone in the thread except its author"
-                (let [root  (post! :crowberto)
+                (let [root  (post! {:user :crowberto})
                       _     (is (empty? (take-inbox!)) "the author is not notified about their own comment")
-                      reply (post! :rasta (:id root))
+                      reply (post! {:user :rasta :parent-id (:id root)})
                       inbox (take-inbox!)]
                   (is (= #{(:email (mt/fetch-user :crowberto))} (set (keys inbox))))
                   (check-comment-email (email-html inbox :crowberto)
@@ -242,12 +242,12 @@
                                         :doc-title    "Lorem ipsum"
                                         :comment-href (comment-href reply)
                                         :site-url     site-url})
-                  (let [reply2 (post! :lucky (:id root))
+                  (let [reply2 (post! {:user :lucky :parent-id (:id root)})
                         inbox  (take-inbox!)]
                     (is (= #{(:email (mt/fetch-user :crowberto)) (:email (mt/fetch-user :rasta))}
                            (set (keys inbox))))
                     (doseq [user [:crowberto :rasta]]
-                      (testing user
+                      (testing (name user)
                         (check-comment-email (email-html inbox user)
                                              {:heading      "Lucky Pigeon replied to a thread"
                                               :doc-href     doc-href
@@ -255,8 +255,9 @@
                                               :comment-href (comment-href reply2)
                                               :site-url     site-url}))))))
               (testing "an @mention notifies the mentioned user"
-                (let [created (post! :crowberto nil (tiptap [:smartLink {:model    "user"
-                                                                         :entityId (mt/user->id :rasta)}]))
+                (let [created (post! {:user    :crowberto
+                                      :content (tiptap [:smartLink {:model    "user"
+                                                                    :entityId (mt/user->id :rasta)}])})
                       inbox   (take-inbox!)]
                   (is (= #{(:email (mt/fetch-user :rasta))} (set (keys inbox))))
                   (check-comment-email (email-html inbox :rasta)

@@ -43,6 +43,10 @@ const SupportingTextStub = Node.create({
   name: "supportingText",
   group: "block",
   content: "paragraph+",
+  draggable: true,
+  renderHTML() {
+    return ["div", { class: "node-supportingText" }, 0];
+  },
 });
 
 type Side = "left" | "right";
@@ -52,10 +56,21 @@ type Side = "left" | "right";
 const TARGET_RECT_WIDTH = 100;
 const CLIENT_X_BY_SIDE: Record<Side, number> = { left: 20, right: 80 };
 
-const card = (id: number): JSONContent => ({
-  type: "cardEmbed",
-  attrs: { id },
-});
+const SUPPORTING_TEXT = "text";
+
+type Item = number | typeof SUPPORTING_TEXT;
+
+const toContent = (item: Item): JSONContent =>
+  item === SUPPORTING_TEXT
+    ? {
+        type: "supportingText",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "Hi" }] },
+        ],
+      }
+    : { type: "cardEmbed", attrs: { id: item } };
+
+const card = (id: number): JSONContent => toContent(id);
 
 const standalone = (id: number): JSONContent => ({
   type: "resizeNode",
@@ -63,7 +78,7 @@ const standalone = (id: number): JSONContent => ({
 });
 
 const columns = (
-  ids: number[],
+  items: Item[],
   columnWidths: number[] | null = null,
 ): JSONContent => ({
   type: "resizeNode",
@@ -71,7 +86,7 @@ const columns = (
     {
       type: "flexContainer",
       attrs: { columnWidths },
-      content: ids.map(card),
+      content: items.map(toContent),
     },
   ],
 });
@@ -92,20 +107,21 @@ function setup(content: JSONContent[]) {
   });
 }
 
-function findCard(doc: ProseMirrorNode, id: number) {
-  const matches = findChildren(
-    doc,
-    (node) => node.type.name === "cardEmbed" && node.attrs.id === id,
+function findItem(doc: ProseMirrorNode, item: Item) {
+  const matches = findChildren(doc, (node) =>
+    item === SUPPORTING_TEXT
+      ? node.type.name === "supportingText"
+      : node.type.name === "cardEmbed" && node.attrs.id === item,
   );
   if (matches.length !== 1) {
-    throw new Error(`Expected exactly one card with id ${id}`);
+    throw new Error(`Expected exactly one ${item} node`);
   }
   return matches[0];
 }
 
 /**
- * Simulates ProseMirror dispatching a drop of card `cardId` onto card
- * `targetId`. Layout-dependent view methods are stubbed because jsdom has no
+ * Simulates ProseMirror dispatching a drop of `cardId` (a card id or the
+ * supporting text) onto card `targetId`. Layout-dependent view methods are stubbed because jsdom has no
  * layout; everything else runs through the real `handleDrop` plugin prop.
  */
 function dropCard({
@@ -115,14 +131,14 @@ function dropCard({
   side = "left",
 }: {
   editor: Editor;
-  cardId: number;
+  cardId: Item;
   targetId: number;
   side?: Side;
 }) {
   const { view } = editor;
   const { doc } = view.state;
-  const source = findCard(doc, cardId);
-  const target = findCard(doc, targetId);
+  const source = findItem(doc, cardId);
+  const target = findItem(doc, targetId);
 
   // Card nodes render as elements, and nodeDOM is typed as the wider `Node`.
   const targetDOM = view.nodeDOM(target.pos) as HTMLElement;
@@ -147,19 +163,22 @@ function dropCard({
   );
 }
 
-type LayoutBlock = number | number[];
+type LayoutBlock = Item | Item[];
 
 const childNodes = (node: ProseMirrorNode) => [...node.content.content];
 
 /** Top-level layout: a number for a standalone card, an array for columns. */
+const toItem = (node: ProseMirrorNode): Item =>
+  node.type.name === "supportingText" ? SUPPORTING_TEXT : node.attrs.id;
+
 function getLayout(editor: Editor): LayoutBlock[] {
   return childNodes(editor.state.doc)
     .filter((block) => block.type.name === "resizeNode")
     .flatMap(childNodes)
     .map((child) =>
       child.type.name === "flexContainer"
-        ? childNodes(child).map((item) => item.attrs.id)
-        : child.attrs.id,
+        ? childNodes(child).map(toItem)
+        : toItem(child),
     );
 }
 
@@ -251,10 +270,6 @@ describe("HandleEditorDrop", () => {
     it("keeps all three cards when reordering a full row", () => {
       const editor = setup([columns([1, 2, 3]), standalone(4)]);
 
-      dropCard({ editor, cardId: 1, targetId: 2, side: "left" });
-
-      expect(getLayout(editor)).toEqual([[1, 2, 3], 4]);
-
       dropCard({ editor, cardId: 1, targetId: 3, side: "right" });
 
       expect(getLayout(editor)).toEqual([[2, 3, 1], 4]);
@@ -296,6 +311,44 @@ describe("HandleEditorDrop", () => {
         [1, 4],
         [2, 3],
       ]);
+    });
+  });
+  describe("dropping supporting text", () => {
+    it("reorders it within its own columns", () => {
+      const editor = setup([columns([SUPPORTING_TEXT, 1, 2])]);
+
+      expect(
+        dropCard({
+          editor,
+          cardId: SUPPORTING_TEXT,
+          targetId: 1,
+          side: "right",
+        }),
+      ).toBe(true);
+
+      expect(getLayout(editor)).toEqual([[1, SUPPORTING_TEXT, 2]]);
+    });
+
+    it.each<{ name: string; content: JSONContent[]; targetId: number }>([
+      {
+        name: "a standalone card",
+        content: [columns([SUPPORTING_TEXT, 1, 2]), standalone(3)],
+        targetId: 3,
+      },
+      {
+        name: "other columns",
+        content: [columns([SUPPORTING_TEXT, 1, 2]), columns([3, 4])],
+        targetId: 3,
+      },
+    ])("rejects a drop onto $name", ({ content, targetId }) => {
+      const editor = setup(content);
+      const docBefore = editor.state.doc;
+
+      expect(
+        dropCard({ editor, cardId: SUPPORTING_TEXT, targetId, side: "right" }),
+      ).toBe(true);
+
+      expect(editor.state.doc.eq(docBefore)).toBe(true);
     });
   });
 });

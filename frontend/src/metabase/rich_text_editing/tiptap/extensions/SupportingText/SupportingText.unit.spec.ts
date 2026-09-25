@@ -91,9 +91,14 @@ const descendantTypes = (node: ProseMirrorNode): string[] =>
 
 const nodeTypes = (editor: Editor) => descendantTypes(editor.state.doc);
 
+/** Returns whether an editor keyboard handler claimed the key press. */
 const pressBackspace = (editor: Editor) =>
-  editor.view.dom.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }),
+  !editor.view.dom.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: "Backspace",
+      bubbles: true,
+      cancelable: true,
+    }),
   );
 
 describe("SupportingText", () => {
@@ -101,7 +106,7 @@ describe("SupportingText", () => {
     const { editor } = setup({ supportingText: "" });
     expect(nodeTypes(editor)).toContain("supportingText");
 
-    pressBackspace(editor);
+    expect(pressBackspace(editor)).toBe(true);
 
     expect(nodeTypes(editor)).toEqual(["resizeNode", "cardEmbed", "paragraph"]);
     expect(editor.state.doc.firstChild?.firstChild?.attrs.id).toBe(1);
@@ -112,10 +117,11 @@ describe("SupportingText", () => {
   it("keeps a non-empty supporting text on Backspace", () => {
     const { editor } = setup({ supportingText: "Lorem" });
 
-    pressBackspace(editor);
+    expect(pressBackspace(editor)).toBe(false);
 
     expect(nodeTypes(editor)).toContain("supportingText");
     expect(nodeTypes(editor)).toContain("flexContainer");
+    expect(editor.state.doc.firstChild?.textContent).toBe("Lorem");
 
     editor.destroy();
   });

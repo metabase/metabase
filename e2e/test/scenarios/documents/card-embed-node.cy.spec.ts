@@ -143,6 +143,27 @@ describe("documents card embed node custom logic", () => {
       flexContainers().within(() => {
         assertFlexContainerCardsOrder(["Orders", "Orders, Count"]);
       });
+
+      cy.log(
+        "moving a card out of the flexContainer onto a standalone card unwraps the card left behind",
+      );
+      H.dragAndDropCardOnAnotherCard(
+        "Orders, Count",
+        "Orders, Count, Grouped by Created At (year)",
+        { side: "right" },
+      );
+
+      flexContainers()
+        .should("have.length", 1)
+        .within(() => {
+          assertFlexContainerCardsOrder([
+            "Orders, Count, Grouped by Created At (year)",
+            "Orders, Count",
+          ]);
+        });
+      H.documentContent()
+        .findAllByTestId("document-card-embed")
+        .should("have.length", 3);
     });
 
     it("should add a third card to an existing flexContainer, resize it, and delete cards from it", () => {

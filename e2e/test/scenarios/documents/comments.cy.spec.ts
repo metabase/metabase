@@ -28,13 +28,17 @@ describe("document comments", () => {
   });
 
   it("allows to comment on every type of node", () => {
+    cy.intercept("GET", "/api/comment?*").as("listComments");
     createAndVisitLoremIpsumDocument();
 
     cy.log("does not need schema adjustments by default");
     cy.findByRole("button", { name: "Save" }).should("not.exist");
 
     cy.log("does not have any comments by default");
-    cy.findByRole("link", { name: "All comments" }).should("not.exist");
+    cy.wait("@listComments")
+      .its("response.body.comments")
+      .should("have.length", 0);
+    cy.findByRole("link", { name: "Show all comments" }).should("not.exist");
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
       testCommentingOnNode(documentId, HEADING_1_ID, H.getHeading1);
@@ -49,6 +53,9 @@ describe("document comments", () => {
         isCardEmbedNode: true,
       });
     });
+
+    cy.log("shows the all-comments link once the document has comments");
+    cy.findByRole("link", { name: "Show all comments" }).should("be.visible");
 
     function testCommentingOnNode<E extends HTMLElement>(
       targetId: DocumentId,
@@ -387,10 +394,24 @@ describe("document comments", () => {
       H.getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
 
       cy.findByLabelText("Comments").should("not.be.disabled").click();
-      Comments.getSidebar().should("be.visible");
+      Comments.getSidebar()
+        .findByRole("heading", { name: "Comments about this" })
+        .should("be.visible");
 
-      cy.findByLabelText("Show all comments").should("not.be.disabled").click();
-      Comments.getSidebar().should("be.visible");
+      cy.log("the header link switches the sidebar to the all-comments view");
+      cy.findByRole("link", { name: "Show all comments" })
+        .should("not.be.disabled")
+        .click();
+      cy.location("pathname").should(
+        "eq",
+        `/document/${documentId}/comments/all`,
+      );
+      Comments.getSidebar().within(() => {
+        cy.findByRole("heading", { name: "All comments" }).should("be.visible");
+        cy.findByRole("heading", { name: "Comments about this" }).should(
+          "not.exist",
+        );
+      });
     });
   });
 
