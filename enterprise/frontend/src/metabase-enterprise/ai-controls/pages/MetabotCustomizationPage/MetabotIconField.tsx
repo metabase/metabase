@@ -176,7 +176,7 @@ export function MetabotIconField() {
               flex="0 0 auto"
             />
             <Text fz="md" c="text-secondary" flex="1">
-              {t`Show Metabot illustrations in chat sidebar and AI exploration page`}
+              {t`Show Metabot illustrations in the chat sidebar`}
             </Text>
           </Flex>
           <Switch
