@@ -8,10 +8,10 @@ import fetchMockModule from "fetch-mock";
 const { cleanup, configure } = testingLibrary;
 const fetchMock = fetchMockModule;
 
-// The first render of a heavy component in a worker now loads its modules
-// inside the waitFor window, about 2.4s on a cold worker, which the 1s
-// default does not cover. A passing wait is not affected.
-configure({ asyncUtilTimeout: 3000 });
+// The first render of a heavy component in a worker loads its modules inside
+// the waitFor window: 1.5s to 2.5s on a cold worker here, more on a CI runner.
+// A passing wait is not affected, and no test relies on the timeout to pass.
+configure({ asyncUtilTimeout: 10000 });
 
 // jsdom has no layout, so popover positioning computes nothing useful while
 // costing getComputedStyle calls and an extra re-render per position update.
