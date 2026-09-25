@@ -109,3 +109,12 @@ tasks:
       - '@group(frontend)'
       - '@group(e2e)'
       - '@group(tsconfig)'
+
+  typecheck:
+    description: >-
+      Alias for type-check.
+    command: noop
+    deps:
+      - type-check
+    options:
+      cache: false
