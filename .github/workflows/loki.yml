@@ -1,10 +1,14 @@
-name: Loki Visual Regression Testing
+name: Storybook Visual Tests
 
 on:
   workflow_call:
     inputs:
       skip:
         description: "Skip the Loki visual tests."
+        type: boolean
+        default: false
+      skip-playwright:
+        description: "Skip the Playwright visual tests."
         type: boolean
         default: false
       test-plan-artifact-id:
@@ -106,6 +110,42 @@ jobs:
           name: loki-report
           include-hidden-files: true
           path: .loki/
+          if-no-files-found: ignore
+
+  playwright-visual-test:
+    name: playwright-run
+    if: ${{ !inputs.skip-playwright }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development bun run build-pure:cljs
+
+      - name: Build Storybook
+        run: bun run build-storybook:visual
+
+      - name: Run visual tests
+        run: |
+          echo "CPU cores: $(nproc)"
+          bun run test-visual:docker
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-report
+          path: |
+            e2e-visual/report/
+            e2e-visual/test-results/
           if-no-files-found: ignore
 
   loki-tests-result:

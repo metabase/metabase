@@ -114,7 +114,7 @@ frontend_loki_all:
 frontend_visual_all:
   - *frontend_sources
   - *shared_ci
-  - ".github/workflows/visual-tests.yml"
+  - ".github/workflows/loki.yml"
   - ".storybook/**"
   - "e2e-visual/**"
   - "frontend/test/__support__/**"

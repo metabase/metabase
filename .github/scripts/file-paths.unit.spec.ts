@@ -143,7 +143,7 @@ describe("file-paths.yaml", () => {
   it.each([
     "e2e-visual/stories.spec.ts",
     "e2e-visual/__screenshots__/components-buttons-button--compact.png",
-    ".github/workflows/visual-tests.yml",
+    ".github/workflows/loki.yml",
     ".github/workflows/run-tests.yml",
     ".storybook/preview.tsx",
     "package.json",
