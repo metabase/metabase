@@ -20,10 +20,13 @@
     .tab { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 9px; padding: 9px 15px; }
     .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
     .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
-    .engine-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 26px; }
-    .engine-grid .card { padding: 16px 18px; }
-    .engine-grid h3 { margin-bottom: 6px; }
-    .engine-grid p { margin-bottom: 0; color: #465a71; }
+    .engine-guide { margin: 18px 0 26px; }
+    .engine-table { min-width: 950px; table-layout: fixed; }
+    .engine-table th, .engine-table td { padding: 12px 14px; text-align: left; vertical-align: top; white-space: normal; }
+    .engine-table th:first-child { width: 150px; }
+    .engine-table thead th { color: #29405c; background: #f1f5fa; font-size: .88rem; }
+    .engine-table tbody th { color: #465a71; font-size: .85rem; }
+    .engine-table tbody tr:nth-child(even) { background: #f9fbfd; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
     .metric { padding: 16px 18px; }
     .metric .value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.035em; }
@@ -63,7 +66,7 @@
     .doc-text { white-space: pre-wrap; min-width: 140px; max-width: 360px; overflow-wrap: anywhere; }
     .empty { color: #5b6d83; padding: 18px 0; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
-    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .engine-grid, .summary-grid, .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } }
   </style>
 </head>
 <body>
@@ -72,25 +75,51 @@
     <p class="intro muted">A disposable view of the checked-in regression corpus. Membership is exact, but these hand-picked cases are not a production traffic sample or a ranking benchmark.</p>
   </header>
 
-  <section aria-labelledby="engine-guide-title">
+  <section class="engine-guide" aria-labelledby="engine-guide-title">
     <h2 id="engine-guide-title">How each engine reads a query</h2>
-    <div class="engine-grid">
-      <div class="card">
-        <h3>In-place</h3>
-        <p>Searches live entity columns. Whitespace separates terms, and <strong>any</strong> term can match as a case-insensitive substring in any searchable field: <code>hat</code> matches <em>chatty</em>. There is no stemming, stopword removal, or Boolean/phrase grammar; operator-looking words and punctuation are literal text.</p>
-      </div>
-      <div class="card">
-        <h3>App-db / H2</h3>
-        <p>Searches materialized text in the app-db search table. <strong>Every</strong> whitespace term must occur, but each can match an inner substring, even in a different source field. There is no stemming, stopword removal, or Boolean/phrase grammar: <code>or</code> and a leading <code>-</code> are literal.</p>
-      </div>
-      <div class="card">
-        <h3>App-db / PostgreSQL</h3>
-        <p>Searches indexed lexemes. Unquoted words default to AND; <code>or</code>, a leading <code>-</code>, and quotes express alternation, negation, and phrases. Only the final eligible word gets lexeme-prefix completion, never inner-substring matching. The text-search language controls stemming and stopwords; <code>simple</code> and <code>english</code> differ.</p>
-      </div>
-      <div class="card">
-        <h3>Semantic</h3>
-        <p>Unions a PostgreSQL-style keyword arm with a vector-similarity arm in its own index. Keyword matches follow the PostgreSQL query grammar; the vector arm embeds the whole string and does not treat <code>or</code>, <code>-</code>, or quotes as hard constraints. A vector hit can therefore appear despite a lexical exclusion.</p>
-      </div>
+    <div class="card table-wrap" role="region" aria-label="Search engine semantics comparison" tabindex="0">
+      <table class="engine-table">
+        <thead>
+          <tr><th scope="col">Behavior</th><th scope="col">In-place</th><th scope="col">App-db / H2</th><th scope="col">App-db / PostgreSQL</th><th scope="col">Semantic</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Searches</th>
+            <td>Live entity columns</td>
+            <td>Materialized app-db text</td>
+            <td>Indexed app-db lexemes</td>
+            <td>Its own keyword index and embeddings</td>
+          </tr>
+          <tr>
+            <th scope="row">Multiple words</th>
+            <td><strong>Any</strong> word can suffice (OR).</td>
+            <td><code>red shoes</code> needs both <code>red</code> and <code>shoes</code> somewhere (AND).</td>
+            <td>AND by default; <code>or</code> gives alternatives.</td>
+            <td>Keyword: PostgreSQL rules. Vector: whole-query similarity. Results are unioned.</td>
+          </tr>
+          <tr>
+            <th scope="row">Partial words</th>
+            <td>Any substring: <code>hat</code> matches <em>chatty</em>.</td>
+            <td>Any substring, including inside longer words.</td>
+            <td>Prefix of the final eligible word only; no inner substring.</td>
+            <td>Keyword: PostgreSQL prefix rule. Vector: no defined substring rule.</td>
+          </tr>
+          <tr>
+            <th scope="row">Operators</th>
+            <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
+            <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
+            <td><code>or</code>, <code>-word</code>, and quoted phrases work; unquoted <code>and</code> is ignored.</td>
+            <td>Keyword only; vector hits need not obey exclusions or phrases.</td>
+          </tr>
+          <tr>
+            <th scope="row">Language</th>
+            <td>No stopword removal or stemming.</td>
+            <td>No stopword removal or stemming.</td>
+            <td>Stopwords and stemming depend on the text-search configuration.</td>
+            <td>Keyword: same configuration rules. Vector: model-dependent.</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
