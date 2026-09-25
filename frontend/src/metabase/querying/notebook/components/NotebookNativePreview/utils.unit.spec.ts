@@ -19,7 +19,7 @@ const METADATA = createMockMetadata({
   ],
 });
 
-function setup() {
+function setup({ collection }: { collection?: string } = {}) {
   const question = Question.create({
     DEPRECATED_RAW_MBQL_databaseId: MONGO_DB_ID,
     metadata: METADATA,
@@ -28,7 +28,7 @@ function setup() {
   const nativeQuestion = checkNotNull(
     createNativeQuestion(
       question,
-      { query: NATIVE_QUERY, params: null },
+      { query: NATIVE_QUERY, collection, params: null },
       metadataProvider,
     ),
   );
@@ -36,6 +36,14 @@ function setup() {
 }
 
 describe("createNativeQuestion", () => {
+  it("should set the source collection returned by the backend", () => {
+    const query = setup({ collection: "products" });
+
+    expect(Lib.databaseID(query)).toBe(MONGO_DB_ID);
+    expect(Lib.rawNativeQuery(query)).toBe(NATIVE_QUERY);
+    expect(Lib.nativeExtras(query)).toEqual({ collection: "products" });
+  });
+
   it("should not set a collection when the backend returns none", () => {
     const query = setup();
 
