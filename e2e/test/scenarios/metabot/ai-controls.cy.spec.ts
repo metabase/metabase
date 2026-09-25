@@ -168,7 +168,6 @@ describe("AI Controls > Metabot access and customization", () => {
 
     it("should hide Metabot illustrations when the toggle is switched off", () => {
       H.updateEnterpriseSettings({
-        "metabot-icon": TINY_PNG_DATA_URI,
         "metabot-show-illustrations": true,
       });
       H.updateSetting("metabot-enabled?", true);
@@ -199,10 +198,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // Navigate to the home page and open Metabot chat to verify illustrations are hidden
       cy.visit("/");
-      // Can't use H.openMetabotViaSearchButton() because custom icon replaces .Icon-metabot
-      H.appBar()
-        .findByRole("button", { name: /Chat with/ })
-        .click();
+      H.openMetabotViaSearchButton();
 
       cy.findByTestId("metabot-empty-chat-info").should("be.visible");
       // The SVG illustration should NOT be rendered when showIllustrations=false

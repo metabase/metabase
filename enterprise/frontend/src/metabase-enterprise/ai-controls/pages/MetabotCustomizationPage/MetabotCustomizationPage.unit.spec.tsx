@@ -52,6 +52,9 @@ describe("MetabotCustomizationPage", () => {
     expect(
       screen.queryByRole("button", { name: /Remove custom icon/ }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: /Show Metabot illustrations/ }),
+    ).toBeChecked();
   });
 
   it("shows the remove button and illustrations toggle when a custom icon is set", async () => {
