@@ -94,10 +94,10 @@
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-    (when-not slack-channel-id
-      (throw (ex-info "This tool can only be used from a Slack channel"
-                      {:agent-error? true})))
     (try
+      (when-not slack-channel-id
+        (throw (ex-info "This tool can only be used from a Slack channel"
+                        {:agent-error? true})))
       (let [result (create-dashboard-subscription
                     {:dashboard-id  dashboard_id
                      :schedule      schedule
