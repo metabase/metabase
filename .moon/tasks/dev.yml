@@ -24,7 +24,9 @@ tasks:
 
   build-hot-js:
     script: >-
-      NODE_OPTIONS=--max-old-space-size=8192 WEBPACK_BUNDLE=hot rspack serve
+      NODE_OPTIONS=--max-old-space-size=8192
+      WEBPACK_BUNDLE=hot
+      rspack serve
     deps:
       - clean-dev-js
     options:
@@ -57,7 +59,8 @@ tasks:
 
   build-watch-js:
     script: >-
-      NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch
+      NODE_OPTIONS=--max-old-space-size=8192
+      rspack serve --watch
     deps:
       - build-cljs
     options:
@@ -80,15 +83,6 @@ tasks:
     deps:
       - build-hot-js
       - cloud-backend
-    options:
-      persistent: true
-      cache: false
-      runInCI: false
-      outputStyle: stream
-
-  concurrently:
-    script: >-
-      concurrently --kill-others -p name
     options:
       persistent: true
       cache: false

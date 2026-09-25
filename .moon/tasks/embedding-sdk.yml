@@ -7,8 +7,8 @@ tasks:
     deps:
       - build-cljs
     inputs:
-      - '@group(sdk)'
-      - '@group(rspack)'
+      - "@group(sdk)"
+      - "@group(rspack)"
     outputs:
       - resources/embedding-sdk/**
 
@@ -42,20 +42,20 @@ tasks:
     deps:
       - build-release-cljs
     inputs:
-      - '@group(sdk)'
-      - '@group(rspack)'
+      - "@group(sdk)"
+      - "@group(rspack)"
     outputs:
       - resources/embedding-sdk/**
 
   build-release-embedding-sdk-package:
     script: >-
-      WEBPACK_BUNDLE=production rspack --config
-      rspack.embedding-sdk-package.config.js
+      WEBPACK_BUNDLE=production
+      rspack --config rspack.embedding-sdk-package.config.js
     deps:
       - build-release-cljs
     inputs:
-      - '@group(sdk)'
-      - '@group(rspack)'
+      - "@group(sdk)"
+      - "@group(rspack)"
     outputs:
       - resources/embedding-sdk/**
 
@@ -81,7 +81,7 @@ tasks:
     script: >-
       ./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh
     inputs:
-      - '@group(sdk)'
+      - "@group(sdk)"
       - bin/embedding-sdk/**
 
   embedding-sdk-docs-generate:
@@ -98,7 +98,7 @@ tasks:
     script: >-
       ./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh
     inputs:
-      - '@group(sdk)'
+      - "@group(sdk)"
       - bin/embedding-sdk/**
       - docs/**
 

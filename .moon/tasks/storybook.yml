@@ -7,7 +7,7 @@ tasks:
     deps:
       - build-cljs
     inputs:
-      - '@group(frontend)'
+      - "@group(frontend)"
       - .storybook/**
     outputs:
       - storybook-static/**
@@ -33,8 +33,9 @@ tasks:
 
   storybook-embedding-sdk:
     script: >-
-      IS_EMBEDDING_SDK=true storybook dev -c
-      frontend/src/embedding-sdk-shared/.storybook -p 6006
+      IS_EMBEDDING_SDK=true
+      storybook dev -c frontend/src/embedding-sdk-shared/.storybook
+                    -p 6006
     deps:
       - build-cljs
     options:
@@ -58,8 +59,10 @@ tasks:
 
   test-visual-loki-ci:
     script: >-
-      NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
-      --reactUri file:./storybook-static --verboseRenderer
+      NODE_ENV=development
+      loki test --chromeFlags='--headless --disable-gpu'
+                --reactUri file:./storybook-static
+                --verboseRenderer
     deps:
       - build-storybook
     options:
@@ -67,24 +70,27 @@ tasks:
 
   test-visual-loki-prune:
     script: >-
-      ls .loki/reference | grep -v "$(ls .loki/current)" | xargs -I {} rm
-      .loki/reference/{}
+      ls .loki/reference
+      | grep -v "$(ls .loki/current)"
+      | xargs -I {} rm .loki/reference/{}
     options:
       cache: false
 
   test-visual-loki-report:
     script: >-
-      node frontend/test/generate-loki-report-json.js && reg-cli --from
-      .loki/report.json --report .loki/report.html
+      node frontend/test/generate-loki-report-json.js
+      && reg-cli --from .loki/report.json
+                 --report .loki/report.html
     options:
       cache: false
 
   test-visual-loki-report-open:
     script: >-
-      NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
-      || (echo "Visual test failed, opening report..." && node
-      frontend/test/generate-loki-report-json.js && reg-cli --from
-      .loki/report.json --report .loki/report.html && open-cli
-      .loki/report.html)
+      NODE_ENV=development
+      loki test --chromeFlags='--headless --disable-gpu'
+      || (echo "Visual test failed, opening report..."
+          && node frontend/test/generate-loki-report-json.js
+          && reg-cli --from .loki/report.json --report .loki/report.html
+          && open-cli .loki/report.html)
     options:
       cache: false

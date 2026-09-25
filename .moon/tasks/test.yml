@@ -9,19 +9,21 @@ tasks:
 
   embedding-sdk-test-unit:
     script: >-
-      jest --ignoreProjects ci-scripts --maxWorkers=4
-      enterprise/frontend/src/embedding-sdk-package/
-      enterprise/frontend/src/embedding-sdk-bundle/
-      enterprise/frontend/src/embedding-sdk-shared/
+      jest --ignoreProjects ci-scripts
+           --maxWorkers=4
+           enterprise/frontend/src/embedding-sdk-package/
+           enterprise/frontend/src/embedding-sdk-bundle/
+           enterprise/frontend/src/embedding-sdk-shared/
     inputs:
-      - '@group(sdk)'
-      - '@group(jest)'
+      - "@group(sdk)"
+      - "@group(jest)"
 
   generate-cypress-html-report:
     script: >-
-      mochawesome-merge cypress/reports/mochareports/*.json >
-      cypress/reports/cypress-test-report.json && marge
-      cypress/reports/cypress-test-report.json -o cypress/reports --inline
+      mochawesome-merge cypress/reports/mochareports/*.json
+          > cypress/reports/cypress-test-report.json
+      && marge cypress/reports/cypress-test-report.json -o cypress/reports
+                                                        --inline
     options:
       cache: false
 
@@ -41,13 +43,14 @@ tasks:
     inputs:
       - bin/**
       - release/**
-      - '@group(jest)'
+      - "@group(jest)"
 
   test-cljs:
     script: >-
-      shadow-cljs compile test && node target/node-tests.js
+      shadow-cljs compile test
+      && node target/node-tests.js
     inputs:
-      - '@group(cljs)'
+      - "@group(cljs)"
       - test/**
 
   test-cypress:
@@ -64,8 +67,9 @@ tasks:
 
   test-debug:
     script: >-
-      node --inspect-brk node_modules/.bin/jest --runInBand
-      --detectOpenHandles
+      node --inspect-brk node_modules/.bin/jest
+           --runInBand
+           --detectOpenHandles
     deps:
       - build-cljs
     options:
@@ -73,8 +77,9 @@ tasks:
 
   test-memory:
     script: >-
-      node --expose-gc ./node_modules/.bin/jest --runInBand --config
-      jest.memory.conf.js
+      node --expose-gc ./node_modules/.bin/jest
+           --runInBand
+           --config jest.memory.conf.js
     options:
       cache: false
 
@@ -90,7 +95,7 @@ tasks:
     deps:
       - build-cljs
     inputs:
-      - '@group(frontend)'
+      - "@group(frontend)"
       - jest.tz.unit.conf.js
 
   test-unit:
@@ -99,8 +104,8 @@ tasks:
     deps:
       - build-cljs
     inputs:
-      - '@group(frontend)'
-      - '@group(jest)'
+      - "@group(frontend)"
+      - "@group(jest)"
 
   test-unit-watch:
     script: >-
@@ -128,4 +133,4 @@ tasks:
     script: >-
       node e2e/validate-e2e-test-files.js
     inputs:
-      - '@group(e2e)'
+      - "@group(e2e)"
