@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupListSourceReplacementRunsEndpoint } from "__support__/server-mocks";
+import {
+  setupListSourceReplacementRunsEndpoint,
+  setupTablesBulkEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Table } from "metabase-types/api";
 import {
@@ -23,6 +27,7 @@ interface SetupOpts {
 
 function setup({ table, isAdmin = false }: SetupOpts) {
   setupListSourceReplacementRunsEndpoint([]);
+  setupTablesBulkEndpoints();
 
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -37,7 +42,7 @@ function setup({ table, isAdmin = false }: SetupOpts) {
 
   renderWithProviders(
     <Route path="/" element={<TableActionsMenu table={table} />} />,
-    { storeInitialState: state, withRouter: true },
+    { storeInitialState: state, withRouter: true, withUndos: true },
   );
 }
 
@@ -107,5 +112,44 @@ describe("TableActionsMenu", () => {
     expect(
       screen.queryByRole("menuitem", { name: /Re-sync schema/ }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("error handling", () => {
+    it.each([
+      {
+        item: "Re-sync schema",
+        route: "tables-sync-schema",
+        message: "Failed to start sync",
+      },
+      {
+        item: "Re-scan field values",
+        route: "tables-rescan-values",
+        message: "Failed to start scan",
+      },
+      {
+        item: "Discard cached field values",
+        route: "tables-discard-values",
+        message: "Failed to discard values",
+      },
+    ])(
+      "shows an error toast when $item fails",
+      async ({ item, route, message }) => {
+        setup({ table: createMockTable({ db: createMockDatabase() }) });
+        fetchMock.modifyRoute(route, { response: { status: 500 } });
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "More actions" }),
+        );
+        await userEvent.click(
+          await screen.findByRole("menuitem", { name: new RegExp(item) }),
+        );
+
+        await waitFor(() => {
+          expect(
+            within(screen.getByTestId("undo-list")).getByText(message),
+          ).toBeInTheDocument();
+        });
+      },
+    );
   });
 });
