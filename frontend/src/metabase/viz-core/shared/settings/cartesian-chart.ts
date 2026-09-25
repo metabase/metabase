@@ -32,6 +32,7 @@ import {
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
 import { getStackModels } from "../../echarts/cartesian/model/stack";
 import type { YAxisSides } from "../../echarts/cartesian/model/types";
+import { hasValidColumnsSelected } from "../../lib/graph/columns";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -295,11 +296,18 @@ export function getYAxisSides(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ): YAxisSides {
-  const display = rawSeries[0]?.card.display;
+  const [firstSeries] = rawSeries;
 
-  if (display == null) {
+  // The sidebar also opens for charts that cannot render yet, such as a bar
+  // chart with no breakout. They have no axes.
+  if (
+    firstSeries == null ||
+    !hasValidColumnsSelected(settings, firstSeries.data)
+  ) {
     return { left: false, right: false };
   }
+
+  const display = firstSeries.card.display;
 
   // A waterfall builds its one y-axis through `getYAxisModel` directly.
   if (display === "waterfall") {

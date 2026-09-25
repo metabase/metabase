@@ -722,12 +722,13 @@ const isYAxisSplit = (
   rawSeries: Series,
   vizSettings: ComputedVisualizationSettings,
 ) => {
-  // The sidebar also opens for charts that cannot render yet, such as a bar
-  // chart with no breakout, and building their series throws.
+  // Building the series throws on data the renderer would reject. A throw here
+  // would take the whole sidebar down, so it falls back to a single label.
   try {
     const sides = getYAxisSides(rawSeries, vizSettings);
     return sides.left && sides.right;
-  } catch {
+  } catch (error) {
+    console.warn("Error computing y-axis sides", error);
     return false;
   }
 };

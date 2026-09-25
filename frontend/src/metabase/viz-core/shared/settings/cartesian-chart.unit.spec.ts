@@ -492,6 +492,21 @@ describe("getYAxisSides", () => {
     expect(getYAxisSides([], {})).toEqual({ left: false, right: false });
   });
 
+  it.each([
+    { name: "no dimension", settings: { "graph.dimensions": [] } },
+    { name: "no metric", settings: { "graph.metrics": [] } },
+  ])(
+    "reports no axes for a chart that cannot render yet, with $name",
+    ({ settings }) => {
+      expect(
+        getYAxisSides(createTwoMetricSeries(divergentRows), {
+          ...twoMetricSettings,
+          ...settings,
+        }),
+      ).toEqual({ left: false, right: false });
+    },
+  );
+
   it("reports a left axis only for a waterfall, which never builds a right one", () => {
     expect(
       getYAxisSides(createTwoMetricSeries(divergentRows, "waterfall"), {
