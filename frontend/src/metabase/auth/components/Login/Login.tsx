@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";

@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 

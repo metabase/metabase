@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { type JSX, useLayoutEffect, useRef, useState } from "react";
 
 import { Box, Flex, Skeleton, Stack } from "metabase/ui";
 import resizeObserver from "metabase/utils/resize-observer";

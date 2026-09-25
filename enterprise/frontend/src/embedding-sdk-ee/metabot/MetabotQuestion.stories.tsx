@@ -1,6 +1,5 @@
-import type { StoryFn } from "@storybook/react";
 import { HttpResponse, http } from "msw";
-import type { ComponentProps } from "react";
+import type { ComponentType } from "react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import { MetabotQuestion } from "embedding-sdk-package";
@@ -16,8 +15,6 @@ import { Flex, Stack } from "metabase/ui";
 // side effect to activate the plugin
 import "./MetabotQuestion";
 
-type MetabotQuestionProps = ComponentProps<typeof MetabotQuestion>;
-
 const config = getStorybookSdkAuthConfigForUser("admin");
 
 export default {
@@ -27,7 +24,7 @@ export default {
     layout: "fullscreen",
   },
   decorators: [
-    (Story: StoryFn) => (
+    (Story: ComponentType) => (
       <MetabaseProvider authConfig={config}>
         <Story />
       </MetabaseProvider>
@@ -36,7 +33,7 @@ export default {
   ],
 };
 
-const Template: StoryFn<MetabotQuestionProps> = () => {
+const Template = () => {
   return <MetabotQuestion height="100vh" />;
 };
 

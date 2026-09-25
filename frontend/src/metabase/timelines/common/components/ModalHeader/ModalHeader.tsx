@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { c } from "ttag";
 
 import { Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";

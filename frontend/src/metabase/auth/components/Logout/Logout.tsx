@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 
 import { useDispatch } from "metabase/redux";
 import { logout } from "metabase/redux/auth";

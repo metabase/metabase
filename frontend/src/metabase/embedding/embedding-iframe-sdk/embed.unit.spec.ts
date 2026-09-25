@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 import jwt from "jsonwebtoken";
-import { act } from "react-dom/test-utils";
+import { act } from "react";
 
 import {
   type MetabaseDashboardElement,

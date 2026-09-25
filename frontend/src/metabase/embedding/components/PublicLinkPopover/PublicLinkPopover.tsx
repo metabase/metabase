@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 

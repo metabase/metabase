@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { SkeletonImage } from "./RowSkeleton.styled";
 
 const RowSkeleton = (): JSX.Element => {

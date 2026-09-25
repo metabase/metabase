@@ -1,5 +1,5 @@
 import Color from "color";
-import { memo, useCallback, useMemo } from "react";
+import { type JSX, memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

@@ -32,7 +32,7 @@ export function DelayGroup({
 }: DelayGroupProps) {
   const [shouldDelay, setShouldDelay] = useState(true);
 
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number>(undefined);
 
   const value = useMemo(
     () => ({

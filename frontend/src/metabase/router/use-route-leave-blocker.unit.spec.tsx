@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { type PropsWithChildren, useLayoutEffect } from "react";
+import { type JSX, type PropsWithChildren, useLayoutEffect } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { Navigate, Route, useNavigate } from "metabase/router";

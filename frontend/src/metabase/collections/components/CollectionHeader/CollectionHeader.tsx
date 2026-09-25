@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { useUpdateCollectionMutation } from "metabase/api";
 import {
   isInstanceAnalyticsCollection,

@@ -11,7 +11,7 @@ jest.mock("../components/DocumentPage.module.css", () => ({
 
 describe("useScrollToAnchor", () => {
   let container: HTMLDivElement;
-  let editorContainerRef: React.RefObject<HTMLDivElement>;
+  let editorContainerRef: React.RefObject<HTMLDivElement | null>;
   const mockScrollIntoView = getScrollIntoViewMock();
 
   beforeEach(() => {

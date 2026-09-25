@@ -42,7 +42,7 @@ const OnboardingStepperRoot = forwardRef<
     const stepIdToNumber: Record<string, number> = {};
 
     Children.forEach(children, (child) => {
-      if (isValidElement(child)) {
+      if (isValidElement<{ stepId?: string }>(child)) {
         if (child.type === OnboardingStepperStep && child.props.stepId) {
           const stepId = child.props.stepId;
           ids.push(stepId);

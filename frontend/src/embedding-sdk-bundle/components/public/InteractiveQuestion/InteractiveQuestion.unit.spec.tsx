@@ -311,7 +311,7 @@ describe("InteractiveQuestion", () => {
     });
 
     // Both buttons are visible in view mode
-    expect(screen.queryByRole("button", { name: "Alerts" })).toBeVisible();
+    expect(await screen.findByRole("button", { name: "Alerts" })).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Download results" }),
     ).toBeVisible();

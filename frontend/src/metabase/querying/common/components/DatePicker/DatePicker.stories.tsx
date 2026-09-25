@@ -2,7 +2,7 @@ import type { Store } from "@reduxjs/toolkit";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
-import { type ComponentProps, useEffect } from "react";
+import { type ComponentProps, type ComponentType, useEffect } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
@@ -23,7 +23,7 @@ const storeInitialState = createMockState({
 // Unjustified type cast. FIXME
 const store = getPublicStore(storeInitialState, []) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const ReduxDecorator = (Story: ComponentType) => {
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -50,7 +50,7 @@ const MockedDate: DateConstructor = new Proxy(OriginalDate, {
       : Reflect.get(target, property, receiver),
 });
 
-function WithMockDate(StoryFn: StoryFn) {
+function WithMockDate(StoryFn: ComponentType) {
   window.Date = MockedDate;
 
   useEffect(() => {

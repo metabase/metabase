@@ -50,7 +50,7 @@ export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   display: CardDisplayType,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),

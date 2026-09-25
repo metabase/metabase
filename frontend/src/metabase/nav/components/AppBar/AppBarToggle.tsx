@@ -1,6 +1,6 @@
 import { useHover } from "@mantine/hooks";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
