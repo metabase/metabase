@@ -36,7 +36,8 @@ tasks:
       outputStyle: stream
 
   build-static-viz-watch:
-    script: rspack --config rspack.static-viz.config.js --watch
+    script:
+      rspack --config rspack.static-viz.config.js --watch
     deps:
       - build-cljs
     options:
@@ -69,7 +70,8 @@ tasks:
       outputStyle: stream
 
   cloud-backend:
-    script: clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev
+    script:
+      clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev
     options:
       persistent: true
       cache: false
@@ -100,7 +102,8 @@ tasks:
       outputStyle: stream
 
   dev-backend:
-    script: clojure -M:run:dev:dev-start --hot
+    script:
+      clojure -M:run:dev:dev-start --hot
     options:
       persistent: true
       cache: false
@@ -108,7 +111,8 @@ tasks:
       outputStyle: stream
 
   dev-backend-ee:
-    script: clojure -M:run:ee:dev:dev-start --hot
+    script:
+      clojure -M:run:ee:dev:dev-start --hot
     options:
       persistent: true
       cache: false
@@ -154,7 +158,8 @@ tasks:
       outputStyle: stream
 
   email-dev:
-    script: bun dev/email-preview/serve.ts
+    script:
+      bun dev/email-preview/serve.ts
     options:
       persistent: true
       cache: false

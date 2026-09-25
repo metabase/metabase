@@ -2,7 +2,8 @@
 
 tasks:
   clean-cypress-artifacts:
-    script: rm -R -f cypress/
+    script:
+      rm -R -f cypress/
     options:
       cache: false
 
@@ -37,7 +38,8 @@ tasks:
       runDepsInParallel: false
 
   test-ci-scripts:
-    script: jest --selectProjects ci-scripts --maxWorkers=4
+    script:
+      jest --selectProjects ci-scripts --maxWorkers=4
     inputs:
       - bin/**
       - release/**
@@ -52,12 +54,14 @@ tasks:
       - test/**
 
   test-cypress:
-    script: tsx ./e2e/runner/run_cypress_local.ts
+    script:
+      tsx ./e2e/runner/run_cypress_local.ts
     options:
       cache: false
 
   test-cypress-host-sample-apps:
-    script: tsx ./e2e/runner/run_cypress_host_sample_apps.ts
+    script:
+      tsx ./e2e/runner/run_cypress_host_sample_apps.ts
     options:
       cache: false
 
@@ -80,12 +84,14 @@ tasks:
       cache: false
 
   test-timezones:
-    script: ./frontend/test/__runner__/run_timezone_tests
+    script:
+      ./frontend/test/__runner__/run_timezone_tests
     options:
       cache: false
 
   test-timezones-unit:
-    script: jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
+    script:
+      jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
     deps:
       - build-cljs
     inputs:
@@ -93,7 +99,8 @@ tasks:
       - jest.tz.unit.conf.js
 
   test-unit:
-    script: jest --ignoreProjects ci-scripts --maxWorkers=4
+    script:
+      jest --ignoreProjects ci-scripts --maxWorkers=4
     deps:
       - build-cljs
     inputs:
@@ -101,7 +108,8 @@ tasks:
       - "@group(jest)"
 
   test-unit-watch:
-    script: jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
+    script:
+      jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
     deps:
       - build-cljs
     options:
@@ -122,6 +130,7 @@ tasks:
       outputStyle: stream
 
   validate-e2e-filenames:
-    script: node e2e/validate-e2e-test-files.js
+    script:
+      node e2e/validate-e2e-test-files.js
     inputs:
       - "@group(e2e)"

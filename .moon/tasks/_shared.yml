@@ -40,7 +40,8 @@ implicitDeps:
 
 tasks:
   deps:
-    script: bun install
+    script:
+      bun install
     inputs:
       - bun.lock
       - package.json

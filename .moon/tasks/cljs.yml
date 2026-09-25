@@ -2,14 +2,16 @@
 
 tasks:
   build-cljs:
-    script: shadow-cljs compile app
+    script:
+      shadow-cljs compile app
     inputs:
       - "@group(cljs)"
     outputs:
       - target/cljs_dev/**
 
   build-hot-cljs:
-    script: shadow-cljs watch app
+    script:
+      shadow-cljs watch app
     options:
       persistent: true
       cache: false
@@ -17,7 +19,8 @@ tasks:
       outputStyle: stream
 
   build-release-cljs:
-    script: shadow-cljs release app
+    script:
+      shadow-cljs release app
     deps:
       - clean-release-cljs
     inputs:
@@ -26,7 +29,8 @@ tasks:
       - target/cljs_release/**
 
   build-watch-cljs:
-    script: shadow-cljs watch app
+    script:
+      shadow-cljs watch app
     options:
       persistent: true
       cache: false
@@ -42,12 +46,14 @@ tasks:
       cache: false
 
   clean-dev-cljs:
-    script: rm -rf target/cljs_dev/*
+    script:
+      rm -rf target/cljs_dev/*
     options:
       cache: false
 
   clean-release-cljs:
-    script: rm -rf target/cljs_release/*
+    script:
+      rm -rf target/cljs_release/*
     options:
       cache: false
 
@@ -64,16 +70,19 @@ tasks:
       outputStyle: stream
 
   cljs-server-restart:
-    script: shadow-cljs restart
+    script:
+      shadow-cljs restart
     options:
       cache: false
 
   cljs-server-start:
-    script: shadow-cljs start
+    script:
+      shadow-cljs start
     options:
       cache: false
 
   cljs-server-stop:
-    script: shadow-cljs stop
+    script:
+      shadow-cljs stop
     options:
       cache: false

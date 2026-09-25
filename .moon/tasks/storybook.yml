@@ -2,7 +2,8 @@
 
 tasks:
   build-storybook:
-    script: NODE_OPTIONS=--max-old-space-size=8192 storybook build
+    script:
+      NODE_OPTIONS=--max-old-space-size=8192 storybook build
     deps:
       - build-cljs
     inputs:
@@ -12,14 +13,16 @@ tasks:
       - storybook-static/**
 
   chromatic:
-    script: NODE_OPTIONS=--max-old-space-size=8192 chromatic
+    script:
+      NODE_OPTIONS=--max-old-space-size=8192 chromatic
     deps:
       - build-cljs
     options:
       cache: false
 
   storybook:
-    script: storybook dev -p 6006
+    script:
+      storybook dev -p 6006
     deps:
       - build-cljs
     options:
@@ -42,7 +45,8 @@ tasks:
       outputStyle: stream
 
   test-visual-loki:
-    script: NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
+    script:
+      NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
     options:
       cache: false
 

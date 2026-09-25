@@ -15,7 +15,8 @@ tasks:
       cache: false
 
   find-never-defined-css-variables:
-    script: tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts
+    script:
+      tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts
     inputs:
       - frontend/**/*.css
       - frontend/**/*.tsx
@@ -40,13 +41,15 @@ tasks:
       cache: false
 
   lint-css:
-    script: stylelint --cache './frontend/**/*.css'
+    script:
+      stylelint --cache './frontend/**/*.css'
     inputs:
       - frontend/**/*.css
       - .stylelintrc.json
 
   lint-docs-links:
-    script: ./bin/verify-doc-links
+    script:
+      ./bin/verify-doc-links
     inputs:
       - docs/**
       - bin/verify-doc-links
@@ -90,7 +93,8 @@ tasks:
       - resources/openapi/openapi.json
 
   lint-yaml:
-    script: yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
+    script:
+      yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
     inputs:
       - "**/*.yaml"
       - "**/*.yml"
@@ -107,7 +111,8 @@ tasks:
       - eslint.config.module-boundaries.mjs
 
   type-check:
-    script: ./node_modules/typescript7/bin/tsc --noEmit
+    script:
+      ./node_modules/typescript7/bin/tsc --noEmit
     deps:
       - build-cljs
     inputs:
