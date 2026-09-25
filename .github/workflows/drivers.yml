@@ -1009,10 +1009,13 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
 
-      # Workload Identity Federation live test.
+      # Workload Identity Federation live test. USER is picked by event/ref so the GH OIDC `sub`
+      # claim matches a WORKLOAD_IDENTITY subject on the Snowflake side. Contexts that no
+      # WORKLOAD_IDENTITY user matches (release-** pushes, dispatches from feature branches)
+      # opt out via the explicit 'skip' sentinel.
       MB_SNOWFLAKE_TEST_WIF_ACCOUNT:   ${{ secrets.MB_SNOWFLAKE_TEST_ACCOUNT }}
       MB_SNOWFLAKE_TEST_WIF_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
-      MB_SNOWFLAKE_TEST_WIF_USER:      METABASE WIF
+      MB_SNOWFLAKE_TEST_WIF_USER:      ${{ github.event_name == 'pull_request' && 'METABASE WIF' || (github.ref == 'refs/heads/master' && 'METABASE WIF MAIN' || 'skip') }}
       MB_SNOWFLAKE_TEST_WIF_DB:        SNOWFLAKE_SAMPLE_DATA
       MB_SNOWFLAKE_TEST_WIF_ROLE:      PUBLIC
     name: Snowflake ${{ matrix.job.name }}

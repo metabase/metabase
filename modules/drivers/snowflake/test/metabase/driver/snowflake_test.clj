@@ -388,6 +388,22 @@
         (when (= 200 status)
           (:value (json/decode+kw body)))))))
 
+(defn- wif-user-or-skip
+  "Returns the WIF service username, or nil to signal the test should skip. Refuses to silently
+  skip: if MB_SNOWFLAKE_TEST_WIF_USER isn't set, records a test failure with instructions instead
+  of leaving the test as a no-op. Set the env var to 'skip' to opt out explicitly (REPL, contexts
+  without a matching Snowflake WORKLOAD_IDENTITY subject)."
+  []
+  (let [wif-user (tx/db-test-env-var :snowflake :wif-user)]
+    (cond
+      (= "skip" wif-user) nil
+      (str/blank? wif-user) (do (is false
+                                    (str "MB_SNOWFLAKE_TEST_WIF_USER isn't set. Set it to the "
+                                         "Snowflake WIF service user (e.g. 'METABASE WIF'), or "
+                                         "to 'skip' to opt out."))
+                                nil)
+      :else wif-user)))
+
 (defn- wif-live-details-with-token
   "WIF details map for the live tests, `token-source` merged in (`:wif-token` or `:wif-token-file-path`)."
   [token-source]
@@ -406,22 +422,21 @@
   ;; In CI (GH Actions Snowflake Driver Tests job) we mint a fresh OIDC token on-demand — GH's
   ;; tokens live 15 minutes and the full snowflake suite runs > 30 minutes, so a token minted at
   ;; job start would be expired before this test fires. Locally, if
-  ;; MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT on disk, we use that as a fallback. Skips
-  ;; silently when neither source is available.
+  ;; MB_SNOWFLAKE_TEST_WIF_TOKEN_FILE points to a JWT on disk, we use that as a fallback.
   (mt/test-driver
     :snowflake
-    (when-let [token (or (mint-github-actions-oidc-token "snowflakecomputing.com")
-                         (some-> (tx/db-test-env-var :snowflake :wif-token-file)
-                                 slurp
-                                 str/trim))]
-      (let [wif-user (tx/db-test-env-var-or-throw :snowflake :wif-user)
-            details  (wif-live-details-with-token {:wif-token token})]
-        (testing "can-connect? via WIF"
-          (is (true? (driver/can-connect? :snowflake details))))
-        (testing "session identifies as the WIF service user (proves auth flowed through WIF, not a fallback)"
-          (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)
-                rows (jdbc/query spec ["SELECT CURRENT_USER() AS \"user\""])]
-            (is (= [{:user wif-user}] rows))))))))
+    (when-let [wif-user (wif-user-or-skip)]
+      (when-let [token (or (mint-github-actions-oidc-token "snowflakecomputing.com")
+                           (some-> (tx/db-test-env-var :snowflake :wif-token-file)
+                                   slurp
+                                   str/trim))]
+        (let [details (wif-live-details-with-token {:wif-token token})]
+          (testing "can-connect? via WIF"
+            (is (true? (driver/can-connect? :snowflake details))))
+          (testing "session identifies as the WIF service user (proves auth flowed through WIF, not a fallback)"
+            (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)
+                  rows (jdbc/query spec ["SELECT CURRENT_USER() AS \"user\""])]
+              (is (= [{:user wif-user}] rows)))))))))
 
 (deftest ^:synchronized snowflake-wif-live-rotation-test
   ;; Proves the exp-driven pool rotation path works end-to-end: pool built with token A, we backdate the
@@ -429,37 +444,37 @@
   ;; the pool with the fresh token. Requires the GH Actions OIDC env vars.
   (mt/test-driver
     :snowflake
-    (when-let [token-a (mint-github-actions-oidc-token "snowflakecomputing.com")]
-      (mt/with-temp-file [tok-file "wif-tok"]
-        (spit tok-file token-a)
-        (mt/with-temp [:model/Database db {:engine  :snowflake
-                                           :details (wif-live-details-with-token {:wif-token-file-path tok-file})}]
-          (let [wif-user   (tx/db-test-env-var-or-throw :snowflake :wif-user)
-                pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
-                cache-key  [(:id db) :default]
-                query!     (fn []
-                             (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db)
-                                         ["SELECT CURRENT_USER() AS \"user\""]))]
-            (testing "initial query works with token-a"
-              (is (= [{:user wif-user}] (query!))))
-            (let [initial-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
-              (is (integer? initial-exp)
-                  ":password-expiry-timestamp propagated from resolve-wif-credentials to the pool spec")
-              (is (< (System/currentTimeMillis) initial-exp)
-                  "initial expiry is in the future — pool wouldn't be invalidated yet")
-              (testing "after simulating expiry + rotating file, next query rebuilds the pool with the new token"
-                ;; Sleep 1.1s so the fresh mint gets a strictly-later `exp` (GH exp is second-precision).
-                (Thread/sleep 1100)
-                (let [token-b (mint-github-actions-oidc-token "snowflakecomputing.com")]
-                  (is (not= token-a token-b) "second mint returns a distinct token")
-                  (spit tok-file token-b)
-                  ;; Backdate the cached expiry — this is what token expiry looks like to `pool-invalidation-reason`.
-                  (swap! pool-cache assoc-in [cache-key :password-expiry-timestamp] 1)
-                  (is (= [{:user wif-user}] (query!))
-                      "query succeeds after simulated expiry — pool must have been rebuilt with token-b")
-                  (let [new-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
-                    (is (> new-exp initial-exp)
-                        "new pool's :password-expiry-timestamp reflects the fresher token")))))))))))
+    (when-let [wif-user (wif-user-or-skip)]
+      (when-let [token-a (mint-github-actions-oidc-token "snowflakecomputing.com")]
+        (mt/with-temp-file [tok-file "wif-tok"]
+          (spit tok-file token-a)
+          (mt/with-temp [:model/Database db {:engine  :snowflake
+                                             :details (wif-live-details-with-token {:wif-token-file-path tok-file})}]
+            (let [pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
+                  cache-key  [(:id db) :default]
+                  query!     (fn []
+                               (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db)
+                                           ["SELECT CURRENT_USER() AS \"user\""]))]
+              (testing "initial query works with token-a"
+                (is (= [{:user wif-user}] (query!))))
+              (let [initial-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+                (is (integer? initial-exp)
+                    ":password-expiry-timestamp propagated from resolve-wif-credentials to the pool spec")
+                (is (< (System/currentTimeMillis) initial-exp)
+                    "initial expiry is in the future — pool wouldn't be invalidated yet")
+                (testing "after simulating expiry + rotating file, next query rebuilds the pool with the new token"
+                  ;; Sleep 1.1s so the fresh mint gets a strictly-later `exp` (GH exp is second-precision).
+                  (Thread/sleep 1100)
+                  (let [token-b (mint-github-actions-oidc-token "snowflakecomputing.com")]
+                    (is (not= token-a token-b) "second mint returns a distinct token")
+                    (spit tok-file token-b)
+                    ;; Backdate the cached expiry — this is what token expiry looks like to `pool-invalidation-reason`.
+                    (swap! pool-cache assoc-in [cache-key :password-expiry-timestamp] 1)
+                    (is (= [{:user wif-user}] (query!))
+                        "query succeeds after simulated expiry — pool must have been rebuilt with token-b")
+                    (let [new-exp (get-in @pool-cache [cache-key :password-expiry-timestamp])]
+                      (is (> new-exp initial-exp)
+                          "new pool's :password-expiry-timestamp reflects the fresher token"))))))))))))
 
 (defn- pem->private-key
   [pem]
