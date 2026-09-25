@@ -194,7 +194,12 @@
                  clojure.lang.ExceptionInfo
                  #"The pgvector URL sets password both before the host and as a parameter"
                  (parse-db-url (str (userinfo-url "postgres:secret") "?password=other"))))]
-      (is (not (re-find #"secret|other" (str (ex-message e) (ex-data e))))))))
+      (is (not (re-find #"secret|other" (str (ex-message e) (ex-data e)))))))
+  (testing "an unencoded `@` in a query value passes through, as pgjdbc accepts it"
+    (doseq [url [(str base-url "?user=mylogin@srv&password=p@ss")
+                 "jdbc:postgresql://?service=pgvector&user=mylogin@srv&password=p@ss"]]
+      (is (=? {:credentials {:user "mylogin@srv", :password "p@ss"}}
+              (parse-db-url url))))))
 
 (deftest parse-db-url-validation-test
   (testing "an unrecognized param throws rather than being silently ignored by pgjdbc"
@@ -211,6 +216,7 @@
     (doseq [url ["jdbc:postgresql://alice:se/cret@db/mb"            ; `/` in the password
                  "jdbc:postgresql://alice:se?cret@db/mb"            ; `?` in the password
                  "jdbc:postgresql://alice:se?service=cret@db/mb"    ; `?`, putting the `@` in a param
+                 "jdbc:postgresql://alice:s@e?cret@db/mb"           ; `@` and then `?` in the password
                  "jdbc:postgresql://alice:secret@db/mb@elsewhere"]] ; `@` in the database name
       (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
         (is (=? {:message (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "

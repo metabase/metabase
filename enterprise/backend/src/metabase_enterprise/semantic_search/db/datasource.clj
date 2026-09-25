@@ -132,10 +132,14 @@
 (defn- check-no-stray-at!
   "Throw if an `@` is left in `url` or `pairs` once the credentials are off, without quoting either."
   [^String url pairs]
-  ;; Such an `@` means a password with an unencoded `/` or `?`, or an `@` that pgjdbc requires encoded anyway.
-  ;; Refuse it before an error or the URL can quote the part of the password it may hold.
+  ;; An `@` left on `url` means a password with an unencoded `/`, or an `@` that pgjdbc requires encoded anyway.
+  ;; An unencoded `?` in a password ends the host part early, before the `/` pgjdbc requires after a host, and
+  ;; moves the `@` into `pairs`.
+  ;; Any other `@` in `pairs` is a plain value that pgjdbc accepts, such as Azure's `user=name@server`.
+  ;; Refuse a stray `@` before an error or the URL can quote the part of the password it may hold.
   (when (or (str/includes? url "@")
-            (some (fn [[k v]] (str/includes? (str k v) "@")) pairs))
+            (and (re-matches #"[^/]*//[^/]+" url)
+                 (some (fn [[k v]] (str/includes? (str k v) "@")) pairs)))
     (throw (ex-info (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
                          "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
                     {}))))
