@@ -1,6 +1,7 @@
 import type { UnknownAction } from "@reduxjs/toolkit";
 import { createReducer } from "@reduxjs/toolkit";
 import { assocIn, dissocIn } from "icepick";
+import { castDraft } from "immer";
 import { omit } from "underscore";
 
 import {
@@ -34,6 +35,7 @@ import type {
   Card,
   DashCardId,
   Dashboard,
+  Dataset,
   ParameterId,
   ParameterValueOrArray,
   ParameterValuesMap,
@@ -442,7 +444,14 @@ export const dashcardData = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
-          return assocIn(state, [dashcard_id, card_id], result);
+          // mutate the draft rather than assocIn: icepick freezes its result in
+          // dev, which stops immer from finalizing the draft children embedded
+          // in it and leaves revoked proxies in the state
+          state[dashcard_id] ??= {};
+          // error-only results share the Dataset slot: every consumer reads
+          // them through the Dataset type (`result.error`), so the map keeps
+          // that contract rather than widening it
+          state[dashcard_id][card_id] = castDraft(result as Dataset);
         }
       })
       .addCase(clearCardData, (state, action) => {

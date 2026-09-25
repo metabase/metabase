@@ -47,6 +47,21 @@ export function isTransientId(id: unknown) {
   return typeof id === "string" && /\/auto\/dashboard/.test(id);
 }
 
+export const ADHOC_DASHBOARD_PATH = "/dashboard";
+
+export function getAdhocDashboardEncodedDefinition(hash: string) {
+  const [encodedDefinition] = hash.replace(/^#/, "").split("&");
+  return encodedDefinition || undefined;
+}
+
+export function isAdhocDashboardPath(pathname: string) {
+  return pathname === ADHOC_DASHBOARD_PATH;
+}
+
+export function isAdhocDashboardId(id: unknown): id is string {
+  return typeof id === "string" && id.startsWith(`${ADHOC_DASHBOARD_PATH}#`);
+}
+
 export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
@@ -57,6 +72,8 @@ export function getDashboardType(id: unknown) {
     return "embed";
   } else if (isTransientId(id)) {
     return "transient";
+  } else if (isAdhocDashboardId(id)) {
+    return "adhoc";
   } else {
     return "normal";
   }

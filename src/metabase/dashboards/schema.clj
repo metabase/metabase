@@ -81,7 +81,9 @@
    [:archived_directly       {:optional true} [:maybe :boolean]]
    [:last_viewed_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:embedding_type          {:optional true} [:maybe [:or :keyword :string]]]
-   [:public_uuid_prefix      {:optional true} [:maybe :string]]])
+   [:public_uuid_prefix      {:optional true} [:maybe :string]]
+   [:metabot_conversation_id {:optional true} [:maybe :string]]
+   [:metabot_dashboard_id    {:optional true} [:maybe :string]]])
 
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."

@@ -566,4 +566,61 @@ describe("metabot reducer", () => {
       expect(getConvo(store)?.messages).toEqual([]);
     });
   });
+
+  describe("setConversationSnapshot saved entities", () => {
+    it("marks charts and dashboards saved from the conversation detail", () => {
+      const state = metabotReducer(
+        getMetabotInitialState(),
+        metabotActions.setConversationSnapshot({
+          conversationId: "convo-1",
+          messages: [],
+          savedEntities: [
+            { type: "card", chart_id: "chart-1", card_id: 99 },
+            {
+              type: "dashboard",
+              generated_dashboard_id: "dash-1",
+              dashboard_id: 7,
+            },
+            { type: "card", chart_id: null, card_id: 100 },
+          ],
+        }),
+      );
+
+      expect(state.savedEntityIds).toEqual({
+        "convo-1": { "chart-1": 99, "dash-1": 7 },
+      });
+    });
+
+    it("drops a conversation's entities that its latest snapshot no longer lists", () => {
+      const saved = metabotReducer(
+        getMetabotInitialState(),
+        metabotActions.markEntitySaved({
+          conversationId: "convo-1",
+          entityId: "dash-1",
+          savedId: 7,
+        }),
+      );
+      const otherSaved = metabotReducer(
+        saved,
+        metabotActions.markEntitySaved({
+          conversationId: "convo-2",
+          entityId: "chart-2",
+          savedId: 8,
+        }),
+      );
+      const state = metabotReducer(
+        otherSaved,
+        metabotActions.setConversationSnapshot({
+          conversationId: "convo-1",
+          messages: [],
+          savedEntities: [],
+        }),
+      );
+
+      expect(state.savedEntityIds).toEqual({
+        "convo-1": {},
+        "convo-2": { "chart-2": 8 },
+      });
+    });
+  });
 });

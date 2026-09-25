@@ -131,9 +131,11 @@
 
 (defn entity-saved-part
   "Create an ENTITY_SAVED data part for streaming. `value` is a map describing where a
-  previously-generated inline chart was persisted: `{:chart_id <generated chart id>,
-  :card_id <saved card id>, :destination {:type :id}}`. The FE resolves the card's
-  and the destination's display names at render time."
+  previously-generated inline entity was persisted, discriminated by `:type`:
+  `{:type card, :chart_id <generated chart id>, :card_id <saved card id>,
+  :destination {:type :id}}` or `{:type dashboard, :generated_dashboard_id
+  <generated dashboard id>, :dashboard_id <saved dashboard id>, :destination ...}`.
+  The FE resolves the entity's and the destination's display names at render time."
   [value]
   {:type :data
    :data-type entity-saved-type
@@ -189,6 +191,17 @@
   (generated-entity-part
    (cond-> {:type "dashboard" :url url :title title}
      id (assoc :id id))))
+
+(defn generated-dashboard-part
+  "Return the `generated_entity` data part for a dashboard the agent assembled from
+  conversation charts and queries. Embeds the whole definition — `title`, optional
+  `description`, and positioned `dashcards` (each carrying its legacy `dataset_query`,
+  `display` and `title`, the same shape the save endpoint accepts) — so the FE can
+  render it as an entity or route to it as an ad-hoc dashboard."
+  [{:keys [id title description dashcards]}]
+  (generated-entity-part
+   (cond-> {:type "dashboard" :id id :title title :dashcards dashcards}
+     description (assoc :description description))))
 
 ;;; Stream Processing Transducers
 

@@ -4,6 +4,7 @@ import {
   createSlice,
 } from "@reduxjs/toolkit";
 import { type WritableDraft, castDraft } from "immer";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
@@ -12,6 +13,7 @@ import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { MetabotCodeEdit, MetabotStateContext } from "metabase-types/api";
 
+import type { SavedEntity } from "../api";
 import type { MetabotProfileId } from "../constants";
 import { isContextWindowFull } from "../utils/context-usage";
 
@@ -126,11 +128,17 @@ export const metabot = createSlice({
     setDebugMode: (state, action: PayloadAction<boolean>) => {
       state.debugMode = action.payload;
     },
-    markChartSaved: (
+    markEntitySaved: (
       state,
-      action: PayloadAction<{ entityId: string; cardId: number }>,
+      action: PayloadAction<{
+        conversationId: string;
+        entityId: string;
+        savedId: number;
+      }>,
     ) => {
-      state.savedChartCardIds[action.payload.entityId] = action.payload.cardId;
+      const { conversationId, entityId, savedId } = action.payload;
+      state.savedEntityIds[conversationId] ??= {};
+      state.savedEntityIds[conversationId][entityId] = savedId;
     },
     // CONVERSATION REDUCERS
     setConversationTitle: convoReducer(
@@ -382,6 +390,7 @@ export const metabot = createSlice({
         conversationId: string;
         title?: string;
         forkedFromConversationId?: string;
+        savedEntities?: SavedEntity[];
         contextWindowTokens?: number;
       }>,
     ) => {
@@ -392,8 +401,27 @@ export const metabot = createSlice({
         conversationId,
         title,
         forkedFromConversationId,
+        savedEntities = [],
         contextWindowTokens,
       } = action.payload;
+
+      const savedIds: Record<string, number> = {};
+      savedEntities.forEach((entity) => {
+        match(entity)
+          .with({ type: "card" }, ({ chart_id, card_id }) => {
+            if (chart_id != null) {
+              savedIds[chart_id] = card_id;
+            }
+          })
+          .with(
+            { type: "dashboard" },
+            ({ generated_dashboard_id, dashboard_id }) => {
+              savedIds[generated_dashboard_id] = dashboard_id;
+            },
+          )
+          .exhaustive();
+      });
+      state.savedEntityIds[conversationId] = savedIds;
 
       const convo =
         state.conversations[conversationId] ??
