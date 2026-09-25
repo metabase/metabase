@@ -137,7 +137,7 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByLabelText("AI agent's name").should("have.value", "HAL 9000");
     });
 
-    it("should upload a custom Metabot icon and show the illustrations section", () => {
+    it("should upload a custom Metabot icon", () => {
       cy.intercept("PUT", "/api/setting/metabot-icon").as("saveIcon");
 
       cy.visit("/admin/metabot/customization");
@@ -146,9 +146,6 @@ describe("AI Controls > Metabot access and customization", () => {
       cy.findByRole("button", { name: "Upload a custom icon" }).should(
         "be.visible",
       );
-
-      // The illustrations section is hidden until a custom icon is set
-      H.main().findByText("Metabot illustrations").should("not.exist");
 
       // Upload a tiny PNG via the hidden file input
       cy.get('input[type="file"]').selectFile(
@@ -165,20 +162,12 @@ describe("AI Controls > Metabot access and customization", () => {
 
       cy.wait("@saveIcon").its("response.statusCode").should("eq", 204);
 
-      // The illustrations section should now appear
-      H.main().findByText("Metabot illustrations").should("be.visible");
-      cy.findByRole("switch", { name: /Show Metabot illustrations/ })
-        .parent()
-        .should("be.visible");
-
       // The "Remove custom icon" button should be visible
       cy.findByLabelText("Remove custom icon").should("be.visible");
     });
 
     it("should hide Metabot illustrations when the toggle is switched off", () => {
-      // Set a custom icon via API so the illustrations toggle is visible
       H.updateEnterpriseSettings({
-        "metabot-icon": TINY_PNG_DATA_URI,
         "metabot-show-illustrations": true,
       });
       H.updateSetting("metabot-enabled?", true);
@@ -209,10 +198,7 @@ describe("AI Controls > Metabot access and customization", () => {
 
       // Navigate to the home page and open Metabot chat to verify illustrations are hidden
       cy.visit("/");
-      // Can't use H.openMetabotViaSearchButton() because custom icon replaces .Icon-metabot
-      H.appBar()
-        .findByRole("button", { name: /Chat with/ })
-        .click();
+      H.openMetabotViaSearchButton();
 
       cy.findByTestId("metabot-empty-chat-info").should("be.visible");
       // The SVG illustration should NOT be rendered when showIllustrations=false
