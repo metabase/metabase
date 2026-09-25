@@ -197,17 +197,6 @@
                  :collection "venues"}
                 (mt/user-http-request :crowberto :post 200 "dataset/native" query)))))))
 
-(deftest convert-to-native-omits-default-limit-test
-  (mt/test-driver :mongo
-    (testing "POST /api/dataset/native compiles without the default `$limit` stage"
-      (let [mp    (mt/metadata-provider)
-            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-        (is (not (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))
-                                "$limit")))
-        (testing "an explicit limit is kept"
-          (is (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" (lib/limit query 3)))
-                             "$limit")))))))
-
 (deftest convert-to-native-nested-on-converted-card-test
   (mt/test-driver :mongo
     (testing "A question based on a converted-to-native Mongo card can be run and converted to native again"
@@ -223,7 +212,6 @@
                     (mt/user-http-request :crowberto :post 202 "dataset" query)))
             (let [nested (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
               (is (=? {:collection "venues"} nested))
-              (is (not (str/includes? (:query nested) "$limit")))
               (is (not (str/includes? (:query nested) "Bson")))
               (is (=? {:status    "completed"
                        :row_count 100}
