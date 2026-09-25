@@ -82,6 +82,10 @@
                           {:card_id        %
                            :send_condition "has_result"
                            :schedule       {:frequency "daily" :hour 9}}))]
+    (testing "a call from outside Slack goes back to the agent as output"
+      (is (= {:output "This tool can only be used from a Slack channel"}
+             (metabot.tools.create-alert/create-alert-tool
+              {:card_id 1 :send_condition "has_result" :schedule {:frequency "daily" :hour 9}}))))
     (testing "a card the user can't read goes back to the agent as output"
       (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)]
         (mt/with-non-admin-groups-no-root-collection-perms

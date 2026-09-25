@@ -959,7 +959,7 @@
                        (catch Exception e
                          (if (:agent-error? (ex-data e))
                            (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
+                           (log/error e "Tool execution failed" {:tool-name tool-name}))
                          [{:type         :tool-output-available
                            :toolCallId   tool-call-id
                            :toolName     tool-name
