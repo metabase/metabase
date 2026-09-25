@@ -78,7 +78,9 @@
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)))
+    (dashboards.db/delete-dashboard-revisions! dashboard-id)
+    ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -106,9 +108,7 @@
       (params/assert-valid-parameters dashboard)
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
-      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
-      (when (:archived changes)
-        (dashboards.db/delete-pulses-for-dashboard! (u/the-id dashboard))))))
+      (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard)))))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p

@@ -130,6 +130,34 @@
           (testing "channels that has no recipients are deleted"
             (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
 
+(deftest send-pulse!*-skips-archived-dashboard-test
+  (testing "a trigger firing for a trashed Dashboard sends nothing and records no task run"
+    (let [sent-channel-ids (atom #{})]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse! (fn [_pulse & {:keys [channel-ids]}]
+                                                           (swap! sent-channel-ids set/union channel-ids))]
+        (mt/with-temp [:model/Dashboard    {dash-id :id}  {}
+                       :model/Pulse        {pulse-id :id} {:dashboard_id dash-id}
+                       :model/PulseChannel {pc-id :id}    (merge {:pulse_id     pulse-id
+                                                                  :channel_type :slack
+                                                                  :details      {:channel "#random"}}
+                                                                 daily-at-1am)]
+          ;; keyed on the Dashboard rather than the Pulse: subscription runs are recorded this way on both the Pulse and
+          ;; the Notification send paths
+          (let [task-runs #(t2/select-pks-set :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+            (try
+              (t2/update! :model/Dashboard dash-id {:archived true})
+              (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
+              (is (= #{} @sent-channel-ids))
+              (is (empty? (task-runs)))
+              (testing "once the Dashboard is restored, the same fire sends and records a task run"
+                (t2/update! :model/Dashboard dash-id {:archived false})
+                (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
+                (is (= #{pc-id} @sent-channel-ids))
+                (is (= 1 (count (task-runs)))))
+              (finally
+                (t2/delete! :model/TaskHistory :run_id [:in (conj (task-runs) -1)])
+                (t2/delete! :model/TaskRun :entity_type :dashboard :entity_id dash-id)))))))))
+
 (deftest init-dashboard-subscription-triggers!-group-runs-test
   (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"
     (pulse-channel-test/with-send-pulse-setup!
