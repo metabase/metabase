@@ -1,4 +1,4 @@
-# Everything else: cleans, generators, lifecycle hooks and the dependency gate.
+# Everything else: cleans, CI entry points and the dependency gate.
 
 tasks:
   ci:
@@ -43,31 +43,6 @@ tasks:
   mage:
     script: >-
       ./bin/mage
-    options:
-      cache: false
-
-  postinstall:
-    script: >-
-      if [ -z "$CI" ]; then patch-package; fi
-    options:
-      cache: false
-
-  precommit:
-    script: >-
-      lint-staged
-    options:
-      cache: false
-
-  preinstall:
-    script: >-
-      node -e "if(!/bun/.test(process.env.npm_execpath || '')) {
-      console.error('Please use Bun, not npm or yarn.'); process.exit(1); }"
-    options:
-      cache: false
-
-  prepare:
-    script: >-
-      husky
     options:
       cache: false
 
