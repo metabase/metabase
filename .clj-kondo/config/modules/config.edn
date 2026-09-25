@@ -2384,7 +2384,7 @@
    :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{search.embeddings
                      search.entity-retrieval}
    :api  #{metabase.search.api
@@ -4124,7 +4124,7 @@
                     :model/User}}
 
   enterprise/search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{enterprise/search.embeddings
                      enterprise/search.entity-retrieval
                      enterprise/search.semantic}
