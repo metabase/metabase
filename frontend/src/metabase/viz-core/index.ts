@@ -243,13 +243,6 @@ export {
   resolveOpenEndedGoalSegments,
   toReferencedEntity,
 } from "./lib/dynamic-goals";
-export type {
-  GoalData,
-  GoalRefError,
-  GoalValueResult,
-  ResolvedGoalSegment,
-  ResolvedOpenEndedGoalSegment,
-} from "./lib/dynamic-goals";
 export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
 export {
   ChartSettingsError,
@@ -503,6 +496,13 @@ export type {
   VisualizationSettingsDefinitions,
   Widget,
 } from "./types/definition";
+export type {
+  GoalData,
+  GoalRefError,
+  GoalValueResult,
+  ResolvedGoalSegment,
+  ResolvedOpenEndedGoalSegment,
+} from "./types/dynamic-goals";
 export type { EChartsEventHandler, ZREventHandler } from "./types/echarts";
 export type {
   DataPoint,
