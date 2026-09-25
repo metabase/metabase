@@ -65,8 +65,9 @@
             (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
           (is (= "aborted"
                  (t2/select-one-fn :initial_sync_status :model/Database (mt/id))))
-          (testing "and a cause is recorded (GHY-3856)"
-            (is (some? (t2/select-one-fn :initial_sync_error :model/Database (mt/id))))))))))
+          (testing "and the step's own error message is recorded as the cause, not a schema-validation error (GHY-3856)"
+            (is (= "Unknown column 'generation_expression' in 'field list'"
+                   (t2/select-one-fn :initial_sync_error :model/Database (mt/id))))))))))
 
 (deftest completed-sync-clears-initial-sync-error-test
   (testing "GHY-3856: a sync that completes after an aborted one clears the recorded cause, so the UI shows no stale error"
