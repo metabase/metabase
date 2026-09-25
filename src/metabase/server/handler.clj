@@ -17,6 +17,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
    [metabase.server.middleware.request-id :as mw.request-id]
+   [metabase.server.middleware.route-template-carrier :as mw.route-template-carrier]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
@@ -114,6 +115,7 @@
         #'wrap-gzip                                  ; GZIP response if client can handle it
         #'mw.trace/wrap-trace                         ; Create root OpenTelemetry span per request (after request-id is available)
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
+        #'mw.route-template-carrier/wrap-route-template-carrier ; Install a carrier so routing can report which route matched
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias

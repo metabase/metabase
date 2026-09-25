@@ -69,6 +69,7 @@
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
+   "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
