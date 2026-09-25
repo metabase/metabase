@@ -330,21 +330,25 @@
                           (:collection_id metabot))
         collection-id   (or confined-id collection-id)
         limit           (or limit 50)
+        ;; the user's data lens, computed once for every context built below
+        lens            {:is-impersonated-user? (perms/impersonated-user?)
+                         :is-sandboxed-user?    (perms/sandboxed-user?)
+                         :is-routed-user?       (perms/routed-user?)}
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> {:search-string                       search-string
-                                                         :models                              search-models
-                                                         :table-db-id                         database-id
-                                                         :created-at                          created-at
-                                                         :last-edited-at                      last-edited-at
-                                                         :current-user-id                     api/*current-user-id*
-                                                         :is-impersonated-user?               (perms/impersonated-user?)
-                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                                         :is-superuser?                       api/*is-superuser?*
-                                                         :current-user-perms                  @api/*current-user-permissions-set*
-                                                         :filter-items-in-personal-collection "exclude-others"
-                                                         :context                             :metabot
-                                                         :archived                            (boolean archived)}
+                                                (cond-> (merge
+                                                         lens
+                                                         {:search-string                       search-string
+                                                          :models                              search-models
+                                                          :table-db-id                         database-id
+                                                          :created-at                          created-at
+                                                          :last-edited-at                      last-edited-at
+                                                          :current-user-id                     api/*current-user-id*
+                                                          :is-superuser?                       api/*is-superuser?*
+                                                          :current-user-perms                  @api/*current-user-permissions-set*
+                                                          :filter-items-in-personal-collection "exclude-others"
+                                                          :context                             :metabot
+                                                          :archived                            (boolean archived)})
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query
@@ -398,13 +402,14 @@
         ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
         ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
         {:keys [data total]} (search/search-results
-                              (search/search-context {:search-string      nil
-                                                      :models             search-models
-                                                      :current-user-id    api/*current-user-id*
-                                                      :current-user-perms @api/*current-user-permissions-set*
-                                                      :is-superuser?      api/*is-superuser?*
-                                                      :offset             (or offset 0)
-                                                      :limit              limit})
+                              (search/search-context (merge lens
+                                                            {:search-string      nil
+                                                             :models             search-models
+                                                             :current-user-id    api/*current-user-id*
+                                                             :current-user-perms @api/*current-user-permissions-set*
+                                                             :is-superuser?      api/*is-superuser?*
+                                                             :offset             (or offset 0)
+                                                             :limit              limit}))
                               search/model-set
                               (vec fused-ranked))]
     ;; validate-and-enrich-documents drops stale/unreadable document hits and attaches live write

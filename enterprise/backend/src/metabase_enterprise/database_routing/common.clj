@@ -62,6 +62,25 @@
    api/*is-superuser?*
    db-or-id))
 
+(defenterprise routed-user?
+  "Whether the current user's queries against ANY router database resolve to a destination database rather than the
+  router itself. Superusers never are. A non-admin missing the routing attribute would be refused at query time, so
+  they count as routed here (fail closed). Uses `:feature :none` so a routed user is recognized even when the
+  `:database-routing` feature is momentarily unavailable. Throws if no current user is bound."
+  :feature :none
+  []
+  (boolean
+   (when-not api/*is-superuser?*
+     (if api/*current-user-id*
+       (let [attributes (api/current-user-attributes)]
+         (some (fn [attribute-name]
+                 (not= "__METABASE_ROUTER__" (get attributes attribute-name)))
+               (database-routing.db/router-user-attributes)))
+       ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid
+       ;; returning `false` for users who should actually be routed.
+       (throw (ex-info (str (tru "No current user found"))
+                       {:status-code 403}))))))
+
 (defenterprise routing-token-for-db
   "Database-routing fingerprint for the current user on router `db-id` (the resolved destination
   database id), or nil when the user resolves to the router db itself (admins, or non-admins

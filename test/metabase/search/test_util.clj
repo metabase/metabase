@@ -109,11 +109,13 @@
                                       :current-user-perms    #{"/"}
                                       :is-superuser?         true
                                       :is-sandboxed-user?    false
-                                      :is-impersonated-user? false}
+                                      :is-impersonated-user? false
+                                      :is-routed-user?       false}
                                      (select-keys raw-ctx# [:current-user-perms
                                                             :is-superuser?
                                                             :is-sandboxed-user?
-                                                            :is-impersonated-user?]))]
+                                                            :is-impersonated-user?
+                                                            :is-routed-user?]))]
            ~@body))
        (mt/with-test-user :crowberto ~@body))))
 
@@ -130,7 +132,8 @@
                              :current-user-perms    @api/*current-user-permissions-set*
                              :is-superuser?         api/*is-superuser?*
                              :is-impersonated-user? (perms-util/impersonated-user?)
-                             :is-sandboxed-user?    (perms-util/impersonated-user?)})
+                             :is-sandboxed-user?    (perms-util/sandboxed-user?)
+                             :is-routed-user?       (perms-util/routed-user?)})
                         {:archived         false
                          :context          :default
                          :search-string    search-string
