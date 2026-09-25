@@ -63,6 +63,7 @@
    :entity_type mi/transform-keyword
    :status      mi/transform-keyword})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *run-id*
   "The ID of the current task run. Set by [[with-task-run]]."
   nil)

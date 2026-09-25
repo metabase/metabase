@@ -285,6 +285,7 @@
     (do-with-lock-wait-timeout conn timeout #(acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?))
     (acquire-lock-row!* conn lock-name-str timeout mode ambient-transaction?)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *detached-locks-held*
   "Lock-name strings currently held by [[do-with-detached-cluster-lock]] in this dynamic scope. A detached
   hold lives on a dedicated connection, so re-acquiring the same name from this scope — detached or

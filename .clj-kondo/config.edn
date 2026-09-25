@@ -65,8 +65,9 @@
   :metabase/check-testing-not-empty                          {:level :warning}
   :metabase/defsetting-must-specify-export                   {:level :warning}
   :metabase/defsetting-namespace                             {:level :warning}
+  :metabase/discourage-dynamic-vars                          {:level :warning}
   :metabase/discourage-millis-duration                       {:level :warning}
-  :metabase/mbql-query-first-arg                             {:level :warning}
+  :metabase/mbql-query-first-arg                            {:level :warning}
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
@@ -803,7 +804,11 @@
    metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.defn/defn                                                                                             hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli.defn/defn-                                                                                            hooks.clojure.core.def/lint-dynamic
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.malli/defn                                                                                                  hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli/defn-                                                                                                 hooks.clojure.core.def/lint-dynamic
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?

@@ -373,6 +373,7 @@
   [^Cell cell t styles typed-styles]
   (set-cell! cell (t/offset-date-time t) styles typed-styles))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *number-of-characters-cell*
   "Total number of characters that a cell can contain, 32767 is the maximum number supported by the cell."
   ;; See https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3
@@ -570,6 +571,7 @@
                                scaled-val)]
           (set-cell! cell parsed-value styles typed-cell-styles))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auto-sizing-threshold*
   "The maximum number of rows we should use for auto-sizing. If this number is too large, exports
   of large datasets will be prohibitively slow."

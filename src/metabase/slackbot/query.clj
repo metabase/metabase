@@ -80,10 +80,12 @@
   "Maximum number of columns Slack table blocks support."
   20)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *slack-table-max-cell-length*
   "Maximum text length per cell. Longer values are truncated with ellipsis."
   128)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *slack-table-max-chars*
   "Undocumented Slack limit: table blocks exceeding 10,000 characters are rejected with
    `table_character_count_must_not_exceed_10000`. We use 9,500 as a budget for cell text content

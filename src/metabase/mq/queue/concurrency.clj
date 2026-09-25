@@ -20,6 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *in-flight*
   "channel → how many batches this node is currently delivering for it. A channel with nothing in
   flight is absent rather than zero, so the map stays small.

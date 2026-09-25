@@ -31,6 +31,7 @@
     initial-interval-millis (assoc :backoff-ms (cond-> [initial-interval-millis max-interval-millis]
                                                  multiplier (conj multiplier)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *test-time-config-hook*
   "This should only be used during testing to modify the final config map passed to Diehard."
   identity)

@@ -225,6 +225,7 @@
 
 ;;; ---------------------------------------------- Provider connections ------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-llm-provider-write*
   "Whether a trusted provider API operation may persist [[llm-providers]] during an HTTP request."
   false)

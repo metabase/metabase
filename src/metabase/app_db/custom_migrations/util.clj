@@ -10,6 +10,7 @@
 (defn- set-jdbc-backend-properties! []
   (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-temp-scheduling*
   "If true, the scheduler will be started temporarily for migrations that require it. If false, migrations that use `do-with-temp-schedule` will be a no-op."
   true)

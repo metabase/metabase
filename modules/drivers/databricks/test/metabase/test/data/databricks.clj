@@ -99,6 +99,7 @@
 ;; Dataset can be destroyed using `tx/destroy-db` to remove the data from Databricks instance.
 ;; [[*allow-database-deletion*]] must be bound to true. Then `t2/delete!` can be used to remove the reference from
 ;; application database.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
@@ -122,6 +123,7 @@
         (log/infof "Creating Databricks database %s" (pr-str schema))
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-database-deletion*
   "This is used to control `tx/destroy-db!`. Disabling database deletion is useful in CI. Specifically, if initial sync
   of some test dataset our test code destroys the database. In Databricks we want to avoid this, because datasets are

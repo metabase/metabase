@@ -5,6 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *diagnostic-info*
   "Atom used to hold diagnostic info for the current query execution, to be made available via a helper macro/fn below."
   nil)

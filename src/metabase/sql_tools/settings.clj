@@ -28,6 +28,7 @@
 (def ^:private available-parser-backends
   #{:macaw :sqlglot})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*
   "Dynamic var for overriding the parser backend in tests.
    When bound, [[current-parser-backend]] returns this instead of the setting."

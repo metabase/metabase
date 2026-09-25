@@ -25,6 +25,7 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-dataset-prewarm?*
   "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
 
@@ -51,6 +52,7 @@
   ([]       (get-or-create-default-dataset! (tx/driver)))
   ([driver] (get-or-create-database! driver (tx/default-dataset driver))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-default-dataset!]] for the current [[metabase.driver/*driver*]], which
@@ -101,6 +103,7 @@
 (defn- test-data-database-id []
   (@memoized-test-data-database-id-fn (tx/driver)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
   #'test-data-database-id)
 
@@ -186,6 +189,7 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
   "The database definition used to create the currently bound test database. For those rare occasions when you need to
   refer back to it."
@@ -388,6 +392,7 @@
                        prop->old-id)))
       database)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)

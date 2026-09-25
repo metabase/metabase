@@ -300,6 +300,7 @@
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
 
 (p/defprotocol+ TokenChecker
@@ -412,6 +413,7 @@
       (catch Throwable t
         (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
    For testing only — do not use in production."
@@ -514,6 +516,7 @@
               :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *customize-checker*
   "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
   should we construct ones without circuit breakers "
@@ -614,6 +617,7 @@
                        (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
+  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []

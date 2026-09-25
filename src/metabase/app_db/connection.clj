@@ -100,6 +100,7 @@
     :id          (swap! application-db-counter inc)
     :lock        (ReentrantReadWriteLock.)}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^ApplicationDB *application-db*
   "Type info and [[javax.sql.DataSource]] for the current Metabase application database. Create a new instance
   with [[application-db]]."
@@ -168,6 +169,7 @@
   [_connectable f]
   (t2.conn/do-with-connection *application-db* f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *transaction-depth* 0)
 
 (defn in-transaction?
@@ -178,7 +180,9 @@
 ;; Accumulate 0-arity thunks to run just before / just after the outermost transaction commits. Each is
 ;; bound to a fresh atom when the outermost transaction starts (see [[do-with-transaction]]) and shared by
 ;; the whole nested-transaction tree; nil outside any transaction.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
 
 ;; Holds an atom set to true when a rollback fails and leaves behind writes that should have been discarded. The atom
@@ -187,12 +191,14 @@
 ;;
 ;; Once set it stays set. Clearing it correctly would mean tracking the depth that failed: a sibling scope rolling
 ;; back to its own, later savepoint does not discard an earlier scope's writes.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *rollback-required* nil)
 
 ;; Open savepoints in creation order, each with whether its scope has finished. Shared by the tree, including threads
 ;; that inherit its bindings. Releasing a savepoint destroys every later one, so a scope may only release once no
 ;; later scope is still running; a sibling thread's early release would otherwise leave that scope nothing to release
 ;; or roll back to, and on postgres the failed release aborts the transaction.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *open-savepoints* nil)
 
 (defn- set-savepoint! [^java.sql.Connection connection]
@@ -240,6 +246,7 @@
               ;; diverge.
               (log/warnf "Failed to release savepoint: %s" (ex-message e)))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *transaction-state*
   "When non-nil, an atom holding a map of arbitrary per-transaction data, shared by the whole
   nested-transaction tree and thrown away when the outermost transaction ends. Any subsystem can stash

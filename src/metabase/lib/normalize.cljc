@@ -52,6 +52,7 @@
               (pr-str (me/humanize (:explain error))))
   (:value error))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *error-fn*
   default-error-fn)
 

@@ -20,11 +20,13 @@
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
   but enable it when adding or deleting users."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-changing-all-external-users-group-members*
   "Should we allow people to be added to or removed from the All tenant users permissions group? By default, this is
   `false`, but enable it when adding or deleting users."
@@ -69,8 +71,10 @@
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *update-user-when-added-to-admin-group?* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-direct-deletion*
   "Should we allow direct `t2/delete!` calls on PermissionsGroupMembership? By default this is `false`; only the
   blessed helper functions like `remove-user-from-group!` bind this to `true`."

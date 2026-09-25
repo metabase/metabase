@@ -13,15 +13,18 @@
    "row" "pivot" "scatter" "waterfall" "sankey" "scalar"
    "smartscalar" "gauge" "progress" "funnel" "object" "map"])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *memory-atom*
   "Dynamic memory atom bound for tools that need access to agent state."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metabot-id*
   "The resolved metabot ID for the current agent session. Bound during the agent loop
    so that tools can scope queries to the correct metabot instance's collection."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-id*
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."

@@ -14,6 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enabled*
   "Whether the checks in this namespace do anything; off in prod."
   (not config/is-prod?))

@@ -29,6 +29,7 @@
      (every-pred string? #'setup/token-match?)]]
    (i18n/deferred-tru "Token does not match the setup token.")))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *allow-api-setup-after-first-user-is-created*
   "We must not allow users to setup multiple super users after the first user is created. But tests still need to be able
   to. This var is redef'd to false by certain tests to allow that."

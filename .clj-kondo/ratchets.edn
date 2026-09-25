@@ -22,6 +22,7 @@
                   :equals-true                                                         1
                   :main-without-gen-class                                              1
                   :metabase/disallow-hardcoded-driver-names-in-tests                   34
+                  :metabase/discourage-dynamic-vars                                    395
                   :metabase/discourage-millis-duration                                 1
                   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
                   :metabase/modules                                                    24
@@ -76,6 +77,7 @@
  :comment-exempt #{:deprecated-namespace
                    :discouraged-namespace
                    :discouraged-var
+                   :metabase/discourage-dynamic-vars
                    :metabase/modules
                    :metabase/validate-defendpoint-has-response-schema
                    :metabase/validate-defendpoint-query-params-use-kebab-case

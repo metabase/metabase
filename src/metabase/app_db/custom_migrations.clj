@@ -1173,6 +1173,7 @@
   []
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
    load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to

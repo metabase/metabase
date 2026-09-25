@@ -142,6 +142,7 @@
     (#{:query :native} (lib.util/normalized-query-type query))
     mbql.normalize/normalize))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *metric-expansion-path*
   "Metric card IDs whose [[lib.metadata.calculation/metadata-method]] `:metric` expansion is in flight on this
   thread/binding, outermost first. A metric's metadata is computed from its inner aggregation, which may itself be a

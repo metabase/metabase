@@ -221,6 +221,7 @@
                javax.net.ssl.SSLHandshakeException]]
   (register-transient-exception klass))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
   behavior. You can disable this for debugging or test purposes."
@@ -432,6 +433,7 @@
   (when (not= (:initial_sync_status table) "complete")
     (sync.db/update-table! (u/the-id table) {:initial_sync_status "complete"})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "Size of table update partition."
   20000)

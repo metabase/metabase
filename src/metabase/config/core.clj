@@ -194,6 +194,7 @@
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
   13371338)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."
   false)
@@ -204,6 +205,7 @@
   []
   (not (false? (config-bool :mb-load-sample-content))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *request-id*
   "A unique identifier for the current request. This is bound by
   `metabase.server.middleware.request-id/wrap-request-id`."

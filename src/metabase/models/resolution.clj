@@ -191,6 +191,7 @@
        (t2.model/resolve-model metabase-models-keyword)))
    (next-method symb)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *table-name-resolved* false)
 
 (methodical/defmethod t2.model/table-name :around :default

@@ -388,6 +388,7 @@
     ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
   recursion. [[driver/normalize-db-details]] is actually done for side effects!"
@@ -714,6 +715,7 @@
                  :is_stub          false
                  :uploads_enabled  false}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *include-h2-in-extract?*
   "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
   by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —

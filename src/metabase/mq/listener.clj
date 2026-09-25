@@ -13,6 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *listeners*
   "channel → {:listener fn} for all channels."
   (atom {}))

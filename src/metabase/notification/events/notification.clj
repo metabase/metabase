@@ -64,6 +64,7 @@
   (when (supported-topics topic)
     (models.notification/notifications-for-event topic)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-sending-notification?*
   "Used as a hack for when we need to skip sending notifications for certain events.
 
