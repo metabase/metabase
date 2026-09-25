@@ -7,14 +7,12 @@
 }
 
 .suggestionEditor {
-  :global {
-    .cm-content {
-      padding: 0;
-    }
+  :global(.cm-content) {
+    padding: 0;
+  }
 
-    .cm-collapsedLines {
-      padding-left: 0;
-    }
+  :global(.cm-collapsedLines) {
+    padding-left: 0;
   }
 }
 
@@ -25,10 +23,8 @@
     transparent
   );
 
-  :global {
-    .cm-gutters {
-      background: transparent;
-    }
+  :global(.cm-gutters) {
+    background: transparent;
   }
 }
 
