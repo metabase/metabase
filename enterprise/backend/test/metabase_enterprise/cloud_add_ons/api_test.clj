@@ -3,7 +3,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 

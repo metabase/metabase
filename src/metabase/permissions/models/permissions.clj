@@ -465,7 +465,7 @@
   ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
   ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
   ;; from at index time. The claim is verified against the spec's joins by a contract test; see
-  ;; `metabase-enterprise.semantic-search.index-test`.
+  ;; `metabase-enterprise.search.semantic.index-test`.
   (atom {:t2-methods {} :search-models {}}))
 
 (defn collection-id-only-read-models

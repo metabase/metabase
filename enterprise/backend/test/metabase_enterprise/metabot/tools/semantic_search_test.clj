@@ -2,7 +2,7 @@
   "Semantic search tests specific to the Metabot search tool integration."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.search :as search]
    [metabase.permissions.core :as perms]

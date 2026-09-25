@@ -352,7 +352,7 @@
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
-  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  Note: the per-strategy dispatch in [[metabase-enterprise.search.semantic.index/semantic-search-query]] is a
   separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
   adding a strategy.
 

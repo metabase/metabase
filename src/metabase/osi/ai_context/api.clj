@@ -4,11 +4,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.db :as osi.db]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
    [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
