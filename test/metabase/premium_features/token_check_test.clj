@@ -11,7 +11,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.util.concurrent TimeUnit)))
 
@@ -301,3 +303,35 @@
       (is (thrown-with-msg? Exception
                             #"Adding another user would exceed the maximum"
                             (token-check/assert-airgap-allows-user-creation!))))))
+
+(defn- capture-compiled-queries
+  "Call `f` and return every compiled `[sql & params]` query it ran against the app DB."
+  [f]
+  (let [queries (atom [])]
+    (methodical/add-aux-method-with-unique-key!
+     #'t2.pipeline/transduce-execute-with-connection
+     :around :default
+     (fn [next-method rf conn query-type model query]
+       (swap! queries conj query)
+       (next-method rf conn query-type model query))
+     ::query-capture)
+    (try
+      (f)
+      (finally
+        (methodical/remove-aux-method-with-unique-key!
+         #'t2.pipeline/transduce-execute-with-connection
+         :around :default
+         ::query-capture)))
+    @queries))
+
+(deftest stats-for-token-request-uses-started-at-index-test
+  (testing "GHY-4651: the token-check stats query on query_execution must use idx_query_execution_started_at, not a full table scan.
+            query_execution can hold millions of rows."
+    ;; H2 names the access path in its EXPLAIN output, so the check does not depend on table size or planner costs.
+    (when (= :h2 (mdb/db-type))
+      (let [qe-queries (->> (capture-compiled-queries #'token-check/stats-for-token-request*)
+                            (filter (fn [[sql]] (re-find #"(?i)from\s+\"?query_execution\"?" sql))))]
+        (is (seq qe-queries))
+        (doseq [[sql & params] qe-queries
+                :let [plan (-> (t2/query (into [(str "EXPLAIN " sql)] params)) first :plan)]]
+          (is (re-find #"IDX_QUERY_EXECUTION_STARTED_AT: STARTED_AT" plan)))))))
