@@ -47,5 +47,5 @@ Unlike `loaderComponent` and `errorComponent`, these are [plugins](./plugins.md)
 
 - [Modular embedding SDK plugins](./plugins.md)
 - [Appearance](../appearance.md)
-- [Modular embedding SDK config](./config.md)
+- [Modular embedding SDK config](../config.md)
 - [Modular embedding components](../components.md)
