@@ -23,9 +23,10 @@ tasks:
       outputStyle: stream
 
   build-hot-js:
-    script: NODE_OPTIONS=--max-old-space-size=8192
-            WEBPACK_BUNDLE=hot
-            rspack serve
+    script:
+      NODE_OPTIONS=--max-old-space-size=8192
+      WEBPACK_BUNDLE=hot
+      rspack serve
     deps:
       - clean-dev-js
     options:
@@ -56,8 +57,9 @@ tasks:
       outputStyle: stream
 
   build-watch-js:
-    script: NODE_OPTIONS=--max-old-space-size=8192
-            rspack serve --watch
+    script:
+      NODE_OPTIONS=--max-old-space-size=8192
+      rspack serve --watch
     deps:
       - build-cljs
     options:

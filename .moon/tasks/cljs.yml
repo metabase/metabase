@@ -52,10 +52,11 @@ tasks:
       cache: false
 
   cljs-nrepl:
-    script: shadow-cljs node-repl
-            -d cider/cider-nrepl:0.57.0
-            -d cider/piggieback:0.6.1
-            -d refactor-nrepl/refactor-nrepl:3.11.0
+    script:
+      shadow-cljs node-repl
+      -d cider/cider-nrepl:0.57.0
+      -d cider/piggieback:0.6.1
+      -d refactor-nrepl/refactor-nrepl:3.11.0
     options:
       persistent: true
       cache: false

@@ -34,8 +34,9 @@ tasks:
       runDepsInParallel: false
 
   build-release-embedding-sdk-bundle:
-    script: WEBPACK_BUNDLE=production rspack --config
-            rspack.embedding-sdk-bundle.config.js
+    script:
+      WEBPACK_BUNDLE=production rspack --config
+      rspack.embedding-sdk-bundle.config.js
     deps:
       - build-release-cljs
     inputs:
@@ -45,8 +46,9 @@ tasks:
       - resources/embedding-sdk/**
 
   build-release-embedding-sdk-package:
-    script: WEBPACK_BUNDLE=production
-            rspack --config rspack.embedding-sdk-package.config.js
+    script:
+      WEBPACK_BUNDLE=production
+      rspack --config rspack.embedding-sdk-package.config.js
     deps:
       - build-release-cljs
     inputs:
@@ -77,8 +79,9 @@ tasks:
       - bin/embedding-sdk/**
 
   embedding-sdk-docs-generate:
-    script: typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options
-            ./.typedoc/typedoc.markdown.config.js
+    script:
+      typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options
+      ./.typedoc/typedoc.markdown.config.js
     deps:
       - build-release-embedding-sdk-package
       - embedding-sdk-dts-generate
@@ -98,8 +101,9 @@ tasks:
       - bin/embedding-sdk/**
 
   embedding-sdk-dts-generate:
-    script: ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true
-            && node ./bin/embedding-sdk/fixup-types-after-compilation.js
+    script:
+      ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true
+      && node ./bin/embedding-sdk/fixup-types-after-compilation.js
     deps:
       - embedding-sdk-clean-tsbuildinfo
     options:
@@ -113,8 +117,9 @@ tasks:
       - resources/embedding-sdk/**
 
   embedding-sdk-generate-package-support-files:
-    script: tsx
-            enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts
+    script:
+      tsx
+      enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts
     inputs:
       - enterprise/frontend/src/embedding-sdk-package/bin/**
     outputs:
