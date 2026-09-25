@@ -1,10 +1,12 @@
 (ns metabase-enterprise.semantic-search.db-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)
+   (com.mchange.v2.c3p0 PoolBackedDataSource PooledDataSource)
    (java.sql SQLException SQLTimeoutException)
+   (java.util.logging Handler Level LogRecord Logger)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -38,6 +40,48 @@
            clojure.lang.ExceptionInfo
            #"MB_PGVECTOR_DB_URL environment variable is required"
            (semantic.db.datasource/init-db!))))))
+
+(deftest pool-hides-credentials-test
+  (testing "the pool's string form, which c3p0 puts in its exception messages, leaves out the URL credentials"
+    ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
+    (with-redefs [semantic.db.datasource/db-url      "jdbc:postgresql://localhost:5432/mb?user=mb&password=hunter2"
+                  semantic.db.datasource/data-source (atom nil)]
+      (let [pool ^PooledDataSource (semantic.db.datasource/init-db!)]
+        (.close pool)
+        (let [e (is (thrown-with-msg? SQLException #"has been closed" (.getConnection pool)))]
+          (is (not (str/includes? (str (ex-message e)) "hunter2")))
+          (is (not (str/includes? (str pool) "hunter2"))))))))
+
+(deftest unrecognized-url-hides-credentials-test
+  (testing "the error for a URL no driver accepts, which quotes the URL, leaves out the credentials"
+    ;; The driver rejects the `jdbc:postgres:` spelling, so DriverManager reports it with the URL.
+    ;; Then next.jdbc retries with the right spelling, and only a failed retry lets that error through.
+    (with-redefs [semantic.db.datasource/db-url "jdbc:postgres://pgvector.invalid/mb?user=mb&password=hunter2"]
+      (let [e (is (thrown-with-msg? SQLException #"No suitable driver"
+                                    (semantic.db.datasource/probe-dedicated-connection!)))]
+        (is (not (str/includes? (str (ex-message e)) "hunter2")))))))
+
+(deftest pgjdbc-debug-log-hides-credentials-test
+  (testing "the URL the driver logs at DEBUG leaves out the credentials"
+    (let [^Logger logger (Logger/getLogger "org.postgresql.Driver")
+          level          (.getLevel logger)
+          logged         (atom [])
+          handler        (proxy [Handler] []
+                           (publish [^LogRecord record]
+                             (swap! logged conj [(.getMessage record) (vec (.getParameters record))]))
+                           (flush [])
+                           (close []))]
+      (.setLevel logger Level/FINE)
+      (.addHandler logger handler)
+      (try
+        ;; the .invalid domain never resolves, and the driver logs the URL before it tries to connect
+        (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://pgvector.invalid/mb?user=mb&password=hunter2"]
+          (is (thrown? SQLException (semantic.db.datasource/probe-dedicated-connection!))))
+        (finally
+          (.removeHandler logger handler)
+          (.setLevel logger level)))
+      (is (=? [["Connecting with URL: {0}" ["jdbc:postgresql://pgvector.invalid/mb?connectTimeout=5&socketTimeout=10"]]]
+              (filter #(str/starts-with? (first %) "Connecting with URL") @logged))))))
 
 (deftest test-connection-before-init-test
   (testing "test-connection! throws exception when pool not initialized"
@@ -76,28 +120,29 @@
       (is (= (str base-url "?connectTimeout=5&socketTimeout=10")
              (probe-jdbc-url)))))
   (testing "unrelated connection params pass through, in the order they were written"
-    (with-redefs [semantic.db.datasource/db-url (str base-url "?user=mb&sslmode=require")]
-      (is (= (str base-url "?user=mb&sslmode=require&connectTimeout=5&socketTimeout=10")
+    (with-redefs [semantic.db.datasource/db-url (str base-url "?tcpKeepAlive=true&sslmode=require")]
+      (is (= (str base-url "?tcpKeepAlive=true&sslmode=require&connectTimeout=5&socketTimeout=10")
              (probe-jdbc-url))))))
 
 (deftest parse-db-url-defaults-test
   (testing "a URL with no params leaves the URL untouched and uses the default pool props"
     ;; strict = (not =?) so an unexpected extra/missing prop also fails, not just a wrong value
-    (is (= {:jdbc-url   base-url
-            :pool-props {;; tunable knobs at their defaults
-                         "maxPoolSize"                          5
-                         "minPoolSize"                          0
-                         "initialPoolSize"                      0
-                         "checkoutTimeout"                      10000
-                         "unreturnedConnectionTimeout"          0
-                         "debugUnreturnedConnectionStackTraces" false
-                         "testConnectionOnCheckout"             false
-                         ;; fixed props operators can't override
-                         "idleConnectionTestPeriod"             60
-                         "maxIdleTimeExcessConnections"         600
-                         "maxConnectionAge"                     1800
-                         "acquireIncrement"                     1
-                         "dataSourceName"                       "metabase-semantic-search-db"}}
+    (is (= {:jdbc-url    base-url
+            :credentials {}
+            :pool-props  {;; tunable knobs at their defaults
+                          "maxPoolSize"                          5
+                          "minPoolSize"                          0
+                          "initialPoolSize"                      0
+                          "checkoutTimeout"                      10000
+                          "unreturnedConnectionTimeout"          0
+                          "debugUnreturnedConnectionStackTraces" false
+                          "testConnectionOnCheckout"             false
+                          ;; fixed props operators can't override
+                          "idleConnectionTestPeriod"             60
+                          "maxIdleTimeExcessConnections"         600
+                          "maxConnectionAge"                     1800
+                          "acquireIncrement"                     1
+                          "dataSourceName"                       "metabase-semantic-search-db"}}
            (parse-db-url base-url)))))
 
 (deftest parse-db-url-pool-knob-test
@@ -113,10 +158,18 @@
   (testing "a recognized Postgres connection param stays on the URL for pgjdbc"
     (is (=? {:jdbc-url (str base-url "?tcpKeepAlive=true")}
             (parse-db-url (str base-url "?tcpKeepAlive=true")))))
-  (testing "pool knobs are stripped while connection params + credentials are retained, in order"
-    (is (=? {:jdbc-url   (str base-url "?user=postgres&tcpKeepAlive=true")
+  (testing "pool knobs are stripped while connection params are retained, in order"
+    (is (=? {:jdbc-url   (str base-url "?sslmode=require&tcpKeepAlive=true")
              :pool-props {"maxPoolSize" 8}}
-            (parse-db-url (str base-url "?user=postgres&maxPoolSize=8&tcpKeepAlive=true"))))))
+            (parse-db-url (str base-url "?sslmode=require&maxPoolSize=8&tcpKeepAlive=true")))))
+  (testing "credentials move off the URL, decoded, to be passed as connection properties"
+    (is (= {:jdbc-url    (str base-url "?tcpKeepAlive=true")
+            :credentials {:user        "postgres"
+                          :password    "p&ss=word"
+                          :sslpassword "k3y@pass"}}
+           (select-keys (parse-db-url (str base-url "?user=postgres&password=p%26ss%3Dword&tcpKeepAlive=true"
+                                           "&sslpassword=k3y%40pass"))
+                        [:jdbc-url :credentials])))))
 
 (deftest parse-db-url-validation-test
   (testing "an unrecognized param throws rather than being silently ignored by pgjdbc"
