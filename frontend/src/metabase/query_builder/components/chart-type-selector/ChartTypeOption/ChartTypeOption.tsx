@@ -21,6 +21,10 @@ export type ChartTypeOptionProps = {
   visualizationType: VisualizationDisplay;
   selectedVisualization: VisualizationDisplay;
   onOpenSettings?: () => void;
+  /** Jev's fit score (0..1) for this chart on the current data; undefined when no suggestion yet. */
+  recommendationScore?: number;
+  /** Whether this type is in Jev's highlighted (top-ranked) set. */
+  isRecommended?: boolean;
 };
 
 export const ChartTypeOption = ({
@@ -28,21 +32,33 @@ export const ChartTypeOption = ({
   selectedVisualization,
   onSelectVisualization,
   onOpenSettings,
+  recommendationScore,
+  isRecommended,
 }: ChartTypeOptionProps) => {
   const visualization = visualizations.get(visualizationType);
   const isSelected = selectedVisualization === visualizationType;
+  const scorePercent =
+    recommendationScore != null ? Math.round(recommendationScore * 100) : null;
+
+  // Once suggestions have loaded (a score exists), non-recommended charts dim so the eye lands on
+  // the good ones. Recommended charts get a brand ring whose strength scales with the fit score.
+  const hasSuggestions = recommendationScore != null;
+  const isDimmed = hasSuggestions && !isRecommended && !isSelected;
 
   const displayName = visualization?.getUiName() ?? visualizationType;
   const iconName = visualization?.iconName;
   const hasCustomIcon = !!visualization?.iconUrl;
 
-  return (
+  const optionBody = (
     <Center pos="relative" data-testid="chart-type-option">
       <Stack
         align="center"
         gap="xxs"
         role="option"
         aria-selected={isSelected}
+        className={cx({
+          [ChartTypeOptionS.Dimmed]: isDimmed,
+        })}
         data-testid={`${displayName}-container`}
       >
         <ActionIcon
@@ -62,6 +78,7 @@ export const ChartTypeOption = ({
           className={cx(
             ChartTypeOptionS.BorderedButton,
             ChartTypeOptionS.VisualizationButton,
+            { [ChartTypeOptionS.RecommendedButton]: isRecommended && !isSelected },
           )}
           data-testid={`${displayName}-button`}
         >
@@ -124,4 +141,15 @@ export const ChartTypeOption = ({
       </Stack>
     </Center>
   );
+
+  // Precision lives on hover, not on the icon: recommended charts explain their score in a tooltip.
+  if (isRecommended && scorePercent != null) {
+    return (
+      <Tooltip label={t`Jev suggests this chart — ${scorePercent}% fit for your data`}>
+        {optionBody}
+      </Tooltip>
+    );
+  }
+
+  return optionBody;
 };

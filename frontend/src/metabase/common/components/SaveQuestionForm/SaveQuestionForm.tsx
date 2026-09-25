@@ -18,6 +18,10 @@ import { Button, Radio, Stack, rem } from "metabase/ui";
 
 import type { OmniPickerItem } from "../Pickers";
 
+import {
+  JevCollectionSuggestion,
+  JevDuplicateCallout,
+} from "./JevSaveHints/JevSaveHints";
 import S from "./SaveQuestionForm.module.css";
 import { useSaveQuestionContext } from "./context";
 
@@ -31,9 +35,11 @@ const labelStyles = {
 export const SaveQuestionForm = ({
   onCancel,
   onSaveSuccess,
+  showJevHints = false,
 }: {
   onCancel?: () => void;
   onSaveSuccess?: () => void;
+  showJevHints?: boolean;
 }) => {
   const {
     question,
@@ -102,6 +108,7 @@ export const SaveQuestionForm = ({
           </Stack>
         </FormRadioGroup>
       )}
+      {showJevHints && values.saveType === "create" && <JevDuplicateCallout />}
       {values.saveType === "create" && (
         <Stack gap="lg" mb="lg">
           <FormTextInput
@@ -131,6 +138,7 @@ export const SaveQuestionForm = ({
                 }}
               />
             )}
+            {showJevHints && showPickerInput && <JevCollectionSuggestion />}
 
             <FormDashboardTabSelect
               name="dashboard_tab_id"

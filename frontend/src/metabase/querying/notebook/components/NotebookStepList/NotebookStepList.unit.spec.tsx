@@ -2,6 +2,10 @@ import type { ComponentProps } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
+  setupJevJoinSuggestionsEndpoint,
+  setupJevTableShapesEndpoint,
+} from "__support__/server-mocks/jev";
+import {
   createMockQueryBuilderState,
   createMockState,
 } from "__support__/state";
@@ -31,6 +35,8 @@ function setup(
   query: Lib.Query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
 ) {
   const database = createSampleDatabase();
+  setupJevTableShapesEndpoint();
+  setupJevJoinSuggestionsEndpoint();
   const reportTimezone = "UTC";
   const question = new Question(createMockCard(), metadata).setQuery(query);
 

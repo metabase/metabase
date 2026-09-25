@@ -14,9 +14,11 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.agent.timing :as timing]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.bedrock :as bedrock]
+   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.deepseek :as deepseek]
@@ -25,6 +27,7 @@
    [metabase.metabot.self.moonshot :as moonshot]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.self.typesafe :as typesafe]
    [metabase.metabot.self.vllm :as vllm]
    [metabase.metabot.self.zai :as zai]
    [metabase.metabot.settings :as metabot.settings]
@@ -48,6 +51,8 @@
     "moonshot"   moonshot/moonshot
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
+    "typesafe"   (throw (ex-info (tru "TypeSafe serves System One models, which cannot chat. Ask them questions with metabase.jev.client instead.")
+                                 {:provider provider}))
     "vllm"       vllm/vllm
     "zai"        zai/zai
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -65,6 +70,7 @@
     "moonshot"   moonshot/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
+    "typesafe"   typesafe/list-models
     "vllm"       vllm/list-models
     "zai"        zai/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -87,7 +93,8 @@
   This is the allow-list [[list-models]] intersects with the provider's live catalog, so a model listed here is
   available only if the connection's credentials can actually reach it. Returns nil for the provider types that have
   no allow-list: `azure`, whose model is the deployment name the admin gives it, `vllm`, which serves whatever the
-  operator loaded, and `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead."
+  operator loaded, `google` and `metabase`, whose catalogs are fixed in [[metabase.llm.provider]] instead, and
+  `typesafe`, whose System One models are never offered for selection."
   [provider]
   ;; a `case` like [[resolve-adapter]], so a new adapter that forgets to register here throws rather than reading as
   ;; a provider that simply has no models
@@ -100,7 +107,7 @@
                       "openai"     openai/supported-models
                       "openrouter" openrouter/supported-models
                       "zai"        zai/supported-models
-                      ("azure" "google" "metabase" "vllm") nil
+                      ("azure" "google" "metabase" "typesafe" "vllm") nil
                       (throw (ex-info (str "Unknown LLM provider: " provider)
                                       {:provider provider})))]
     (into {}
@@ -310,13 +317,15 @@
   [{:keys [model model-name provider profile-id request-id session-id source tag ai-proxy?] :as tracking-opts}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
-           (when (= (:type part) :usage)
+           ;; a `:tool-model` part was already reported by the tool's own call
+           (when (and (= (:type part) :usage) (not (:tool-model part)))
              (let [usage           (:usage part)
                    model           (or model (:model part) "unknown")
                    prompt          (:promptTokens usage 0)
                    completion      (:completionTokens usage 0)
                    cache-creation  (:cacheCreationTokens usage 0)
                    cache-read      (:cacheReadTokens usage 0)]
+               (timing/record! {:kind :model :tag tag :model model :ms (long (u/since-ms start-ms))})
                (analytics.core/track-token-usage!
                 ;; The caller can omit request-id (and other snowplow opts) to skip snowplow tracking.
                 {:prometheus            true
@@ -346,7 +355,7 @@
                  :cache-creation-tokens cache-creation
                  :cache-read-tokens     cache-read
                  :conversation-id       session-id
-                 :profile-id            profile-id
+                 :profile-id            (usage/valid-usage-profile-id profile-id)
                  :request-id            request-id
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))
@@ -506,7 +515,8 @@
                            log/warn pointing at the caller's source/tag.
 
   `llm-opts` is an optional map of provider-facing call options — see
-  [[parse-provider-model]]'s adapters for what each one honors.
+  [[parse-provider-model]]'s adapters for what each one honors. Its `:fast?`, when present, decides whether to
+  request faster serving in place of the `llm-fast-mode` setting.
 
   Returns a reducible that, when consumed, traces the full LLM round-trip as an
   OTel span and retries transient errors with exponential backoff. Global usage
@@ -515,7 +525,7 @@
   (`\"ai_usage_limit_reached\"` and `\"permission_denied\"` respectively)."
   ([provider-and-model system-msg parts tools tracking-opts]
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
-  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
+  ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice fast?]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
    (or (when-let [limit-msg (usage/check-usage-limits!)]
          (error-reducible limit-msg "ai_usage_limit_reached"))
@@ -528,7 +538,8 @@
                                      :model-name model :ai-proxy? ai-proxy?)
                streaming-opts (cond-> {:model       model :input parts :tools (vals tools)
                                        :credentials credentials :ai-proxy? ai-proxy?
-                                       :fast?       (metabot.settings/llm-fast-mode)}
+                                       :fast?       (and (if (some? fast?) fast? (metabot.settings/llm-fast-mode))
+                                                         (catalog/supports-fast-mode? provider-and-model))}
                                 system-msg                  (assoc :system system-msg)
                                 (and (seq tools)
                                      tool-choice)           (assoc :tool_choice tool-choice)
@@ -561,6 +572,15 @@
                      #(reduce rf* init (make-source))
                      (fn [_e] (not @emitted?))))))))))))
 
+(defn- report-usage-to-turn-xf
+  "Pass `:usage` parts on to the agent turn this call runs inside, when a tool makes it, so the turn's usage counts
+  the tokens its tools spend. Outside a tool call this does nothing."
+  [provider-and-model]
+  (map (fn [part]
+         (when (= :usage (:type part))
+           (core/emit-tool-progress! {:type :usage :usage (:usage part) :tool-model provider-and-model}))
+         part)))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
@@ -573,6 +593,10 @@
   catch them.
 
   `opts` extends `tracking-opts` and may include:
+    :retry?              - When false, attempt the request only once.
+    :reasoning?          - When false, suppress optional provider reasoning.
+    :fast?               - When true, request the provider's faster serving where the model supports it,
+                           falling back to standard speed otherwise.
     :required-permission  - A `:permission/metabot-*` keyword that the current
                             user must hold (as `:yes`) in addition to the base
                             `:permission/metabot`, which is always checked.
@@ -608,6 +632,8 @@
                                 :ai-proxy?   ai-proxy?}
                          system-msg                  (assoc :system system-msg)
                          (contains? opts :cache?)    (assoc :cache? (:cache? opts))
+                         (contains? opts :reasoning?) (assoc :reasoning? (:reasoning? opts))
+                         (:fast? opts)               (assoc :fast? (catalog/supports-fast-mode? provider-and-model))
                          (:session-id tracking-opts) (assoc :prompt-cache-key (:session-id tracking-opts)))]
     (with-span :info {:name      :metabot.agent/call-llm-structured
                       :model     model
@@ -618,7 +644,8 @@
           (let [parts (into []
                             (comp (core/aisdk-xf)
                                   (report-aisdk-errors-xf tracking-opts)
-                                  (report-token-usage-xf tracking-opts))
+                                  (report-token-usage-xf tracking-opts)
+                                  (report-usage-to-turn-xf provider-and-model))
                             (stream-fn streaming-opts))
                 result (some (fn [{:keys [type arguments]}]
                                (when (= type :tool-input)
@@ -650,7 +677,8 @@
 
               :else
               (throw (ex-info "LLM returned no tool call in structured response"
-                              {:parts parts})))))))))
+                              {:parts parts})))))
+        (constantly (not (false? (:retry? opts))))))))
 
 (defn call-llm-structured
   "Make an LLM call that returns structured JSON output.

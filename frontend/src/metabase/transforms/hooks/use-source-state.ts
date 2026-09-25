@@ -46,7 +46,7 @@ function normalizeSource(
   if (isNative) {
     const updatedQuery = Lib.withNativeQuery(query, Lib.rawNativeQuery(query));
     return {
-      type: "query",
+      ...source,
       // question.setQuery ensures template tags get processed
       query: question.setQuery(updatedQuery).datasetQuery(),
     };

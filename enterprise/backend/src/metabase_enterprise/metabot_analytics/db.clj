@@ -37,10 +37,17 @@
 
 (defn- conversation-list-expr
   "The `:where` fragment restricting `metabot_conversation` rows aliased `:c` to `user-id`, `group-id`, `tenant-id`,
-  and `date` (each nil for no restriction; `date` is a serialized date-param string). Returns nil when none apply."
-  [{:keys [user-id group-id tenant-id date]}]
+  and `date` (each nil for no restriction; `date` is a serialized date-param string), and, when `has-issues` is
+  true, to conversations whose automatic review found a problem. Returns nil when none apply."
+  [{:keys [user-id group-id tenant-id date has-issues]}]
   (let [exprs (cond-> []
                 user-id (conj [:= :c.user_id user-id])
+                has-issues
+                (conj [:exists ^:allow-subquery {:select [1]
+                                                 :from   [[:metabot_conversation_review :rv]]
+                                                 :where  [:and
+                                                          [:= :rv.conversation_id :c.id]
+                                                          [:in :rv.label ["friction" "failed"]]]}])
                 (seq date) (conj (date-range-expr :c.created_at date))
                 (and group-id (not= group-id (:id (perms/all-users-group))))
                 (conj [:exists ^:allow-subquery {:select [1]
@@ -111,9 +118,10 @@
   "A page of conversation summary rows (see [[conversation-list-select]]), restricted to `user-id`, `group-id`,
   `tenant-id`, and `date` (each nil for no restriction), sorted by the allow-listed `sort-by` column name in
   `sort-direction` (`:asc` or `:desc`), skipping `offset` and returning up to `limit`."
-  [{:keys [user-id group-id tenant-id date sort-by sort-direction offset limit]}
+  [{:keys [user-id group-id tenant-id date has-issues sort-by sort-direction offset limit]}
    :- [:map {:closed true}
        [:user-id        {:optional true} [:maybe ::lib.schema.id/user]]
+       [:has-issues     {:optional true} [:maybe :boolean]]
        [:group-id       {:optional true} [:maybe ms/PositiveInt]]
        [:tenant-id      {:optional true} [:maybe ms/PositiveInt]]
        [:date           {:optional true} [:maybe :string]]
@@ -121,7 +129,8 @@
        [:sort-direction {:optional true} [:enum :asc :desc]]
        [:offset         {:optional true} ms/IntGreaterThanOrEqualToZero]
        [:limit          {:optional true} ms/PositiveInt]]]
-  (let [where      (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date})
+  (let [where      (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date
+                                            :has-issues has-issues})
         sort-exprs (get sort-columns sort-by [:c.created_at])
         order-by   (conj (mapv #(vector % sort-direction) sort-exprs)
                          [:c.id :asc])]
@@ -135,13 +144,15 @@
 (mu/defn conversation-count
   "The total count of conversations matching the same criteria as [[list-conversations]] (ignoring sort, offset,
   and limit)."
-  [{:keys [user-id group-id tenant-id date]}
+  [{:keys [user-id group-id tenant-id date has-issues]}
    :- [:map {:closed true}
        [:user-id   {:optional true} [:maybe ::lib.schema.id/user]]
+       [:has-issues {:optional true} [:maybe :boolean]]
        [:group-id  {:optional true} [:maybe ms/PositiveInt]]
        [:tenant-id {:optional true} [:maybe ms/PositiveInt]]
        [:date      {:optional true} [:maybe :string]]]]
-  (let [where (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date})]
+  (let [where (conversation-list-expr {:user-id user-id :group-id group-id :tenant-id tenant-id :date date
+                                       :has-issues has-issues})]
     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
                                    :from   [[:metabot_conversation :c]]}
                             where (assoc :where where))))))
@@ -176,3 +187,18 @@
               :order-by [[:metabot_feedback.created_at :asc]
                          [:metabot_feedback.message_id :asc]
                          [:metabot_feedback.user_id :asc]]}))
+
+(mu/defn reviews-for-conversations
+  "The automatic review rows (conversation id, label, issues, review flag) of the MetabotConversations with
+  `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (t2/query {:select [:conversation_id :label :issues :review]
+             :from   [:metabot_conversation_review]
+             :where  [:in :conversation_id conversation-ids]}))
+
+(mu/defn review-for-conversation
+  "The automatic review row of the MetabotConversation with `conversation-id`, or nil when it has not been reviewed."
+  [conversation-id :- :string]
+  (t2/query-one {:select [:label :issues :review :answers :version :updated_at]
+                 :from   [:metabot_conversation_review]
+                 :where  [:= :conversation_id conversation-id]}))

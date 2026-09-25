@@ -162,6 +162,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
           {t`Entity type`}
         </Text>
         <EntityTypeInput
+          table={table}
           value={table.entity_type ?? "entity/GenericTable"}
           label={null}
           onChange={handleEntityTypeChange}

@@ -807,7 +807,7 @@
       (clojure.core/name result-type)
       "item")))
 
-(defn- search-result-uri-type
+(defn search-result-uri-type
   "Map a search-result type to the entity-type segment of its `read_resource` URI, or nil
    when the type has no URI form (i.e. no dispatch clause in `metabot.tools.resources`)."
   [result-type]

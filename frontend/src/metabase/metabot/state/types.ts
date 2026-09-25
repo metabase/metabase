@@ -1,4 +1,5 @@
 import type {
+  ExploreIdea,
   KnownDataPart,
   SearchResultItem,
 } from "metabase/api/ai-streaming/schemas";
@@ -15,6 +16,7 @@ export type MetabotDataPart = Exclude<
   | { type: "data-state" }
   | { type: "data-conversation-title" }
   | { type: "data-search_results" }
+  | { type: "data-explore_ideas" }
   | { type: "data-tool_title" }
 >;
 
@@ -128,6 +130,9 @@ export type MetabotMessage = {
   parts: MetabotMessagePart[];
   status: MetabotMessageStatus;
   contextTokens?: number;
+  responseStartedAtMs?: number;
+  responseEndedAtMs?: number;
+  firstChartAtMs?: number;
 };
 
 export type MetabotToolCall = {
@@ -145,6 +150,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
+      exploreIdeas?: ExploreIdea[];
       status: "started" | "ended";
       startedAtMs?: number;
     };
@@ -162,6 +168,7 @@ export interface MetabotConversationState {
   forkedFromConversationId: string | undefined;
   isProcessing: boolean;
   hasMessagedInSession: boolean;
+  completedResponseId?: string;
   messages: MetabotMessage[];
   state: MetabotStateContext;
   stateBeforeTurn?: MetabotStateContext;

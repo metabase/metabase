@@ -6,6 +6,7 @@
   is responsible for converting these parts into its own wire format (Claude
   messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
+   [metabase.metabot.agent.data-sources :as data-sources]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
@@ -198,7 +199,8 @@
                           (ctx-fn context))
         content         (prompts/build-system-message-content
                          profile
-                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
+                         (merge {:sql_dialect           (user-context/extract-sql-dialect context)
+                                 :prefetch_data_sources (data-sources/enabled? profile)}
                                 profile-context)
                          tools
                          (:capabilities context))]

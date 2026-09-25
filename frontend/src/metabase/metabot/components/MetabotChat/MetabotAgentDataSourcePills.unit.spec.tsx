@@ -137,10 +137,19 @@ const renderMbqlPills = ({
     />,
   );
 
+// The section renders collapsed, so every assertion about its rows opens it first.
+const expandDataSources = async () => {
+  const toggles = await screen.findAllByRole("button", {
+    name: "Expand data sources",
+  });
+  await Promise.all(toggles.map((toggle) => userEvent.click(toggle)));
+};
+
 describe("MetabotAgentDataSourcePills", () => {
   it("sends a feedback request when clicking source feedback buttons", async () => {
     fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
     renderCodeEditPills("message-1");
+    await expandDataSources();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Source is correct" }),
@@ -164,6 +173,7 @@ describe("MetabotAgentDataSourcePills", () => {
   it("sends a feedback request when changing an already selected source", async () => {
     fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
     renderCodeEditPills("message-2");
+    await expandDataSources();
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Source is correct" }),
@@ -199,6 +209,7 @@ describe("MetabotAgentDataSourcePills", () => {
   it("does not send feedback again when clicking the selected dislike button", async () => {
     fetchMock.post(SOURCE_FEEDBACK_ENDPOINT, 204);
     renderCodeEditPills("message-3");
+    await expandDataSources();
 
     const dislikeButton = await screen.findByRole("button", {
       name: "Source is wrong",
@@ -241,6 +252,7 @@ describe("MetabotAgentDataSourcePills", () => {
         ],
       },
     });
+    await expandDataSources();
 
     expect(
       await screen.findByRole("link", { name: "Orders" }),
@@ -267,6 +279,7 @@ describe("MetabotAgentDataSourcePills", () => {
         value={createNativeCard(sql)}
       />,
     );
+    await expandDataSources();
 
     expect(
       await screen.findByRole("link", { name: "Orders" }),
@@ -309,6 +322,7 @@ describe("MetabotAgentDataSourcePills", () => {
         value={createNativeCard(sql, 1, templateTags)}
       />,
     );
+    await expandDataSources();
 
     expect(
       await screen.findByRole("link", { name: "Revenue Model" }),
@@ -375,6 +389,7 @@ describe("MetabotAgentDataSourcePills", () => {
         value={createNativeCard(sql, 1, templateTags)}
       />,
     );
+    await expandDataSources();
 
     expect(
       await screen.findByRole("link", { name: "Revenue Model" }),
@@ -391,6 +406,7 @@ describe("MetabotAgentDataSourcePills", () => {
         value={createNativeCard("SELECT * FROM ORDERS")}
       />,
     );
+    await expandDataSources();
 
     const sourceLink = await screen.findByRole("link", { name: "Orders" });
 
@@ -415,6 +431,7 @@ describe("MetabotAgentDataSourcePills", () => {
         fields: [["field", 10, null]],
       },
     });
+    await expandDataSources();
 
     expect(
       await screen.findAllByTestId("metabot-source-item-skeleton"),
@@ -432,6 +449,7 @@ describe("MetabotAgentDataSourcePills", () => {
       messageId: "message-7",
       query: { "source-table": ORDERS_TABLE.id },
     });
+    await expandDataSources();
 
     expect(
       await screen.findAllByTestId("metabot-source-item-skeleton"),
@@ -452,6 +470,7 @@ describe("MetabotAgentDataSourcePills", () => {
       messageId: "message-8",
       query: { "source-table": "card__4" },
     });
+    await expandDataSources();
 
     expect(
       await screen.findAllByTestId("metabot-source-item-skeleton"),
@@ -470,6 +489,7 @@ describe("MetabotAgentDataSourcePills", () => {
         value={createNativeCard("SELECT * FROM ORDERS")}
       />,
     );
+    await expandDataSources();
 
     expect(
       await screen.findAllByTestId("metabot-source-item-skeleton"),

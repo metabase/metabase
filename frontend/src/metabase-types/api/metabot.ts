@@ -443,3 +443,12 @@ export type MetabotTenantLimit = {
   tenant_id: number;
   max_usage: number | null;
 };
+
+export type MetabotFollowUpPromptsRequest = {
+  conversation_id: string;
+  message_id: string;
+};
+
+export type MetabotFollowUpPromptsResponse = {
+  prompts: string[];
+};

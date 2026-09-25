@@ -23,13 +23,14 @@
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
 (def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
+(def explore-ideas-type "AI-SDK data type for the ideas a table exploration is weighing." "explore_ideas")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
   ;; state is diffed separately into the row's state column
-  ;; search_results and tool_title render under the client-only chain of
-  ;; thought, never rehydrated
-  #{state-type search-results-type tool-title-type})
+  ;; search_results, tool_title, and explore_ideas render under the client-only
+  ;; chain of thought, never rehydrated
+  #{state-type search-results-type tool-title-type explore-ideas-type})
 
 (defn persistable-data-part?
   "True if `part` should be written to MetabotMessage.data. `state` parts are
@@ -157,6 +158,14 @@
   {:type :data
    :data-type research-plan-update-type
    :data value})
+
+(defn explore-ideas-part
+  "Data part carrying the ideas a table exploration is weighing, each with its status, rendered under the
+  exploration step in the chain of thought."
+  [ideas]
+  {:type :data
+   :data-type explore-ideas-type
+   :data {:ideas ideas}})
 
 (defn tool-title-part
   "Data part carrying a tool call's display title, derived from what the tool

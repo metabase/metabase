@@ -7,9 +7,14 @@ import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Card, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { IconName, RelatedDashboardXRays } from "metabase-types/api";
+import type {
+  Dashboard,
+  IconName,
+  RelatedDashboardXRays,
+} from "metabase-types/api";
 
 import S from "./AutomaticDashboardApp.module.css";
+import { JevExplorations } from "./JevExplorations";
 import { trackSuggestedXRayClicked } from "./analytics";
 
 const RELATED_CONTENT: Record<
@@ -110,10 +115,20 @@ const SuggestionSectionHeading = ({ children }: PropsWithChildren) => (
 
 export const SuggestionsSidebar = ({
   related,
+  explorationCandidates,
+  explorationContext,
 }: {
   related: RelatedDashboardXRays;
+  explorationCandidates?: Dashboard["exploration_candidates"];
+  explorationContext?: string;
 }) => (
   <Flex direction="column" py="lg" px="xxl" role="complementary">
+    {explorationCandidates?.length && explorationContext ? (
+      <JevExplorations
+        candidates={explorationCandidates}
+        context={explorationContext}
+      />
+    ) : null}
     <Title py="sm" px={0} order={2}>{t`More X-rays`}</Title>
     <SuggestionsList suggestions={related} />
   </Flex>

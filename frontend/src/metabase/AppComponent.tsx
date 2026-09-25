@@ -41,6 +41,7 @@ import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+import { JevCreatePaletteApp } from "./querying/jev-create";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -130,6 +131,7 @@ export function App() {
             </AppContentContainer>
           </AppContainer>
           <Palette />
+          <JevCreatePaletteApp />
         </AppKBarProvider>
       </ScrollToTop>
     </ErrorBoundary>

@@ -12,6 +12,7 @@
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.slackbot.api :as slackbot.api]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -25,30 +26,50 @@
   [user]
   (some-> user (select-keys [:id :email :first_name :last_name :tenant_id])))
 
+(defn- decode-json [v]
+  (if (string? v) (json/decode+kw v) v))
+
+(defn- review-fields
+  "The automatic-review fields of a summary: `nil` label and no issues when the conversation is unreviewed."
+  [{:keys [label issues review]}]
+  {:review_label   label
+   :review_issues  (vec (or (decode-json issues) []))
+   :review_pending (boolean review)})
+
+(defn- hydrate-reviews
+  "Attach each conversation's automatic review row (or nil) as `:review`, with one query per page."
+  [rows]
+  (let [by-id (when (seq rows)
+                (into {} (map (juxt :conversation_id identity))
+                      (metabot-analytics.db/reviews-for-conversations (mapv :id rows))))]
+    (map #(assoc % :review (by-id (:id %))) rows)))
+
 (defn- row->summary
   "Reshape a raw list-query row into the response shape the frontend expects:
    renames the conversation's `:id` to `:conversation_id`, trims the hydrated
    user, and keeps only the aggregate fields the summary payload needs."
   [row]
-  {:conversation_id             (:id row)
-   :created_at                  (:created_at row)
-   :title                       (:title row)
-   :message_count               (:message_count row)
-   :user_message_count          (:user_message_count row)
-   :assistant_message_count     (:assistant_message_count row)
-   :total_tokens                (long (:total_tokens row 0))
-   :cache_read_tokens           (long (:cache_read_tokens row 0))
-   :last_message_at             (:last_message_at row)
-   :profile_id                  (:profile_id row)
-   :search_count                (:search_count row 0)
-   :query_count                 (:query_count row 0)
-   :ip_address                  (:ip_address row)
-   :embedding_hostname          (:embedding_hostname row)
-   :embedding_path              (:embedding_path row)
-   :user_agent                  (:user_agent row)
-   :sanitized_user_agent        (:sanitized_user_agent row)
-   :forked_from_conversation_id (:forked_from_conversation_id row)
-   :user                        (trim-user (:user row))})
+  (merge
+   {:conversation_id             (:id row)
+    :created_at                  (:created_at row)
+    :title                       (:title row)
+    :message_count               (:message_count row)
+    :user_message_count          (:user_message_count row)
+    :assistant_message_count     (:assistant_message_count row)
+    :total_tokens                (long (:total_tokens row 0))
+    :cache_read_tokens           (long (:cache_read_tokens row 0))
+    :last_message_at             (:last_message_at row)
+    :profile_id                  (:profile_id row)
+    :search_count                (:search_count row 0)
+    :query_count                 (:query_count row 0)
+    :ip_address                  (:ip_address row)
+    :embedding_hostname          (:embedding_hostname row)
+    :embedding_path              (:embedding_path row)
+    :user_agent                  (:user_agent row)
+    :sanitized_user_agent        (:sanitized_user_agent row)
+    :forked_from_conversation_id (:forked_from_conversation_id row)
+    :user                        (trim-user (:user row))}
+   (review-fields (:review row))))
 
 (defn- hydrate-tool-counts
   "Batch-load `metabot_message` data for a page of conversations and attach
@@ -73,11 +94,11 @@
    summaries. Supports optional filtering by `user-id`, `group-id`, `tenant-id`,
    and a serialized `date` parameter string, plus sorting by an allow-listed
    `sort-by` column in either direction (defaults to newest-first)."
-  [{:keys [limit offset user-id group-id tenant-id date sort-by sort-dir]}]
+  [{:keys [limit offset user-id group-id tenant-id date has-issues sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
         direction (if (= sort-dir "asc") :asc :desc)
-        params    {:user-id user-id :group-id group-id :tenant-id tenant-id :date date}
+        params    {:user-id user-id :group-id group-id :tenant-id tenant-id :date date :has-issues has-issues}
         total     (metabot-analytics.db/conversation-count params)
         rows      (metabot-analytics.db/list-conversations
                    (assoc params
@@ -87,6 +108,7 @@
                           :offset offset))]
     {:data   (->> (t2/hydrate rows :user)
                   hydrate-tool-counts
+                  hydrate-reviews
                   (map row->summary))
      :total  total
      :limit  limit
@@ -146,4 +168,8 @@
        :sanitized_user_agent        (:sanitized_user_agent conversation)
        :forked_from_conversation_id forked-from
        :fork_boundary_message_id    (fork-boundary-external-id all-messages)
-       :feedback                    (fetch-conversation-feedback conversation-id)})))
+       :feedback                    (fetch-conversation-feedback conversation-id)
+       :review                      (some-> (metabot-analytics.db/review-for-conversation conversation-id)
+                                            (update :issues #(vec (decode-json %)))
+                                            (update :answers decode-json)
+                                            (update :review boolean))})))

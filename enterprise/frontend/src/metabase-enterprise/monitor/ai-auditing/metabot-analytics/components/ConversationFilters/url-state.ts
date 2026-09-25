@@ -11,6 +11,7 @@ export type FilterUrlState = {
   user: string | null;
   group: string | null;
   tenant: string | null;
+  issues: boolean;
 };
 
 function parseString(param: QueryParam): string | null {
@@ -24,12 +25,14 @@ export const filterUrlStateConfig: UrlStateConfig<FilterUrlState> = {
     user: parseString(query.user),
     group: parseString(query.group),
     tenant: parseString(query.tenant),
+    issues: getFirstParamValue(query.issues) === "1",
   }),
-  serialize: ({ date, user, group, tenant }) => ({
+  serialize: ({ date, user, group, tenant, issues }) => ({
     date: date === DEFAULT_DATE ? undefined : (date ?? undefined),
     user: user ?? undefined,
     group: group ?? undefined,
     tenant: tenant ?? undefined,
+    issues: issues ? "1" : undefined,
   }),
 };
 

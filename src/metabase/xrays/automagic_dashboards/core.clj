@@ -666,11 +666,20 @@
   [root                 :- ::ads/root
    available-dimensions :- ::ads/dim-name->matching-fields
    dashboard-template   :- [:maybe dashboard-templates/DashboardTemplate]]
-  (->> (merge (indepth root dashboard-template)
-              (drilldown-fields root available-dimensions)
-              (related-entities root)
-              (comparisons root))
-       (fill-related max-related (get related-selectors (-> root :entity mi/model)))))
+  (let [candidates (merge (indepth root dashboard-template)
+                          (drilldown-fields root available-dimensions)
+                          (related-entities root)
+                          (comparisons root))
+        ;; Retain a bounded, round-robin sample from every action family before
+        ;; the legacy eight-slot selection. Links remain owned by X-rays.
+        families (for [[kind items] (sort-by (comp str key) candidates)]
+                   (map #(assoc % :kind (name kind)) items))
+        frontier (loop [families (keep seq families) result []]
+                   (if (or (empty? families) (>= (count result) 32))
+                     (vec (take 32 (m/distinct-by :url result)))
+                     (recur (keep next families) (into result (map first families)))))]
+    (with-meta (fill-related max-related (get related-selectors (-> root :entity mi/model)) candidates)
+      {:exploration-candidates frontier})))
 
 (mu/defn- generate-dashboard
   "Produce a fully-populated dashboard from the base context for an item and a dashboard template."
@@ -678,13 +687,17 @@
    {:as dashboard-template} :- dashboard-templates/DashboardTemplate
    {grounded-dimensions :dimensions :as grounded-values} :- ::ads/grounded-values]
   (let [show      (or show max-cards)
-        dashboard (generate-base-dashboard base-context dashboard-template grounded-values)]
-    (-> dashboard
-        (populate/create-dashboard show)
+        dashboard (generate-base-dashboard base-context dashboard-template grounded-values)
+        followups (related root grounded-dimensions dashboard-template)
+        populated (populate/create-dashboard dashboard show)]
+    (-> populated
         (assoc
-         :related (related
-                   root grounded-dimensions
-                   dashboard-template)
+         :related followups
+         :exploration_candidates (:exploration-candidates (meta followups))
+         :exploration_context {:subject (:full-name root)
+                               :description (:description dashboard)
+                               :filters (u/pprint-to-str (:query-filter root))
+                               :analyses (vec (take 20 (keep #(get-in % [:card :name]) (:dashcards populated))))}
          :more (when (and (not= show :all)
                           (-> dashboard :cards count (> show)))
                  (format "%s#show=all" url))

@@ -18,6 +18,7 @@ import * as Urls from "metabase/urls";
 import type { FieldId, Table } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
+import { JevSuggestions } from "../JevSuggestions";
 import { NameDescriptionInput } from "../NameDescriptionInput";
 import { ResponsiveButton } from "../ResponsiveButton";
 import { TableFieldList } from "../TableFieldList";
@@ -164,6 +165,8 @@ const TableSectionBase = ({
       </Stack>
 
       <Stack gap="xl">
+        {!isSorting && hasFields && <JevSuggestions tableId={table.id} />}
+
         <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 

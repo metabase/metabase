@@ -35,6 +35,7 @@
    [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
    [metabase.indexes-rest.api]
+   [metabase.jev.api]
    [metabase.llm.api]
    [metabase.logger.api]
    [metabase.login-history.api]
@@ -84,6 +85,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
+         metabase.jev.api/keep-me
          metabase.analytics.api/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
@@ -218,6 +220,7 @@
    "/index"                (+auth 'metabase.indexes-rest.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
+   "/jev"                  (+auth metabase.jev.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
    ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with

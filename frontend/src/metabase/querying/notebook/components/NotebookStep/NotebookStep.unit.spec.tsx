@@ -6,6 +6,10 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import {
+  setupJevJoinSuggestionsEndpoint,
+  setupJevTableShapesEndpoint,
+} from "__support__/server-mocks/jev";
 import { renderWithProviders, screen } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import type Question from "metabase-lib/v1/Question";
@@ -31,6 +35,8 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
   const updateQuery = jest.fn();
 
   setupDatabasesEndpoints([createSampleDatabase()]);
+  setupJevTableShapesEndpoint();
+  setupJevJoinSuggestionsEndpoint();
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
   setupCollectionByIdEndpoint({

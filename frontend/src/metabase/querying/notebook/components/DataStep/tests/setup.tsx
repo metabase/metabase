@@ -5,6 +5,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { setupJevTableShapesEndpoint } from "__support__/server-mocks/jev";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import * as Lib from "metabase-lib";
@@ -43,6 +44,7 @@ export const setup = async ({
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
   const updateQuery = jest.fn();
+  setupJevTableShapesEndpoint();
   setupCollectionByIdEndpoint({
     collections: [createMockCollection(ROOT_COLLECTION)],
   });

@@ -47,6 +47,14 @@ const CONNECTION_MODELS = [
     type: "azure",
     models: [createMockLlmModel({ id: "gpt-5", display_name: "GPT-5" })],
   }),
+  createMockLlmConnectionModels({
+    key: "openai",
+    name: "OpenAI",
+    type: "openai",
+    models: [
+      createMockLlmModel({ id: "gpt-6-astra", display_name: "GPT-6 Astra" }),
+    ],
+  }),
 ];
 
 type SetupOpts = {
@@ -55,6 +63,7 @@ type SetupOpts = {
   metabotModelEnvVar?: string;
   miniModel?: string | null;
   supportsFastMode?: boolean;
+  fastMode?: boolean;
 };
 
 function renderSection({
@@ -63,6 +72,7 @@ function renderSection({
   metabotModelEnvVar,
   miniModel = "anthropic/claude-haiku-4-5",
   supportsFastMode = false,
+  fastMode = false,
 }: SetupOpts = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -71,6 +81,7 @@ function renderSection({
     "llm-metabot-provider": metabotModel,
     "llm-mini-model": miniModel,
     "llm-metabot-supports-fast-mode?": supportsFastMode,
+    "llm-fast-mode": fastMode,
   });
 
   setupPropertiesEndpoints(sessionProperties);
@@ -82,7 +93,7 @@ function renderSection({
       env_name: metabotModelEnvVar,
     }),
     createMockSettingDefinition({ key: "llm-mini-model", value: miniModel }),
-    createMockSettingDefinition({ key: "llm-fast-mode", value: false }),
+    createMockSettingDefinition({ key: "llm-fast-mode", value: fastMode }),
   ]);
   setupUpdateSettingEndpoint();
   setupLlmModelsEndpoint(models);
@@ -216,28 +227,47 @@ describe("AIModelSettingsSection", () => {
     expect(screen.queryByText("Fast mode")).not.toBeInTheDocument();
   });
 
-  it("offers fast mode when the selected model supports it and saves the toggle", async () => {
-    await setup({
-      metabotModel: "anthropic/claude-opus-5",
-      supportsFastMode: true,
-    });
+  it.each(["anthropic/claude-opus-5", "openai/gpt-6-astra"])(
+    "offers fast mode for %s and saves the toggle",
+    async (metabotModel) => {
+      await setup({
+        metabotModel,
+        supportsFastMode: true,
+      });
 
-    await userEvent.click(await screen.findByText("Fast mode"));
-
-    await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/setting/llm-fast-mode", {
-          method: "PUT",
-          body: { value: true },
+        screen.getByRole("link", { name: "OpenAI pricing" }),
+      ).toHaveAttribute(
+        "href",
+        "https://developers.openai.com/api/docs/pricing",
+      );
+      expect(
+        screen.getByRole("link", {
+          name: "Anthropic pricing and preview requirements",
         }),
-      ).toBe(true);
-    });
-  });
+      ).toHaveAttribute(
+        "href",
+        "https://platform.claude.com/docs/en/build-with-claude/fast-mode",
+      );
 
-  it("hides fast mode after switching to a model without it", async () => {
+      await userEvent.click(await screen.findByText("Fast mode"));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting/llm-fast-mode", {
+            method: "PUT",
+            body: { value: true },
+          }),
+        ).toBe(true);
+      });
+    },
+  );
+
+  it("retains the fast mode preference across unsupported models", async () => {
     await setup({
       metabotModel: "anthropic/claude-opus-5",
       supportsFastMode: true,
+      fastMode: true,
     });
 
     expect(await screen.findByText("Fast mode")).toBeInTheDocument();
@@ -247,6 +277,7 @@ describe("AIModelSettingsSection", () => {
         "llm-metabot-provider": "azure-prod/gpt-5",
         "llm-mini-model": "anthropic/claude-haiku-4-5",
         "llm-metabot-supports-fast-mode?": false,
+        "llm-fast-mode": true,
       }),
     );
     const listbox = await openPicker("Default model");
@@ -257,5 +288,22 @@ describe("AIModelSettingsSection", () => {
     await waitFor(() => {
       expect(screen.queryByText("Fast mode")).not.toBeInTheDocument();
     });
+    expect(
+      fetchMock.callHistory.called("path:/api/setting/llm-fast-mode"),
+    ).toBe(false);
+
+    setupPropertiesEndpoints(
+      createMockSettings({
+        "llm-metabot-provider": "openai/gpt-6-astra",
+        "llm-mini-model": "anthropic/claude-haiku-4-5",
+        "llm-metabot-supports-fast-mode?": true,
+        "llm-fast-mode": true,
+      }),
+    );
+    const supportedModels = await openPicker("Default model");
+    await userEvent.click(
+      within(supportedModels).getByRole("option", { name: "GPT-6 Astra" }),
+    );
+    expect(await screen.findByRole("switch")).toBeChecked();
   });
 });

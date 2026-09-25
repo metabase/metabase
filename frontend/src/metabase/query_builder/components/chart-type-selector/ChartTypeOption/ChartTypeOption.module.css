@@ -2,6 +2,30 @@
   border: var(--border-size) var(--border-style) var(--mb-color-border-neutral) !important;
 }
 
+/* Non-recommended charts recede once Jev's suggestions load, so the eye lands on the good ones. */
+.Dimmed {
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+
+/*
+ * A recommended chart's icon gets a brand ring instead of the neutral border — quiet, no badge.
+ * The ring's strength reflects Jev's confidence: we layer a brand ring in a pseudo-element whose
+ * opacity is driven by `--ring-strength` (0..1), so the best-fit chart rings boldest and runners-up
+ * fade. Opacity is floored so even a just-recommended chart still shows a clear ring. We scale a
+ * layered ring rather than color-mixing the brand variable (which the style guide forbids).
+ */
+/*
+ * A recommended chart gets a clean brand ring (replacing the neutral grey), signalling "this fits
+ * your data". We don't grade the ring by confidence: the scores among recommended charts are close
+ * (e.g. bar/row/pie for a category count are all fine), so a per-ring gradient reads as noise rather
+ * than signal. The ranking, when it matters, is exposed in the hover tooltip's fit %.
+ */
+.RecommendedButton {
+  border-color: var(--mb-color-brand) !important;
+  border-width: 2px !important;
+}
+
 .SettingsButton {
   opacity: 0;
 }

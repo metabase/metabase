@@ -1,5 +1,6 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LlmModelPicker } from "metabase/metabot";
 import { useSetting } from "metabase/settings";
 import {
@@ -27,7 +28,21 @@ export function AIModelSettingsSection({ id }: { id?: string }) {
           <AdminSettingInput
             name="llm-fast-mode"
             title={t`Fast mode`}
-            description={t`Get faster responses from the default model at a higher price per token. On Anthropic, this requires an account enrolled in the fast mode research preview, and isn't available with a Priority Tier commitment.`}
+            description={jt`Get faster responses from the same model for everyone using Metabot, AI explorations, and SQL generation. This costs more per token and may fall back to standard speed. When off, OpenAI uses standard processing. Check ${(
+              <ExternalLink
+                key="openai"
+                href="https://developers.openai.com/api/docs/pricing"
+              >
+                {t`OpenAI pricing`}
+              </ExternalLink>
+            )} and ${(
+              <ExternalLink
+                key="anthropic"
+                href="https://platform.claude.com/docs/en/build-with-claude/fast-mode"
+              >
+                {t`Anthropic pricing and preview requirements`}
+              </ExternalLink>
+            )} for account restrictions.`}
             inputType="boolean"
           />
         )}

@@ -60,6 +60,51 @@ describe("MetabotToolProgress", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the ideas an exploration is weighing while it runs", () => {
+    setupToolProgress([
+      tool("explore_table", {
+        status: "started",
+        exploreIdeas: [
+          {
+            prompt: "Revenue by month",
+            status: "kept",
+            reason: "Charting now",
+          },
+          {
+            prompt: "Profit by state",
+            status: "dropped",
+            reason: "Not answerable from these columns",
+          },
+          { prompt: "Top customers", status: "considering" },
+        ],
+      }),
+    ]);
+    expect(screen.getByText("Exploring the table")).toBeInTheDocument();
+    expect(screen.getByText("weighing 3 ideas")).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByTestId("metabot-explore-idea")
+        .map((row) => row.getAttribute("data-status")),
+    ).toEqual(["kept", "dropped", "considering"]);
+    expect(
+      screen.getByText("Not answerable from these columns"),
+    ).toBeInTheDocument();
+  });
+
+  it("counts what an exploration kept once every idea is decided", () => {
+    setupToolProgress([
+      tool("explore_table", {
+        exploreIdeas: [
+          { prompt: "Revenue by month", status: "kept" },
+          { prompt: "Profit by state", status: "dropped" },
+        ],
+      }),
+      tool("analyze_data", { status: "started" }),
+    ]);
+    expect(screen.getByText("Explored the table")).toBeInTheDocument();
+    expect(screen.getByText("kept 1 of 2")).toBeInTheDocument();
+  });
+
   it("leaves nothing behind once the turn settles", () => {
     setupToolProgress([tool("analyze_data")], false);
     expect(

@@ -8,6 +8,12 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.malli.registry :as mr]))
 
+(deftest ^:parallel set-skills-test
+  (let [mem (-> (memory/initialize [] {})
+                (memory/set-skills #{:read-resource :edit-chart}))]
+    (is (= ["edit-chart" "read-resource"] (:skills (memory/get-state mem))))
+    (is (= mem (memory/set-skills mem #{:edit-chart :read-resource})))))
+
 (deftest ^:parallel initialize-test
   (testing "seeds the working state and starts an empty turn-state"
     (let [messages [{:role :user :content "Hello"}]

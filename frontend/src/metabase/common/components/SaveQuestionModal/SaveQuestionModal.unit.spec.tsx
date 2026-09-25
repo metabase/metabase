@@ -13,6 +13,7 @@ import {
   setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
+import { setupJevSaveCheckEndpoint } from "__support__/server-mocks/jev-saving";
 import { mockSettings } from "__support__/settings";
 import {
   createMockQueryBuilderState,
@@ -126,6 +127,7 @@ const setup = async (
   setupCustomVizPluginListEndpoint();
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+  setupJevSaveCheckEndpoint();
   setupRecentViewsAndSelectionsEndpoints(
     [],
     ["selections", "views"],

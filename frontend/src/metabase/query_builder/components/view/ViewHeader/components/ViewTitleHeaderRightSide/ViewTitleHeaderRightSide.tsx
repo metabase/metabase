@@ -20,6 +20,7 @@ import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { canExploreResults } from "../../utils";
 import { ExploreResultsLink } from "../ExploreResultsLink";
 import { FilterHeaderButton } from "../FilterHeaderButton";
+import { JevFilterHeaderButton } from "../JevFilterHeaderButton";
 import { QuestionActions } from "../QuestionActions";
 import { QuestionNotebookButton } from "../QuestionNotebookButton";
 import { QuestionSummarizeWidget } from "../QuestionSummarizeWidget";
@@ -166,12 +167,15 @@ export function ViewTitleHeaderRightSide({
         isObjectDetail,
         isActionListVisible,
       }) && (
-        <FilterHeaderButton
-          question={question}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
+        <>
+          <JevFilterHeaderButton question={question} />
+          <FilterHeaderButton
+            question={question}
+            isExpanded={areFiltersExpanded}
+            onExpand={onExpandFilters}
+            onCollapse={onCollapseFilters}
+          />
+        </>
       )}
       {QuestionSummarizeWidget.shouldRender({
         question,

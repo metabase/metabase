@@ -4,6 +4,7 @@ import {
 } from "metabase/common/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &
@@ -55,6 +56,7 @@ export const SaveQuestionModal = ({
             <SaveQuestionForm
               onSaveSuccess={() => closeOnSuccess && onClose()}
               onCancel={onClose}
+              showJevHints={!isEmbeddingSdk()}
             />
           </Modal.Body>
         </Modal.Content>

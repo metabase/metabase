@@ -27,9 +27,13 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
+import { JevBestMatchBadge } from "../components/JevBestMatchBadge";
 import { METABASE_DOCS_LABELS, getAdminSettingsSections } from "../constants";
+import { isJevBestMatch } from "../jev-rerank";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
+
+import { useJevRerankedResults } from "./useJevRerankedResults";
 
 export const useCommandPalette = ({
   disabled = false,
@@ -98,6 +102,12 @@ export const useCommandPalette = ({
       refetchOnMountOrArgChange: true,
     },
   );
+
+  const { ranking: jevRanking, isReranking } = useJevRerankedResults({
+    searchText: debouncedSearchText,
+    searchResults,
+    disabled: disabled || !isSearchTypeaheadEnabled,
+  });
 
   const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery(
     undefined,
@@ -184,9 +194,11 @@ export const useCommandPalette = ({
         },
       ];
     } else if (debouncedSearchText) {
-      if (searchResults?.data.length) {
-        return searchResults.data.map((result, index) => {
+      const results = jevRanking?.results ?? searchResults?.data ?? [];
+      if (results.length) {
+        return results.map((result, index) => {
           const icon = getIcon(result);
+          const isBestMatch = isJevBestMatch(jevRanking?.best ?? null, result);
           return {
             id: `search-result-${result.model}-${result.id}`,
             name: result.name,
@@ -195,7 +207,7 @@ export const useCommandPalette = ({
             iconUrl: icon.iconUrl,
             section: "search",
             keywords: trimmedQuery,
-            priority: Priority.NORMAL - index,
+            priority: isBestMatch ? Priority.HIGH : Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
                 itemType: "item",
@@ -212,7 +224,15 @@ export const useCommandPalette = ({
               moderatedStatus: result.moderated_status,
               href: modelToUrl(result),
               iconColor: icon.color,
-              subtext: getSearchResultSubtext(result),
+              subtext:
+                isBestMatch && jevRanking?.best ? (
+                  <JevBestMatchBadge
+                    confidence={jevRanking.best.confidence}
+                    elapsedMs={jevRanking.elapsedMs}
+                  />
+                ) : (
+                  getSearchResultSubtext(result)
+                ),
             },
           };
         });
@@ -220,7 +240,9 @@ export const useCommandPalette = ({
         return [
           {
             id: "no-search-results",
-            name: t`No results for “${debouncedSearchText}”`,
+            name: isReranking
+              ? t`Looking for what you meant…`
+              : t`No results for “${debouncedSearchText}”`,
             keywords: trimmedQuery,
             section: "search",
             disabled: true,
@@ -240,6 +262,8 @@ export const useCommandPalette = ({
     isSearchTypeaheadEnabled,
     searchRequestId,
     getIcon,
+    jevRanking,
+    isReranking,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);

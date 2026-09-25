@@ -34,6 +34,7 @@ export type MiniPickerProps = {
   searchParams?: MiniPickerSearchParams;
   onSearchResults?: (results: MiniPickerPickableItem[]) => void;
   children?: React.ReactNode;
+  dropdownHeader?: React.ReactNode;
   menuProps?: MenuProps;
   menuDropdownProps?: MenuDropdownProps;
   closeOnClickOutside?: boolean;
@@ -59,6 +60,7 @@ export function MiniPicker({
   searchParams,
   onSearchResults,
   children = <Box />,
+  dropdownHeader,
   menuProps,
   menuDropdownProps,
   closeOnClickOutside = true,
@@ -137,6 +139,7 @@ export function MiniPicker({
           {...menuDropdownProps}
           ref={menuDropdownRef}
         >
+          {dropdownHeader}
           {isLoadingPath ? (
             <MiniPickerListLoader />
           ) : (

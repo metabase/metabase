@@ -28,6 +28,7 @@ export * from "./google";
 export * from "./group";
 export * from "./impersonation";
 export * from "./index-manager";
+export * from "./jev";
 export * from "./library";
 export * from "./logger";
 export * from "./measure";

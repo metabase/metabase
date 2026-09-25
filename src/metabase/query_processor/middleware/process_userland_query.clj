@@ -143,6 +143,14 @@
          (events/publish-event! :event/card-query {:user-id (:executor_id execution-info)
                                                    :card-id (:card_id execution-info)
                                                    :context (:context execution-info)}))
+       ;; Prototype: feed the intent shape-model from every real run (value-free facets only).
+       ;; Fire-and-forget on a future so its app-db reads never add latency to the query response;
+       ;; requiring-resolve keeps the QP free of a hard dependency on the jev module.
+       (when-let [observe (try (requiring-resolve 'metabase.jev.apps.intent/observe-query!)
+                               (catch Throwable _ nil))]
+         (let [user-id (:executor_id execution-info)
+               query   (:json_query execution-info)]
+           (future (try (observe user-id query) (catch Throwable _ nil)))))
        (save-successful-execution-metadata!
         (:cache/details acc) (get-in acc [:data :is_sandboxed]) execution-info @row-count)
        (rf (if (map? acc)
