@@ -124,17 +124,19 @@
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
+  Keys can be snake_case, as the tool schemas define them, or kebab-case.
   E.g. {:frequency :daily :hour 9} => {:schedule_type \"daily\" :schedule_hour 9 ...}"
-  [{:keys [frequency hour day-of-week day-of-month]}]
-  {:schedule_type  (name frequency)
-   :schedule_hour  hour
-   :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
-                       (some->> day-of-month
-                                name
-                                u/lower-case-en
-                                (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
-                                second))
-   :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
+  [schedule]
+  (let [{:keys [frequency hour day-of-week day-of-month]} (u/normalize-map schedule)]
+    {:schedule_type  (name frequency)
+     :schedule_hour  hour
+     :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
+                         (some->> day-of-month
+                                  name
+                                  u/lower-case-en
+                                  (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
+                                  second))
+     :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))}))
 
 (defn get-database
   "Get the `fields` of the database with ID `id`."
