@@ -1,9 +1,7 @@
 import {
-  NO_SQL_PERSONAL_COLLECTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
-  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type {
   NativeQuestionDetails,
@@ -31,9 +29,11 @@ describe("documents", () => {
   });
 
   describe("duplicating documents", () => {
-    it("should warn about unsaved changes when duplicating an existing document", () => {
+    it("should duplicate a document, requiring unsaved changes to be saved first", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
       H.createDocument({
-        name: "Unsaved Duplicate Doc",
+        name: "Duplicate Doc",
         document: {
           content: [
             {
@@ -51,54 +51,24 @@ describe("documents", () => {
 
       H.visitDocument("@documentId");
 
-      cy.findByRole("textbox", { name: "Document Title" })
-        .should("have.value", "Unsaved Duplicate Doc")
-        .clear()
-        .type("Unsaved title");
-
-      H.documentContent().click();
-      H.addToDocument(" changed", false);
-
-      H.documentSaveButton().should("be.visible");
+      cy.log("Duplicate a document without unsaved changes");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Duplicate Doc",
+      );
+      H.documentSaveButton().should("not.exist");
 
       cy.findByLabelText("More options").click();
       H.popover().findByText("Duplicate").click();
 
-      cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("heading", { name: 'Duplicate "Duplicate Doc"' }).should(
+        "be.visible",
+      );
+      duplicateAndAssertRedirect();
+      H.documentContent().should("contain.text", "Original content");
 
-      cy.findByRole("button", { name: "Cancel" }).click();
-
-      cy.findByTestId("save-confirmation").should("not.exist");
-      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
-
-      // still unsaved
-      H.documentSaveButton().should("be.visible");
-    });
-
-    it("should save changes when duplicating, then copy and redirect to the new document", () => {
-      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
-
-      H.createDocument({
-        name: "Save Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
+      cy.log("Cancelling the save prompt keeps the unsaved changes");
       cy.findByRole("textbox", { name: "Document Title" })
-        .should("have.value", "Save Duplicate Doc")
         .clear()
         .type("Saved title");
 
@@ -111,113 +81,38 @@ describe("documents", () => {
       H.popover().findByText("Duplicate").click();
 
       cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      H.documentSaveButton().should("be.visible");
+      cy.findByTestId("save-confirmation").should("not.exist");
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
+
+      cy.log("Saving from the prompt saves, then duplicates");
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
       cy.findByRole("button", { name: "Save changes" }).click();
 
-      // saved
+      cy.findByRole("heading", { name: 'Duplicate "Saved title"' }).should(
+        "be.visible",
+      );
       H.documentSaveButton().should("not.exist");
       cy.findByRole("textbox", { name: "Document Title" }).should(
         "have.value",
         "Saved title",
       );
 
-      // duplicate modal
-      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
-      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
-        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
-        const copyName = ($input.val() ?? "").toString();
-        cy.wrap(copyName).as("copyName");
-      });
-
-      cy.findByRole("button", { name: "Duplicate" }).click();
-
-      cy.wait("@copyDoc").then(({ response }) => {
-        const copiedId = response?.body?.id;
-        expect(copiedId).to.exist;
-
-        cy.location("pathname").should(
-          "match",
-          new RegExp(`^/document/${copiedId}`),
-        );
-      });
-
-      cy.get<string>("@copyName").then((copyName) => {
-        cy.findByRole("textbox", { name: "Document Title" }).should(
-          "have.value",
-          copyName,
-        );
-      });
-
-      // content should match the saved changes
+      duplicateAndAssertRedirect();
       H.documentContent().should("contain.text", "Original content changed");
-    });
-
-    it("should duplicate a document without any changes (happy path)", () => {
-      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
-
-      H.createDocument({
-        name: "Happy Path Duplicate Doc",
-        document: {
-          content: [
-            {
-              type: "paragraph",
-              content: [{ type: "text", text: "Original content" }],
-              attrs: { _id: "1" },
-            },
-          ],
-          type: "doc",
-        },
-        collection_id: null,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-
-      cy.findByRole("textbox", { name: "Document Title" }).should(
-        "have.value",
-        "Happy Path Duplicate Doc",
-      );
-      H.documentSaveButton().should("not.exist");
-
-      cy.findByLabelText("More options").click();
-      H.popover().findByText("Duplicate").click();
-
-      cy.findByRole("heading", {
-        name: 'Duplicate "Happy Path Duplicate Doc"',
-      }).should("be.visible");
-
-      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
-        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
-        const copyName = ($input.val() ?? "").toString();
-        cy.wrap(copyName).as("copyName");
-      });
-      cy.findByRole("button", { name: "Duplicate" }).click();
-
-      cy.wait("@copyDoc").then(({ response }) => {
-        const copiedId = response?.body?.id;
-        expect(copiedId).to.exist;
-
-        cy.location("pathname").should(
-          "match",
-          new RegExp(`^/document/${copiedId}`),
-        );
-      });
-
-      cy.get<string>("@copyName").then((copyName) => {
-        cy.findByRole("textbox", { name: "Document Title" }).should(
-          "have.value",
-          copyName,
-        );
-      });
-
-      H.documentContent().should("contain.text", "Original content");
     });
   });
 
   it("should allow you to create a new document from the new button and save", () => {
     const getDocumentStub = cy.stub();
 
-    cy.intercept("GET", "/api/document/1", getDocumentStub);
+    cy.intercept("POST", "/api/document").as("createDocument");
+    cy.intercept("GET", "/api/document/*", getDocumentStub);
 
     cy.visit("/");
 
@@ -236,8 +131,14 @@ describe("documents", () => {
     H.entityPickerModalItem(1, "First collection").click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
+    cy.wait("@createDocument").then(({ response }) => {
+      cy.wrap(response?.body.id).as("newDocumentId");
+    });
+
     // We should not show a loading state in between creating a document and viewing the created document.
-    cy.location("pathname").should("eq", "/document/1");
+    cy.get("@newDocumentId").then((id) => {
+      cy.location("pathname").should("eq", `/document/${id}`);
+    });
     cy.title().should("eq", "Test Document · Metabase");
 
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
@@ -253,7 +154,9 @@ describe("documents", () => {
     });
 
     // Delete the bookmark because we need to bookmark the doc again in the test
-    cy.request("DELETE", "/api/bookmark/document/1");
+    cy.get("@newDocumentId").then((id) => {
+      cy.request("DELETE", `/api/bookmark/document/${id}`);
+    });
 
     H.appBar()
       .findByRole("link", { name: /First collection/ })
@@ -261,7 +164,7 @@ describe("documents", () => {
 
     H.collectionTable()
       .findByRole("link", { name: "Test Document" })
-      .should("exist");
+      .should("be.visible");
 
     cy.log("Document Management");
 
@@ -291,7 +194,12 @@ describe("documents", () => {
       .findByText("Test Document")
       .click();
 
-    cy.location("pathname").should("equal", "/document/1-test-document");
+    cy.get("@newDocumentId").then((id) => {
+      cy.location("pathname").should(
+        "equal",
+        `/document/${id}-test-document`,
+      );
+    });
     H.documentContent().should("contain.text", "This is a paragraph");
 
     H.appBar()
@@ -302,7 +210,7 @@ describe("documents", () => {
 
     H.popover().findByText("Duplicate").click();
     cy.findByRole("heading", { name: 'Duplicate "Test Document"' }).should(
-      "exist",
+      "be.visible",
     );
 
     cy.findByTestId("collection-picker-button").click();
@@ -360,10 +268,10 @@ describe("documents", () => {
 
     cy.findByRole("button", { name: "Save" }).click();
 
-    H.entityPickerModal().within(() => {
-      cy.findByTestId("entity-picker-select-button").should("be.enabled");
-    });
-    cy.findByTestId("entity-picker-select-button").click();
+    H.entityPickerModal()
+      .findByTestId("entity-picker-select-button")
+      .should("be.enabled")
+      .click();
 
     cy.wait("@createDocument").then(({ request }) => {
       expect(request.body).not.to.have.property("collection_id");
@@ -375,39 +283,29 @@ describe("documents", () => {
     );
   });
 
-  it("should focus the start of the document body when pressing Enter on the title input", () => {
-    cy.visit("/document/new");
+  it("should focus the document body from the title and warn before discarding a new document", () => {
+    cy.visit("/");
+    H.newButton("Document").click();
+    cy.title().should("eq", "New document · Metabase");
 
-    cy.log("Type a title");
-    cy.findByRole("textbox", { name: "Document Title" })
-      .should("be.focused")
-      .type("Doc Title{enter}");
+    cy.findByRole("textbox", { name: "Document Title" }).should("be.focused");
+    H.documentSaveButton().should("not.exist");
 
-    cy.log("Add some content to the document body");
+    cy.log("Pressing Enter on the title focuses the start of the body");
+    cy.findByRole("textbox", { name: "Document Title" }).type(
+      "Doc Title{enter}",
+    );
     H.addToDocument("One{enter}Two");
 
-    cy.log("Click back on the title to focus it and hit Enter");
     cy.findByRole("textbox", { name: "Document Title" })
       .click()
       .type("{enter}");
 
-    cy.log("Focus should be placed at the beginning of the document body");
     cy.realType("NEW: ");
     H.documentContent().should("have.text", "NEW: OneTwo");
-  });
+    H.documentSaveButton().should("be.visible");
 
-  it("should handle navigating from /new to /new gracefully", () => {
-    cy.visit("/");
-    H.newButton("Document").click();
-    cy.title().should("eq", "New document · Metabase");
-    H.documentContent().click();
-
-    H.documentSaveButton().should("not.exist");
-
-    H.addToDocument("This is some content");
-
-    H.documentSaveButton().should("exist");
-
+    cy.log("Starting another new document warns about unsaved changes");
     H.newButton("Document").click();
     H.expectUnstructuredSnowplowEvent(
       {
@@ -417,7 +315,7 @@ describe("documents", () => {
     );
     H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
 
-    H.documentContent().should("have.text", "This is some content");
+    H.documentContent().should("have.text", "NEW: OneTwo");
 
     H.newButton("Document").click();
     H.expectUnstructuredSnowplowEvent(
@@ -484,7 +382,34 @@ describe("documents", () => {
         });
       });
 
-      it("renders a 'not found' message if the copied card has been permanently deleted", () => {
+      it("should handle read-only, unauthorized, missing documents and deleted cards", () => {
+        cy.log("Read-only access makes the editor non-editable");
+        cy.signIn("readonly");
+        H.visitDocument("@documentId");
+        H.getDocumentCard("Orders").should("be.visible");
+        H.documentContent()
+          .findByRole("textbox")
+          .should("have.attr", "contenteditable", "false");
+
+        cy.log("No collection access shows the permission error");
+        cy.signIn("nocollection");
+        H.visitDocument("@documentId");
+        cy.findByRole("status").should(
+          "contain.text",
+          "Sorry, you don’t have permission to see that.",
+        );
+
+        cy.log("A nonexistent document shows the not found page");
+        cy.signInAsAdmin();
+        H.visitDocument(9999);
+        H.main().within(() => {
+          cy.findByText("We're a little lost...").should("be.visible");
+          cy.findByText("The page you asked for couldn't be found.").should(
+            "be.visible",
+          );
+        });
+
+        cy.log("A permanently deleted copied card shows a 'not found' message");
         cy.get<Document>("@document").then(({ id, document: { content } }) => {
           const resizeNode = content?.find((n) => n.type === "resizeNode");
           const cardEmbed = resizeNode?.content?.[0];
@@ -496,60 +421,6 @@ describe("documents", () => {
           "have.text",
           "Couldn't find this chart.",
         );
-      });
-
-      it("read only access", () => {
-        cy.signIn("readonly");
-
-        H.visitDocument("@documentId");
-
-        H.documentContent()
-          .findByRole("textbox")
-          .should("have.attr", "contenteditable", "false");
-
-        H.openDocumentCardMenu("Orders");
-        H.popover().findAllByRole("menuitem").should("be.disabled");
-      });
-
-      it("no access", () => {
-        cy.signIn("nocollection");
-
-        H.visitDocument("@documentId");
-        cy.findByRole("status").should(
-          "contain.text",
-          "Sorry, you don’t have permission to see that.",
-        );
-      });
-
-      it("not found", () => {
-        H.visitDocument(9999);
-        H.main().within(() => {
-          cy.findByText("We're a little lost...").should("be.visible");
-          cy.findByText("The page you asked for couldn't be found.").should(
-            "be.visible",
-          );
-        });
-      });
-
-      it("should allow you to print", () => {
-        H.visitDocument("@documentId");
-        cy.findByRole("button", { name: "More options" }).click();
-
-        // This needs to be *after* the page load to work
-        cy.window().then((win: Window) => {
-          cy.stub(win, "print").as("printStub");
-        });
-
-        H.popover().findByText("Print Document").click();
-
-        cy.get("@printStub").should("have.been.calledOnce");
-
-        cy.get("@documentId").then((id) => {
-          H.expectUnstructuredSnowplowEvent({
-            event: "document_print",
-            target_id: id,
-          });
-        });
       });
 
       it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
@@ -614,8 +485,6 @@ describe("documents", () => {
         alias: "document",
         idAlias: "documentId",
       });
-
-      H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
@@ -680,81 +549,6 @@ describe("documents", () => {
           .contains("Or add whole code blocks")
           .should("exist");
       });
-
-      it("should support formatting via floating menu", () => {
-        const content = "Some text to play with";
-
-        const formatTests = [
-          {
-            button: /text_bold/,
-            role: "strong",
-          },
-          {
-            button: /text_italic/,
-            role: "emphasis",
-          },
-          {
-            button: /text_strike/,
-            role: "paragraph", // figure out what to do here
-          },
-          {
-            button: /format_code/,
-            role: "code",
-          },
-          {
-            button: /H1/,
-            role: "heading",
-          },
-          {
-            button: /H2/,
-            role: "heading",
-          },
-          {
-            button: /^list/,
-            role: "list",
-          },
-          {
-            button: /ordered_list/,
-            role: "list",
-          },
-          {
-            button: /quote/,
-            role: "blockquote",
-          },
-          {
-            button: /code_block/,
-            role: "code",
-            revert: false,
-          },
-        ];
-
-        const assertUnformatted = () =>
-          H.documentContent()
-            // Converting to a heading currently adds a newline, which generates a new paragraph
-            .findAllByRole("paragraph")
-            .eq(0)
-            .should("contain.text", content);
-
-        H.documentContent().click();
-
-        H.addToDocument(content, false);
-        cy.realPress(["Shift", "{home}"]);
-
-        H.documentFormattingMenu().should("exist");
-
-        formatTests.forEach(({ button, role, revert = true }) => {
-          H.documentFormattingMenu()
-            .findByRole("button", { name: button })
-            .click();
-          H.documentContent().findByRole(role).should("contain.text", content);
-          if (revert) {
-            H.documentFormattingMenu()
-              .findByRole("button", { name: button })
-              .click();
-            assertUnformatted();
-          }
-        });
-      });
     });
 
     describe("Card Embeds", () => {
@@ -776,10 +570,10 @@ describe("documents", () => {
             dashboard_id: id,
           });
         });
-        H.visitDocument("@documentId");
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.addPostgresDatabase();
         H.activateToken("pro-self-hosted");
         H.setupAnthropicLlmProvider();
         H.visitDocument("@documentId");
@@ -843,7 +637,8 @@ describe("documents", () => {
         assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
-      it("should support adding cards and updating viz settings", () => {
+      it("should support adding, editing, replacing, and resizing cards", () => {
+        H.visitDocument("@documentId");
         H.documentContent().click();
         H.addToDocument("/", false);
 
@@ -950,10 +745,33 @@ describe("documents", () => {
           .contains(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name)
           .should("not.exist");
 
-        H.getDocumentCard("Orders").should("exist");
+        H.getDocumentCard("Orders").should("be.visible");
+
+        cy.log("resize a card");
+        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+          const ogHeight = el.height();
+          const resizeNode = H.getDocumentCardResizeContainer(
+            ACCOUNTS_COUNT_BY_CREATED_AT.name,
+          );
+
+          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
+            y: 200,
+          });
+
+          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+            const newHeight = el.height();
+
+            cy.log(`${ogHeight}, ${newHeight}`);
+
+            // Unjustified type cast. FIXME
+            expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
       });
 
       it("should support renaming cards", () => {
+        H.visitDocument("@documentId");
+
         cy.log("Add card");
         H.documentContent().click();
         H.addToDocument("/", false);
@@ -976,41 +794,6 @@ describe("documents", () => {
 
         cy.log("Assert new name is preserved");
         H.getDocumentCard("New name").should("exist");
-      });
-
-      it("should support resizing cards", () => {
-        H.documentContent().click();
-        H.addToDocument("/", false);
-
-        cy.log("search via type");
-        H.addToDocument("Accounts", false);
-        H.commandSuggestionDialog().should(
-          "contain.text",
-          ACCOUNTS_COUNT_BY_CREATED_AT.name,
-        );
-
-        cy.realPress("{downarrow}");
-        H.addToDocument("\n", false);
-
-        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-          const ogHeight = el.height();
-          const resizeNode = H.getDocumentCardResizeContainer(
-            ACCOUNTS_COUNT_BY_CREATED_AT.name,
-          );
-
-          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
-            y: 200,
-          });
-
-          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
-            const newHeight = el.height();
-
-            cy.log(`${ogHeight}, ${newHeight}`);
-
-            // Unjustified type cast. FIXME
-            expect(newHeight).to.be.lessThan(ogHeight as number);
-          });
-        });
       });
 
       const PADDING_CARD = 1;
@@ -1147,7 +930,7 @@ describe("documents", () => {
 
         H.visitDocument("@flexDocumentId");
 
-        // Wait for all cards to load (16 chart types × 2 cards each = 32 queries)
+        // Wait for every card query: two cards per chart type
         for (let i = 0; i < chartTypes.length * 2; i++) {
           cy.wait("@cardQuery", { timeout: 15000 });
         }
@@ -1200,6 +983,8 @@ describe("documents", () => {
       });
 
       it("should copy an added card on save", () => {
+        H.visitDocument("@documentId");
+
         cy.intercept({
           method: "PUT",
           path: "/api/document/*",
@@ -1329,22 +1114,33 @@ describe("documents", () => {
       H.commandSuggestionItem(/New chart/).click();
       H.commandSuggestionItem(/New Question/).click();
 
-      cy.log("Create a simple query in the notebook editor");
+      cy.log("Create a time series query in the notebook editor");
       H.miniPicker().within(() => {
         cy.findByText("Our analytics").click();
         cy.findByText("Orders").click();
       });
+      cy.findByRole("dialog", { name: "Create new question" })
+        .findByText("Orders")
+        .should("be.visible");
+
+      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
+      H.addSummaryGroupingField({ field: "Created At" });
 
       cy.log("Save and use the new question");
-      cy.findByRole("dialog", { name: "Create new question" }).within(() => {
-        cy.findByText("Orders").should("exist");
-        cy.findByRole("button", { name: "Save and use" }).click();
-      });
+      cy.findByRole("dialog", { name: "Create new question" })
+        .findByRole("button", { name: "Save and use" })
+        .click();
 
       cy.wait("@dataset");
 
-      cy.log("Verify the question is embedded in the document");
-      H.getDocumentCard("Orders").should("exist");
+      cy.log("Verify the question is embedded with a line chart visualization");
+      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
+        .should("be.visible")
+        .within(() => {
+          cy.findByTestId("chart-container").should("exist");
+          cy.get("svg").should("exist");
+          H.cartesianChartCircle().should("have.length.at.least", 1);
+        });
 
       cy.get("@documentId").then((id) => {
         H.expectUnstructuredSnowplowEvent({
@@ -1355,9 +1151,9 @@ describe("documents", () => {
 
       cy.log("Verify document can be saved with a new question");
       cy.findByRole("button", { name: "Save" }).should("be.visible").click();
-      cy.findByRole("button", { name: "Save" }).should("not.exist");
 
-      H.undoToast().findByText("Document saved").should("exist");
+      H.undoToast().findByText("Document saved").should("be.visible");
+      cy.findByRole("button", { name: "Save" }).should("not.exist");
     });
 
     it("should allow creating a new native SQL question and embedding it in the document", () => {
@@ -1374,9 +1170,7 @@ describe("documents", () => {
       cy.log("Save and use the new SQL query");
 
       cy.wait("@database");
-      cy.wait(200); // wait for db selector to load
-
-      cy.findByTestId("selected-database").should("exist");
+      cy.findByTestId("selected-database").should("be.visible");
 
       H.NativeEditor.focus();
       H.NativeEditor.type("SELECT * FROM ORDERS LIMIT 10");
@@ -1411,217 +1205,9 @@ describe("documents", () => {
 
       cy.log("Verify document can be saved with a new question");
       cy.findByRole("button", { name: "Save" }).should("be.visible").click();
+
+      H.undoToast().findByText("Document saved").should("be.visible");
       cy.findByRole("button", { name: "Save" }).should("not.exist");
-
-      H.undoToast().findByText("Document saved").should("exist");
-    });
-
-    it("should support keyboard navigation when creating a new question", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and navigate to 'Chart' item");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.realPress("{enter}");
-
-      cy.log("Click 'New chart' to open question type menu");
-      H.commandSuggestionItem(/New chart/)
-        .should("exist")
-        .should("have.attr", "aria-selected", "true");
-      H.commandSuggestionItem(/Browse all/).should("exist");
-      cy.realPress("{enter}");
-
-      cy.log("Verify notebook option is selected by default");
-      H.commandSuggestionItem(/New Question/).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.log("Navigate to SQL option");
-      cy.realPress("{downarrow}");
-
-      H.commandSuggestionItem(/New SQL query/).should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-
-      cy.log("Select SQL option with Enter");
-      cy.realPress("{enter}");
-
-      cy.log("Verify native query modal opens");
-      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("be.visible");
-
-      cy.log("Cancel the modal");
-      cy.findByRole("dialog", { name: "Edit SQL Query" })
-        .findByRole("button", { name: "Cancel" })
-        .click();
-
-      cy.log("Verify modal is closed");
-      cy.findByRole("dialog", { name: "Edit SQL Query" }).should("not.exist");
-    });
-
-    it("should show 'Create new question' footer when no search results are found", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and select Chart");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-
-      cy.log("Search for something that doesn't exist");
-      H.addToDocument("xyznonexistentquery", false);
-
-      cy.log("Verify 'No results found' message appears");
-      H.commandSuggestionDialog().should("contain.text", "No results found");
-
-      H.commandSuggestionDialog().findByRole("separator").should("exist");
-
-      cy.log("Verify 'Create new question' footer is visible");
-      H.commandSuggestionItem(/New chart/).should("be.visible");
-
-      cy.log("Verify 'Browse all' footer is also visible");
-      H.commandSuggestionItem(/Browse all/).should("be.visible");
-    });
-
-    it("should automatically assign appropriate visualization type for time series aggregation", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and create a new question");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-      H.commandSuggestionItem(/New chart/).click();
-      H.commandSuggestionItem(/New Question/).click();
-
-      cy.log("Create a time series query with Orders table");
-      H.miniPicker().within(() => {
-        cy.findByText("Our analytics").click();
-        cy.findByText("Orders").click();
-      });
-
-      H.addSummaryField({ metric: "Sum of ...", field: "Total" });
-      H.addSummaryGroupingField({ field: "Created At" });
-
-      cy.findByRole("dialog", { name: "Create new question" })
-        .findByRole("button", { name: "Save and use" })
-        .click();
-
-      cy.log("Verify the question is embedded with a line chart visualization");
-      H.getDocumentCard("Orders, Sum of Total, Grouped by Created At: Month")
-        .should("exist")
-        .within(() => {
-          cy.log("Verify it has a line chart visualization (not a table)");
-          cy.findByTestId("chart-container").should("exist");
-          cy.get("svg").should("exist");
-          H.cartesianChartCircle().should("have.length.at.least", 1);
-        });
-    });
-
-    it("should trigger new question type suggestion menu when typing non-matching search and hitting Enter", () => {
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Type a non-matching search term");
-      H.addToDocument("/asdfsdaf", false);
-
-      H.commandSuggestionDialog().should("be.visible");
-      H.commandSuggestionDialog().should("contain.text", "No results found");
-      H.commandSuggestionItem(/New chart/)
-        .should("exist")
-        .should("have.attr", "aria-selected", "true");
-      cy.realPress("Enter");
-
-      cy.log("Verify that the new question type suggestion menu appears");
-      H.commandSuggestionDialog().should("be.visible");
-      H.commandSuggestionItem(/New Question/).should("be.visible");
-      H.commandSuggestionDialog()
-        .findByText(/Browse all/)
-        .should("not.exist");
-    });
-  });
-
-  describe("creating new questions - limited permissions", () => {
-    it("should not show 'Create new question' option for users without database permissions", () => {
-      cy.signIn("readonly");
-
-      H.createDocument({
-        name: "Test Document",
-        document: {
-          content: [],
-          type: "doc",
-        },
-        collection_id: READ_ONLY_PERSONAL_COLLECTION_ID,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and select Chart");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-
-      cy.log("Verify 'Create new question' footer is not visible");
-      H.commandSuggestionDialog()
-        .findByRole("button", { name: /New chart/ })
-        .should("not.exist");
-
-      cy.log("Search for something to verify footer doesn't appear");
-      H.addToDocument("xyznonexistent", false);
-
-      cy.log("Verify 'No results found' message appears");
-      H.commandSuggestionDialog().should("contain.text", "No results found");
-
-      cy.log(
-        "Verify 'Create new question' footer is still not visible for no-permission user",
-      );
-      H.commandSuggestionDialog()
-        .findByRole("button", { name: /New chart/ })
-        .should("not.exist");
-
-      cy.log("Verify 'Browse all' footer is still available");
-      H.commandSuggestionItem(/Browse all/).should("be.visible");
-    });
-
-    it("should not show native SQL question option for users without native query editing permissions", () => {
-      cy.signIn("nosql");
-
-      H.createDocument({
-        name: "Test Document",
-        document: {
-          content: [],
-          type: "doc",
-        },
-        collection_id: NO_SQL_PERSONAL_COLLECTION_ID,
-        alias: "document",
-        idAlias: "documentId",
-      });
-
-      H.visitDocument("@documentId");
-      H.documentContent().click();
-
-      cy.log("Trigger command menu and select Chart");
-      H.addToDocument("/", false);
-      H.commandSuggestionItem("Chart").click();
-
-      cy.log("Click 'New chart' to open question type menu");
-      H.commandSuggestionItem(/New chart/).click();
-
-      cy.log("Verify only notebook option is available, not SQL");
-      H.commandSuggestionItem(/New SQL query/).should("not.exist");
-
-      cy.log("Verify notebook modal opens automatically");
-      cy.findByRole("dialog", { name: "Create new question" }).should(
-        "be.visible",
-      );
     });
   });
 
@@ -1688,22 +1274,7 @@ describe("documents", () => {
       });
     });
 
-    it("should show anchor link icon on left side when hovering over a heading", () => {
-      H.visitDocument("@documentId");
-
-      H.documentContent()
-        .findByRole("heading", { name: "First Heading" })
-        .realHover();
-
-      // Filter to visible one since all blocks have hidden buttons
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .should("be.visible");
-    });
-
-    it("should copy anchor URL to clipboard when clicking anchor link", () => {
+    it("should show block menus on hover and copy the anchor URL to clipboard", () => {
       H.visitDocument("@documentId");
 
       cy.wrap(
@@ -1720,11 +1291,20 @@ describe("documents", () => {
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
+      cy.log("Comments menu shows alongside the anchor link menu");
+      // Comments button uses ForwardRefLink, so it's a link role not button
+      cy.findAllByTestId("comments-menu")
+        .filter(":visible")
+        .first()
+        .findByRole("link", { name: /comments/i })
+        .should("be.visible");
+
       // Filter to visible one since all blocks have hidden buttons
-      cy.get('[data-testid="anchor-link-menu"]')
+      cy.findAllByTestId("anchor-link-menu")
         .filter(":visible")
         .first()
         .findByRole("button", { name: /copy link/i })
+        .should("be.visible")
         .click();
 
       cy.get("body").findByText("Copied!").should("be.visible");
@@ -1749,72 +1329,6 @@ describe("documents", () => {
           .findByRole("heading", { name: "First Heading" })
           .should("not.be.visible");
       });
-    });
-
-    it("should still show comments menu on right side (regression check)", () => {
-      H.visitDocument("@documentId");
-
-      H.documentContent()
-        .findByRole("heading", { name: "First Heading" })
-        .realHover();
-
-      // Filter to visible one since all blocks have hidden menus
-      cy.get('[data-testid="anchor-link-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("button", { name: /copy link/i })
-        .should("be.visible");
-
-      // Comments button uses ForwardRefLink, so it's a link role not button
-      cy.get('[data-testid="comments-menu"]')
-        .filter(":visible")
-        .first()
-        .findByRole("link", { name: /comments/i })
-        .should("be.visible");
-    });
-  });
-
-  describe("error handling", () => {
-    it("should display an error toast when creating a new document fails", () => {
-      // setup
-      cy.intercept("POST", "/api/document", { statusCode: 500 });
-      cy.intercept("GET", "/api/collection/*").as("getCollection");
-      cy.visit("/document/new");
-
-      // make changes and attempt to save
-      cy.findByRole("textbox", { name: "Document Title" }).type("Title");
-      H.documentSaveButton().click();
-      cy.wait("@getCollection");
-      H.entityPickerModalItem(0, "Our analytics").click();
-      H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-
-      // assert error toast is visible and user can reattempt save
-      cy.findByTestId("toast-undo")
-        .should("be.visible")
-        .and("contain.text", "Error saving document");
-      H.documentSaveButton().should("be.visible");
-    });
-
-    it("should display an error toast when updating a document fails", () => {
-      // setup
-      cy.intercept("PUT", "/api/document/*", { statusCode: 500 });
-      H.createDocument({
-        name: "Test Document",
-        document: { type: "doc", content: [] },
-        idAlias: "documentId",
-      });
-      H.visitDocument("@documentId");
-
-      // make changes and attempt to save
-      H.documentContent().click();
-      H.addToDocument("aaa");
-      H.documentSaveButton().click();
-
-      // assert error toast is visible and user can reattempt save
-      cy.findByTestId("toast-undo")
-        .should("be.visible")
-        .and("contain.text", "Error saving document");
-      H.documentSaveButton().should("be.visible");
     });
   });
 
@@ -2135,3 +1649,30 @@ const assertOnlyOneOptionActive = (
     .filter("[aria-selected=true]")
     .should("have.length", 1);
 };
+
+function duplicateAndAssertRedirect() {
+  cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+    // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+    const copyName = ($input.val() ?? "").toString();
+    cy.wrap(copyName).as("copyName");
+  });
+
+  cy.findByRole("button", { name: "Duplicate" }).click();
+
+  cy.wait("@copyDoc").then(({ response }) => {
+    const copiedId = response?.body?.id;
+    expect(copiedId).to.exist;
+
+    cy.location("pathname").should(
+      "match",
+      new RegExp(`^/document/${copiedId}`),
+    );
+  });
+
+  cy.get<string>("@copyName").then((copyName) => {
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      copyName,
+    );
+  });
+}

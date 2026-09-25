@@ -7,13 +7,42 @@ import {
 
 const { H } = cy;
 
+const SUPPORTING_TEXT_PLACEHOLDER = "Write whatever you'd like to";
+const ORDERS_BY_YEAR_CARD_TITLE = "Orders, Count, Grouped by Created At (year)";
+
+const flexContainer = () =>
+  H.documentContent().find('[data-type="flexContainer"]');
+
+const supportingText = () =>
+  H.documentContent().findByTestId("document-card-supporting-text");
+
+// The menu item is rendered disabled while the node view can't resolve its
+// position, and a click on the label of a disabled button is dropped without
+// an error, so click the button itself once it is enabled.
+const addSupportingText = (cardTitle: string) => {
+  H.openDocumentCardMenu(cardTitle);
+  H.popover()
+    .findByText("Add supporting text")
+    .closest("button")
+    .should("be.enabled")
+    .click();
+};
+
+const assertAddSupportingTextDisabled = (cardTitle: string) => {
+  H.openDocumentCardMenu(cardTitle);
+  H.popover()
+    .findByText("Add supporting text")
+    .closest("button")
+    .should("have.attr", "data-disabled");
+};
+
 describe("documents supporting text", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should add supporting text to a standalone cardEmbed", () => {
+  it("should add and edit supporting text on a standalone card, and allow only one per group", () => {
     H.createDocument({
       name: "Supporting Text Test Document",
       document: DOCUMENT_WITH_TWO_LIGHTWEIGHT_CARDS,
@@ -24,282 +53,92 @@ describe("documents supporting text", () => {
 
     H.visitDocument("@documentId");
 
-    const ORDERS_BY_YEAR_CARD_TITLE =
-      "Orders, Count, Grouped by Created At (year)";
-
-    // Wait for cards to load
     H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE)
-      .should("be.visible")
       .findByTestId("visualization-root")
-      .should("exist");
+      .should("be.visible");
+    supportingText().should("not.exist");
+    flexContainer().should("not.exist");
 
-    // Verify no supporting text or flexContainer exists initially
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("not.exist");
-    H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
+    addSupportingText(ORDERS_BY_YEAR_CARD_TITLE);
 
-    // Open the card menu and click "Add supporting text". The menu item is
-    // rendered disabled while the node view can't resolve its position, and a
-    // click on the label of a disabled button is dropped without an error, so
-    // click the button itself and wait for it to be enabled.
-    H.openDocumentCardMenu(ORDERS_BY_YEAR_CARD_TITLE);
-    H.popover()
-      .findByText("Add supporting text")
-      .closest("button")
-      .should("be.enabled")
-      .click();
-
-    // Verify a flexContainer was created
-    H.documentContent().find('[data-type="flexContainer"]').should("exist");
-
-    // Verify supporting text was added
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("exist");
-
-    // Verify the supporting text has the placeholder text
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("contain.text", "Write whatever you'd like to");
-
-    // Verify the flexContainer contains both supporting text and the card.
+    cy.log(
+      "The card is wrapped in a flexContainer together with an empty supporting text",
+    );
     // Kept as two re-queried chains: `.within()` freezes its subject, and the
     // card's node view is recreated when it moves into the new flexContainer.
-    H.documentContent()
-      .find('[data-type="flexContainer"]')
+    flexContainer()
       .findByTestId("document-card-supporting-text")
-      .should("exist");
-    H.documentContent()
-      .find('[data-type="flexContainer"]')
+      .should("contain.text", SUPPORTING_TEXT_PLACEHOLDER);
+    flexContainer()
       .findByTestId("document-card-embed")
-      .should("exist");
+      .should("contain.text", ORDERS_BY_YEAR_CARD_TITLE);
 
-    // Verify the card is still there
-    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE).should("exist");
+    cy.log(
+      "Backspace in empty supporting text removes it and unwraps the flexContainer",
+    );
+    cy.realPress("Backspace");
+    supportingText().should("not.exist");
+    flexContainer().should("not.exist");
+    H.getDocumentCard(ORDERS_BY_YEAR_CARD_TITLE)
+      .findByTestId("visualization-root")
+      .should("be.visible");
+
+    addSupportingText(ORDERS_BY_YEAR_CARD_TITLE);
+    supportingText().should("contain.text", SUPPORTING_TEXT_PLACEHOLDER);
+
+    cy.log("Markdown input rules apply inside supporting text");
+    cy.realType("# Hdg{enter}Lorem ipsum");
+    supportingText().contains("h1", "Hdg").should("be.visible");
+    supportingText().contains("p", "Lorem ipsum").should("be.visible");
+
+    cy.log("A group that already has supporting text can't get another one");
+    assertAddSupportingTextDisabled(ORDERS_BY_YEAR_CARD_TITLE);
   });
 
-  it("should add supporting text to a cardEmbed in a flexContainer", () => {
+  it("should add supporting text to a group, drop it when the group loses its last card, and disallow it in a full group", () => {
     H.createDocument({
-      name: "Supporting Text Flex Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for cards to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-    H.getDocumentCard("Orders, Count")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Create a flexContainer by dropping one card onto another
-    H.dragAndDropCardOnAnotherCard("Orders", "Orders, Count");
-
-    // Verify flexContainer was created
-    H.documentContent().find('[data-type="flexContainer"]').should("exist");
-
-    // Verify no supporting text exists yet
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("not.exist");
-
-    // Open the card menu and click "Add supporting text"
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
-
-    // Verify supporting text was added at the beginning of the flexContainer
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("exist");
-
-    // Verify the supporting text has the placeholder text
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("contain.text", "Write whatever you'd like to");
-
-    // Verify the flexContainer now contains supporting text and both cards
-    H.documentContent()
-      .find('[data-type="flexContainer"]')
-      .within(() => {
-        cy.findByTestId("document-card-supporting-text").should("exist");
-        cy.findAllByTestId("document-card-embed").should("have.length", 2);
-      });
-  });
-
-  it("should allow editing supporting text content", () => {
-    H.createDocument({
-      name: "Edit Supporting Text Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for cards to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Add supporting text
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
-
-    // Verify supporting text was added
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("exist");
-
-    // Type some content
-    const testText = "# Hdg{enter}Lorem ipsum";
-    cy.realType(testText);
-
-    // Verify the text was added
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .contains("h1", "Hdg")
-      .should("exist");
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .contains("p", "Lorem ipsum")
-      .should("exist");
-  });
-
-  it("should disable 'Add supporting text' when supporting text already exists in flexContainer", () => {
-    H.createDocument({
-      name: "Disable Supporting Text Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for cards to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Add supporting text to the first card
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
-
-    // Verify supporting text was added
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("exist");
-
-    // Try to add another supporting text to the same flexContainer
-    H.openDocumentCardMenu("Orders");
-
-    // Verify the "Add supporting text" option is disabled
-    H.popover()
-      .findByText("Add supporting text")
-      .closest("button")
-      .should("have.attr", "data-disabled");
-  });
-
-  it("should disable 'Add supporting text' when flexContainer has 3 cards", () => {
-    H.createDocument({
-      name: "Max Cards Supporting Text Test Document",
+      name: "Supporting Text auto-cleanup",
       document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
       collection_id: null,
       alias: "document",
       idAlias: "documentId",
     });
-
     H.visitDocument("@documentId");
 
-    // Wait for all cards to load
     H.getDocumentCard("Orders")
-      .should("be.visible")
       .findByTestId("table-root")
-      .should("exist");
-    H.getDocumentCard("Orders, Count")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
+      .should("be.visible");
+    supportingText().should("not.exist");
 
-    // Add the third card to reach MAX_GROUP_SIZE
-    H.dragAndDropCardOnAnotherCard(
-      "Orders, Count, Grouped by Created At (year)",
-      "Orders",
-      { side: "right" },
-    );
+    addSupportingText("Orders");
 
-    // Verify flexContainer has 3 cards
-    H.documentContent()
-      .find('[data-type="flexContainer"]')
-      .within(() => {
-        cy.findAllByTestId("document-card-embed").should("have.length", 3);
-      });
-
-    // Open the card menu
-    H.openDocumentCardMenu("Orders");
-
-    // Verify the "Add supporting text" option is disabled
-    H.popover()
-      .findByText("Add supporting text")
-      .closest("button")
-      .should("have.attr", "data-disabled");
-  });
-
-  it("should remove supporting text when it becomes empty and Backspace is pressed", () => {
-    H.createDocument({
-      name: "Remove Empty Supporting Text Test Document",
-      document: DOCUMENT_WITH_TWO_CARDS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-
-    H.visitDocument("@documentId");
-
-    // Wait for cards to load
-    H.getDocumentCard("Orders")
-      .should("be.visible")
-      .findByTestId("table-root")
-      .should("exist");
-
-    // Add supporting text
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
-
-    // Verify supporting text was added
-    H.documentContent()
+    cy.log("Supporting text is inserted into the existing flexContainer");
+    flexContainer()
       .findByTestId("document-card-supporting-text")
-      .should("exist");
+      .should("contain.text", SUPPORTING_TEXT_PLACEHOLDER);
+    flexContainer()
+      .findAllByTestId("document-card-embed")
+      .should("have.length", 2);
 
-    // Click into the supporting text
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .within(() => cy.get(".node-paragraph").click());
+    cy.realType("Lorem ipsum");
+    supportingText().should("contain.text", "Lorem ipsum");
 
-    // Press Backspace to delete the empty supporting text
-    cy.realPress("Backspace");
+    cy.log("One card remaining in group, supportingText should exist");
+    H.dragAndDropCardOnAnotherCard("Orders", ORDERS_BY_YEAR_CARD_TITLE);
+    H.getFlexContainerForCard(ORDERS_BY_YEAR_CARD_TITLE)
+      .findAllByTestId("document-card-embed")
+      .should("have.length", 2);
+    H.documentContent().findByText("Lorem ipsum").should("be.visible");
 
-    // Verify supporting text was removed
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("not.exist");
+    cy.log("No cards remaining in group, supportingText should not exist");
+    H.dragAndDropCardOnAnotherCard("Orders, Count", ORDERS_BY_YEAR_CARD_TITLE);
+    H.getFlexContainerForCard(ORDERS_BY_YEAR_CARD_TITLE)
+      .findAllByTestId("document-card-embed")
+      .should("have.length", 3);
+    H.documentContent().findByText("Lorem ipsum").should("not.exist");
 
-    // Verify the flexContainer was also removed (unwrapped)
-    H.documentContent().find('[data-type="flexContainer"]').should("not.exist");
-
-    // Verify the card is still there as a standalone card
-    H.getDocumentCard("Orders").should("exist");
+    cy.log("A group with 3 cards can't get supporting text");
+    assertAddSupportingTextDisabled("Orders");
   });
 
   it("should allow resizing supporting text and persist width after save", () => {
@@ -318,119 +157,84 @@ describe("documents supporting text", () => {
 
     H.visitDocument("@documentId");
 
-    // Wait for cards to load
     H.getDocumentCard("Orders")
-      .should("be.visible")
       .findByTestId("table-root")
-      .should("exist");
+      .should("be.visible");
 
-    // Add supporting text to create a flexContainer
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
+    addSupportingText("Orders");
 
-    // Verify flexContainer and supporting text were created
-    H.documentContent().find('[data-type="flexContainer"]').should("exist");
-    H.documentContent()
+    flexContainer()
       .findByTestId("document-card-supporting-text")
-      .should("exist");
+      .should("be.visible");
 
-    // Get initial widths of supporting text and card
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .then(($supportingText) => {
+    cy.log("Measure initial widths of supporting text and card");
+    supportingText().then(($supportingText) => {
+      // Unjustified type cast. FIXME
+      const initialSupportingTextWidth = $supportingText.width() as number;
+      cy.wrap(initialSupportingTextWidth).as("initialSupportingTextWidth");
+
+      H.getDocumentCard("Orders").then(($card) => {
         // Unjustified type cast. FIXME
-        const initialSupportingTextWidth = $supportingText.width() as number;
-        cy.wrap(initialSupportingTextWidth).as("initialSupportingTextWidth");
-
-        H.getDocumentCard("Orders").then(($card) => {
-          // Unjustified type cast. FIXME
-          const initialCardWidth = $card.width() as number;
-          cy.wrap(initialCardWidth).as("initialCardWidth");
-        });
+        const initialCardWidth = $card.width() as number;
+        cy.wrap(initialCardWidth).as("initialCardWidth");
       });
+    });
 
-    // Get the flex container and resize handles
-    const flexContainer = H.documentContent().find(
-      '[data-type="flexContainer"]',
+    cy.log(
+      "Drag the handle to widen the supporting text and narrow the card",
     );
-    const handles = H.getResizeHandlesForFlexContianer(flexContainer);
+    H.documentDoDrag(
+      H.getResizeHandlesForFlexContianer(flexContainer()).eq(0),
+      { x: 150 },
+    );
 
-    // Drag the handle to resize (increase supporting text width, decrease card width)
-    H.documentDoDrag(handles.eq(0), { x: 150 });
+    supportingText().then(($supportingText) => {
+      // Unjustified type cast. FIXME
+      const newSupportingTextWidth = $supportingText.width() as number;
+      cy.wrap(newSupportingTextWidth).as("newSupportingTextWidth");
 
-    // Verify the widths changed
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .then(($supportingText) => {
+      H.getDocumentCard("Orders").then(($card) => {
         // Unjustified type cast. FIXME
-        const newSupportingTextWidth = $supportingText.width() as number;
-        cy.wrap(newSupportingTextWidth).as("newSupportingTextWidth");
+        const newCardWidth = $card.width() as number;
+        cy.wrap(newCardWidth).as("newCardWidth");
 
-        H.getDocumentCard("Orders").then(($card) => {
-          // Unjustified type cast. FIXME
-          const newCardWidth = $card.width() as number;
-          cy.wrap(newCardWidth).as("newCardWidth");
+        cy.get<number>("@initialSupportingTextWidth").then((initialWidth) => {
+          expect(newSupportingTextWidth).to.be.greaterThan(initialWidth);
+          expect(newSupportingTextWidth).to.be.closeTo(initialWidth + 150, 10);
+        });
 
-          cy.get<number>("@initialSupportingTextWidth").then((initialWidth) => {
-            // Supporting text should be wider
-            expect(newSupportingTextWidth).to.be.greaterThan(initialWidth);
-            // The change should be close to the drag distance
-            expect(newSupportingTextWidth).to.be.closeTo(
-              initialWidth + 150,
-              10,
-            );
-          });
-
-          cy.get<number>("@initialCardWidth").then((initialWidth) => {
-            // Card should be narrower
-            expect(newCardWidth).to.be.lessThan(initialWidth);
-            // The change should be close to the drag distance
-            expect(newCardWidth).to.be.closeTo(initialWidth - 150, 10);
-          });
+        cy.get<number>("@initialCardWidth").then((initialWidth) => {
+          expect(newCardWidth).to.be.lessThan(initialWidth);
+          expect(newCardWidth).to.be.closeTo(initialWidth - 150, 10);
         });
       });
+    });
 
-    // Click into the supporting text to edit it
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .within(() => cy.get(".node-paragraph").click());
+    supportingText().within(() => cy.get(".node-paragraph").click());
 
-    // Type some content
     const testText = "Supporting text for Orders chart";
     cy.realType(testText);
     cy.realPress("Tab");
 
-    // Verify the text was added
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("contain.text", testText);
+    supportingText().should("contain.text", testText);
 
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
-      .should("contain.text", testText);
-
-    // Save the document
     H.documentSaveButton().should("not.be.disabled").click();
 
-    // Wait for save confirmation
     cy.findByTestId("toast-undo")
       .should("be.visible")
       .and("contain.text", "Document saved");
 
-    // Reload the page to verify persistence
+    cy.log("Reload to verify the widths persisted");
     cy.reload();
 
     cy.wait("@documentGet");
 
-    // Wait for the document to load
     H.getDocumentCard("Orders")
-      .should("be.visible")
       .findByTestId("table-root")
-      .should("exist");
+      .should("be.visible");
 
-    // Verify the widths are still the same after reload
-    H.documentContent()
-      .findByTestId("document-card-supporting-text")
+    supportingText()
+      .should("contain.text", testText)
       .then(($supportingText) => {
         // Unjustified type cast. FIXME
         const reloadedSupportingTextWidth = $supportingText.width() as number;
@@ -440,45 +244,62 @@ describe("documents supporting text", () => {
           const reloadedCardWidth = $card.width() as number;
 
           cy.get<number>("@newSupportingTextWidth").then((savedWidth) => {
-            // Supporting text width should be preserved
             expect(reloadedSupportingTextWidth).to.be.closeTo(savedWidth, 10);
           });
 
           cy.get<number>("@newCardWidth").then((savedWidth) => {
-            // Card width should be preserved
             expect(reloadedCardWidth).to.be.closeTo(savedWidth, 10);
           });
         });
       });
   });
 
-  it("should remove supporting text when the last chart in its group is removed", () => {
-    H.createDocument({
-      name: "Supporting Text auto-cleanup",
-      document: DOCUMENT_WITH_THREE_CARDS_AND_COLUMNS,
-      collection_id: null,
-      alias: "document",
-      idAlias: "documentId",
-    });
-    H.visitDocument("@documentId");
-
-    H.openDocumentCardMenu("Orders");
-    H.popover().findByText("Add supporting text").click();
-    cy.realType("Lorem ipsum");
-
-    const targetCardTitle = "Orders, Count, Grouped by Created At (year)";
-
-    cy.log("One card remaining in group, supportingText should exist");
-    H.dragAndDropCardOnAnotherCard("Orders", targetCardTitle);
-    H.documentContent().findByText("Lorem ipsum").should("exist");
-
-    cy.log("No cards remaining in group, supportingText should not exist");
-    H.dragAndDropCardOnAnotherCard("Orders, Count", targetCardTitle);
-    H.documentContent().findByText("Lorem ipsum").should("not.exist");
-  });
-
   describe("drag and drop", () => {
-    beforeEach(() => {
+    type Block = { card: string } | { supportingText: string };
+
+    const blockRect = ($content: JQuery<HTMLElement>, block: Block) => {
+      const $block =
+        "card" in block
+          ? $content
+              .find('[data-testid="card-embed-title"]')
+              .filter((_index, element) => element.innerText === block.card)
+              .closest('[data-testid="document-card-embed"]')
+          : $content
+              .find('[data-testid="document-card-supporting-text"]')
+              .filter((_index, element) =>
+                element.innerText.includes(block.supportingText),
+              );
+      expect($block).to.have.length(1);
+      return $block[0].getBoundingClientRect();
+    };
+
+    const assertHorizontalLayout = (left: Block, right: Block) =>
+      H.documentContent().should(($content) => {
+        const leftRect = blockRect($content, left);
+        const rightRect = blockRect($content, right);
+        expect(rightRect.left).to.gte(leftRect.right);
+        expect(leftRect.top).to.be.closeTo(rightRect.top, 2);
+      });
+
+    const assertVerticalLayout = (top: Block, bottom: Block) =>
+      H.documentContent().should(($content) => {
+        const topRect = blockRect($content, top);
+        const bottomRect = blockRect($content, bottom);
+        expect(bottomRect.top).to.gte(topRect.bottom);
+        expect(topRect.left).to.be.closeTo(bottomRect.left, 2);
+      });
+
+    const getSupportingText = () =>
+      H.documentContent()
+        .findAllByTestId("document-card-supporting-text")
+        .contains("Lorem ipsum")
+        .closest('[data-testid="document-card-supporting-text"]');
+
+    const SUPPORTING_TEXT: Block = { supportingText: "Lorem ipsum" };
+    const ORDERS: Block = { card: "Orders" };
+    const ORDERS_COUNT: Block = { card: "Orders, Count" };
+
+    it("should reorder and insert blocks around a supporting text, and ignore drops outside its group", () => {
       H.createDocument({
         name: "DnD Test Document",
         document: DOCUMENT_WITH_SUPPORTING_TEXT,
@@ -487,101 +308,45 @@ describe("documents supporting text", () => {
         idAlias: "documentId",
       });
       H.visitDocument("@documentId");
-    });
 
-    const getSupportingText = (contents: string = "Lorem ipsum") => {
-      const testId = "document-card-supporting-text";
-      return cy
-        .findAllByTestId(testId)
-        .contains(contents)
-        .closest(`[data-testid="${testId}"]`);
-    };
+      H.getDocumentCard("Orders").should("be.visible");
+      H.getDocumentCard("Orders, Count").should("be.visible");
+      assertHorizontalLayout(SUPPORTING_TEXT, ORDERS);
 
-    const assertHorizontalLayout = (
-      c1: Cypress.Chainable<JQuery<HTMLElement>>,
-      c2: Cypress.Chainable<JQuery<HTMLElement>>,
-    ) => {
-      c1.then(($c1) => {
-        c2.then(($c2) => {
-          const rect1 = $c1[0].getBoundingClientRect();
-          const rect2 = $c2[0].getBoundingClientRect();
-          expect(rect2.left).to.gte(rect1.right);
-          expect(rect1.top).to.be.closeTo(rect2.top, 2);
-        });
+      cy.log("Dropping a supporting text outside of its group does nothing");
+      H.documentsDragAndDrop({
+        getSource: () => getSupportingText().find("[data-drag-handle]"),
+        getTarget: () => H.getDocumentCard("Orders, Count"),
       });
-    };
+      assertHorizontalLayout(SUPPORTING_TEXT, ORDERS);
+      assertVerticalLayout(SUPPORTING_TEXT, ORDERS_COUNT);
 
-    const assertVerticalLayout = (
-      c1: Cypress.Chainable<JQuery<HTMLElement>>,
-      c2: Cypress.Chainable<JQuery<HTMLElement>>,
-    ) => {
-      c1.then(($c1) => {
-        c2.then(($c2) => {
-          const rect1 = $c1[0].getBoundingClientRect();
-          const rect2 = $c2[0].getBoundingClientRect();
-          expect(rect2.top).to.gte(rect1.bottom);
-          expect(rect1.left).to.be.closeTo(rect2.left, 2);
-        });
-      });
-    };
-
-    it("should reorder when dropping a supporting text block onto a card", () => {
-      H.getDocumentCard("Orders").should("exist");
+      cy.log("Dropping a supporting text onto a card reorders the group");
       H.documentsDragAndDrop({
         getSource: () => getSupportingText().find("[data-drag-handle]"),
         getTarget: () => H.getDocumentCard("Orders"),
         side: "right",
       });
+      assertHorizontalLayout(ORDERS, SUPPORTING_TEXT);
+      assertVerticalLayout(ORDERS, ORDERS_COUNT);
 
-      assertHorizontalLayout(H.getDocumentCard("Orders"), getSupportingText());
-      assertVerticalLayout(
-        H.getDocumentCard("Orders"),
-        H.getDocumentCard("Orders, Count"),
-      );
-    });
-
-    it("should reorder when dropping a card onto a supporting text block", () => {
-      H.getDocumentCard("Orders").should("exist");
+      cy.log("Dropping a card onto a supporting text reorders the group");
       H.documentsDragAndDrop({
         getSource: () => H.getDocumentCard("Orders"),
         getTarget: () => getSupportingText(),
-        side: "left",
+        side: "right",
       });
+      assertHorizontalLayout(SUPPORTING_TEXT, ORDERS);
+      assertVerticalLayout(SUPPORTING_TEXT, ORDERS_COUNT);
 
-      assertHorizontalLayout(H.getDocumentCard("Orders"), getSupportingText());
-      assertVerticalLayout(
-        H.getDocumentCard("Orders"),
-        H.getDocumentCard("Orders, Count"),
-      );
-    });
-
-    it("should insert a card when dropped onto a supporting text block", () => {
-      H.getDocumentCard("Orders").should("exist");
+      cy.log("Dropping an outside card onto a supporting text inserts it");
       H.documentsDragAndDrop({
         getSource: () => H.getDocumentCard("Orders, Count"),
         getTarget: () => getSupportingText(),
         side: "left",
       });
-
-      assertHorizontalLayout(
-        H.getDocumentCard("Orders, Count"),
-        getSupportingText(),
-      );
-      assertHorizontalLayout(getSupportingText(), H.getDocumentCard("Orders"));
-    });
-
-    it("should do nothing if dragging a supporting text block outside of a group", () => {
-      H.getDocumentCard("Orders").should("exist");
-      H.documentsDragAndDrop({
-        getSource: () => getSupportingText().find("[data-drag-handle]"),
-        getTarget: () => H.getDocumentCard("Orders, Count"),
-      });
-
-      assertHorizontalLayout(getSupportingText(), H.getDocumentCard("Orders"));
-      assertVerticalLayout(
-        getSupportingText(),
-        H.getDocumentCard("Orders, Count"),
-      );
+      assertHorizontalLayout(ORDERS_COUNT, SUPPORTING_TEXT);
+      assertHorizontalLayout(SUPPORTING_TEXT, ORDERS);
     });
   });
 });
