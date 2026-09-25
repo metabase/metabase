@@ -1312,7 +1312,7 @@
            metabase.mcp.init
            metabase.mcp.usage
            metabase.mcp.v2.api}
-   :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
+   :model-exports #{:model/McpGroupPermission :model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing
            api
@@ -3836,16 +3836,22 @@
 
   enterprise/mcp
   {:team    "Metabot"
-   :api     #{metabase-enterprise.mcp.init}
+   :api     #{metabase-enterprise.mcp.api.permissions metabase-enterprise.mcp.init}
    :uses    #{analytics
+              api
               lib.schema
               mcp
               metabot
+              permissions
               premium-features
+              settings
               task
               util}
-   :model-imports #{:model/McpSessionLog
-                    :model/McpToolCallLog}}
+   :model-imports #{:model/McpGroupPermission
+                    :model/McpSessionLog
+                    :model/McpToolCallLog
+                    :model/PermissionsGroup
+                    :model/PermissionsGroupMembership}}
 
   enterprise/memoize-monitor
   {:team "Graphy"
@@ -3866,9 +3872,7 @@
    :module-exports #{enterprise/metabot.agent-api
                      enterprise/metabot.analytics
                      enterprise/metabot.data-complexity-score}
-   :api            #{metabase-enterprise.metabot.api
-                     metabase-enterprise.metabot.api.routes
-                     metabase-enterprise.metabot.init}
+   :api            #{metabase-enterprise.metabot.api metabase-enterprise.metabot.api.routes metabase-enterprise.metabot.init}
    :uses           #{api
                      lib.schema
                      metabot
@@ -3879,7 +3883,8 @@
                      settings
                      task
                      util
-                     enterprise/cloud.add-ons}
+                     enterprise/cloud.add-ons
+                     enterprise/mcp}
    :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api

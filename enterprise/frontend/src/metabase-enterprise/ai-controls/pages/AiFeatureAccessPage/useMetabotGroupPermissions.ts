@@ -10,8 +10,6 @@ import {
 } from "metabase-enterprise/api";
 import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
-export type GroupTab = "user-groups" | "tenant-groups";
-
 const PERMISSIONS_SAVE_DEBOUNCE = 500;
 
 export const useMetabotGroupPermissions = () => {

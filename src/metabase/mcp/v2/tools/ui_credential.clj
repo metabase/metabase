@@ -21,6 +21,7 @@
 (registry/deftool refresh-ui-credential
   "Refresh the scoped credential used by a Metabase MCP App. Called by the app itself, not by the model."
   {:name                "refresh_ui_credential"
+   :default-access      :allowed
    ;; The same scope as the UI tools the iframe renders. Any token can read the shells, so this scope, not the
    ;; shell read, is what keeps a credential from a token that could not call those tools.
    :scope               metabot.scope/agent-query-run

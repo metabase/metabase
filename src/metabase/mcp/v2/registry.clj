@@ -23,6 +23,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.ui-resource :as mcp.ui-resource]
    [metabase.mcp.usage :as mcp.usage]
@@ -44,11 +45,15 @@
 (defonce ^:private manifest-cache
   (atom nil))
 
+(def ^:private default-accesses
+  "What a tool's `:default-access` may be: whether a group without an entry for the tool may use it."
+  #{:allowed :denied})
+
 (defn register-tool!
   "Register a v2 tool definition.
 
   Does basic validation of arguments and throws when invalid."
-  [{tool-name :name :keys [scope description args handler] :as tool}]
+  [{tool-name :name :keys [scope description args handler default-access renamed-from] :as tool}]
   (when (str/blank? tool-name)
     (throw (ex-info "v2 MCP tool registered without a :name" {:tool tool})))
   (doseq [[k v] {:scope scope :description description}]
@@ -64,10 +69,18 @@
   ;; Dispatch gates on :required-extensions, so a misspelled key (:require-extensions,
   ;; :requires-extension) would silently disable the gate — reject unknown keys loudly instead.
   (when-let [unknown (seq (remove #{:name :scope :description :args :handler :annotations
-                                    :output-schema :required-extensions :title :_meta}
+                                    :output-schema :required-extensions :title :_meta
+                                    :default-access :renamed-from}
                                   (keys tool)))]
     (throw (ex-info (format "v2 MCP tool %s registered with unknown option(s) %s" tool-name (vec unknown))
                     {:tool-name tool-name :unknown-keys (vec unknown)})))
+  (when-not (default-accesses default-access)
+    (throw (ex-info (format "v2 MCP tool %s registered without a :default-access of :allowed or :denied" tool-name)
+                    {:tool-name tool-name :default-access default-access})))
+  (when (contains? tool :renamed-from)
+    (when-not (and (vector? renamed-from) (seq renamed-from) (not-any? str/blank? renamed-from))
+      (throw (ex-info (format "v2 MCP tool %s :renamed-from must be a non-empty vector of former names" tool-name)
+                      {:tool-name tool-name :renamed-from renamed-from}))))
   ;; Only the extensions a client can actually advertise are gateable: an unknown keyword is never in
   ;; `ui-resource/supported-extensions`'s output, so the tool would be hidden from and refused to every
   ;; client forever, with no error to say why.
@@ -101,10 +114,11 @@
 
     (deftool echo
       \"Echo the message back.\"
-      {:name        \"echo\"
-       :scope       metabot.scope/agent-content-read
-       :annotations {:readOnlyHint true}
-       :args        [:map …]}
+      {:name           \"echo\"
+       :scope          metabot.scope/agent-content-read
+       :default-access :allowed
+       :annotations    {:readOnlyHint true}
+       :args           [:map …]}
       [arguments context]
       …)
 
@@ -121,6 +135,12 @@
    `opts` is a map of:
    - `:name` - the mcp public-facing name of the tool
    - `:scope` - the required scope for the tool, published as `securitySchemes`
+   - `:default-access` - `:allowed` or `:denied`: whether a permissions group whose admin has not said
+     yes or no to this tool may use it. Group rows are keyed by tool name, so a new tool gets exactly
+     this until an admin overrides it
+   - `:renamed-from` - _optional_ - vector of the tool's former names. A group's stored yes or no under
+     a former name still applies to the tool, and the admin API presents it under the current name;
+     without it a rename silently discards every admin's choice for the tool
    - `:annotations` - _optional_ - overrides for the default annotations
    - `:args` - malli schema for the arguments, published as `inputSchema`
    - `:output-schema` - _optional_ - malli schema for the structured output, published as `outputSchema`
@@ -153,6 +173,52 @@
   (into #{}
         (map :scope)
         (vals @tools*)))
+
+(defn- first-sentence
+  "The opening sentence of a tool `description`, ending in a period."
+  [description]
+  (let [flat     (str/replace description #"\s+" " ")
+        sentence (first (str/split flat #"(?<!\be\.g|\bi\.e)\.\s+" 2))]
+    (cond-> sentence
+      (not (str/ends-with? sentence ".")) (str "."))))
+
+(defn- app-only?
+  "Whether `tool` is called only by an MCP App iframe, never by the model, like `refresh_ui_credential`."
+  [tool]
+  (= ["app"] (get-in tool [:_meta :ui :visibility])))
+
+(defn- tool-allowed?
+  "Whether `policy` lets its user use `tool`. An app-only tool has no row on the admin's grid: it is allowed while
+   the policy allows any MCP Apps tool, since those are what call it."
+  [policy tool]
+  (if (app-only? tool)
+    (boolean (some #(and (seq (:required-extensions %))
+                         (not (app-only? %))
+                         (mcp.perms/tool-allowed? policy %))
+                   (vals @tools*)))
+    (mcp.perms/tool-allowed? policy tool)))
+
+(defn tool-catalog
+  "Every registered tool an admin can allow or deny, as `{:name :scope :description :default_access}`, sorted by
+   scope then name; `:description` is the first sentence of the tool's own and `:default_access` is `\"allowed\"` or
+   `\"denied\"`. App-only tools are left out, since [[tool-allowed?]] derives their access."
+  []
+  (->> (vals @tools*)
+       (remove app-only?)
+       (map (fn [{:keys [default-access] :as tool}]
+              (-> (select-keys tool [:name :scope :description])
+                  (update :description first-sentence)
+                  (assoc :default_access (name default-access)))))
+       (sort-by (juxt :scope :name))
+       vec))
+
+(defn renamed-tool-names
+  "Every former name a registered tool declares in `:renamed-from`, as `{former-name current-name}`."
+  []
+  (into {}
+        (for [{tool-name :name :keys [renamed-from]} (vals @tools*)
+              former renamed-from]
+          [former tool-name])))
 
 ;;; ------------------------------------------------ Manifest ------------------------------------------------------
 
@@ -214,28 +280,32 @@
       (reset! manifest-cache (generate-manifest))))
 
 (defn list-tools
-  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the client
-   extensions `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients
-   that can't render an iframe rather than failing at call time). Token scopes don't filter the
-   list; [[call-tool]] enforces them. The 0-arity assumes full extension support."
+  "Return the tool definitions for the v2 MCP `tools/list` response, filtered by the current user's
+   per-group policy ([[metabase.mcp.permissions/policy-for-current-user]]) and by the client extensions
+   `options` advertises (`:supports-mcp-ui?` — MCP Apps tools are hidden from clients that can't render
+   an iframe rather than failing at call time). Token scopes don't filter the list; [[call-tool]]
+   enforces them. The 0-arity assumes full extension support."
   ([]
    ;; Full support because [[tools-hash]] has no session, so the hash must not depend on per-session capabilities.
    (list-tools {:supports-mcp-ui? true}))
   ([options]
-   (let [supported (mcp.ui-resource/supported-extensions options)]
+   (let [supported (mcp.ui-resource/supported-extensions options)
+         policy    (mcp.perms/policy-for-current-user)]
      (into []
            (comp
             ;; has all required extensions
             (filter #(empty? (mcp.ui-resource/missing-required-extensions % supported)))
+            ;; the user's groups allow it
+            (filter #(tool-allowed? policy %))
             (map #(select-keys % [:name :title :description :inputSchema :outputSchema :annotations
                                   :securitySchemes :_meta])))
            (manifest)))))
 
 (defn tools-hash
-  "Stable 8-character hex hash of the listed tools; polled by the GET/SSE keepalive to emit
-   `notifications/tools/list_changed` when the set changes (feature flips). Hashes the JSON
-   encoding of the wire-visible schema, so the result never depends on Clojure's `hash` of
-   non-data leaves."
+  "Stable 8-character hex hash of the tools listed for the current user; polled by the GET/SSE
+   keepalive to emit `notifications/tools/list_changed` when the set changes (feature flips, an admin
+   editing the user's group policy). Hashes the JSON encoding of the wire-visible schema, so the result
+   never depends on Clojure's `hash` of non-data leaves."
   []
   (format "%08x"
           (hash (->> (list-tools)
@@ -281,6 +351,13 @@
                         (when-let [label (english-scope-label required-scope)]
                           (str " (" label ")")))})
 
+(defn- group-policy-denial-message
+  "The `tools/call` error for a tool `tool-name` the user's groups deny."
+  [tool-name]
+  (message/msg [(str "Tool %s is not enabled for your groups. "
+                     "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")]
+               tool-name))
+
 (defn- dispatch-tool-call
   [token-scopes session-id tool-name arguments options]
   (let [tool    (get @tools* tool-name)
@@ -302,6 +379,10 @@
                :message            (insufficient-scope-message (message/msg ["call tool: %s"] tool-name)
                                                                (:scope tool) token-scopes)
                :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
+
+      (not (tool-allowed? (mcp.perms/policy-for-current-user) tool))
+      {:error {:code    common/error-code-invalid-request
+               :message (group-policy-denial-message tool-name)}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope case it stays listed for capable clients, so name what's missing.
