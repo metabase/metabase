@@ -36,13 +36,51 @@
         (is (vector? (get-in response [:body :trace]))
             "Stacktrace should be a vector")))))
 
-(deftest api-exception-response-includes-ex-data-test
-  (testing "When hide-stacktraces is false, exception response includes ex-data"
+(deftest api-exception-response-omits-ex-data-test
+  (testing "ex-data is server-side debugging context, not part of the response, even when hide-stacktraces is false"
     (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
       (let [exception (create-test-exception "Test error message")
-            response (mw.exceptions/api-exception-response exception nil)]
-        (is (= "test-value" (get-in response [:body :custom-data]))
-            "Response should include custom data from ex-info")))))
+            response  (mw.exceptions/api-exception-response exception nil)]
+        (is (not (contains? (:body response) :custom-data)))
+        (testing "including the `Throwable->map` copies of it"
+          (is (not (contains? (:body response) :data)))
+          (is (every? #(not (contains? % :data)) (get-in response [:body :via]))))))))
+
+(deftest api-exception-response-echoes-only-contract-keys-test
+  (testing "only the ex-data keys clients are meant to read are echoed; everything else stays out of the body"
+    (mt/with-temporary-setting-values [server.settings/hide-stacktraces false]
+      (let [secret-query {:stages [{:native "SELECT salary FROM payroll"}]}]
+        (testing "4xx with debugging context but no contract keys"
+          (let [response (mw.exceptions/api-exception-response
+                          (ex-info "You cannot save this Question." {:status-code 403, :query secret-query}) nil)]
+            (is (= 403 (:status response)))
+            (is (= "You cannot save this Question." (get-in response [:body :message])))
+            (is (not (str/includes? (pr-str (:body response)) "payroll")))))
+        (testing "the cause's ex-data is not echoed either"
+          (let [response (mw.exceptions/api-exception-response
+                          (ex-info "outer" {:status-code 403, :required-perms {:card-ids #{167}}}
+                                   (ex-info "inner" {:query secret-query}))
+                          nil)]
+            (is (not (str/includes? (pr-str (:body response)) "payroll")))
+            (is (not (str/includes? (pr-str (:body response)) "167")))))
+        (testing "validation errors keep :errors and :specific-errors"
+          (let [response (mw.exceptions/api-exception-response
+                          (ex-info "Invalid" {:status-code     400
+                                              :errors          {:name "required"}
+                                              :specific-errors {:name ["missing"]}
+                                              :query           secret-query})
+                          nil)]
+            (is (= {:errors {:name "required"}, :specific-errors {:name ["missing"]}}
+                   (:body response)))))
+        (testing "an :error-code response keeps the code and message only"
+          (let [response (mw.exceptions/api-exception-response
+                          (ex-info "Locked" {:status-code 402, :error-code "locked", :query secret-query}) nil)]
+            (is (= {:message "Locked", :error-code "locked"} (:body response)))))
+        (testing "a 500 keeps the stacktrace but not the ex-data"
+          (let [response (mw.exceptions/api-exception-response (ex-info "boom" {:query secret-query}) nil)]
+            (is (= 500 (:status response)))
+            (is (contains? (:body response) :trace))
+            (is (not (str/includes? (pr-str (:body response)) "payroll")))))))))
 
 (deftest api-exception-response-includes-exception-chain-test
   (testing "When hide-stacktraces is false, exception response includes exception chain information"
