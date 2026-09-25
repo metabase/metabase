@@ -87,6 +87,7 @@ describe("global keyboard shortcuts", () => {
       const { router } = await setup({ isAdmin: false });
 
       await userEvent.keyboard("gs");
+      expect(router?.location.pathname).toBe("/");
       // Prove the keyboard pipeline is live for this user before asserting the
       // absence — otherwise the assertion passes for the wrong reason.
       await userEvent.keyboard("gt");
@@ -98,6 +99,7 @@ describe("global keyboard shortcuts", () => {
       const { router } = await setup({ isAdmin: false });
 
       await userEvent.keyboard("ga");
+      expect(router?.location.pathname).toBe("/");
       await userEvent.keyboard("gt");
 
       await waitFor(() => expect(router?.location.pathname).toBe("/trash"));
