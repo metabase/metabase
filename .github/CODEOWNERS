@@ -65,6 +65,8 @@ enterprise/backend/test/metabase_enterprise/embeddings @metabase/metabot-backend
 enterprise/backend/test/metabase_enterprise/entity_retrieval @metabase/metabot-backend
 enterprise/backend/test/metabase_enterprise/search @metabase/metabot-backend
 enterprise/backend/test/metabase_enterprise/semantic_search @metabase/metabot-backend
+frontend/src/metabase-types/api/search.ts @metabase/metabot-backend
+frontend/src/metabase/api/search.ts @metabase/metabot-backend
 modules/embedder @metabase/metabot-backend
 src/metabase/embeddings @metabase/metabot-backend
 src/metabase/entity_retrieval @metabase/metabot-backend
