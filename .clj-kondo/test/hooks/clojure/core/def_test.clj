@@ -33,6 +33,29 @@
     (is (=? [{:row 1 :col 1}]
             (lint-def "(def ^{:dynamic true\n       :doc \"docs\"}\n  *x*\n  nil)")))))
 
+(deftest ^:parallel discourage-dynamic-vars-mu-defn-test
+  (testing "BEGUILD-37: mu/defn is linted as schema.core/defn, so it needs its own hook"
+    (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/discourage-dynamic-vars {:level :warning}}}
+                                          :ignores    (atom nil)
+                                          :findings   (atom [])
+                                          :namespaces (atom {})}]
+      (hooks.clojure.core.def/lint-dynamic
+       {:node (hooks/parse-string "(mu/defn- ^:dynamic *f* :- :string [x :- :int] (str x))")})
+      (is (=? [{:type :metabase/discourage-dynamic-vars}]
+              @(:findings clj-kondo.impl.utils/*ctx*))))))
+
+(deftest ^:parallel discourage-dynamic-vars-mu-defn-ok-test
+  (testing "lint-dynamic runs only the dynamic check, not the def naming checks"
+    (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/discourage-dynamic-vars           {:level :warning}
+                                                                 :metabase/check-def-no-underscores          {:level :warning}
+                                                                 :metabase/check-def-check-not-uppercase-name {:level :warning}}}
+                                          :ignores    (atom nil)
+                                          :findings   (atom [])
+                                          :namespaces (atom {})}]
+      (hooks.clojure.core.def/lint-dynamic
+       {:node (hooks/parse-string "(mu/defn SOME_FN :- :string [x :- :int] (str x))")})
+      (is (= [] @(:findings clj-kondo.impl.utils/*ctx*))))))
+
 (deftest ^:parallel discourage-dynamic-vars-defn-test
   (testing "BEGUILD-37: dynamic fns go through the defn hook and are flagged too"
     (binding [clj-kondo.impl.utils/*ctx* {:config     {:linters {:metabase/discourage-dynamic-vars {:level :warning}}}

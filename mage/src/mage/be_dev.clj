@@ -75,9 +75,9 @@
             {:read-cond :allow}
             ~(if (str/blank? code) "::loaded" code)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :doc "Set this to true to suppress stdout output from nrepl-eval."}
-  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
   *quiet-nrepl-eval* false)
 
 (defn nrepl-eval

@@ -617,6 +617,7 @@
                        (log/errorf "Error validating token: %s" (ex-message e)))
                      ;; log every five minutes
                      :ttl/threshold (* 1000 60 5))]
+  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
   (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
     "Get the features associated with the system's premium features token."
     []

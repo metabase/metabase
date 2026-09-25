@@ -804,7 +804,11 @@
    metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
    metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.defn/defn                                                                                             hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli.defn/defn-                                                                                            hooks.clojure.core.def/lint-dynamic
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util.malli/defn                                                                                                  hooks.clojure.core.def/lint-dynamic
+   metabase.util.malli/defn-                                                                                                 hooks.clojure.core.def/lint-dynamic
    metabase.util.match/match-one                                                                                             hooks.metabase.util.match/match-one
    metabase.util.match/match-many                                                                                            hooks.metabase.util.match/match-many
    metabase.util.match/matches?                                                                                              hooks.metabase.util.match/matches?

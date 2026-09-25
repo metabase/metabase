@@ -1063,6 +1063,7 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
   [respond     :- fn?
    database    :- :metabase.warehouses.schema/database-or-metadata
