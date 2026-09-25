@@ -350,6 +350,7 @@ export const SmartScalarDownload = {
 };
 
 export const SmartScalarLightThemeTooltip = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -407,6 +408,7 @@ export const SmartScalarLightThemeTooltip = {
 };
 
 export const SmartScalarDarkThemeTooltip = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
