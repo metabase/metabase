@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useState } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { Group, Menu } from "metabase/ui";
@@ -35,8 +35,8 @@ export function SharingMenu({
         <ToolbarButton
           icon="share"
           data-testid="sharing-menu-button"
-          tooltipLabel={t`Share`}
-          aria-label={t`Share`}
+          tooltipLabel={c("Verb").t`Share`}
+          aria-label={c("Verb").t`Share`}
           disabled={!hasActions && !hasMenuItems}
         />
       </Menu.Target>
@@ -72,11 +72,12 @@ export function SharingButton({
     <ToolbarButton
       icon="share"
       data-testid="sharing-menu-button"
-      tooltipLabel={tooltip ?? t`Share`}
+      tooltipLabel={tooltip ?? c("Verb").t`Share`}
       // aria-label must be a string; keep the accessible name stable when the
       // tooltip is a non-string node (e.g. the copied-confirmation flash)
       aria-label={
-        ariaLabel ?? (typeof tooltip === "string" ? tooltip : t`Share`)
+        ariaLabel ??
+        (typeof tooltip === "string" ? tooltip : c("Verb").t`Share`)
       }
       onClick={onClick}
     />
