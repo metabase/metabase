@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
@@ -157,6 +158,15 @@
               (finally
                 (t2/delete! :model/TaskHistory :run_id [:in (conj (task-runs) -1)])
                 (t2/delete! :model/TaskRun :entity_type :dashboard :entity_id dash-id)))))))))
+
+(deftest dashboard-archived?-test
+  (mt/with-temp [:model/Dashboard {live-id :id}     {}
+                 :model/Dashboard {archived-id :id} {:archived true}]
+    (is (false? (pulse.db/dashboard-archived? live-id)))
+    (is (true? (pulse.db/dashboard-archived? archived-id)))
+    (testing "a Pulse with no Dashboard, or a missing Dashboard, is not archived"
+      (is (false? (pulse.db/dashboard-archived? nil)))
+      (is (false? (pulse.db/dashboard-archived? Integer/MAX_VALUE))))))
 
 (deftest init-dashboard-subscription-triggers!-group-runs-test
   (testing "a SendPulse trigger will send pulse to channels that have the same schedueld time"
