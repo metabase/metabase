@@ -34,6 +34,14 @@ Commit `dist/index.js` (the `path` declared in `data_app.yaml`) along with your
 source. The app appears at `/apps/<slug>` after Metabase's next remote-sync
 import (manual "Pull changes", auto-import, or startup).
 
+## Upgrading
+
+`data_app.yaml` declares the data-app contract version this app targets. When a
+Metabase release bumps that version, the app shows as _Outdated_ in the admin UI
+until it is migrated. Migration is its own instructed procedure, installed for
+your coding agent by the same command as the other data-app skills; do not edit
+`version` by hand.
+
 ## What's in the box
 
 ```

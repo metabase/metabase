@@ -50,10 +50,15 @@ If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the cur
 2. `src/index.tsx` default-exports a `DataAppFactory` (type from
    `@metabase/embedding-sdk-react/data-app`) returning `{ component, providerProps? }`
    (no args).
+3. `data_app.yaml` declares the same `version:` as this skill's
+   `template/data_app.yaml` (a manifest without the line is version 1). A lower
+   version is not drift but an outdated app: **Stop.** Migrating it is a
+   separate task; use the agent's normal skill-discovery flow for migrating an
+   outdated data app before extending it.
 
 **All checks pass** → template-shaped. Ask: "Extend this app, or scaffold a new one under a different slug?" If extend → skip the copy step, edit `src/`. If new → pick a different slug and restart at Step 2.
 
-**Any check fails** → not template-shaped (older scaffold or drift). **Stop.** Tell the user the structure differs from the current template, extending it risks breaking the bundle contract, and ask whether to (1) migrate it, (2) scaffold fresh under a new slug and port the code over, or (3) proceed anyway at their risk. Wait for the answer.
+**Any check fails** → not template-shaped (older scaffold or drift). **Stop.** Tell the user the structure differs from the current template, extending it risks breaking the bundle contract, and ask whether to (1) migrate it (a separate task; use skill discovery for migrating an outdated data app), (2) scaffold fresh under a new slug and port the code over, or (3) proceed anyway at their risk. Wait for the answer.
 
 Never overwrite existing files without explicit confirmation.
 
@@ -157,8 +162,8 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    change to the contract. An app on an older version is marked *Outdated* in
    the admin list, hidden from every other user, and refuses to open until it
    is migrated to the current contract, its `version` raised to match, rebuilt,
-   and synced. Migrating an app from one version to the next is a separate,
-   instructed procedure; never do it ad hoc.
+   and synced. That migration is a separate, instructed procedure, one version
+   at a time; reach it through skill discovery and never do it ad hoc.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an
