@@ -52,6 +52,10 @@ describe("HelpText (OSS)", () => {
     fireEvent.mouseDown(link);
     expect(onDocumentMouseDown).not.toHaveBeenCalled();
 
+    expect(link).toBeInTheDocument();
+    // `false` when a handler calls `preventDefault()`, which cancels navigation
+    expect(fireEvent.click(link)).toBe(true);
+
     document.removeEventListener("mousedown", onDocumentMouseDown);
   });
 
