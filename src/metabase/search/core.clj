@@ -1,6 +1,7 @@
 (ns metabase.search.core
   "NOT the API namespace for the search module!! See [[metabase.search]] instead."
   (:require
+   [clojure.set :as set]
    [environ.core :as env]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -258,6 +259,55 @@
                             (remove (comp search.util/impossible-condition? second))
                             seq)]
       (search.ingestion/ingest-maybe-async! updates))))
+
+(defn- cascading-selectors
+  "Hook selectors for `instances` naming documents ingestion could not purge on its own, by search-model."
+  [instances]
+  (->> instances
+       (into #{} (mapcat #(search.spec/search-models-to-update % true)))
+       (remove (comp search.util/impossible-condition? second))
+       (remove (comp search.ingestion/purgeable-selector? second))
+       (u/group-by first second)))
+
+(defn cascading-documents
+  "Document ids that `instances` feed which would become unpurgeable once those rows are gone, by search-model.
+  Ingestion recovers a document id only from a `:this.id` selector, so anything reached through a join on
+  another column — or keyed by a compound id — has to be enumerated while it still exists.
+  Resolve this before the delete and hand the result to [[purge-vanished-documents!]] after it commits."
+  [instances]
+  (when (supports-index?)
+    (not-empty
+     (into {}
+           (keep (fn [[search-model selectors]]
+                   (when-let [ids (not-empty (search.ingestion/doc-ids
+                                              search-model (into [:or] (distinct selectors))))]
+                     [search-model ids])))
+           (cascading-selectors instances)))))
+
+(def ^:private reindex-batch-size
+  "Ids per re-derivation message. The ingestion worker ORs a whole batch of same-model selectors into a single
+  query, so an unbounded id list here becomes an unbounded bind-parameter count and the database rejects the
+  statement — losing the entire batch, not just the oversized message."
+  100)
+
+(defn reconcile-cascading-documents!
+  "Settle the documents [[cascading-documents]] enumerated, now that the statement has run.
+  Survival is decided per document, not by the relationship that found it: a row whose foreign key was nulled
+  rather than deleted still produces a document. Those survivors are re-derived — the relationship that
+  changed is usually indexed on them — and only the documents that stopped resolving are removed."
+  [cascading]
+  (when (and (seq cascading) (supports-index?))
+    (doseq [[search-model ids] cascading
+            :let [alive (search.ingestion/existing-doc-ids search-model ids)
+                  gone  (set/difference ids alive)]]
+      (when (seq alive)
+        (search.ingestion/ingest-maybe-async!
+         (into #{}
+               (map (fn [chunk] [search-model (search.ingestion/doc-id-selector search-model chunk)]))
+               (partition-all reindex-batch-size alive))))
+      (when (seq gone)
+        (doseq [e (search.engine/active-engines)]
+          (search.engine/delete! e search-model (into #{} (map str) gone)))))))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."
