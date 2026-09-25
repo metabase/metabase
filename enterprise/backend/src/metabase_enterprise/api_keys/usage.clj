@@ -270,3 +270,12 @@
           (offer-usage-log! row)))
       (catch Throwable e
         (log/warn e "Failed to record API key usage")))))
+
+(defenterprise flush-pending-writes!
+  "EE: synchronously flush the pending usage-log and last_used_at batches instead of waiting for the
+  scheduled interval. Only meaningful for tests that need a just-recorded event to be immediately
+  queryable."
+  :feature :none
+  []
+  (flush-usage-logs!)
+  (flush-last-used-at!))

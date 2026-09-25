@@ -152,6 +152,7 @@ describe("MonitorLayout", () => {
       ["Scheduled jobs", Urls.monitorJobs()],
       ["Application logs", Urls.monitorLogs()],
       ["Model persistence log", Urls.monitorModelPersistenceLog()],
+      ["API key usage", Urls.monitorApiKeyUsage()],
     ];
 
     expectedTabs.forEach(([name, href]) => {
@@ -194,6 +195,11 @@ describe("MonitorLayout", () => {
       label: "Model persistence log",
       route: Urls.monitorModelPersistenceLog(),
       section: "model-caching",
+    },
+    {
+      label: "API key usage",
+      route: Urls.monitorApiKeyUsage(),
+      section: "api-key-usage",
     },
   ] as const;
 

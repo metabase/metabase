@@ -211,6 +211,8 @@ type ConversationFiltersProps = {
   groupOptions: { value: string; label: string }[];
   tenantOptions: { value: string; label: string }[];
   hasTenants: boolean;
+  /** Hides the user select for pages where filtering by user isn't a meaningful concept. */
+  hasUsers?: boolean;
 };
 
 export function ConversationFilters({
@@ -227,6 +229,7 @@ export function ConversationFilters({
   groupOptions,
   tenantOptions,
   hasTenants,
+  hasUsers = true,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
@@ -253,15 +256,17 @@ export function ConversationFilters({
         bdrs="xs"
         data-testid="conversation-filters-group-select"
       />
-      <Select
-        data={[{ value: "", label: t`All users` }, ...userOptions]}
-        value={user ?? ""}
-        onChange={(val) => onUserChange(val === "" ? null : val)}
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="xs"
-        data-testid="conversation-filters-user-select"
-      />
+      {hasUsers && (
+        <Select
+          data={[{ value: "", label: t`All users` }, ...userOptions]}
+          value={user ?? ""}
+          onChange={(val) => onUserChange(val === "" ? null : val)}
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-user-select"
+        />
+      )}
       <ConversationDateFilter value={date} onChange={onDateChange} />
     </Flex>
   );
