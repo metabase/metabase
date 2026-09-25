@@ -40,7 +40,7 @@ taskOptions:
   outputStyle: buffer-only-failure
 
 implicitDeps:
-  - ~:ensure-deps
+  - ensure-deps
 
 tasks:
 
@@ -61,7 +61,7 @@ tasks:
   build-embedding-sdk-node:
     script: rspack --config rspack.embedding-sdk-node.config.js
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(sdk)'
       - '@group(rspack)'
@@ -70,7 +70,7 @@ tasks:
   build-js:
     script: rspack build
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - '@group(rspack)'
@@ -79,7 +79,7 @@ tasks:
   build-release-cljs:
     script: shadow-cljs release app
     deps:
-      - ~:clean-release-cljs
+      - clean-release-cljs
     inputs:
       - '@group(cljs)'
     outputs:
@@ -87,7 +87,7 @@ tasks:
   build-release-embedding-sdk-bundle:
     script: WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-bundle.config.js
     deps:
-      - ~:build-release-cljs
+      - build-release-cljs
     inputs:
       - '@group(sdk)'
       - '@group(rspack)'
@@ -96,7 +96,7 @@ tasks:
   build-release-embedding-sdk-package:
     script: WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-package.config.js
     deps:
-      - ~:build-release-cljs
+      - build-release-cljs
     inputs:
       - '@group(sdk)'
       - '@group(rspack)'
@@ -105,7 +105,7 @@ tasks:
   build-release-js:
     script: WEBPACK_BUNDLE=production rspack build
     deps:
-      - ~:build-release-cljs
+      - build-release-cljs
     inputs:
       - '@group(frontend)'
       - '@group(rspack)'
@@ -114,7 +114,7 @@ tasks:
   build-release-static-viz:
     script: WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
     deps:
-      - ~:build-release-cljs
+      - build-release-cljs
     inputs:
       - '@group(frontend)'
       - '@group(rspack)'
@@ -123,7 +123,7 @@ tasks:
   build-storybook:
     script: NODE_OPTIONS=--max-old-space-size=8192 storybook build
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - .storybook/**
@@ -192,7 +192,7 @@ tasks:
   lint-eslint:
     script: eslint --cache --cache-strategy content --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - '@group(e2e)'
@@ -216,7 +216,7 @@ tasks:
   module-boundaries:
     script: eslint --config eslint.config.module-boundaries.mjs 'frontend/src/**/*.{ts,tsx}' 'enterprise/frontend/src/**/*.{ts,tsx}'
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - eslint.config.module-boundaries.mjs
@@ -234,21 +234,21 @@ tasks:
   test-timezones-unit:
     script: jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - jest.tz.unit.conf.js
   test-unit:
     script: jest --ignoreProjects ci-scripts --maxWorkers=4
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - '@group(jest)'
   type-check:
     script: ./node_modules/typescript7/bin/tsc --noEmit
     deps:
-      - ~:build-cljs
+      - build-cljs
     inputs:
       - '@group(frontend)'
       - '@group(e2e)'
@@ -262,67 +262,67 @@ tasks:
   build:
     command: noop
     deps:
-      - ~:build-cljs
-      - ~:build-js
+      - build-cljs
+      - build-js
     options:
       cache: false
   build-embedding-sdk-package:
     command: noop
     deps:
-      - ~:embedding-sdk-clean-dist
-      - ~:build-release-cljs
-      - ~:embedding-sdk-generate-package
-      - ~:embedding-sdk-generate-package-support-files
-      - ~:build-release-embedding-sdk-package
-      - ~:build-embedding-sdk-node
-      - ~:embedding-sdk-dts-generate
+      - embedding-sdk-clean-dist
+      - build-release-cljs
+      - embedding-sdk-generate-package
+      - embedding-sdk-generate-package-support-files
+      - build-release-embedding-sdk-package
+      - build-embedding-sdk-node
+      - embedding-sdk-dts-generate
     options:
       cache: false
       runDepsInParallel: false
   build-release:
     command: noop
     deps:
-      - ~:build-release-cljs
-      - ~:build-release-js
+      - build-release-cljs
+      - build-release-js
     options:
       cache: false
   ci:
     command: noop
     deps:
-      - ~:ci-frontend
-      - ~:ci-backend
+      - ci-frontend
+      - ci-backend
     options:
       cache: false
   ci-frontend:
     command: noop
     deps:
-      - ~:lint
-      - ~:test
+      - lint
+      - test
     options:
       cache: false
   clean-cljs:
     command: noop
     deps:
-      - ~:clean-dev-cljs
-      - ~:clean-release-cljs
+      - clean-dev-cljs
+      - clean-release-cljs
     options:
       cache: false
   lint:
     command: noop
     deps:
-      - ~:lint-eslint
-      - ~:lint-format
-      - ~:lint-docs-links
-      - ~:lint-yaml
-      - ~:type-check
+      - lint-eslint
+      - lint-format
+      - lint-docs-links
+      - lint-yaml
+      - type-check
     options:
       cache: false
   test:
     command: noop
     deps:
-      - ~:test-unit
-      - ~:test-timezones
-      - ~:test-cypress
+      - test-unit
+      - test-timezones
+      - test-cypress
     options:
       cache: false
       runDepsInParallel: false
@@ -338,7 +338,7 @@ tasks:
   build-hot:
     command: noop
     deps:
-      - ~:build-hot-js
+      - build-hot-js
     options:
       persistent: true
       cache: false
@@ -347,8 +347,8 @@ tasks:
   build-hot-be:
     command: noop
     deps:
-      - ~:build-hot-cljs
-      - ~:build-hot-js
+      - build-hot-cljs
+      - build-hot-js
     options:
       persistent: true
       cache: false
@@ -364,7 +364,7 @@ tasks:
   build-hot-js:
     script: NODE_OPTIONS=--max-old-space-size=8192 WEBPACK_BUNDLE=hot rspack serve
     deps:
-      - ~:clean-dev-js
+      - clean-dev-js
     options:
       persistent: true
       cache: false
@@ -373,7 +373,7 @@ tasks:
   build-static-viz-watch:
     script: rspack --config rspack.static-viz.config.js --watch
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       persistent: true
       cache: false
@@ -382,8 +382,8 @@ tasks:
   build-watch:
     command: noop
     deps:
-      - ~:build-watch-cljs
-      - ~:build-watch-js
+      - build-watch-cljs
+      - build-watch-js
     options:
       persistent: true
       cache: false
@@ -399,7 +399,7 @@ tasks:
   build-watch-js:
     script: NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       persistent: true
       cache: false
@@ -422,8 +422,8 @@ tasks:
   cloud-dev:
     command: noop
     deps:
-      - ~:build-hot-js
-      - ~:cloud-backend
+      - build-hot-js
+      - cloud-backend
     options:
       persistent: true
       cache: false
@@ -439,9 +439,9 @@ tasks:
   dev:
     command: noop
     deps:
-      - ~:dev-backend
-      - ~:build-hot-js
-      - ~:build-static-viz-watch
+      - dev-backend
+      - build-hot-js
+      - build-static-viz-watch
     options:
       persistent: true
       cache: false
@@ -464,9 +464,9 @@ tasks:
   dev-ee:
     command: noop
     deps:
-      - ~:dev-backend-ee
-      - ~:build-hot-js
-      - ~:build-static-viz-watch
+      - dev-backend-ee
+      - build-hot-js
+      - build-static-viz-watch
     options:
       persistent: true
       cache: false
@@ -475,10 +475,10 @@ tasks:
   dev-ee-hot-be:
     command: noop
     deps:
-      - ~:dev-backend-ee
-      - ~:build-hot-js
-      - ~:build-hot-cljs
-      - ~:build-static-viz-watch
+      - dev-backend-ee
+      - build-hot-js
+      - build-hot-cljs
+      - build-static-viz-watch
     options:
       persistent: true
       cache: false
@@ -487,10 +487,10 @@ tasks:
   dev-hot-be:
     command: noop
     deps:
-      - ~:dev-backend
-      - ~:build-hot-js
-      - ~:build-hot-cljs
-      - ~:build-static-viz-watch
+      - dev-backend
+      - build-hot-js
+      - build-hot-cljs
+      - build-static-viz-watch
     options:
       persistent: true
       cache: false
@@ -506,7 +506,7 @@ tasks:
   storybook:
     script: storybook dev -p 6006
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       persistent: true
       cache: false
@@ -515,7 +515,7 @@ tasks:
   storybook-embedding-sdk:
     script: IS_EMBEDDING_SDK=true storybook dev -c frontend/src/embedding-sdk-shared/.storybook -p 6006
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       persistent: true
       cache: false
@@ -524,7 +524,7 @@ tasks:
   test-unit-watch:
     script: jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       persistent: true
       cache: false
@@ -533,8 +533,8 @@ tasks:
   test-unit-watch-cljs:
     command: noop
     deps:
-      - ~:build-watch-cljs
-      - ~:test-unit-watch
+      - build-watch-cljs
+      - test-unit-watch
     options:
       persistent: true
       cache: false
@@ -552,7 +552,7 @@ tasks:
   build-static-viz:
     script: WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
     deps:
-      - ~:build-release-cljs
+      - build-release-cljs
     options:
       cache: false
   build-stats:
@@ -562,7 +562,7 @@ tasks:
   chromatic:
     script: NODE_OPTIONS=--max-old-space-size=8192 chromatic
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       cache: false
   ci-backend:
@@ -612,14 +612,14 @@ tasks:
   embedding-sdk-docs-generate:
     script: typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js
     deps:
-      - ~:build-release-embedding-sdk-package
-      - ~:embedding-sdk-dts-generate
+      - build-release-embedding-sdk-package
+      - embedding-sdk-dts-generate
     options:
       cache: false
   embedding-sdk-dts-generate:
     script: ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true && node ./bin/embedding-sdk/fixup-types-after-compilation.js
     deps:
-      - ~:embedding-sdk-clean-tsbuildinfo
+      - embedding-sdk-clean-tsbuildinfo
     options:
       cache: false
   embedding-sdk-publish:
@@ -629,7 +629,7 @@ tasks:
   eslint-fix:
     script: eslint --cache --cache-strategy content --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e --fix
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       cache: false
   format:
@@ -683,7 +683,7 @@ tasks:
   test-debug:
     script: node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles
     deps:
-      - ~:build-cljs
+      - build-cljs
     options:
       cache: false
   test-memory:
@@ -705,7 +705,7 @@ tasks:
   test-visual-loki-ci:
     script: NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu' --reactUri file:./storybook-static --verboseRenderer
     deps:
-      - ~:build-storybook
+      - build-storybook
     options:
       cache: false
   test-visual-loki-prune:
