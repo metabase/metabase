@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Search semantics · corpus explorer</title>
+  <style>
+    :root { color-scheme: light; font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f7fb; color: #172334; }
+    * { box-sizing: border-box; }
+    body { max-width: 1460px; margin: 0 auto; padding: 32px 28px 80px; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 2rem; letter-spacing: -.04em; margin-bottom: 4px; }
+    h2 { font-size: 1.15rem; margin-bottom: 16px; }
+    h3 { font-size: 1rem; margin-bottom: 10px; }
+    .muted { color: #5b6d83; }
+    .intro { max-width: 840px; margin-bottom: 22px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .tab { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 9px; padding: 9px 15px; }
+    .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .metric { padding: 16px 18px; }
+    .metric .value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.035em; }
+    .metric .label { color: #5b6d83; font-size: .88rem; }
+    .tables { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #e8edf3; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { font-size: .78rem; color: #5b6d83; font-weight: 600; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .note { color: #5b6d83; font-size: .85rem; margin: 12px 0 0; }
+    .explorer { display: grid; grid-template-columns: minmax(280px, 350px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
+    .toolbar input, .toolbar select { border: 1px solid #c8d4e2; background: white; border-radius: 7px; padding: 8px 10px; min-width: 0; }
+    .toolbar input { flex: 1; }
+    .case-list { max-height: 640px; overflow-y: auto; display: grid; gap: 5px; }
+    .case-button { display: block; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; text-align: left; color: inherit; }
+    .case-button:hover { background: #f2f6fb; }
+    .case-button[aria-current="true"] { background: #eaf2ff; border-color: #a9c7ec; }
+    .case-button .id { display: block; font-weight: 650; overflow-wrap: anywhere; }
+    .case-button .focus { display: block; color: #5b6d83; font-size: .85rem; }
+    .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
+    .badge.divergent { background: #fff0de; color: #8a4d00; }
+    .detail-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+    .detail-head h2 { overflow-wrap: anywhere; margin-bottom: 5px; }
+    .query-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 16px 0 20px; }
+    .query-box { border: 1px solid #e2eaf2; background: #f8fafd; border-radius: 8px; padding: 10px 12px; min-width: 0; }
+    .query-box strong { display: block; margin-bottom: 5px; }
+    code { padding: 2px 4px; border-radius: 4px; background: #edf1f6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .query-box code { display: block; background: transparent; padding: 0; }
+    .query-box .small { display: block; margin-top: 5px; color: #5b6d83; font-size: .82rem; }
+    .hit { color: #176735; font-weight: 750; }
+    .miss { color: #a5afba; }
+    .extra { color: #a44d00; font-weight: 750; }
+    .absent { color: #b42635; font-weight: 750; }
+    .doc-text { white-space: pre-wrap; min-width: 140px; max-width: 360px; overflow-wrap: anywhere; }
+    .empty { color: #5b6d83; padding: 18px 0; }
+    @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
+    @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid { grid-template-columns: 1fr; } .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Search semantics</h1>
+    <p class="intro muted">A disposable view of the checked-in regression corpus. Membership is exact, but these hand-picked cases are not a production traffic sample or a ranking benchmark.</p>
+  </header>
+
+  <nav class="tabs" aria-label="Corpus">
+    <button class="tab" data-corpus="sameQuery" aria-selected="true">Same query</button>
+    <button class="tab" data-corpus="translations" aria-selected="false">Translated queries</button>
+  </nav>
+
+  <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
+  <section class="tables">
+    <div class="card">
+      <h2>Pairwise result-set relationships</h2>
+      <div class="table-wrap" id="pairwise"></div>
+      <p class="note">⊃ and ⊂ describe the left engine relative to the right. “Mixed” means neither result set contains the other.</p>
+    </div>
+    <div class="card">
+      <h2 id="second-table-title">Average results per query</h2>
+      <div class="table-wrap" id="second-table"></div>
+      <p class="note" id="second-table-note"></p>
+    </div>
+  </section>
+
+  <h2>Explore cases</h2>
+  <section class="explorer">
+    <div class="card">
+      <div class="toolbar">
+        <input id="filter" type="search" placeholder="Filter cases, queries, documents…" aria-label="Filter cases">
+        <select id="agreement" aria-label="Agreement filter">
+          <option value="all">All</option>
+          <option value="agree">All agree</option>
+          <option value="differ">Differ</option>
+        </select>
+      </div>
+      <p class="note" id="list-count"></p>
+      <div class="case-list" id="case-list"></div>
+    </div>
+    <article class="card" id="detail" aria-live="polite"></article>
+  </section>
+
+  <script type="application/json" id="report-data">__REPORT_DATA__</script>
+  <script>
+    const data = JSON.parse(document.getElementById("report-data").textContent);
+    const labels = { "in-place": "In-place", "appdb-h2": "App-db H2", "appdb-postgres": "App-db PostgreSQL", semantic: "Semantic" };
+    const state = { corpus: "sameQuery", selected: null };
+    const $ = id => document.getElementById(id);
+    const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+    const number = value => Number(value).toFixed(2);
+    const percent = value => `${(100 * value).toFixed(1)}%`;
+    const table = (headers, rows) => `<table><thead><tr>${headers.map(h => `<th>${escape(h)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const badge = equal => `<span class="badge ${equal ? "" : "divergent"}">${equal ? "All agree" : "Differ"}</span>`;
+    const current = () => data[state.corpus];
+
+    function renderSummary() {
+      const summary = current().summary;
+      $("metrics").innerHTML = [
+        [summary.count, "Queries / comparisons"],
+        [summary.allEqual, "All four engines agree"],
+        [percent(summary.allEqual / summary.count), "Agreement rate"]
+      ].map(([value, label]) => `<div class="card metric"><div class="value">${escape(value)}</div><div class="label">${escape(label)}</div></div>`).join("");
+
+      $("pairwise").innerHTML = table(["Engines", "=", "⊃", "⊂", "Mixed"], summary.pairs.map(pair => [
+        `${escape(labels[pair.left])} / ${escape(labels[pair.right])}`,
+        pair.counts.equal, pair.counts["left-superset"], pair.counts["left-subset"], pair.counts.incomparable
+      ]));
+
+      if (state.corpus === "translations") {
+        $("second-table-title").textContent = "Fidelity to target-engine gold sets";
+        $("second-table").innerHTML = table(["Engine", "Precision", "Recall", "F1", "Balanced F1", "Exact"], data.engines.map(engine => {
+          const score = summary.scores[engine];
+          return [escape(labels[engine]), percent(score.precision), percent(score.recall), percent(score.f1), percent(score["balanced-f1"]), `${score.exact}/${summary.count}`];
+        }));
+        $("second-table-note").textContent = `Gold targets: ${data.engines.map(engine => `${labels[engine]} ${summary.targets[engine] || 0}`).join(" · ")}. Balanced F1 gives each target engine equal weight; other averages give each comparison equal weight.`;
+      } else {
+        $("second-table-title").textContent = "Average results per query";
+        $("second-table").innerHTML = table(["Engine", "Mean hits"], data.engines.map(engine => [escape(labels[engine]), number(summary.meanHits[engine])]));
+        $("second-table-note").textContent = "Means describe fixture membership only. A larger set is not automatically better.";
+      }
+    }
+
+    function visibleCases() {
+      const needle = $("filter").value.trim().toLowerCase();
+      const agreement = $("agreement").value;
+      return current().cases.filter(item => {
+        if (agreement === "agree" && !item.allEqual) return false;
+        if (agreement === "differ" && item.allEqual) return false;
+        return !needle || JSON.stringify(item).toLowerCase().includes(needle);
+      });
+    }
+
+    function renderList() {
+      const cases = visibleCases();
+      if (!cases.some(item => item.id === state.selected)) state.selected = cases[0]?.id ?? null;
+      $("list-count").textContent = `${cases.length} of ${current().cases.length} cases`;
+      $("case-list").innerHTML = cases.map(item => `<button class="case-button" data-id="${escape(item.id)}" aria-current="${item.id === state.selected}"><span class="id">${escape(item.id)}</span><span class="focus">${escape(item.focus)} · ${item.allEqual ? "all agree" : "differ"}</span></button>`).join("");
+      for (const button of $("case-list").querySelectorAll("button")) {
+        button.addEventListener("click", () => { state.selected = button.dataset.id; renderList(); });
+      }
+      renderDetail(cases.find(item => item.id === state.selected));
+    }
+
+    function renderDetail(item) {
+      if (!item) { $("detail").innerHTML = '<p class="empty">No matching cases.</p>'; return; }
+      const translated = state.corpus === "translations";
+      const gold = new Set(item.gold || []);
+      const queries = item.engines.map(engine => `<div class="query-box"><strong>${escape(labels[engine.id])}</strong><code>${escape(translated ? engine.query : item.query)}</code><span class="small">Hits: ${engine.hits.length ? engine.hits.join(", ") : "none"}</span>${engine.keywordHits ? `<span class="small">Keyword: ${engine.keywordHits.join(", ") || "none"} · Vector: ${engine.vectorHits.join(", ") || "none"}</span>` : ""}</div>`).join("");
+      const headers = ["Document", "Searchable fields", ...item.engines.map(engine => labels[engine.id]), ...(translated ? ["Gold"] : [])];
+      const rows = item.docs.map(doc => {
+        const cells = item.engines.map(engine => {
+          const hit = engine.hits.includes(doc.label);
+          const kind = translated ? (hit && !gold.has(doc.label) ? "extra" : !hit && gold.has(doc.label) ? "absent" : hit ? "hit" : "miss") : hit ? "hit" : "miss";
+          return `<span class="${kind}" title="${escape(kind)}">${hit ? "✓" : "·"}</span>`;
+        });
+        const fields = Object.entries(doc.attributes).map(([key, value]) => `${key}: ${value}`).join(" · ");
+        return [`<strong>${escape(doc.label)}</strong>`, `<span class="doc-text">${escape(fields)}</span>`, ...cells, ...(translated ? [gold.has(doc.label) ? "✓" : "·"] : [])];
+      });
+      $("detail").innerHTML = `<div class="detail-head"><div><h2>${escape(item.id)}</h2><p class="muted">${escape(item.focus)} · text search language: ${escape(item.config)}${translated ? ` · target: ${escape(labels[item.target])}` : ""}</p></div>${badge(item.allEqual)}</div><h3>${translated ? "Queries by engine" : "Identical query"}</h3><div class="query-grid">${queries}</div><h3>Result membership${translated ? ` · gold ${item.gold.join(", ") || "none"}` : ""}</h3><div class="table-wrap">${table(headers, rows)}</div>${translated ? '<p class="note">Orange ✓ is an extra hit; red · is a missed gold hit. Gold is the target engine’s result set, not a relevance judgment.</p>' : '<p class="note">✓ is a hit; · is not. For semantic, the displayed result is the union of keyword and vector arms.</p>'}`;
+    }
+
+    for (const tab of document.querySelectorAll(".tab")) {
+      tab.addEventListener("click", () => {
+        state.corpus = tab.dataset.corpus;
+        state.selected = null;
+        for (const other of document.querySelectorAll(".tab")) other.setAttribute("aria-selected", other === tab ? "true" : "false");
+        renderSummary();
+        renderList();
+      });
+    }
+    $("filter").addEventListener("input", renderList);
+    $("agreement").addEventListener("change", renderList);
+    renderSummary();
+    renderList();
+  </script>
+</body>
+</html>
