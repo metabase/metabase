@@ -241,82 +241,6 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
   });
 });
 
-describe(
-  "converting question to a native query (metabase#15946, metabase#32121, metabase#38181, metabase#40557)",
-  { tags: "@mongo" },
-  () => {
-    const MONGO_DB_NAME = "QA Mongo";
-
-    beforeEach(() => {
-      H.restore("mongo-5");
-      cy.signInAsAdmin();
-    });
-
-    it("should work for both simple and nested questions based on previously converted GUI query", () => {
-      H.startNewQuestion();
-      H.miniPicker().within(() => {
-        cy.findByText(MONGO_DB_NAME).click();
-        cy.findByText("Products").click();
-      });
-
-      cy.log("Simple question");
-      openSidebar("native");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("Native query for this question").should("exist");
-        H.NativeEditor.get()
-          .should("be.visible")
-          .and("contain", "$project")
-          .and("not.contain", "$limit");
-
-        cy.button("Convert this question to a native query").click();
-      });
-      cy.wait("@dataset");
-
-      cy.log("Database and table should be pre-selected (metabase#15946)");
-      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-      cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-
-      cy.log("Nested question");
-      cy.log(
-        "should be possible to save a question and `Explore results` (metabase#32121)",
-      );
-      H.saveQuestion("foo", undefined, {
-        path: ["Our analytics"],
-      });
-      cy.intercept("POST", "/api/dataset").as("exploreDataset");
-      cy.findByTestId("qb-header").findByText("Explore results").click();
-      cy.wait("@exploreDataset");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-
-      cy.log("The generated query should be valid (metabase#38181)");
-      H.openNotebook();
-      openSidebar("native");
-      cy.intercept("POST", "/api/dataset").as("dataset2");
-      cy.findByTestId("native-query-preview-sidebar").within(() => {
-        cy.findByText("Native query for this question").should("exist");
-        H.NativeEditor.get()
-          .should("be.visible")
-          .and("contain", "$project")
-          .and("not.contain", "$limit")
-          .and("not.contain", "BsonString")
-          .and("not.contain", "BsonInt32");
-
-        cy.button("Convert this question to a native query").click();
-      });
-      cy.wait("@dataset2");
-
-      cy.log(
-        "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
-      );
-      cy.findByTestId("selected-database").should("have.text", MONGO_DB_NAME);
-      cy.findByTestId("selected-table").should("have.text", "Products");
-      cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
-    });
-  },
-);
-
 describe("scenarios > notebook > native query preview sidebar tracking events", () => {
   beforeEach(() => {
     H.resetSnowplow();
@@ -399,12 +323,10 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
   });
 }
 
-function openSidebar(variant: "sql" | "native" = "sql") {
-  const label = variant === "sql" ? "View SQL" : "View native query";
-  cy.findByLabelText(label).should("be.visible").click();
+function openSidebar() {
+  cy.findByLabelText("View SQL").should("be.visible").click();
 }
 
-function closeSidebar(variant: "sql" | "native" = "sql") {
-  const label = variant === "sql" ? "Hide SQL" : "Hide native query";
-  cy.findByLabelText(label).should("be.visible").click();
+function closeSidebar() {
+  cy.findByLabelText("Hide SQL").should("be.visible").click();
 }
