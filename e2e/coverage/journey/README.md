@@ -1,0 +1,183 @@
+# E2E journey analysis
+
+Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
+
+- **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, delete or unmeasured verdict.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert.
+
+Both need `bun install` to have run, for `typescript` and `micromatch`.
+
+## Test ids
+
+An e2e test is `<spec path>::<full title>`, where the full title is Mocha's `fullTitle()`: the describe titles and the `it` title joined by spaces.
+
+```
+e2e/test/scenarios/question/saved.cy.spec.js::scenarios > question > saved should duplicate a saved question into a collection
+```
+
+When a spec has two tests with the same full title, the pipeline keys the second one `<id> [2]`, the third `<id> [3]`, and so on. A kills file uses the id without the suffix, which matches every test with that title.
+
+In a kills file, a jest test is `<spec path>::<jest fullName>` and a Clojure test is `<namespace>/<var>`.
+
+## Step-graph pipeline
+
+```
+e2e/coverage/journey/pipeline/run_all_journey.sh <run id | run dir> [--out <dir>] [--rerun <run id | run dir>]...
+    [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
+```
+
+A run id is downloaded with `gh` into `$JOURNEY_ANALYSIS_DIR/<run id>/artifacts`, and an interrupted download picks up where it stopped. A run dir is one you downloaded yourself:
+
+```
+gh run download <run id> -p 'journey-capture-shard-*' -p journey-capture-openapi -D <run dir>
+```
+
+The steps, in order:
+
+1. `repo_files.sh` copies the module boundaries, the API route maps and the backend module config at the run's commit.
+2. `extract.mjs` reads the run one shard at a time, keeps each test's final attempt and subtracts the baselines. It writes each test's code (frontend functions, backend classes, API routes, pages), its path of Cypress commands and `cy.request` calls, and its step cuts with the code and assertions each one holds.
+3. `static-tests.mjs` parses the specs at the run's commit, and `static_align.py` ties recorded assertions to source lines and finds the describes with `before` hooks.
+4. `graph.py` builds the step graph: a prefix tree over the tests' paths, at an exact and a normalized level.
+5. `overlap.py` measures overlap at every granularity, a duration-weighted cover, duplicate verdicts and, with `--kills`, the kills-first cover and deletion verdicts.
+6. `report.py` prints the headline numbers and a few example pairs.
+
+| Option               | Meaning                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--out <dir>`        | where the outputs go, default `$JOURNEY_ANALYSIS_DIR/<run id or run dir name>`                            |
+| `--rerun <run>`      | a rerun of failed tests. It replaces tests that never passed in the main run, and gives second samples of the others |
+| `--backend-baseline` | `union` (default) also drops backend classes that any shard's coverage baseline ran. `shard` subtracts each shard's own baseline only |
+| `--kills <file>`     | a kills file, below                                                                                      |
+| `--min-mutants <k>`  | qualifying mutants a delete verdict needs, default 5                                                     |
+| `--require-strata`   | strata a delete verdict needs among them, default `logic,wiring`                                         |
+
+| Environment variable   | Meaning                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `JOURNEY_ANALYSIS_DIR` | downloads, outputs and the Python environment. Default `journey-analysis/` at the repo root, which is gitignored |
+| `JOURNEY_PYTHON`       | a Python with `numpy` and `scipy`. Without it, the driver makes a virtualenv in `$JOURNEY_ANALYSIS_DIR/.venv` |
+| `OPENAPI`              | the `openapi.json` to match routes against, default the run's `journey-capture-openapi` artifact           |
+| `REPO_SLUG`            | where to download from, default `metabase/metabase`                                                      |
+
+Static alignment needs the run's commit in the local clone. Without it, assertions are keyed by their message only, and a describe's `before` hooks count only for the test that ran them.
+
+### Outputs
+
+| File                          | Content                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------- |
+| `report.txt`                  | the headline numbers: run, shards, capture problems, graph shape, overlap, covers, verdicts |
+| `journey-graph.json`          | the step graph at both levels, and every test's path through it                            |
+| `journey-overlap.json`        | overlap per granularity, covers, duplicate verdicts and deletion verdicts                  |
+| `graph.txt`                   | the graph's shape and its most shared prefixes                                             |
+| `work/`                       | the extracted run: `tests.jsonl`, `vocab.json`, `modules.json`, `extract-summary.json`, `second-samples.json`, `static-align.json` |
+| `static/`, `src/`             | the parsed specs and the repo files at the run's commit                                    |
+
+To compare two tests, given by id, by their `id` in `work/tests.jsonl` or by a unique part of the id:
+
+```
+$JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.py <out>/work <test A> <test B> [--level exact|normalized] [--json]
+```
+
+### Kills file
+
+`--kills` takes one entry per mutant:
+
+```
+{
+  "<mutant id>": {
+    "killed_by": ["<test id>", ...],
+    "errored": ["<test id>", ...],
+    "ran": ["<test id>", ...],
+    "stratum": "logic" | "wiring" | "state" | "baseline",
+    "origin": "<regression id>" | "synthetic",
+    "file": "<repo-relative path>"
+  }
+}
+```
+
+- `killed_by` holds confirmed kills only: an assertion failure on a test that passes on clean code, reproduced on a rerun.
+- `errored` holds tests that failed for another reason, like a crash, a timeout or a setup failure. They are never kills.
+- A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
+- `file` is optional. With it, a mutant counts towards a test's delete verdict only when the test ran a function of that file, or a class of that namespace for `.clj` and `.cljc`. Without it, being in `ran` counts as reaching the mutant.
+- An entry that is a bare list of test ids is read as `killed_by`, with `ran` unknown.
+
+Only the run's e2e tests get a verdict. Every other id, including jest and Clojure tests, counts as a remaining test:
+
+- **keep:** the test has a kill no other test has, or the kills-first cover keeps it for kills it shares only with other tests of the run.
+- **delete:** no unique kill, at least `--min-mutants` qualifying mutants, and every `--require-strata` stratum among them. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too.
+- **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
+
+## Reach lookup
+
+```
+node e2e/coverage/journey/lookup/lookup.mjs --index <index dir> [options] <location> [<location> ...]
+node e2e/coverage/journey/lookup/lookup.mjs --index <index dir> [options] --locations <file with one location per line>
+```
+
+The index comes from `--index` or `JOURNEY_LOOKUP_INDEX`. It has no default: a full run's index is about 140 MB, so keep it outside the repo.
+
+### Locations
+
+| Form                                                   | Meaning                                                                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `frontend/src/metabase/foo/Bar.tsx#Bar`                | a frontend function by name. Arrow functions take the name of the variable, property or `memo`/`forwardRef` wrapper they're assigned to |
+| `frontend/src/metabase/foo/Bar.tsx:120`                | the innermost function around line 120                                                                      |
+| `metabase.parameters.params/find-card-for-mapping`     | a backend var                                                                                               |
+| `src/metabase/parameters/params.clj:361`               | the top-level form around line 361: a `defn`, `defmethod`, `defendpoint` or anything else                    |
+| `{"file": ..., "fn": ..., "line": ..., "column": ...}` | JSON. With `line` and `column`, the function Istanbul records at exactly that position                     |
+| `{"ns": ..., "var": ..., "line": ...}`                 | JSON. `var` can be `"<multifn> <dispatch>"` for a `defmethod` or `"<:method> <route>"` for a `defendpoint` |
+
+Line numbers are for the commit the run captured (`meta.json`'s `sha`). Source is read from that commit with `git show`, so the repo needs it.
+
+### What it matches
+
+- **Frontend:** the function's Istanbul counter in the per-test coverage, after the reader's baseline subtraction for the test's shard. Some inner functions have no counter in the build. The nearest enclosing function that has one stands in, and the output says so.
+- **Backend:** the JVM classes of the var, which are `<ns with - as _>$<munged var>` and its inner `$fn__N` classes. With `lines.json` in the index, a top-level form owns every class whose line range sits inside it, which also covers `defmethod` and `defendpoint` bodies. The backend baseline is the union of every shard's `coverage-baseline` classes.
+- **`.cljc` forms:** both the backend classes and the browser copy's functions whose source map origin lies inside the form (`cljs-origins.json`).
+
+A test **reaches** a location when its chosen attempt ran any of those functions or classes. It **reaches and asserts** when a later passing assertion exists in the same test. `assertsAfter` counts the passing assertions from the first step cut that held the location, including the assertion that triggered that cut. Assertions in `after` hooks don't count.
+
+Each test contributes one attempt: the last passing attempt of the main run, else a passing attempt of a rerun, else its last attempt. Tests with no passing attempt are left out of the results and listed separately.
+
+### Options
+
+| Option                  | Meaning                                                                    |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `--index <dir>`         | the index, or `JOURNEY_LOOKUP_INDEX`                                       |
+| `--repo <path>`         | the git repo for source reads, default the one this folder is in           |
+| `--sha <commit>`        | read source at this commit instead of the captured one                     |
+| `--exclude <file>`      | test ids to leave out, one per line                                        |
+| `--union`               | one result for all locations together, instead of one per location        |
+| `--json`                | one JSON line per result: `reach`, `reach_and_assert`, `asserts_after`, `not_passing` and the resolved `locations` |
+| `--include-not-passing` | count tests with no passing attempt                                        |
+
+### Building an index
+
+```
+node e2e/coverage/journey/lookup/build-index.mjs --run <run dir> [--rerun <run dir> ...] --out <index dir>
+node e2e/coverage/journey/lookup/build-lines.mjs --jar <metabase.jar from journey-capture-uberjar> --index <index dir>
+node e2e/coverage/journey/lookup/build-cljs-origins.mjs --maps <journey-capture-cljs dir> --index <index dir>
+```
+
+A run dir holds the run's `journey-capture-shard-*` artifacts. To start from a run id, download them first, with `gh run download <run id> -p 'journey-capture-shard-*' -D <run dir>` or `e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>`. `build-index.mjs` takes about a minute for a 100-shard run.
+
+The other two steps are optional. Without `lines.json`, backend matching is by var name only, which misses `defmethod` bodies. Without `cljs-origins.json`, `.cljc` forms have no browser side. GitHub keeps the uberjar artifact for one day only.
+
+### Index files
+
+| File                | Content                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `meta.json`         | runs, captured sha, counts                                                                                     |
+| `tests.json`        | per test: id, spec, title, run, shard, attempt, state, passing assertion count                                  |
+| `keys.json`         | the keys (`fe:<file>#<fnIndex>` or `be:<class>`) with offsets into `postings.bin`                              |
+| `postings.bin`      | per key, `uint32` pairs: test index, and 1 + assertions after the first cut holding the key (0 when no cut held it) |
+| `fnmap.json`        | Istanbul function names and positions per file                                                                 |
+| `baseline.json`     | the subtracted backend classes, and per frontend function the number of shards whose baseline fired it        |
+| `lines.json`        | per backend class: source file name, first and last line                                                       |
+| `cljs-origins.json` | per browser cljs function: source path and line                                                                |
+
+### Limits
+
+- **Granularity:** reach is per function or class, not per line or branch. A test that calls a function without taking the changed branch still counts.
+- **Iframes:** frontend counters come from the top window only. Tests that run the app inside an iframe (interactive embedding, the SDK iframe) have no frontend coverage and never show frontend reach.
+- **Baseline:** a function in every shard's baseline is subtracted from every test, so it shows no reach at all. The output notes this.
+- **Background jobs:** backend code from background jobs lands in whichever test was running.
+- **Assertions:** an assertion counts whether or not it checks anything the location affects.
