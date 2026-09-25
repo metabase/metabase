@@ -197,6 +197,7 @@
      system
      task
      task.history
+     task.secure-delegate
      tiles
      timeline
      tracing

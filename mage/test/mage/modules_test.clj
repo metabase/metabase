@@ -284,13 +284,25 @@
 ;;; Regression test: module graph should not become more connected
 ;;; =============================================================================
 
-(defn modules-affecting-drivers []
-  (let [deps (mage.modules/dependencies)
-        all (keys deps)]
-    (filter #(mage.modules/driver-deps-affected? [%]) all)))
+(defn- counted-triggering-modules
+  "The `triggering?` modules of `deps`, leaving out a nested module whose parent triggers too.
+  Splitting a triggering module then moves nothing, while a triggering child of a quiet parent still counts."
+  [deps triggering?]
+  (let [triggering (set (filter triggering? (keys deps)))]
+    (set (remove #(some-> (modules/parent-module deps %) triggering) triggering))))
+
+(deftest counted-triggering-modules-test
+  (let [deps {'foo #{} 'foo.child #{} 'bar #{} 'bar.child #{} 'baz #{}}]
+    (is (= #{'foo.child 'bar}
+           (counted-triggering-modules deps #{'foo.child 'bar 'bar.child})))))
+
+(defn modules-affecting-drivers
+  "Modules that trigger driver tests, as [[counted-triggering-modules]] counts them."
+  []
+  (counted-triggering-modules (mage.modules/dependencies) #(mage.modules/driver-deps-affected? [%])))
 
 (deftest module-graph-may-not-become-more-connected
-  (testing "The number of modules that trigger driver tests should not increase without explicit approval.
+  (testing "The number of modules triggering driver tests should not increase without explicit approval.
             If this test fails, you've likely connected a module to driver that shouldn't trigger driver tests.
             Add it to driver-affecting-overrides if it shouldn't trigger driver tests."
     (let [modules-triggering-drivers (modules-affecting-drivers)
@@ -312,7 +324,9 @@
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
-          max-allowed-count 47]
+          ;; 2026-09-17 Lowered to 32: a nested module whose parent triggers driver tests no longer counts,
+          ;;            so carving out a child moves nothing
+          max-allowed-count 32]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s

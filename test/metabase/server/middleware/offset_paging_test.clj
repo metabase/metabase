@@ -19,7 +19,7 @@
                                                 :offset (request/offset)
                                                 :paged? (request/paged?)
                                                 :params (:params request)})))
-        handler* (#'handler/apply-middleware handler)
+        handler* (#'handler/apply-middleware handler {})
         respond  identity
         raise    (fn [e] (throw e))]
     (handler* request respond raise)))
