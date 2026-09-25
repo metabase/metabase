@@ -70,22 +70,3 @@ tasks:
       rspack --json > stats.json
     options:
       cache: false
-
-  build-storybook:
-    script: >-
-      NODE_OPTIONS=--max-old-space-size=8192 storybook build
-    deps:
-      - build-cljs
-    inputs:
-      - '@group(frontend)'
-      - .storybook/**
-    outputs:
-      - storybook-static/**
-
-  chromatic:
-    script: >-
-      NODE_OPTIONS=--max-old-space-size=8192 chromatic
-    deps:
-      - build-cljs
-    options:
-      cache: false

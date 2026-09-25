@@ -172,17 +172,6 @@ tasks:
       runInCI: false
       outputStyle: stream
 
-  storybook:
-    script: >-
-      storybook dev -p 6006
-    deps:
-      - build-cljs
-    options:
-      persistent: true
-      cache: false
-      runInCI: false
-      outputStyle: stream
-
   test-unit-watch:
     script: >-
       jest --ignoreProjects ci-scripts --maxWorkers=4 --watch

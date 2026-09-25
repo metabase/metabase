@@ -149,15 +149,3 @@ tasks:
     inputs:
       - '@group(sdk)'
       - '@group(jest)'
-
-  storybook-embedding-sdk:
-    script: >-
-      IS_EMBEDDING_SDK=true storybook dev -c
-      frontend/src/embedding-sdk-shared/.storybook -p 6006
-    deps:
-      - build-cljs
-    options:
-      persistent: true
-      cache: false
-      runInCI: false
-      outputStyle: stream
