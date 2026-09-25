@@ -89,7 +89,7 @@ export function Header({
       {/* Spacer */}
       <div style={{ flexGrow: 1 }} />
 
-      <Button.Group>
+      <Button.Group flex="0 0 auto">
         <Tooltip withinPortal={false} label={t`Undo`}>
           <Button
             aria-label={t`Undo`}
@@ -113,6 +113,7 @@ export function Header({
       </Button.Group>
       <Button
         variant="filled"
+        flex="0 0 auto"
         disabled={!saveButtonEnabled}
         onClick={handleSave}
       >

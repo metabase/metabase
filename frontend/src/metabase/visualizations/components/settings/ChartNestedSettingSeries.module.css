@@ -1,0 +1,9 @@
+/* The color lives here, not in a style prop: an inline color would beat the hover rule. */
+.optionsIcon {
+  color: var(--mb-color-text-secondary);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}

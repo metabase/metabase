@@ -3,14 +3,11 @@ import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { Flex } from "metabase/ui";
+import { Flex, Icon, TextInputBlurChange } from "metabase/ui";
 import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
 
-import {
-  OptionsIcon,
-  SeriesNameInput,
-} from "./ChartNestedSettingSeries.styled";
+import S from "./ChartNestedSettingSeries.module.css";
 import type { ChartNestedSettingsSeriesSingleProps } from "./ChartNestedSettingSeriesSingle";
 
 export interface ChartNestedSettingsSeriesMultipleProps extends ChartNestedSettingsSeriesSingleProps {
@@ -74,7 +71,7 @@ export const ChartNestedSettingSeriesMultiple = ({
                     })
                   }
                 />
-                <SeriesNameInput
+                <TextInputBlurChange
                   className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
                   // set vertical padding to 0 and use align-self-stretch to match siblings
                   style={{ paddingTop: 0, paddingBottom: 0 }}
@@ -97,7 +94,8 @@ export const ChartNestedSettingSeriesMultiple = ({
                     bdrs={6}
                     className={cx(CS.ml1, CS.p1)}
                   >
-                    <OptionsIcon
+                    <Icon
+                      className={S.optionsIcon}
                       name={isSelected(single) ? "chevronup" : "chevrondown"}
                       tooltip={
                         isSelected(single) ? t`Hide options` : t`More options`

@@ -1,15 +1,13 @@
 import { useState } from "react";
 
+import { Warnings } from "metabase/common/components/Warnings";
 import CS from "metabase/css/core/index.css";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import { ChartSettingsFooter } from "../ChartSettingsFooter";
 
-import {
-  ChartSettingsVisualizationContainer,
-  SectionWarnings,
-} from "./ChartSettingsVisualization.styled";
+import S from "./ChartSettingsVisualization.module.css";
 import type { ChartSettingsVisualizationProps } from "./types";
 
 export const ChartSettingsVisualization = ({
@@ -26,8 +24,8 @@ export const ChartSettingsVisualization = ({
 
   return (
     <Stack pt="lg" {...stackProps}>
-      <SectionWarnings warnings={warnings} size={20} />
-      <ChartSettingsVisualizationContainer>
+      <Warnings className={S.warnings} warnings={warnings} size={20} />
+      <Box pos="relative" mx="xxl" flex="1 1 auto">
         <Visualization
           className={CS.spread}
           rawSeries={rawSeries}
@@ -41,7 +39,7 @@ export const ChartSettingsVisualization = ({
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onUpdateWarnings={setWarnings}
         />
-      </ChartSettingsVisualizationContainer>
+      </Box>
       <ChartSettingsFooter
         onDone={onDone}
         onCancel={onCancel}
