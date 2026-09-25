@@ -70,6 +70,11 @@ python = "3.12"
 # Uv - for sqlglot installation
 uv = "0.10.2"
 
+# Moon - task runner, dependency graph and build cache
+# Not in the mise registry, so it comes from the GitHub releases.
+# https://moonrepo.dev
+"github:moonrepo/moon" = "2.5.5"
+
 # =============================================================================
 # Other Tools (quality of life)
 # =============================================================================
