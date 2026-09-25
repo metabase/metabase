@@ -148,7 +148,7 @@
     (let [{:keys [validation-result action-result]}
           (create-sql-query-tools/create-sql-query {:database-id database_id
                                                     :sql sql})
-          {:keys [valid? dialect error-message]} validation-result
+          {:keys [valid? dialect error-message warnings]} validation-result
           {:keys [query-id query]} action-result
           chart-type (get viz_settings :chart_type)]
       (cond
@@ -172,7 +172,8 @@
                             :query_id      query-id
                             :query         query
                             :result-type   :chart-draft}]
-            {:output "Draft chart payload generated from SQL query."
+            {:output (str "Draft chart payload generated from SQL query."
+                          (some->> (instructions/sql-reference-warnings-instructions warnings) (str "\n\n")))
              :structured-output structured}))))
     (catch Exception e
       (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
