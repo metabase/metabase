@@ -96,7 +96,7 @@ jobs:
       - name: Build Storybook
         env:
           STORYBOOK_STORY_PATHS_FILE: ${{ steps.loki-selection.outputs.paths-file }}
-        run: bun run build-storybook:visual
+        run: bun run build-storybook:test
 
       - name: Run Loki Visual Tests
         # Loki drops stories with parameters.loki.skip, and exits non-zero when that leaves the selection empty.
@@ -146,7 +146,7 @@ jobs:
       - name: Build Storybook
         env:
           STORYBOOK_STORY_PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
-        run: bun run build-storybook:visual
+        run: bun run build-storybook:test
 
       - name: Run visual tests
         env:

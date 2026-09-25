@@ -9,11 +9,11 @@ The tests read `storybook-static/`, so build Storybook first:
 
 ```sh
 NODE_ENV=development bun run build-pure:cljs
-bun run build-storybook:visual
+bun run build-storybook:test
 bun run test-visual
 ```
 
-`build-storybook:visual` runs `storybook build --test`, which leaves out the docs pages, prop tables, and source maps that the tests don't use, so it's faster than `build-storybook`.
+`build-storybook:test` runs `storybook build --test`, which leaves out the docs pages, prop tables, and source maps that the tests don't use, so it's faster than `build-storybook`.
 `bun run test-visual:ci` builds Storybook the same way and then runs the tests.
 To test against a Storybook that's already running, such as `bun run storybook`, set `STORYBOOK_URL=http://localhost:6006`.
 
