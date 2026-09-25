@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import {
   PrintContext,
   type PrintContextValue,
@@ -155,6 +156,25 @@ describe("DocumentHeader", () => {
       await userEvent.click(screen.getByText("Print Document"));
       await waitFor(() => expect(window.print).toHaveBeenCalled());
 
+      window.print = originalPrint;
+    });
+
+    it("should track a document_print event when printing", async () => {
+      const originalPrint = window.print;
+      window.print = jest.fn();
+      const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+
+      setup();
+
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(screen.getByText("Print Document"));
+      await waitFor(() => expect(window.print).toHaveBeenCalledTimes(1));
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "document_print",
+        target_id: defaultDocument.id,
+      });
+
+      trackSimpleEvent.mockRestore();
       window.print = originalPrint;
     });
 
