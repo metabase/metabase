@@ -24,6 +24,7 @@
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.tracing.test-util :as tracing.tu]
    [metabase.util.http :as u.http]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
@@ -567,13 +568,18 @@
               (last result))))))
 
 (deftest ^:parallel tool-executor-xf-test-7
-  (testing "tool-executor-xf ignores unknown tool names"
+  (testing "tool-executor-xf answers a call to an unknown tool with an error listing the tools it can call"
     (let [chunks (test-util/parts->aisdk-chunks
                   [{:type :start :id "msg-789"}
-                   {:type :tool-input :id "call-1" :function "unknown-tool" :arguments {:foo :bar}}])
+                   {:type :tool-input :id "call-1" :function "analyze_chart" :arguments {:chart_config_id "abc"}}])
           result (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks)]
-      (is (= chunks result)
-          "Unknown tools should be ignored, chunks pass through unchanged"))))
+      (is (=? (conj (vec chunks)
+                    {:type       :tool-output-available
+                     :toolCallId "call-1"
+                     :toolName   "analyze_chart"
+                     :error      {:message (str "Tool `analyze_chart` does not exist. "
+                                                "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
+              result)))))
 
 ;;; tool argument validation tests
 
@@ -1572,7 +1578,7 @@
 
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
-    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with a tool call"
+    (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
       (let [rasta-id (mt/user->id :rasta)]
         ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
         ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
@@ -1582,6 +1588,8 @@
                                                  [{:type :start :id "msg-1"}
                                                   {:type :tool-input :id "call-1" :function "get-time"
                                                    :arguments {:tz "UTC"}}
+                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                                                   :arguments {}}
                                                   {:type :usage :usage {:promptTokens        950
                                                                         :completionTokens    20
                                                                         :cacheCreationTokens 50
@@ -1589,8 +1597,11 @@
                                                    :model "test-model" :id "msg-1"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
-              (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
-              (let [events       (snowplow-test/pop-event-data-and-user-id!)
+              (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
+                                   (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :debug]]
+                                     (run! identity (self/call-llm "openrouter/test-model" nil [] test-util/TOOLS snowplow-tracking-opts))
+                                     [(tracing.tu/finished-spans exporter) (messages)]))
+                    events       (snowplow-test/pop-event-data-and-user-id!)
                     token-events (filter #(contains? (:data %) "total_tokens") events)
                     tool-events  (filter #(= "agent_used_tool" (get-in % [:data "event"])) events)]
                 (is (=? [{:user-id (str rasta-id)
@@ -1612,8 +1623,15 @@
                                     "result"        "success"
                                     "duration_ms"   nat-int?
                                     "session_id"    "00000000-0000-0000-0000-000000000002"
-                                    "event_details" {"tool_name" "get-time"}}}]
-                        tool-events))))))))))
+                                    "event_details" {"tool_name" "get-time"}}}
+                         {:data {"event"         "agent_used_tool"
+                                 "result"        "error"
+                                 "event_details" {"tool_name" "unknown"}}}]
+                        tool-events))
+                (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
+                (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
+                    "a name the model made up never reaches analytics, spans or logs")))))))))
 
 (deftest call-llm-structured-snowplow-test
   (llm.tu/with-default-connections

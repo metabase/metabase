@@ -930,45 +930,60 @@
   environment — `mu/defn` only instruments dev and test namespaces — and a
   mismatch is returned to the model as a repair-oriented error.
 
+  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model output,
+  so logs and span data record it as \"unknown\".
+
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
-  [tool-call-id tool-name tool chunks]
-  (ait/with-tool-call {:ai/tool-name    tool-name
-                       :ai/tool-call-id tool-call-id}
-    (with-span :info {:name         :metabot.agent/run-tool
-                      :tool-name    tool-name
-                      :tool-call-id tool-call-id}
-      (let [start-ms (u/start-timer)
-            assoc-ms (fn [duration-ms]
-                       (fn [chunk]
-                         (cond-> chunk
-                           (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-            results  (try
-                       (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                             arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
-                             arguments (coerce-stringified-scalars tool arguments)
-                             decode    (tool-decode-fn tool)
-                             arguments (cond-> arguments decode decode)
-                             _         (validate-tool-arguments! tool arguments)]
-                         (log/debug "Executing tool" {:tool-name tool-name})
-                         (when (ait/capture-active?)
-                           (ait/record! {:ai/tool-args arguments}))
-                         (let [tool-fn (tool-call-fn tool)
-                               result  (tool-fn arguments)]
-                           (log/debug "Tool returned" {:tool-name tool-name :result-type (type result)})
-                           (collect-tool-result tool-call-id tool-name result)))
-                       (catch Exception e
-                         (if (:agent-error? (ex-data e))
-                           (log/debugf "Tool %s: agent validation error: %s" tool-name (ex-message e))
-                           (log/warn "Tool execution failed" {:tool-name tool-name :error (ex-message e)}))
-                         [{:type         :tool-output-available
-                           :toolCallId   tool-call-id
-                           :toolName     tool-name
-                           :error        {:message (concise-tool-error e)
-                                          :type    (str (type e))}}]))]
-        (when (ait/capture-active?)
-          (ait/record! {:ai/tool-output results}))
-        (mapv (assoc-ms (u/since-ms start-ms))
-              results)))))
+  [tool-call-id tool-name tools chunks]
+  (let [tool      (get tools tool-name)
+        safe-name (if tool tool-name "unknown")]
+    (ait/with-tool-call {:ai/tool-name    tool-name
+                         :ai/tool-call-id tool-call-id}
+      (with-span :info {:name         :metabot.agent/run-tool
+                        :tool-name    safe-name
+                        :tool-call-id tool-call-id}
+        (let [start-ms (u/start-timer)
+              assoc-ms (fn [duration-ms]
+                         (fn [chunk]
+                           (cond-> chunk
+                             (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
+              results  (try
+                         (when-not tool
+                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
+                                                (str/join ", " (sort (keys tools))) ".")
+                                           {:agent-error? true})))
+                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
+                               arguments (coerce-stringified-scalars tool arguments)
+                               decode    (tool-decode-fn tool)
+                               arguments (cond-> arguments decode decode)
+                               _         (validate-tool-arguments! tool arguments)]
+                           (log/debug "Executing tool" {:tool-name safe-name})
+                           (when (ait/capture-active?)
+                             (ait/record! {:ai/tool-args arguments}))
+                           (let [tool-fn (tool-call-fn tool)
+                                 result  (tool-fn arguments)]
+                             (log/debug "Tool returned" {:tool-name safe-name :result-type (type result)})
+                             (collect-tool-result tool-call-id tool-name result)))
+                         (catch Exception e
+                           (cond
+                             (nil? tool)
+                             (log/debugf "Tool call %s: unknown tool" tool-call-id)
+
+                             (:agent-error? (ex-data e))
+                             (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
+
+                             :else
+                             (log/warn "Tool execution failed" {:tool-name safe-name :error (ex-message e)}))
+                           [{:type         :tool-output-available
+                             :toolCallId   tool-call-id
+                             :toolName     tool-name
+                             :error        {:message (concise-tool-error e)
+                                            :type    (str (type e))}}]))]
+          (when (ait/capture-active?)
+            (ait/record! {:ai/tool-output results}))
+          (mapv (assoc-ms (u/since-ms start-ms))
+                results))))))
 
 (defn tool-executor-xf
   "Transducer that executes tool calls in parallel on virtual threads.
@@ -997,8 +1012,7 @@
         ([result {:keys [type toolCallId toolName] :as chunk}]
          (case type
            :tool-input-start
-           (when (contains? tools toolName)
-             (vswap! active assoc toolCallId {:chunks [chunk]}))
+           (vswap! active assoc toolCallId {:chunks [chunk]})
 
            :tool-input-delta
            (when (contains? @active toolCallId)
@@ -1006,8 +1020,7 @@
 
            :tool-input-available
            (when-let [{:keys [chunks]} (get @active toolCallId)]
-             (let [tool (get tools toolName)
-                   task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tool chunks)))]
+             (let [task (submit-virtual (bound-fn* #(run-tool toolCallId toolName tools chunks)))]
                (vswap! active assoc toolCallId {:task task})))
 
            ;; otherwise: do nothing
