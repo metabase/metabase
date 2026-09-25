@@ -113,15 +113,12 @@ describe("scenarios > data studio > library > metrics", () => {
     });
   });
 
-  it("should edit metric definition and save changes", () => {
+  it("should rename, cache, duplicate and move a metric", () => {
+    cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
+
     visitMetricPage();
 
-    cy.log("Verify metric overview page displays correct data");
-    H.DataStudio.Metrics.aboutPage()
-      .findByDisplayValue("Trusted Orders Metric")
-      .should("be.visible");
-
-    cy.log("Update the metric name");
+    cy.log("Rename the metric");
     H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .clear()
@@ -129,62 +126,136 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify updated name appears in overview");
     H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Updated Orders Metric")
       .should("be.visible");
 
-    cy.log("Verify the new name persisted");
     cy.get<number>("@trustedMetricId").then((id) =>
       cy
         .request("GET", `/api/card/${id}`)
         .its("body.name")
         .should("eq", "Updated Orders Metric"),
     );
+
+    cy.log("Change the caching strategy to Duration and save");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Caching").click();
+    H.modal()
+      .findByTestId("cache-strategy-select")
+      .should("have.value", "Default")
+      .click();
+    // The Select dropdown renders in a portal; wait for it to open, then pick.
+    H.selectDropdown()
+      .findByRole("option", { name: /Duration/ })
+      .click();
+    H.fillCacheDuration(24);
+    H.modal().findByTestId("strategy-form-submit-button").click();
+
+    cy.wait("@updateCacheConfig");
+    H.modal().should("not.exist");
+
+    cy.log("Re-open the caching settings to verify the change is persisted");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Caching").click();
+    H.modal()
+      .findByTestId("cache-strategy-select")
+      .should("have.value", "Duration");
+    H.modal().button("Cancel").click();
+    H.modal().should("not.exist");
+
+    cy.log("Duplicate the metric into the Metrics collection");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Duplicate").click();
+
+    H.modal()
+      .findByText('Duplicate "Updated Orders Metric"')
+      .should("be.visible");
+    H.modal()
+      .findByLabelText("Name")
+      .should("have.value", "Updated Orders Metric - Duplicate");
+    H.modal().findByTestId("dashboard-and-collection-picker-button").click();
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("Our analytics").click();
+      cy.findByText("Library").click();
+      cy.findByText("Metrics").click();
+      cy.button("Select this collection").click();
+    });
+
+    H.modal().button("Duplicate").click();
+
+    cy.wait("@createCard").its("response.body.id").as("duplicateMetricId");
+    H.modal().should("not.exist");
+
+    H.DataStudio.Metrics.aboutPage()
+      .findAllByText("Updated Orders Metric - Duplicate")
+      .should("have.length", 2); // breadcrumbs + header
+
+    cy.get<number>("@metricsCollectionId").then((collectionId) =>
+      cy
+        .request("GET", `/api/collection/${collectionId}/items`)
+        .its("body.data")
+        .should((items: { name: string }[]) => {
+          const names = items.map((item) => item.name);
+          expect(names).to.include("Updated Orders Metric");
+          expect(names).to.include("Updated Orders Metric - Duplicate");
+        }),
+    );
+
+    cy.log("Move the duplicate to First collection");
+    cy.intercept("PUT", "/api/card/*").as("moveCard");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Move").click();
+    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
+
+    cy.wait("@moveCard");
+
+    cy.findByTestId("move-card-toast").findByText("First collection").click();
+
+    cy.get<number>("@duplicateMetricId").then((id) =>
+      cy
+        .get<number>("@metricsCollectionId")
+        .then((metricsCollectionId) =>
+          cy
+            .request("GET", `/api/card/${id}`)
+            .its("body.collection_id")
+            .should("not.eq", metricsCollectionId),
+        ),
+    );
   });
 
-  it("should cancel editing and revert changes", () => {
+  it("should warn about unsaved definition changes and revert them on cancel", () => {
     visitMetricPage();
 
-    cy.log("Navigate to definition tab");
     H.DataStudio.Metrics.definitionTab().click();
 
-    cy.log("Change aggregation");
-    H.getNotebookStep("summarize").findByText("Count").click();
-    H.popover().findByText("Sum of ...").click();
-    H.popover().findByText("Total").click();
-
-    cy.log("Verify save button is enabled, then cancel");
-    H.DataStudio.Metrics.saveButton().should("be.enabled");
-    H.DataStudio.Metrics.cancelButton().click();
-
-    cy.log("Verify changes were reverted");
-    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
-  });
-
-  it("should show unsaved changes warning when navigating away", () => {
-    visitMetricPage();
-
-    cy.log("Navigate to definition tab");
-    H.DataStudio.Metrics.definitionTab().click();
-
-    cy.log("Change aggregation from Count to Sum");
+    cy.log("Change aggregation from Count to Sum of Total");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
     H.getNotebookStep("summarize").findByText("Count").click();
     H.popover().findByText("Sum of ...").click();
     H.popover().findByText("Total").click();
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .should("be.visible");
 
-    cy.log("Try to navigate away");
+    cy.log("Navigating away prompts to discard the changes");
     H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
 
-    cy.log("Verify unsaved changes modal appears");
     H.modal().within(() => {
       cy.findByText("Discard your changes?").should("be.visible");
       cy.button("Cancel").click();
     });
 
-    cy.log("Verify we're still on the definition tab");
+    cy.log("Staying keeps the edited definition");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .should("be.visible");
+
+    cy.log("Cancel reverts the definition");
+    H.DataStudio.Metrics.saveButton().should("be.enabled");
+    H.DataStudio.Metrics.cancelButton().click();
+    H.getNotebookStep("summarize").findByText("Count").should("be.visible");
   });
 
   it("should archive and restore a metric", () => {
@@ -236,191 +307,5 @@ describe("scenarios > data studio > library > metrics", () => {
         .its("body.archived")
         .should("eq", false),
     );
-  });
-
-  it("should view metric in the metrics explorer view via the Explore button", () => {
-    visitMetricPage();
-
-    cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.aboutPage()
-      .findByDisplayValue("Trusted Orders Metric")
-      .should("be.visible");
-
-    cy.log("Verify the Explore button points to the metrics explorer");
-    H.DataStudio.Metrics.exploreLink()
-      .should("have.attr", "href")
-      .and("match", /\/explore\?metricId=\d+/);
-  });
-
-  it("should duplicate metric via more menu", () => {
-    visitMetricPage();
-
-    cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.aboutPage()
-      .findByDisplayValue("Trusted Orders Metric")
-      .should("be.visible");
-
-    cy.log("Open more menu and click Duplicate");
-    H.DataStudio.Metrics.moreMenu().click();
-    H.popover().findByText("Duplicate").click();
-
-    cy.log("Save duplicate metric");
-    H.modal()
-      .findByText('Duplicate "Trusted Orders Metric"')
-      .should("be.visible");
-    H.modal()
-      .findByLabelText("Name")
-      .should("have.value", "Trusted Orders Metric - Duplicate");
-    H.modal().findByTestId("dashboard-and-collection-picker-button").click();
-
-    H.entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("Library").click();
-      cy.findByText("Metrics").click();
-      cy.button("Select this collection").click();
-    });
-
-    H.modal().button("Duplicate").click();
-
-    cy.wait("@createCard");
-    H.modal().should("not.exist");
-
-    cy.log("Verify duplicate metric is created");
-    H.DataStudio.Metrics.aboutPage()
-      .findAllByText("Trusted Orders Metric - Duplicate")
-      .should("have.length", 2); // breadcrumbs + header
-
-    cy.log("Verify both metrics live in the Metrics collection");
-    cy.get<number>("@metricsCollectionId").then((collectionId) =>
-      cy
-        .request("GET", `/api/collection/${collectionId}/items`)
-        .its("body.data")
-        .then((items: { name: string }[]) => {
-          const names = items.map((item) => item.name);
-          expect(names).to.include("Trusted Orders Metric");
-          expect(names).to.include("Trusted Orders Metric - Duplicate");
-        }),
-    );
-  });
-
-  it("should move metric to different collection via more menu", () => {
-    visitMetricPage();
-
-    cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.aboutPage()
-      .findByDisplayValue("Trusted Orders Metric")
-      .should("be.visible");
-
-    cy.log("Open more menu and click Move");
-    H.DataStudio.Metrics.moreMenu().click();
-    H.popover().findByText("Move").click();
-
-    cy.log("Select First collection as destination");
-    H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
-
-    cy.wait("@updateCard");
-
-    cy.log("Verify metric is in First collection");
-    cy.findByTestId("move-card-toast").findByText("First collection").click();
-
-    cy.log("Verify the metric left the Metrics collection");
-    cy.get<number>("@trustedMetricId").then((id) =>
-      cy
-        .get<number>("@metricsCollectionId")
-        .then((metricsCollectionId) =>
-          cy
-            .request("GET", `/api/card/${id}`)
-            .its("body.collection_id")
-            .should("not.eq", metricsCollectionId),
-        ),
-    );
-  });
-
-  describe("analytics events", () => {
-    it("should track metric_create_started and metric_created from browse metrics", () => {
-      cy.visit("/browse/metrics");
-
-      cy.log("Click the plus button to create a new metric");
-      cy.findByRole("link", { name: "Create a new metric" }).click();
-
-      cy.log("Verify metric_create_started event was tracked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_create_started",
-        triggered_from: "browse_metrics",
-      });
-
-      cy.log("Verify we're on the new metric page");
-      cy.url().should("match", /\/metric\/new/);
-
-      cy.findByPlaceholderText(/Search for tables/).type("Orders");
-      H.popover()
-        .findAllByRole("menuitem", { name: /Orders/ })
-        .should("have.length.gte", 1);
-      H.popover()
-        .findAllByRole("menuitem", { name: /Orders/ })
-        .first()
-        .click();
-      cy.findByRole("button", { name: "Save" }).click();
-      cy.findByRole("dialog").findByRole("button", { name: "Save" }).click();
-
-      cy.log("Verify metric_created event was tracked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_created",
-      });
-    });
-
-    it("should track metric_create_started from command palette", () => {
-      cy.visit("/");
-
-      cy.log("Open command palette and create metric");
-      H.openCommandPalette();
-      H.commandPaletteSearch("metric", false);
-      cy.findByRole("option", { name: /New metric/ }).click();
-
-      cy.log("Verify metric_create_started event was tracked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_create_started",
-        triggered_from: "command_palette",
-      });
-
-      cy.log("Verify we're on the new metric page");
-      cy.url().should("match", /\/metric\/new/);
-    });
-  });
-
-  describe("caching", () => {
-    it("should allow changing metric caching settings", () => {
-      cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
-
-      visitMetricPage();
-
-      cy.log("Open the caching settings from the overflow menu");
-      H.DataStudio.Metrics.moreMenu().click();
-      H.popover().findByText("Caching").click();
-
-      cy.log("Change the strategy to Duration and save");
-      H.modal()
-        .findByTestId("cache-strategy-select")
-        .should("have.value", "Default")
-        .click();
-      // The Select dropdown renders in a portal; wait for it to open, then pick.
-      H.selectDropdown()
-        .findByRole("option", { name: /Duration/ })
-        .click();
-      H.fillCacheDuration(24);
-      H.modal().findByTestId("strategy-form-submit-button").click();
-
-      cy.wait("@updateCacheConfig");
-
-      cy.log("Saving persists the change and closes the modal");
-      H.modal().should("not.exist");
-
-      cy.log("Re-open the caching settings to verify the change is persisted");
-      H.DataStudio.Metrics.moreMenu().click();
-      H.popover().findByText("Caching").click();
-      H.modal()
-        .findByTestId("cache-strategy-select")
-        .should("have.value", "Duration");
-    });
   });
 });

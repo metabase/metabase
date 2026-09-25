@@ -57,14 +57,21 @@ describe("FieldOrderPicker", () => {
     expect(radio).toBeChecked();
   });
 
-  it("calls onChange when a different option is selected", async () => {
-    const { onChange } = setup({ value: "smart" });
+  it.each(OPTIONS)(
+    "calls onChange when a different option is selected - %s",
+    async (value) => {
+      const { onChange } = setup({
+        value: value === "custom" ? "smart" : "custom",
+      });
 
-    const radio = screen.getByRole("radio", { name: "Database order" });
-    await userEvent.click(radio);
+      const index = OPTIONS.indexOf(value);
+      await userEvent.click(
+        screen.getByRole("radio", { name: TOOLTIP_LABELS[index] }),
+      );
 
-    expect(onChange).toHaveBeenCalledWith("database");
-  });
+      expect(onChange).toHaveBeenCalledWith(value);
+    },
+  );
 
   it("does not call onChange when the same option is selected", async () => {
     const { onChange } = setup({ value: "smart" });
