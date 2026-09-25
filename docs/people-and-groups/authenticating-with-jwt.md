@@ -48,15 +48,15 @@ await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
 
 ## Set up JWT authentication
 
-Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
-
-![JWT form](images/JWT-auth-form.png)
+Go to **Admin** > **Settings** > **Authentication** > **JWT**. Fill out the form, then click **Save and enable**.
 
 Here's a breakdown of each of the settings:
 
 - **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
 
-- **String Used by the JWT Signing Key**: The string used to seed the private key used to validate JWT messages. Both Metabase and the authentication app should have the same JWT signing key.
+- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then generate a key or paste your own.
+
+The **User provisioning**, **User attribute configuration**, and **Group mapping** sections are disabled until you save your settings.
 
 ## User attribute configuration (optional)
 
@@ -65,7 +65,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **Email attribute:** the key to retrieve each JWT user's email address.
 - **First name attribute:** the key to retrieve each JWT user's first name.
 - **Last name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
-- **Group assignment attribute:** the key to retrieve each JWT user's group assignments.
+- **Group assignment attribute:** the key to retrieve each JWT user's group assignments. [Group mapping](#configure-group-mappings) uses this key.
 - **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
@@ -78,14 +78,42 @@ You can configure JWT group assignments through Metabase's Admin interface, or b
 
 ### Configure group mapping in Metabase
 
-1. Add groups to your JWT: `groups: ["group_name"]`. The attribute key (e.g. `groups`) should match the **Group assignment attribute** in Metabase.
-1. In Metabase JWT settings, under **Group Sync**, toggle on **Synchronize Group Memberships**
-1. If the group names in your JWT match the Metabase group names, they will be synced automatically, and you don't need to set up mappings manually.
+To add groups to your JWT, use the syntax `groups: ["group_name"]`, where `groups` is the attribute key. The key must match the **Group assignment attribute** in your JWT settings.
 
-1. Otherwise, click **New mapping** and add the name of a JWT group.
-1. In the row that appears, click the dropdown to pick the Metabase group(s) that this should map to.
-   ![Metabase JWT group mappings](./images/jwt-groups.png)
-1. Repeat this for each of the groups you want to map.
+The **Group mapping** section has three options:
+
+- **Automatic**: Metabase adds people to the Metabase groups whose names match the group names in their JWT.
+- **Manual**: Metabase adds people to groups using only the mappings you create.
+- **Off**: Metabase ignores your saved mappings and doesn't add people to groups.
+
+When you first set up JWT, Metabase sets the group mapping to **Automatic**.
+
+To create manual mappings:
+
+1. Select **Manual**.
+2. Click **New mapping**.
+3. In the **JWT group name** field, enter the name of a group from your JWT.
+4. From **Metabase groups**, select the groups to add people in this JWT group to.
+5. Click **Add mapping**.
+6. Repeat steps 2 to 5 for each group you want to map.
+
+Metabase saves each mapping as soon as you add, edit, or remove it.
+
+![JWT group mappings](./images/jwt-groups.png)
+
+To edit or remove a mapping, hover over it and click the pencil or trash icon.
+
+Switching from **Manual** to **Automatic** deletes all of your mappings. Removing your last mapping switches group mapping to **Off**.
+
+#### Remove a group mapping
+
+To remove a mapping, hover over it and click the trash icon. Choose what to do with the groups in the mapping:
+
+- **Nothing, just remove the mapping**
+- **Also remove all members from this group** (Metabase keeps their accounts)
+- **Also delete the group** (the Administrators group isn't affected)
+
+Removing members or deleting groups takes effect immediately and can't be undone.
 
 ### Configure group mapping through environment variables
 
@@ -109,17 +137,13 @@ You can use the following environment variables to configure JWT group mappings 
 
   You can find Metabase Group ID in the URL for the group page, like `http://your-metabase-url/admin/people/groups/<ID>`. "All Users" group has ID 1 and "Administrators" group has ID 2.
 
-### If group mappings are not specified, Metabase will match groups by name
-
-If you don't specify any group mappings in Metabase's Admin settings or via `MB_JWT_GROUP_MAPPINGS` environment variables, then Metabase will try to assign Metabase groups to users based on the matching names. If the names of groups in the JWT group attribute array match Metabase group names exactly (e.g. both are `"Sales"`), then the groups will be mapped automatically.
-
-If you add group mappings manually, Metabase will _not_ try to also match groups by names.
+If you set either `MB_JWT_GROUP_SYNC` or `MB_JWT_GROUP_MAPPINGS`, the **Group mapping** section becomes read-only. `MB_JWT_GROUP_SYNC=true` with no mappings gives you automatic mapping. With mappings, Metabase uses only those mappings.
 
 ## Creating Metabase accounts with SSO
 
 > Paid plans [charge for each additional account](https://www.metabase.com/how-billing-works#what-counts-as-a-user-account).
 
-User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via JWT SSO.
+User provisioning is enabled by default. When someone logs in via JWT SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
 
@@ -129,7 +153,7 @@ Metabase accounts created with an external identity provider login don't have pa
 
 > **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
 
-To require people to log in with SSO, disable password authentication from **Admin** > **Settings** > **Authentication**.
+To require people to log in with SSO, go to **Admin** > **Settings** > **Authentication** > **Overview** and disable the **Enable password authentication** toggle.
 
 ![Password disable](images/password-disable.png)
 

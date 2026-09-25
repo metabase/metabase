@@ -6,17 +6,15 @@ title: LDAP
 
 Metabase supports authentication with Lightweight Directory Access Protocol (LDAP).
 
-You can find SSO options under **Admin** > **Settings** > **Authentication**.
-
 ## Required LDAP attributes
 
 You need to set up your LDAP directory with these attributes:
 
 - email (defaulting to the `mail` attribute)
-- first name (defaulting to the `givenName` attribute)
+- first name (defaulting to the `givenname` attribute)
 - last name (defaulting to the `sn` attribute).
 
-If your LDAP setup uses other attributes for these, you can edit this under the "Attributes" portion of the form.
+If your LDAP setup uses other attributes for these, you can change them in the **Attributes** section of the LDAP settings page. The section becomes available after you save your server settings.
 
 ![Attributes](./images/ldap-attributes.png)
 
@@ -24,31 +22,31 @@ Your LDAP directory must have the email field populated for each entry that will
 
 ## Enabling LDAP authentication
 
-In the **Admin** > **Settings** > **Authentication** > **LDAP**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the relevant details.
+To enable LDAP authentication, go to **Admin** > **Settings** > **Authentication** > **LDAP** and click **Set up**. Fill out the form, then click **Save and enable**.
 
 ## User provisioning
 
-User provisioning is enabled by default. Metabase will create accounts for people who don't yet have a Metabase account but who are able to log in via LDAP.
+User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
 
 ## Server settings
 
-- LDAP Host. Your server name. E.g., ldap.yourdomain.org
-- LDAP Port. The Server port, usually 389 or 636 if SSL is used.
-- LDAP Security settings. Options are None, SSL, or StarTLS.
-- LDAP admin username. The distinguished name to bind as (if any). This user will be used to look up information about other users.
-- LDAP admin password.
+- **LDAP host** (required): Your server hostname. For example, `ldap.yourdomain.org`.
+- **LDAP port**: The server port, usually 389, or 636 if you use SSL.
+- **LDAP security**: None, SSL, or StartTLS.
+- **Username or DN**: The distinguished name to bind as, if any. Metabase uses this name to look up information about other users.
+- **Password**: The password to bind with for the lookup user.
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
 ## User schema
 
-The **User Schema** section on this same page is where you can adjust settings related to where and how Metabase connects to your LDAP server to authenticate users.
+The **User schema** section on this same page is where you can adjust settings related to where and how Metabase connects to your LDAP server to authenticate users.
 
 ### User search base
 
-The **User search base** field should be completed with the _distinguished name_ (DN) of the entry in your LDAP server that is the starting point when searching for users.
+**User search base** is required. Enter the _distinguished name_ (DN) of the entry in your LDAP server that Metabase should use as the starting point when searching for users.
 
 For example, let's say you're configuring LDAP for your company, WidgetCo, where your base DN is `dc=widgetco,dc=com`. If entries for employees are all stored within an organizational unit in your LDAP server named `People`, you'll want to supply the user search base field with the DN `ou=People,dc=widgetco,dc=com`. This tells Metabase to begin searching for matching entries at that location within the LDAP server.
 
@@ -64,31 +62,38 @@ When a person logs into Metabase, this command confirms that the login they supp
 
 This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
 
-## LDAP group mapping
+## Group mapping
 
-Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control#group-management).
+Instead of manually assigning people to [groups](./managing.md#groups), use [group mappings](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control#group-management) to assign them based on their LDAP groups.
 
-Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
+To map an LDAP group to a Metabase group:
 
-As you can see below, if you have an **Accounting** group in both your LDAP server and Metabase instance, you'll just need to supply the Distinguished Name from your LDAP server (in the example, it's `cn=Accounting,ou=Groups,dc=widgetco,dc=com`) and select its match from the dropdown of your existing Metabase groups.
+1. In the **Group mapping** section, turn on the toggle.
+2. Next to **Manual group mappings**, click **New**.
+3. Enter the distinguished name for the LDAP group, such as `cn=Accounting,ou=Groups,dc=example,dc=org`.
+4. From **Pick Metabase group**, select the Metabase groups that people in this LDAP group should be added to.
+5. Click **Add mapping**.
+6. Repeat steps 2 to 5 for each group you want to map.
+
+Some LDAP directories list each person's groups on their own entry. If yours does, leave **Group search base** empty. Otherwise, enter the DN where your group entries live.
 
 ![Group Mapping](images/ldap-group-mapping.png)
 
 Some things to keep in mind regarding group mapping:
 
-- The Administrator group works like any other group.
+- The Administrators group works like any other group.
 - Updates to a person's group membership based on LDAP mappings are not instantaneous; the changes will take effect only _after_ people log back in.
-- People are only ever added to or removed from mapped groups; the sync has no effect on groups in your Metabase that don't have an LDAP mapping.
+- People are only ever added to or removed from mapped groups. The sync has no effect on Metabase groups that don't have an LDAP mapping.
 
 ## LDAP group membership filter
 
-{% include plans-blockquote.html feature="LDAP advanced features" %}
+{% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
 ## Syncing user attributes with LDAP
 
-{% include plans-blockquote.html feature="LDAP advanced features" %}
+{% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
 You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
 
