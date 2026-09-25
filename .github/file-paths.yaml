@@ -331,9 +331,9 @@ embedder_plugin:
   - "enterprise/backend/src/metabase_enterprise/search/semantic/settings.clj"
   - "enterprise/backend/test/metabase_enterprise/search/semantic/appdb_pgvector_mode_test.clj"
   - "enterprise/backend/test/metabase_enterprise/search/semantic/embedding_test.clj"
+  - "src/metabase/plugins/**"
   - "src/metabase/search/embeddings/provider.clj"
   - "src/metabase/search/embeddings/startup.clj"
-  - "src/metabase/plugins/**"
   - "test/metabase/search/embeddings/embedder_plugin_artifact_test.clj"
 
 serialization_baseline:
