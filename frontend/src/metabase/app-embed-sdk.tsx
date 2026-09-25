@@ -26,8 +26,12 @@ import "sdk-iframe-embedding-ee-plugins";
 // Must be imported after the EE plugins are loaded
 // eslint-disable-next-line import/order
 import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
+import { applyDocumentLocales } from "metabase/utils/boot-locale";
 
-function _init() {
+async function _init() {
+  // This page is served from our own document, which carries the catalogues.
+  await applyDocumentLocales();
+
   document.body.style.margin = "0";
   document.body.style.backgroundColor = "transparent";
   document.documentElement.style.overflow = "hidden";
