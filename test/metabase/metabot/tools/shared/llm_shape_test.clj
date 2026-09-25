@@ -544,6 +544,23 @@
       (is (str/includes? xml "<text_card"))
       (is (str/ends-with? (str/trim xml) "</dashboard>")))))
 
+(deftest ^:parallel dashboard->xml-caps-filters-test
+  (testing "lists at most 50 filters, cuts long names, and says how many filters were left out"
+    (let [long-name  (apply str "Region " (repeat 120 "x"))
+          parameters (for [i (range 53)]
+                       {:id (str "p" i) :name long-name :type :string/=})
+          xml        (llm-shape/dashboard->xml {:id 50 :name "Everything" :parameters parameters})]
+      (is (= 50 (count (re-seq #"<filter " xml))))
+      (is (str/includes? xml (str "<filter id=\"p49\" name=\"" (subs long-name 0 100) "...\" type=\"string/=\"/>")))
+      (is (str/includes? xml (str "<truncation-note>Showing 50 of 53 filters; "
+                                  "the other 3 are not listed.</truncation-note>")))))
+  (testing "cutting a name never splits an emoji"
+    (let [ascii (apply str (repeat 99 "a"))
+          xml   (llm-shape/dashboard->xml {:id 51 :name "Emoji" :parameters [{:id   "p1"
+                                                                              :name (str ascii "😀")
+                                                                              :type :string/=}]})]
+      (is (str/includes? xml (str "name=\"" ascii "...\""))))))
+
 (deftest ^:parallel user->xml-test
   (testing "formats user matching Python"
     (let [user {:id 1

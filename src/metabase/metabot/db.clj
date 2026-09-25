@@ -892,9 +892,9 @@
   (t2/select-one :model/Dashboard dashboard-id))
 
 (mu/defn dashboard-summary
-  "The ID, description, name, and Collection ID of the Dashboard with `dashboard-id`, or nil."
+  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
