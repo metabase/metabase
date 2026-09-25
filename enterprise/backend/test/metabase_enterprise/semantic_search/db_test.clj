@@ -127,3 +127,52 @@
   (testing "other params stay on the URL as written"
     (is (= {:jdbc-url (str base-url "?sslmode=require&options=-c%20foo=bar"), :credentials {}}
            (parse-db-url (str base-url "?sslmode=require&options=-c%20foo=bar"))))))
+
+(defn- userinfo-url
+  "[[base-url]] with `userinfo` written before the host."
+  [userinfo]
+  (str "jdbc:postgresql://" userinfo "@localhost:5432/mb_semantic_search"))
+
+(deftest parse-db-url-host-part-credentials-test
+  (testing "credentials in the host part come off the URL too, with %-escapes decoded and a `+` kept as is"
+    (is (= {:jdbc-url    (str base-url "?tcpKeepAlive=true")
+            :credentials {:user "postgres", :password "p@ss:w+rd"}}
+           (parse-db-url (str (userinfo-url "postgres:p%40ss:w+rd") "?tcpKeepAlive=true")))))
+  (testing "an unencoded `@` in a host-part password still leaves the whole password off the URL"
+    (is (= {:jdbc-url base-url, :credentials {:user "postgres", :password "p@ss"}}
+           (parse-db-url (userinfo-url "postgres:p@ss")))))
+  (testing "host-part credentials come off whatever the scheme, even one no driver accepts"
+    ;; CI spells the scheme `jdbc:postgres:`, and `jdbc:postgresq:` is a typo DriverManager would quote
+    (doseq [scheme ["jdbc:postgres://" "jdbc:postgresq://"]]
+      (is (= {:jdbc-url    (str scheme "localhost:5432/mb_semantic_search")
+              :credentials {:user "postgres", :password "secret"}}
+             (parse-db-url (str scheme "postgres:secret@localhost:5432/mb_semantic_search"))))))
+  (testing "a credential set both in the host part and in the query throws, without quoting either value"
+    (let [e (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"The pgvector URL sets password both before the host and as a parameter"
+                 (parse-db-url (str (userinfo-url "postgres:secret") "?password=other"))))]
+      (is (not (re-find #"secret|other" (str (ex-message e) (ex-data e)))))))
+  (testing "an unencoded `@` in a query value passes through, as pgjdbc accepts it"
+    (doseq [url [(str base-url "?user=mylogin@srv&password=p@ss")
+                 "jdbc:postgresql://?service=pgvector&user=mylogin@srv&password=p@ss"]]
+      (is (=? {:credentials {:user "mylogin@srv", :password "p@ss"}}
+              (parse-db-url url))))))
+
+(deftest parse-db-url-malformed-test
+  (testing "an `@` outside the host part throws without quoting the URL"
+    (doseq [url ["jdbc:postgresql://alice:se/cret@db/mb"            ; `/` in the password
+                 "jdbc:postgresql://alice:se?cret@db/mb"            ; `?` in the password
+                 "jdbc:postgresql://alice:se?service=cret@db/mb"    ; `?`, putting the `@` in a param
+                 "jdbc:postgresql://alice:s@e?cret@db/mb"           ; `@` and then `?` in the password
+                 "jdbc:postgresql://alice:secret@db/mb@elsewhere"]] ; `@` in the database name
+      (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url url)))]
+        (is (=? {:message (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
+                               "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
+                 :data    {}}
+                {:message (ex-message e), :data (ex-data e)}))
+        (is (not (re-find #"cret|elsewhere" (str (ex-message e) (ex-data e))))))))
+  (testing "a malformed %-escape in a credential throws without quoting any of the value"
+    (let [e (is (thrown? clojure.lang.ExceptionInfo (parse-db-url (str base-url "?password=hunter%zz"))))]
+      (is (=? {:message "Malformed %-escape in MB_PGVECTOR_DB_URL", :data {}, :cause nil}
+              {:message (ex-message e), :data (ex-data e), :cause (ex-cause e)})))))
