@@ -553,4 +553,63 @@
   :expect {:in-place       []
            :appdb-h2       []
            :appdb-postgres []
-           :semantic       {:keyword [], :vector [:B]}}}]
+           :semantic       {:keyword [], :vector [:B]}}}
+ {:id     "S26"
+  :focus  "ordinary term matches either indexed text field"
+  :config "simple"
+  :query  "amber"
+  :docs   {:A {:name "amber"}
+           :B {:name "indigo", :description "amber"}
+           :C {:name "cobalt"}}
+  ;; All four engines agree on an exact ordinary term in either field.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector []}}}
+ {:id     "S27"
+  :focus  "multiword terms present together, including across fields"
+  :config "simple"
+  :query  "amber cobalt"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber", :description "cobalt"}
+           :C {:name "indigo"}}
+  ;; With no one-term-only document, OR and AND produce the same result.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector []}}}
+ {:id     "S28"
+  :focus  "final-word prefix without partial or infix distractors"
+  :config "simple"
+  :query  "amber co"
+  :docs   {:A {:name "amber cobalt"}
+           :B {:name "amber corgi"}
+           :C {:name "indigo"}}
+  ;; Last-word completion and substring matching coincide on these documents.
+  :expect {:in-place       [:A :B]
+           :appdb-h2       [:A :B]
+           :appdb-postgres [:A :B]
+           :semantic       {:keyword [:A :B], :vector []}}}
+ {:id     "S29"
+  :focus  "operator-only query without a literal occurrence"
+  :config "simple"
+  :query  "or"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}
+           :C {:name "indigo"}}
+  ;; PostgreSQL discards the operator; the substring engines find no literal.
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}
+ {:id     "S30"
+  :focus  "ordinary term absent from every document"
+  :config "simple"
+  :query  "zircon"
+  :docs   {:A {:name "amber"}
+           :B {:name "cobalt"}}
+  ;; Unlike S29, every engine searches for a term but finds no match.
+  :expect {:in-place       []
+           :appdb-h2       []
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}}]
