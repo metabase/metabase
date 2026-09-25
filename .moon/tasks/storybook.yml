@@ -35,7 +35,7 @@ tasks:
     script: >-
       IS_EMBEDDING_SDK=true
       storybook dev -c frontend/src/embedding-sdk-shared/.storybook
-                    -p 6006
+      -p 6006
     deps:
       - build-cljs
     options:
@@ -61,8 +61,8 @@ tasks:
     script: >-
       NODE_ENV=development
       loki test --chromeFlags='--headless --disable-gpu'
-                --reactUri file:./storybook-static
-                --verboseRenderer
+      --reactUri file:./storybook-static
+      --verboseRenderer
     deps:
       - build-storybook
     options:
@@ -80,7 +80,7 @@ tasks:
     script: >-
       node frontend/test/generate-loki-report-json.js
       && reg-cli --from .loki/report.json
-                 --report .loki/report.html
+      --report .loki/report.html
     options:
       cache: false
 
@@ -89,8 +89,8 @@ tasks:
       NODE_ENV=development
       loki test --chromeFlags='--headless --disable-gpu'
       || (echo "Visual test failed, opening report..."
-          && node frontend/test/generate-loki-report-json.js
-          && reg-cli --from .loki/report.json --report .loki/report.html
-          && open-cli .loki/report.html)
+      && node frontend/test/generate-loki-report-json.js
+      && reg-cli --from .loki/report.json --report .loki/report.html
+      && open-cli .loki/report.html)
     options:
       cache: false
