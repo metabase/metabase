@@ -1,14 +1,15 @@
-"""Reads a kill matrix and turns it into a keep, delete or unmeasured verdict per candidate test.
+"""Reads a kill matrix and turns it into a keep, provisional-keep, delete or unmeasured verdict per candidate test.
 
 The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant id:
 
   {"<mutant id>": {
-     "killed_by": [test id, ...],   confirmed kills only
-     "errored":   [test id, ...],   failed for another reason (crash, timeout, setup), never a kill
-     "ran":       [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored
-     "stratum":   "logic" | "wiring" | "state" | "baseline",
-     "origin":    "<regression id>" or "synthetic",
-     "file":      "<repo-relative path>"   optional, see file_reach()
+     "killed_by":      [test id, ...],   confirmed kills only
+     "unconfirmed_by": [test id, ...],   e2e kills seen once and not reproduced on rerun
+     "errored":        [test id, ...],   failed for another reason (crash, timeout, setup), never a kill
+     "ran":            [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored
+     "stratum":        "logic" | "wiring" | "state" | "baseline",
+     "origin":         "<regression id>" or "synthetic",
+     "file":           "<repo-relative path>"   optional, see file_reach()
    }}
 
 A test id is "<spec path>::<Cypress full title>" for e2e,
@@ -21,9 +22,13 @@ Every other id is a remaining test: it counts when deciding whether some other t
 and never gets a verdict.
 
 A candidate's unique kills are the mutants it killed, among those it ran against, that no other test killed.
-  keep        it has a unique kill, or the kills-first cover keeps it for kills it shares only with other candidates
-  delete      no unique kill, at least `min_mutants` qualifying mutants, and every required stratum among them
-  unmeasured  anything else, including no kill matrix, `ran` unknown, or a test that failed in the capture or isn't in it
+Its unconfirmed unique kills are the mutants it ran against where it is the only test in `unconfirmed_by` and none is in `killed_by`.
+The kills-first cover keeps a candidate for every mutant that candidates kill and no remaining test does,
+where a mutant's killers are the tests in its `killed_by`, or in its `unconfirmed_by` when `killed_by` is empty.
+  keep              it has a unique kill, or the cover keeps it for kills it shares only with other candidates
+  provisional-keep  not a keep, and it has an unconfirmed unique kill or the cover keeps it
+  delete            no unique kill of either kind, at least `min_mutants` qualifying mutants, and every required stratum among them
+  unmeasured        anything else, including no kill matrix, `ran` unknown, or a test that failed in the capture or isn't in it
 A qualifying mutant sits in the candidate's reached code,
 and both the candidate and at least one other test ran against it without erroring.
 
@@ -46,6 +51,7 @@ import subprocess
 import sys
 import types
 
+VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured")
 MIN_MUTANTS = 5
 REQUIRED_STRATA = "logic,wiring"
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -71,7 +77,7 @@ def load(path, run):
             "stratum": entry.get("stratum"), "origin": entry.get("origin"), "file": entry.get("file"),
             "located": bool(entry.get("file")), "ran_known": ran is not None,
         }
-        for field in ("killed_by", "errored", "ran"):
+        for field in ("killed_by", "unconfirmed_by", "errored", "ran"):
             ids, others = set(), set()
             for test_id in entry.get(field) or []:
                 hits = by_base_key.get(test_id)
@@ -155,13 +161,26 @@ def kills_first_cover(primary, secondary, costs):
     return kept, len(universe)
 
 
+def cover_killers(m):
+    """The candidates the kills-first cover can keep the mutant through.
+
+    When every test in `killed_by` is a candidate, they are those tests.
+    When `killed_by` is empty and every test in `unconfirmed_by` is a candidate, they are the ones that ran the mutant.
+    """
+    if m["killed_by_others"]:
+        return set()
+    if m["killed_by"]:
+        return m["killed_by"]
+    if m["unconfirmed_by_others"]:
+        return set()
+    return {i for i in m["unconfirmed_by"] if not m["ran_known"] or i in m["ran"]}
+
+
 def cover_kills(tests, mutants, secondary, costs):
-    """Keeps every mutant that some passing candidate kills and no other test does."""
+    """Keeps every mutant that cover_killers() gives a passing candidate for."""
     primary = [set() for _ in tests]
     for mid, m in mutants.items():
-        if m["killed_by_others"]:
-            continue
-        for i in m["killed_by"]:
+        for i in cover_killers(m):
             if tests[i].state == "passed":
                 primary[i].add(mid)
     return kills_first_cover(primary, secondary, costs)
@@ -175,20 +194,29 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
     killed_by_test = collections.defaultdict(set)
     ran_by_test = collections.defaultdict(set)
     errored_by_test = collections.defaultdict(set)
+    cover_by_test = collections.defaultdict(set)
     for mid, m in mutants.items():
         for i in m["killed_by"]:
             killed_by_test[i].add(mid)
+        for i in cover_killers(m):
+            cover_by_test[i].add(mid)
         for i in m["ran"]:
             ran_by_test[i].add(mid)
         for i in m["errored"]:
             errored_by_test[i].add(mid)
+
+    def by_stratum_ids(mids):
+        return {s: [mid for mid in mids if mutants[mid]["stratum"] == s] for s in {mutants[mid]["stratum"] for mid in mids}}
 
     out = {}
     for t in tests:
         if kills is None:
             out[t.key] = {"verdict": "unmeasured", "reason": "no kill matrix"}
             continue
-        mine = killed_by_test[t.id] | ran_by_test[t.id] | errored_by_test[t.id]
+        unconfirmed_unique = sorted(
+            mid for mid in cover_by_test[t.id] if not mutants[mid]["killed_by"] and len(mutants[mid]["unconfirmed_by"]) == 1)
+        cover_kept_for = sorted(cover_by_test[t.id]) if t.id in cover_keeps else []
+        mine = killed_by_test[t.id] | ran_by_test[t.id] | errored_by_test[t.id] | cover_by_test[t.id]
         if not mine:
             out[t.key] = {"verdict": "unmeasured", "reason": "not in the kill matrix"}
             continue
@@ -206,7 +234,9 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
         ]
         strata = collections.Counter(mutants[mid]["stratum"] for mid in qualifying)
         detail = {
-            "unique_kills": {s: [mid for mid in unique if mutants[mid]["stratum"] == s] for s in {mutants[mid]["stratum"] for mid in unique}},
+            "unique_kills": by_stratum_ids(unique),
+            "unconfirmed_unique_kills": by_stratum_ids(unconfirmed_unique),
+            "cover_kept_for": by_stratum_ids(cover_kept_for),
             "kills": len(kills_here),
             "misses": len(ran_by_test[t.id] - killed_by_test[t.id] - errored_by_test[t.id]),
             "errored": errored,
@@ -217,8 +247,12 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
         missing = [s for s in required_strata if not strata.get(s)]
         if unique:
             verdict, reason = "keep", "unique kills"
-        elif t.id in cover_keeps:
+        elif any(mutants[mid]["killed_by"] for mid in cover_kept_for):
             verdict, reason = "keep", "the kills-first cover keeps it for kills it shares only with other candidates"
+        elif unconfirmed_unique:
+            verdict, reason = "provisional-keep", "unconfirmed unique kills"
+        elif cover_kept_for:
+            verdict, reason = "provisional-keep", "the kills-first cover keeps it for unconfirmed kills it shares only with other candidates"
         elif t.state is None:
             verdict, reason = "unmeasured", "not in the capture run, so its reached code is unknown"
         elif t.state != "passed":
@@ -239,18 +273,21 @@ def summarize(results, keys=None):
     rows = [results[k] for k in keys] if keys is not None else list(results.values())
     by_verdict = collections.Counter(r["verdict"] for r in rows)
     reasons = collections.Counter(f'{r["verdict"]}: {r["reason"].split(",")[0]}' for r in rows)
-    strata = {v: collections.Counter() for v in ("keep", "delete", "unmeasured")}
+    strata = {v: collections.Counter() for v in VERDICTS}
     for r in rows:
         if r["verdict"] == "keep":
             strata["keep"].update(r.get("unique_kills", {}).keys())
+        elif r["verdict"] == "provisional-keep":
+            strata["provisional-keep"].update(r["unconfirmed_unique_kills"].keys())
         else:
             strata[r["verdict"]].update(s for s, n in r.get("qualifying_mutants", {}).items() if n)
     return {
         "candidates": len(rows),
-        "verdicts": {v: by_verdict.get(v, 0) for v in ("keep", "delete", "unmeasured")},
+        "verdicts": {v: by_verdict.get(v, 0) for v in VERDICTS},
         "reasons": dict(reasons.most_common()),
         "strata": {
             "keep, tests with a unique kill in the stratum": dict(strata["keep"]),
+            "provisional-keep, tests with an unconfirmed unique kill in the stratum": dict(strata["provisional-keep"]),
             "delete, tests with a qualifying mutant in the stratum": dict(strata["delete"]),
             "unmeasured, tests with a qualifying mutant in the stratum": dict(strata["unmeasured"]),
         },
@@ -381,6 +418,10 @@ def by_stratum(counts):
     return ", ".join(f"{s or 'no stratum'} {n}" for s, n in sorted(counts.items(), key=lambda x: str(x[0])))
 
 
+def ids_by_stratum(groups):
+    return "; ".join(f"{s or 'no stratum'} {', '.join(mids)}" for s, mids in sorted(groups.items(), key=lambda x: str(x[0])))
+
+
 def report(result):
     k, s = result["kills"], result["summary"]
     lines = [
@@ -390,7 +431,7 @@ def report(result):
         f"{s['candidates']} candidates, {len(result['candidates_not_in_index'])} of them not in the index",
         f"A delete needs {result['min_mutants']} qualifying mutants, among them {', '.join(result['required_strata']) or 'any stratum'}",
         "",
-        *(f"{v:<11} {n}" for v, n in s["verdicts"].items()),
+        *(f"{v:<16} {n}" for v, n in s["verdicts"].items()),
         "",
         "Reasons",
         *(f"  {n:>4}  {reason}" for reason, n in s["reasons"].items()),
@@ -399,7 +440,7 @@ def report(result):
         *(f"  {what}: {by_stratum(counts) or 'none'}" for what, counts in s["strata"].items()),
     ]
     rows = result["candidates"]
-    for verdict in ("keep", "delete"):
+    for verdict in ("keep", "provisional-keep", "delete"):
         chosen = sorted(cid for cid, r in rows.items() if r["verdict"] == verdict)
         if chosen:
             lines += ["", verdict.capitalize()]
@@ -407,11 +448,15 @@ def report(result):
             r = rows[cid]
             if r["unique_kills"]:
                 why = f"unique kills: {by_stratum({st: len(mids) for st, mids in r['unique_kills'].items()})}"
-            elif verdict == "keep":
+            elif verdict == "provisional-keep" and r["unconfirmed_unique_kills"]:
+                why = f"unconfirmed unique kills: {by_stratum({st: len(mids) for st, mids in r['unconfirmed_unique_kills'].items()})}"
+            elif verdict != "delete":
                 why = r["reason"]
             else:
                 why = f"no unique kill, qualifying mutants: {by_stratum(r['qualifying_mutants'])}"
             lines += [f"  {cid}", f"      {why}"]
+            if r["cover_kept_for"]:
+                lines.append(f"      kept by the cover for {ids_by_stratum(r['cover_kept_for'])}")
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
         lines += ["", "Mutants whose location resolves to no code, so no candidate reaches them"]

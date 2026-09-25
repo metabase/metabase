@@ -7,7 +7,7 @@
 # A rerun supplies passing attempts for tests that never passed in the main run, and second samples of the others.
 # --backend-baseline union (the default) also drops backend classes that any shard's coverage baseline ran,
 # and shard subtracts each shard's own baseline only.
-# --kills takes a kill matrix for keep, delete or unmeasured verdicts (kills.py has the format).
+# --kills takes a kill matrix for keep, provisional-keep, delete or unmeasured verdicts (kills.py has the format).
 # Outputs go to --out (default $JOURNEY_ANALYSIS_DIR/<run id or dir name>): journey-graph.json, journey-overlap.json, report.txt, work/.
 # JOURNEY_ANALYSIS_DIR defaults to journey-analysis/ at the repo root, which is gitignored.
 # JOURNEY_PYTHON is a python with numpy and scipy.

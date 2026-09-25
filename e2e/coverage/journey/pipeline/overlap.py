@@ -7,7 +7,7 @@ Tests are "<spec path>::<full title>" throughout.
   weighted_cover  coverage ceiling: cheapest tests by measured duration that keep every item. Not a deletion list
   kills_cover     with --kills: the tests that keep every kill, then the most code and checks, then the least time
   verdicts        duplicate verdicts that combine code, path and assertions
-  deletion        keep, delete or unmeasured per test, from --kills (kills.py has the format)
+  deletion        keep, provisional-keep, delete or unmeasured per test, from --kills (kills.py has the format)
   prefix_subtraction  inferred (totals minus totals) against measured (step deltas) for tests whose paths extend another's
   noise_floor     the same test measured twice, when the run has a control pass
 """

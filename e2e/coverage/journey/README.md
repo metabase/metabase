@@ -2,7 +2,7 @@
 
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
-- **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, delete or unmeasured verdict.
+- **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, provisional-keep, delete or unmeasured verdict.
 - **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
@@ -84,6 +84,7 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 {
   "<mutant id>": {
     "killed_by": ["<test id>", ...],
+    "unconfirmed_by": ["<test id>", ...],
     "errored": ["<test id>", ...],
     "ran": ["<test id>", ...],
     "stratum": "logic" | "wiring" | "state" | "baseline",
@@ -94,6 +95,7 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 ```
 
 - `killed_by` holds confirmed kills only: an assertion failure on a test that passes on clean code, reproduced on a rerun.
+- `unconfirmed_by` holds e2e kills seen once but not reproduced on a rerun. They never count towards a keep or a delete.
 - `errored` holds tests that failed for another reason, like a crash, a timeout or a setup failure. They are never kills.
 - A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
 - `file` is optional. With it, a mutant counts towards a test's delete verdict only when the test ran a function of that file, or a class of that namespace for `.clj` and `.cljc`. Without it, being in `ran` counts as reaching the mutant.
@@ -103,6 +105,7 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 Only the run's e2e tests get a verdict. Every other id, including jest and Clojure tests, counts as a remaining test:
 
 - **keep:** the test has a kill no other test has, or the kills-first cover keeps it for kills it shares only with other tests of the run.
+- **provisional-keep:** not a keep, but the test has an unconfirmed kill no other test has, or the kills-first cover keeps it for unconfirmed kills it shares only with other tests of the run. For every mutant that only tests of the run kill, the cover keeps one test in its `killed_by`, or one in its `unconfirmed_by` when `killed_by` is empty, so an unconfirmed kill blocks a delete but never makes a keep.
 - **delete:** no unique kill, at least `--min-mutants` qualifying mutants, and every `--require-strata` stratum among them. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too.
 - **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
 
@@ -153,7 +156,7 @@ Each test contributes one attempt: the last passing attempt of the main run, els
 
 ### Verdicts from a kills file
 
-`pipeline/kills.py` gives each candidate a keep, delete or unmeasured verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
+`pipeline/kills.py` gives each candidate a keep, provisional-keep, delete or unmeasured verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
 
 ```
 python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
@@ -172,14 +175,14 @@ python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file
 
 The verdict rules are the pipeline's, and run through the same code. What differs:
 
-- **Candidates:** only the tests given with `--candidates` get a verdict. Every other id in the kills file is a remaining test, including e2e tests that aren't candidates. A candidate that isn't in the index is still a candidate, and it's unmeasured unless it has a unique kill.
+- **Candidates:** only the tests given with `--candidates` get a verdict. Every other id in the kills file is a remaining test, including e2e tests that aren't candidates. A candidate that isn't in the index is still a candidate, and it's unmeasured unless it has a unique kill, confirmed or not.
 - **Reach:** a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`, in any form from [Locations](#locations). A candidate reaches the mutant when it ran a function or class the location resolves to, so reach is per function where the pipeline's is per file. A `file` with nothing else means the whole file, as in the pipeline. No candidate reaches a location that resolves to nothing.
 - **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
 - **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
 
 It prints a short report. With `--out`, it also writes JSON with these keys:
 
-- `candidates`: for each candidate, the verdict and reason, `unique_kills` and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on
+- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on
 - `summary`: verdicts, reasons, and candidates per stratum
 - `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to, and how many candidates reach it
 - `kills_cover`: the candidates the cover keeps
