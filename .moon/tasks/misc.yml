@@ -40,12 +40,6 @@ tasks:
       - bun.lock
       - package.json
 
-  mage:
-    script: >-
-      ./bin/mage
-    options:
-      cache: false
-
   remove-webpack-cache:
     script: >-
       rm -rf ./node_modules/.cache
