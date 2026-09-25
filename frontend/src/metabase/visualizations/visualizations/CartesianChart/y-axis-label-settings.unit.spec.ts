@@ -93,7 +93,11 @@ describe("y-axis label settings", () => {
       },
     );
 
-    expect(left).toMatchObject({ title: "Left axis label", hidden: false });
+    expect(left).toMatchObject({
+      title: "Left axis label",
+      hidden: false,
+      value: null,
+    });
     expect(right).toMatchObject({
       title: "Right axis label",
       group: "Y-axis",

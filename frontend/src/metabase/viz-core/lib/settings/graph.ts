@@ -6,6 +6,7 @@ import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
@@ -713,17 +714,14 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
-// Only a split chart has a second axis to label. A chart with one axis, on
-// either side, labels it through `graph.y_axis.title_text`. The sides are
-// computed here rather than as a setting because only the sidebar needs them,
-// and computing them joins the whole dataset. The chart builds its axes from
-// the raw series, so the fields that read the sides ask for the raw series too.
+// Not `useRawSeries`: it would also change the left label's default.
 const isYAxisSplit = (
-  rawSeries: Series,
+  series: Series,
   vizSettings: ComputedVisualizationSettings,
 ) => {
-  // Building the series throws on data the renderer would reject. A throw here
-  // would take the whole sidebar down, so it falls back to a single label.
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+
   try {
     const sides = getYAxisSides(rawSeries, vizSettings);
     return sides.left && sides.right;
@@ -1033,7 +1031,6 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "input",
-    useRawSeries: true,
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
     getDefault: (series, vizSettings) => {
@@ -1059,7 +1056,6 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Y-axis`;
     },
     widget: "input",
-    useRawSeries: true,
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false ||
       !isYAxisSplit(series, vizSettings),

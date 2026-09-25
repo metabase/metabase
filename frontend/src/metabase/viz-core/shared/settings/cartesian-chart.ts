@@ -298,8 +298,6 @@ export function getYAxisSides(
 ): YAxisSides {
   const [firstSeries] = rawSeries;
 
-  // The sidebar also opens for charts that cannot render yet, such as a bar
-  // chart with no breakout. They have no axes.
   if (
     firstSeries == null ||
     !hasValidColumnsSelected(settings, firstSeries.data)
