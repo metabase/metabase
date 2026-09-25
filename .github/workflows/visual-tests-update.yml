@@ -26,7 +26,7 @@ jobs:
         run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Build Storybook
-        run: bun run build-storybook
+        run: bun run build-storybook:visual
 
       - name: Update screenshots
         run: bun run test-visual:docker --update-snapshots
