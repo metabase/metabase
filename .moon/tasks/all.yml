@@ -1,0 +1,417 @@
+# Task graph for Metabase. One file, inherited by the single project.
+#
+# Shared input sets are fileGroups, referenced as @group(name).
+# Every task gets ensure-deps via implicitDeps rather than repeating it 97 times.
+
+fileGroups:
+  frontend:
+    - 'frontend/**'
+    - 'enterprise/frontend/**'
+  e2e:
+    - 'e2e/**'
+  cljs:
+    - 'src/**'
+    - 'resources/**'
+    - 'deps.edn'
+    - 'shadow-cljs.edn'
+    - '.clj-kondo/config/modules/config.edn'
+  tsconfig:
+    - 'tsconfig.json'
+    - 'tsconfig.base.json'
+    - 'tsconfig.sdk.json'
+  rspack:
+    - 'rspack.*.js'
+    - 'rspack.config.js'
+    - 'babel.config.json'
+    - 'postcss.config.js'
+  jest:
+    - 'jest.config.js'
+    - 'jest.base.conf.js'
+    - 'jest.esm-packages.js'
+    - 'babel.config.json'
+  sdk:
+    - 'enterprise/frontend/src/embedding-sdk-package/**'
+    - 'enterprise/frontend/src/embedding-sdk-bundle/**'
+    - 'enterprise/frontend/src/embedding-sdk-shared/**'
+
+taskOptions:
+  outputStyle: 'buffer-only-failure'
+
+implicitDeps:
+  - '~:ensure-deps'
+
+tasks:
+
+  # Dependency gate.
+  'ensure-deps':
+    script: 'bun install'
+    inputs: ['bun.lock', 'package.json']
+
+  # Cached builds.
+  'build-embedding-sdk-node':
+    script: 'rspack --config rspack.embedding-sdk-node.config.js'
+    deps: ['~:build-cljs']
+    inputs: ['@group(sdk)', '@group(rspack)']
+    outputs: ['resources/embedding-sdk/**']
+  'build-release-cljs':
+    script: 'bun run clean-release:cljs && shadow-cljs release app'
+    inputs: ['@group(cljs)']
+    outputs: ['target/cljs_release/**']
+  'build-release-embedding-sdk-bundle':
+    script: 'WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-bundle.config.js'
+    deps: ['~:build-release-cljs']
+    inputs: ['@group(sdk)', '@group(rspack)']
+    outputs: ['resources/embedding-sdk/**']
+  'build-release-embedding-sdk-package':
+    script: 'WEBPACK_BUNDLE=production rspack --config rspack.embedding-sdk-package.config.js'
+    deps: ['~:build-release-cljs']
+    inputs: ['@group(sdk)', '@group(rspack)']
+    outputs: ['resources/embedding-sdk/**']
+  'build-release-js':
+    script: 'WEBPACK_BUNDLE=production rspack build'
+    deps: ['~:build-release-cljs']
+    inputs: ['@group(frontend)', '@group(rspack)']
+    outputs: ['resources/frontend_client/**']
+  'build-release-static-viz':
+    script: 'WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js'
+    deps: ['~:build-release-cljs']
+    inputs: ['@group(frontend)', '@group(rspack)']
+    outputs: ['resources/frontend_client/**']
+  'build-storybook':
+    script: 'NODE_OPTIONS=--max-old-space-size=8192 storybook build'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', '.storybook/**']
+    outputs: ['storybook-static/**']
+  'build-cljs':
+    script: 'shadow-cljs compile app'
+    inputs: ['@group(cljs)']
+    outputs: ['target/cljs_dev/**']
+  'build-custom-viz-fixtures':
+    script: 'node enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs'
+    inputs: ['enterprise/frontend/src/custom-viz/**']
+  'build-js':
+    script: 'rspack build'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', '@group(rspack)']
+    outputs: ['resources/frontend_client/**']
+  'embedding-sdk-dts-fixup':
+    script: 'node ./bin/embedding-sdk/fixup-types-after-compilation.js'
+    inputs: ['bin/embedding-sdk/**']
+  'embedding-sdk-generate-package':
+    script: 'node ./bin/embedding-sdk/generate-sdk-package-files.js'
+    inputs: ['bin/embedding-sdk/**']
+    outputs: ['resources/embedding-sdk/**']
+  'embedding-sdk-generate-package-support-files':
+    script: 'tsx enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts'
+    inputs: ['enterprise/frontend/src/embedding-sdk-package/bin/**']
+    outputs: ['resources/embedding-sdk/**']
+  'generate-expression-parser':
+    script: 'lezer-generator --typeScript frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts'
+    inputs: ['frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer']
+    outputs: ['frontend/src/metabase/querying/expressions/tokenizer/lezer.ts']
+
+  # Cached checks: silent unless they fail.
+  'embedding-sdk-cli-snippets-type-check':
+    script: './bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh'
+    inputs: ['@group(sdk)', 'bin/embedding-sdk/**']
+  'embedding-sdk-docs-snippets-type-check':
+    script: './bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh'
+    inputs: ['@group(sdk)', 'bin/embedding-sdk/**', 'docs/**']
+  'embedding-sdk-test-unit':
+    script: 'bun run test-unit enterprise/frontend/src/embedding-sdk-package/ enterprise/frontend/src/embedding-sdk-bundle/ enterprise/frontend/src/embedding-sdk-shared/'
+    deps: ['~:build-cljs']
+    inputs: ['@group(sdk)', '@group(jest)']
+  'find-never-defined-css-variables':
+    script: 'tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts'
+    inputs: ['frontend/**/*.css', 'frontend/**/*.tsx', 'bin/find-never-defined-css-variables/**']
+  'lint-css':
+    script: 'stylelint --cache ''./frontend/**/*.css'''
+    inputs: ['frontend/**/*.css', '.stylelintrc.json']
+  'lint-docs-links':
+    script: './bin/verify-doc-links'
+    inputs: ['docs/**', 'bin/verify-doc-links']
+  'lint-eslint':
+    script: 'eslint --cache --cache-strategy content --max-warnings 0 --report-unused-disable-directives enterprise/frontend frontend e2e'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', '@group(e2e)', '@group(tsconfig)', 'eslint.config.mjs']
+  'lint-format':
+    script: 'oxfmt --check ''{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'''
+    inputs: ['@group(frontend)', '@group(e2e)', '.oxfmtrc.json']
+  'lint-openapi':
+    script: 'redocly lint resources/openapi/openapi.json --skip-rule security-defined --skip-rule operation-operationId --skip-rule no-unused-components --skip-rule info-license --skip-rule no-path-trailing-slash --skip-rule no-identical-paths --skip-rule no-ambiguous-paths --skip-rule path-parameters-defined --skip-rule spec-components-invalid-map-name'
+    inputs: ['resources/openapi/openapi.json']
+  'lint-yaml':
+    script: 'yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}'
+    inputs: ['**/*.yaml', '**/*.yml']
+  'module-boundaries':
+    script: 'eslint --config eslint.config.module-boundaries.mjs ''frontend/src/**/*.{ts,tsx}'' ''enterprise/frontend/src/**/*.{ts,tsx}'''
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', 'eslint.config.module-boundaries.mjs']
+  'test-ci-scripts':
+    script: 'jest --selectProjects ci-scripts --maxWorkers=4'
+    inputs: ['bin/**', 'release/**', '@group(jest)']
+  'test-cljs':
+    script: 'shadow-cljs compile test && node target/node-tests.js'
+    inputs: ['@group(cljs)', 'test/**']
+  'test-timezones-unit':
+    script: 'jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', 'jest.tz.unit.conf.js']
+  'test-unit':
+    script: 'jest --ignoreProjects ci-scripts --maxWorkers=4'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', '@group(jest)']
+  'type-check':
+    script: './node_modules/typescript7/bin/tsc --noEmit'
+    deps: ['~:build-cljs']
+    inputs: ['@group(frontend)', '@group(e2e)', '@group(tsconfig)']
+  'validate-e2e-filenames':
+    script: 'node e2e/validate-e2e-test-files.js'
+    inputs: ['@group(e2e)']
+
+  # Aggregates: run their deps and nothing else.
+  'build':
+    command: 'noop'
+    deps: ['~:build-cljs', '~:build-js']
+    options: {cache: false}
+  'build-release':
+    command: 'noop'
+    deps: ['~:build-release-cljs', '~:build-release-js']
+    options: {cache: false}
+  'ci':
+    command: 'noop'
+    deps: ['~:ci-frontend', '~:ci-backend']
+    options: {cache: false}
+  'ci-frontend':
+    command: 'noop'
+    deps: ['~:lint', '~:test']
+    options: {cache: false}
+  'lint':
+    command: 'noop'
+    deps: ['~:lint-eslint', '~:lint-format', '~:lint-docs-links', '~:lint-yaml', '~:type-check']
+    options: {cache: false}
+
+  # Servers and watchers.
+  'build-embedding-sdk-node-watch':
+    script: 'bun run build-embedding-sdk-node --watch'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-hot':
+    script: 'bun run build-hot:js'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-hot-be':
+    command: 'noop'
+    deps: ['~:build-hot-cljs', '~:build-hot-js']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-hot-cljs':
+    script: 'shadow-cljs watch app'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-hot-js':
+    script: 'bun run clean-dev:js && NODE_OPTIONS=--max-old-space-size=8192 WEBPACK_BUNDLE=hot rspack serve'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-static-viz-watch':
+    script: 'rspack --config rspack.static-viz.config.js --watch'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-watch':
+    command: 'noop'
+    deps: ['~:build-watch-cljs', '~:build-watch-js']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-watch-cljs':
+    script: 'shadow-cljs watch app'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'build-watch-js':
+    script: 'NODE_OPTIONS=--max-old-space-size=8192 rspack serve --watch'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'cljs-nrepl':
+    script: 'shadow-cljs node-repl -d cider/cider-nrepl:0.57.0 -d cider/piggieback:0.6.1 -d refactor-nrepl/refactor-nrepl:3.11.0'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'cloud-backend':
+    script: 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'cloud-dev':
+    command: 'noop'
+    deps: ['~:build-hot-js', '~:cloud-backend']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'concurrently':
+    script: 'concurrently --kill-others -p name'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev':
+    command: 'noop'
+    deps: ['~:dev-backend', '~:build-hot-js', '~:build-static-viz-watch']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev-ee':
+    command: 'noop'
+    deps: ['~:dev-backend-ee', '~:build-hot-js', '~:build-static-viz-watch']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev-ee-hot-be':
+    command: 'noop'
+    deps: ['~:dev-backend-ee', '~:build-hot-js', '~:build-hot-cljs', '~:build-static-viz-watch']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev-hot-be':
+    command: 'noop'
+    deps: ['~:dev-backend', '~:build-hot-js', '~:build-hot-cljs', '~:build-static-viz-watch']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev-backend':
+    script: 'clojure -M:run:dev:dev-start --hot'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'dev-backend-ee':
+    script: 'clojure -M:run:ee:dev:dev-start --hot'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'email-dev':
+    script: 'bun dev/email-preview/serve.ts'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'storybook':
+    script: 'storybook dev -p 6006'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'storybook-embedding-sdk':
+    script: 'IS_EMBEDDING_SDK=true storybook dev -c frontend/src/embedding-sdk-shared/.storybook -p 6006'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'test-unit-watch':
+    script: 'bun run test-unit --watch'
+    deps: ['~:build-cljs']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'test-unit-watch-cljs':
+    command: 'noop'
+    deps: ['~:build-watch-cljs', '~:test-unit-watch']
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+  'types-generate-watch':
+    script: 'npx chokidar ''resources/openapi/openapi.json'' --initial -c ''openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts'' --debounce 1000'
+    options: {persistent: true, cache: false, runInCI: false, outputStyle: 'stream'}
+
+  # Side effects: never cached.
+  'build-embedding-sdk-package':
+    script: 'bun run embedding-sdk:clean:dist && bun run build-release:cljs && bun run embedding-sdk:generate-package && bun run embedding-sdk:generate-package-support-files && bun run build-release:embedding-sdk-package && bun run build-embedding-sdk-node && bun run embedding-sdk:dts:generate'
+    options: {cache: false}
+  'build-static-viz':
+    script: 'bun run build-release:cljs && WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js'
+    options: {cache: false}
+  'build-stats':
+    script: 'rspack --json > stats.json'
+    options: {cache: false}
+  'chromatic':
+    script: 'bun run build:cljs && NODE_OPTIONS=--max-old-space-size=8192 chromatic'
+    options: {cache: false}
+  'ci-backend':
+    script: 'clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure -X:dev:test'
+    options: {cache: false}
+  'clean-cypress-artifacts':
+    script: 'rm -R -f cypress/'
+    options: {cache: false}
+  'clean-dev-cljs':
+    script: 'rm -rf target/cljs_dev/*'
+    options: {cache: false}
+  'clean-dev-js':
+    script: 'rm -rf resources/frontend_client/app/dist target/classes/frontend_client/app/dist resources/frontend_client/app/embedding-sdk target/classes/frontend_client/app/embedding-sdk'
+    options: {cache: false}
+  'clean-release-cljs':
+    script: 'rm -rf target/cljs_release/*'
+    options: {cache: false}
+  'clean-cljs':
+    script: 'bun run clean-dev:cljs && bun run clean-release:cljs'
+    options: {cache: false}
+  'cljs-server-restart':
+    script: 'shadow-cljs restart'
+    options: {cache: false}
+  'cljs-server-start':
+    script: 'shadow-cljs start'
+    options: {cache: false}
+  'cljs-server-stop':
+    script: 'shadow-cljs stop'
+    options: {cache: false}
+  'embedding-eajs-docs-generate':
+    script: 'typedoc --options ./.typedoc/typedoc.eajs-markdown.config.js'
+    options: {cache: false}
+  'embedding-sdk-clean-dist':
+    script: 'rm -rf resources/embedding-sdk/dist'
+    options: {cache: false}
+  'embedding-sdk-clean-tsbuildinfo':
+    script: 'rm -rf resources/embedding-sdk/.tsbuildinfo'
+    options: {cache: false}
+  'embedding-sdk-docs-generate':
+    script: 'typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js'
+    deps: ['~:build-release-embedding-sdk-package', '~:embedding-sdk-dts-generate']
+    options: {cache: false}
+  'embedding-sdk-dts-generate':
+    script: 'bun run embedding-sdk:clean:tsbuildinfo && ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true && bun run embedding-sdk:dts:fixup'
+    options: {cache: false}
+  'embedding-sdk-publish':
+    script: 'cd ./resources/embedding-sdk && npm publish'
+    options: {cache: false}
+  'eslint-fix':
+    script: 'bun run lint-eslint --fix'
+    options: {cache: false}
+  'format':
+    script: 'oxfmt --write ''{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'''
+    options: {cache: false}
+  'generate-cypress-html-report':
+    script: 'mochawesome-merge cypress/reports/mochareports/*.json > cypress/reports/cypress-test-report.json && marge cypress/reports/cypress-test-report.json -o cypress/reports --inline'
+    options: {cache: false}
+  'generate-license-disclaimer':
+    script: 'node bin/generate-license-disclaimer.js'
+    options: {cache: false}
+  'generate-openapi':
+    script: 'clojure -M:run:ee generate-openapi-spec'
+    options: {cache: false}
+  'mage':
+    script: './bin/mage'
+    options: {cache: false}
+  'postinstall':
+    script: 'if [ -z "$CI" ]; then patch-package; fi'
+    options: {cache: false}
+  'precommit':
+    script: 'lint-staged'
+    options: {cache: false}
+  'preinstall':
+    script: 'node -e "if(!/bun/.test(process.env.npm_execpath || '''')) { console.error(''Please use Bun, not npm or yarn.''); process.exit(1); }"'
+    options: {cache: false}
+  'prepare':
+    script: 'husky'
+    options: {cache: false}
+  'remove-webpack-cache':
+    script: 'rm -rf ./node_modules/.cache'
+    options: {cache: false}
+  'test':
+    script: 'bun run test-unit && bun run test-timezones && bun run test-cypress'
+    options: {cache: false}
+  'test-cypress':
+    script: 'tsx ./e2e/runner/run_cypress_local.ts'
+    options: {cache: false}
+  'test-cypress-host-sample-apps':
+    script: 'tsx ./e2e/runner/run_cypress_host_sample_apps.ts'
+    options: {cache: false}
+  'test-debug':
+    script: 'bun run build:cljs && node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles'
+    options: {cache: false}
+  'test-memory':
+    script: 'node --expose-gc ./node_modules/.bin/jest --runInBand --config jest.memory.conf.js'
+    options: {cache: false}
+  'test-timezones':
+    script: './frontend/test/__runner__/run_timezone_tests'
+    options: {cache: false}
+  'test-visual-loki':
+    script: 'NODE_ENV=development loki test --chromeFlags=''--headless --disable-gpu'' '
+    options: {cache: false}
+  'test-visual-loki-approve-diff':
+    script: 'ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ cp _ .loki/reference/'
+    options: {cache: false}
+  'test-visual-loki-prune':
+    script: 'ls .loki/reference | grep -v "$(ls .loki/current)" | xargs -I {} rm .loki/reference/{}'
+    options: {cache: false}
+  'test-visual-loki-report':
+    script: 'node frontend/test/generate-loki-report-json.js && reg-cli --from .loki/report.json --report .loki/report.html'
+    options: {cache: false}
+  'test-visual-loki-report-open':
+    script: 'bun run test-visual:loki || (echo ''Visual test failed, opening report...'' && bun run test-visual:loki-report && open-cli .loki/report.html)'
+    options: {cache: false}
+  'test-visual-loki-ci':
+    script: 'bun run build-storybook && bun run test-visual:loki --reactUri file:./storybook-static --verboseRenderer'
+    options: {cache: false}
+  'types-generate':
+    script: 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts'
+    options: {cache: false}
