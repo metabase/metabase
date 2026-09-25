@@ -5,9 +5,9 @@ import {
   type Request,
   type ViewportSize,
   expect,
-  test,
 } from "@playwright/test";
 
+import { test } from "./fixtures";
 import {
   type ContentBox,
   awaitLokiReady,

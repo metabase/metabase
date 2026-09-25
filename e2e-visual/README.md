@@ -73,7 +73,7 @@ VISUAL_SNAPSHOT_DIR=e2e-visual/scratch bun run test-visual
 
 ## What a test does
 
-1. Opens the story in `iframe.html` at 1366×768.
+1. Opens the story in `iframe.html` at 1366×768, in a new page. Each worker keeps one browser context for all its stories, and clears cookies, `localStorage` and `sessionStorage` before each one.
 2. Waits for Storybook to finish rendering, including the play function.
 3. Waits for network requests to finish. The test fails if a request gets a 4xx or 5xx response or fails to load.
 4. Waits for promises registered with `@loki/create-async-callback`.
