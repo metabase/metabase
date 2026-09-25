@@ -1,0 +1,12 @@
+{:id     "S14s"
+ :focus  "same stopword-only query with simple configuration"
+ :config "simple"
+ :query  "the"
+ :docs   {:A {:name "the"}
+          :B {:name "theater"}
+          :C {:name "other"}
+          :D {:name "widget"}}
+ :expect {:in-place       [:A :B :C]
+          :appdb-h2       [:A :B :C]
+          :appdb-postgres [:A :B]
+          :semantic       {:keyword [:A :B], :vector []}}}

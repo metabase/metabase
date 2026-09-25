@@ -1,0 +1,20 @@
+{:id     "S13"
+ :focus  "keyword negation cannot exclude a vector-only hit"
+ :config "simple"
+ :query  "amber -cobalt"
+ :docs   {:A {:name "amber"}
+          :B {:name "amber cobalt"}
+          :C {:name "cobalt"}
+          :D {:name "amber -cobalt"}}
+ :expect {:in-place       [:A :B :D]
+          :appdb-h2       [:D]
+          :appdb-postgres [:A]
+          :semantic       {:keyword [:A], :vector [:B]}}
+ :comparisons
+ [{:id     "T14"
+   :focus  "lexical NOT cannot exclude a vector hit"
+   :target :semantic
+   :alternatives
+   {:in-place       {:query "amber", :hits [:A :B :D]}
+    :appdb-h2       {:query "amber", :hits [:A :B :D]}
+    :appdb-postgres {:query "amber", :hits [:A :B :D]}}}]}

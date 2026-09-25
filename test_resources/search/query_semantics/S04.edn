@@ -1,0 +1,12 @@
+{:id     "S04"
+ :focus  "only the final PostgreSQL word is prefix-completed"
+ :config "simple"
+ :query  "amb cobalt"
+ :docs   {:A {:name "amber cobalt"}
+          :B {:name "amb cobalt"}
+          :C {:name "amber macobalt"}
+          :D {:name "cobalt"}}
+ :expect {:in-place       [:A :B :C :D]
+          :appdb-h2       [:A :B :C]
+          :appdb-postgres [:B]
+          :semantic       {:keyword [:B], :vector []}}}

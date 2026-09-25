@@ -1,0 +1,27 @@
+{:id     "S05"
+ :focus  "unquoted or operator versus literal substring"
+ :config "simple"
+ :query  "amber or cobalt"
+ :docs   {:A {:name "amber"}
+          :B {:name "cobalt"}
+          :C {:name "amber cobalt"}
+          :D {:name "amber or cobalt"}
+          :E {:name "orbit"}}
+ :expect {:in-place       [:A :B :C :D :E]
+          :appdb-h2       [:D]
+          :appdb-postgres [:A :B :C :D]
+          :semantic       {:keyword [:A :B :C :D], :vector []}}
+ :comparisons
+ [{:id     "T05"
+   :focus  "`or` must literally occur"
+   :target :appdb-h2
+   :alternatives
+   {:in-place       {:query "or", :hits [:D :E]}
+    :appdb-postgres {:query "amber \"or\" cobalt", :hits [:D]}
+    :semantic       {:query "amber \"or\" cobalt", :hits [:D]}}}
+  {:id     "T06"
+   :focus  "explicit alternation"
+   :target :appdb-postgres
+   :alternatives
+   {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
+    :appdb-h2 {:query "amber", :hits [:A :C :D]}}}]}

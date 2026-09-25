@@ -1,0 +1,17 @@
+{:id     "S18s"
+ :focus  "same phrase with simple configuration retaining and"
+ :config "simple"
+ :query  "\"amber and cobalt\""
+ :docs   {:A {:name "amber and cobalt"}
+          :B {:name "amber cobalt"}
+          :C {:name "amber bright cobalt"}
+          :D {:name "amber and bright cobalt"}
+          :E {:name "\"amber and cobalt\""}}
+ :expect {:in-place       [:A :D :E]
+          :appdb-h2       [:E]
+          :appdb-postgres [:A :E]
+          :semantic       {:keyword [:A :E], :vector []}}
+ :comparisons
+ [{:id     "T20"
+   :focus  "phrase with a retained `and`"
+   :target :appdb-postgres}]}

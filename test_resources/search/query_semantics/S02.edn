@@ -1,0 +1,16 @@
+{:id     "S02"
+ :focus  "infix substring versus lexeme-start completion"
+ :config "simple"
+ :query  "hat"
+ :docs   {:A {:name "chatty"}
+          :B {:name "hatter"}
+          :C {:name "top hat"}
+          :D {:name "coat"}}
+ :expect {:in-place       [:A :B :C]
+          :appdb-h2       [:A :B :C]
+          :appdb-postgres [:B :C]
+          :semantic       {:keyword [:B :C], :vector []}}
+ :comparisons
+ [{:id     "T02"
+   :focus  "arbitrary infix substring"
+   :target :in-place}]}

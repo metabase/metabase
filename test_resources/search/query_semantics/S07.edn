@@ -1,0 +1,19 @@
+{:id     "S07"
+ :focus  "ordered phrase, including the name/searchable-text boundary"
+ :config "simple"
+ :query  "\"amber cobalt\""
+ :docs   {:A {:name "amber cobalt"}
+          :B {:name "amber bright cobalt"}
+          :C {:name "cobalt amber"}
+          :D {:name "\"amber cobalt\""}}
+ :expect {:in-place       [:D]
+          :appdb-h2       [:D]
+          :appdb-postgres [:A :C :D]
+          :semantic       {:keyword [:A :C :D], :vector []}}
+ :comparisons
+ [{:id     "T08"
+   :focus  "ordered phrase"
+   :target :appdb-postgres
+   :alternatives
+   {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
+    :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D]}}}]}

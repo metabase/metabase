@@ -1,0 +1,21 @@
+{:id     "S21"
+ :focus  "final negated term is also prefix-completed"
+ :config "simple"
+ :query  "amber -co"
+ :docs   {:A {:name "amber"}
+          :B {:name "amber cobalt"}
+          :C {:name "amber corgi"}
+          :D {:name "amber taco"}
+          :E {:name "amber -co"}
+          :F {:name "cobalt"}}
+ :expect {:in-place       [:A :B :C :D :E]
+          :appdb-h2       [:E]
+          :appdb-postgres [:A :D]
+          :semantic       {:keyword [:A :D], :vector []}}
+ :comparisons
+ [{:id     "T24"
+   :focus  "negation of a prefix"
+   :target :appdb-postgres
+   :alternatives
+   {:in-place {:query "amber", :hits [:A :B :C :D :E]}
+    :appdb-h2 {:query "amber", :hits [:A :B :C :D :E]}}}]}

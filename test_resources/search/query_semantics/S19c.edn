@@ -1,0 +1,18 @@
+{:id     "S19c"
+ :focus  "closing quote disables final-word completion"
+ :config "simple"
+ :query  "\"amber co\""
+ :docs   {:A {:name "amber cobalt"}
+          :B {:name "amber corgi"}
+          :C {:name "amber bright cobalt"}
+          :D {:name "\"amber co"}
+          :E {:name "amber co"}
+          :F {:name "\"amber co\""}}
+ :expect {:in-place       [:D :F]
+          :appdb-h2       [:F]
+          :appdb-postgres [:D :E :F]
+          :semantic       {:keyword [:D :E :F], :vector []}}
+ :comparisons
+ [{:id     "T22"
+   :focus  "closing quote disables completion"
+   :target :appdb-postgres}]}

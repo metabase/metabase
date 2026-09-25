@@ -1,0 +1,20 @@
+{:id     "S10e"
+ :focus  "English stemming of a non-final word"
+ :config "english"
+ :query  "running gate"
+ :docs   {:A {:name "running gate"}
+          :B {:name "run gate"}
+          :C {:name "runner gate"}
+          :D {:name "running garden"}
+          :E {:name "run meadow"}}
+ :expect {:in-place       [:A :B :C :D]
+          :appdb-h2       [:A]
+          :appdb-postgres [:A :B]
+          :semantic       {:keyword [:A :B], :vector []}}
+ :comparisons
+ [{:id     "T11"
+   :focus  "English stemming"
+   :target :appdb-postgres
+   :alternatives
+   {:in-place {:query "run gate", :hits [:A :B :C :D :E]}
+    :appdb-h2 {:query "run gate", :hits [:A :B :C]}}}]}

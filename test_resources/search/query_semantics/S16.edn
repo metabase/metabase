@@ -1,0 +1,18 @@
+{:id     "S16"
+ :focus  "underscore is literal in substring search but token punctuation in PostgreSQL"
+ :config "simple"
+ :query  "a_b"
+ :docs   {:A {:name "acb"}
+          :B {:name "a_b"}
+          :C {:name "ab"}
+          :D {:name "a b"}
+          :E {:name "a-b"}
+          :F {:name "xacb"}}
+ :expect {:in-place       [:B]
+          :appdb-h2       [:B]
+          :appdb-postgres [:B :D :E]
+          :semantic       {:keyword [:B :D :E], :vector []}}
+ :comparisons
+ [{:id     "T17"
+   :focus  "reproduce PostgreSQL's `_` tokenization"
+   :target :appdb-postgres}]}

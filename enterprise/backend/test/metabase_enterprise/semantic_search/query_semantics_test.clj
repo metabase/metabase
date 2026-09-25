@@ -4,25 +4,18 @@
   Uses deterministic mock embeddings in a dedicated pgvector test database.
   The once fixture skips this suite when MB_PGVECTOR_DB_URL is not configured."
   (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.query-semantics :as fixtures]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
-
-(def ^:private cases
-  (-> "search/query_semantics_cases.edn" io/resource slurp edn/read-string))
-
-(def ^:private translations
-  (-> "search/query_semantics_translations.edn" io/resource slurp edn/read-string))
 
 (def ^:private query-vector [1.0 0.0 0.0 0.0])
 (def ^:private far-vector [0.1 0.99498743710662 0.0 0.0])
@@ -80,7 +73,7 @@
 
   Temporary cards keep the semantic engine's read-permission checks live.
   Automatic ingestion is disabled because the index is populated explicitly."
-  [{:keys [id config docs expect query]} translations-by-source]
+  [{:keys [id config docs expect query comparisons] :as case}]
   (mt/with-temporary-setting-values [search-language config]
     ;; `with-temp` needs fixed bindings; only the cards in :docs are indexed.
     (binding [search.ingestion/*disable-updates* true]
@@ -97,7 +90,8 @@
           (let [label->id  {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
                 id->label  (into {} (map (fn [[label db-id]] [db-id label])) label->id)
                 documents (vec (indexed-documents docs label->id))
-                queries   (cons query (map (comp :semantic :queries) translations-by-source))]
+                queries   (cons query (map #(-> (fixtures/comparison-spec case % :semantic) :query)
+                                           comparisons))]
             (semantic.tu/with-mock-embeddings (mock-embeddings id label->id documents queries)
               (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                              [(str "TRUNCATE TABLE \"" (:table-name semantic.tu/mock-index) "\"")])
@@ -106,20 +100,17 @@
                              :models                 #{"card"}
                              :archived?              false
                              :vector-search-strategy :brute-force}]
-                (testing (str id " keyword arm")
-                  (is (= (set (:keyword expect))
-                         (sql-arm-hits! context id->label :keyword))))
-                (testing (str id " vector arm")
-                  (is (= (set (:vector expect))
-                         (sql-arm-hits! context id->label :vector))))
+                (doseq [arm [:keyword :vector]]
+                  (testing (str id " " (name arm) " arm")
+                    (is (= (set (get-in expect [:semantic arm]))
+                           (sql-arm-hits! context id->label arm)))))
                 (testing (str id " hybrid")
-                  (is (= (set (:semantic expect))
+                  (is (= (fixtures/expected-hits case :semantic)
                          (hybrid-hits query id->label)))))
-              (doseq [{translation-id :id, translation-query :queries, translation-expect :expect}
-                      translations-by-source]
+              (doseq [{translation-id :id :as comparison} comparisons]
                 (testing (str translation-id " semantic translation")
-                  (is (= (set (:semantic translation-expect))
-                         (hybrid-hits (:semantic translation-query) id->label))))))))))))
+                  (let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic)]
+                    (is (= hits (hybrid-hits query id->label)))))))))))))
 
 (deftest semantic-query-semantics-test
   (mt/with-premium-features #{:semantic-search}
@@ -129,6 +120,5 @@
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-initialized}
           (semantic.tu/with-only-semantic-weights
-            (let [translations-by-source (group-by :source translations)]
-              (doseq [case cases]
-                (check-case! case (translations-by-source (:id case)))))))))))
+            (doseq [case fixtures/cases]
+              (check-case! case))))))))

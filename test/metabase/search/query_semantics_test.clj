@@ -1,12 +1,10 @@
 (ns metabase.search.query-semantics-test
   "Exact result-set contracts for in-place and app-db search.
 
-  The S cases use identical queries; the T cases use engine-specific translations.
-  Each case runs against temporary cards or a temporary index table. Assertions
-  compare membership, not ranking. The case IDs match the metabase-wiki corpuses."
+  Each scenario runs identical and translated queries against temporary cards
+  or a temporary index table. Assertions compare membership, not ranking. The
+  case IDs match the metabase-wiki corpuses."
   (:require
-   [clojure.edn :as edn]
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
@@ -14,14 +12,9 @@
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.query-semantics :as fixtures]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]))
-
-(def ^:private cases
-  (-> "search/query_semantics_cases.edn" io/resource slurp edn/read-string))
-
-(def ^:private translations
-  (-> "search/query_semantics_translations.edn" io/resource slurp edn/read-string))
 
 (defn- result-ids
   [query raw-ctx id->label]
@@ -48,7 +41,7 @@
         (let [label->id {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
               ids       (set (map label->id (keys docs)))
               id->label (into {} (map (fn [[label id]] [id label])) label->id)]
-          (is (= (set expected)
+          (is (= expected
                  (result-ids query {:search-engine "in-place"
                                     :models        #{"card"}
                                     :ids           ids}
@@ -75,7 +68,7 @@
   (mt/with-temporary-setting-values [search-language config]
     (search.tu/with-temp-index-table
       (let [id->label (index-documents! docs)]
-        (is (= (set expected)
+        (is (= expected
                (result-ids query {:search-engine "appdb"
                                   :models        #{"card"}}
                            id->label)))))))
@@ -91,21 +84,22 @@
 
 (deftest identical-query-semantics-test
   (let [dialect (available-appdb-dialect)]
-    (doseq [{:keys [id focus] :as case} cases]
+    (doseq [{:keys [id focus config docs query] :as case} fixtures/cases]
       (testing (str id " — " focus)
-        (let [{:keys [config docs expect query]} case]
-          (check-in-place-query! docs query (:in-place expect))
-          (when dialect
-            (check-appdb-query! config docs query (dialect expect))))))))
+        (check-in-place-query! docs query (fixtures/expected-hits case :in-place))
+        (when dialect
+          (check-appdb-query! config docs query (fixtures/expected-hits case dialect)))))))
 
 (deftest translated-query-semantics-test
-  (let [cases-by-id (into {} (map (juxt :id identity)) cases)
-        dialect     (available-appdb-dialect)]
-    (doseq [{:keys [id focus source target queries expect]} translations]
-      (testing (str id " — " focus " (target " target " on " source ")")
-        (let [{:keys [config docs] :as source-case} (cases-by-id source)]
-          ;; Keep the translated target anchored to its same-query S-case oracle.
-          (is (= (set (target (:expect source-case))) (set (target expect))))
-          (check-in-place-query! docs (:in-place queries) (:in-place expect))
-          (when dialect
-            (check-appdb-query! config docs (dialect queries) (dialect expect))))))))
+  (let [dialect (available-appdb-dialect)]
+    (doseq [{:keys [id config docs comparisons] :as case} fixtures/cases
+            {:keys [focus target] :as comparison} comparisons]
+      (testing (str (:id comparison) " — " focus " (target " target " on " id ")")
+        ;; Keep the translated target anchored to its same-query scenario oracle.
+        (is (= (fixtures/expected-hits case target)
+               (:hits (fixtures/comparison-spec case comparison target))))
+        (let [{:keys [query hits]} (fixtures/comparison-spec case comparison :in-place)]
+          (check-in-place-query! docs query hits))
+        (when dialect
+          (let [{:keys [query hits]} (fixtures/comparison-spec case comparison dialect)]
+            (check-appdb-query! config docs query hits)))))))

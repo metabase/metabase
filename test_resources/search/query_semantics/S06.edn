@@ -1,0 +1,19 @@
+{:id     "S06"
+ :focus  "leading hyphen negation"
+ :config "simple"
+ :query  "amber -cobalt"
+ :docs   {:A {:name "amber"}
+          :B {:name "amber cobalt"}
+          :C {:name "cobalt"}
+          :D {:name "amber -cobalt"}}
+ :expect {:in-place       [:A :B :D]
+          :appdb-h2       [:D]
+          :appdb-postgres [:A]
+          :semantic       {:keyword [:A], :vector []}}
+ :comparisons
+ [{:id     "T07"
+   :focus  "exclusion"
+   :target :appdb-postgres
+   :alternatives
+   {:in-place {:query "amber", :hits [:A :B :D]}
+    :appdb-h2 {:query "amber", :hits [:A :B :D]}}}]}

@@ -1,0 +1,17 @@
+{:id     "S22"
+ :focus  "negation-only query is a broad PostgreSQL complement"
+ :config "simple"
+ :query  "-cobalt"
+ :docs   {:A {:name "amber"}
+          :B {:name "cobalt"}
+          :C {:name "amber cobalt"}
+          :D {:name "-cobalt"}
+          :E {:name "indigo"}}
+ :expect {:in-place       [:D]
+          :appdb-h2       [:D]
+          :appdb-postgres [:A :E]
+          :semantic       {:keyword [:A :E], :vector []}}
+ :comparisons
+ [{:id     "T25"
+   :focus  "negation without a positive term"
+   :target :appdb-postgres}]}
