@@ -43,7 +43,7 @@
                      :email        "nobody@example.com"
                      :schedule     {:frequency "daily" :hour 9}})]
         ;; dashboard_id 0 is int but won't match any dashboard
-        (is (string? (:error result)))))))
+        (is (string? (:output result)))))))
 
 (deftest create-dashboard-subscription-unknown-email-test
   (testing "unknown email → 'no user with this email found'"
@@ -151,7 +151,7 @@
                         {:dashboard_id  dash-id
                          :slack_channel ""
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack_channel is required"} result))))))))
+            (is (= {:output "slack_channel is required"} result))))))))
 
 (deftest create-dashboard-subscription-slack-not-configured-test
   (testing "Slack not configured → error"
@@ -162,7 +162,7 @@
                         {:dashboard_id  dash-id
                          :slack_channel "data-team"
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "slack is not configured. Ask an admin to connect slack in Metabase settings."}
+            (is (= {:output "slack is not configured. Ask an admin to connect slack in Metabase settings."}
                    result))))))))
 
 (deftest create-dashboard-subscription-slack-channel-not-found-test
@@ -180,7 +180,7 @@
                         {:dashboard_id  dash-id
                          :slack_channel "no-such-channel"
                          :schedule      {:frequency "daily" :hour 9}})]
-            (is (= {:error "no slack channel found with this name"} result))))))))
+            (is (= {:output "no slack channel found with this name"} result))))))))
 
 (deftest create-dashboard-subscription-tool-errors-test
   (let [subscribe! #(agent-subscriptions/create-dashboard-subscription-tool
