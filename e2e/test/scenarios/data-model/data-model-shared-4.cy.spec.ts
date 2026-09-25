@@ -217,7 +217,11 @@ areas.forEach((area) => {
         verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
         cy.log("formatting");
-        TablePicker.getDatabase("Sample Database").click();
+        // A fresh visit, as for the Many Data Types switch above: after an
+        // in-page switch the table section keeps rendering the previous table
+        // until the Orders metadata loads, and its Fields tab navigates back
+        // to that table.
+        visit({ databaseId: SAMPLE_DB_ID });
         TablePicker.getTable("Orders").click();
         if (area === "data studio") {
           TableSection.clickFieldsTab();
