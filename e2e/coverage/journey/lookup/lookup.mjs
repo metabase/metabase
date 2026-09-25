@@ -1,12 +1,18 @@
 // Prints the e2e tests that reach a code location, and those that reach it and then assert.
 // See ../README.md for location syntax and options.
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { parseArgs } from "./args.mjs";
-import { loadIndex, parseLocation, query, resolveLocation } from "./lib.mjs";
+import {
+  describeResolved,
+  loadIndex,
+  parseLocation,
+  query,
+  resolveLocation,
+} from "./lib.mjs";
+import { repoRoot } from "./source.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2), {
@@ -36,20 +42,9 @@ if (!indexDir) {
   process.exit(1);
 }
 
-function defaultRepo() {
-  try {
-    return execFileSync("git", ["-C", here, "rev-parse", "--show-toplevel"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-  } catch {
-    return process.cwd();
-  }
-}
-
 const index = loadIndex(indexDir);
 const ctx = {
-  repo: args.repo ?? defaultRepo(),
+  repo: args.repo ?? repoRoot(here),
   sha: args.sha ?? index.meta.sha,
 };
 const exclude = new Set(
@@ -110,16 +105,7 @@ if (args.json) {
   for (const result of results) {
     for (const r of result.locations) {
       console.log(`# ${JSON.stringify(r.loc)}`);
-      const what =
-        r.kind === "frontend"
-          ? r.functions.map((f) => `${f.name}@${f.line}:${f.column}`).join(", ")
-          : r.kind === "backend"
-            ? `${r.classes.length} classes${r.via ? ` by ${r.via}` : ""}` +
-              (r.cljsFunctions
-                ? `, ${r.cljsFunctions.length} browser functions`
-                : "")
-            : "";
-      console.log(`  resolved: ${r.keys.length} keys ${what}`);
+      console.log(`  resolved: ${r.keys.length} keys ${describeResolved(r)}`);
       for (const note of r.notes ?? []) {
         console.log(`  note: ${note}`);
       }

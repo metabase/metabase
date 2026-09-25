@@ -63,7 +63,7 @@ export function loadIndex(dir) {
 
 /**
  * Parses a location given on the command line:
- *   <file>#<function name>, <file>:<line>, <namespace>/<var>, or a JSON object.
+ *   <file>#<function name>, <file>:<line>, <namespace>/<var>, <file>, or a JSON object.
  */
 export function parseLocation(text) {
   const trimmed = text.trim();
@@ -82,8 +82,14 @@ export function parseLocation(text) {
   if (slash > 0 && trimmed.slice(0, slash).includes(".")) {
     return { ns: trimmed.slice(0, slash), var: trimmed.slice(slash + 1) };
   }
+  if (/\.\w+$/.test(trimmed)) {
+    return { file: trimmed };
+  }
   throw new Error(`Can't parse location: ${text}`);
 }
+
+const isWholeFile = (loc) =>
+  loc.fn == null && loc.line == null && loc.var == null;
 
 function sourceAt(ctx, file) {
   ctx.sourceCache ??= new Map();
@@ -116,6 +122,20 @@ function resolveFrontend(index, loc, ctx) {
     result.notes.push(
       "file is not in the frontend coverage: no test loaded it, or it isn't instrumented",
     );
+    return result;
+  }
+  if (isWholeFile(loc)) {
+    result.via = "whole file";
+    for (const [fnIndex, entry] of Object.entries(fileFnmap)) {
+      result.keys.push(`fe:${loc.file}#${fnIndex}`);
+      result.functions.push({
+        fnIndex: Number(fnIndex),
+        name: entry.name,
+        line: entry.line,
+        column: entry.column,
+        via: "whole file",
+      });
+    }
     return result;
   }
   const add = (fnIndex, why) => {
@@ -282,6 +302,15 @@ function resolveBackend(index, loc, ctx) {
           );
         }) ?? null)
       : null;
+  } else if (file && isWholeFile(loc)) {
+    const source = sourceAt(ctx, file);
+    if (source == null) {
+      result.notes.push(`can't read ${file} at ${ctx.sha}`);
+      return result;
+    }
+    ns ??= nsOfCljFile(source);
+  } else if (ns && isWholeFile(loc)) {
+    file = nsSourceFile(ctx, ns);
   }
   if (!ns) {
     result.notes.push("no namespace");
@@ -293,6 +322,10 @@ function resolveBackend(index, loc, ctx) {
     result.notes.push(`no class of ${ns} was loaded in any test`);
   }
   let names = [];
+  if (isWholeFile(loc)) {
+    names = namespaceClasses(index, prefix);
+    result.via = "whole namespace";
+  }
   const head =
     form?.head ??
     (loc.var ? { kind: loc.kind ?? "def", name: loc.var, ...loc } : null);
@@ -347,13 +380,18 @@ function resolveBackend(index, loc, ctx) {
   result.form = form
     ? { startLine: form.startLine, endLine: form.endLine, ...form.head }
     : null;
-  // The browser copy of a .cljc form: every cljs function whose source map origin lies inside the form.
-  if (file?.endsWith(".cljc") && form && index.cljsOrigins) {
+  // The browser copy of a .cljc form or file: every cljs function whose source map origin lies inside it.
+  if (
+    file?.endsWith(".cljc") &&
+    (form || isWholeFile(loc)) &&
+    index.cljsOrigins
+  ) {
     const relative = file.replace(/^(enterprise\/backend\/)?src\//, "");
     result.cljsFunctions = Object.entries(index.cljsOrigins)
       .filter(
         ([, [source, line]]) =>
-          source === relative && line >= form.startLine && line <= form.endLine,
+          source === relative &&
+          (!form || (line >= form.startLine && line <= form.endLine)),
       )
       .map(([key]) => key);
     for (const key of result.cljsFunctions) {
@@ -361,7 +399,7 @@ function resolveBackend(index, loc, ctx) {
     }
     if (result.cljsFunctions.length === 0) {
       result.notes.push(
-        "no function of the browser copy maps back to this form",
+        `no function of the browser copy maps back to this ${form ? "form" : "file"}`,
       );
     }
   }
@@ -384,6 +422,23 @@ function resolveBackend(index, loc, ctx) {
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Namespace loaders end in "__init", and deftype, defrecord and proxy classes sit in the namespace's package.
+function namespaceClasses(index, prefix) {
+  const names = [
+    ...(index.backendKeysByNs.get(prefix) ?? []),
+    ...(index.backendKeysByNs.get(`${prefix}__init`) ?? []),
+  ];
+  for (const [owner, list] of index.backendKeysByNs) {
+    const rest = owner.startsWith(`${prefix}/`)
+      ? owner.slice(prefix.length + 1)
+      : null;
+    if (rest && /^([A-Z][^/]*|proxy)$/.test(rest)) {
+      names.push(...list);
+    }
+  }
+  return names;
+}
+
 export function resolveLocation(index, loc, ctx) {
   if (loc.file && isJsFile(loc.file)) {
     return resolveFrontend(index, loc, ctx);
@@ -396,6 +451,21 @@ export function resolveLocation(index, loc, ctx) {
     keys: [],
     notes: [`unsupported location ${JSON.stringify(loc)}`],
   };
+}
+
+export function describeResolved(r) {
+  if (r.kind === "frontend") {
+    return r.via
+      ? `${r.functions.length} functions by ${r.via}`
+      : r.functions.map((f) => `${f.name}@${f.line}:${f.column}`).join(", ");
+  }
+  if (r.kind === "backend") {
+    return (
+      `${r.classes.length} classes${r.via ? ` by ${r.via}` : ""}` +
+      (r.cljsFunctions ? `, ${r.cljsFunctions.length} browser functions` : "")
+    );
+  }
+  return "";
 }
 
 /**

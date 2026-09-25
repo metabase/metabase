@@ -15,6 +15,17 @@ export function gitShow(repo, sha, file) {
   }
 }
 
+export function repoRoot(dir) {
+  try {
+    return execFileSync("git", ["-C", dir, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return process.cwd();
+  }
+}
+
 let tsModule = null;
 function typescript(repo) {
   if (!tsModule) {

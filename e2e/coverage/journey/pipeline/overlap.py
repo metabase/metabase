@@ -327,38 +327,6 @@ def weighted_cover(sets, costs):
     return kept, len(universe)
 
 
-def kills_first_cover(primary, secondary, costs):
-    """Greedy cover of the primary items: the most new primary items first, then the most new secondary items, then the lowest cost.
-
-    Afterwards, drop chosen tests whose primary items the other chosen tests already keep, most expensive first.
-    """
-    universe = set().union(*primary) if primary else set()
-    covered, covered_secondary = set(), set()
-    heap = [(-len(p), -len(secondary[i]), costs[i], i) for i, p in enumerate(primary) if p]
-    heapq.heapify(heap)
-    chosen = []
-    while len(covered) < len(universe) and heap:
-        _, _, _, i = heapq.heappop(heap)
-        entry = (-len(primary[i] - covered), -len(secondary[i] - covered_secondary), costs[i], i)
-        if entry[0] == 0:
-            continue
-        if heap and entry > heap[0]:
-            heapq.heappush(heap, entry)
-            continue
-        chosen.append(i)
-        covered |= primary[i]
-        covered_secondary |= secondary[i]
-    counts = collections.Counter(x for i in chosen for x in primary[i])
-    kept = []
-    for i in sorted(chosen, key=lambda i: -costs[i]):
-        if all(counts[x] > 1 for x in primary[i]):
-            for x in primary[i]:
-                counts[x] -= 1
-        else:
-            kept.append(i)
-    return kept, len(universe)
-
-
 def cover_report(run, kept, universe, costs):
     total = sum(max(t.duration_ms, 1) for t in run.tests)
     chosen_cost = sum(costs[i] for i in kept)
@@ -415,14 +383,7 @@ def kills_cover(run, sets, kills):
     Code and checks break ties, then time.
     """
     costs = [t.cost_ms for t in run.tests]
-    primary = [set() for _ in run.tests]
-    for mid, m in kills["mutants"].items():
-        if m["killed_by_others"]:
-            continue
-        for i in m["killed_by"]:
-            if run.tests[i].state == "passed":
-                primary[i].add(mid)
-    kept, universe = kills_first_cover(primary, tagged(run, sets, *FINE), costs)
+    kept, universe = kill_matrix.cover_kills(run.tests, kills["mutants"], tagged(run, sets, *FINE), costs)
     return cover_report(run, kept, universe, costs) | {
         "what": "kept tests for every mutant only e2e tests kill, ordered by kills, then code and checks, then time",
         "tie_breaks": list(FINE),
@@ -697,8 +658,8 @@ def main():
     parser.add_argument("--backend-baseline", choices=BACKEND_BASELINES, default=None,
                         help="union (default) or shard; JOURNEY_BACKEND_BASELINE sets the default")
     parser.add_argument("--kills", help="kill matrix JSON, see kills.py")
-    parser.add_argument("--min-mutants", type=int, default=5, help="qualifying mutants a delete verdict needs")
-    parser.add_argument("--require-strata", default="logic,wiring", help="strata a delete verdict needs among them")
+    parser.add_argument("--min-mutants", type=int, default=kill_matrix.MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
+    parser.add_argument("--require-strata", default=kill_matrix.REQUIRED_STRATA, help="strata a delete verdict needs among them")
     args = parser.parse_args()
     run = Run(args.work, backend_baseline=args.backend_baseline)
     sets = item_sets(run)

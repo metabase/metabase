@@ -3,7 +3,7 @@
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
 - **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, delete or unmeasured verdict.
-- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
 
@@ -98,6 +98,7 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 - A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
 - `file` is optional. With it, a mutant counts towards a test's delete verdict only when the test ran a function of that file, or a class of that namespace for `.clj` and `.cljc`. Without it, being in `ran` counts as reaching the mutant.
 - An entry that is a bare list of test ids is read as `killed_by`, with `ran` unknown.
+- Over the reach index instead of a run, a mutant can also carry a `location` or `locations`. See [Verdicts from a kills file](#verdicts-from-a-kills-file).
 
 Only the run's e2e tests get a verdict. Every other id, including jest and Clojure tests, counts as a remaining test:
 
@@ -122,6 +123,7 @@ The index comes from `--index` or `JOURNEY_LOOKUP_INDEX`. It has no default: a f
 | `frontend/src/metabase/foo/Bar.tsx:120`                | the innermost function around line 120                                                                      |
 | `metabase.parameters.params/find-card-for-mapping`     | a backend var                                                                                               |
 | `src/metabase/parameters/params.clj:361`               | the top-level form around line 361: a `defn`, `defmethod`, `defendpoint` or anything else                    |
+| `frontend/src/metabase/foo/Bar.tsx`                    | every function of a frontend file, or every class of a Clojure file's namespace. A `.cljc` file adds its browser copy's functions. In JSON, `{"file": ...}` or `{"ns": ...}` with nothing else |
 | `{"file": ..., "fn": ..., "line": ..., "column": ...}` | JSON. With `line` and `column`, the function Istanbul records at exactly that position                     |
 | `{"ns": ..., "var": ..., "line": ...}`                 | JSON. `var` can be `"<multifn> <dispatch>"` for a `defmethod` or `"<:method> <route>"` for a `defendpoint` |
 
@@ -148,6 +150,47 @@ Each test contributes one attempt: the last passing attempt of the main run, els
 | `--union`               | one result for all locations together, instead of one per location        |
 | `--json`                | one JSON line per result: `reach`, `reach_and_assert`, `asserts_after`, `not_passing` and the resolved `locations` |
 | `--include-not-passing` | count tests with no passing attempt                                        |
+
+### Verdicts from a kills file
+
+`pipeline/kills.py` gives each candidate a keep, delete or unmeasured verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
+
+```
+python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
+    [--min-mutants <k>] [--require-strata <s,...>] [--out <json file>] [--repo <path>] [--sha <commit>]
+```
+
+| Option                      | Meaning                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--index <dir>`             | the index, or `JOURNEY_LOOKUP_INDEX`                                                                       |
+| `--kills <file>`            | a [kills file](#kills-file)                                                                                |
+| `--candidates <file or id>` | the tests proposed for deletion. A file holds one test id per line, a JSON list, or JSON lines with a `deleted_test` or `id` field. Anything else is read as one test id. Repeat it for more |
+| `--min-mutants <k>`         | qualifying mutants a delete verdict needs, default 5                                                       |
+| `--require-strata`          | strata a delete verdict needs among them, default `logic,wiring`                                           |
+| `--out <file>`              | where to write the full result as JSON                                                                     |
+| `--repo`, `--sha`           | as for `lookup.mjs`                                                                                        |
+
+The verdict rules are the pipeline's, and run through the same code. What differs:
+
+- **Candidates:** only the tests given with `--candidates` get a verdict. Every other id in the kills file is a remaining test, including e2e tests that aren't candidates. A candidate that isn't in the index is still a candidate, and it's unmeasured unless it has a unique kill.
+- **Reach:** a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`, in any form from [Locations](#locations). A candidate reaches the mutant when it ran a function or class the location resolves to, so reach is per function where the pipeline's is per file. A `file` with nothing else means the whole file, as in the pipeline. No candidate reaches a location that resolves to nothing.
+- **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
+- **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
+
+It prints a short report. With `--out`, it also writes JSON with these keys:
+
+- `candidates`: for each candidate, the verdict and reason, `unique_kills` and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on
+- `summary`: verdicts, reasons, and candidates per stratum
+- `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to, and how many candidates reach it
+- `kills_cover`: the candidates the cover keeps
+- `kills`: counts by stratum and by reach, and the kills file's e2e ids that aren't in the index
+- `candidates_not_in_index`
+
+The tests run a synthetic kills file through both this command and the pipeline's verdicts, and need the index of run 36089233978:
+
+```
+JOURNEY_LOOKUP_INDEX=<index dir> python3 e2e/coverage/journey/pipeline/test_kills.py
+```
 
 ### Building an index
 
