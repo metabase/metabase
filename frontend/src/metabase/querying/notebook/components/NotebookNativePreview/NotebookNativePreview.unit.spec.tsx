@@ -3,9 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
