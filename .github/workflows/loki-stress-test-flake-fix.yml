@@ -150,7 +150,7 @@ jobs:
         run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Build Storybook
-        run: bun run build-storybook
+        run: bun run build-storybook:visual
         env:
           STORYBOOK_STORIES_FILTER: ${{ needs.detect-changed-stories.outputs.story_files }}
 
