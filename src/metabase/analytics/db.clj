@@ -302,11 +302,6 @@
   [since :- ms/TemporalInstant]
   (t2/count :model/QueryExecution :started_at [:>= since]))
 
-(mu/defn new-scim-user-count-since
-  "The number of active SCIM-provisioned Users who joined at or after `since`."
-  [since :- ms/TemporalInstant]
-  (t2/count :model/User :sso_source :scim :is_active true :date_joined [:>= since]))
-
 (mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."
   [engine-names :- [:sequential :string]]
