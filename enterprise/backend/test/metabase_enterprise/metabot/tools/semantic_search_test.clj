@@ -153,7 +153,7 @@
                              :model/Dashboard {id-3 :id} {:name "baseline"}]
                 (when semantic-support?
                   (semantic.tu/index-all!))
-                (let [test-entity? (comp #{id-1 id-2 id-3} :id)
+                (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3} :id))
                       query        (fn [base-query]
                                      (->> (search/search base-query)
                                           (filter test-entity?)
@@ -180,7 +180,7 @@
                            :model/Dashboard {id-5 :id} {:name "quixotic"}
                            :model/Dashboard {id-6 :id} {:name "baseline"}]
               (semantic.tu/index-all!)
-              (let [test-entity? (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id)
+              (let [test-entity? (every-pred (comp #{"dashboard"} :type) (comp #{id-1 id-2 id-3 id-4 id-5 id-6} :id))
                     query        (fn [base-query]
                                    (->> (search/search base-query)
                                         (filter test-entity?)
