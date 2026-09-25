@@ -1,0 +1,91 @@
+# Production and release builds.
+
+tasks:
+  build:
+    command: noop
+    deps:
+      - build-cljs
+      - build-js
+    options:
+      cache: false
+  build-custom-viz-fixtures:
+    script: >-
+      node
+      enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
+    inputs:
+      - enterprise/frontend/src/custom-viz/**
+  build-js:
+    script: >-
+      rspack build
+    deps:
+      - build-cljs
+    inputs:
+      - '@group(frontend)'
+      - '@group(rspack)'
+    outputs:
+      - resources/frontend_client/**
+  build-release:
+    command: noop
+    deps:
+      - build-release-cljs
+      - build-release-js
+    options:
+      cache: false
+  build-release-js:
+    script: >-
+      WEBPACK_BUNDLE=production rspack build
+    deps:
+      - build-release-cljs
+    inputs:
+      - '@group(frontend)'
+      - '@group(rspack)'
+    outputs:
+      - resources/frontend_client/**
+  build-release-static-viz:
+    script: >-
+      WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
+    deps:
+      - build-release-cljs
+    inputs:
+      - '@group(frontend)'
+      - '@group(rspack)'
+    outputs:
+      - resources/frontend_client/**
+  build-static-viz:
+    script: >-
+      WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
+    deps:
+      - build-release-cljs
+    options:
+      cache: false
+  build-stats:
+    script: >-
+      rspack --json > stats.json
+    options:
+      cache: false
+  build-storybook:
+    script: >-
+      NODE_OPTIONS=--max-old-space-size=8192 storybook build
+    deps:
+      - build-cljs
+    inputs:
+      - '@group(frontend)'
+      - .storybook/**
+    outputs:
+      - storybook-static/**
+  chromatic:
+    script: >-
+      NODE_OPTIONS=--max-old-space-size=8192 chromatic
+    deps:
+      - build-cljs
+    options:
+      cache: false
+  generate-expression-parser:
+    script: >-
+      lezer-generator --typeScript
+      frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o
+      frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
+    inputs:
+      - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
+    outputs:
+      - frontend/src/metabase/querying/expressions/tokenizer/lezer.ts

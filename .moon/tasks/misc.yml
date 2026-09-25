@@ -1,0 +1,95 @@
+# Everything else: cleans, generators, lifecycle hooks and the dependency gate.
+
+tasks:
+  ci:
+    command: noop
+    deps:
+      - ci-frontend
+      - ci-backend
+    options:
+      cache: false
+  ci-backend:
+    script: >-
+      clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure
+      -X:dev:test
+    options:
+      cache: false
+  ci-frontend:
+    command: noop
+    deps:
+      - lint
+      - test
+    options:
+      cache: false
+  clean-cypress-artifacts:
+    script: >-
+      rm -R -f cypress/
+    options:
+      cache: false
+  clean-dev-js:
+    script: >-
+      rm -rf resources/frontend_client/app/dist
+      target/classes/frontend_client/app/dist
+      resources/frontend_client/app/embedding-sdk
+      target/classes/frontend_client/app/embedding-sdk
+    options:
+      cache: false
+  ensure-deps:
+    script: >-
+      bun install
+    inputs:
+      - bun.lock
+      - package.json
+  generate-cypress-html-report:
+    script: >-
+      mochawesome-merge cypress/reports/mochareports/*.json >
+      cypress/reports/cypress-test-report.json && marge
+      cypress/reports/cypress-test-report.json -o cypress/reports --inline
+    options:
+      cache: false
+  generate-license-disclaimer:
+    script: >-
+      node bin/generate-license-disclaimer.js
+    options:
+      cache: false
+  generate-openapi:
+    script: >-
+      clojure -M:run:ee generate-openapi-spec
+    options:
+      cache: false
+  mage:
+    script: >-
+      ./bin/mage
+    options:
+      cache: false
+  postinstall:
+    script: >-
+      if [ -z "$CI" ]; then patch-package; fi
+    options:
+      cache: false
+  precommit:
+    script: >-
+      lint-staged
+    options:
+      cache: false
+  preinstall:
+    script: >-
+      node -e "if(!/bun/.test(process.env.npm_execpath || '')) {
+      console.error('Please use Bun, not npm or yarn.'); process.exit(1); }"
+    options:
+      cache: false
+  prepare:
+    script: >-
+      husky
+    options:
+      cache: false
+  remove-webpack-cache:
+    script: >-
+      rm -rf ./node_modules/.cache
+    options:
+      cache: false
+  types-generate:
+    script: >-
+      openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts
+    options:
+      cache: false

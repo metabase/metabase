@@ -1,0 +1,39 @@
+# Settings shared by every task file in this directory. moon merges
+# fileGroups, taskOptions and implicitDeps across all of them.
+
+fileGroups:
+  frontend:
+    - frontend/**
+    - enterprise/frontend/**
+  e2e:
+    - e2e/**
+  cljs:
+    - src/**
+    - resources/**
+    - deps.edn
+    - shadow-cljs.edn
+    - .clj-kondo/config/modules/config.edn
+  tsconfig:
+    - tsconfig.json
+    - tsconfig.base.json
+    - tsconfig.sdk.json
+  rspack:
+    - rspack.*.js
+    - rspack.config.js
+    - babel.config.json
+    - postcss.config.js
+  jest:
+    - jest.config.js
+    - jest.base.conf.js
+    - jest.esm-packages.js
+    - babel.config.json
+  sdk:
+    - enterprise/frontend/src/embedding-sdk-package/**
+    - enterprise/frontend/src/embedding-sdk-bundle/**
+    - enterprise/frontend/src/embedding-sdk-shared/**
+
+taskOptions:
+  outputStyle: buffer-only-failure
+
+implicitDeps:
+  - ensure-deps
