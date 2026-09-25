@@ -2,28 +2,25 @@
 
 tasks:
   clean-cypress-artifacts:
-    script: >-
-      rm -R -f cypress/
+    script: rm -R -f cypress/
     options:
       cache: false
 
   embedding-sdk-test-unit:
-    script: >-
-      jest --ignoreProjects ci-scripts
-      --maxWorkers=4
-      enterprise/frontend/src/embedding-sdk-package/
-      enterprise/frontend/src/embedding-sdk-bundle/
-      enterprise/frontend/src/embedding-sdk-shared/
+    script: jest --ignoreProjects ci-scripts
+            --maxWorkers=4
+            enterprise/frontend/src/embedding-sdk-package/
+            enterprise/frontend/src/embedding-sdk-bundle/
+            enterprise/frontend/src/embedding-sdk-shared/
     inputs:
       - "@group(sdk)"
       - "@group(jest)"
 
   generate-cypress-html-report:
-    script: >-
-      mochawesome-merge cypress/reports/mochareports/*.json
-      > cypress/reports/cypress-test-report.json
-      && marge cypress/reports/cypress-test-report.json -o cypress/reports
-      --inline
+    script: mochawesome-merge cypress/reports/mochareports/*.json
+            > cypress/reports/cypress-test-report.json
+            && marge cypress/reports/cypress-test-report.json -o cypress/reports
+            --inline
     options:
       cache: false
 
@@ -38,60 +35,52 @@ tasks:
       runDepsInParallel: false
 
   test-ci-scripts:
-    script: >-
-      jest --selectProjects ci-scripts --maxWorkers=4
+    script: jest --selectProjects ci-scripts --maxWorkers=4
     inputs:
       - bin/**
       - release/**
       - "@group(jest)"
 
   test-cljs:
-    script: >-
-      shadow-cljs compile test
-      && node target/node-tests.js
+    script: shadow-cljs compile test
+            && node target/node-tests.js
     inputs:
       - "@group(cljs)"
       - test/**
 
   test-cypress:
-    script: >-
-      tsx ./e2e/runner/run_cypress_local.ts
+    script: tsx ./e2e/runner/run_cypress_local.ts
     options:
       cache: false
 
   test-cypress-host-sample-apps:
-    script: >-
-      tsx ./e2e/runner/run_cypress_host_sample_apps.ts
+    script: tsx ./e2e/runner/run_cypress_host_sample_apps.ts
     options:
       cache: false
 
   test-debug:
-    script: >-
-      node --inspect-brk node_modules/.bin/jest
-      --runInBand
-      --detectOpenHandles
+    script: node --inspect-brk node_modules/.bin/jest
+            --runInBand
+            --detectOpenHandles
     deps:
       - build-cljs
     options:
       cache: false
 
   test-memory:
-    script: >-
-      node --expose-gc ./node_modules/.bin/jest
-      --runInBand
-      --config jest.memory.conf.js
+    script: node --expose-gc ./node_modules/.bin/jest
+            --runInBand
+            --config jest.memory.conf.js
     options:
       cache: false
 
   test-timezones:
-    script: >-
-      ./frontend/test/__runner__/run_timezone_tests
+    script: ./frontend/test/__runner__/run_timezone_tests
     options:
       cache: false
 
   test-timezones-unit:
-    script: >-
-      jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
+    script: jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
     deps:
       - build-cljs
     inputs:
@@ -99,8 +88,7 @@ tasks:
       - jest.tz.unit.conf.js
 
   test-unit:
-    script: >-
-      jest --ignoreProjects ci-scripts --maxWorkers=4
+    script: jest --ignoreProjects ci-scripts --maxWorkers=4
     deps:
       - build-cljs
     inputs:
@@ -108,8 +96,7 @@ tasks:
       - "@group(jest)"
 
   test-unit-watch:
-    script: >-
-      jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
+    script: jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
     deps:
       - build-cljs
     options:
@@ -130,7 +117,6 @@ tasks:
       outputStyle: stream
 
   validate-e2e-filenames:
-    script: >-
-      node e2e/validate-e2e-test-files.js
+    script: node e2e/validate-e2e-test-files.js
     inputs:
       - "@group(e2e)"

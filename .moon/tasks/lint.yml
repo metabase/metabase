@@ -2,30 +2,27 @@
 
 tasks:
   eslint-fix:
-    script: >-
-      eslint --cache
-      --cache-strategy content
-      --max-warnings 0
-      --report-unused-disable-directives
-      --fix
-      enterprise/frontend frontend e2e
+    script: eslint --cache
+            --cache-strategy content
+            --max-warnings 0
+            --report-unused-disable-directives
+            --fix
+            enterprise/frontend frontend e2e
     deps:
       - build-cljs
     options:
       cache: false
 
   find-never-defined-css-variables:
-    script: >-
-      tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts
+    script: tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts
     inputs:
       - frontend/**/*.css
       - frontend/**/*.tsx
       - bin/find-never-defined-css-variables/**
 
   format:
-    script: >-
-      oxfmt --write
-      '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
+    script: oxfmt --write
+            '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
     options:
       cache: false
 
@@ -41,26 +38,23 @@ tasks:
       cache: false
 
   lint-css:
-    script: >-
-      stylelint --cache './frontend/**/*.css'
+    script: stylelint --cache './frontend/**/*.css'
     inputs:
       - frontend/**/*.css
       - .stylelintrc.json
 
   lint-docs-links:
-    script: >-
-      ./bin/verify-doc-links
+    script: ./bin/verify-doc-links
     inputs:
       - docs/**
       - bin/verify-doc-links
 
   lint-eslint:
-    script: >-
-      eslint --cache
-      --cache-strategy content
-      --max-warnings 0
-      --report-unused-disable-directives
-      enterprise/frontend frontend e2e
+    script: eslint --cache
+            --cache-strategy content
+            --max-warnings 0
+            --report-unused-disable-directives
+            enterprise/frontend frontend e2e
     deps:
       - build-cljs
     inputs:
@@ -70,40 +64,36 @@ tasks:
       - eslint.config.mjs
 
   lint-format:
-    script: >-
-      oxfmt --check
-      '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
+    script: oxfmt --check
+            '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
     inputs:
       - "@group(frontend)"
       - "@group(e2e)"
       - .oxfmtrc.json
 
   lint-openapi:
-    script: >-
-      redocly lint resources/openapi/openapi.json
-      --skip-rule security-defined
-      --skip-rule operation-operationId
-      --skip-rule no-unused-components
-      --skip-rule info-license --skip-rule no-path-trailing-slash
-      --skip-rule no-identical-paths
-      --skip-rule no-ambiguous-paths
-      --skip-rule path-parameters-defined
-      --skip-rule spec-components-invalid-map-name
+    script: redocly lint resources/openapi/openapi.json
+            --skip-rule security-defined
+            --skip-rule operation-operationId
+            --skip-rule no-unused-components
+            --skip-rule info-license --skip-rule no-path-trailing-slash
+            --skip-rule no-identical-paths
+            --skip-rule no-ambiguous-paths
+            --skip-rule path-parameters-defined
+            --skip-rule spec-components-invalid-map-name
     inputs:
       - resources/openapi/openapi.json
 
   lint-yaml:
-    script: >-
-      yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
+    script: yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
     inputs:
       - "**/*.yaml"
       - "**/*.yml"
 
   module-boundaries:
-    script: >-
-      eslint --config eslint.config.module-boundaries.mjs
-      'frontend/src/**/*.{ts,tsx}'
-      'enterprise/frontend/src/**/*.{ts,tsx}'
+    script: eslint --config eslint.config.module-boundaries.mjs
+            'frontend/src/**/*.{ts,tsx}'
+            'enterprise/frontend/src/**/*.{ts,tsx}'
     deps:
       - build-cljs
     inputs:
@@ -111,8 +101,7 @@ tasks:
       - eslint.config.module-boundaries.mjs
 
   type-check:
-    script: >-
-      ./node_modules/typescript7/bin/tsc --noEmit
+    script: ./node_modules/typescript7/bin/tsc --noEmit
     deps:
       - build-cljs
     inputs:

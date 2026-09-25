@@ -2,39 +2,34 @@
 
 tasks:
   generate-expression-parser:
-    script: >-
-      lezer-generator --typeScript
-      frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
-      -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
+    script: lezer-generator --typeScript
+            frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
+            -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
     inputs:
       - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
     outputs:
       - frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
 
   generate-license-disclaimer:
-    script: >-
-      node bin/generate-license-disclaimer.js
+    script: node bin/generate-license-disclaimer.js
     options:
       cache: false
 
   generate-openapi:
-    script: >-
-      clojure -M:run:ee generate-openapi-spec
+    script: clojure -M:run:ee generate-openapi-spec
     options:
       cache: false
 
   types-generate:
-    script: >-
-      openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts
+    script: openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts
     options:
       cache: false
 
   types-generate-watch:
-    script: >-
-      npx chokidar 'resources/openapi/openapi.json'
-      --initial
-      -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts'
-      --debounce 1000
+    script: npx chokidar 'resources/openapi/openapi.json'
+            --initial
+            -c 'openapi-ts -f ./frontend/build/openapi/openapi-ts.config.ts'
+            --debounce 1000
     options:
       persistent: true
       cache: false

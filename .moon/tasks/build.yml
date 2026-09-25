@@ -10,14 +10,12 @@ tasks:
       cache: false
 
   build-custom-viz-fixtures:
-    script: >-
-      node enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
+    script: node enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
     inputs:
       - enterprise/frontend/src/custom-viz/**
 
   build-js:
-    script: >-
-      rspack build
+    script: rspack build
     deps:
       - build-cljs
     inputs:
@@ -35,9 +33,8 @@ tasks:
       cache: false
 
   build-release-js:
-    script: >-
-      WEBPACK_BUNDLE=production
-      rspack build
+    script: WEBPACK_BUNDLE=production
+            rspack build
     deps:
       - build-release-cljs
     inputs:
@@ -47,9 +44,8 @@ tasks:
       - resources/frontend_client/**
 
   build-release-static-viz:
-    script: >-
-      WEBPACK_BUNDLE=production
-      rspack --config rspack.static-viz.config.js
+    script: WEBPACK_BUNDLE=production
+            rspack --config rspack.static-viz.config.js
     deps:
       - build-release-cljs
     inputs:
@@ -59,31 +55,27 @@ tasks:
       - resources/frontend_client/**
 
   build-static-viz:
-    script: >-
-      WEBPACK_BUNDLE=production
-      rspack --config rspack.static-viz.config.js
+    script: WEBPACK_BUNDLE=production
+            rspack --config rspack.static-viz.config.js
     deps:
       - build-release-cljs
     options:
       cache: false
 
   build-stats:
-    script: >-
-      rspack --json > stats.json
+    script: rspack --json > stats.json
     options:
       cache: false
 
   clean-dev-js:
-    script: >-
-      rm -rf resources/frontend_client/app/dist
-      resources/frontend_client/app/embedding-sdk
-      target/classes/frontend_client/app/dist
-      target/classes/frontend_client/app/embedding-sdk
+    script: rm -rf resources/frontend_client/app/dist
+            resources/frontend_client/app/embedding-sdk
+            target/classes/frontend_client/app/dist
+            target/classes/frontend_client/app/embedding-sdk
     options:
       cache: false
 
   remove-webpack-cache:
-    script: >-
-      rm -rf ./node_modules/.cache
+    script: rm -rf ./node_modules/.cache
     options:
       cache: false

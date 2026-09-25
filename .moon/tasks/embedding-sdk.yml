@@ -2,8 +2,7 @@
 
 tasks:
   build-embedding-sdk-node:
-    script: >-
-      rspack --config rspack.embedding-sdk-node.config.js
+    script: rspack --config rspack.embedding-sdk-node.config.js
     deps:
       - build-cljs
     inputs:
@@ -13,8 +12,7 @@ tasks:
       - resources/embedding-sdk/**
 
   build-embedding-sdk-node-watch:
-    script: >-
-      rspack --config rspack.embedding-sdk-node.config.js --watch
+    script: rspack --config rspack.embedding-sdk-node.config.js --watch
     options:
       persistent: true
       cache: false
@@ -36,9 +34,8 @@ tasks:
       runDepsInParallel: false
 
   build-release-embedding-sdk-bundle:
-    script: >-
-      WEBPACK_BUNDLE=production rspack --config
-      rspack.embedding-sdk-bundle.config.js
+    script: WEBPACK_BUNDLE=production rspack --config
+            rspack.embedding-sdk-bundle.config.js
     deps:
       - build-release-cljs
     inputs:
@@ -48,9 +45,8 @@ tasks:
       - resources/embedding-sdk/**
 
   build-release-embedding-sdk-package:
-    script: >-
-      WEBPACK_BUNDLE=production
-      rspack --config rspack.embedding-sdk-package.config.js
+    script: WEBPACK_BUNDLE=production
+            rspack --config rspack.embedding-sdk-package.config.js
     deps:
       - build-release-cljs
     inputs:
@@ -60,34 +56,29 @@ tasks:
       - resources/embedding-sdk/**
 
   embedding-eajs-docs-generate:
-    script: >-
-      typedoc --options ./.typedoc/typedoc.eajs-markdown.config.js
+    script: typedoc --options ./.typedoc/typedoc.eajs-markdown.config.js
     options:
       cache: false
 
   embedding-sdk-clean-dist:
-    script: >-
-      rm -rf resources/embedding-sdk/dist
+    script: rm -rf resources/embedding-sdk/dist
     options:
       cache: false
 
   embedding-sdk-clean-tsbuildinfo:
-    script: >-
-      rm -rf resources/embedding-sdk/.tsbuildinfo
+    script: rm -rf resources/embedding-sdk/.tsbuildinfo
     options:
       cache: false
 
   embedding-sdk-cli-snippets-type-check:
-    script: >-
-      ./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh
+    script: ./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh
     inputs:
       - "@group(sdk)"
       - bin/embedding-sdk/**
 
   embedding-sdk-docs-generate:
-    script: >-
-      typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options
-      ./.typedoc/typedoc.markdown.config.js
+    script: typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options
+            ./.typedoc/typedoc.markdown.config.js
     deps:
       - build-release-embedding-sdk-package
       - embedding-sdk-dts-generate
@@ -95,47 +86,41 @@ tasks:
       cache: false
 
   embedding-sdk-docs-snippets-type-check:
-    script: >-
-      ./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh
+    script: ./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh
     inputs:
       - "@group(sdk)"
       - bin/embedding-sdk/**
       - docs/**
 
   embedding-sdk-dts-fixup:
-    script: >-
-      node ./bin/embedding-sdk/fixup-types-after-compilation.js
+    script: node ./bin/embedding-sdk/fixup-types-after-compilation.js
     inputs:
       - bin/embedding-sdk/**
 
   embedding-sdk-dts-generate:
-    script: >-
-      ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true
-      && node ./bin/embedding-sdk/fixup-types-after-compilation.js
+    script: ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true
+            && node ./bin/embedding-sdk/fixup-types-after-compilation.js
     deps:
       - embedding-sdk-clean-tsbuildinfo
     options:
       cache: false
 
   embedding-sdk-generate-package:
-    script: >-
-      node ./bin/embedding-sdk/generate-sdk-package-files.js
+    script: node ./bin/embedding-sdk/generate-sdk-package-files.js
     inputs:
       - bin/embedding-sdk/**
     outputs:
       - resources/embedding-sdk/**
 
   embedding-sdk-generate-package-support-files:
-    script: >-
-      tsx
-      enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts
+    script: tsx
+            enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts
     inputs:
       - enterprise/frontend/src/embedding-sdk-package/bin/**
     outputs:
       - resources/embedding-sdk/**
 
   embedding-sdk-publish:
-    script: >-
-      cd ./resources/embedding-sdk && npm publish
+    script: cd ./resources/embedding-sdk && npm publish
     options:
       cache: false
