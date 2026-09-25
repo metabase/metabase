@@ -153,19 +153,14 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
       return helpers.get().get("[role='textbox']");
     },
     value() {
-      // The editor mounts with an empty document and fills it in when the first
-      // format finishes. It can also mount late, because its chunk loads on
-      // demand. Wait for two identical reads before reporting the value, or a
-      // read that lands in either window reports an empty editor.
-      let previous: string | null = null;
-      cy.get(`[data-testid=${testId}] .cm-content`).should(($content) => {
-        const current = textOf($content);
-        const isStable = previous !== null && current === previous;
-        previous = current;
-        expect(isStable, "the editor text is stable").to.be.true;
-      });
-
-      return helpers.get().then(textOf);
+      // `invoke` chains are queries, so a chained assertion re-reads the text on every retry
+      return helpers
+        .get()
+        .invoke("find", ".cm-line")
+        .invoke("toArray")
+        .invoke("filter", (line) => !line.querySelector(".cm-placeholder"))
+        .invoke("map", (line) => line.textContent ?? "")
+        .invoke("join", "\n");
     },
     completions() {
       return cy.get(".cm-tooltip-autocomplete").should("be.visible");
@@ -235,19 +230,4 @@ export function codeMirrorValue() {
       }
       return value;
     });
-}
-
-/**
- * The text of every line in a CodeMirror editor, skipping the placeholder line
- * that stands in for an empty document.
- */
-function textOf($content: JQuery<HTMLElement>) {
-  const text: string[] = [];
-  $content.find(".cm-line").each((_, line) => {
-    if (line.querySelector(".cm-placeholder")) {
-      return;
-    }
-    text.push(line.textContent ?? "");
-  });
-  return text.join("\n");
 }
