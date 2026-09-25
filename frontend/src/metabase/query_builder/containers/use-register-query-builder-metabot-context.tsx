@@ -62,7 +62,8 @@ const getDimensions = (
   }
 
   if (visualizationSettings["pie.dimension"]) {
-    return [visualizationSettings["pie.dimension"]];
+    // a single column name, or an array of them for multi-ring pies (the default for new pies)
+    return [visualizationSettings["pie.dimension"]].flat();
   }
 
   if (visualizationSettings["funnel.dimension"]) {

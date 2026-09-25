@@ -257,6 +257,39 @@
   (some-> (shared.content-store/query-for-export query true)
           (query-export/export->text shared.content-store/audited-store)))
 
+(def ^:private max-listed-columns
+  "Most columns [[query-columns-text]] lists; wide sources are truncated past this."
+  100)
+
+(defn- query-column-line
+  [col]
+  (str "- "
+       (when-let [join-alias (lib/current-join-alias col)]
+         (str "[join-alias " (pr-str join-alias) "] "))
+       (:name col) ": " (pr-str (or (:lib/original-display-name col) (:display-name col)))
+       (when-let [column-type (or (:effective-type col) (:base-type col))]
+         (str " (" (u/qualified-name column-type) ")"))))
+
+(defn- query-columns-text
+  "The columns the client-supplied query can reference in its last stage - machine name, display
+  name, type, and join alias - so a column the user names by its UI label can be found. Nil
+  whenever [[exported-query-text]] would not show the query in full."
+  [query]
+  (let [{cleared :query, :keys [mp]} (shared.content-store/query-for-export query true)]
+    (when mp
+      (try
+        (let [cols (lib/visible-columns (lib/query mp cleared) -1
+                                        {:include-implicitly-joinable?                 false
+                                         :include-implicitly-joinable-for-source-card? false})]
+          (when (seq cols)
+            (te/lines
+             (map query-column-line (take max-listed-columns cols))
+             (when (> (count cols) max-listed-columns)
+               (format "- ... and %d more" (- (count cols) max-listed-columns))))))
+        (catch Exception e
+          (log/debug e "Could not list the viewed query's columns")
+          nil)))))
+
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
@@ -266,6 +299,8 @@
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
               (te/field "Query" (exported-query-text (:query item)))
+              (te/field "Columns available in the query's last stage (name: display name (type); a joined column is referenced with its join-alias)"
+                        (query-columns-text (:query item)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)

@@ -479,6 +479,21 @@
       (is (=? [{:role "assistant" :content [{:type "tool_use" :id "call-1"}]}]
               (:messages body))))))
 
+(deftest ^:parallel claude-request-body-replays-nested-tool-arguments-test
+  (testing (str "a replayed tool call whose arguments hold nested objects - keyword-keyed at every depth, as\n"
+                "tool arguments are decoded from the LLM's JSON - is a valid request input")
+    (let [arguments (json/decode+kw "{\"query\": {\"lib/type\": \"mbql/query\", \"stages\": [{\"source-card\": \"x\"}]},
+                                      \"visualization\": {\"chart_type\": \"pie\"}}")
+          body      (claude/claude-request-body
+                     {:model "claude-opus-4-8"
+                      :input [{:role :user :content "bucket it"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type :tool-output :id "call-1" :result {:output "ok"}}]})]
+      (is (=? [{:role "user"}
+               {:role "assistant" :content [{:type "tool_use" :id "call-1" :input arguments}]}
+               {:role "user"}]
+              (:messages body))))))
+
 (deftest ^:parallel parts->claude-messages-tool-result-test
   (testing "tool output becomes user message with tool_result content block"
     (is (=? [{:role    "user"
