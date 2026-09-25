@@ -57,8 +57,21 @@ enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
 
 # @metabase/metabot-backend
-src/metabase/search @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/embeddings @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/entity_retrieval @metabase/metabot-backend
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot-backend
+enterprise/backend/src/metabase_enterprise/semantic_search @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/embeddings @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/entity_retrieval @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/search @metabase/metabot-backend
+enterprise/backend/test/metabase_enterprise/semantic_search @metabase/metabot-backend
+modules/embedder @metabase/metabot-backend
+src/metabase/embeddings @metabase/metabot-backend
+src/metabase/entity_retrieval @metabase/metabot-backend
+src/metabase/search @metabase/metabot-backend
+test/metabase/embeddings @metabase/metabot-backend
+test/metabase/entity_retrieval @metabase/metabot-backend
+test/metabase/search @metabase/metabot-backend
 
 # @metabase/core-frontend-gadget
 bin/custom-viz @metabase/core-frontend-gadget
