@@ -103,7 +103,7 @@
     "eventsource-parser": "^3.0.6",
     "fast-text-encoding": "^1.0.6",
     "formik": "^2.4.5",
-    "frimousse": "^0.3.0",
+    "frimousse": "^0.4.0",
     "fuse.js": "^7.1.0",
     "html2canvas-pro": "^2.0.2",
     "icepick": "2.4.0",
@@ -513,6 +513,7 @@
     "validate-e2e-filenames": "node e2e/validate-e2e-test-files.js",
     "wait:cljs": "echo Waiting for first CLJS build; until [ -f target/cljs_dev/cljs.core.js ]; do sleep 1; done; echo CLJS build done",
     "generate:expression-parser": "lezer-generator --typeScript frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts",
+    "build-emoji-data": "bun bin/build-emoji-data.ts",
     "generate-license-disclaimer": "node bin/generate-license-disclaimer.js",
     "cloud:dev": "bun install && clojure -A:dev:drivers:drivers-dev:ee:ee-dev:cljs -P && bun run concurrently -n 'FE,BE' -c 'blue,green' 'bun run build-hot' 'clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev'"
   },
