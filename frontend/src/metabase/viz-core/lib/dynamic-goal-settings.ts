@@ -22,6 +22,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
 > = {
   area: ["graph.goal_value"],
   bar: ["graph.goal_value"],
+  combo: ["graph.goal_value"],
   gauge: ["gauge.segments"],
   line: ["graph.goal_value"],
   row: ["graph.goal_value"],

@@ -9,6 +9,7 @@ describe("getDynamicGoalSettingKeys", () => {
   it("lists the goal settings a display resolves", () => {
     expect(getDynamicGoalSettingKeys("area")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("bar")).toEqual(["graph.goal_value"]);
+    expect(getDynamicGoalSettingKeys("combo")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
     expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("row")).toEqual(["graph.goal_value"]);
