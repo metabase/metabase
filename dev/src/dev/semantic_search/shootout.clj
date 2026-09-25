@@ -13,7 +13,7 @@
   would touch, and which plan node the planner chose. Cache warmth is controlled with warmup runs.
 
   This intentionally re-implements the minimal SQL shapes rather than reusing the production builders in
-  `metabase-enterprise.semantic-search.index`, because those select index-specific columns that a generic
+  `metabase-enterprise.search.semantic.index`, because those select index-specific columns that a generic
   dump need not have."
   (:require
    [clojure.pprint :as pprint]
