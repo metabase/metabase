@@ -5,6 +5,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetCardQuery, useLazyGetMeasureQuery } from "metabase/api";
+import { isEmbedding } from "metabase/embedding/config";
 import {
   ActionIcon,
   Box,
@@ -15,6 +16,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
 import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
@@ -94,6 +96,8 @@ export const GoalValueInput = ({
   const entity: GoalForeignEntityRef | null = pickedEntity ?? foreignRef;
   const entityInfo = useReferencedEntity(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
+  const sourceInfo = useReferencedEntity(foreignRef);
+  const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
   const resolveEntityColumnValue = useEntityColumnValues(
     datasetQuery,
     data,
@@ -114,8 +118,8 @@ export const GoalValueInput = ({
       String(value))
     : null;
   const pillTooltip = getPillTooltip({
-    entityColumns: entityInfo.columns,
-    entityName,
+    entityColumns: sourceInfo.columns,
+    entityName: sourceInfo.name,
     foreignRef,
     selfColumnLabel,
   });
@@ -233,6 +237,12 @@ export const GoalValueInput = ({
     menu.open();
   };
 
+  const openSourceInNewTab = () => {
+    if (sourceUrl != null) {
+      Urls.openInNewTab(Urls.getSubpathSafeUrl(sourceUrl));
+    }
+  };
+
   const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       commitValue(null);
@@ -261,6 +271,7 @@ export const GoalValueInput = ({
               tooltip={pillTooltip}
               onKeyDown={handlePillKeyDown}
               onOpenMenu={openMenuFromPill}
+              onOpenSource={sourceUrl != null ? openSourceInNewTab : undefined}
               onRemove={() => commitValue(null)}
             />
           ) : (

@@ -18,9 +18,11 @@ import {
   within,
 } from "__support__/ui";
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
+import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetData,
+  GoalForeignColumnRef,
   GoalValue,
   ReferencedEntitiesResults,
   ReferencedEntity,
@@ -842,6 +844,135 @@ describe("GoalValueInput", () => {
     expect(
       await screen.findByRole("menuitem", { name: "No numeric columns" }),
     ).toBeInTheDocument();
+  });
+
+  describe("opening the source in a new tab", () => {
+    const NEW_TAB_HINT = `${METAKEY}+click to open in new tab`;
+
+    function setupSource(value: GoalForeignColumnRef) {
+      const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            [value.type]: {
+              [value.id]: {
+                status: "completed",
+                data: {
+                  cols: [createMockColumn({ name: value.column })],
+                  rows: [[250]],
+                },
+              },
+            },
+          },
+        }),
+        value,
+      });
+
+      return { mockWindowOpen };
+    }
+
+    function setupCardSource() {
+      setupCardEndpoints(
+        createMockCard({ id: 9, name: "Orders", type: "question" }),
+      );
+
+      return setupSource({ type: "card", id: 9, column: "total" });
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("shows a hint in the pill tooltip", async () => {
+      setupCardSource();
+
+      await getLoadedPill();
+
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Orders → total");
+      expect(tooltip).toHaveTextContent(NEW_TAB_HINT);
+    });
+
+    it.each([{ ctrlKey: true }, { metaKey: true }])(
+      "opens the source card on click with %o",
+      async (modifier) => {
+        const { mockWindowOpen } = setupCardSource();
+
+        fireEvent.click(await getLoadedPill(), modifier);
+
+        expect(mockWindowOpen).toHaveBeenCalledWith(
+          "/question/9-orders",
+          "_blank",
+        );
+        expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+      },
+    );
+
+    it("opens the source card on middle click", async () => {
+      const { mockWindowOpen } = setupCardSource();
+
+      fireEvent(
+        await getLoadedPill(),
+        new MouseEvent("auxclick", { bubbles: true, button: 1 }),
+      );
+
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        "/question/9-orders",
+        "_blank",
+      );
+    });
+
+    it("opens the menu on a regular click", async () => {
+      const { mockWindowOpen } = setupCardSource();
+
+      await userEvent.click(await getLoadedPill());
+
+      expect(await screen.findByRole("menu")).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    it("opens a measure source in the metrics explorer", async () => {
+      setupMeasureEndpoint(
+        createMockMeasure({ id: 4, result_column_name: "revenue" }),
+      );
+      const { mockWindowOpen } = setupSource({
+        type: "measure",
+        id: 4,
+        column: "revenue",
+      });
+
+      fireEvent.click(await getLoadedPill(), { ctrlKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledWith(
+        "/explore?measureId=4",
+        "_blank",
+      );
+    });
+
+    it("has nothing to open for a column of this question", async () => {
+      const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+      setup({ value: "sum" });
+      const pill = screen.getByRole("button", { name: "Change value source" });
+
+      await userEvent.hover(pill);
+      expect(await screen.findByRole("tooltip")).toHaveTextContent(
+        "Sum of Total",
+      );
+      expect(screen.queryByText(NEW_TAB_HINT)).not.toBeInTheDocument();
+
+      fireEvent.click(pill, { ctrlKey: true });
+      expect(await screen.findByRole("menu")).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    async function getLoadedPill() {
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      await userEvent.hover(pill);
+      await screen.findByText(NEW_TAB_HINT);
+      return pill;
+    }
   });
 });
 

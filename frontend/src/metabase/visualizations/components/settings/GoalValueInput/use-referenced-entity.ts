@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetMeasureQuery } from "metabase/api";
+import * as Urls from "metabase/urls";
 import type { GoalForeignEntityRef } from "metabase-types/api";
 
 import type { ColumnOption, ReferencedEntityInfo } from "./types";
@@ -23,6 +24,10 @@ export function useReferencedEntity(
     !hasError &&
     (entity.type === "card" ? card == null : measure == null);
   const name = entity?.type === "card" ? card?.name : measure?.name;
+  const url =
+    entity?.type === "card"
+      ? card && Urls.card(card)
+      : measure && Urls.exploreMeasure(measure.id);
 
   const columns: ColumnOption[] = useMemo(() => {
     if (entity?.type === "card") {
@@ -36,5 +41,5 @@ export function useReferencedEntity(
     return [];
   }, [entity?.type, card, measure]);
 
-  return { name, columns, isLoading, hasError };
+  return { name, url, columns, isLoading, hasError };
 }
