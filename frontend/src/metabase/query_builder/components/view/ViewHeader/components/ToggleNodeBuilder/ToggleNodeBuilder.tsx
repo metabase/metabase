@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { trackNodeBuilderToggled } from "metabase/querying/notebook/components/NodeBuilder/analytics";
 import { getUnsupportedReason } from "metabase/querying/notebook/components/NodeBuilder/graph";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -34,6 +35,7 @@ export const ToggleNodeBuilder = (): JSX.Element => {
   const isAvailable = unsupportedReason == null;
 
   const handleChange = (checked: boolean) => {
+    trackNodeBuilderToggled(checked, question?.id() ?? null);
     dispatch(
       setUIControls({
         isShowingNodeBuilder: checked,

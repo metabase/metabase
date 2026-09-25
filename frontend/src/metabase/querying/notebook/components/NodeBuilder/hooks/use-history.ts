@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 
+import { type HistoryTrigger, trackNodeBuilderHistoryUsed } from "../analytics";
 import { type Graph, graphKey } from "../graph";
 import type { BuilderEdge, BuilderNode } from "../types";
 
@@ -59,8 +60,13 @@ export function useHistory({
   useEffect(() => {
     const committed = committedRef.current;
     const current = { key: structureKey, snapshot: { nodes, edges } };
-    if (committed == null || committed.key === structureKey) {
-      // First state, or the same structure (a drag, a fold): keep the latest positions.
+    if (
+      committed == null ||
+      committed.key === structureKey ||
+      committed.snapshot.nodes.length === 0
+    ) {
+      // First state, the seed landing on the empty canvas, or the same
+      // structure (a drag, a fold): keep the latest positions.
       committedRef.current = current;
       return;
     }
@@ -80,27 +86,35 @@ export function useHistory({
     [setNodes, setEdges],
   );
 
-  const undo = useCallback(() => {
-    const history = historyRef.current;
-    const previous = history.past.pop();
-    if (!previous || !committedRef.current) {
-      return;
-    }
-    history.future.push(committedRef.current.snapshot);
-    restore(previous);
-    syncSize();
-  }, [restore, syncSize]);
+  const undo = useCallback(
+    (triggeredFrom: HistoryTrigger) => {
+      const history = historyRef.current;
+      const previous = history.past.pop();
+      if (!previous || !committedRef.current) {
+        return;
+      }
+      history.future.push(committedRef.current.snapshot);
+      restore(previous);
+      syncSize();
+      trackNodeBuilderHistoryUsed("undo", triggeredFrom);
+    },
+    [restore, syncSize],
+  );
 
-  const redo = useCallback(() => {
-    const history = historyRef.current;
-    const next = history.future.pop();
-    if (!next || !committedRef.current) {
-      return;
-    }
-    history.past.push(committedRef.current.snapshot);
-    restore(next);
-    syncSize();
-  }, [restore, syncSize]);
+  const redo = useCallback(
+    (triggeredFrom: HistoryTrigger) => {
+      const history = historyRef.current;
+      const next = history.future.pop();
+      if (!next || !committedRef.current) {
+        return;
+      }
+      history.past.push(committedRef.current.snapshot);
+      restore(next);
+      syncSize();
+      trackNodeBuilderHistoryUsed("redo", triggeredFrom);
+    },
+    [restore, syncSize],
+  );
 
   // A move is undoable too: remember where things were when the drag began.
   const recordDragStart = useCallback(() => {
@@ -128,9 +142,9 @@ export function useHistory({
       }
       event.preventDefault();
       if (event.shiftKey) {
-        redo();
+        redo("keyboard");
       } else {
-        undo();
+        undo("keyboard");
       }
     };
     document.addEventListener("keydown", onKeyDown);

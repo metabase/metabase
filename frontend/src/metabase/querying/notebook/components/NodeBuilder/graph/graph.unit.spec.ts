@@ -2,13 +2,16 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { createMetadataProvider } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
+import { createMockTable } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS_ID,
   REVIEWS_ID,
+  SAMPLE_DB_ID,
   createOrdersIdField,
   createOrdersProductIdField,
+  createProductsIdField,
   createSampleDatabase,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
@@ -20,6 +23,7 @@ import {
   createSortNode,
   createSummarizeNode,
   getUnsupportedReason,
+  isTableNode,
   isValidConnection,
   seedGraph,
 } from "./index";
@@ -102,6 +106,67 @@ describe("seedGraph + compileGraph round trips", () => {
       "result",
     ]);
     expectRoundTrip(query);
+  });
+
+  it("a seeded join follows a swap to a same-named table", () => {
+    // A second "Products" in another schema: same display name, different table.
+    const OTHER_PRODUCTS_ID = 900;
+    const metadata = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          tables: [
+            ...(createSampleDatabase().tables ?? []),
+            createMockTable({
+              id: OTHER_PRODUCTS_ID,
+              db_id: SAMPLE_DB_ID,
+              name: "PRODUCTS",
+              display_name: "Products",
+              schema: "ARCHIVE",
+              fields: [
+                createProductsIdField({
+                  id: 901,
+                  table_id: OTHER_PRODUCTS_ID,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    });
+    const otherProvider = createMetadataProvider({ metadata });
+    const query = createQuery(
+      {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: PRODUCTS_ID },
+                strategy: "left-join",
+              },
+            ],
+          },
+        ],
+      },
+      otherProvider,
+    );
+    const seed = seedGraph(query);
+    const otherTable = Lib.tableOrCardMetadata(
+      otherProvider,
+      OTHER_PRODUCTS_ID,
+    );
+    const nodes = seed.nodes.map((node) =>
+      isTableNode(node) && node.data.tableName === "Products" && otherTable
+        ? { ...node, data: { ...node.data, table: otherTable } }
+        : node,
+    );
+    const compiled = compileGraph(nodes, seed.edges, () => otherProvider);
+    expect(compiled.error).toBeNull();
+    // No error means the query is there.
+    const query2 = compiled.query as Lib.Query;
+    const [join] = Lib.joins(query2, 0);
+    const joined = Lib.joinedThing(query2, join);
+    expect(Lib.pickerInfo(query2, joined)?.tableId).toBe(OTHER_PRODUCTS_ID);
   });
 
   it("a chain of joins with different strategies", () => {
@@ -649,6 +714,24 @@ describe("getUnsupportedReason", () => {
       ],
     });
     expect(getUnsupportedReason(query)).toBeNull();
+  });
+
+  it("refuses a field list that leaves out every source column", () => {
+    const query = createQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          joins: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              strategy: "left-join",
+            },
+          ],
+          fields: [{ type: "column", name: "TITLE", tableId: PRODUCTS_ID }],
+        },
+      ],
+    });
+    expect(getUnsupportedReason(query)).not.toBeNull();
   });
 
   it("refuses a nested query that does not summarize first", () => {

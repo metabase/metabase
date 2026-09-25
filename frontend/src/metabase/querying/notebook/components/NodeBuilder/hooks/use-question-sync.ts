@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { trackNodeBuilderQuerySynced } from "../analytics";
 import type { CompiledGraph } from "../graph";
 
 type Options = {
@@ -35,6 +36,7 @@ export function useQuestionSync({
     lastSyncedRef.current = next;
     if (next !== current) {
       updateQuestion(question.setQuery(compiled.query));
+      trackNodeBuilderQuerySynced(Lib.stageCount(compiled.query));
     }
   }, [compiled, question, updateQuestion, isEnabled]);
 }

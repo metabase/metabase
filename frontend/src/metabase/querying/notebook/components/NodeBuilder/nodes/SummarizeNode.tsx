@@ -45,7 +45,6 @@ export const SummarizeNode = memo(function SummarizeNode({
   const query = stage?.query ?? null;
   const aggregationStart = stage?.aggregationStart ?? 0;
   const breakoutStart = stage?.breakoutStart ?? 0;
-  const orderByStart = stage?.orderByStart ?? 0;
   const [picker, setPicker] = useState<Picker>(null);
 
   // Only this block's clauses; anything before the starts is upstream.
@@ -112,8 +111,6 @@ export const SummarizeNode = memo(function SummarizeNode({
         .slice(breakoutStart)
         .map((breakout) => Lib.breakoutColumn(nextQuery, stageIndex, breakout))
         .filter((column): column is Lib.ColumnMetadata => column != null),
-      // MLv2 drops the sorts that pointed at a removed metric or group; pass them on.
-      Lib.orderBys(nextQuery, stageIndex).slice(orderByStart),
     );
   };
 

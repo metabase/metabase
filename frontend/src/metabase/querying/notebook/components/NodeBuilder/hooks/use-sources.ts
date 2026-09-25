@@ -13,10 +13,12 @@ import type { SourceItem } from "../types";
 // Everything a table block can stand for: tables, models and saved
 // questions. `GET /api/table` has no database filter, so all tables come at
 // once and the picker groups them.
-export function useSources() {
-  const { data: databasesData } = useListDatabasesQuery();
-  const { data: tables = [], isLoading } = useListTablesQuery();
-  const { data: cards = [] } = useListCardsQuery();
+export function useSources({ skip }: { skip: boolean }) {
+  const { data: databasesData } = useListDatabasesQuery(undefined, { skip });
+  const { data: tables = [], isLoading } = useListTablesQuery(undefined, {
+    skip,
+  });
+  const { data: cards = [] } = useListCardsQuery(undefined, { skip });
 
   const databases = useMemo<Database[]>(
     () => databasesData?.data ?? [],

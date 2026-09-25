@@ -25,6 +25,11 @@ import type { DatabaseId } from "metabase-types/api";
 import { useRunVisualization } from "../Notebook/use-run-visualization";
 
 import S from "./NodeBuilder.module.css";
+import {
+  trackNodeBuilderCollapseToggled,
+  trackNodeBuilderOpened,
+  trackNodeBuilderPrettified,
+} from "./analytics";
 import { NodeDock } from "./components/NodeDock";
 import { Toolbar } from "./components/Toolbar";
 import { WireEdge } from "./components/WireEdge";
@@ -84,6 +89,8 @@ export type NodeBuilderProps = {
   updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery?: () => Promise<void>;
   setQueryBuilderMode?: (mode: string) => void;
+  // Whether the wired graph currently compiles to a query.
+  onQueryStateChange?: (hasQuery: boolean) => void;
 };
 
 export function NodeBuilder(props: NodeBuilderProps) {
@@ -106,12 +113,21 @@ function NodeBuilderCanvas({
   updateQuestion,
   runQuestionQuery,
   setQueryBuilderMode,
+  onQueryStateChange,
 }: NodeBuilderProps) {
   const { colorScheme } = useColorScheme();
-  const { sources, databases, isLoading: isLoadingSources } = useSources();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<BuilderNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<BuilderEdge>([]);
+  // The source lists are only for a blank table block's picker.
+  const needsSources = nodes.some(
+    (node) => isTableNode(node) && node.data.table == null,
+  );
+  const {
+    sources,
+    databases,
+    isLoading: isLoadingSources,
+  } = useSources({ skip: !needsSources });
   const nodesRef = useLatest(nodes);
   const edgesRef = useLatest(edges);
 
@@ -160,8 +176,11 @@ function NodeBuilderCanvas({
     if (!seededRef.current) {
       seededRef.current = true;
       seedFrom(question.query());
+      if (!readOnly) {
+        trackNodeBuilderOpened(question.id() ?? null);
+      }
     }
-  }, [question, seedFrom]);
+  }, [question, seedFrom, readOnly]);
 
   const blocks = useBlockEditing({ nodesRef, setNodes });
   const canvas = useCanvasEditing({
@@ -172,6 +191,11 @@ function NodeBuilderCanvas({
     readOnly,
   });
   const drop = useNodeDrop({ nodes, setNodes });
+
+  const hasQuery = compiled.query != null;
+  useEffect(() => {
+    onQueryStateChange?.(hasQuery);
+  }, [hasQuery, onQueryStateChange]);
 
   const { visualizeQuestion } = useRunVisualization({
     question,
@@ -190,6 +214,7 @@ function NodeBuilderCanvas({
   const handlePrettify = useCallback(() => {
     setNodes((prevNodes) => layoutNodes(prevNodes, edgesRef.current));
     scheduleFitView();
+    trackNodeBuilderPrettified();
   }, [edgesRef, setNodes, scheduleFitView]);
 
   const styledEdges = useMemo(
@@ -225,6 +250,7 @@ function NodeBuilderCanvas({
       sourceDatabaseId,
       onVisualize: handleVisualize,
       onPickTable: blocks.pickSource,
+      onAddBlock: drop.addBlock,
       onToggleColumn: blocks.toggleColumn,
       onStrategyChange: blocks.changeStrategy,
       onConditionsChange: blocks.changeConditions,
@@ -247,6 +273,7 @@ function NodeBuilderCanvas({
       sourceDatabaseId,
       handleVisualize,
       blocks,
+      drop.addBlock,
       canvas,
     ],
   );
@@ -290,6 +317,7 @@ function NodeBuilderCanvas({
             onEdgesChange={onEdgesChange}
             onConnect={canvas.connect}
             onReconnect={canvas.reconnect}
+            onConnectEnd={canvas.connectEnd}
             onNodeDragStart={history.recordDragStart}
           >
             <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
@@ -300,11 +328,14 @@ function NodeBuilderCanvas({
                 canUndo={history.canUndo}
                 canRedo={history.canRedo}
                 areAllCollapsed={areAllCollapsed}
-                onUndo={history.undo}
-                onRedo={history.redo}
-                onToggleCollapseAll={() =>
-                  blocks.setAllCollapsed(!areAllCollapsed)
-                }
+                onUndo={() => history.undo("toolbar")}
+                onRedo={() => history.redo("toolbar")}
+                onToggleCollapseAll={() => {
+                  blocks.setAllCollapsed(!areAllCollapsed);
+                  trackNodeBuilderCollapseToggled(
+                    areAllCollapsed ? "expand" : "collapse",
+                  );
+                }}
                 onPrettify={handlePrettify}
               />
             </Panel>

@@ -6,6 +6,7 @@ import { Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import S from "../NodeBuilder.module.css";
+import { useNodeBuilderContext } from "../context";
 import type { DockNodeType } from "../types";
 
 export const NODE_TYPE_DRAG_TYPE = "application/x-metabase-node-type";
@@ -30,8 +31,10 @@ const LABELS: Record<DockNodeType, () => string> = {
   limit: () => t`Limit`,
 };
 
-// One chip per block kind; dragging one onto the canvas drops a blank block.
+// One chip per block kind; dragging one onto the canvas drops a blank block
+// where it lands, clicking one drops it in the middle of the view.
 export function NodeDock() {
+  const { onAddBlock } = useNodeBuilderContext();
   const handleDragStart = (event: DragEvent, type: DockNodeType) => {
     // react-dnd's HTML5 backend listens on window and cancels native drags it did not start.
     event.stopPropagation();
@@ -43,15 +46,17 @@ export function NodeDock() {
     <div className={S.dock} data-testid="node-builder-dock">
       <div className={S.dockChips}>
         {CHIPS.map(({ type, icon, className }) => (
-          <div
+          <button
             key={type}
+            type="button"
             className={cx(S.dockChip, className)}
             draggable
             onDragStart={(event) => handleDragStart(event, type)}
+            onClick={() => onAddBlock(type)}
           >
             <Icon name={icon} size={14} />
             <span>{LABELS[type]()}</span>
-          </div>
+          </button>
         ))}
       </div>
     </div>

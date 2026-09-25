@@ -1,10 +1,10 @@
 import { createContext, useContext } from "react";
 
 import type * as Lib from "metabase-lib";
-import type { Database, DatabaseId, TableId } from "metabase-types/api";
+import type { Database, DatabaseId } from "metabase-types/api";
 
 import type { CompiledGraph } from "./graph";
-import type { NamedExpression, SourceItem } from "./types";
+import type { DockNodeType, NamedExpression, SourceItem } from "./types";
 
 export type NodeBuilderContextType = {
   compiled: CompiledGraph;
@@ -18,11 +18,8 @@ export type NodeBuilderContextType = {
   // same database.
   sourceDatabaseId: DatabaseId | null;
   onVisualize: () => void;
-  onPickTable: (
-    nodeId: string,
-    tableId: TableId,
-    databaseId: DatabaseId,
-  ) => void;
+  onPickTable: (nodeId: string, source: SourceItem) => void;
+  onAddBlock: (type: DockNodeType) => void;
   onToggleColumn: (nodeId: string, columnName: string) => void;
   onStrategyChange: (nodeId: string, strategy: Lib.JoinStrategy) => void;
   onConditionsChange: (nodeId: string, conditions: Lib.JoinCondition[]) => void;
@@ -36,7 +33,6 @@ export type NodeBuilderContextType = {
     nodeId: string,
     aggregations: Lib.AggregationClause[],
     breakoutColumns: Lib.ColumnMetadata[],
-    orderBys: Lib.OrderByClause[],
   ) => void;
 };
 

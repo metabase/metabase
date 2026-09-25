@@ -1,4 +1,4 @@
-import { type XYPosition, useReactFlow } from "@xyflow/react";
+import { type XYPosition, useReactFlow, useStoreApi } from "@xyflow/react";
 import {
   type Dispatch,
   type DragEvent,
@@ -8,6 +8,7 @@ import {
   useRef,
 } from "react";
 
+import { trackNodeBuilderBlockAdded } from "../analytics";
 import { NODE_TYPE_DRAG_TYPE } from "../components/NodeDock";
 import { centeredPosition, createBlankNode, recenterDropped } from "../graph";
 import type { BuilderNode, DockNodeType } from "../types";
@@ -29,7 +30,8 @@ type Options = {
 
 // Dropping a chip from the dock lands a blank block centred under the cursor.
 export function useNodeDrop({ nodes, setNodes }: Options) {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getViewport } = useReactFlow();
+  const store = useStoreApi();
   // Cursor points of dropped blocks that still need exact centring once
   // react-flow reports their real size.
   const pendingCentersRef = useRef(new Map<string, XYPosition>());
@@ -61,8 +63,26 @@ export function useNodeDrop({ nodes, setNodes }: Options) {
       );
       pendingCentersRef.current.set(node.id, cursor);
       setNodes((prevNodes) => [...prevNodes, node]);
+      trackNodeBuilderBlockAdded(nodeType, "drag");
     },
     [screenToFlowPosition, setNodes],
+  );
+
+  // The keyboard route: a blank block lands in the middle of the viewport.
+  const addBlock = useCallback(
+    (nodeType: DockNodeType) => {
+      const { width, height } = store.getState();
+      const { x, y, zoom } = getViewport();
+      const center = { x: (width / 2 - x) / zoom, y: (height / 2 - y) / zoom };
+      const node = createBlankNode(
+        nodeType,
+        centeredPosition(nodeType, center),
+      );
+      pendingCentersRef.current.set(node.id, center);
+      setNodes((prevNodes) => [...prevNodes, node]);
+      trackNodeBuilderBlockAdded(nodeType, "click");
+    },
+    [store, getViewport, setNodes],
   );
 
   // The estimate used at drop time is close; once the block is measured, put
@@ -78,5 +98,5 @@ export function useNodeDrop({ nodes, setNodes }: Options) {
     }
   }, [nodes, setNodes]);
 
-  return { onDragOver, onDrop };
+  return { onDragOver, onDrop, addBlock };
 }

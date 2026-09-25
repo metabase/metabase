@@ -13,6 +13,14 @@ export function getUnsupportedReason(query: Lib.Query): string | null {
     return t`a native query`;
   }
   const trimmed = Lib.dropEmptyStages(query);
+  // MLv2 cannot hold an empty field list, so the canvas would put every column back.
+  const columns = Lib.fieldableColumns(trimmed, 0);
+  if (
+    columns.length > 0 &&
+    columns.every((column) => !Lib.displayInfo(trimmed, 0, column).selected)
+  ) {
+    return t`a column selection that leaves out every source column`;
+  }
   for (const stageIndex of Lib.stageIndexes(trimmed)) {
     if (stageIndex === 0) {
       continue;

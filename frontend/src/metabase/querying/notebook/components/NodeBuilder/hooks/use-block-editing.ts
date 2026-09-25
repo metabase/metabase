@@ -4,11 +4,15 @@ import {
   type SetStateAction,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 
 import type * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
 
+import {
+  trackNodeBuilderBlockEdited,
+  trackNodeBuilderSourcePicked,
+} from "../analytics";
 import {
   isExpressionNode,
   isFilterNode,
@@ -20,7 +24,7 @@ import {
   isTableNode,
   withCollapsed,
 } from "../graph";
-import type { BuilderNode, NamedExpression } from "../types";
+import type { BuilderNode, NamedExpression, SourceItem } from "../types";
 
 import { useSourceLoader } from "./use-source-loader";
 
@@ -33,13 +37,20 @@ type Options = {
 // version so the graph recompiles; fold state does not.
 export function useBlockEditing({ nodesRef, setNodes }: Options) {
   const loadSource = useSourceLoader();
+  // Loads can overlap while the picker stays open; only the newest one for a block may land.
+  const pickRequestsRef = useRef(new Map<string, number>());
 
   const updateNodeData = useCallback(
     <N extends BuilderNode>(
       nodeId: string,
       guard: (node: BuilderNode) => node is N,
       update: (data: N["data"]) => Partial<N["data"]>,
+      { silent = false } = {},
     ) => {
+      const kind = nodesRef.current.find((node) => node.id === nodeId)?.type;
+      if (kind && !silent) {
+        trackNodeBuilderBlockEdited(kind);
+      }
       setNodes((prevNodes) =>
         prevNodes.map((node) =>
           node.id === nodeId && guard(node)
@@ -55,17 +66,25 @@ export function useBlockEditing({ nodesRef, setNodes }: Options) {
         ),
       );
     },
-    [setNodes],
+    [nodesRef, setNodes],
   );
 
   const pickSource = useCallback(
-    async (nodeId: string, tableId: TableId, databaseId: DatabaseId) => {
+    async (nodeId: string, source: SourceItem) => {
+      const request = (pickRequestsRef.current.get(nodeId) ?? 0) + 1;
+      pickRequestsRef.current.set(nodeId, request);
       try {
-        const picked = await loadSource(tableId, databaseId);
-        updateNodeData(nodeId, isTableNode, () => ({
-          ...picked,
-          excludedColumns: [],
-        }));
+        const picked = await loadSource(source.id, source.databaseId);
+        if (pickRequestsRef.current.get(nodeId) !== request) {
+          return;
+        }
+        updateNodeData(
+          nodeId,
+          isTableNode,
+          () => ({ ...picked, excludedColumns: [] }),
+          { silent: true },
+        );
+        trackNodeBuilderSourcePicked(source.kind);
       } catch (error) {
         console.error("Node builder: could not pick a source", error);
       }
@@ -75,13 +94,23 @@ export function useBlockEditing({ nodesRef, setNodes }: Options) {
 
   const toggleColumn = useCallback(
     (nodeId: string, columnName: string) => {
+      const node = nodesRef.current.find((node) => node.id === nodeId);
+      if (
+        node &&
+        isTableNode(node) &&
+        !node.data.excludedColumns.includes(columnName) &&
+        node.data.excludedColumns.length + 1 >= node.data.columns.length
+      ) {
+        // MLv2 cannot hold an empty field list, so the last column stays.
+        return;
+      }
       updateNodeData(nodeId, isTableNode, (data) => ({
         excludedColumns: data.excludedColumns.includes(columnName)
           ? data.excludedColumns.filter((name) => name !== columnName)
           : [...data.excludedColumns, columnName],
       }));
     },
-    [updateNodeData],
+    [nodesRef, updateNodeData],
   );
 
   const changeStrategy = useCallback(
@@ -125,19 +154,13 @@ export function useBlockEditing({ nodesRef, setNodes }: Options) {
       nodeId: string,
       aggregations: Lib.AggregationClause[],
       breakoutColumns: Lib.ColumnMetadata[],
-      orderBys: Lib.OrderByClause[],
     ) => {
       updateNodeData(nodeId, isSummarizeNode, () => ({
         aggregations,
         breakoutColumns,
       }));
-      // MLv2 drops the sorts that pointed at a removed metric or group; the sort block follows.
-      const sortNode = nodesRef.current.find(isSortNode);
-      if (sortNode) {
-        updateNodeData(sortNode.id, isSortNode, () => ({ orderBys }));
-      }
     },
-    [updateNodeData, nodesRef],
+    [updateNodeData],
   );
 
   const toggleCollapsed = useCallback(

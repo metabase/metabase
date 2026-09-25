@@ -10,10 +10,15 @@ import { getQuestion } from "../../../../store/selectors";
 import { NotebookNativePreview } from "./NotebookNativePreview";
 import S from "./QueryPreviewSidebar.module.css";
 
+type QueryPreviewSidebarProps = {
+  // The Redux question keeps its last query while the canvas has none, so the canvas says.
+  hasQuery: boolean;
+};
+
 // The native query behind the canvas, or a hint while there is none yet.
-export const QueryPreviewSidebar = () => {
+export const QueryPreviewSidebar = ({ hasQuery }: QueryPreviewSidebarProps) => {
   const question = checkNotNull(useSelector(getQuestion));
-  const canRun = Lib.canRun(question.query(), question.type());
+  const canRun = hasQuery && Lib.canRun(question.query(), question.type());
 
   return (
     <Box

@@ -234,7 +234,7 @@ export const JoinNode = memo(function JoinNode({ id, data }: JoinNodeProps) {
         stageIndex={stageIndex}
         onToggleCollapsed={() => onToggleCollapsed(id)}
         onRemove={readOnly ? undefined : () => onRemoveNode(id)}
-        removeLabel={t`Change join type`}
+        removeLabel={t`Remove join`}
       />
       {!isCollapsed && (
         <div className={cx(S.joinBody, "nodrag", "nowheel")}>

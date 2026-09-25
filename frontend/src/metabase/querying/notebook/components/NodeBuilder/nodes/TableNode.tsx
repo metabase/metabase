@@ -175,19 +175,18 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
                 const isKey = keyNames.has(column.name);
                 const isSelected = !excluded.has(column.name);
                 return (
-                  <div
+                  <button
                     key={column.name}
+                    type="button"
                     className={cx(S.column, {
                       [S.unselected]: !isSelected,
                       [S.key]: isKey,
                       [S.readOnly]: readOnly,
                     })}
                     title={column.longDisplayName}
-                    onClick={
-                      readOnly
-                        ? undefined
-                        : () => onToggleColumn(id, column.name)
-                    }
+                    aria-pressed={isSelected}
+                    disabled={readOnly}
+                    onClick={() => onToggleColumn(id, column.name)}
                   >
                     <Icon
                       name={column.icon}
@@ -196,7 +195,7 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
                     />
                     <span className={S.columnName}>{column.displayName}</span>
                     {isKey && <span className={S.keyBadge}>{t`key`}</span>}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -207,9 +206,7 @@ export const TableNode = memo(function TableNode({ id, data }: TableNodeProps) {
                 sources={sources}
                 isLoading={isLoadingSources}
                 sourceDatabaseId={sourceDatabaseId}
-                onPick={(source) =>
-                  onPickTable(id, source.id, source.databaseId)
-                }
+                onPick={(source) => onPickTable(id, source)}
               />
             </div>
           )}

@@ -93,6 +93,20 @@ function applySourceExclusions(
     : query;
 }
 
+function isSameSource(
+  query: Lib.Query,
+  left: Lib.Joinable,
+  right: Lib.Joinable,
+): boolean {
+  const leftInfo = Lib.pickerInfo(query, left);
+  const rightInfo = Lib.pickerInfo(query, right);
+  return (
+    leftInfo != null &&
+    rightInfo != null &&
+    leftInfo.tableId === rightInfo.tableId
+  );
+}
+
 function applyJoinExclusions(
   baseQuery: Lib.Query,
   join: Lib.Join,
@@ -260,11 +274,7 @@ export function compileGraph(
       const seeded = node.data.seededJoin;
       const keepsSeeded =
         seeded != null &&
-        Lib.displayInfo(
-          baseQuery,
-          stageIndex,
-          Lib.joinedThing(baseQuery, seeded),
-        ).displayName === rhsNode.data.tableName;
+        isSameSource(baseQuery, Lib.joinedThing(baseQuery, seeded), table);
       const draft = keepsSeeded
         ? Lib.withJoinConditions(
             Lib.withJoinStrategy(seeded, strategy),
