@@ -70,3 +70,18 @@ tasks:
       rspack --json > stats.json
     options:
       cache: false
+
+  clean-dev-js:
+    script: >-
+      rm -rf resources/frontend_client/app/dist
+      target/classes/frontend_client/app/dist
+      resources/frontend_client/app/embedding-sdk
+      target/classes/frontend_client/app/embedding-sdk
+    options:
+      cache: false
+
+  remove-webpack-cache:
+    script: >-
+      rm -rf ./node_modules/.cache
+    options:
+      cache: false

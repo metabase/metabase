@@ -1,5 +1,5 @@
 # Settings shared by every task file in this directory. moon merges
-# fileGroups, taskOptions and implicitDeps across all of them.
+# fileGroups, taskOptions, implicitDeps and tasks across all of them.
 
 fileGroups:
   frontend:
@@ -36,4 +36,12 @@ taskOptions:
   outputStyle: buffer-only-failure
 
 implicitDeps:
-  - ensure-deps
+  - deps
+
+tasks:
+  deps:
+    script: >-
+      bun install
+    inputs:
+      - bun.lock
+      - package.json

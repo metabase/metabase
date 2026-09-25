@@ -1,0 +1,25 @@
+# CI entry points.
+
+tasks:
+  ci:
+    command: noop
+    deps:
+      - ci-frontend
+      - ci-backend
+    options:
+      cache: false
+
+  ci-backend:
+    script: >-
+      clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood && clojure
+      -X:dev:test
+    options:
+      cache: false
+
+  ci-frontend:
+    command: noop
+    deps:
+      - lint
+      - test
+    options:
+      cache: false
