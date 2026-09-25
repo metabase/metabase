@@ -54,6 +54,28 @@
   border-bottom: 2px solid var(--mb-color-border-neutral-subtle);
 }
 
+.footerContainer {
+  display: flex;
+  flex-direction: row;
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  border-top: 2px solid var(--mb-color-border-neutral-subtle);
+  min-width: max-content;
+  font-weight: 700;
+}
+
+.footerCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--mb-space-2, 12px);
+  height: 36px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pinnedColumnsSection.withSeparator {
   border-right: 3px solid var(--mb-color-border-neutral-subtle);
 }
