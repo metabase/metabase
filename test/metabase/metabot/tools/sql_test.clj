@@ -35,6 +35,27 @@
             (testing "instructions contain actual query ID link"
               (is (str/includes? output (str "metabase://query/" query-id))))))))))
 
+(deftest create-sql-query-reference-warnings-output-test
+  (testing "create_sql_query still creates the query and passes reference warnings on to the LLM"
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_]
+                                  {:validation-result {:valid?   true
+                                                       :dialect  "postgres"
+                                                       :warnings ["Column `customer_name` was not found in any table, model, or question this query reads from."]}
+                                   :action-result     {:query-id      "q-1"
+                                                       :query-content "SELECT v.customer_name FROM {{#1}} AS v"
+                                                       :query         {:database 1
+                                                                       :type     :native
+                                                                       :native   {:query "SELECT v.customer_name FROM {{#1}} AS v"}}
+                                                       :database      1}})]
+      (let [result (agent-sql/create-sql-query-tool {:database_id 1
+                                                     :sql_query   "SELECT v.customer_name FROM {{#1}} AS v"
+                                                     :title       "Results"})]
+        (is (= "q-1" (get-in result [:structured-output :query-id])))
+        (doseq [text [(:output result) (:instructions result)]]
+          (is (str/includes? text "possible problems"))
+          (is (str/includes? text "- Column `customer_name` was not found")))))))
+
 (deftest create-sql-query-validation-error-output-test
   (testing "create_sql_query output contains appropriate info on validation failure"
     (mt/test-drivers #{:postgres}

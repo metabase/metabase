@@ -66,6 +66,13 @@
    instruction-text
    "</instructions>"))
 
+(defn- with-reference-warnings
+  "Append any reference `warnings` from the validation result to a success `instruction-text`."
+  [instruction-text warnings]
+  (if-let [warnings-text (instructions/sql-reference-warnings-instructions warnings)]
+    (str instruction-text "\n" warnings-text)
+    instruction-text))
+
 (defn- code-edit-part
   [buffer-id sql]
   (streaming/code-edit-part {:buffer_id buffer-id
@@ -93,11 +100,11 @@
           (create-sql-query-tools/create-sql-query
            {:database-id database_id
             :sql sql_query})
-          {:keys [valid? dialect error-message]} validation-result
+          {:keys [valid? dialect error-message warnings]} validation-result
           {:keys [query-id query]} action-result]
       (if valid?
         (let [structured  (assoc action-result :result-type :query)
-              instr       (instructions/query-created-instructions-for query-id)]
+              instr       (with-reference-warnings (instructions/query-created-instructions-for query-id) warnings)]
           {:output (format-query-output structured instr {:preamble? true})
            :structured-output structured
            :instructions instr
@@ -125,11 +132,11 @@
               (create-sql-query-tools/create-sql-query
                {:database-id database_id
                 :sql sql_query})
-              {:keys [valid? dialect error-message]} validation-result
+              {:keys [valid? dialect error-message warnings]} validation-result
               {:keys [query-content]} action-result]
           (if valid?
             (let [structured (assoc action-result :result-type :query)
-                  instr      instructions/query-loaded-in-editor-instructions]
+                  instr      (with-reference-warnings instructions/query-loaded-in-editor-instructions warnings)]
               {:output (format-query-output structured instr {:preamble? true})
                :structured-output structured
                :instructions instr
@@ -168,12 +175,14 @@
             :edits edits
             :checklist checklist
             :queries-state (shared/current-queries-state)})
-          {:keys [valid? error-message dialect]} validation-result
+          {:keys [valid? error-message dialect warnings]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
         (let [structured (assoc action-result :result-type :query)
               buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))]
+              instr      (with-reference-warnings
+                           (instructions/edit-sql-query-instructions-for query-id (some? buffer-id))
+                           warnings)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
@@ -217,12 +226,14 @@
             :sql new_query
             :checklist checklist
             :queries-state (shared/current-queries-state)})
-          {:keys [valid? dialect error-message]} validation-result
+          {:keys [valid? dialect error-message warnings]} validation-result
           {:keys [query-id query query-content]} action-result]
       (if valid?
         (let [structured (assoc action-result :result-type :query)
               buffer-id  (first-code-editor-buffer-id)
-              instr      (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))]
+              instr      (with-reference-warnings
+                           (instructions/replace-sql-query-instructions-for query-id (some? buffer-id))
+                           warnings)]
           {:output (format-query-output structured instr)
            :structured-output structured
            :instructions instr
