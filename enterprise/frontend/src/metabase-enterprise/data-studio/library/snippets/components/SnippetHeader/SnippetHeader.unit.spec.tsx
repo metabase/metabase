@@ -34,6 +34,28 @@ const setup = ({ snippet = {}, remoteSyncType }: SetupOps) => {
         name: "My folder",
         effective_ancestors: [createMockCollection({ id: "root" })],
       }),
+      createMockCollection({
+        id: 11,
+        name: "GrandParent Folder",
+        effective_ancestors: [createMockCollection({ id: "root" })],
+      }),
+      createMockCollection({
+        id: 12,
+        name: "Parent Folder",
+        effective_ancestors: [
+          createMockCollection({ id: "root" }),
+          createMockCollection({ id: 11, name: "GrandParent Folder" }),
+        ],
+      }),
+      createMockCollection({
+        id: 13,
+        name: "Child Folder",
+        effective_ancestors: [
+          createMockCollection({ id: "root" }),
+          createMockCollection({ id: 11, name: "GrandParent Folder" }),
+          createMockCollection({ id: 12, name: "Parent Folder" }),
+        ],
+      }),
     ],
   });
 
@@ -105,6 +127,27 @@ describe("SnippetHeader", () => {
       expect(
         screen.queryByRole("link", { name: "Our analytics" }),
       ).not.toBeInTheDocument();
+    });
+
+    it("links each folder crumb to the library with the path down to that folder expanded", async () => {
+      setup({ snippet: { name: "Deep Snippet", collection_id: 13 } });
+
+      expect(
+        await screen.findByRole("link", { name: "GrandParent Folder" }),
+      ).toHaveAttribute(
+        "href",
+        "/data-studio/library?expandedId=root&expandedId=11",
+      );
+      expect(
+        screen.getByRole("link", { name: "Parent Folder" }),
+      ).toHaveAttribute(
+        "href",
+        "/data-studio/library?expandedId=root&expandedId=11&expandedId=12",
+      );
+      expect(screen.getByRole("link", { name: "Child Folder" })).toHaveAttribute(
+        "href",
+        "/data-studio/library?expandedId=root&expandedId=11&expandedId=12&expandedId=13",
+      );
     });
   });
 

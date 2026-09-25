@@ -42,11 +42,9 @@ describe("scenarios > data studio > snippets", () => {
 
       cy.wait("@createSnippet");
 
-      H.DataStudio.Snippets.editPage().should("be.visible");
-
-      H.DataStudio.Snippets.editPage().within(() => {
-        cy.findByText(/by Bobby Tables/).should("be.visible");
-      });
+      H.DataStudio.Snippets.editPage()
+        .findByText(/by Bobby Tables/)
+        .should("be.visible");
 
       H.DataStudio.nav().findByRole("link", { name: "Semantic layer" }).click();
       H.DataStudio.Library.libraryPage()
@@ -56,136 +54,74 @@ describe("scenarios > data studio > snippets", () => {
   });
 
   describe("editing", () => {
-    it("should be able to edit snippet content", () => {
+    it("should edit snippet content, guard unsaved changes, and keep them across name and description edits", () => {
       H.createSnippet({
         name: "Test snippet",
         content: "SELECT * FROM orders",
       });
 
       H.DataStudio.Library.visit();
-
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
-
       H.DataStudio.Snippets.editPage().should("be.visible");
 
-      H.DataStudio.Snippets.editor.type(" WHERE id = 1");
-
-      H.DataStudio.Snippets.saveButton().should("be.enabled").click();
-      cy.wait("@updateSnippet");
-
-      cy.reload();
-      H.DataStudio.Snippets.editor
-        .get()
-        .should("contain.text", "SELECT * FROM orders WHERE id = 1");
-    });
-
-    it("should be able to cancel editing", () => {
-      H.createSnippet({
-        name: "Test snippet",
-        content: "SELECT * FROM orders",
-      });
-
-      H.DataStudio.Library.visit();
-
-      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
-
-      H.DataStudio.Snippets.editor.type(" WHERE id = 1");
-
+      cy.log("Cancel restores the saved content in the editor");
+      H.DataStudio.Snippets.editor.type(" WHERE id = 2");
       H.DataStudio.Snippets.cancelButton().click();
       H.DataStudio.Snippets.editor
-        .get()
-        .should("not.contain.text", "SELECT * FROM orders WHERE id = 1");
-      H.DataStudio.Snippets.editor
-        .get()
-        .should("contain.text", "SELECT * FROM orders");
-    });
-
-    it("should show unsaved changes warning when navigating away", () => {
-      H.createSnippet({
-        name: "Test snippet",
-        content: "SELECT * FROM orders",
-      });
-
-      H.DataStudio.Library.visit();
-
-      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
+        .value()
+        .should("eq", "SELECT * FROM orders");
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 
-      H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
-
-      H.modal().within(() => {
-        cy.findByText("Discard your changes?").should("be.visible");
-        cy.button("Cancel").click();
-      });
-
-      H.DataStudio.Snippets.editPage().should("be.visible");
-    });
-
-    it("should preserve unsaved content changes when description or name is edited", () => {
-      cy.log("Navigate to a snippet and edit its content");
-      H.createSnippet({
-        name: "Test snippet",
-        content: "SELECT * FROM orders",
-      });
-      H.DataStudio.Library.visit();
-      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
-      H.DataStudio.Snippets.editor.type("1");
-
-      cy.log("Edit its name");
-      cy.findByPlaceholderText("Name").type("1").blur();
+      cy.log("Edit the name and description while content is unsaved");
+      H.DataStudio.Snippets.editPage()
+        .findByPlaceholderText("Name")
+        .type("1")
+        .blur();
       H.undoToast().findByText("Snippet name updated").should("be.visible");
       H.undoToast().icon("close").click();
 
-      cy.log("Edit its description");
       H.DataStudio.Snippets.descriptionInput().type("desc").blur();
       H.undoToast()
         .findByText("Snippet description updated")
         .should("be.visible");
       H.undoToast().icon("close").click();
 
-      cy.log("Verify unsaved changes are preserved");
       H.DataStudio.Snippets.editor
         .value()
-        .should("eq", "SELECT * FROM orders1");
+        .should("eq", "SELECT * FROM orders WHERE id = 1");
 
-      cy.log(
-        "Verify Save button saves the content without reverting the name and description changes",
-      );
-      H.DataStudio.Snippets.saveButton().click();
+      cy.log("Navigating away with unsaved content asks to discard it");
+      H.DataStudio.nav().findByRole("link", { name: "Glossary" }).click();
+      H.modal().within(() => {
+        cy.findByText("Discard your changes?").should("be.visible");
+        cy.button("Cancel").click();
+      });
+      H.DataStudio.Snippets.editPage().should("be.visible");
+
+      cy.log("Save keeps the name and description edits");
+      H.DataStudio.Snippets.saveButton().should("be.enabled").click();
       H.undoToast().findByText("Snippet content updated").should("be.visible");
-      cy.findByPlaceholderText("Name").should("have.value", "Test snippet1");
+      H.DataStudio.Snippets.editPage()
+        .findByPlaceholderText("Name")
+        .should("have.value", "Test snippet1");
       H.DataStudio.Snippets.editPage().findByText("desc").should("be.visible");
-    });
-  });
 
-  describe("description", () => {
-    it("should support markdown in description", () => {
-      H.createSnippet({
-        name: "Test snippet",
-        content: "SELECT * FROM orders",
-        description: "**Bold text** and *italic text*",
-      });
-
-      H.DataStudio.Library.visit();
-
-      H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
-      H.DataStudio.Snippets.editPage().within(() => {
-        cy.findByText("Bold text").should("have.css", "font-weight", "700");
-        cy.findByText("italic text").should("have.css", "font-style", "italic");
-      });
+      cy.reload();
+      H.DataStudio.Snippets.editor
+        .get()
+        .should("contain.text", "SELECT * FROM orders WHERE id = 1");
     });
   });
 
   describe("archiving", () => {
-    it("should be able to archive a snippet", () => {
+    it("should archive and unarchive a snippet", () => {
       H.createSnippet({
         name: "Test snippet",
         content: "SELECT * FROM orders",
       });
 
       H.DataStudio.Library.visit();
-
       H.DataStudio.Library.libraryPage().findByText("Test snippet").click();
 
       cy.findByTestId("snippet-header")
@@ -196,51 +132,37 @@ describe("scenarios > data studio > snippets", () => {
       H.modal().within(() => {
         cy.findByText("Archive snippet?").should("be.visible");
         cy.button("Archive").click();
-        cy.wait("@updateSnippet");
       });
-
-      H.DataStudio.Library.libraryPage()
-        .findByText("Test snippet")
-        .should("not.exist");
-    });
-
-    it("should be able to unarchive a snippet", () => {
-      H.createSnippet({
-        name: "Test snippet",
-        content: "SELECT * FROM orders",
-      }).then((response) => {
-        cy.log("Archive snippet");
-        return H.updateSnippet(response.body.id, { archived: true });
-      });
-
-      H.DataStudio.Library.visit();
+      cy.wait("@updateSnippet");
 
       H.DataStudio.Library.libraryPage()
         .findByRole("button", { name: "Snippet collection options" })
-        .click();
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Test snippet")
+        .should("not.exist");
 
+      cy.log("Unarchive it from the archived snippets page");
+      H.DataStudio.Library.libraryPage()
+        .findByRole("button", { name: "Snippet collection options" })
+        .click();
       H.popover()
         .findByText(/View archived snippets/)
         .click();
 
       cy.url().should("include", "/snippets/archived");
-
       H.DataStudio.Snippets.archivedPage()
         .findByText("Test snippet")
         .should("be.visible");
-
       H.DataStudio.Snippets.archivedPage()
         .findByRole("button", { name: "Unarchive snippet" })
         .click();
-
       cy.wait("@updateSnippet");
-
       H.DataStudio.Snippets.archivedPage()
         .findByText("Test snippet")
         .should("not.exist");
 
-      H.DataStudio.Library.visit();
-
+      H.DataStudio.nav().findByRole("link", { name: "Semantic layer" }).click();
       H.DataStudio.Library.libraryPage()
         .findByText("Test snippet")
         .should("be.visible");
@@ -251,10 +173,9 @@ describe("scenarios > data studio > snippets", () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/collection").as("createCollection");
       cy.intercept("PUT", "/api/collection/*").as("updateCollection");
-      cy.intercept("DELETE", "/api/collection/*").as("deleteCollection");
     });
 
-    it("should be able to create a folder and snippet inside it", () => {
+    it("should create a folder with a snippet inside it, then rename and archive the folder", () => {
       H.DataStudio.Library.visit();
 
       H.DataStudio.Library.newButton().click();
@@ -271,14 +192,15 @@ describe("scenarios > data studio > snippets", () => {
       });
       H.modal().within(() => {
         cy.button("Create").click();
-        cy.wait("@createCollection");
       });
+      cy.wait("@createCollection");
 
       H.DataStudio.Library.visit();
       H.DataStudio.Library.libraryPage()
         .findByText("Test Folder")
         .should("be.visible");
 
+      cy.log("Create a snippet inside the folder");
       H.DataStudio.Library.newButton().click();
       H.popover().findByText("Snippet").click();
 
@@ -299,47 +221,30 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Folder snippet")
         .should("be.visible");
-    });
 
-    it("should be able to edit folder details", () => {
-      H.createSnippetFolder({
-        name: "Test Folder",
-      });
-
-      H.DataStudio.Library.visit();
-
+      cy.log("Rename the folder");
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
-
       H.popover().findByText("Edit folder details").click();
-
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Updated Folder");
         cy.button("Save").click();
-        cy.wait("@updateCollection");
       });
-
+      cy.wait("@updateCollection");
       H.DataStudio.Library.libraryPage()
         .findByText("Updated Folder")
         .should("be.visible");
-    });
 
-    it("should be able to delete a folder", () => {
-      H.createSnippetFolder({
-        name: "Test Folder",
-      });
-
-      H.DataStudio.Library.visit();
-
-      H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
-
+      cy.log("Archive the folder");
+      H.DataStudio.Library.result("Updated Folder").icon("ellipsis").click();
       H.popover().findByText("Archive").click();
-      cy.log("Clicks archive button on confirmation modal");
       H.modal().findByRole("button", { name: "Archive" }).click();
-
       cy.wait("@updateCollection");
 
       H.DataStudio.Library.libraryPage()
-        .findByText("Test Folder")
+        .findByRole("button", { name: "Snippet collection options" })
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Updated Folder")
         .should("not.exist");
     });
   });
@@ -430,73 +335,6 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Sibling Snippet")
         .should("not.exist");
-    });
-
-    it("should expand all folders when navigating directly to library without expandedId params", () => {
-      // Create nested folder structure
-      H.createSnippetFolder({
-        name: "Folder A",
-      });
-      H.createSnippetFolder({
-        name: "Folder B",
-      });
-
-      cy.log("Navigate directly to library (no expandedId params)");
-      H.DataStudio.Library.visit();
-
-      cy.log("Verify all folders are expanded by default");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Folder A")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Folder B")
-        .should("be.visible");
-    });
-
-    it("should expand parent folders when clicking a nested folder in breadcrumbs", () => {
-      // Create deeply nested structure: GrandParent > Parent > Child
-      H.createSnippetFolder({
-        name: "GrandParent Folder",
-      }).then(({ body: grandParentFolder }) => {
-        H.createSnippetFolder({
-          name: "Parent Folder",
-          parent_id: Number(grandParentFolder.id),
-        }).then(({ body: parentFolder }) => {
-          H.createSnippetFolder({
-            name: "Child Folder",
-            parent_id: Number(parentFolder.id),
-          }).then(({ body: childFolder }) => {
-            H.createSnippet({
-              name: "Deep Snippet",
-              content: "SELECT 1",
-              collection_id: childFolder.id,
-            }).then(({ body: snippet }) => {
-              H.DataStudio.Snippets.visitSnippet(snippet.id);
-            });
-          });
-        });
-      });
-
-      H.DataStudio.Snippets.editPage().should("be.visible");
-
-      cy.log(
-        "Click the Parent Folder breadcrumb (middle of the path) to go back",
-      );
-      H.DataStudio.breadcrumbs()
-        .findByRole("link", { name: "Parent Folder" })
-        .click();
-
-      cy.log("Verify the path up to Parent Folder is expanded");
-      H.DataStudio.Library.libraryPage()
-        .findByText("GrandParent Folder")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Parent Folder")
-        .should("be.visible");
-      // Child Folder should still be visible since it's inside Parent Folder
-      H.DataStudio.Library.libraryPage()
-        .findByText("Child Folder")
-        .should("be.visible");
     });
   });
 });

@@ -20,6 +20,24 @@ describe("EditSnippetPage", () => {
     expect(screen.getByTestId("snippet-editor")).toBeEnabled();
   });
 
+  it("restores the saved content when editing is cancelled", async () => {
+    await setup({
+      snippet: { name: "Batman's snippet", content: "SELECT * FROM orders" },
+    });
+
+    const editor = screen.getByTestId("snippet-editor");
+    await userEvent.type(editor, " WHERE id = 1");
+    expect(editor).toHaveValue("SELECT * FROM orders WHERE id = 1");
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(editor).toHaveValue("SELECT * FROM orders");
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the description input", async () => {
     await setup({
       snippet: {
