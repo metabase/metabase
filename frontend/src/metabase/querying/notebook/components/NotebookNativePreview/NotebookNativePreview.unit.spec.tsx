@@ -3,10 +3,9 @@ import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/utils/types";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Database } from "metabase-types/api";
@@ -15,6 +14,7 @@ import {
   createMockField,
   createMockTable,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { NotebookNativePreview } from "./NotebookNativePreview";
 
