@@ -10,6 +10,7 @@
    (com.mchange.v2.c3p0 DataSources PooledDataSource)
    (java.net URLDecoder)
    (java.nio.charset StandardCharsets)
+   (javax.sql DataSource)
    (org.postgresql PGProperty)))
 
 (set! *warn-on-reflection* true)
@@ -86,16 +87,22 @@
             [k (or v "")])]))
 
 (defn- parse-db-url
-  "Parse a pgvector JDBC URL into {:jdbc-url ... :pool-props ...}, or throw if it carries an unrecognized
-  parameter."
+  "Parse a pgvector JDBC URL into {:jdbc-url ... :credentials ... :pool-props ...}, or throw if it carries an
+  unrecognized parameter."
   [^String url]
   (let [[base pairs]           (split-query url)
         default-pool           (merge fixed-pool-props
                                       (update-vals tunable-pool-props first))
-        {:keys [pool conn]}
+        {:keys [pool conn credentials]}
         (reduce
          (fn [acc [k raw-v]]
            (cond
+             ;; credentials: passed to pgjdbc as connection properties, off the URL, because the URL gets
+             ;; printed -- pgjdbc logs it at DEBUG on every connection, and DriverManager quotes it in its
+             ;; "No suitable driver" error
+             (contains? #{"user" "password" "sslpassword"} k)
+             (assoc-in acc [:credentials (keyword k)] (url-decode raw-v))
+
              ;; a c3p0 knob: coerce and apply to the pool (pgjdbc can't read these off the URL)
              (contains? tunable-pool-props k)
              (let [parse  (second (tunable-pool-props k))
@@ -115,13 +122,14 @@
                                           "(%s) or a Postgres connection property.")
                                      k (str/join ", " (sort (keys tunable-pool-props))))
                              {:param k}))))
-         {:pool default-pool, :conn []}
+         {:pool default-pool, :conn [], :credentials {}}
          pairs)]
-    {:jdbc-url   (cond-> base (seq conn) (str "?" (str/join "&" conn)))
-     :pool-props pool}))
+    {:jdbc-url    (cond-> base (seq conn) (str "?" (str/join "&" conn)))
+     :credentials credentials
+     :pool-props  pool}))
 
 (defn- parsed-db-config
-  "Parse [[db-url]] into {:jdbc-url ... :pool-props ...}, or throw if it is unset."
+  "Parse [[db-url]] into {:jdbc-url ... :credentials ... :pool-props ...}, or throw if it is unset."
   []
   (if db-url
     (parse-db-url db-url)
@@ -143,16 +151,29 @@
   (delay (.addShutdownHook (Runtime/getRuntime)
                            (Thread. ^Runnable shutdown-db! "semantic-search-pool-shutdown"))))
 
+(defn- redacted-data-source
+  "Wrap `ds` so it prints without its JDBC URL, which can carry the database credentials.
+  c3p0 prints the data source it pools in its own string form, and that reaches the logs through exception
+  messages such as \"... has been closed() -- you can no longer use it\"."
+  ^DataSource [^DataSource ds]
+  (reify DataSource
+    (getConnection [_] (.getConnection ds))
+    (getConnection [_ user password] (.getConnection ds user password))
+    (getLoginTimeout [_] (.getLoginTimeout ds))
+    (setLoginTimeout [_ seconds] (.setLoginTimeout ds seconds))
+    Object
+    (toString [_] "pgvector JDBC data source (URL redacted)")))
+
 (defn init-db!
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
   []
   (locking data-source
     (or @data-source
-        (let [{:keys [jdbc-url pool-props]} (parsed-db-config)
-              unpooled-ds (jdbc/get-datasource {:jdbcUrl jdbc-url})
+        (let [{:keys [jdbc-url credentials pool-props]} (parsed-db-config)
+              unpooled-ds (redacted-data-source (jdbc/get-datasource (assoc credentials :jdbcUrl jdbc-url)))
               pooled-ds   (DataSources/pooledDataSource
-                           ^javax.sql.DataSource unpooled-ds
+                           unpooled-ds
                            (connection-pool/map->properties pool-props))]
           (log/info "Initializing semantic search connection pool with properties:" pool-props)
           (force shutdown-hook)
