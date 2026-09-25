@@ -24,6 +24,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-fk-checks*
   "When bound to `true`, drivers that support it (e.g., MySQL) will disable foreign key checks during data insertion.
    This is useful for tests that need to insert self-referencing data in a single batch."

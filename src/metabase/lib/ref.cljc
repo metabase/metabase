@@ -11,6 +11,7 @@
 
 ;;; TODO (Cam 6/12/25) -- update `ref-method` to take an options map instead of needing a dynamic variable for stuff
 ;;; like this.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ref-style*
   "The style of field ref to generate -- either the default Lib-style (`:ref.style/default`) or the broken legacy style
   returned by the QP results (`:ref.style/broken-legacy-qp-results`). These broken refs are mostly generated for

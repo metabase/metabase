@@ -77,6 +77,7 @@
 
 (def ^{:dynamic true
        :doc "Set this to true to suppress stdout output from nrepl-eval."}
+  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
   *quiet-nrepl-eval* false)
 
 (defn nrepl-eval

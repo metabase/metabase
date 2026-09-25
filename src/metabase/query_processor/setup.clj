@@ -273,6 +273,7 @@
    #'do-with-resolved-database])
 ;;; ↑↑↑ SETUP MIDDLEWARE ↑↑↑ happens from BOTTOM to TOP e.g. [[do-with-resolved-database]] is the first to do its thing
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *has-setup*
   "This is here so we can skip calling the setup middleware if it's already done. Not super important, since the setup
   middleware should all no-op, but it keeps the stacktraces tidier so we do not have a bunch of calls that don't do

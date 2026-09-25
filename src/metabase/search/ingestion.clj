@@ -203,10 +203,12 @@
        (filter some?)
        (reduce + 0)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *force-sync*
   "Force ingestion to happen immediately, on the same thread."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-updates*
   "Used by tests to disable updates, for example when testing migrations, where the schema is wrong."
   false)

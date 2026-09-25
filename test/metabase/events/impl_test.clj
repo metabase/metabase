@@ -5,6 +5,7 @@
    [metabase.events.impl :as events]
    [methodical.core :as methodical]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *method-calls* nil)
 
 (events.hierarchy/derive! ::test-topics :metabase/event)

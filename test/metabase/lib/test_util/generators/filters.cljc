@@ -87,6 +87,7 @@
                                                                               :column         column}))))
 
 ;; Filter clauses ================================================================================
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *filterable-columns* nil)
 
 (defmulti ^:private gen-filter-clause

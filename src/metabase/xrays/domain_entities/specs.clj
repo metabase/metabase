@@ -158,6 +158,7 @@
 
 (def ^:private domain-entities-dir "domain_entity_specs/")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *domain-entity-specs*
   "Delay with registered domain entities specs, loaded from YAML and coerced to match the [[DomainEntitySpec]] schema."
   (delay (into {} (for [spec (yaml/load-dir domain-entities-dir (comp coerce-to-domain-entity-spec

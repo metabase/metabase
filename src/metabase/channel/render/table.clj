@@ -11,6 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *text-wrapping-fallback-width*
   "The CSS width given to a text-wrapping column that has no explicit `table.column_widths` entry. Email and Slack
   clients won't wrap a cell without an explicit width, so this defaults to a wide value. Renderers that lay the table

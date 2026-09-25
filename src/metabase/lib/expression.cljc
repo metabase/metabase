@@ -155,6 +155,7 @@
   [_query _stage-number [_expression _opts expression-name]]
   expression-name)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *nested*
   "Whether the display name we are generated is recursively nested inside another display name. For infix math operators
   we'll wrap the results in parentheses to make the display name more obvious."

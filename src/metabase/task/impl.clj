@@ -42,6 +42,7 @@
 ;;; |                                               SCHEDULER INSTANCE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
   *quartz-scheduler*
   (atom nil))

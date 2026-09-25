@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *conn*
   "Bound to a JDBC connection spec when using one of the `with-db` macros below."
   nil)

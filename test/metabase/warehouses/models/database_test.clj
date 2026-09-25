@@ -405,6 +405,7 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))

@@ -210,6 +210,7 @@
          all-tables (collect-tables queries)]
      (->rows message-id all-tables))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *run-synchronously?*
   "When true, [[record-used-tables!]] extracts and inserts on the calling thread instead of the background
   executor. Bound to true in tests so assertions can read `metabot_used_table` rows immediately after a turn is

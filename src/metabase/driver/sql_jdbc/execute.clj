@@ -305,6 +305,7 @@
               (old-method-impl driver database session-timezone)))))
       (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*
   "In recursive calls to [[do-with-connection-with-options]] we don't want to set options AGAIN, because this might
   break things. For example in a top-level `:write?` call, we might disable auto-commit and run things in a
@@ -1088,6 +1089,7 @@
   connection-with-timezone
   set-timezone-sql])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic
   ^{:doc "Dynamic context for resilient connection management. Contains a map with:
           - :db - the database instance, used to create new connections

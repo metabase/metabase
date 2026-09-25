@@ -85,16 +85,19 @@
       ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
       (.createDocument factory nil is))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
   needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
   clicked."
   (float 1200))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-height*
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
   [[*javascript-visualization*]] use `:width`/`:height` as their intrinsic (logical) SVG
@@ -113,6 +116,7 @@
   chart fills its grid cell's full width."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
@@ -177,6 +181,7 @@
       :content
       svg-string->bytes))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]

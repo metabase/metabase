@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *user-ctx* nil)
 
 (defmacro with-sync-search-indexing

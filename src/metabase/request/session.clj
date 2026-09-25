@@ -14,6 +14,7 @@
     (some-> (request.db/current-user user-id)
             user/add-attributes)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive
   calls to [[with-current-user]] if it is already bound, as this can mess things up since things

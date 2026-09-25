@@ -32,6 +32,23 @@
               :message "Use kebab-case names for functions and variables. [:metabase/check-def-no-underscores]"
               :type    :metabase/check-def-no-underscores)))))
 
+(defn- dynamic?
+  "Whether `symbol-node` carries `^:dynamic` or `^{:dynamic true}` metadata."
+  [symbol-node]
+  (some (fn [meta-node]
+          (let [m (hooks/sexpr meta-node)]
+            (or (= m :dynamic)
+                (and (map? m) (true? (:dynamic m))))))
+        (:meta symbol-node)))
+
+(defn- check-symbol-is-not-dynamic [def-node symbol-node]
+  (when (dynamic? symbol-node)
+    ;; Report on the whole form: metadata can push the name onto a later line, where an ignore can't reach it.
+    (hooks/reg-finding!
+     (assoc (meta def-node)
+            :message "Avoid new dynamic vars; pass the value as an argument or hang it on a stateful component. [:metabase/discourage-dynamic-vars]"
+            :type    :metabase/discourage-dynamic-vars))))
+
 (defn lint-def* [{:keys [node]}]
   (let [[_def & args] (:children node)
         name-symbol   (some (fn [arg]
@@ -39,7 +56,8 @@
                                          (symbol? (hooks/sexpr arg)))
                                 arg))
                             args)]
-    (check-symbol-is-kebab-case name-symbol)))
+    (check-symbol-is-kebab-case name-symbol)
+    (check-symbol-is-not-dynamic node name-symbol)))
 
 (defn lint-def [x]
   (lint-def* x)

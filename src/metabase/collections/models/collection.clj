@@ -167,6 +167,7 @@
   []
   (collections.db/root-remote-synced-collection))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
 (defn clear-remote-synced-collection!
@@ -1650,6 +1651,7 @@
      (cons (perms/collection-readwrite-path (u/the-id collection))
            (map perms/collection-readwrite-path descendant-ids)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-modifying-tenant-root-collections?*
   "We archive tenant root collections only when the tenant is archived."
   false)
@@ -2046,6 +2048,7 @@
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
   in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
   deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`

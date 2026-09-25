@@ -13,10 +13,12 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *ratchets-file*
   "Kondo budgets, relative to the repo root. Rebind to read a merge stage or test fixture."
   ".clj-kondo/ratchets.edn")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *module-ratchets-file*
   "Module-boundary budgets, relative to the repo root. Rebind to read a merge stage or test fixture."
   ".clj-kondo/config/modules/ratchets.edn")

@@ -4,6 +4,7 @@
    [mb.hawk.parallel]
    [metabase.util :as u]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *thread-local*
   "Whether test helpers should set thread-local values for things, as opposed to setting global values."
   true)

@@ -99,6 +99,7 @@
     (is (= [1 2 3] (api/parse-multi-values-param ["1" "2" "3"] parse-long)))))
 
 ;; set up for testing permission failure event publishing
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *events* nil)
 
 (methodical/defmethod events/publish-event! ::permission-failure-event

@@ -299,6 +299,7 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *make-spec*
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
@@ -865,6 +866,7 @@
    field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
@@ -893,6 +895,7 @@
 
 ;;; ## Databases
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
@@ -900,6 +903,7 @@
   (when id
     (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
@@ -1027,6 +1031,7 @@
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
@@ -1201,6 +1206,7 @@
     (import-mbql-map m)))
 
 ;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)

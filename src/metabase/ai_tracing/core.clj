@@ -44,23 +44,27 @@
 
 ;;;; ----------------------------------------- Gate (separate axis) -----------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *capture*
   "Per-run capture sink: an atom holding the vector of root span maps, or nil.
   Bound ONLY by an entrypoint. nil ⇒ ai-tracing is inert (the production safety gate)."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parent*
   "The current in-flight span node (an atom), or nil at top level. Conveyed across the
   agent's virtual-thread tool execution via `bound-fn*`, so concurrent tool spans nest
   under the correct parent."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *session-id*
   "The eval session id (OTel trace-id analog). Minted at the root of a fresh capture, or supplied
   by the caller (e.g. MCP's `Mcp-Session-Id`). Conveyed across virtual threads via `bound-fn*`;
   drives the per-session log file routing."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *retain-tree*
   "When true, each finished span is also retained in the in-memory tree ([[*capture*]] / its parent's
   `:children`) so an in-process caller can read the whole trace back as a return value (see

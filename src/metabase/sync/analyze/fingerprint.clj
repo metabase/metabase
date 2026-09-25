@@ -60,6 +60,7 @@
    :updated-fingerprints   0
    :fingerprints-attempted fields-count})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *truncation-size*
   "The maximum size of :type/Text to be selected from the database in `table-rows-sample`. In practice we see large
   text blobs and want to balance taking enough for distinct counts and but not so much that we risk out of memory
@@ -98,6 +99,7 @@
 ;;; |                                    WHICH FIELDS NEED UPDATED FINGERPRINTS?                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."

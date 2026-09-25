@@ -68,6 +68,7 @@
   [f]
   (reset! doc-content-visibility-fn f))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *content-gate-pending*
   "Document ids whose content gate is currently being evaluated on this thread.
 
@@ -77,6 +78,7 @@
   has no answer, so deny rather than recur into a stack overflow inside an authorization check."
   #{})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache*
   "Cache atom bound by [[with-content-gate-cache]], or nil to adjudicate on every call."
   nil)

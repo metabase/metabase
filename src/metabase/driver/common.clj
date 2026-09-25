@@ -457,6 +457,7 @@
 (def ^:private ^clojure.lang.PersistentVector days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *start-of-week*
   "Used to override the [[metabase.lib-be.core/start-of-week]] settings.
   Primarily being used to calculate week-of-year in US modes where the start-of-week is always Sunday.
