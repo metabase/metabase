@@ -239,7 +239,7 @@ describe("scenarios > browse > metrics", () => {
         .findByText(/This is a/)
         .realHover();
 
-      cy.findAllByText(/should be truncated/).should("have.length", 2);
+      cy.findAllByText(/it is really very long/).should("have.length", 2);
     });
 
     it("should be possible to sort the metrics", () => {
