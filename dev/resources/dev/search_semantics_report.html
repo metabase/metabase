@@ -21,14 +21,12 @@
     .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
     .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
     .engine-guide { margin: 18px 0 26px; }
-    .engine-table { min-width: 760px; table-layout: fixed; }
+    .engine-table { min-width: 950px; table-layout: fixed; }
     .engine-table th, .engine-table td { padding: 12px 14px; text-align: left; vertical-align: top; white-space: normal; }
     .engine-table th:first-child { width: 150px; }
     .engine-table thead th { color: #29405c; background: #f1f5fa; font-size: .88rem; }
     .engine-table tbody th { color: #465a71; font-size: .85rem; }
     .engine-table tbody tr:nth-child(even) { background: #f9fbfd; }
-    .semantic-note { margin-top: 12px; border-left: 3px solid #6c8cc0; border-radius: 8px; background: #eaf2ff; padding: 12px 16px; }
-    .semantic-note p { margin: 4px 0 0; color: #465a71; }
     .summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
     .metric { padding: 16px 18px; }
     .metric .value { font-size: 1.7rem; font-weight: 700; letter-spacing: -.035em; }
@@ -78,11 +76,11 @@
   </header>
 
   <section class="engine-guide" aria-labelledby="engine-guide-title">
-    <h2 id="engine-guide-title">Lexical matching rules</h2>
-    <div class="card table-wrap" role="region" aria-label="Lexical search semantics comparison" tabindex="0">
+    <h2 id="engine-guide-title">Query matching rules</h2>
+    <div class="card table-wrap" role="region" aria-label="Search semantics comparison" tabindex="0">
       <table class="engine-table">
         <thead>
-          <tr><th scope="col">Behavior</th><th scope="col">In-place</th><th scope="col">App-db / H2</th><th scope="col">App-db / PostgreSQL</th></tr>
+          <tr><th scope="col">Behavior</th><th scope="col">In-place</th><th scope="col">App-db / H2</th><th scope="col">App-db / PostgreSQL</th><th scope="col">Semantic vector</th></tr>
         </thead>
         <tbody>
           <tr>
@@ -90,38 +88,40 @@
             <td>Live entity columns</td>
             <td>Materialized app-db text</td>
             <td>Indexed app-db lexemes</td>
+            <td>Document embeddings</td>
           </tr>
           <tr>
             <th scope="row">Multiple words</th>
             <td><strong>Any</strong> word can suffice (OR).</td>
             <td><code>red shoes</code> needs both <code>red</code> and <code>shoes</code> somewhere (AND).</td>
             <td>AND by default; <code>or</code> gives alternatives.</td>
+            <td>Whole-query similarity; no AND/OR rule.</td>
           </tr>
           <tr>
             <th scope="row">Partial words</th>
             <td>Any substring: <code>hat</code> matches <em>chatty</em>.</td>
             <td>Any substring, including inside longer words.</td>
             <td>Prefix of the final eligible word only; no inner substring.</td>
+            <td>No defined prefix or substring rule.</td>
           </tr>
           <tr>
             <th scope="row">Operators</th>
             <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
             <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
             <td><code>or</code>, <code>-word</code>, and quoted phrases work; unquoted <code>and</code> is ignored.</td>
+            <td>Not enforced as operators.</td>
           </tr>
           <tr>
             <th scope="row">Language</th>
             <td>No stopword removal or stemming.</td>
             <td>No stopword removal or stemming.</td>
             <td>Stopwords and stemming depend on the text-search configuration.</td>
+            <td>Stopwords and stemming are model-dependent.</td>
           </tr>
         </tbody>
       </table>
     </div>
-    <aside class="semantic-note" aria-label="Semantic search">
-      <strong>Semantic search</strong>
-      <p>Its keyword arm uses the App-db/PostgreSQL query grammar in a separate index. The engine also retrieves by whole-query vector similarity and unions both hit sets; <code>or</code>, exclusions, and quotes do not constrain vector hits. Shared keyword rules do not guarantee identical hits when the indexes differ.</p>
-    </aside>
+    <p class="note">Semantic search unions these vector hits with keyword hits that follow the App-db/PostgreSQL rules, then ranks the combined results.</p>
   </section>
 
   <nav class="tabs" aria-label="Corpus">
