@@ -54,7 +54,7 @@ export const Interactive = {
 
 Baselines come from Linux, so screenshots taken on macOS won't match them. There are two ways to get Linux screenshots:
 
-- Add the `playwright-visual-update` label to a pull request. CI updates the baselines, removes the ones for deleted stories, and pushes a commit to the branch.
+- Add the `ci:update-visual-snapshots` label to a pull request. CI updates the baselines, removes the ones for deleted stories, and pushes a commit to the branch.
 - Run `bun run test-visual:docker`, which runs the tests in the official `linux/amd64` Playwright image for the installed `@playwright/test` version. It takes the same arguments as `bun run test-visual`, for example `bun run test-visual:docker --update-snapshots`. It needs a built `storybook-static/`, and only the repo is mounted into the container, so `VISUAL_SNAPSHOT_DIR` has to point inside it.
 
 To experiment on macOS without touching the committed baselines, point `VISUAL_SNAPSHOT_DIR` at a scratch directory:

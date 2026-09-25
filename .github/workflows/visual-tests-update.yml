@@ -6,7 +6,7 @@ on:
 
 jobs:
   update-screenshots:
-    if: github.event.label.name == 'playwright-visual-update'
+    if: github.event.label.name == 'ci:update-visual-snapshots'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 45
     steps:
@@ -71,7 +71,7 @@ jobs:
             e2e-visual/test-results/
           if-no-files-found: ignore
 
-      - name: Remove 'playwright-visual-update' label
+      - name: Remove 'ci:update-visual-snapshots' label
         if: always()
         uses: actions/github-script@v9
         with:
@@ -81,5 +81,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              name: 'playwright-visual-update'
+              name: 'ci:update-visual-snapshots'
             });
