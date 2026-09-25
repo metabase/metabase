@@ -37,7 +37,7 @@ You handle one self-contained question or implementation at a time. If a task sp
 
 ### Semantic Search (Enterprise)
 
-`metabase_enterprise.semantic_search`:
+`metabase_enterprise.search.semantic`:
 
 - **Embedding** (`semantic_search.embedding`): Generates embeddings via external service.
 - **Vector index** (`semantic_search.index`): pgvector-based index for similarity queries. Creation, updates, migrations.
@@ -79,7 +79,7 @@ You handle one self-contained question or implementation at a time. If a task sp
 - `src/metabase/search/` — search core, engines, ingestion, spec, scoring
 - `src/metabase/search/appdb/` — indexed search, DB specializations
 - `src/metabase/search/in_place/` — in-place search, legacy, scoring, filtering
-- `enterprise/backend/src/metabase_enterprise/semantic_search/` — vector search
+- `enterprise/backend/src/metabase_enterprise/search/semantic/` — vector search
 - `src/metabase/xrays/` — X-ray auto-analysis
 - `src/metabase/xrays/automagic_dashboards/` — automagic dashboard generation
 - `src/metabase/indexed_entities/` — model value indexing

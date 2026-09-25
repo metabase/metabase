@@ -47,7 +47,7 @@ jobs:
         MB_PLUGINS_DIR: modules/embedder/target
       run: >-
         ./bin/test-agent --oss :only
-        '[metabase.embeddings.embedder-plugin-artifact-test]'
+        '[metabase.search.embeddings.embedder-plugin-artifact-test]'
     - name: Run in-process semantic-search round trip
       env:
         MB_DB_TYPE: postgres
@@ -60,7 +60,7 @@ jobs:
         MB_PLUGINS_DIR: modules/embedder/target
       run: >-
         ./bin/test-agent --drivers=postgres :only
-        '[metabase-enterprise.semantic-search.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
+        '[metabase-enterprise.search.semantic.appdb-pgvector-mode-test/appdb-pgvector-in-process-embedder-round-trip-test]'
 
   test-build-scripts:
     if: ${{ !inputs.skip-build-scripts }}

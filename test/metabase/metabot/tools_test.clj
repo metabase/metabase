@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
@@ -11,6 +10,7 @@
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
