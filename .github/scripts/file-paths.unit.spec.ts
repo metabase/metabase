@@ -139,4 +139,28 @@ describe("file-paths.yaml", () => {
   ])("does not run Loki stories when %s changes", (file) => {
     expect(matches("frontend_loki_all", file)).toBe(false);
   });
+
+  it.each([
+    "e2e-visual/stories.spec.ts",
+    "e2e-visual/__screenshots__/components-buttons-button--compact.png",
+    ".github/workflows/visual-tests.yml",
+    ".github/workflows/run-tests.yml",
+    ".storybook/preview.tsx",
+    "package.json",
+    "patches/@loki+browser+0.35.0.patch",
+    "frontend/src/metabase/ui/Button.stories.tsx",
+    "frontend/test/__support__/storybook.tsx",
+    "resources/frontend_client/app/fonts/Lato/lato-v16-latin-regular.woff2",
+    "frontend/src/metabase/ui/components/icons/Icon/icons/warning.svg",
+  ])("runs the visual tests when %s changes", (file) => {
+    expect(matches("frontend_visual_all", file)).toBe(true);
+  });
+
+  it.each([
+    ".github/workflows/frontend.yml",
+    "frontend/test/metabase/scenarios/Button.unit.spec.tsx",
+    "e2e/test/scenarios/visualizations/line_chart.cy.spec.js",
+  ])("does not run the visual tests when %s changes", (file) => {
+    expect(matches("frontend_visual_all", file)).toBe(false);
+  });
 });
