@@ -6,6 +6,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
    [metabase.util.malli :as mu]
@@ -84,11 +85,7 @@
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
    [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule [:map {:closed true}
-               [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
-               [:hour {:optional true} [:maybe :int]]
-               [:day_of_week {:optional true} [:maybe :string]]
-               [:day_of_month {:optional true} [:maybe :string]]]]])
+   [:schedule tools.create-alert/schedule-schema]])
 
 (mu/defn ^{:tool-name "create_dashboard_subscription"
            :scope     scope/agent-dashboard-subscribe}
