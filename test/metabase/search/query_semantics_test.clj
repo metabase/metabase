@@ -3,7 +3,7 @@
 
   Each scenario runs identical and translated queries against temporary cards
   or a temporary index table. Assertions compare membership, not ranking. The
-  case IDs match the metabase-wiki corpuses."
+  case IDs are stable descriptive names in the shared fixture."
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
@@ -94,7 +94,7 @@
   (let [dialect (available-appdb-dialect)]
     (doseq [{:keys [id config docs comparisons] :as case} fixtures/cases
             {:keys [focus target] :as comparison} comparisons]
-      (testing (str (:id comparison) " — " focus " (target " target " on " id ")")
+      (testing (str id " / " focus " (target " target ")")
         ;; Keep the translated target anchored to its same-query scenario oracle.
         (is (= (fixtures/expected-hits case target)
                (:hits (fixtures/comparison-spec case comparison target))))
