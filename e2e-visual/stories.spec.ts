@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   type Page,
   type Request,
@@ -14,6 +16,7 @@ import {
   getStoryRenderResult,
   installLokiShim,
 } from "./page-scripts";
+import { CAPTURED_DIR } from "./paths";
 import {
   getSelectionFromEnv,
   getSnapshotName,
@@ -31,9 +34,10 @@ for (const story of selectStories(loadStories(), getSelectionFromEnv())) {
     const requests = trackRequests(page);
     await page.addInitScript(installLokiShim);
     await page.addInitScript(disableAnimations);
-    await page.goto(
-      `iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`,
-    );
+    await test.step("open the story", () =>
+      page.goto(
+        `iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`,
+      ));
 
     const result = await test.step("wait for the story to render", async () => {
       const handle = await page.waitForFunction(
@@ -56,13 +60,27 @@ for (const story of selectStories(loadStories(), getSelectionFromEnv())) {
       page.evaluate(awaitLokiReady));
     requests.assertNoneFailed();
 
-    const selector = result.chromeSelector ?? DEFAULT_SELECTOR;
-    const box = await page.evaluate(getContentBox, selector);
-    const viewport = getViewport(page);
-    const clip = toClip(box, selector, viewport.width);
-    await growViewportToFit(page, viewport, clip.y + clip.height);
+    const clip = await test.step("fit the viewport to the story", async () => {
+      const selector = result.chromeSelector ?? DEFAULT_SELECTOR;
+      const box = await page.evaluate(getContentBox, selector);
+      const viewport = getViewport(page);
+      const storyClip = toClip(box, selector, viewport.width);
+      await growViewportToFit(page, viewport, storyClip.y + storyClip.height);
+      return storyClip;
+    });
 
-    await expect(page).toHaveScreenshot(getSnapshotName(story), { clip });
+    const snapshotName = getSnapshotName(story);
+    await test.step("compare the screenshot", () =>
+      expect(page).toHaveScreenshot(snapshotName, { clip }));
+    // toHaveScreenshot only writes the image it took when the comparison fails,
+    // so a passing run keeps its own copy for comparing runs byte for byte.
+    await test.step("save the screenshot", () =>
+      page.screenshot({
+        clip,
+        animations: "disabled",
+        caret: "hide",
+        path: path.join(CAPTURED_DIR, snapshotName),
+      }));
   });
 }
 
