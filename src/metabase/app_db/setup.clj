@@ -18,6 +18,8 @@
    [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -87,12 +89,15 @@
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
         (when-not (= :release-locks direction)
           (liquibase/consolidate-liquibase-changesets! conn liquibase))
+        ;; The version bookkeeping every other direction reads and writes; `print` must not touch the database.
+        (when-not (#{:print :release-locks} direction)
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
         (log/info "Liquibase is ready.")
         (case direction
           :up            (liquibase/migrate-up-if-needed! liquibase data-source)
           :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-          :down          (apply liquibase/rollback-major-version! conn liquibase false args)
-          :down-force    (apply liquibase/rollback-major-version! conn liquibase true args)
+          :down          (apply rollback/rollback-major-version! conn liquibase false args)
+          :down-force    (apply rollback/rollback-major-version! conn liquibase true args)
           :print         (print-migrations-and-quit-if-needed! liquibase data-source)
           :release-locks (liquibase/force-release-locks! liquibase))
         ;; Migrations were successful; commit everything and re-enable auto-commit
@@ -215,26 +220,49 @@
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
-      (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
-        ;; `latest-applied` will be `nil` for fresh installs
-        (when (and latest-applied (< latest-available latest-applied))
-          (let [later-changesets (liquibase/changesets-from-later-version conn (.getDatabase liquibase) latest-available latest-applied)]
-            (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
-                                      latest-applied latest-available))
-            (doseq [cs later-changesets]
-              (log/warn (u/format-color 'red "  - %s" cs))))
+      (let [database         (.getDatabase liquibase)
+            _                (versions/ensure-version-tracking! conn database)
+            ;; this binary's own major (for dev builds this is the synthetic version, so a dev DB doesn't look
+            ;; 'downgraded' against itself).
+            current-major    (versions/current-recorded-major)
+            ;; The version that ran the deployment the schema is currently at
+            recorded-version (versions/last-deployment-version conn database)
+            recorded-major   (some-> recorded-version versions/version->major)]
+        (cond
+          ;; nothing recorded yet (fresh install), or the DB is at/behind us -> fine
+          (or (nil? recorded-major) (>= current-major recorded-major))
+          nil
+
+          ;; The DB was last migrated by a *development* build: it may carry un-released migrations this binary knows
+          ;; nothing about. Refuse, pointing at the development tooling that can roll those deployments back.
+          (versions/synthetic-dev-major? recorded-major)
           (throw (ex-info
-                  (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                  (str (u/format-color 'red (trs "ERROR: Development build detected."))
                        "\n\n"
-                       (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                       (trs "This database was last migrated by a development build ({0}), which this version (v{1}) cannot use." recorded-version current-major)
                        "\n\n"
-                       (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." latest-applied)
-                       "\n\n"
-                       (trs "Once your database has been downgraded, try running the application again.")
-                       "\n\n"
-                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
-                  {})))))))
+                       (trs "Roll back its development deployments from a development checkout with `clojure -M:dev:migrate rollback last-deployment` (dev.migrate/rollback!), or rebuild the database."))
+                  {}))
+
+          ;; A genuine downgrade: a newer *released* version migrated this database.
+          :else
+          (do
+            (let [later-changesets (versions/changesets-from-later-version conn database current-major recorded-major)]
+              (log/warn (u/format-color 'red "Database has migrations from v%d but this binary only knows up to v%d:"
+                                        recorded-major current-major))
+              (doseq [cs later-changesets]
+                (log/warn (u/format-color 'red "  - %s" cs))))
+            (throw (ex-info
+                    (str (u/format-color 'red (trs "ERROR: Downgrade detected."))
+                         "\n\n"
+                         (trs "Your metabase instance appears to have been downgraded without a corresponding database downgrade.")
+                         "\n\n"
+                         (trs "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version {0}." recorded-major)
+                         "\n\n"
+                         (trs "Once your database has been downgraded, try running the application again.")
+                         "\n\n"
+                         (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                    {}))))))))
 
 (mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"

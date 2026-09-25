@@ -4,9 +4,10 @@
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]
-   [toucan2.honeysql2 :as t2.honeysql])
+   [toucan2.core :as t2])
   (:import
    (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment)
    (liquibase.change Change)
@@ -36,13 +37,20 @@
                   :limit 1})))
 
 (defn migrate!
-  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
-  `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
+  "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:print`
+  and `:release-locks` -- what `java -jar metabase.jar migrate <direction>` does.
+
+  There is deliberately no `:down` here: the release `migrate down` steps back one recorded Metabase *major*, which
+  means nothing for development deployments (they all record [[versions/dev-version]]). Roll back by deployment with
+  [[rollback!]] instead."
   ([]
    (migrate! :up))
-  ;; do we really use this in dev?
-  ([direction & [version]]
-   (mdb/migrate! (mdb/data-source) direction version)
+  ([direction]
+   (when (#{:down :down-force "down" "down-force"} direction)
+     (throw (ex-info (str "migrate! does not roll back. Use (rollback! :last-deployment) to undo the last migrate! run, "
+                          "or (rollback! :deployment <id>) to roll back everything after a deployment.")
+                     {:direction direction})))
+   (mdb/migrate! (mdb/data-source) direction)
    ;; dev migration CLI; status goes to stdout for the human running it
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (format "Migrated %s. Latest migration: %s" (name direction) (latest-migration)))))
@@ -75,22 +83,6 @@
     (string? x)
     parse-long))
 
-(defn- last-deployment
-  []
-  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
-                                         :quoted false)]
-    (if (= 1 (:count (t2/query-one {:select [[[:count [:distinct :deployment_id]] :count]]
-                                    :from   [databasechangelog-name]
-                                    :limit  1})))
-      0 ;; don't rollback if there was just one deployment of everything
-      (:count (t2/query-one {:select [[:%count.* :count]]
-                             :from   [databasechangelog-name]
-                             :where  [:= :deployment_id ^:allow-subquery
-                                      {:select   [:deployment_id]
-                                       :from     [databasechangelog-name]
-                                       :order-by [[:orderexecuted :desc]]
-                                       :limit    1}]})))))
-
 (defn reset-checksums!
   []
   (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
@@ -103,34 +95,73 @@
         (.changeLogSync liquibase (Contexts.) (LabelExpression.)))))
   (println "Reset checksums"))
 
+(defn- rollback-to-deployment!
+  "Roll back everything that ran after `boundary-deployment-id` (nil: nothing to do), in its own transaction, keeping
+  `databasechangelog_version` and the legacy-version-tracking marker in step. Returns the boundary deployment id."
+  [boundary-deployment-id]
+  (if (nil? boundary-deployment-id)
+    ;; dev migration CLI; status goes to stdout for the human running it
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (println "No earlier deployment to roll back to; nothing to do.")
+    (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+      (.setAutoCommit conn false)
+      (liquibase/with-liquibase [liquibase conn]
+        (try
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase))
+          (rollback/rollback-to-deployment! conn liquibase boundary-deployment-id)
+          (.commit conn)
+          (catch Throwable e
+            (.rollback conn)
+            (throw e))))
+      ;; dev migration CLI; status goes to stdout for the human running it
+      #_{:clj-kondo/ignore [:discouraged-var]}
+      (println (format "Rolled back to deployment %s. Latest migration: %s" boundary-deployment-id (latest-migration)))))
+  boundary-deployment-id)
+
+(defn rollback-last-deployment!
+  "Roll back the last `migrate!` run: everything that ran after the second-newest deployment, keeping
+  `databasechangelog_version` and the legacy-version-tracking marker in step. Returns the `deployment_id` rolled back
+  to, or nil when there was no earlier deployment (nothing is touched then). Same as `(rollback! :last-deployment)`."
+  []
+  (rollback-to-deployment!
+   (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+     (liquibase/with-liquibase [liquibase conn]
+       (let [database (.getDatabase liquibase)]
+         (versions/ensure-version-tracking! conn database)
+         (versions/previous-deployment-id conn database))))))
+
 (mu/defn rollback!
-  "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
+  "Rollback helper. Deployment-based rollbacks are the ones to reach for in development -- every `migrate!` run is
+  its own Liquibase `deployment_id`, whatever Metabase version (real or [[versions/dev-version]]) it recorded:
 
-    ;; Rollback 2 migrations:
+    ;; Roll back the last migration run (everything after the second-newest deployment); same as
+    ;; [[rollback-last-deployment!]]:
+    (rollback! :last-deployment)
+
+    ;; Roll back everything that ran after a given deployment_id (see `SELECT * FROM databasechangelog_version`):
+    (rollback! :deployment \"9673292410\")
+
+  Both keep `databasechangelog_version` and the legacy-version-tracking marker in step, exactly like the release
+  `migrate down` does for majors.
+
+    ;; Raw Liquibase rollbacks by changeset position -- they do NOT update `databasechangelog_version` or remove a
+    ;; deployment's marker row, so a later `migrate! :down` may misjudge its boundary; partial-rollback use only:
     (rollback! :count 2)
+    (rollback! :id \"v50.2024-03-18T16:00:00\")   ; inclusive"
+  ([_k :- [:enum :last-deployment "last-deployment"]]
+   (rollback-last-deployment!))
 
-    ;; Rollback last migration run:
-    ;; (rollback! :last-deployment)
-
-    ;; rollback to \"v50.2024-03-18T16:00:00\" (inclusive)
-    (rollback! :id \"v50.2024-03-18T16:00:00\")"
-  ([k :- [:enum :last-deployment "last-deployment"]]
-   (let [n (case (keyword k)
-             :last-deployment (last-deployment))]
-     (rollback-n-migrations! n)
-     ;; dev migration CLI; status goes to stdout for the human running it
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
-
-  ([k      :- [:enum :id :count "id" "count"]
+  ([k      :- [:enum :id :count :deployment "id" "count" "deployment"]
     target :- [:or :int :string]]
-   (let [n (case (keyword k)
-             :id               (migration-since target)
-             :count            (maybe-parse-long target))]
-     (rollback-n-migrations! n)
-     ;; dev migration CLI; status goes to stdout for the human running it
-     #_{:clj-kondo/ignore [:discouraged-var]}
-     (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration))))))
+   (if (= :deployment (keyword k))
+     (rollback-to-deployment! (str target))
+     (let [n (case (keyword k)
+               :id               (migration-since target)
+               :count            (maybe-parse-long target))]
+       (rollback-n-migrations! n)
+       ;; dev migration CLI; status goes to stdout for the human running it
+       #_{:clj-kondo/ignore [:discouraged-var]}
+       (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))))
 
 (defn migration-status
   "Print the latest migration ID."
@@ -143,12 +174,15 @@
   "Migrations helpers
 
   Usage:
-    clojure -M:migrate up                         ;; migrate up to the latest
-    clojure -M:migrate rollback count 2           ;; rollback 2 migrations
-    clojure -M:migrate rollback id \"v40.00.001\" ;; rollback to a specific migration with id
-    clojure -M:migrate rollback last-deployment   ;; rollback the last deployment
-    clojure -M:migrate status                     ;; print the latest migration id
-    clojure -M:migrate reset-checksums.           ;; sets the checksums to what they would be if migrated from the current changelog"
+    clojure -M:dev:migrate up                         ;; migrate up to the latest
+    clojure -M:dev:migrate rollback last-deployment   ;; rollback the last deployment (last migrate run)
+    clojure -M:dev:migrate rollback deployment <id>   ;; rollback everything after that deployment_id
+    clojure -M:dev:migrate rollback count 2           ;; raw Liquibase rollback of 2 changesets
+    clojure -M:dev:migrate rollback id \"v40.00.001\" ;; raw Liquibase rollback to a specific changeset id
+    clojure -M:dev:migrate status                     ;; print the latest migration id
+    clojure -M:dev:migrate reset-checksums            ;; sets the checksums to what they would be if migrated from the current changelog
+
+  (`:dev` is needed: `dev/src/user.clj` requires the dev classpath.)"
 
   [& args]
   (let [[cmd & migration-args] args]
