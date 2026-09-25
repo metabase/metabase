@@ -519,11 +519,13 @@
                                     :query {:database (mt/id)
                                             :type     "query"
                                             :query    {:source-table (mt/id :venues)}}}]}]
-    (testing "renders the query when the user can query its database"
+    (testing "renders the query and its columns when the user can query its database"
       (mt/with-test-user :crowberto
         (let [out (user-context/format-viewing-context viewing)]
           (is (str/includes? out "notebook editor"))
-          (is (str/includes? out "source-table")))))
+          (is (str/includes? out "source-table"))
+          (is (str/includes? out "Columns available"))
+          (is (str/includes? out "- NAME: \"Name\" (type/Text)")))))
     (testing "omits the query when the user can read the database but not query it"
       (mt/with-no-data-perms-for-all-users!
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
@@ -533,7 +535,21 @@
           (is (not (mi/can-query? :model/Database (mt/id))))
           (let [out (user-context/format-viewing-context viewing)]
             (is (str/includes? out "notebook editor"))
-            (is (not (str/includes? out "source-table")))))))))
+            (is (not (str/includes? out "source-table")))
+            (is (not (str/includes? out "Columns available")))))))))
+
+(deftest adhoc-viewing-context-lists-joined-columns-with-join-alias-test
+  (testing "joined columns are listed under their join alias, by machine name and display name"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                    (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                   [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                           (lib.metadata/field mp (mt/id :categories :id)))])
+                                  (lib/with-join-alias "Cat"))))]
+      (mt/with-test-user :crowberto
+        (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+          (is (str/includes? out "- CATEGORY_ID: \"Category ID\""))
+          (is (str/includes? out "- [join-alias \"Cat\"] NAME: \"Name\" (type/Text)")))))))
 
 (deftest adhoc-viewing-context-unpermissionable-native-source-test
   (testing "native SQL under a later stage is withheld when its permissions cannot be calculated"
