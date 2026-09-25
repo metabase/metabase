@@ -76,15 +76,22 @@
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
-(mr/def ::publicize
+(mr/def ::publicize-dashboard
   [:map {:closed true}
    [:user-id pos-int?]
-   [:object-id pos-int?]])
+   [:object-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Dashboard %)]]])
 
-(mr/def :event/dashboard-public-link-created ::publicize)
-(mr/def :event/dashboard-public-link-deleted ::publicize)
-(mr/def :event/card-public-link-created ::publicize)
-(mr/def :event/card-public-link-deleted ::publicize)
+(mr/def ::publicize-card
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Card %)]]])
+
+(mr/def :event/dashboard-public-link-created ::publicize-dashboard)
+(mr/def :event/dashboard-public-link-deleted ::publicize-dashboard)
+(mr/def :event/card-public-link-created ::publicize-card)
+(mr/def :event/card-public-link-deleted ::publicize-card)
 
 ;; user events
 

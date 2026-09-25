@@ -164,7 +164,7 @@
                 (first entries)))))))
 
 (deftest public-link-events-create-update-entry-test
-  (testing "GHY-4650: public-link events, which carry only :object-id, mark the card or dashboard as updated"
+  (testing "GHY-4650: public-link events mark the card or dashboard as updated"
     (doseq [[model topics] {:model/Card      [:event/card-public-link-created :event/card-public-link-deleted]
                             :model/Dashboard [:event/dashboard-public-link-created :event/dashboard-public-link-deleted]}
             topic topics]
@@ -172,7 +172,9 @@
         (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
                        model instance {:name "Shared" :collection_id (:id remote-sync-collection)}]
           (t2/delete! :model/RemoteSyncObject)
-          (events/publish-event! topic {:object-id (:id instance) :user-id (mt/user->id :rasta)})
+          (events/publish-event! topic {:object    instance
+                                        :object-id (:id instance)
+                                        :user-id   (mt/user->id :rasta)})
           (is (=? [{:model_type (name model)
                     :model_id   (:id instance)
                     :status     "update"}]

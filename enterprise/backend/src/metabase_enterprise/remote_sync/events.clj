@@ -224,10 +224,8 @@
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
    Checks eligibility, determines status, and creates/updates the sync object."
-  [model-spec topic {:keys [object object-id]}]
+  [model-spec topic {:keys [object]}]
   (let [model-type     (:model-type model-spec)
-        ;; public-link events carry only :object-id
-        object         (or object (remote-sync.db/instance (:model-key model-spec) object-id))
         model-id       (:id object)
         eligible?      (spec/check-eligibility model-spec object)
         existing-entry (remote-sync.db/rso model-type model-id)

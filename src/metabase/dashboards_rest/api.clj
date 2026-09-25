@@ -1189,16 +1189,17 @@
                               [:dashboard-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
+  (let [dashboard            (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
+        existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (dashboards-rest.db/update-dashboard! dashboard-id
-                                                         {:public_uuid       <>
-                                                          :made_public_by_id api/*current-user-id*})
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})))]
+                   (let [changes {:public_uuid       <>
+                                  :made_public_by_id api/*current-user-id*}]
+                     (dashboards-rest.db/update-dashboard! dashboard-id changes)
+                     (events/publish-event! :event/dashboard-public-link-created
+                                            {:object    (merge dashboard changes)
+                                             :object-id dashboard-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1214,13 +1215,15 @@
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (dashboards-rest.db/update-dashboard! dashboard-id
-                                        {:public_uuid       nil
-                                         :made_public_by_id nil})
-  (events/publish-event! :event/dashboard-public-link-deleted
-                         {:object-id dashboard-id
-                          :user-id api/*current-user-id*})
+  (let [dashboard (dashboards-rest.db/dashboard dashboard-id)
+        changes   {:public_uuid       nil
+                   :made_public_by_id nil}]
+    (api/check-404 (and (:public_uuid dashboard) (not (:archived dashboard))))
+    (dashboards-rest.db/update-dashboard! dashboard-id changes)
+    (events/publish-event! :event/dashboard-public-link-deleted
+                           {:object    (merge dashboard changes)
+                            :object-id dashboard-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
