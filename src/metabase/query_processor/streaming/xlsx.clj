@@ -416,7 +416,10 @@
   ;; by the user later somehow
   (let [encoded-obj (cond-> (json/encode value)
                       (json/has-custom-encoder? value) json/decode)]
-    (.setCellValue cell (str encoded-obj))))
+    ;; like the String implementation above, objects encoded to strings can
+    ;; exceed Excel's 32,767-character cell limit, which makes POI throw and
+    ;; fails the whole download (#80572)
+    (.setCellValue cell (u/truncate (str encoded-obj) *number-of-characters-cell*))))
 
 (defmethod set-cell! nil [^Cell cell _value _styles _typed-styles]
   (.setBlank cell))
