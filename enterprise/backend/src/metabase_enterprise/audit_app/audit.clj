@@ -122,7 +122,7 @@
     ;; We need to move the loaded data back to the host db
     (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
     (case (mdb/db-type)
-      :mysql
+      (:mysql :sqlite)
       (audit-app.db/clear-table-schemas! audit-db-id)
 
       :h2
@@ -230,7 +230,7 @@
 
    Returns true iff loading required swapping the audit DB engine type to match the host
    (i.e. the host is not postgres and we just rewrote the engine row from postgres back to
-   h2/mysql). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
+   h2/mysql/sqlite). The boolean tells `maybe-sync-audit-db!` whether field metadata needs to be
    re-scanned for the new dialect — this transient swap isn't visible from outside the
    function, which is why it has to be returned explicitly."
   [audit-db]
@@ -332,7 +332,7 @@
    conventions `adjust-audit-db-to-host!` applies."
   [table-name]
   (case (mdb/db-type)
-    :mysql [(u/lower-case-en table-name) nil]
+    (:mysql :sqlite) [(u/lower-case-en table-name) nil]
     :h2    [(u/upper-case-en table-name) "PUBLIC"]
     [(u/lower-case-en table-name) "public"]))
 

@@ -3333,6 +3333,7 @@
    :ns-prefix "metabase.secrets"
    :api #{metabase.secrets.core}
    :uses #{api
+           app-db
            driver
            lib.schema
            models

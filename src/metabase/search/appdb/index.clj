@@ -9,6 +9,7 @@
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
    [metabase.search.appdb.specialization.postgres :as postgres]
+   [metabase.search.appdb.specialization.sqlite :as sqlite]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -16,6 +17,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -24,7 +26,8 @@
 
 (comment
   h2/keep-me
-  postgres/keep-me)
+  postgres/keep-me
+  sqlite/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -224,7 +227,7 @@
         (set/rename-keys {:id :model_id
                           :created_at :model_created_at
                           :updated_at :model_updated_at})
-        (assoc :updated_at :%now)
+        (assoc :updated_at (h2x/current-datetime-honeysql-form (mdb/db-type)))
         (update :display_data json/encode)
         ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
         (update :legacy_input #(if (string? %) % (json/encode %)))

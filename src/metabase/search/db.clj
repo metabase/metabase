@@ -26,7 +26,7 @@
   (into [:map {:closed true}]
         (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
                              :updated_at :search_vector :with_native_query_vector :search_terms
-                             :native_search_terms}
+                             :native_search_terms :normalized_name}
                            (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
           [column {:optional true} ::h2x/expr])))
 
@@ -212,27 +212,43 @@
 (mu/defn table-exists?
   "Whether a table named `table-name` exists in the app DB."
   [table-name :- :string]
-  (t2/exists? :information_schema.tables :table_name table-name))
+  (if (= :sqlite (mdb/db-type))
+    (t2/exists? :sqlite_schema :type "table" :name table-name)
+    (t2/exists? :information_schema.tables :table_name table-name)))
 
 (mu/defn orphan-index-table-names
   "The `:table_name`s of search index tables in the current schema with no SearchIndexMetadata."
   []
-  (t2/query {:select [:ist.table_name]
-             :from   [[:information_schema.tables :ist]]
-             :where  [:and
-                      [:= :ist.table_schema :%current_schema]
-                      [:or
-                       [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
-                       ;; legacy table names
-                       [:in [:lower :ist.table_name]
-                        ["search_index" "search_index_next" "search_index_retired"]]]
-                      ;; Exclude temp tables — they are managed by with-temp-index-table
-                      [:not-like [:lower :ist.table_name] "%\\_temp"]
-                      [:not [:exists ^:allow-subquery {:select [1]
-                                                       :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
-                                                       :where  [:and
-                                                                [:= :sim.engine "appdb"]
-                                                                [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]}))
+  (if (= :sqlite (mdb/db-type))
+    (t2/query {:select [[:ist.name :table_name]]
+               :from [[:sqlite_schema :ist]]
+               :where [:and
+                       [:= :ist.type "table"]
+                       [:or
+                        [:like :ist.name (h2x/like-prefix "search_index__")]
+                        [:in :ist.name ["search_index" "search_index_next" "search_index_retired"]]]
+                       [:not-like :ist.name (h2x/like-pattern "_temp" #(str "%" %))]
+                       [:not [:exists ^:allow-subquery
+                              {:select [1]
+                               :from [[(t2/table-name :model/SearchIndexMetadata) :sim]]
+                               :where [:and [:= :sim.engine "appdb"]
+                                       [:= [:lower :sim.index_name] [:lower :ist.name]]]}]]]})
+    (t2/query {:select [:ist.table_name]
+               :from   [[:information_schema.tables :ist]]
+               :where  [:and
+                        [:= :ist.table_schema :%current_schema]
+                        [:or
+                         [:like [:lower :ist.table_name] "search\\_index\\_\\_%"]
+                         ;; legacy table names
+                         [:in [:lower :ist.table_name]
+                          ["search_index" "search_index_next" "search_index_retired"]]]
+                        ;; Exclude temp tables — they are managed by with-temp-index-table
+                        [:not-like [:lower :ist.table_name] "%\\_temp"]
+                        [:not [:exists ^:allow-subquery {:select [1]
+                                                         :from   [[(t2/table-name :model/SearchIndexMetadata) :sim]]
+                                                         :where  [:and
+                                                                  [:= :sim.engine "appdb"]
+                                                                  [:= [:lower :sim.index_name] [:lower :ist.table_name]]]}]]]})))
 
 (mu/defn pg-class-estimate
   "The planner's `:reltuples` and `:relpages` estimate for `table-name` (Postgres only), or nil."
@@ -323,12 +339,19 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
+  ;; A write statement reserves SQLite's single writer until this transaction commits, including when
+  ;; there is no matching row. This protects promotion against concurrent deletion without FOR UPDATE.
+  (when (= :sqlite (mdb/db-type))
+    (t2/query {:update (t2/table-name :model/SearchIndexMetadata)
+               :set {:status "pending"}
+               :where [:and [:= :engine (name engine)] [:= :version version]
+                       [:= :lang_code lang-code] [:= :status "pending"]]}))
   (t2/select-one [:model/SearchIndexMetadata :id]
                  :engine engine
                  :version version
                  :lang_code lang-code
                  :status :pending
-                 {:for :update}))
+                 (if (= :sqlite (mdb/db-type)) {} {:for :update})))
 
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."

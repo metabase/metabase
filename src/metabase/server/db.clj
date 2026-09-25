@@ -23,6 +23,7 @@
       :h2       [:dateadd (h2x/literal (name unit))
                  [:inline (- amount)]
                  now]
+      :sqlite   (h2x/add-interval-honeysql-form db-type now (- amount) unit)
       :mysql    [:- now [::h2x/mysql-interval amount unit]])))
 
 ;; Hard-coded rather than `(descendants :metabase.auth-identity.provider/supports-mfa)` so the session query below is
@@ -168,5 +169,5 @@
   "Set `last_active_at` of the Session with `key-hashed` to now."
   [key-hashed :- :string]
   (t2/query-one {:update (t2/table-name :model/Session)
-                 :set    {:last_active_at :%now}
+                 :set    {:last_active_at (h2x/current-datetime-honeysql-form (mdb/db-type))}
                  :where  [:= :key_hashed key-hashed]}))

@@ -171,13 +171,23 @@
 (mu/defn last-query-starts-by-card
   "Rows of `:card_id` and latest `:started_at` of uncached executions for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/query {:select   [[:%max.started_at :started_at] :card_id]
-             :from     [:query_execution]
-             :where    [:and
-                        [:not= :running_time nil]
-                        [:not= :cache_hit true]
-                        [:in :card_id card-ids]]
-             :group-by [:card_id]}))
+  (let [latest-query {:select   [[:%max.started_at :started_at] :card_id]
+                      :from     [:query_execution]
+                      :where    [:and
+                                 [:not= :running_time nil]
+                                 [:not= :cache_hit true]
+                                 [:in :card_id card-ids]]
+                      :group-by [:card_id]}]
+    (t2/query
+     (if (= :sqlite (mdb/db-type))
+       ;; SQLite loses declared timestamp metadata on MAX expressions. Select the original column so the
+       ;; JDBC reader returns an OffsetDateTime, and collapse executions tied at the latest timestamp.
+       {:select-distinct [:execution.card_id :execution.started_at]
+        :from [[:query_execution :execution]]
+        :join [[(with-meta latest-query {:allow-subquery true}) :latest]
+               [:and [:= :execution.card_id :latest.card_id]
+                [:= :execution.started_at :latest.started_at]]]}
+       latest-query))))
 
 (defn card-dashboards
   "The Dashboards `card` appears in, hydrating `:in_dashboards` unless it is already present."

@@ -84,13 +84,15 @@
   Replacing any pending trigger debounces rapid toggles; clustered Quartz plus
   `DisallowConcurrentExecution` serialize execution across instances."
   [metabot-id]
-  (let [trigger (refresh-trigger metabot-id)]
-    ;; reschedule replaces a pending trigger (debounce); nil means none exists, so add one
-    (or (task/reschedule-trigger! trigger)
-        (try (task/add-trigger! trigger)
-             ;; lost a race with another instance adding the same trigger — fall back to reschedule
-             (catch ObjectAlreadyExistsException _
-               (task/reschedule-trigger! trigger))))))
+  (task/do-after-app-db-commit
+   (fn []
+     (let [trigger (refresh-trigger metabot-id)]
+       ;; reschedule replaces a pending trigger (debounce); nil means none exists, so add one
+       (or (task/reschedule-trigger! trigger)
+           (try (task/add-trigger! trigger)
+                ;; lost a race with another instance adding the same trigger — fall back to reschedule
+                (catch ObjectAlreadyExistsException _
+                  (task/reschedule-trigger! trigger))))))))
 
 (defmethod task/init! ::SuggestedPromptsRefresh
   [_]

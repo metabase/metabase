@@ -59,6 +59,7 @@
 ;; Postgres uses PostgreSQLDelegate (byte-based BLOB handling); everything else uses StdJDBCDelegate.
 (def ^:private delegate
   {:postgres {:class "metabase.task.SecurePostgresDelegate" :ns 'metabase.task.secure-delegate-postgres}
+   :sqlite   {:class "metabase.task.SecureSqliteDelegate"   :ns 'metabase.task.secure-delegate-sqlite}
    :default  {:class "metabase.task.SecureStdDelegate"      :ns 'metabase.task.secure-delegate-std}})
 
 (defn- class-loadable? [^String class-name]

@@ -79,16 +79,18 @@
 (defn update-send-pulse-triggers-timezone!
   "Update the timezone of all SendPulse triggers if the report timezone changes."
   []
-  (let [triggers     (-> send-pulse-job-key task/job-info :triggers)
-        new-timezone (send-trigger-timezone)]
-    (doseq [trigger triggers
-            :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
-      (let [trigger-key            (:key trigger)
-            channel-ids            (get-in trigger [:data "channel-ids"])
-            {:keys [pulse-id
-                    schedule-map]} (send-pulse-trigger-key->info trigger-key)]
-        (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
-        (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids new-timezone (:priority trigger)))))))
+  (task/do-after-app-db-commit
+   (fn []
+     (let [triggers     (-> send-pulse-job-key task/job-info :triggers)
+           new-timezone (send-trigger-timezone)]
+       (doseq [trigger triggers
+               :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
+         (let [trigger-key            (:key trigger)
+               channel-ids            (get-in trigger [:data "channel-ids"])
+               {:keys [pulse-id
+                       schedule-map]} (send-pulse-trigger-key->info trigger-key)]
+           (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
+           (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids new-timezone (:priority trigger)))))))))
 
 ;; called by PulseChannel hooks
 (defn update-send-pulse-trigger-if-needed!
@@ -104,39 +106,41 @@
   * To remove 2 pulse channels from a trigger
     (update-send-pulse-trigger-if-needed! pulse-id schedule-map :remove-pc-ids #{1 2}))"
   [pulse-id schedule-map & {:keys [add-pc-ids remove-pc-ids]}]
-  (let [schedule-map     (update-vals (select-keys schedule-map u.cron/schedule-keys)
-                                      #(if (keyword? %)
-                                         (name %)
-                                         %))
-        trigger-key      (send-pulse-trigger-key pulse-id schedule-map)
-        ;; there should be at most one existing trigger
-        existing-trigger (->> (-> send-pulse-job-key task/job-info :triggers)
-                              (filter #(= (:key %) (.getName ^TriggerKey trigger-key)))
-                              first)
-        existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
-        new-pc-ids      (if (some? existing-pc-ids)
-                          (cond-> existing-pc-ids
-                            (some? add-pc-ids)    (set/union existing-pc-ids (set add-pc-ids))
-                            (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
-                          (set add-pc-ids))]
-    (cond
-      ;; no op when new-pc-ids doesn't change
-      (= new-pc-ids existing-pc-ids) nil
+  (task/do-after-app-db-commit
+   (fn []
+     (let [schedule-map     (update-vals (select-keys schedule-map u.cron/schedule-keys)
+                                         #(if (keyword? %)
+                                            (name %)
+                                            %))
+           trigger-key      (send-pulse-trigger-key pulse-id schedule-map)
+           ;; there should be at most one existing trigger
+           existing-trigger (->> (-> send-pulse-job-key task/job-info :triggers)
+                                 (filter #(= (:key %) (.getName ^TriggerKey trigger-key)))
+                                 first)
+           existing-pc-ids (some-> existing-trigger :data (get "channel-ids") set)
+           new-pc-ids      (if (some? existing-pc-ids)
+                             (cond-> existing-pc-ids
+                               (some? add-pc-ids)    (set/union existing-pc-ids (set add-pc-ids))
+                               (some? remove-pc-ids) (set/difference (set remove-pc-ids)))
+                             (set add-pc-ids))]
+       (cond
+         ;; no op when new-pc-ids doesn't change
+         (= new-pc-ids existing-pc-ids) nil
 
-      ;; delete if no new pc-ids and there is an existing trigger
-      (and (empty? new-pc-ids)
-           (some? existing-pc-ids))
-      (do
-        (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
-        (task/delete-trigger! trigger-key))
+         ;; delete if no new pc-ids and there is an existing trigger
+         (and (empty? new-pc-ids)
+              (some? existing-pc-ids))
+         (do
+           (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
+           (task/delete-trigger! trigger-key))
 
-      ;; delete then create if pc ids changes
-      (and (seq new-pc-ids)
-           (not= new-pc-ids existing-pc-ids))
-      (do
-        (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
-        (task/delete-trigger! trigger-key)
-        (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
+         ;; delete then create if pc ids changes
+         (and (seq new-pc-ids)
+              (not= new-pc-ids existing-pc-ids))
+         (do
+           (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
+           (task/delete-trigger! trigger-key)
+           (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))))
 
 (defn- active-dashsub-pcs
   []

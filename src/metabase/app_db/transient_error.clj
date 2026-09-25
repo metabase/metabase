@@ -16,6 +16,7 @@
                "55P03"} ; lock not available (lock timeout)
    :mysql    #{1213     ; ER_LOCK_DEADLOCK
                1205}    ; ER_LOCK_WAIT_TIMEOUT
+   :sqlite   #{5 6 261 262 517 773} ; BUSY/LOCKED and extended retryable variants; retry whole transactions
    :h2       #{40001    ; DEADLOCK_1
                50200}}) ; LOCK_TIMEOUT_1
 

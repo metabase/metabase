@@ -433,7 +433,7 @@
     (cond
       ;; h2 does not respect the query timeout when taking the lock and is not cross-process,
       ;; so we fall back to an in-process ReentrantReadWriteLock per lock name.
-      (= (mdb.connection/db-type) :h2)
+      (#{:h2 :sqlite} (mdb.connection/db-type))
       (do-with-h2-cluster-locks* locks thunk)
 
       :else
@@ -480,7 +480,7 @@
     (when (*detached-locks-held* lock-name-str)
       (throw (ex-info "Cluster lock is already held detached in this scope"
                       {:lock-name lock-name-str})))
-    (if (= (mdb.connection/db-type) :h2)
+    (if (#{:h2 :sqlite} (mdb.connection/db-type))
       ;; the h2 in-process lock never holds a transaction, so it is already 'detached'
       (do-with-h2-cluster-locks* [{:lock-name-str lock-name-str :mode :exclusive}]
                                  #(binding [*detached-locks-held* (conj *detached-locks-held* lock-name-str)]

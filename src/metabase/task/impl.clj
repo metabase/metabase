@@ -188,6 +188,16 @@
     (catch Throwable e
       (log/errorf "Error rescheduling job: %s" (ex-message e)))))
 
+(defn do-after-app-db-commit
+  "Run a complete scheduler update after the app transaction commits when using SQLite.
+  SQLite has one writer, so Quartz's separate connection cannot write while the caller's transaction
+  is open. Keep return-dependent sequences and their exception handlers together inside `f`.
+  Returns nil when deferred; otherwise returns `f`'s result. Rolled-back transactions discard the work."
+  [f]
+  (if (= (mdb/db-type) :sqlite)
+    (mdb/do-after-commit f)
+    (f)))
+
 (mu/defn reschedule-trigger!
   "Reschedule a trigger with the same key as the given trigger.
 

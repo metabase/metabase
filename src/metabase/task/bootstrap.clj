@@ -52,6 +52,16 @@
   [f]
   (swap! jdbc-property-setters conj f))
 
+(defn jdbc-lock-properties
+  "SQLite app databases have one scheduler process. Coordinate its threads with Quartz's
+  SimpleSemaphore rather than the JDBC semaphore, whose SELECT FOR UPDATE SQLite cannot execute.
+  A stable instance ID is required: nonclustered recovery selects interrupted jobs by that ID."
+  [db-type]
+  {"org.quartz.scheduler.instanceId" (if (= db-type :sqlite) "NON_CLUSTERED" "AUTO")
+   "org.quartz.jobStore.isClustered" (str (not= db-type :sqlite))
+   "org.quartz.jobStore.useDBLocks" (str (not= db-type :sqlite))
+   "org.quartz.jobStore.acquireTriggersWithinLock" "true"})
+
 (defn set-jdbc-backend-properties!
   "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
   connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
@@ -63,6 +73,8 @@
   registered via [[register-jdbc-property-setter!]]. A registered setter that throws is logged and
   skipped so the scheduler still gets a working delegate."
   [db-type]
+  (doseq [[property value] (jdbc-lock-properties db-type)]
+    (System/setProperty property value))
   (secure-delegate/install! db-type)
   (doseq [setter @jdbc-property-setters]
     (try

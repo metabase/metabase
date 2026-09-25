@@ -55,7 +55,7 @@
    [:mb-db-aws-iam                          {:optional true} [:maybe :boolean]]
    [:mb-db-ssl-cert                         {:optional true} [:maybe :string]]])
 
-(mu/defn- env->db-type :- [:enum :postgres :mysql :h2]
+(mu/defn- env->db-type :- [:enum :postgres :mysql :h2 :sqlite]
   [{:keys [mb-db-connection-uri mb-db-type]} :- EnvVars]
   (or (some-> mb-db-connection-uri raw-connection-string->type)
       mb-db-type))
@@ -94,9 +94,14 @@
   SQL driver functions on the Metabase DB itself)."
   [db-type {:keys [mb-db-dbname mb-db-host mb-db-pass mb-db-port mb-db-user mb-db-azure-managed-identity-client-id mb-db-aws-iam mb-db-ssl-cert]
             :as   env-vars}]
-  (if (= db-type :h2)
-    (assoc h2-connection-properties
-           :db (env->db-file env-vars))
+  (case db-type
+    :sqlite (do
+              (when (:mb-db-in-memory env-vars)
+                (throw (ex-info "SQLite application databases require a file shared by all pooled connections."
+                                {:db-type :sqlite})))
+              {:db (.getAbsolutePath (io/file (:mb-db-file env-vars)))})
+    :h2 (assoc h2-connection-properties
+               :db (env->db-file env-vars))
     {:host                             mb-db-host
      :port                             mb-db-port
      :db                               mb-db-dbname
@@ -120,6 +125,10 @@
   keyword)
 
 (defmethod env-defaults :h2
+  [_db-type]
+  nil)
+
+(defmethod env-defaults :sqlite
   [_db-type]
   nil)
 

@@ -85,7 +85,7 @@
     the test it's hardly worth it."
   ^ApplicationDB [db-type data-source & {:keys [create-pool?], :or {create-pool? false}}]
   ;; this doesn't use [[schema.core/defn]] because [[schema.core/defn]] doesn't like optional keyword args
-  {:pre [(#{:h2 :mysql :postgres} db-type)
+  {:pre [(#{:h2 :mysql :postgres :sqlite} db-type)
          (instance? javax.sql.DataSource data-source)]}
   (map->ApplicationDB
    {:db-type     db-type
@@ -116,7 +116,7 @@
   when we synced the DB."
   [db-type]
   (case db-type
-    :postgres :ansi
+    (:postgres :sqlite) :ansi
     :h2       :h2
     :mysql    :mysql))
 
