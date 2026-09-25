@@ -344,3 +344,32 @@
         (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
           (is (contains? s :min-width))
           (is (not (contains? s :width))))))))
+
+(deftest view-as-image-only-renders-http-urls-test
+  (testing "a `view_as: image` cell only becomes an <img> when it holds an http(s) URL"
+    (let [columns       [{:name "url"}]
+          query-results {:cols columns
+                         :rows [["https://example.com/a.png"]
+                                ["http://example.com/b.png"]
+                                ["file:///etc/passwd"]
+                                ["javascript:alert(1)"]
+                                ["data:text/html,<script>alert(1)</script>"]]}
+          viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} {::mb.viz/view-as "image"}}}
+          rendered      (#'table/render-table (select-keys query-results [:cols :rows])
+                                              {:col-names ["url"] :cols-for-color-lookup ["url"]}
+                                              (query-results->header+rows query-results)
+                                              columns viz-settings nil)]
+      (testing "the http(s) cells, and only those, are images"
+        (is (= ["https://example.com/a.png" "http://example.com/b.png"]
+               (postwalk-collect (fn [node] (and (vector? node) (= :img (first node))))
+                                 (fn [node] (:src (second node)))
+                                 rendered))))
+      (testing "the other cells render as escaped text instead"
+        (is (= ["file:///etc/passwd"
+                "javascript:alert(1)"
+                "data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;"]
+               (->> (find-table-body rendered)
+                    (postwalk-collect (fn [node] (and (vector? node) (= :td (first node))))
+                                      last)
+                    (filter string?)
+                    (remove #(str/starts-with? % "http")))))))))
