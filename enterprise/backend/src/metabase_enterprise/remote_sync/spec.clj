@@ -83,7 +83,7 @@
     :identity       :entity-id
     :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/card
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :public-link-created :public-link-deleted]}
     :eligibility    {:type       :collection
                      :collection :remote-synced}
     :archived-key   :archived
@@ -101,7 +101,7 @@
     :identity       :entity-id
     :delete-after   [:model/Collection]  ; has collection_id FK
     :events         {:prefix :event/dashboard
-                     :types  [:create :update :delete]}
+                     :types  [:create :update :delete :public-link-created :public-link-deleted]}
     :eligibility    {:type       :collection
                      :collection :remote-synced}
     :archived-key   :archived

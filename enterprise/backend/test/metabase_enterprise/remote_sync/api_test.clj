@@ -1108,6 +1108,60 @@
           (is (= 1 (count dirty-items)))
           (is (= "Test Card" (:name (first dirty-items)))))))))
 
+(defn- mark-pushed!
+  "Records `model-id` as synced with the file path and content hash of its current serialized form, the state
+  a push leaves it in."
+  [model-type model-id collection-id]
+  (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+    (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id)
+    (t2/insert! :model/RemoteSyncObject {:model_type          model-type
+                                         :model_id            model-id
+                                         :model_name          "pushed"
+                                         :model_collection_id collection-id
+                                         :status              "synced"
+                                         :status_changed_at   (t/offset-date-time)
+                                         :file_path           path
+                                         :content_hash        content-hash})))
+
+(defn- dirty-ids [model]
+  (->> (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+       :dirty
+       (filter #(= model (:model %)))
+       (map :id)
+       set))
+
+(deftest public-link-marks-dashboard-dirty-test
+  (testing "GHY-4650: creating or revoking a dashboard's public link lists the dashboard in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash))))
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash)))))))))
+
+(deftest public-link-marks-card-dirty-test
+  (testing "GHY-4650: creating or revoking a card's public link lists the card in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card))))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card)))))))))
+
 (deftest dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"
     (is (= "You don't have permissions to do that."
