@@ -1,0 +1,36 @@
+.pill {
+  --cleanup-pill-background-color: var(--mb-color-accent7-light);
+
+  max-width: 24rem;
+  color: var(--mb-color-text-primary);
+  background-color: var(--cleanup-pill-background-color);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  overflow-wrap: anywhere;
+
+  &[data-kind="category"] {
+    --cleanup-pill-background-color: var(--mb-color-accent0-light);
+  }
+
+  &[data-kind="boolean"] {
+    --cleanup-pill-background-color: var(--mb-color-accent2-light);
+  }
+
+  &[data-kind="number"] {
+    --cleanup-pill-background-color: var(--mb-color-accent5-light);
+  }
+
+  &[data-kind="temporal"] {
+    --cleanup-pill-background-color: var(--mb-color-accent6-light);
+  }
+}
+
+[data-mantine-color-scheme="dark"] .pill {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.aggregation {
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.25rem;
+}

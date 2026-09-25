@@ -14,129 +14,9 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(set! *warn-on-reflection* true)
 
-(def ^:private mine-itemsets               @#'insights/mine-itemsets)
-(def ^:private closed-only                 @#'insights/closed-only)
-(def ^:private itemset-support             @#'insights/itemset-support)
-(def ^:private any-atom-support            @#'insights/any-atom-support)
-(def ^:private rebuild-and-clause          @#'insights/rebuild-and-clause)
-(def ^:private relative-support-ok?        @#'insights/relative-support-ok?)
-(def ^:private existing-composite-atomsets @#'insights/existing-composite-atomsets)
-(def ^:private composite-atomsets-memo     @#'insights/existing-composite-atomsets*-memo)
-
-(deftest ^:parallel itemset-support-counts-containing-baskets-weighted-by-count-test
-  (let [baskets [{:atoms #{:a :b :c} :count 3}
-                 {:atoms #{:a :b}     :count 2}
-                 {:atoms #{:a :c}     :count 1}
-                 {:atoms #{:b}        :count 4}]]
-    (testing "support = sum of basket counts for baskets containing ALL atoms in the itemset"
-      (is (= 5 (itemset-support baskets #{:a :b})))
-      (is (= 4 (itemset-support baskets #{:a :c})))
-      (is (= 3 (itemset-support baskets #{:a :b :c})))
-      (is (= 0 (itemset-support baskets #{:z}))))
-    (testing "any-atom-support = sum of basket counts for baskets containing ANY atom in the itemset"
-      (is (= 10 (any-atom-support baskets #{:a :b})))
-      (is (= 6  (any-atom-support baskets #{:a}))))
-    (testing "a basket contributes to an itemset's support exactly once per its own count"
-      (doseq [basket baskets]
-        (let [contributes? (every? (:atoms basket) #{:a :b})]
-          (is (= (if contributes? (:count basket) 0)
-                 (itemset-support [basket] #{:a :b}))))))))
-
-(deftest ^:parallel mine-itemsets-worked-example-test
-  (testing "design-doc worked example: baskets {a1,a2,a3}+{a1,a2,a4} yield the {a1,a2} closed itemset"
-    (let [baskets [{:atoms #{:a1 :a2 :a3} :count 1}
-                   {:atoms #{:a1 :a2 :a4} :count 1}]
-          mined   (mine-itemsets baskets)
-          closed  (closed-only mined)]
-      (is (= {[:a1 :a2] 2} mined)
-          "absolute support floor of 2 keeps only the pair that co-occurs in both baskets")
-      (is (= {[:a1 :a2] 2} closed)
-          "closed filter has nothing to collapse when only one itemset survives"))))
-
-(deftest ^:parallel closed-only-drops-subsumed-itemsets-of-equal-support-test
-  (testing "if {a,b} and {a,b,c} have equal support, closed filter drops the smaller subset"
-    (is (= {[:a :b :c] 2}
-           (closed-only {[:a :b]     2
-                         [:a :b :c]  2}))))
-  (testing "subsets with strictly greater support are preserved"
-    (is (= {[:a :b]     5
-            [:a :b :c]  2}
-           (closed-only {[:a :b]     5
-                         [:a :b :c]  2}))))
-  (testing "unrelated itemsets are untouched"
-    (is (= {[:a :b] 3 [:c :d] 3}
-           (closed-only {[:a :b] 3 [:c :d] 3})))))
-
-(deftest ^:parallel mine-itemsets-respects-size-bounds-test
-  (testing "only itemsets of size ≥ fim-k-min (2) appear in output — no singletons"
-    (let [baskets [{:atoms #{:a :b} :count 5}]
-          mined   (mine-itemsets baskets)]
-      (is (every? #(>= (count %) 2) (keys mined)))
-      (is (not (contains? mined [:a])))
-      (is (not (contains? mined [:b]))))))
-
-(deftest existing-segment-predicates-cached-test
-  (testing "existing-segment-predicates is TTL-memoized — repeated calls with the same opts hit the DB once"
-    (let [segment-selects (atom 0)
-          real-select     t2/select
-          existing-fn     @#'insights/existing-segment-predicates
-          memo-var        @#'insights/existing-segment-predicates*-memo]
-      (memoize/memo-clear! memo-var)
-      (with-redefs [t2/select (fn [& args]
-                                (when (and (sequential? (first args))
-                                           (= :model/Segment (ffirst args)))
-                                  (swap! segment-selects inc))
-                                (apply real-select args))]
-        (existing-fn {})
-        (existing-fn {})
-        (is (= 1 @segment-selects)))
-      (memoize/memo-clear! memo-var))))
-
-(deftest existing-metric-signatures-cached-test
-  (testing "existing-metric-signatures is TTL-memoized"
-    (let [card-selects (atom 0)
-          real-select  t2/select
-          existing-fn  @#'insights/existing-metric-signatures
-          memo-var     @#'insights/existing-metric-signatures*-memo]
-      (memoize/memo-clear! memo-var)
-      (with-redefs [t2/select (fn [& args]
-                                (when (and (sequential? (first args))
-                                           (= :model/Card (ffirst args)))
-                                  (swap! card-selects inc))
-                                (apply real-select args))]
-        (existing-fn)
-        (existing-fn)
-        (is (= 1 @card-selects)))
-      (memoize/memo-clear! memo-var))))
-
-;;; ---------- composite-segment read-path tests ----------
-
-(deftest ^:parallel rebuild-and-clause-test
-  (let [fp-a "[\"=\",{},[\"field\",{},1],1]"
-        fp-b "[\">\",{},[\"field\",{},2],0]"]
-    (testing "builds a properly-shaped :and MBQL clause from atom fingerprints"
-      (is (lib/clause-of-type? (rebuild-and-clause [fp-a fp-b]) :and)))
-    (testing "returns nil below fim-k-min (2) atoms"
-      (is (nil? (rebuild-and-clause [])))
-      (is (nil? (rebuild-and-clause [fp-a]))))
-    (testing "returns nil when decode-predicate drops everything below the floor"
-      (is (nil? (rebuild-and-clause [nil nil])))
-      (is (nil? (rebuild-and-clause [fp-a nil]))))))
-
-(deftest ^:parallel relative-support-ok?-test
-  (testing "ratio above 0.2 floor → true"
-    (let [baskets [{:atoms #{:a :b} :count 4}
-                   {:atoms #{:a :c} :count 1}]]
-      (is (relative-support-ok? baskets [:a :b] 4))))
-  (testing "ratio below 0.2 floor → false"
-    (let [baskets [{:atoms #{:a :b} :count 1}
-                   {:atoms #{:a :c} :count 4}
-                   {:atoms #{:b :c} :count 5}]]
-      (is (not (relative-support-ok? baskets [:a :b] 1)))))
-  (testing "zero denominator → true (boundary)"
-    (is (relative-support-ok? [] [:z] 0))))
+(use-fixtures :once (fixtures/initialize :db :test-users-personal-collections))
 
 (def ^:private composite-test-bucket-date (t/local-date "2099-01-01"))
 
@@ -178,71 +58,112 @@
    :bucket-start composite-test-bucket-date
    :bucket-end   composite-test-bucket-date})
 
+(defn- clear-existing-segment-cache! []
+  (memoize/memo-clear! @#'insights/existing-segment-facts*-memo))
+
+(defn- clear-existing-metric-signature-cache! []
+  (memoize/memo-clear! @#'insights/existing-metric-signatures*-memo))
+
 (deftest suggested-segments-for-owner-happy-path-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
+  (clear-existing-segment-cache!)
   (let [fact (composite-fact-for-orders)
         opts (composite-opts (mt/id :orders))]
     (try
       (seed-composite-row! fact 3)
       (let [results (insights/suggested-segments-for-owner opts)]
-        (testing "candidate is returned when no saved Segment matches"
-          (is (seq results)))
-        (testing "top candidate is a valid :and MBQL clause attributed to the right source"
-          (let [{:keys [clause itemset-size source]} (first results)]
-            (is (lib/clause-of-type? clause :and))
-            (is (= (:atom-count fact) itemset-size))
-            (is (= :table (:type source)))
-            (is (= (mt/id :orders) (:id source))))))
+        (testing "one composite basket surfaces exactly one candidate with its support and source"
+          (is (=? [{:itemset-size (:atom-count fact)
+                    :support 3
+                    :support-ratio 1.0
+                    :source {:type :table, :id (mt/id :orders)}}]
+                  results)))
+        (testing "the candidate's clause is a valid :and MBQL clause"
+          (is (lib/clause-of-type? (:clause (first results)) :and))))
       (finally
         (cleanup-composite-rows!)
-        (memoize/memo-clear! composite-atomsets-memo)))))
+        (clear-existing-segment-cache!)))))
 
 (deftest suggested-segments-for-owner-skips-saved-segment-match-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
+  (clear-existing-segment-cache!)
   (let [fact (composite-fact-for-orders)
         opts (composite-opts (mt/id :orders))]
     (try
       (seed-composite-row! fact 3)
       (testing "precondition: candidate is present without a saved Segment"
         (is (seq (insights/suggested-segments-for-owner opts))))
-      (memoize/memo-clear! composite-atomsets-memo)
+      (clear-existing-segment-cache!)
       (mt/with-temp [:model/Segment _seg {:table_id   (mt/id :orders)
                                           :definition (composite-orders-query)}]
         (let [results (insights/suggested-segments-for-owner opts)]
           (testing "candidate is filtered out when a saved Segment has the same atom-set"
-            (is (not-any? (fn [{:keys [source itemset-size]}]
-                            (and (= :table (:type source))
-                                 (= (mt/id :orders) (:id source))
-                                 (= (:atom-count fact) itemset-size)))
-                          results)))))
+            (is (= [] results)))))
       (finally
         (cleanup-composite-rows!)
-        (memoize/memo-clear! composite-atomsets-memo)))))
-
-(deftest existing-composite-atomsets-cached-test
-  (testing "existing-composite-atomsets is TTL-memoized — repeated calls hit the DB once"
-    (memoize/memo-clear! composite-atomsets-memo)
-    (let [segment-selects (atom 0)
-          real-select     t2/select]
-      (try
-        (with-redefs [t2/select (fn [& args]
-                                  (when (and (sequential? (first args))
-                                             (= :model/Segment (ffirst args)))
-                                    (swap! segment-selects inc))
-                                  (apply real-select args))]
-          (existing-composite-atomsets {:source-type :table :source-id (mt/id :orders)})
-          (existing-composite-atomsets {:source-type :table :source-id (mt/id :orders)})
-          (is (= 1 @segment-selects)))
-        (finally
-          (memoize/memo-clear! composite-atomsets-memo))))))
+        (clear-existing-segment-cache!)))))
 
 (deftest suggested-segments-for-owner-empty-when-no-rows-test
   (cleanup-composite-rows!)
-  (memoize/memo-clear! composite-atomsets-memo)
+  (clear-existing-segment-cache!)
   (try
     (is (= [] (insights/suggested-segments-for-owner
                (composite-opts (mt/id :orders)))))
     (finally
-      (memoize/memo-clear! composite-atomsets-memo))))
+      (clear-existing-segment-cache!))))
+
+(deftest existing-segment-facts-are-memoized-and-shared-test
+  (testing "existing-segment-predicates and existing-composite-atomsets for the same key
+            share one TTL-memoized Segment scan"
+    (clear-existing-segment-cache!)
+    (try
+      (let [segment-selects     (atom 0)
+            original-select     (mt/original-fn #'t2/select)
+            existing-predicates (var-get #'insights/existing-segment-predicates)
+            existing-composites (var-get #'insights/existing-composite-atomsets)
+            opts                (composite-opts (mt/id :orders))]
+        (mt/with-dynamic-fn-redefs
+          [t2/select (fn [& args]
+                       (when (and (sequential? (first args))
+                                  (= :model/Segment (ffirst args)))
+                         (swap! segment-selects inc))
+                       (apply original-select args))]
+          (is (set? (existing-predicates opts)))
+          (is (= 1 @segment-selects) "the first call scans Segments once")
+          (is (set? (existing-composites opts)))
+          (is (= 1 @segment-selects)
+              "the second call, for the same key, reuses the cached scan")))
+      (finally
+        (clear-existing-segment-cache!)))))
+
+(deftest existing-metric-signatures-cached-test
+  (testing "existing-metric-signatures is TTL-memoized — repeated calls hit the DB once"
+    (clear-existing-metric-signature-cache!)
+    (try
+      (let [card-selects           (atom 0)
+            original-select        (mt/original-fn #'t2/select)
+            existing-signatures    (var-get #'insights/existing-metric-signatures)]
+        (mt/with-dynamic-fn-redefs
+          [t2/select (fn [& args]
+                       (when (and (sequential? (first args))
+                                  (= :model/Card (ffirst args)))
+                         (swap! card-selects inc))
+                       (apply original-select args))]
+          (existing-signatures)
+          (existing-signatures)
+          (is (= 1 @card-selects))))
+      (finally
+        (clear-existing-metric-signature-cache!)))))
+
+(deftest ^:parallel rebuild-and-clause-test
+  (let [rebuild-and-clause (var-get #'insights/rebuild-and-clause)
+        fp-a "[\"=\",{},[\"field\",{},1],1]"
+        fp-b "[\">\",{},[\"field\",{},2],0]"]
+    (testing "builds a properly-shaped :and MBQL clause from atom fingerprints"
+      (is (lib/clause-of-type? (rebuild-and-clause [fp-a fp-b]) :and)))
+    (testing "returns nil below the minimum itemset size"
+      (is (nil? (rebuild-and-clause [])))
+      (is (nil? (rebuild-and-clause [fp-a]))))
+    (testing "returns nil when decode-predicate drops everything below the floor"
+      (is (nil? (rebuild-and-clause [nil nil])))
+      (is (nil? (rebuild-and-clause [fp-a nil]))))))

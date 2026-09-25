@@ -1,5 +1,9 @@
 import { trackSimpleEvent } from "metabase/analytics";
-import type { CollectionId, ConcreteTableId } from "metabase-types/api";
+import type {
+  CollectionId,
+  ConcreteTableId,
+  UsageMetadataCandidateType,
+} from "metabase-types/api";
 
 export const trackDataStudioLibraryCreated = (id: CollectionId) => {
   trackSimpleEvent({
@@ -148,6 +152,86 @@ export const trackDataStudioOpened = () => {
   trackSimpleEvent({
     event: "data_studio_opened",
     triggered_from: "nav_menu",
+  });
+};
+
+export const trackDataStudioCleanupOpened = () => {
+  trackSimpleEvent({
+    event: "data_studio_cleanup_opened",
+    triggered_from: "data_studio_nav",
+  });
+};
+
+export const trackDataStudioCleanupRefreshStarted = (
+  result: "success" | "failure" | "already_running",
+) => {
+  trackSimpleEvent({
+    event: "data_studio_cleanup_refresh_started",
+    result,
+  });
+};
+
+export const trackDataStudioCleanupTableSelected = (tableId: number) => {
+  trackSimpleEvent({
+    event: "data_studio_cleanup_table_selected",
+    target_id: tableId,
+  });
+};
+
+export const trackDataStudioCleanupCandidateInspected = (
+  candidateId: number,
+  candidateType: UsageMetadataCandidateType,
+) => {
+  trackSimpleEvent({
+    event: "data_studio_cleanup_candidate_inspected",
+    target_id: candidateId,
+    event_detail: candidateType,
+  });
+};
+
+export const trackDataStudioCleanupCandidateAction = ({
+  action,
+  candidateId,
+  candidateType,
+  result,
+}: {
+  action: "create" | "dismiss" | "restore";
+  candidateId: number;
+  candidateType: UsageMetadataCandidateType;
+  result: "success" | "failure";
+}) => {
+  const properties = {
+    target_id: candidateId,
+    event_detail: candidateType,
+    result,
+  };
+
+  switch (action) {
+    case "create":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_create",
+        ...properties,
+      });
+      break;
+    case "dismiss":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_dismiss",
+        ...properties,
+      });
+      break;
+    case "restore":
+      trackSimpleEvent({
+        event: "data_studio_cleanup_candidate_restore",
+        ...properties,
+      });
+      break;
+  }
+};
+
+export const trackDataStudioCleanupPublicationStarted = (tableId: number) => {
+  trackSimpleEvent({
+    event: "data_studio_cleanup_publication_started",
+    target_id: tableId,
   });
 };
 

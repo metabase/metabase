@@ -1,0 +1,207 @@
+(ns metabase-enterprise.data-studio.api.usage-metadata.schema
+  "Request and response contracts for the usage-metadata cleanup API."
+  (:require
+   [metabase.lib.schema :as lib.schema]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+(def ^{:doc "Maximum cleanup-list search length."} max-search-length 254)
+(def ^{:doc "Maximum candidate name override length."} max-name-length 254)
+(def ^{:doc "Maximum candidate description override length."} max-description-length 10000)
+
+(mr/def ::snapshot-summary
+  [:map [:table_count ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::snapshot
+  [:map
+   [:id ms/PositiveInt]
+   [:finished_at :any]
+   [:usage_window_days {:description "How many days of Card views the snapshot's view counts cover."}
+    [:maybe ms/PositiveInt]]
+   [:summary [:maybe ::snapshot-summary]]])
+
+(mr/def ::database
+  [:map [:id ms/PositiveInt] [:name :string]])
+
+(mr/def ::creation-blocker
+  [:enum :table-not-published :table-inactive :table-uneditable :unsupported-candidate-type])
+
+(mr/def ::table
+  [:map
+   [:id ms/PositiveInt]
+   [:schema [:maybe :string]]
+   [:display_name :string]
+   [:is_published :boolean]
+   [:database ::database]])
+
+(mr/def ::table-summary
+  [:map
+   [:table ::table]
+   [:candidate_count ms/IntGreaterThanOrEqualToZero]
+   [:recent_view_count {:description "Views of the distinct source Cards behind the Table's matching candidates."}
+    ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::candidate-type [:enum :table :metric :measure :segment])
+(mr/def ::modeling-status [:enum :missing :partially-modeled :modeled])
+(mr/def ::predicate-kind [:enum "boolean" "category" "number" "temporal" "other"])
+
+(mr/def ::presented-predicate
+  [:map
+   [:signature :string]
+   [:display_name :string]
+   [:kind ::predicate-kind]])
+
+(mr/def ::candidate-presentation
+  [:map
+   [:aggregation {:optional true} [:map [:display_name :string]]]
+   [:predicates [:sequential ::presented-predicate]]])
+
+(mr/def ::candidate-evidence
+  [:map
+   [:verified_source_count ms/IntGreaterThanOrEqualToZero]
+   [:official_source_count ms/IntGreaterThanOrEqualToZero]
+   [:popular_source_count ms/IntGreaterThanOrEqualToZero]
+   [:distinct_source_count ms/IntGreaterThanOrEqualToZero]
+   [:recent_view_count ms/IntGreaterThanOrEqualToZero]])
+
+(mr/def ::candidate-definition
+  [:or ::lib.schema/query [:map [:table_id ms/PositiveInt]]])
+
+(mr/def ::candidate-summary
+  [:map
+   [:id ms/PositiveInt]
+   [:candidate_type ::candidate-type]
+   [:display_name :string]
+   [:presentation ::candidate-presentation]
+   [:modeling_status ::modeling-status]
+   [:dismissed :boolean]
+   [:last_used_at [:maybe ms/TemporalInstant]]
+   [:table ::table]
+   [:evidence ::candidate-evidence]])
+
+(mr/def ::model-lineage-item
+  [:map [:id ms/PositiveInt] [:name :string]])
+
+(mr/def ::dependency-path
+  [:map
+   [:direct :boolean]
+   [:models [:sequential ::model-lineage-item]]])
+
+(mr/def ::candidate-source
+  [:map
+   [:card_id ms/PositiveInt]
+   [:card_name [:maybe :string]]
+   [:card_type [:enum :question :model]]
+   [:verified :boolean]
+   [:official :boolean]
+   [:popular :boolean]
+   [:recent_view_count ms/IntGreaterThanOrEqualToZero]
+   [:joined :boolean]
+   [:stage_numbers [:sequential ms/IntGreaterThanOrEqualToZero]]
+   [:model_lineage [:maybe [:sequential ::model-lineage-item]]]
+   [:last_used_at [:maybe ms/TemporalInstant]]
+   [:collection {:description "The Collection that held the source Card at refresh time, as it is named now; nil when
+                               the Card was not in a Collection or the Collection is gone."}
+    [:maybe [:map
+             [:id ms/PositiveInt]
+             [:name :string]
+             [:authority_level [:maybe [:enum :official]]]]]]
+   [:dependency_paths {:optional true} [:sequential ::dependency-path]]])
+
+(mr/def ::candidate-match
+  [:map
+   [:relation [:enum :exact :same-base :subset :superset :overlap]]
+   [:entity_type [:enum :measure :segment :metric]]
+   [:entity [:map
+             [:id ms/PositiveInt]
+             [:name :string]
+             [:description [:maybe :string]]]]])
+
+(mr/def ::candidate-detail
+  [:merge
+   ::candidate-summary
+   [:map
+    [:suggested_name :string]
+    [:suggested_description [:maybe :string]]
+    [:required_tables [:sequential ::table]]
+    [:definition ::candidate-definition]
+    [:creation_blockers [:sequential ::creation-blocker]]
+    [:sources [:sequential ::candidate-source]]
+    [:matches [:sequential ::candidate-match]]]])
+
+(mr/def ::candidate-page
+  [:map
+   [:data [:sequential ::candidate-summary]]
+   [:total ms/IntGreaterThanOrEqualToZero]
+   [:limit ms/IntGreaterThanOrEqualToZero]
+   [:offset ms/IntGreaterThanOrEqualToZero]
+   [:snapshot [:maybe ::snapshot]]])
+
+(mr/def ::table-page
+  [:map
+   [:data [:sequential ::table-summary]]
+   [:total ms/IntGreaterThanOrEqualToZero]
+   [:limit ms/IntGreaterThanOrEqualToZero]
+   [:offset ms/IntGreaterThanOrEqualToZero]
+   [:snapshot [:maybe ::snapshot]]])
+
+(mr/def ::create-response
+  [:map [:id ms/PositiveInt]])
+
+(mr/def ::run-state
+  [:map [:id ms/PositiveInt] [:status [:enum :queued :running :failed]]])
+
+(mr/def ::refresh-status
+  [:map
+   [:snapshot [:maybe ::snapshot]]
+   [:active [:maybe ::run-state]]
+   [:failure [:maybe ::run-state]]])
+
+(mr/def ::start-refresh-response
+  [:map
+   [:status [:= 202]]
+   [:body [:map [:run_id ms/PositiveInt]]]])
+
+(def ^:private list-filter-entries
+  [[:table-id {:optional true} [:maybe ms/PositiveInt]]
+   [:database-id {:optional true} [:maybe ms/PositiveInt]]
+   [:schema {:optional true, :description "Only candidates on Tables in this schema."}
+    [:maybe :string]]
+   [:table-published {:optional true, :description "Only candidates on published (or, when false, unpublished) Tables."}
+    [:maybe ms/MaybeBooleanValue]]
+   [:candidate-type {:optional true, :description "Only candidates of these types."}
+    [:maybe (ms/QueryVectorOf ::candidate-type)]]
+   [:review {:optional true, :description "Candidates still to review, dismissed ones, or both. Defaults to to-review."}
+    [:maybe (ms/QueryVectorOf [:enum :to-review :discarded])]]
+   [:modeling-status {:optional true, :description "Only candidates with these Library matches: `missing` has none."}
+    [:maybe (ms/QueryVectorOf ::modeling-status)]]
+   [:queue {:optional true, :description "Deprecated shorthand for `review` and `modeling-status`, used when neither is given."}
+    [:maybe [:enum :suggested :used-raw :discarded]]]
+   [:last-used-from {:optional true, :description "ISO-8601 date or date-time (a date is UTC midnight). Inclusive."}
+    [:maybe ms/TemporalString]]
+   [:last-used-to {:optional true, :description "ISO-8601 date or date-time (a date is UTC midnight). Exclusive."}
+    [:maybe ms/TemporalString]]
+   [:search {:optional true} [:maybe [:string {:max max-search-length}]]]
+   [:sort-direction {:optional true} [:maybe [:enum :asc :desc]]]])
+
+(def ^{:doc "Validated query parameters of the candidate list."} candidate-list-query
+  (into [:map {:closed true}]
+        (conj list-filter-entries
+              [:sort-column {:optional true, :description "Omit for deterministic recommendation-family order."}
+               [:maybe [:enum :name :views :sources :last-used]]])))
+
+(def ^{:doc "Validated query parameters of the candidate-Table list."} table-list-query
+  (into [:map {:closed true}]
+        (conj list-filter-entries
+              [:sort-column {:optional true, :description "Omit for the Tables with the most candidates first."}
+               [:maybe [:enum :name :views :candidates]]])))
+
+(def ^{:doc "Candidate identifier route schema."} candidate-id
+  [:map {:closed true} [:id ms/PositiveInt]])
+
+(def ^{:doc "Candidate creation override request body schema."} create-body
+  [:map {:closed true}
+   [:name {:optional true}
+    [:maybe [:and ms/NonBlankString [:string {:max max-name-length}]]]]
+   [:description {:optional true}
+    [:maybe [:string {:max max-description-length}]]]])
