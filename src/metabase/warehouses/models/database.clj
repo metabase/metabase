@@ -642,8 +642,8 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, and `admin_details` for any User
-  without write perms for the DB. Users with write perms can see the details but remove anything resembling a
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
+  `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
   Also remove settings that the User doesn't have read perms for."
@@ -656,7 +656,7 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details))
+                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
@@ -697,7 +697,9 @@
                  :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
-                 :cache_ttl]
+                 :cache_ttl
+                 ;; describes a sync on the source instance, and may name its connection details
+                 :initial_sync_error]
      :transform {:created_at          (serdes/date)
                  :details             details-transform
                  :write_data_details  details-transform
