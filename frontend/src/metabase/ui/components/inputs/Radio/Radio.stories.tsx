@@ -293,6 +293,7 @@ const InteractiveCardTemplate: StoryFn<RadioProps> = () => {
 export const InteractiveCard = {
   render: InteractiveCardTemplate,
   name: "Radio.Card (interactive)",
+  tags: ["no-visual"],
   parameters: {
     controls: { disable: true },
     loki: { skip: true },
