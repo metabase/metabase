@@ -59,6 +59,7 @@ export const Default: StoryObj = {
     </VisualizationWrapper>
   ),
 
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -81,6 +82,7 @@ export const EmbeddingHugeFont: StoryObj = {
     );
   },
 
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },

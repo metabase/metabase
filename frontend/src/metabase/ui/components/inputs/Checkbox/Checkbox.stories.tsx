@@ -313,6 +313,7 @@ const InteractiveCardTemplate: StoryFn<CheckboxProps> = () => {
 export const InteractiveCard = {
   render: InteractiveCardTemplate,
   name: "Checkbox.Card (interactive)",
+  tags: ["no-visual"],
   parameters: {
     controls: { disable: true },
     loki: { skip: true },

@@ -65,6 +65,7 @@ const StackedTemplate = () => (
 );
 
 export default {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -77,6 +78,7 @@ export const Default = { render: DefaultTemplate };
 export const Stacked = { render: StackedTemplate };
 
 export const LightTheme = {
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },

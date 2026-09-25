@@ -205,6 +205,7 @@ export const GridMapPdfExport = {
       asyncCallback();
     }
   },
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
