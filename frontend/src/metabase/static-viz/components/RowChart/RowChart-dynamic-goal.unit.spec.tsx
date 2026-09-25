@@ -9,13 +9,14 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import type {
   DatasetData,
   RawSeries,
-  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -87,7 +88,10 @@ describe("static row chart with a dynamic goal", () => {
 
   it("draws the goal line at the value answered by the dataset", () => {
     const root = setup({
-      referencedEntities: createReferencedEntitiesResults(GOAL),
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: GOAL,
+      }),
     });
     const [goalLine] = getRowChartSymbols(root, "goal line");
 
@@ -101,7 +105,10 @@ describe("static row chart with a dynamic goal", () => {
   it("reads an answered goal as a percentage of a normalized stack", () => {
     const root = setup({
       settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
-      referencedEntities: createReferencedEntitiesResults(50),
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 50,
+      }),
     });
     const [goalLine] = getRowChartSymbols(root, "goal line");
     const [bar] = getRowChartSymbols(root, "bar");
@@ -119,23 +126,8 @@ describe("static row chart with a dynamic goal", () => {
   it("throws for a reference whose query failed", () => {
     expect(() =>
       setup({
-        referencedEntities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referencedEntities: createMockFailedReferencedEntitiesResults(),
       }),
     ).toThrow(GOAL_ERROR);
   });
 });
-
-function createReferencedEntitiesResults(
-  value: number,
-): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
-}

@@ -7,6 +7,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -66,17 +68,10 @@ describe("ROW_CHART_DEFINITION", () => {
 
     it("accepts a resolved goal reference", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: 250,
+        }),
       });
 
       expect(() => checkRenderable(series, SETTINGS)).not.toThrow();
@@ -84,9 +79,7 @@ describe("ROW_CHART_DEFINITION", () => {
 
     it("refuses to render when the referenced query failed", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);
@@ -94,17 +87,10 @@ describe("ROW_CHART_DEFINITION", () => {
 
     it("refuses to render when the referenced value is not a number", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [["x"]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: "x",
+        }),
       });
 
       expect(() => checkRenderable(series, SETTINGS)).toThrow(GOAL_ERROR);

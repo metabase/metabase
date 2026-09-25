@@ -6,6 +6,7 @@ import type { DatasetData, GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -112,7 +113,9 @@ describe("useAnsweredGoalValue", () => {
   it("fails without fetching when the dataset reports a failed reference", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: { card: { 9: { status: "failed", error: "boom" } } },
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        error: "boom",
+      }),
     });
 
     expect(setup(data, CARD_REF).result.current).toEqual({

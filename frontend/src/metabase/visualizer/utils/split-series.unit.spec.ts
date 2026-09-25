@@ -4,20 +4,18 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { splitVisualizerSeries } from "./split-series";
 
 registerVisualizations();
 
-const referencedEntities = {
-  card: {
-    10: {
-      status: "completed" as const,
-      data: { cols: [createMockColumn({ name: "count" })], rows: [[10]] },
-    },
-  },
-};
+const referencedEntities = createMockReferencedEntitiesResults({
+  id: 10,
+  column: "count",
+  value: 10,
+});
 
 describe("splitVisualizerSeries", () => {
   it("should split a single series into multiple series", () => {

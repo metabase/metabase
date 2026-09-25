@@ -33,6 +33,7 @@ import {
   createMockDatasetData,
   createMockField,
   createMockMeasure,
+  createMockReferencedEntitiesResults,
   createMockSearchResult,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
@@ -186,17 +187,10 @@ describe("GoalValueInput", () => {
     setup({
       data: createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
       }),
       value: { type: "card", id: 9, column: "total" },
     });
@@ -207,17 +201,9 @@ describe("GoalValueInput", () => {
 
   it("resolves a reference the dataset can't answer by re-running the query with it attached", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setupCardDatasetWithReferencedEntities({
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: [createMockColumn({ name: "total" })],
-            rows: [[250]],
-          },
-        },
-      },
-    });
+    setupCardDatasetWithReferencedEntities(
+      createMockReferencedEntitiesResults({ column: "total", value: 250 }),
+    );
     setup({
       referencedEntities: [{ type: "card", id: 9 }],
       value: { type: "card", id: 9, column: "total" },
@@ -259,17 +245,10 @@ describe("GoalValueInput", () => {
     setup({
       data: createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
       }),
       referencedEntities: [{ type: "card", id: 9 }],
       value: { type: "card", id: 9, column: "avg" },
@@ -305,33 +284,18 @@ describe("GoalValueInput", () => {
 
   it("shows an empty pill and an error for a referenced column that no longer exists", async () => {
     setupCardEndpoints(createMockCard({ id: 9, name: "Orders" }));
-    setupCardDatasetWithReferencedEntities({
-      card: {
-        9: {
-          status: "completed",
-          data: {
-            cols: [createMockColumn({ name: "total" })],
-            rows: [[250]],
-          },
-        },
-      },
-    });
+    setupCardDatasetWithReferencedEntities(
+      createMockReferencedEntitiesResults({ column: "total", value: 250 }),
+    );
     renderWithProviders(
       <GoalValueInput
         aria-label="Min"
         data={createMockDatasetData({
           ...DATA,
-          referenced_entities: {
-            card: {
-              9: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
-              },
-            },
-          },
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "total",
+            value: 250,
+          }),
         })}
         datasetQuery={DATASET_QUERY}
         id="goal-value"
@@ -461,17 +425,12 @@ describe("GoalValueInput", () => {
     setup({
       data: createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          measure: {
-            4: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "revenue" })],
-                rows: [[999]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          type: "measure",
+          id: 4,
+          column: "revenue",
+          value: 999,
+        }),
       }),
       value: { type: "measure", id: 4, column: "revenue" },
     });
@@ -527,17 +486,10 @@ describe("GoalValueInput", () => {
     setup({
       data: createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
       }),
       value: { type: "card", id: 9, column: "total" },
     });
@@ -647,17 +599,10 @@ describe("GoalValueInput", () => {
     setup({
       data: createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "total" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "total",
+          value: 250,
+        }),
       }),
       value: { type: "card", id: 9, column: "total" },
     });

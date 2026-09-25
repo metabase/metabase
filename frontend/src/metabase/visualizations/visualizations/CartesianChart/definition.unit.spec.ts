@@ -9,6 +9,8 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -53,17 +55,10 @@ describe("definition", () => {
 
         it("accepts a resolved goal reference", () => {
           const series = createSeries(display, {
-            referenced_entities: {
-              card: {
-                9: {
-                  status: "completed",
-                  data: {
-                    cols: [createMockColumn({ name: "goal" })],
-                    rows: [[250]],
-                  },
-                },
-              },
-            },
+            referenced_entities: createMockReferencedEntitiesResults({
+              column: "goal",
+              value: 250,
+            }),
           });
 
           expect(() =>
@@ -73,9 +68,7 @@ describe("definition", () => {
 
         it("refuses to render when the referenced query failed", () => {
           const series = createSeries(display, {
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
+            referenced_entities: createMockFailedReferencedEntitiesResults(),
           });
 
           expect(() =>
@@ -85,17 +78,10 @@ describe("definition", () => {
 
         it("refuses to render when the referenced value is not a number", () => {
           const series = createSeries(display, {
-            referenced_entities: {
-              card: {
-                9: {
-                  status: "completed",
-                  data: {
-                    cols: [createMockColumn({ name: "goal" })],
-                    rows: [["x"]],
-                  },
-                },
-              },
-            },
+            referenced_entities: createMockReferencedEntitiesResults({
+              column: "goal",
+              value: "x",
+            }),
           });
 
           expect(() =>
@@ -105,9 +91,7 @@ describe("definition", () => {
 
         it("reads the raw series when given a transformed one", () => {
           const rawSeries = createSeries(display, {
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
+            referenced_entities: createMockFailedReferencedEntitiesResults(),
           });
           const transformed = Object.assign(createSeries(display), {
             _raw: rawSeries,

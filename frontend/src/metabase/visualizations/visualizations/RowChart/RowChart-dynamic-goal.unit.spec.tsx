@@ -25,6 +25,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -55,9 +57,7 @@ const SETTINGS: VisualizationSettings = {
   "graph.goal_label": GOAL_LABEL,
 };
 
-const FAILED: ReferencedEntitiesResults = {
-  card: { 9: { status: "failed", error: "boom" } },
-};
+const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
   settings?: VisualizationSettings;
@@ -105,7 +105,12 @@ describe("row chart dynamic goal", () => {
   });
 
   it("draws the goal line at the value answered by the dataset", async () => {
-    setup({ referencedEntities: createReferencedEntitiesResults(GOAL) });
+    setup({
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: GOAL,
+      }),
+    });
 
     const goalLine = await findGoalLine();
 
@@ -120,7 +125,10 @@ describe("row chart dynamic goal", () => {
   it("reads an answered goal as a percentage of a normalized stack", async () => {
     setup({
       settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
-      referencedEntities: createReferencedEntitiesResults(50),
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 50,
+      }),
     });
 
     const goalLine = await findGoalLine();
@@ -138,7 +146,10 @@ describe("row chart dynamic goal", () => {
         data: createMockDatasetData({
           cols: COLS,
           rows: ROWS,
-          referenced_entities: createReferencedEntitiesResults(GOAL),
+          referenced_entities: createMockReferencedEntitiesResults({
+            column: "goal",
+            value: GOAL,
+          }),
         }),
       },
     });
@@ -192,17 +203,4 @@ async function findGoalLine() {
 
 function getGraphicsSymbols(roleDescription: RowChartSymbol) {
   return getRowChartSymbols(document.body, roleDescription);
-}
-
-function createReferencedEntitiesResults(
-  value: number,
-): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
 }

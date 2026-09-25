@@ -9,6 +9,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { useResolvedGoalSettings } from "./use-resolved-goal-settings";
@@ -73,17 +75,10 @@ describe("useResolvedGoalSettings", () => {
     it("substitutes an answer the dataset already has", () => {
       const data = createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: 250,
+        }),
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS, data);
@@ -98,17 +93,10 @@ describe("useResolvedGoalSettings", () => {
       setupCardDataset({
         dataset: {
           data: createMockDatasetData({
-            referenced_entities: {
-              card: {
-                9: {
-                  status: "completed",
-                  data: {
-                    cols: [createMockColumn({ name: "goal" })],
-                    rows: [[250]],
-                  },
-                },
-              },
-            },
+            referenced_entities: createMockReferencedEntitiesResults({
+              column: "goal",
+              value: 250,
+            }),
           }),
         },
       });
@@ -143,9 +131,7 @@ describe("useResolvedGoalSettings", () => {
     it("fails for a reference the dataset reports as failed", () => {
       const data = createMockDatasetData({
         ...DATA,
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       const { result } = setup(card, REFERENCED_SETTINGS, data);

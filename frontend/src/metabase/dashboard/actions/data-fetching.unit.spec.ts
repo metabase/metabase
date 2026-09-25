@@ -31,6 +31,7 @@ import {
   createMockDashboardTab,
   createMockDataset,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -637,17 +638,10 @@ describe("fetchCardDataAction with goal references", () => {
 
   it("returns the cached result when it answers every goal reference", async () => {
     const { store, card, dashcard, lastResult } = setupGaugeDashcard({
-      referencedEntities: {
-        card: {
-          9: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [[250]],
-            },
-          },
-        },
-      },
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "total",
+        value: 250,
+      }),
     });
 
     const result = await store.dispatch(

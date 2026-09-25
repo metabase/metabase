@@ -1,4 +1,5 @@
 import type {
+  CardId,
   Dataset,
   DatasetColumn,
   DatasetData,
@@ -6,7 +7,11 @@ import type {
   EmbedDatasetData,
   ErrorEmbedDataset,
   Field,
+  MeasureId,
+  ReferencedEntitiesResults,
+  ReferencedEntityResult,
   ResultsMetadata,
+  RowValue,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -162,4 +167,78 @@ export const createMockResultsMetadata = (
 ): ResultsMetadata => ({
   columns,
   ...opts,
+});
+
+type MockReferencedEntityResultOpts = {
+  column?: string;
+  value?: RowValue;
+};
+
+type MockFailedReferencedEntityResultOpts = {
+  error?: string;
+};
+
+type MockReferencedEntityRef =
+  | { type?: "card"; id?: CardId }
+  | { type: "measure"; id?: MeasureId };
+
+type MockReferencedEntitiesResultsOpts = MockReferencedEntityResultOpts &
+  MockReferencedEntityRef;
+
+type MockFailedReferencedEntitiesResultsOpts =
+  MockFailedReferencedEntityResultOpts & MockReferencedEntityRef;
+
+type ReferencedEntitiesResultsOpts = {
+  result: ReferencedEntityResult;
+} & ({ type: "card"; id: CardId } | { type: "measure"; id: MeasureId });
+
+export const createMockReferencedEntitiesResults = ({
+  column,
+  id = 9,
+  type = "card",
+  value,
+}: MockReferencedEntitiesResultsOpts = {}): ReferencedEntitiesResults =>
+  createReferencedEntitiesResults({
+    id,
+    result: createMockReferencedEntityResult({ column, value }),
+    type,
+  });
+
+export const createMockFailedReferencedEntitiesResults = ({
+  error,
+  id = 9,
+  type = "card",
+}: MockFailedReferencedEntitiesResultsOpts = {}): ReferencedEntitiesResults =>
+  createReferencedEntitiesResults({
+    id,
+    result: createMockFailedReferencedEntityResult({ error }),
+    type,
+  });
+
+const createReferencedEntitiesResults = ({
+  id,
+  result,
+  type,
+}: ReferencedEntitiesResultsOpts): ReferencedEntitiesResults => {
+  const results = { [id]: result };
+
+  return type === "card" ? { card: results } : { measure: results };
+};
+
+export const createMockReferencedEntityResult = ({
+  column = "goal",
+  value = 250,
+}: MockReferencedEntityResultOpts = {}): ReferencedEntityResult => ({
+  status: "completed",
+  data: {
+    cols: [createMockColumn({ name: column })],
+    rows: [[value]],
+  },
+});
+
+export const createMockFailedReferencedEntityResult = ({
+  error,
+}: MockFailedReferencedEntityResultOpts = {}): ReferencedEntityResult => ({
+  status: "failed",
+  error,
 });

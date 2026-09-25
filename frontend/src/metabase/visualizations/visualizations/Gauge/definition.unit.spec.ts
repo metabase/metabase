@@ -3,6 +3,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -38,17 +40,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
 
     it("accepts a range whose answer lacks its column, so the chart can re-ask", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "other" })],
-                rows: [[1]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "other",
+          value: 1,
+        }),
       });
 
       expect(() =>
@@ -66,17 +61,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
 
     it("refuses to render when a referenced value is not a number", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [["x"]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: "x",
+        }),
       });
 
       expect(() =>
@@ -102,9 +90,7 @@ describe("GAUGE_CHART_DEFINITION", () => {
 
     it("refuses to render when a range's bound will never resolve", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       expect(() =>
@@ -151,17 +137,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
   describe("gauge.range default", () => {
     it("spans the resolved bounds of every range", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: 250,
+        }),
       });
       const settings: VisualizationSettings = {
         "gauge.segments": [

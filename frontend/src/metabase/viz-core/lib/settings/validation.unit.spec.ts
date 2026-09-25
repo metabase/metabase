@@ -8,6 +8,7 @@ import type {
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -16,7 +17,7 @@ import { validateGoalReferences } from "./validation";
 const FAILED_DATA = createMockDatasetData({
   cols: [createMockColumn({ name: "count" })],
   rows: [[1]],
-  referenced_entities: { card: { 9: { status: "failed", error: "boom" } } },
+  referenced_entities: createMockFailedReferencedEntitiesResults(),
 });
 
 const REFERENCED_SETTINGS: VisualizationSettings = {

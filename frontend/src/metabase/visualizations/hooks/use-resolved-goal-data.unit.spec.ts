@@ -6,6 +6,8 @@ import type { DatasetData, GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -62,9 +64,7 @@ describe("useResolvedGoalData", () => {
   it("fails without fetching when the dataset already reports a failed reference", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     const { result } = setup(data, [0, GOAL_REF]);
@@ -102,9 +102,7 @@ describe("useResolvedGoalData", () => {
     setupCardDataset({
       dataset: {
         data: createMockDatasetData({
-          referenced_entities: {
-            card: { 9: { status: "failed", error: "boom" } },
-          },
+          referenced_entities: createMockFailedReferencedEntitiesResults(),
         }),
       },
     });
@@ -122,17 +120,11 @@ describe("useResolvedGoalData", () => {
       const [entity] = body.referenced_entities;
       return {
         data: createMockDatasetData({
-          referenced_entities: {
-            card: {
-              [entity.id]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "goal" })],
-                  rows: [[entity.id === 9 ? 250 : 500]],
-                },
-              },
-            },
-          },
+          referenced_entities: createMockReferencedEntitiesResults({
+            id: entity.id,
+            column: "goal",
+            value: entity.id === 9 ? 250 : 500,
+          }),
         }),
       };
     });
@@ -170,14 +162,12 @@ describe("useResolvedGoalData", () => {
   it("keeps answers the dataset already has when merging in fresh ones", async () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        measure: {
-          4: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        type: "measure",
+        id: 4,
+        column: "sum",
+        value: 10,
+      }),
     });
     setupCardDataset({
       dataset: { data: createReferencedEntitiesAnswer(250) },
@@ -204,13 +194,9 @@ describe("useResolvedGoalData", () => {
 
 function createReferencedEntitiesAnswer(goal: number, column = "goal") {
   return createMockDatasetData({
-    referenced_entities: {
-      card: {
-        9: {
-          status: "completed",
-          data: { cols: [createMockColumn({ name: column })], rows: [[goal]] },
-        },
-      },
-    },
+    referenced_entities: createMockReferencedEntitiesResults({
+      column,
+      value: goal,
+    }),
   });
 }

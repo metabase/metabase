@@ -19,7 +19,9 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntityResult,
   createMockMeasure,
+  createMockReferencedEntityResult,
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 
@@ -165,7 +167,7 @@ describe("ChartSettingSegmentsEditor", () => {
         }
 
         it("reports a referenced query that failed without saying why", () => {
-          setupReference("total", { status: "failed" });
+          setupReference("total", createMockFailedReferencedEntityResult());
 
           expect(
             screen.getByText("Couldn't load this value"),
@@ -173,13 +175,13 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("reports a referenced value that isn't a number", () => {
-          setupReference("total", {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [["nope"]],
-            },
-          });
+          setupReference(
+            "total",
+            createMockReferencedEntityResult({
+              column: "total",
+              value: "nope",
+            }),
+          );
 
           expect(
             screen.getByText("This value isn't a number"),
@@ -187,10 +189,12 @@ describe("ChartSettingSegmentsEditor", () => {
         });
 
         it("surfaces the server's explanation for a referenced query that failed", () => {
-          setupReference("total", {
-            status: "failed",
-            error: "Referenced query returned 3 rows",
-          });
+          setupReference(
+            "total",
+            createMockFailedReferencedEntityResult({
+              error: "Referenced query returned 3 rows",
+            }),
+          );
 
           expect(
             screen.getByText("Referenced query returned 3 rows"),
@@ -201,13 +205,12 @@ describe("ChartSettingSegmentsEditor", () => {
           setupCardDataset({
             dataset: {
               data: createMockDatasetData({
-                referenced_entities: createReferencedEntities({
-                  status: "completed",
-                  data: {
-                    cols: [createMockColumn({ name: "total" })],
-                    rows: [[999]],
-                  },
-                }),
+                referenced_entities: createReferencedEntities(
+                  createMockReferencedEntityResult({
+                    column: "total",
+                    value: 999,
+                  }),
+                ),
               }),
             },
           });
@@ -240,13 +243,10 @@ describe("ChartSettingSegmentsEditor", () => {
               }),
             },
           });
-          setupReference("avg", {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [[250]],
-            },
-          });
+          setupReference(
+            "avg",
+            createMockReferencedEntityResult({ column: "total", value: 250 }),
+          );
 
           const pill = screen.getByRole("button", {
             name: "Change value source",
@@ -261,13 +261,12 @@ describe("ChartSettingSegmentsEditor", () => {
           setupCardDataset({
             dataset: {
               data: createMockDatasetData({
-                referenced_entities: createReferencedEntities({
-                  status: "completed",
-                  data: {
-                    cols: [createMockColumn({ name: "total" })],
-                    rows: [[250]],
-                  },
-                }),
+                referenced_entities: createReferencedEntities(
+                  createMockReferencedEntityResult({
+                    column: "total",
+                    value: 250,
+                  }),
+                ),
               }),
             },
           });
@@ -302,22 +301,16 @@ describe("ChartSettingSegmentsEditor", () => {
         data: createMockDatasetData({
           referenced_entities: {
             card: {
-              [CARD_ID]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "total" })],
-                  rows: [[250]],
-                },
-              },
+              [CARD_ID]: createMockReferencedEntityResult({
+                column: "total",
+                value: 250,
+              }),
             },
             measure: {
-              [MEASURE_ID]: {
-                status: "completed",
-                data: {
-                  cols: [createMockColumn({ name: "revenue" })],
-                  rows: [[999]],
-                },
-              },
+              [MEASURE_ID]: createMockReferencedEntityResult({
+                column: "revenue",
+                value: 999,
+              }),
             },
           },
         }),
