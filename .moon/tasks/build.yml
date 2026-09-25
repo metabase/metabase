@@ -80,12 +80,3 @@ tasks:
       - build-cljs
     options:
       cache: false
-  generate-expression-parser:
-    script: >-
-      lezer-generator --typeScript
-      frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer -o
-      frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
-    inputs:
-      - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
-    outputs:
-      - frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
