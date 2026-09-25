@@ -36,6 +36,8 @@ interface Window {
   __lib_query?: unknown;
   Lib?: unknown;
 
+  requestResize?: () => void;
+
   // Make iFrameResizer available so that embed users can
   // have their embeds autosize to their content
   iFrameResizer?: {

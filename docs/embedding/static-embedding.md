@@ -163,9 +163,43 @@ Your embedding secret key is used to sign JWTs for all of your [embedding URLs](
 
 This key is shared across all static embeds. Whoever has access to this key could get access to all embedded artifacts, so keep this key secure. If you regenerate this key, you'll need to update your server code with the new key.
 
-## Resizing dashboards to fit their content
+## Resizing embeds to fit their content
 
-Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
+Dashboards are a fixed aspect ratio, so an embedded dashboard taller than its iframe gets a scrollbar. To make the iframe grow with its content instead, tell both the browser and Metabase that your page sizes the iframe.
+
+### Use native frame sizing in browsers that support it
+
+Browsers that support [responsive iframes](https://developer.chrome.com/blog/responsive-iframes) (Chrome 154 and later) can size an iframe to its content without any script. Metabase already opts in on its side, so you only need to:
+
+1. Set `frame-sizing: content-height` on the iframe.
+2. Add `#frame_sizing=content-height` to the end of the embedding URL.
+
+```html
+<style>
+  .metabase-embed {
+    width: 100%;
+    height: 600px;
+  }
+
+  @supports (frame-sizing: content-height) {
+    .metabase-embed {
+      height: auto;
+      frame-sizing: content-height;
+    }
+  }
+</style>
+
+<iframe
+  class="metabase-embed"
+  src="https://metabase.example.com/embed/dashboard/TOKEN#frame_sizing=content-height"
+></iframe>
+```
+
+The hash parameter tells Metabase to stop scrolling inside the iframe and report its full height instead. Browsers without responsive iframe support ignore it and keep the fixed height.
+
+### Use iFrame Resizer in other browsers
+
+For browsers without native frame sizing, you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
 
 ```html
 <script src="{your-metabase-url}/app/iframeResizer.js"></script>

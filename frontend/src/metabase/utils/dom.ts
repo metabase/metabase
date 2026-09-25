@@ -1,3 +1,4 @@
+import { parseHashOptions } from "metabase/utils/browser";
 import { isWithinIframe } from "metabase/utils/iframe";
 import MetabaseSettings from "metabase/utils/settings";
 
@@ -168,9 +169,34 @@ export function isSameOrSiteUrlOrigin(url: string): boolean {
   return isSameOrigin(url) || isSiteUrlOrigin(url);
 }
 
-export function initializeIframeResizer(onReady = () => {}): void {
+const NATIVE_FRAME_SIZING_HASH_VALUE = "content-height";
+
+function isNativeFrameSizingRequested(hash: string): boolean {
+  const { frame_sizing } = parseHashOptions(hash);
+  return (
+    frame_sizing === NATIVE_FRAME_SIZING_HASH_VALUE &&
+    typeof window.requestResize === "function"
+  );
+}
+
+// The browser measures the frame only on load: https://developer.chrome.com/blog/responsive-iframes#resizing_after_dynamic_content_changes
+function requestResizeOnContentChange(): void {
+  const observer = new ResizeObserver(() => window.requestResize?.());
+  observer.observe(document.body);
+  const root = document.getElementById("root");
+  if (root) {
+    observer.observe(root);
+  }
+}
+
+export function initializeFrameSizing(onReady = () => {}): void {
   if (!isWithinIframe()) {
     return;
+  }
+
+  if (isNativeFrameSizingRequested(window.location.hash)) {
+    requestResizeOnContentChange();
+    onReady();
   }
 
   // Make iFrameResizer available so that embed users can
