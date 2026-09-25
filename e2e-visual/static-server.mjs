@@ -33,6 +33,9 @@ const CONTENT_TYPES = {
   ".xml": "application/xml",
 };
 
+// Webpack puts a content hash in these names: `1126.3fb6eb57.iframe.bundle.js`, `0bdc3ba1739c2c58e3a2.svg`.
+const HASHED_FILE_NAME = /(^|\.)[0-9a-f]{8,}\.[^/]+$/;
+
 async function resolveFile(urlPath) {
   const filePath = path.join(root, decodeURIComponent(urlPath));
   if (filePath !== root && !filePath.startsWith(root + path.sep)) {
@@ -42,20 +45,41 @@ async function resolveFile(urlPath) {
   if (stats?.isDirectory()) {
     return resolveFile(path.posix.join(urlPath, "index.html"));
   }
-  return stats?.isFile() ? filePath : null;
+  return stats?.isFile() ? { filePath, stats } : null;
+}
+
+function matchesETag(ifNoneMatch, etag) {
+  return ifNoneMatch
+    .split(",")
+    .map((tag) => tag.trim().replace(/^W\//, ""))
+    .some((tag) => tag === etag || tag === "*");
 }
 
 createServer(async (request, response) => {
   const { pathname } = new URL(request.url ?? "/", "http://localhost");
-  const filePath = await resolveFile(pathname);
-  if (!filePath) {
+  const file = await resolveFile(pathname);
+  if (!file) {
     response.writeHead(404).end();
+    return;
+  }
+  const { filePath, stats } = file;
+  const etag = `"${stats.size.toString(16)}-${Math.floor(stats.mtimeMs).toString(16)}"`;
+  const cacheHeaders = {
+    ETag: etag,
+    "Cache-Control": HASHED_FILE_NAME.test(path.basename(filePath))
+      ? "public, max-age=31536000, immutable"
+      : "no-cache",
+  };
+  const ifNoneMatch = request.headers["if-none-match"];
+  if (ifNoneMatch && matchesETag(ifNoneMatch, etag)) {
+    response.writeHead(304, cacheHeaders).end();
     return;
   }
   const extension = path.extname(filePath).toLowerCase();
   response.writeHead(200, {
+    ...cacheHeaders,
     "Content-Type": CONTENT_TYPES[extension] ?? "application/octet-stream",
-    "Cache-Control": "no-cache",
+    "Content-Length": stats.size,
   });
   createReadStream(filePath).pipe(response);
 }).listen(port, () => {
