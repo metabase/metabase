@@ -49,7 +49,8 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.query :as t2.jdbc.query])
   (:import
    (java.sql Connection)
    (java.util.concurrent CountDownLatch Executors)
@@ -1811,6 +1812,31 @@
                 "Sync-now must complete the sync even when disable-auto-sync is on")
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
+(deftest sync-schema-does-not-refetch-database-per-field-test
+  (testing (str "GHY-3289: POST /api/database/:id/sync_schema must not read the Database row from the app DB once "
+                "per column. The Database does not change during a sync, so the number of reads should not grow "
+                "with the number of columns.")
+    (mt/test-driver :postgres
+      (mt/dataset (mt/dataset-definition "ghy_3289_wide"
+                                         [["wide_table"
+                                           (for [i (range 60)]
+                                             {:field-name (str "col_" i) :base-type :type/Integer})
+                                           [(vec (range 60))]]])
+        (let [db-id     (mt/id)
+              db-reads  (atom 0)
+              run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f] (f))
+                                      t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
+                                                                        (when (re-find #"(?i)^SELECT \* FROM \"?metabase_database\"? WHERE \"?id\"? = \?$" sql)
+                                                                          (swap! db-reads inc))
+                                                                        (run-query rf init conn model sql-args opts))]
+            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+          (let [fields (mt/user-http-request :crowberto :get 200 (format "database/%d/fields" db-id))]
+            (testing "sync created a field for every column"
+              (is (<= 60 (count fields))))
+            (testing "the Database row is read a few times per sync, not once per column"
+              (is (< @db-reads 10)))))))))
 
 (deftest sync-schema-labels-data-sensitivity-test
   (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
