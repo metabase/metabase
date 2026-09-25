@@ -171,8 +171,8 @@
                  (get-in result [:data-parts 0 :data :description]))))))))
 
 (defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return
-  the `:output` the LLM would see."
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
+  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
   [e]
   (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
     (:output (binding [shared/*profile-id* :nlq]
@@ -188,10 +188,10 @@
     (is (= "You don't have permissions to do that."
            (construct-tool-output-for-thrown
             (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "anything else without `:agent-error?` still gets the generic wrapper"
-    (is (= "Failed to construct notebook query: something went sideways"
-           (construct-tool-output-for-thrown
-            (ex-info "something went sideways" {:status-code 400}))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
+                          (construct-tool-output-for-thrown
+                           (ex-info "something went sideways" {}))))))
 
 (deftest state-dependent-tools-test
   (testing "state-dependent-tools set contains expected tools"

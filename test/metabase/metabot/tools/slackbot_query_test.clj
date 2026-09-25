@@ -187,20 +187,20 @@
             (is (nil? (:structured-output result)))
             (is (nil? (:data-parts result)))))))))
 
-(deftest slackbot-tool-unexpected-error-is-wrapped-test
-  (testing (str "A non-agent exception (e.g. a programming bug) gets wrapped with a generic\n"
-                "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
-                "leaking internal stack-trace-style messages.")
-    (with-repr-stub!
-      (fn [_external-query & _]
-        (throw (RuntimeException. "something went sideways")))
-      (fn []
-        (let [result (slackbot-query/slackbot-construct-notebook-query-tool
-                      {:reasoning "test non-agent error path"
-                       :query     {:lib/type "mbql/query" :stages []}})]
-          (is (string? (:output result)))
-          (is (str/starts-with? (:output result) "Failed to construct notebook query:"))
-          (is (re-find #"something went sideways" (:output result))))))))
+(deftest slackbot-tool-non-agent-errors-test
+  (let [tool-result-for-thrown #(with-repr-stub!
+                                  (fn [_external-query & _] (throw %))
+                                  (fn []
+                                    (slackbot-query/slackbot-construct-notebook-query-tool
+                                     {:reasoning "test non-agent error path"
+                                      :query     {:lib/type "mbql/query" :stages []}})))]
+    (testing "a permission error goes back to the agent as output"
+      (is (= "You don't have permissions to do that."
+             (:output (tool-result-for-thrown
+                       (ex-info "You don't have permissions to do that." {:status-code 403}))))))
+    (testing "an unexpected error, e.g. a programming bug, propagates to the agent loop"
+      (is (thrown-with-msg? RuntimeException #"something went sideways"
+                            (tool-result-for-thrown (RuntimeException. "something went sideways")))))))
 
 ;;; ---------------------------------------- end-to-end test --------------------------------------------------------
 
