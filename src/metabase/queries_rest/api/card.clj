@@ -884,12 +884,12 @@
   (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/card-public-link-created
-                                          {:object-id card-id
-                                           :user-id api/*current-user-id*})
                    (queries-rest.db/update-card! card-id
                                                  {:public_uuid       <>
-                                                  :made_public_by_id api/*current-user-id*})))]
+                                                  :made_public_by_id api/*current-user-id*})
+                   (events/publish-event! :event/card-public-link-created
+                                          {:object-id card-id
+                                           :user-id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
