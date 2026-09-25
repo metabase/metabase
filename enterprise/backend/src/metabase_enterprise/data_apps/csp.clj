@@ -10,7 +10,7 @@
   "Origins the enabled data app with `slug` may reach (its `allowed_hosts`), or
    `[]` when there is no such enabled app. Drives the data-app iframe document's
    CSP `connect-src` so the sandboxed bundle can fetch/XHR those origins."
-  :feature :data-apps-preview
+  :feature :data-apps
   [slug]
   (or (:allowed_hosts (data-apps.db/enabled-non-blob-data-app-by-slug slug))
       []))

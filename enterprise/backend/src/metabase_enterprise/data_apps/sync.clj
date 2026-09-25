@@ -280,7 +280,7 @@
    its app simply doesn't appear. Returns the [[import-from-snapshot!]] result, or
    nil if the sync threw.
 
-   A no-op returning nil when the `:data-apps-preview` feature is absent: without
+   A no-op returning nil when the `:data-apps` feature is absent: without
    it an instance behaves exactly as if data apps did not exist — no rows,
    collections, or permission groups are materialized, and nothing is pruned."
   [snapshot]
