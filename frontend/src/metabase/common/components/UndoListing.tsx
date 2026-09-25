@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type FocusEvent,
   Fragment,
   type ReactNode,
   useEffect,
@@ -71,16 +72,30 @@ function UndoToast({
   style: CSSProperties;
 }) {
   const dispatch = useDispatch();
+  const interaction = useRef({ isHovered: false, isFocused: false });
+  const hasTimer = Boolean(undo.timeout);
 
-  const handleMouseEnter = () => {
-    if (undo.showProgress) {
-      dispatch(pauseUndo(undo));
+  const updateInteraction = (
+    change: Partial<{ isHovered: boolean; isFocused: boolean }>,
+  ) => {
+    const wasInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+    interaction.current = { ...interaction.current, ...change };
+    const isInteracting =
+      interaction.current.isHovered || interaction.current.isFocused;
+
+    if (!hasTimer || wasInteracting === isInteracting) {
+      return;
     }
+    dispatch(isInteracting ? pauseUndo(undo) : resumeUndo(undo));
   };
 
-  const handleMouseLeave = () => {
-    if (undo.showProgress) {
-      dispatch(resumeUndo(undo));
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const isFocusStillInside =
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget);
+    if (!isFocusStillInside) {
+      updateInteraction({ isFocused: false });
     }
   };
 
@@ -94,8 +109,11 @@ function UndoToast({
       color={undo.toastColor}
       role="status"
       className={S.toast}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      data-paused={undo.pausedAt != null || undefined}
+      onMouseEnter={() => updateInteraction({ isHovered: true })}
+      onMouseLeave={() => updateInteraction({ isHovered: false })}
+      onFocus={() => updateInteraction({ isFocused: true })}
+      onBlur={handleBlur}
       bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}
       withBorder={!noBorder}
