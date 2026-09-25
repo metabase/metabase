@@ -45,6 +45,20 @@
   :comparisons
   [{:focus  "arbitrary infix substring"
     :target :in-place}]}
+ {:id     "two-substrings-one-word"
+  :focus  "H2 satisfies two required substrings inside one word"
+  :config "simple"
+  :query  "hat cher"
+  :docs   {:A {:name "hatchery"}
+           :B {:name "hatter"}
+           :C {:name "cherub"}
+           :D {:name "hat cher"}}
+  ;; H2 requires both substrings, not two separate words. In-place needs only
+  ;; one substring; PostgreSQL's lexemes match only the separate-word card.
+  :expect {:in-place       [:A :B :C :D]
+           :appdb-h2       [:A :D]
+           :appdb-postgres [:D]
+           :semantic       {:keyword [:D], :vector []}}}
  {:id     "last-word-prefix"
   :focus  "last-word prefix versus arbitrary substring"
   :config "simple"

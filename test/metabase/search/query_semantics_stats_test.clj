@@ -28,19 +28,19 @@
 (deftest corpus-statistics-test
   (let [{:keys [same-query translations]} (stats/summary fixtures/cases)]
     (testing "same query, with pairwise direction relative to the first engine"
-      (is (= 36 (:count same-query)))
+      (is (= 37 (:count same-query)))
       (is (= 5 (:all-equal same-query)))
-      (is (= {:in-place       26/9
-              :appdb-h2       17/12
-              :appdb-postgres 16/9
-              :semantic       23/12}
+      (is (= {:in-place       108/37
+              :appdb-h2       53/37
+              :appdb-postgres 65/37
+              :semantic       70/37}
              (:mean-hits same-query)))
-      (is (= {[:in-place :appdb-h2]       {:equal 16, :left-superset 20, :left-subset 0, :incomparable 0}
-              [:in-place :appdb-postgres] {:equal 6, :left-superset 24, :left-subset 4, :incomparable 2}
-              [:in-place :semantic]       {:equal 6, :left-superset 22, :left-subset 5, :incomparable 3}
-              [:appdb-h2 :appdb-postgres] {:equal 12, :left-superset 8, :left-subset 12, :incomparable 4}
-              [:appdb-h2 :semantic]       {:equal 9, :left-superset 8, :left-subset 15, :incomparable 4}
-              [:appdb-postgres :semantic] {:equal 32, :left-superset 0, :left-subset 4, :incomparable 0}}
+      (is (= {[:in-place :appdb-h2]       {:equal 16, :left-superset 21, :left-subset 0, :incomparable 0}
+              [:in-place :appdb-postgres] {:equal 6, :left-superset 25, :left-subset 4, :incomparable 2}
+              [:in-place :semantic]       {:equal 6, :left-superset 23, :left-subset 5, :incomparable 3}
+              [:appdb-h2 :appdb-postgres] {:equal 12, :left-superset 9, :left-subset 12, :incomparable 4}
+              [:appdb-h2 :semantic]       {:equal 9, :left-superset 9, :left-subset 15, :incomparable 4}
+              [:appdb-postgres :semantic] {:equal 33, :left-superset 0, :left-subset 4, :incomparable 0}}
              (:pairwise same-query))))
     (testing "translated queries, scored against each comparison's target engine"
       (is (= 26 (:count translations)))
