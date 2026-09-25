@@ -5,7 +5,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.metabot.tools.charts :as charts]
-   [metabase.metabot.tools.shared :as shared]))
+   [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.charts.edit :as edit-chart-tools]
+   [metabase.metabot.tools.shared :as shared]
+   [metabase.test :as mt]))
 
 ;; create-chart only needs the query present in queries-state; the link builder
 ;; json-encodes it and `->legacy-mbql` passes a non-MBQL 5 value through unchanged,
@@ -75,3 +78,21 @@
         ;; only looked at the chart's own (here empty) :queries, landing on nil.
         (is (= {:query-id "q-1" :query stub-query}
                (select-keys (:structured-output result) [:query-id :query])))))))
+
+(deftest chart-tools-errors-test
+  (testing "a missing query goes back to the agent as output"
+    (is (re-find #"^Query not found with ID: q-9"
+                 (:output (binding [shared/*memory-atom* (atom {:state {:queries {}}})]
+                            (charts/create-chart-tool {:data_source  {:query_id "q-9"}
+                                                       :viz_settings {:chart_type "bar"}
+                                                       :title        "Orders by month"
+                                                       :description  "Monthly count of orders."}))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [create-chart-tools/create-chart (fn [_] (throw (ex-info "boom" {})))
+                                edit-chart-tools/edit-chart     (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom" (run-create-chart)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (charts/edit-chart-tool {:chart_id         "c-1"
+                                                     :new_viz_settings {:chart_type "pie"}
+                                                     :title            "Orders by month"
+                                                     :description      "Monthly count of orders."}))))))
