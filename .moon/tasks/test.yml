@@ -1,6 +1,13 @@
 # Test suites and their runners.
 
 tasks:
+  generate-cypress-html-report:
+    script: >-
+      mochawesome-merge cypress/reports/mochareports/*.json >
+      cypress/reports/cypress-test-report.json && marge
+      cypress/reports/cypress-test-report.json -o cypress/reports --inline
+    options:
+      cache: false
   test:
     command: noop
     deps:

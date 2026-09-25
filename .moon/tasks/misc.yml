@@ -40,13 +40,6 @@ tasks:
     inputs:
       - bun.lock
       - package.json
-  generate-cypress-html-report:
-    script: >-
-      mochawesome-merge cypress/reports/mochareports/*.json >
-      cypress/reports/cypress-test-report.json && marge
-      cypress/reports/cypress-test-report.json -o cypress/reports --inline
-    options:
-      cache: false
   mage:
     script: >-
       ./bin/mage
