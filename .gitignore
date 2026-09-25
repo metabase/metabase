@@ -195,6 +195,7 @@ CLAUDE.local.md
 .claude/agent-memory/
 
 .eslintcache
+.stylelintcache
 
 /logs
 /.clojure-mcp
