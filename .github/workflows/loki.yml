@@ -16,7 +16,7 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: frontend_loki_all frontend_visual_all
+      filters: frontend_loki_all frontend_visual_all frontend_visual_infra
 
   # Without a plan there is nothing to narrow, so this is skipped and every story runs.
   story-selection:
@@ -119,8 +119,12 @@ jobs:
 
   playwright-visual-test:
     name: playwright-run
-    needs: gate
-    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_all') }}
+    needs: [gate, story-selection]
+    if: >-
+      ${{ !cancelled() && contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_all')
+      && needs.story-selection.result != 'failure'
+      && (contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_infra')
+      || needs.story-selection.outputs.selection != 'empty') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     steps:
@@ -136,13 +140,34 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Prepare story selection
+        id: visual-selection
+        if: >-
+          ${{ !contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_infra')
+          && needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+
       - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
         run: bun run build-storybook:visual
 
       - name: Run visual tests
+        env:
+          PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
+        # e2e-visual drops stories outside its default filters or tagged no-visual, and Playwright exits non-zero when that leaves no tests.
         run: |
           echo "CPU cores: $(nproc)"
-          bun run test-visual:docker
+          if [ -n "$PATHS_FILE" ]; then
+            VISUAL_FILES=$(jq -r 'join(",")' "$PATHS_FILE")
+            export VISUAL_FILES
+            bun run test-visual:docker --pass-with-no-tests
+          else
+            bun run test-visual:docker
+          fi
 
       - name: Upload report
         if: always()
