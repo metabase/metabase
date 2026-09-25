@@ -280,7 +280,12 @@ export const metabot = createSlice({
         convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
           tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
         );
-        endChainTool(convo, action.payload.toolCallId, action.payload.nowMs);
+        endChainTool(
+          convo,
+          action.payload.toolCallId,
+          action.payload.nowMs,
+          action.payload.isError,
+        );
 
         // Update the message in messages array with result for debug history
         const message = findLastToolCallPart(convo, action.payload.toolCallId);
