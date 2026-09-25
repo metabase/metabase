@@ -1,19 +1,13 @@
 (ns metabase.search.query-semantics
-  "Per-scenario search fixtures shared by the app-db and semantic test suites."
+  "Search fixtures shared by the app-db and semantic test suites."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.set :as set]))
 
-(defn- read-resource
-  [path]
-  (-> path io/resource slurp edn/read-string))
-
 (def cases
-  "Search scenarios in the order recorded by the resource manifest."
-  (mapv (fn [id]
-          (read-resource (str "search/query_semantics/" id ".edn")))
-        (read-resource "search/query_semantics/manifest.edn")))
+  "Ordered, isolated search scenarios with their translated comparisons."
+  (-> "search/query_semantics.edn" io/resource slurp edn/read-string))
 
 (defn expected-hits
   "Expected result labels for an engine's identical-query search."
