@@ -56,6 +56,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
+
     if (isCtrlOrMetaClick) {
       openDataSourceInNewTab();
     } else {
@@ -65,6 +66,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
+
     if (isMiddleClick) {
       openDataSourceInNewTab();
     } else {

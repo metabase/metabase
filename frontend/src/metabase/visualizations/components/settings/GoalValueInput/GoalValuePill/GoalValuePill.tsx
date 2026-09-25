@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type HTMLAttributes, forwardRef } from "react";
+import { type HTMLAttributes, type MouseEvent, forwardRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -8,9 +8,11 @@ import {
   Group,
   Icon,
   Loader,
+  Stack,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { METAKEY } from "metabase/utils/browser";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { formatValue } from "metabase/value-formatting";
 import type { GoalValueResult } from "metabase/viz-core";
@@ -24,6 +26,7 @@ type Props = HTMLAttributes<HTMLDivElement> & {
   resolved: GoalValueResult;
   tooltip: string | null;
   onOpenMenu: () => void;
+  onOpenSource?: () => void;
   onRemove: () => void;
 };
 
@@ -35,11 +38,33 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
       resolved,
       tooltip,
       onOpenMenu,
+      onOpenSource,
       onRemove,
       ...props
     },
     ref,
   ) {
+    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+
+      const isCtrlOrMetaClick =
+        (event.ctrlKey || event.metaKey) && event.button === 0;
+
+      if (isCtrlOrMetaClick && onOpenSource) {
+        onOpenSource();
+      } else {
+        onOpenMenu();
+      }
+    };
+
+    const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
+      const isMiddleClick = event.button === 1;
+
+      if (isMiddleClick && onOpenSource) {
+        onOpenSource();
+      }
+    };
+
     return (
       <Group
         bdrs="sm"
@@ -54,7 +79,17 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
         wrap="nowrap"
         {...props}
       >
-        <Tooltip disabled={tooltip == null} label={tooltip}>
+        <Tooltip
+          disabled={tooltip == null && onOpenSource == null}
+          label={
+            <Stack gap="xs">
+              {tooltip}
+              {onOpenSource && (
+                <span>{t`${METAKEY}+click to open in new tab`}</span>
+              )}
+            </Stack>
+          }
+        >
           <UnstyledButton
             aria-label={t`Change value source`}
             bdrs="1rem"
@@ -64,10 +99,8 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             pl="0.75rem"
             pr="0.5rem"
             py="0.25rem"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenMenu();
-            }}
+            onAuxClick={handleAuxClick}
+            onClick={handleClick}
           >
             <Icon c="text-secondary" flex="0 0 auto" name="hexagon" size={12} />
             {resolved.isUnanswered ? (
