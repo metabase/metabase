@@ -16,45 +16,45 @@
 
 (defenterprise supported?
   "Check if semantic search is supported on this instance."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   []
   false)
 
 (defenterprise results
   "Execute a semantic search query and return results."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_search-ctx]
   (oss-semantic-search-error))
 
 (defenterprise update-index!
   "Update the semantic search index with the given documents."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_document-reducible]
   (oss-semantic-search-error))
 
 (defenterprise delete-from-index!
   "Delete documents from the semantic search index."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_model _ids]
   (oss-semantic-search-error))
 
 (defenterprise init!
   "Initialize the semantic search index."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_searchable-documents _opts]
   (oss-semantic-search-error))
 
 (defenterprise repair-index!
   "Brings the semantic search index into consistency with the provided document set.
   Does not promise a full reindex, but will add missing documents and remove stale ones."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_searchable-documents]
   (oss-semantic-search-error))
 
 (defenterprise diagnose
   "Engine-owned diagnostic stages (`missing-from-index` / `filtered` / `not-matching` / `candidate`) for the
   semantic search index. See [[metabase.search.debug/diagnose]]."
-  metabase-enterprise.semantic-search.core
+  metabase-enterprise.search.semantic.core
   [_search-ctx _expected-model _expected-id]
   (oss-semantic-search-error))
 

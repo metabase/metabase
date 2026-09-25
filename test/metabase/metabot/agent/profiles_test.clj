@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
