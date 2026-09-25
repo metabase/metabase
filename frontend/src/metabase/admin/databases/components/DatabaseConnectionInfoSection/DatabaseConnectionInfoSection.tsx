@@ -15,8 +15,8 @@ import {
 } from "metabase/common/utils/database";
 import { useDispatch } from "metabase/redux";
 import { useNavigate } from "metabase/router";
-import { Button, Flex, Tooltip } from "metabase/ui";
-import { isSyncCompleted } from "metabase/utils/syncing";
+import { Alert, Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { isSyncAborted, isSyncCompleted } from "metabase/utils/syncing";
 import type { Database } from "metabase-types/api";
 
 import { DatabaseConnectionHealthInfo } from "../DatabaseConnectionHealthInfo";
@@ -77,6 +77,18 @@ export const DatabaseConnectionInfoSection = ({
       </Flex>
 
       <DatabaseInfoSectionDivider condensed />
+
+      {isSyncAborted(database) && database.initial_sync_error && (
+        <Alert
+          size="compact"
+          color="error"
+          icon={<Icon name="warning" />}
+          title={t`Sync failed`}
+          mb="md"
+        >
+          {database.initial_sync_error}
+        </Alert>
+      )}
 
       {!database.is_attached_dwh && (
         <Flex gap="sm" wrap="wrap">
