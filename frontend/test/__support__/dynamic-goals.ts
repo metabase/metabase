@@ -8,6 +8,7 @@ export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "bar",
   "area",
   "combo",
+  "scatter",
 ] as const satisfies readonly VisualizationDisplay[];
 
 // Every display that resolves `graph.goal_value`

@@ -14,6 +14,7 @@ describe("getDynamicGoalSettingKeys", () => {
     expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("row")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("scalar")).toEqual(["scalar.segments"]);
+    expect(getDynamicGoalSettingKeys("scatter")).toEqual(["graph.goal_value"]);
   });
 
   it("lists nothing for displays without dynamic goals, and for no display", () => {

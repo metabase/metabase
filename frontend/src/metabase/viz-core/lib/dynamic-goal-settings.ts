@@ -27,6 +27,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   line: ["graph.goal_value"],
   row: ["graph.goal_value"],
   scalar: ["scalar.segments"],
+  scatter: ["graph.goal_value"],
 };
 
 export function getDynamicGoalSettingKeys(
