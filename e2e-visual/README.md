@@ -9,11 +9,12 @@ The tests read `storybook-static/`, so build Storybook first:
 
 ```sh
 NODE_ENV=development bun run build-pure:cljs
-bun run build-storybook
+bun run build-storybook:visual
 bun run test-visual
 ```
 
-`bun run test-visual:ci` builds Storybook and then runs the tests.
+`build-storybook:visual` runs `storybook build --test`, which leaves out the docs pages, prop tables, and source maps that the tests don't use, so it's faster than `build-storybook`.
+`bun run test-visual:ci` builds Storybook the same way and then runs the tests.
 To test against a Storybook that's already running, such as `bun run storybook`, set `STORYBOOK_URL=http://localhost:6006`.
 
 The HTML report is written to `e2e-visual/report/`. Open it with `bunx playwright show-report e2e-visual/report`.
