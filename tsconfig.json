@@ -52,7 +52,8 @@
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
-    ".github/scripts/**/*"
+    ".github/scripts/**/*",
+    "e2e-visual/**/*"
   ],
   "exclude": [
     "node_modules",
