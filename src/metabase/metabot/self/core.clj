@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -114,11 +113,23 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::tool-argument-value
+  "A JSON value inside a tool call's arguments. Object keys are strings off the wire and keywords once decoded -
+  at every depth, since the arguments are keywordized whole."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::tool-argument-value]]
+   [:map-of [:or :string :keyword] [:ref ::tool-argument-value]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
   string keys off the wire, keyword keys when built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::tool-argument-value])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by

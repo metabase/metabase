@@ -706,7 +706,26 @@
           (is (some? e))
           (is (true? (:agent-error? (ex-data e))))
           (is (= :expression-editor-rejection (:error (ex-data e))))
-          (is (= :filter (:mode (ex-data e)))))))))
+          (is (= :filter (:mode (ex-data e))))
+          (testing "no text column is involved, so no cast hint"
+            (is (not (re-find #"cast it" (ex-message e))))))))))
+
+(deftest editor-gate-numeric-comparison-on-text-column-hints-cast-test
+  (testing (str "Comparing a text column against a number is rejected with a hint naming the column\n"
+                "and the cast to use - text columns that hold numbers are common in synced sheets.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [e (editor-rejection
+                 {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "PRODUCTS"]
+                               "expressions"  {"Big" ["case" {}
+                                                      [[[">" {} ["field" {} ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]] 100]
+                                                        "big"]]]}}]})]
+          (is (= :expression-editor-rejection (:error (ex-data e))))
+          (is (re-find #"text column\(s\) \"CATEGORY\"" (ex-message e)))
+          (is (re-find #"\[\"integer\", \{\}, <field>\]" (ex-message e))))))))
 
 (deftest query-not-runnable-explanation-gate-test
   (testing (str "The runnability backstop returns nil for a runnable resolved query and a\n"
@@ -1077,6 +1096,145 @@
               opts      (nth field-ref 1)]
           (is (= "TOTAL" (nth field-ref 2)))
           (is (= "type/Float" (get opts "base-type"))))))))
+
+;;; ============================================================
+;;; Explicit joins to a saved question, referenced by column name
+;;; ============================================================
+
+(def ^:private joined-card-entity-id
+  "Entity id of the joined card in [[mp-with-joined-card]]."
+  "xYz987_654AbcDeF321_Q")
+
+(def ^:private mp-with-joined-card
+  "[[mp-with-card]] plus a second saved question over PRODUCTS, to be joined onto the first."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "CATEGORY"   :table-id 20 :base-type :type/Text}]
+    :cards    [{:id              500
+                :name            "Saved Orders"
+                :database-id     1
+                :type            :question
+                :entity-id       card-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 10}]}
+                :result-metadata [{:name "ID"         :base-type :type/Integer}
+                                  {:name "TOTAL"      :base-type :type/Float}
+                                  {:name "PRODUCT_ID" :base-type :type/Integer}]}
+               {:id              600
+                :name            "Saved Products"
+                :database-id     1
+                :type            :question
+                :entity-id       joined-card-entity-id
+                :dataset-query   {:lib/type :mbql/query
+                                  :database 1
+                                  :stages   [{:lib/type :mbql.stage/mbql :source-table 20}]}
+                :result-metadata [{:name "ID"       :base-type :type/Integer}
+                                  {:name "CATEGORY" :base-type :type/Text}]}]}))
+
+(defn- with-joined-card-mp-and-stubs! [f]
+  (let [rows {card-entity-id        {:id 500 :database_id 1 :entity_id card-entity-id}
+              joined-card-entity-id {:id 600 :database_id 1 :entity_id joined-card-entity-id}}
+        store (reify resolve.mp/ContentStore
+                (card-by-entity-id    [_ eid] (get rows eid))
+                (measure-by-entity-id [_ _] nil)
+                (segment-by-entity-id [_ _] nil)
+                (card-by-id           [_ id] (some #(when (= id (:id %)) %) (vals rows)))
+                (measure-by-id        [_ _] nil)
+                (segment-by-id        [_ _] nil))]
+    (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-joined-card)
+                  construct/resolve-database-id-from-first-stage (fn [_] 1)
+                  construct/permission-aware-content-store        store
+                  api/read-check                                  allow-read-check
+                  api/query-check                                 allow-read-check]
+      (f))))
+
+(defn- products-join
+  "An explicit join onto the Saved Products card, written the way the LLM writes it: every ref
+  by column name, none carrying `base-type`."
+  [parent-product-id-ref]
+  {"lib/type"   "mbql/join"
+   "alias"      "P"
+   "strategy"   "left-join"
+   "stages"     [{"lib/type" "mbql.stage/mbql" "source-card" joined-card-entity-id}]
+   "conditions" [["=" {} parent-product-id-ref ["field" {"join-alias" "P"} "ID"]]]
+   "fields"     [["field" {"join-alias" "P"} "CATEGORY"]]})
+
+(deftest source-card-join-to-card-by-column-name-test
+  (testing
+   (str "A `source-card:` stage with an explicit join onto another card, whose joined columns are\n"
+        "referenced by name with `join-alias` and no `base-type`, types every ref from the right\n"
+        "source: `join-alias` refs from the joined card, the condition's parent side from the\n"
+        "source card. Regression: joined refs were matched against the source card's columns\n"
+        "only, failing with \"No column named ...\" however the LLM retried.")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "joins"       [(products-join ["field" {} "PRODUCT_ID"])]
+                                     "filters"     [["=" {} ["field" {"join-alias" "P"} "CATEGORY"] "Widget"]]
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {"join-alias" "P"} "CATEGORY"]]}]}))
+              stage  (get-in result [:structured-output :query :stages 0])
+              join   (get-in stage [:joins 0])
+              [_ _ lhs rhs] (get-in join [:conditions 0])]
+          (testing "joined refs are typed from the joined card"
+            (is (= :type/Text (get-in stage [:filters 0 2 1 :base-type])))
+            (is (= :type/Text (get-in stage [:breakout 0 1 :base-type])))
+            (is (= :type/Text (get-in join [:fields 0 1 :base-type])))
+            (is (= :type/Integer (get-in rhs [1 :base-type]))))
+          (testing "the condition's parent side is typed from the source card"
+            (is (= "PRODUCT_ID" (nth lhs 2)))
+            (is (= :type/Integer (get-in lhs [1 :base-type])))))))))
+
+(deftest source-table-join-to-card-by-column-name-test
+  (testing "a `source-table:` stage joined onto a card types the joined card's refs by name too"
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "joins"        [(products-join
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]])]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {"join-alias" "P"} "CATEGORY"]]}]}))
+              stage  (get-in result [:structured-output :query :stages 0])]
+          (is (= :type/Text (get-in stage [:breakout 0 1 :base-type]))))))))
+
+(deftest source-card-join-unknown-joined-column-surfaces-error-test
+  (testing "a `join-alias` ref naming a column the joined card doesn't return lists that join's columns"
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [e (try (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "joins"       [(products-join ["field" {} "PRODUCT_ID"])]
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {"join-alias" "P"} "NO_SUCH_COLUMN"]]}]}))
+                     nil
+                     (catch clojure.lang.ExceptionInfo ex ex))
+              d (ex-data e)]
+          (is (true? (:agent-error? d)))
+          (is (= :unresolved-cross-stage-field (:error d)))
+          (is (= ["ID" "CATEGORY"] (:available d)))
+          (is (re-find #"NO_SUCH_COLUMN" (ex-message e)))
+          (is (re-find #"join `P`" (ex-message e))))))))
 
 ;;; ============================================================
 ;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
