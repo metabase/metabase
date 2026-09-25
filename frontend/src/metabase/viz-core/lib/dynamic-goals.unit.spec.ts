@@ -895,6 +895,8 @@ describe("hasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
+    expect(isDynamicGoalSetting("area", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("area", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("bar", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("bar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);

@@ -6,6 +6,7 @@ import type { VisualizationDisplay } from "metabase-types/api";
 export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
   "line",
   "bar",
+  "area",
 ] as const satisfies readonly VisualizationDisplay[];
 
 // Every display that resolves `graph.goal_value`
