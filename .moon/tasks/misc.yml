@@ -24,12 +24,6 @@ tasks:
     options:
       cache: false
 
-  clean-cypress-artifacts:
-    script: >-
-      rm -R -f cypress/
-    options:
-      cache: false
-
   clean-dev-js:
     script: >-
       rm -rf resources/frontend_client/app/dist

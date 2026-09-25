@@ -84,21 +84,3 @@ tasks:
       shadow-cljs stop
     options:
       cache: false
-
-  test-cljs:
-    script: >-
-      shadow-cljs compile test && node target/node-tests.js
-    inputs:
-      - '@group(cljs)'
-      - test/**
-
-  test-unit-watch-cljs:
-    command: noop
-    deps:
-      - build-watch-cljs
-      - test-unit-watch
-    options:
-      persistent: true
-      cache: false
-      runInCI: false
-      outputStyle: stream

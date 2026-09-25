@@ -1,6 +1,22 @@
 # Test suites and their runners.
 
 tasks:
+  clean-cypress-artifacts:
+    script: >-
+      rm -R -f cypress/
+    options:
+      cache: false
+
+  embedding-sdk-test-unit:
+    script: >-
+      jest --ignoreProjects ci-scripts --maxWorkers=4
+      enterprise/frontend/src/embedding-sdk-package/
+      enterprise/frontend/src/embedding-sdk-bundle/
+      enterprise/frontend/src/embedding-sdk-shared/
+    inputs:
+      - '@group(sdk)'
+      - '@group(jest)'
+
   generate-cypress-html-report:
     script: >-
       mochawesome-merge cypress/reports/mochareports/*.json >
@@ -26,6 +42,13 @@ tasks:
       - bin/**
       - release/**
       - '@group(jest)'
+
+  test-cljs:
+    script: >-
+      shadow-cljs compile test && node target/node-tests.js
+    inputs:
+      - '@group(cljs)'
+      - test/**
 
   test-cypress:
     script: >-
@@ -78,6 +101,28 @@ tasks:
     inputs:
       - '@group(frontend)'
       - '@group(jest)'
+
+  test-unit-watch:
+    script: >-
+      jest --ignoreProjects ci-scripts --maxWorkers=4 --watch
+    deps:
+      - build-cljs
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  test-unit-watch-cljs:
+    command: noop
+    deps:
+      - build-watch-cljs
+      - test-unit-watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
 
   validate-e2e-filenames:
     script: >-
