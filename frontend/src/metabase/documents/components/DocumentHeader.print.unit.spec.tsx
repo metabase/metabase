@@ -10,7 +10,10 @@ import { DocumentHeader } from "./DocumentHeader";
 const DOCUMENT = createMockDocument({ id: 42 });
 
 const setup = () => {
-  setupCommentEndpoints([], { target_type: "document", target_id: DOCUMENT.id });
+  setupCommentEndpoints([], {
+    target_type: "document",
+    target_id: DOCUMENT.id,
+  });
 
   renderWithProviders(
     <DocumentHeader

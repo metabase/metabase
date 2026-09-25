@@ -11,7 +11,10 @@ import { renderWithProviders, screen, within } from "__support__/ui";
 import { reinitialize } from "metabase/plugins";
 import { Menu } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
-import { DataPermissionValue, type DownloadPermission } from "metabase-types/api";
+import {
+  DataPermissionValue,
+  type DownloadPermission,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -36,7 +39,10 @@ type SetupOpts = {
   downloadPerms?: DownloadPermission;
 };
 
-function setup({ canWrite, downloadPerms = DataPermissionValue.FULL }: SetupOpts) {
+function setup({
+  canWrite,
+  downloadPerms = DataPermissionValue.FULL,
+}: SetupOpts) {
   const state = createMockState({
     entities: createMockEntitiesState({ questions: [CARD] }),
   });
@@ -115,7 +121,9 @@ describe("CardEmbedMenuDropdown", () => {
   it("only enables downloads for people with read-only access to the document", async () => {
     setup({ canWrite: false });
 
-    WRITE_ONLY_ITEMS.forEach((name) => expect(getMenuItem(name)).toBeDisabled());
+    WRITE_ONLY_ITEMS.forEach((name) =>
+      expect(getMenuItem(name)).toBeDisabled(),
+    );
     expect(
       screen.queryByRole("menuitem", { name: /Comment/ }),
     ).not.toBeInTheDocument();

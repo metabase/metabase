@@ -34,8 +34,7 @@ function createThread({
 }
 
 const getUnresolvedCount = (comments: Comment[]) =>
-  getUnresolvedComments(getTargetChildCommentThreads(comments, NODE_ID))
-    .length;
+  getUnresolvedComments(getTargetChildCommentThreads(comments, NODE_ID)).length;
 
 describe("getUnresolvedComments", () => {
   it("counts undeleted comments of unresolved threads on the node", () => {

@@ -65,13 +65,14 @@ const RECENT_ITEMS = [
   }),
 ];
 
-const StubModal =
-  (name: string) =>
-  ({ onClose }: NewQuestionModalProps) => (
+const StubModal = (name: string) => {
+  const Modal = ({ onClose }: NewQuestionModalProps) => (
     <div role="dialog" aria-label={name}>
       <button onClick={onClose}>{`Cancel ${name}`}</button>
     </div>
   );
+  return Modal;
+};
 
 const NEW_QUESTION_MODALS: NewQuestionModals = {
   notebook: StubModal("Notebook modal"),
@@ -141,7 +142,8 @@ const setup = ({
   return { pressKey };
 };
 
-const commandDialog = () => screen.getByRole("dialog", { name: "Command Dialog" });
+const commandDialog = () =>
+  screen.getByRole("dialog", { name: "Command Dialog" });
 
 const expectSelectedOption = async (name: string | RegExp) => {
   expect(await screen.findByRole("option", { name })).toHaveAttribute(

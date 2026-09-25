@@ -195,10 +195,7 @@ describe("documents", () => {
       .click();
 
     cy.get("@newDocumentId").then((id) => {
-      cy.location("pathname").should(
-        "equal",
-        `/document/${id}-test-document`,
-      );
+      cy.location("pathname").should("equal", `/document/${id}-test-document`);
     });
     H.documentContent().should("contain.text", "This is a paragraph");
 

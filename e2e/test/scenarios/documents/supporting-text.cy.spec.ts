@@ -105,9 +105,7 @@ describe("documents supporting text", () => {
     });
     H.visitDocument("@documentId");
 
-    H.getDocumentCard("Orders")
-      .findByTestId("table-root")
-      .should("be.visible");
+    H.getDocumentCard("Orders").findByTestId("table-root").should("be.visible");
     supportingText().should("not.exist");
 
     addSupportingText("Orders");
@@ -157,9 +155,7 @@ describe("documents supporting text", () => {
 
     H.visitDocument("@documentId");
 
-    H.getDocumentCard("Orders")
-      .findByTestId("table-root")
-      .should("be.visible");
+    H.getDocumentCard("Orders").findByTestId("table-root").should("be.visible");
 
     addSupportingText("Orders");
 
@@ -180,9 +176,7 @@ describe("documents supporting text", () => {
       });
     });
 
-    cy.log(
-      "Drag the handle to widen the supporting text and narrow the card",
-    );
+    cy.log("Drag the handle to widen the supporting text and narrow the card");
     H.documentDoDrag(
       H.getResizeHandlesForFlexContianer(flexContainer()).eq(0),
       { x: 150 },
@@ -229,9 +223,7 @@ describe("documents supporting text", () => {
 
     cy.wait("@documentGet");
 
-    H.getDocumentCard("Orders")
-      .findByTestId("table-root")
-      .should("be.visible");
+    H.getDocumentCard("Orders").findByTestId("table-root").should("be.visible");
 
     supportingText()
       .should("contain.text", testText)

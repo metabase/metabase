@@ -124,8 +124,10 @@ function dropCard({
   const source = findCard(doc, cardId);
   const target = findCard(doc, targetId);
 
+  // Card nodes render as elements, and nodeDOM is typed as the wider `Node`.
   const targetDOM = view.nodeDOM(target.pos) as HTMLElement;
   targetDOM.getBoundingClientRect = () =>
+    // jsdom has no layout, and the drop handler only reads these fields.
     ({ left: 0, top: 0, width: TARGET_RECT_WIDTH, height: 100 }) as DOMRect;
 
   jest
@@ -133,6 +135,7 @@ function dropCard({
     .mockReturnValue({ pos: target.pos, inside: target.pos });
 
   const slice = doc.slice(source.pos, source.pos + source.node.nodeSize);
+  // The drop handler only reads target and client coordinates from the event.
   const event = {
     target: targetDOM,
     clientX: CLIENT_X_BY_SIDE[side],

@@ -213,8 +213,8 @@ const getActivePanel = () => screen.getByRole("tabpanel");
 
 function getCommentRow(text: string) {
   const row = within(getActivePanel())
-    .getByText(text)
-    .closest<HTMLElement>("[data-testid='discussion-comment']");
+    .getAllByTestId("discussion-comment")
+    .find((comment) => within(comment).queryByText(text));
   if (!row) {
     throw new Error(`No comment row found for "${text}"`);
   }
@@ -423,7 +423,9 @@ describe("CommentsSidesheet", () => {
           "comment-action-panel-resolve",
         ),
       ).not.toBeInTheDocument();
-      expect(screen.queryByTestId("comments-resolved-tab")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("comments-resolved-tab"),
+      ).not.toBeInTheDocument();
     });
 
     it("resolves another user's thread, shows all its comments without a reply editor, and re-opens it", async () => {
@@ -468,9 +470,8 @@ describe("CommentsSidesheet", () => {
       await userEvent.click(screen.getByTestId("comments-resolved-tab"));
 
       expectPanelTexts({ visible: ["Main comment", "Reply 1"], absent: [] });
-      const resolvedEditors = within(getActivePanel()).getAllByTestId(
-        "comment-editor",
-      );
+      const resolvedEditors =
+        within(getActivePanel()).getAllByTestId("comment-editor");
       expect(resolvedEditors).toHaveLength(2);
       resolvedEditors.forEach((editor) =>
         expect(editor).toHaveAttribute("data-readonly", "true"),
@@ -525,9 +526,7 @@ describe("CommentsSidesheet", () => {
         ).getByRole("button", { name: "Re-open" }),
       );
 
-      await waitFor(() =>
-        expect(screen.queryAllByRole("tab")).toHaveLength(0),
-      );
+      await waitFor(() => expect(screen.queryAllByRole("tab")).toHaveLength(0));
       expect(screen.getByTestId("new-thread-editor")).toBeInTheDocument();
       expectPanelTexts({ visible: ["Reply 1"], absent: [] });
     });
@@ -573,10 +572,9 @@ describe("CommentsSidesheet", () => {
         ],
       });
 
-      expect(await screen.findByTestId("comments-resolved-tab")).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
+      expect(
+        await screen.findByTestId("comments-resolved-tab"),
+      ).toHaveAttribute("aria-selected", "true");
       expect(
         within(getActivePanel()).getAllByTestId("discussion-comment"),
       ).toHaveLength(1);
@@ -629,9 +627,8 @@ describe("CommentsSidesheet", () => {
       expect(
         await screen.findByRole("heading", { name: "All comments" }),
       ).toBeInTheDocument();
-      const comments = within(getActivePanel()).getAllByTestId(
-        "discussion-comment",
-      );
+      const comments =
+        within(getActivePanel()).getAllByTestId("discussion-comment");
       expect(comments.map((comment) => comment.textContent)).toEqual([
         expect.stringContaining("thread 2"),
         expect.stringContaining("thread 1"),
@@ -645,7 +642,9 @@ describe("CommentsSidesheet", () => {
       expect(
         await screen.findByRole("heading", { name: "All comments" }),
       ).toBeInTheDocument();
-      expect(within(getActivePanel()).getByText("No comments")).toBeInTheDocument();
+      expect(
+        within(getActivePanel()).getByText("No comments"),
+      ).toBeInTheDocument();
     });
 
     it("shows a placeholder when all comments are resolved", async () => {
@@ -678,7 +677,9 @@ describe("CommentsSidesheet", () => {
         fetchMock.callHistory.calls("express:/api/comment/:id/reaction"),
       ).toHaveLength(2);
 
-      await userEvent.click(within(getReactions("Test 1")).getByText(FIRST_EMOJI));
+      await userEvent.click(
+        within(getReactions("Test 1")).getByText(FIRST_EMOJI),
+      );
 
       await waitFor(() =>
         expect(getReactions("Test 1")).toHaveTextContent(`${SECOND_EMOJI}1`),
@@ -701,12 +702,16 @@ describe("CommentsSidesheet", () => {
       });
 
       expect(await screen.findByText("Test 1")).toBeInTheDocument();
-      await userEvent.click(within(getReactions("Test 1")).getByText(FIRST_EMOJI));
+      await userEvent.click(
+        within(getReactions("Test 1")).getByText(FIRST_EMOJI),
+      );
       await waitFor(() =>
         expect(getReactions("Test 1")).toHaveTextContent(`${FIRST_EMOJI}2`),
       );
 
-      await userEvent.click(within(getReactions("Test 1")).getByText(FIRST_EMOJI));
+      await userEvent.click(
+        within(getReactions("Test 1")).getByText(FIRST_EMOJI),
+      );
       await waitFor(() =>
         expect(getReactions("Test 1")).toHaveTextContent(`${FIRST_EMOJI}1`),
       );
