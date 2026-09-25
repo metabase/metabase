@@ -354,6 +354,7 @@ export {
   fieldSetting,
   getDeduplicatedTableColumnSettings,
   getOptionFromColumn,
+  insertNewColumnSettings,
   metricSetting,
 } from "./lib/settings/utils";
 export {
