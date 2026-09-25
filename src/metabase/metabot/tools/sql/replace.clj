@@ -45,10 +45,8 @@
                        :query-id query-id
                        :available-queries (keys queries-state)})))
     (metabot.tools.sql.common/check-native-query-access! (:database query))
-    (let [dialect (metabot.tools.sql.validation/query->dialect query)
-
-          {:keys [valid? transpiled-sql] :as validation-result}
-          (metabot.tools.sql.validation/validate-sql dialect sql)]
+    (let [{:keys [valid? transpiled-sql] :as validation-result}
+          (metabot.tools.sql.validation/validate-database-sql (:database query) sql)]
       (merge {:validation-result validation-result}
              (when valid?
                (let [;; Replace the SQL content - handle both formats

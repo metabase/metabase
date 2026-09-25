@@ -2,8 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.test :as mt]))
 
 ;;;; contains-template-tags?
 
@@ -180,3 +183,38 @@
       (testing sql
         (is (= "ok" (:status (sql-parsing/validate-query
                               dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+
+;;;; validate-database-sql
+
+(deftest validate-database-sql-template-tags-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                :database_id   (mt/id)
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+        (let [validate #(metabot.tools.sql.validation/validate-database-sql (mt/id) %)]
+          (testing "a query whose references resolve has no warnings"
+            (let [result (validate (str "SELECT v.name FROM {{#" card-id "}} AS v"))]
+              (is (true? (:valid? result)))
+              (is (not (contains? result :warnings)))))
+          (testing "a column the referenced model doesn't have is reported as a warning, not an error"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")))))
+          (testing "a reference to a card that doesn't exist is an agent error"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Card \d+ does not exist"
+                 (validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))))
+            (is (true? (try
+                         (validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))
+                         (catch clojure.lang.ExceptionInfo e
+                           (:agent-error? (ex-data e)))))))
+          (testing "a query that can't compile without a variable's value skips the check"
+            (let [result (validate (str "SELECT v.customer_name FROM {{#" card-id "}} AS v WHERE v.id = {{venue_id}}"))]
+              (is (true? (:valid? result)))
+              (is (not (contains? result :warnings)))))
+          (testing "SQL without template tags is validated as before, with no reference check"
+            (is (=? {:valid? true :transpiled-sql #(str/includes? % "customer_name")}
+                    (validate "SELECT customer_name FROM venues")))))))))
