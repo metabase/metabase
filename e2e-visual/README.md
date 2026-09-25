@@ -52,6 +52,9 @@ export const Interactive = {
 };
 ```
 
+On a pull request, CI builds Storybook with only the story files that Loki would run for the change, and passes them to the tests as `VISUAL_FILES`.
+A change inside `e2e-visual/`, or to anything that makes Loki run every story, runs every story here too.
+
 ## Baselines
 
 Baselines come from Linux, so screenshots taken on macOS won't match them. There are two ways to get Linux screenshots:

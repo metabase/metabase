@@ -11,6 +11,10 @@ on:
         description: "Skip the Playwright visual tests."
         type: boolean
         default: false
+      playwright-infra-touched:
+        description: "Whether the Playwright visual test runner changed, which runs every story."
+        type: boolean
+        default: false
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, or '' to run the full suite."
         type: string
@@ -114,7 +118,8 @@ jobs:
 
   playwright-visual-test:
     name: playwright-run
-    if: ${{ !inputs.skip-playwright }}
+    needs: story-selection
+    if: ${{ !cancelled() && !inputs.skip-playwright && (inputs.playwright-infra-touched || needs.story-selection.outputs.selection != 'empty') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     steps:
@@ -130,13 +135,32 @@ jobs:
       - name: Compile CLJS
         run: NODE_ENV=development bun run build-pure:cljs
 
+      - name: Prepare story selection
+        id: visual-selection
+        if: ${{ !inputs.playwright-infra-touched && needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+
       - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
         run: bun run build-storybook:visual
 
       - name: Run visual tests
+        env:
+          PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
+        # e2e-visual drops stories outside its default filters or tagged no-visual, and Playwright exits non-zero when that leaves no tests.
         run: |
           echo "CPU cores: $(nproc)"
-          bun run test-visual:docker
+          if [ -n "$PATHS_FILE" ]; then
+            VISUAL_FILES=$(jq -r 'join(",")' "$PATHS_FILE")
+            export VISUAL_FILES
+            bun run test-visual:docker --pass-with-no-tests
+          else
+            bun run test-visual:docker
+          fi
 
       - name: Upload report
         if: always()

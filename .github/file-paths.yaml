@@ -111,12 +111,15 @@ frontend_loki_all:
   - *frontend_sources
   - *frontend_loki_infra
 
+frontend_visual_infra: &frontend_visual_infra
+  - "e2e-visual/**"
+
 frontend_visual_all:
   - *frontend_sources
   - *shared_ci
+  - *frontend_visual_infra
   - ".github/workflows/loki.yml"
   - ".storybook/**"
-  - "e2e-visual/**"
   - "frontend/test/__support__/**"
   - "patches/**"
   - "resources/frontend_client/**"
