@@ -145,6 +145,10 @@ A first-time connection will go something like this:
 
 Results returned by the MCP server are sent to your MCP client, which may forward them to an AI provider depending on how the client is configured. See [AI privacy](./privacy.md).
 
+### Trouble connecting with Codex
+
+If Codex has trouble authenticating with Metabase or repeatedly asks you to sign in, try enabling **Allow Codex refresh-token reuse** in **Admin > AI > MCP > Settings**. Then reconnect Codex.
+
 ## Authorization logs
 
 To review which clients have connected, go to **Admin > AI > MCP** and open the **Authorizations** tab. The authorization logs are an audit log of MCP and Agent API client registrations and the authorization decisions people have approved or denied.

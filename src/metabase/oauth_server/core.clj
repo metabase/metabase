@@ -249,6 +249,19 @@
   []
   (reset! provider nil))
 
+(defn provider-for-token-request
+  "Return the provider with the refresh policy for the token's registered client."
+  [{:keys [grant_type refresh_token]}]
+  (let [provider (get-provider)
+        client   (when (and (= grant_type "refresh_token")
+                            (seq refresh_token)
+                            (oauth-settings/oauth-server-codex-refresh-token-reuse-enabled))
+                   (when-let [token (oidc.store/get-refresh-token (:token-store provider) refresh_token)]
+                     (oidc.proto/get-client (:client-store provider) (:client-id token))))]
+    (if (= "Codex" (:client-name client))
+      (oidc/create-provider (assoc (:config provider) :rotate-refresh-tokens false))
+      provider)))
+
 (defn extract-bearer-token
   "Extract the bearer token from the Authorization header of a Ring request."
   [request]
