@@ -24,6 +24,7 @@ import { getSetting } from "metabase/settings";
 import { getCspNonce } from "metabase/utils/csp";
 import type { DatabaseId } from "metabase-types/api";
 
+import { MetabotEditorHostProvider } from "./MetabotEditorHost";
 import S from "./MetabotPromptInput.module.css";
 import {
   parseClipboardTextAsParagraphs,
@@ -225,13 +226,15 @@ export const MetabotPromptInput = forwardRef<
     }
 
     return (
-      <EditorContent
-        {...props}
-        editor={editor}
-        className={cx(S.content, {
-          [S.disabled]: disabled,
-        })}
-      />
+      <MetabotEditorHostProvider>
+        <EditorContent
+          {...props}
+          editor={editor}
+          className={cx(S.content, {
+            [S.disabled]: disabled,
+          })}
+        />
+      </MetabotEditorHostProvider>
     );
   },
 );

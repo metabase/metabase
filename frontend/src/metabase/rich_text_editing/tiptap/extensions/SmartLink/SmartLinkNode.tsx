@@ -13,7 +13,10 @@ import { Link } from "metabase/common/components/Link";
 import type { IconModel, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useDispatch } from "metabase/redux";
-import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
+import {
+  type SmartLinkEntity,
+  useEditorHost,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Icon } from "metabase/ui";
 import {
   METABSE_PROTOCOL_MD_LINK,
@@ -21,18 +24,7 @@ import {
 } from "metabase/urls";
 import { modelToUrl } from "metabase/urls/modelToUrl";
 import { extractEntityId } from "metabase/urls/utils";
-import type {
-  Card,
-  Collection,
-  Dashboard,
-  Database,
-  Document,
-  MentionableUser,
-  Segment,
-  Table,
-  Transform,
-  WritebackAction,
-} from "metabase-types/api";
+import type { Card, Collection, Dashboard } from "metabase-types/api";
 
 import {
   entityToUrlableModel,
@@ -42,19 +34,6 @@ import {
 import type { SuggestionModel } from "../shared/types";
 
 import styles from "./SmartLinkNode.module.css";
-import { useEntityData } from "./use-entity-data";
-
-export type SmartLinkEntity =
-  | Card
-  | Dashboard
-  | Collection
-  | Table
-  | Transform
-  | Database
-  | Document
-  | WritebackAction
-  | Segment
-  | MentionableUser;
 
 // Utility function to parse entity URLs and extract entityId and model
 export function parseEntityUrl(
@@ -292,16 +271,16 @@ export const SmartLinkComponent = memo(
     const getIcon = useGetIcon();
     const { entityId, model, label } = node.attrs;
 
+    const host = useEditorHost();
     const {
       entity: networkEntity,
       isLoading,
       error,
-    } = useEntityData(entityId, model);
+    } = host.useEntityData(entityId, model);
     const cachedEntity = { id: parseInt(entityId, 10), model, name: label };
     const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
-    const host = useEditorHost();
     useEffect(() => {
       if (entity) {
         const name =

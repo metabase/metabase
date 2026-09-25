@@ -34,6 +34,7 @@ import { METAKEY } from "metabase/utils/browser";
 import type { DocumentContent } from "metabase-types/api";
 
 import S from "./CommentEditor.module.css";
+import { CommentEditorHostProvider } from "./CommentEditorHost";
 import { EmojiSuggestionExtension } from "./EmojiSuggestionExtension";
 
 const BUBBLE_MENU_DISALLOWED_NODES: string[] = [SmartLink.name];
@@ -197,49 +198,51 @@ export const CommentEditor = ({
   };
 
   return (
-    <Flex
-      align="center"
-      className={cx(S.container, className, {
-        [S.readonly]: readonly,
-        [S.active]: active,
-      })}
-      onKeyDownCapture={handleKeyDownCapture}
-      onKeyDown={handleKeyDown}
-    >
-      <Box className={S.contentWrapper}>
-        <EditorContent
-          data-testid={dataTestId}
-          editor={editor}
-          className={S.content}
-        />
-      </Box>
+    <CommentEditorHostProvider>
+      <Flex
+        align="center"
+        className={cx(S.container, className, {
+          [S.readonly]: readonly,
+          [S.active]: active,
+        })}
+        onKeyDownCapture={handleKeyDownCapture}
+        onKeyDown={handleKeyDown}
+      >
+        <Box className={S.contentWrapper}>
+          <EditorContent
+            data-testid={dataTestId}
+            editor={editor}
+            className={S.content}
+          />
+        </Box>
 
-      {!readonly && (
-        <Tooltip disabled={!content} label={t`Send (${METAKEY} + Enter)`}>
-          <ActionIcon
-            aria-label={t`Send`}
-            className={cx(S.submitBtn, { [S.canSubmit]: content })}
-            disabled={!content}
-            variant="subtle"
-            size="sm"
-            onClick={submitDoc}
-          >
-            <Icon name="send" />
-          </ActionIcon>
-        </Tooltip>
-      )}
+        {!readonly && (
+          <Tooltip disabled={!content} label={t`Send (${METAKEY} + Enter)`}>
+            <ActionIcon
+              aria-label={t`Send`}
+              className={cx(S.submitBtn, { [S.canSubmit]: content })}
+              disabled={!content}
+              variant="subtle"
+              size="sm"
+              onClick={submitDoc}
+            >
+              <Icon name="send" />
+            </ActionIcon>
+          </Tooltip>
+        )}
 
-      {!readonly && (
-        <EditorBubbleMenu
-          className={S.bubbleMenu}
-          editor={editor}
-          disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
-          allowedFormatting={ALLOWED_FORMATTING}
-          options={{
-            placement: "top",
-          }}
-        />
-      )}
-    </Flex>
+        {!readonly && (
+          <EditorBubbleMenu
+            className={S.bubbleMenu}
+            editor={editor}
+            disallowedNodes={BUBBLE_MENU_DISALLOWED_NODES}
+            allowedFormatting={ALLOWED_FORMATTING}
+            options={{
+              placement: "top",
+            }}
+          />
+        )}
+      </Flex>
+    </CommentEditorHostProvider>
   );
 };

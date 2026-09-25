@@ -1,28 +1,27 @@
 import {
-  useGetActionQuery,
   useGetCardQuery,
   useGetCollectionQuery,
   useGetDashboardQuery,
   useGetDatabaseQuery,
   useGetDocumentQuery,
-  useGetSegmentQuery,
   useGetTableQuery,
   useGetTransformQuery,
-  useListMentionsQuery,
 } from "metabase/api";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import type { EntityDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 
-import type { SuggestionModel } from "../shared/types";
-
-function assertUnreachable(value: never) {
-  console.warn(`Unhandled model type: ${value}`);
-}
-
+/**
+ * Resolves the models metabot can link: the prompt input's suggestion models
+ * and the entities a metabase:// link in an answer can name.
+ * Any other model resolves to nothing, and the link renders its stored label.
+ */
 export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
-) => {
-  const isCard = model && ["card", "dataset", "metric"].includes(model);
+): EntityDataResult => {
+  const isCard = model != null && ["card", "dataset", "metric"].includes(model);
+
   const cardQuery = useGetCardQuery(
     { id: entityId!, ignore_error: true },
     { skip: !entityId || !isCard },
@@ -49,32 +48,14 @@ export const useEntityData = (
   );
 
   const documentQuery = useGetDocumentQuery(
-    {
-      id: entityId!,
-    },
-    {
-      skip: !entityId || model !== "document",
-    },
+    { id: entityId! },
+    { skip: !entityId || model !== "document" },
   );
 
   const transformQuery = useGetTransformQuery(entityId!, {
     skip: !PLUGIN_TRANSFORMS.isEnabled || !entityId || model !== "transform",
   });
 
-  const actionQuery = useGetActionQuery(
-    { id: entityId! },
-    { skip: !entityId || model !== "action" },
-  );
-
-  const segmentQuery = useGetSegmentQuery(entityId!, {
-    skip: !entityId || model !== "segment",
-  });
-
-  const usersQuery = useListMentionsQuery(undefined, {
-    skip: !entityId || model !== "user",
-  });
-
-  // Determine which query is active and return its state
   switch (model) {
     case "card":
     case "dataset":
@@ -120,34 +101,7 @@ export const useEntityData = (
         isLoading: transformQuery.isLoading,
         error: transformQuery.error,
       };
-    case "action":
-      return {
-        entity: actionQuery.data,
-        isLoading: actionQuery.isLoading,
-        error: actionQuery.error,
-      };
-    case "segment":
-      return {
-        entity: segmentQuery.data,
-        isLoading: segmentQuery.isLoading,
-        error: segmentQuery.error,
-      };
-    case "user": {
-      const user = usersQuery.data?.data.find((user) => user.id === entityId);
-
-      return {
-        entity: user ? { ...user, name: user.common_name } : null,
-        isLoading: usersQuery.isLoading,
-        error: usersQuery.error,
-      };
-    }
-    case "indexed-entity":
-    case "measure":
-    case "exploration":
-    case null:
-      return { entity: null, isLoading: false, error: null };
     default:
-      assertUnreachable(model);
       return { entity: null, isLoading: false, error: null };
   }
 };
