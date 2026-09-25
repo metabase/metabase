@@ -1,6 +1,7 @@
 (ns hooks.metabase.toucan.table-name
   "Lint that toucan2 model namespaces (those defining `t2/table-name`) live
-  under `metabase[-enterprise]/<module>/models[/…]`.
+  under `metabase[-enterprise]/<module>/models[/…]`, where `<module>` may be a
+  nested module directory such as `search/semantic`.
 
   This wraps the methodical `defmethod` hook: we delegate to
   `hooks.methodical.macros/defmethod` for the actual analysis (so arg bindings
@@ -12,7 +13,7 @@
 (defn- models-file? [filename]
   (boolean
    (and filename
-        (re-find #"/(?:metabase|metabase_enterprise)/[^/]+/models(?:/|\.clj[cs]?$)"
+        (re-find #"/(?:metabase|metabase_enterprise)/[^/]+(?:/[^/]+)*/models(?:/|\.clj[cs]?$)"
                  filename))))
 
 (defn- table-name-dispatch? [sym]
