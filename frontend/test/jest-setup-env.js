@@ -1,6 +1,17 @@
 import "@testing-library/jest-dom";
-import { cleanup } from "@testing-library/react";
-import fetchMock from "fetch-mock";
+import * as testingLibrary from "@testing-library/react";
+import fetchMockModule from "fetch-mock";
+
+// Imports compile to lazy requires (see jest.base.conf.js). Resolve these at
+// the top level, so a spec that calls jest.resetModules() cannot make the
+// hooks below load a fresh copy once the run has started.
+const { cleanup, configure } = testingLibrary;
+const fetchMock = fetchMockModule;
+
+// The first render of a heavy component in a worker loads its modules inside
+// the waitFor window: 1.5s to 2.5s on a cold worker here, more on a CI runner.
+// A passing wait is not affected, and no test relies on the timeout to pass.
+configure({ asyncUtilTimeout: 10000 });
 
 // jsdom has no layout, so popover positioning computes nothing useful while
 // costing getComputedStyle calls and an extra re-render per position update.
