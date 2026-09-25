@@ -348,7 +348,6 @@ function norm(node, env, seen = new Set()) {
   )
     return node.getText();
   if (ts.isRegularExpressionLiteral(node)) return node.text;
-  // Anything else keeps its source text, with parameter names still marked.
   let text = node.getText();
   if (params?.size) {
     for (const p of params.keys())
@@ -682,7 +681,7 @@ function flatten(call) {
   }
 }
 
-// Local `const x = <literal or object>` bindings of a block, inlined when x is passed to a helper.
+// A block's non-function `const` bindings, which norm inlines where the name appears.
 function collectConsts(statements) {
   const consts = new Map();
   for (const st of statements) {

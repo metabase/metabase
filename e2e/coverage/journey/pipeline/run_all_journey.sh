@@ -2,13 +2,16 @@
 # Usage: e2e/coverage/journey/pipeline/run_all_journey.sh <run id | run dir> [--out <dir>] [--rerun <run id | run dir>]...
 #          [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
 # Builds the step graph and the overlap analysis of an e2e journey-capture run.
-# A run id is downloaded into $JOURNEY_ANALYSIS_DIR/<run id>/artifacts first. A run dir holds the downloaded shard directories.
+# A run id is downloaded into $JOURNEY_ANALYSIS_DIR/<run id>/artifacts first.
+# A run dir holds the downloaded shard directories.
 # A rerun supplies passing attempts for tests that never passed in the main run, and second samples of the others.
-# --backend-baseline union (the default) also drops backend classes that any shard's coverage baseline ran, shard doesn't.
+# --backend-baseline union (the default) also drops backend classes that any shard's coverage baseline ran,
+# and shard subtracts each shard's own baseline only.
 # --kills takes a kill matrix for keep, delete or unmeasured verdicts (kills.py has the format).
 # Outputs go to --out (default $JOURNEY_ANALYSIS_DIR/<run id or dir name>): journey-graph.json, journey-overlap.json, report.txt, work/.
 # JOURNEY_ANALYSIS_DIR defaults to journey-analysis/ at the repo root, which is gitignored.
-# JOURNEY_PYTHON is a python with numpy and scipy. Without it, one is set up in $JOURNEY_ANALYSIS_DIR/.venv.
+# JOURNEY_PYTHON is a python with numpy and scipy.
+# Without it, one is set up in $JOURNEY_ANALYSIS_DIR/.venv.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(git -C "$HERE" rev-parse --show-toplevel)"

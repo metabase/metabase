@@ -1,10 +1,8 @@
 """Usage: python static_align.py <work dir> <static-tests.json>
 
-Ties recorded assertions to the source assertions of static-tests.mjs, and cross-checks the recorded
-command order against the source. Writes <work dir>/static-align.json.
-
-Source assertions and recorded messages are aligned in order,
-and a pair can match when the message has the assertion's chainer words and literal arguments.
+Ties recorded assertions to the source assertions of static-tests.mjs,
+and cross-checks the recorded command order against the source.
+Writes <work dir>/static-align.json.
 """
 
 import json
@@ -105,7 +103,7 @@ def chainer_words(chainer):
 
 
 def parse_static(text):
-    """Chainer words and literal values of a source assertion, or None when it has neither."""
+    """Chainer words and literal values of a source assertion, or None when it has no literal chainer."""
     for name in ("should", "and"):
         args = last_call_args(text, name)
         if args is not None:

@@ -45,7 +45,10 @@ def step_record(run, t, level, step):
 
 
 def assertion_diff(a_items, b_items):
-    """Assertions of two tests compared by key. Items are (position, key, display)."""
+    """Assertions of two tests compared by key.
+
+    Items are (position, key, display).
+    """
     display = {key: text for _, key, text in a_items + b_items}
     ka, kb = {key for _, key, _ in a_items}, {key for _, key, _ in b_items}
     text = lambda keys: [display[k] for k in sorted(keys)]

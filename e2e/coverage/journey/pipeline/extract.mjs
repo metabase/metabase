@@ -1,6 +1,6 @@
 // Usage: node extract.mjs <run dir> <out dir> <repo files dir> [<openapi.json>] [--rerun <run dir>]...
-// Streams a journey-capture run one shard at a time through the capture reader (e2e/coverage/journey-capture.mjs)
-// and writes, into <out dir>:
+// Streams a journey-capture run one shard at a time through the capture reader, e2e/coverage/journey-capture.mjs,
+// and writes into <out dir>:
 //   tests.jsonl           one line per test (its final attempt): per-test code sets and its steps, all as interned ids
 //   vocab.json            the strings behind the ids
 //   second-samples.json   the same test measured in a rerun, when both runs passed it
@@ -208,7 +208,6 @@ function cutFunctions(files, f) {
 
 // What a describe's `before` hooks added to the first test's routes, pages and backend classes.
 // The root beforeEach dumps the backend right after those hooks, so `beforeTest` holds their backend code after their last step cut.
-// `ownRoutes` and `ownPages` are the test's own share: whatever its body also requested or loaded, or that no event explains.
 function suiteParts(events, test, netRoutes, netBeforeTest) {
   const inHooks = events.filter((e) => e.phase === "before all");
   const outside = events.filter((e) => e.phase !== "before all");

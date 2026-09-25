@@ -134,7 +134,8 @@ function urlText(value, level) {
   return level === "exact" ? masked : normalizeUrl(masked);
 }
 
-// Codemirror's "ͼ1a" classes and per-render ids like "mantine-6qkjzmq08" change between runs, so they are dropped.
+// Codemirror's "ͼ1a" classes and per-render ids like "mantine-6qkjzmq08" change between runs,
+// so the classes are dropped and the ids masked.
 // CSS-module and Mantine class hashes are fixed for a build, so they stay and identify the component.
 function elementText(tag, rest) {
   const parts = rest.match(/[#.][^#.]+/g) ?? [];
@@ -223,7 +224,7 @@ export function buildPath(events) {
       chain: event.kind === "command" ? (event.chain ?? null) : null,
     });
   }
-  // A command whose chain the next command extends is not the end of a statement, and labels skip it.
+  // A command whose chain the next command extends is not the end of a statement.
   tokens.forEach((token, index) => {
     const next = tokens[index + 1];
     token.terminal = !(

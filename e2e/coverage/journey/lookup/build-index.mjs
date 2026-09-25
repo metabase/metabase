@@ -244,8 +244,7 @@ for (const run of runs) {
   }
 }
 
-// Index layout: tests.json, keys.json, fnmap.json and postings.bin.
-// postings.bin holds, per key, pairs of (test index, 1 + asserts after the first reaching cut, or 0 when no cut held it).
+// postings.bin holds, per key, pairs of (test index, 1 + asserts after the first cut holding the key, or 0 when no cut held it).
 fs.mkdirSync(args.out, { recursive: true });
 const testList = [...tests.values()].sort((a, b) => a.id.localeCompare(b.id));
 const postings = keys.map(() => []);

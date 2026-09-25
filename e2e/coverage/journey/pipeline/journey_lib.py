@@ -1,7 +1,4 @@
-"""Loads extract.mjs output and builds the step graph: a prefix tree over each test's action tokens.
-
-A cut's measured code lands on the node holding the last token before the cut.
-"""
+"""Loads extract.mjs output and builds the step graph: a prefix tree over each test's action tokens."""
 
 import collections
 import copy
@@ -218,7 +215,6 @@ def compose_suites(run):
     """Gives every test of a describe with `before` hooks those hooks' commands, cuts and code, at the start of its path.
 
     The hooks run once, inside the describe's first test, so the capture records them on that test only.
-    The describes above a test come from static-tests.mjs, matched against its full title by static_align.py.
     """
     tests = run.tests
     chains = {}
@@ -239,7 +235,7 @@ def compose_suites(run):
         first = next((i for i in sorted(ids) if has_hooks(tests[i])), None)
         if first is not None:
             hook_test[key] = first
-    # Hooks recorded by a test that no parsed describe explains form a group of that test alone.
+    # Hooks recorded by a test that isn't the hook_test of any describe above it form a group of that test alone.
     lone = [t.id for t in tests if has_hooks(t) and not any(hook_test.get(key) == t.id for key in chains[t.id])]
     for tid in lone:
         key = f"{tests[tid].key}::before"

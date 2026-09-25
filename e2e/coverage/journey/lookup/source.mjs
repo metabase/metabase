@@ -150,7 +150,7 @@ export function listJsFunctions(repo, file, source) {
   return functions;
 }
 
-/** The innermost function around each line, or null for module-level code. */
+/** The innermost function around the line, or null for module-level code. */
 export function enclosingJsFunction(functions, line) {
   let best = null;
   for (const fn of functions) {

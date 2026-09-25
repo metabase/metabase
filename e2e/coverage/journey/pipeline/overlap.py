@@ -1,7 +1,8 @@
 """Usage: python overlap.py <work dir> <out dir> [--same-fe <jaccard>] [--same-be <jaccard>]
                             [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
 
-Writes <out dir>/journey-overlap.json. Tests are "<spec path>::<full title>" throughout.
+Writes <out dir>/journey-overlap.json.
+Tests are "<spec path>::<full title>" throughout.
   granularities   per-test overlap at each granularity
   weighted_cover  coverage ceiling: cheapest tests by measured duration that keep every item. Not a deletion list
   kills_cover     with --kills: the tests that keep every kill, then the most code and checks, then the least time
@@ -74,7 +75,10 @@ def build_matrix(sets, ids):
 
 
 def greedy_cover(sets):
-    """Lazy greedy set cover over a list of python sets. Returns chosen indices in order."""
+    """Lazy greedy set cover over a list of python sets.
+
+    Returns the chosen indices, in order, and the number of distinct items.
+    """
     universe = set().union(*sets) if sets else set()
     covered = set()
     heap = [(-len(s), i) for i, s in enumerate(sets)]
@@ -131,7 +135,7 @@ def analyze(run, name, sets):
     spec_of = np.array([tests[i].spec for i in ids])
     same_spec = spec_of[:, None] == spec_of[None, :]
 
-    # Rarity-weighted Jaccard: items weighted by log(N/df) so app-shell items shared by most tests count for little.
+    # Rarity-weighted Jaccard: items weighted by log(n/df) so app-shell items shared by most tests count for little.
     df = np.asarray(X.sum(axis=0)).ravel()
     w = np.log(n / df).astype(np.float32)
     Xw = X.multiply(w[None, :]).tocsr()
@@ -646,7 +650,7 @@ def prefix_subtraction(run, level="normalized"):
     }
 
 
-# ---------- noise floor from the control pass ----------
+# ---------- noise floor ----------
 
 
 def noise_floor(run):

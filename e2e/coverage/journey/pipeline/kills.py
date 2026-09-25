@@ -11,19 +11,21 @@ The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant
      "file":      "<repo-relative path>"   optional, see reached()
    }}
 
-A test id is "<spec path>::<Cypress full title>" for e2e, "<spec path>::<jest fullName>" for jest and
-"<namespace>/<var>" for deftest. The older shape {"<mutant id>": [killer test id, ...]} is read as killed_by
-with `ran` unknown, and so is an entry without `ran`.
+A test id is "<spec path>::<Cypress full title>" for e2e,
+"<spec path>::<jest fullName>" for jest and "<namespace>/<var>" for deftest.
+An entry that is a bare list of test ids, {"<mutant id>": [killer test id, ...]}, is read as killed_by with `ran` unknown,
+and so is an entry without `ran`.
 
-Only e2e tests of this run are candidates. Every other id is a remaining test: it counts when deciding
-whether some other test kills a mutant, and never gets a verdict.
+Only e2e tests of this run are candidates.
+Every other id is a remaining test: it counts when deciding whether some other test kills a mutant,
+and never gets a verdict.
 
 A candidate's unique kills are the mutants it killed, among those it ran against, that no other test killed.
   keep        it has a unique kill, or the kills-first cover keeps it for kills it shares only with other candidates
   delete      no unique kill, at least `min_mutants` qualifying mutants, and every required stratum among them
   unmeasured  anything else, including no kill matrix, `ran` unknown, or a test that failed in the capture
-A qualifying mutant sits in the candidate's reached code, and both the candidate and at least one other test ran
-against it without erroring.
+A qualifying mutant sits in the candidate's reached code,
+and both the candidate and at least one other test ran against it without erroring.
 """
 
 import collections

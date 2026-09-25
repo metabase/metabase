@@ -180,7 +180,7 @@ function resolveFrontend(index, loc, ctx) {
     }
   }
   if (targets.length === 0 && loc.line != null) {
-    // A function that starts on the given line, else the innermost one around it.
+    // The outermost function that starts on the given line, else the innermost one around it.
     const starting = functions.filter(
       (fn) => fn.line === loc.line || fn.startLine === loc.line,
     );
@@ -399,8 +399,9 @@ export function resolveLocation(index, loc, ctx) {
 }
 
 /**
- * Tests that reach any of the keys. For each test, `assertsAfter` counts the passing assertions
- * from the first step cut holding one of the keys, or is null when no step cut held them.
+ * Tests that reach any of the keys.
+ * For each test, `assertsAfter` counts the passing assertions from the first step cut holding one of the keys,
+ * or is null when no step cut held them.
  */
 export function query(
   index,
