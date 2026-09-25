@@ -7,7 +7,7 @@ const messages = stylelint.utils.ruleMessages(ruleName, {
 });
 
 /** @type {import('stylelint').Rule} */
-const ruleFunction = (primary, secondaryOptions, context) => {
+const ruleFunction = (primary) => {
   return (root, result) => {
     // you're allowed to use base colors in colors.module.css
     if (root.source.input.file.includes("colors.module.css")) {
@@ -36,7 +36,7 @@ const ruleFunction = (primary, secondaryOptions, context) => {
 
     // Check usage of CSS variables in values (var(--mb-base-color-*))
     root.walkDecls((decl) => {
-      const varRegex = /var\(\s*(--mb-base-color[^,\)]*)/g;
+      const varRegex = /var\(\s*(--mb-base-color[^,)]*)/g;
       let match;
 
       while ((match = varRegex.exec(decl.value)) !== null) {
@@ -56,5 +56,4 @@ const ruleFunction = (primary, secondaryOptions, context) => {
 ruleFunction.ruleName = ruleName;
 ruleFunction.messages = messages;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default stylelint.createPlugin(ruleName, ruleFunction);
