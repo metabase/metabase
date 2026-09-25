@@ -8,6 +8,7 @@ tasks:
       cypress/reports/cypress-test-report.json -o cypress/reports --inline
     options:
       cache: false
+
   test:
     command: noop
     deps:
@@ -17,6 +18,7 @@ tasks:
     options:
       cache: false
       runDepsInParallel: false
+
   test-ci-scripts:
     script: >-
       jest --selectProjects ci-scripts --maxWorkers=4
@@ -24,16 +26,19 @@ tasks:
       - bin/**
       - release/**
       - '@group(jest)'
+
   test-cypress:
     script: >-
       tsx ./e2e/runner/run_cypress_local.ts
     options:
       cache: false
+
   test-cypress-host-sample-apps:
     script: >-
       tsx ./e2e/runner/run_cypress_host_sample_apps.ts
     options:
       cache: false
+
   test-debug:
     script: >-
       node --inspect-brk node_modules/.bin/jest --runInBand
@@ -42,17 +47,20 @@ tasks:
       - build-cljs
     options:
       cache: false
+
   test-memory:
     script: >-
       node --expose-gc ./node_modules/.bin/jest --runInBand --config
       jest.memory.conf.js
     options:
       cache: false
+
   test-timezones:
     script: >-
       ./frontend/test/__runner__/run_timezone_tests
     options:
       cache: false
+
   test-timezones-unit:
     script: >-
       jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
@@ -61,6 +69,7 @@ tasks:
     inputs:
       - '@group(frontend)'
       - jest.tz.unit.conf.js
+
   test-unit:
     script: >-
       jest --ignoreProjects ci-scripts --maxWorkers=4
@@ -69,17 +78,20 @@ tasks:
     inputs:
       - '@group(frontend)'
       - '@group(jest)'
+
   test-visual-loki:
     script: >-
       NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
     options:
       cache: false
+
   test-visual-loki-approve-diff:
     script: >-
       ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _
       cp _ .loki/reference/
     options:
       cache: false
+
   test-visual-loki-ci:
     script: >-
       NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
@@ -88,18 +100,21 @@ tasks:
       - build-storybook
     options:
       cache: false
+
   test-visual-loki-prune:
     script: >-
       ls .loki/reference | grep -v "$(ls .loki/current)" | xargs -I {} rm
       .loki/reference/{}
     options:
       cache: false
+
   test-visual-loki-report:
     script: >-
       node frontend/test/generate-loki-report-json.js && reg-cli --from
       .loki/report.json --report .loki/report.html
     options:
       cache: false
+
   test-visual-loki-report-open:
     script: >-
       NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
@@ -109,6 +124,7 @@ tasks:
       .loki/report.html)
     options:
       cache: false
+
   validate-e2e-filenames:
     script: >-
       node e2e/validate-e2e-test-files.js

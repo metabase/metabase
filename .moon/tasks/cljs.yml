@@ -8,6 +8,7 @@ tasks:
       - '@group(cljs)'
     outputs:
       - target/cljs_dev/**
+
   build-hot-cljs:
     script: >-
       shadow-cljs watch app
@@ -16,6 +17,7 @@ tasks:
       cache: false
       runInCI: false
       outputStyle: stream
+
   build-release-cljs:
     script: >-
       shadow-cljs release app
@@ -25,6 +27,7 @@ tasks:
       - '@group(cljs)'
     outputs:
       - target/cljs_release/**
+
   build-watch-cljs:
     script: >-
       shadow-cljs watch app
@@ -33,6 +36,7 @@ tasks:
       cache: false
       runInCI: false
       outputStyle: stream
+
   clean-cljs:
     command: noop
     deps:
@@ -40,16 +44,19 @@ tasks:
       - clean-release-cljs
     options:
       cache: false
+
   clean-dev-cljs:
     script: >-
       rm -rf target/cljs_dev/*
     options:
       cache: false
+
   clean-release-cljs:
     script: >-
       rm -rf target/cljs_release/*
     options:
       cache: false
+
   cljs-nrepl:
     script: >-
       shadow-cljs node-repl -d cider/cider-nrepl:0.57.0 -d
@@ -59,27 +66,32 @@ tasks:
       cache: false
       runInCI: false
       outputStyle: stream
+
   cljs-server-restart:
     script: >-
       shadow-cljs restart
     options:
       cache: false
+
   cljs-server-start:
     script: >-
       shadow-cljs start
     options:
       cache: false
+
   cljs-server-stop:
     script: >-
       shadow-cljs stop
     options:
       cache: false
+
   test-cljs:
     script: >-
       shadow-cljs compile test && node target/node-tests.js
     inputs:
       - '@group(cljs)'
       - test/**
+
   test-unit-watch-cljs:
     command: noop
     deps:

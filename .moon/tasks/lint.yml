@@ -10,6 +10,7 @@ tasks:
       - build-cljs
     options:
       cache: false
+
   find-never-defined-css-variables:
     script: >-
       tsx
@@ -18,12 +19,14 @@ tasks:
       - frontend/**/*.css
       - frontend/**/*.tsx
       - bin/find-never-defined-css-variables/**
+
   format:
     script: >-
       oxfmt --write
       '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
     options:
       cache: false
+
   lint:
     command: noop
     deps:
@@ -34,18 +37,21 @@ tasks:
       - type-check
     options:
       cache: false
+
   lint-css:
     script: >-
       stylelint --cache './frontend/**/*.css'
     inputs:
       - frontend/**/*.css
       - .stylelintrc.json
+
   lint-docs-links:
     script: >-
       ./bin/verify-doc-links
     inputs:
       - docs/**
       - bin/verify-doc-links
+
   lint-eslint:
     script: >-
       eslint --cache --cache-strategy content --max-warnings 0
@@ -57,6 +63,7 @@ tasks:
       - '@group(e2e)'
       - '@group(tsconfig)'
       - eslint.config.mjs
+
   lint-format:
     script: >-
       oxfmt --check
@@ -65,6 +72,7 @@ tasks:
       - '@group(frontend)'
       - '@group(e2e)'
       - .oxfmtrc.json
+
   lint-openapi:
     script: >-
       redocly lint resources/openapi/openapi.json --skip-rule security-defined
@@ -74,12 +82,14 @@ tasks:
       path-parameters-defined --skip-rule spec-components-invalid-map-name
     inputs:
       - resources/openapi/openapi.json
+
   lint-yaml:
     script: >-
       yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
     inputs:
       - '**/*.yaml'
       - '**/*.yml'
+
   module-boundaries:
     script: >-
       eslint --config eslint.config.module-boundaries.mjs
@@ -89,6 +99,7 @@ tasks:
     inputs:
       - '@group(frontend)'
       - eslint.config.module-boundaries.mjs
+
   type-check:
     script: >-
       ./node_modules/typescript7/bin/tsc --noEmit

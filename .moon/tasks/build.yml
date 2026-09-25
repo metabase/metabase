@@ -8,12 +8,14 @@ tasks:
       - build-js
     options:
       cache: false
+
   build-custom-viz-fixtures:
     script: >-
       node
       enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
     inputs:
       - enterprise/frontend/src/custom-viz/**
+
   build-js:
     script: >-
       rspack build
@@ -24,6 +26,7 @@ tasks:
       - '@group(rspack)'
     outputs:
       - resources/frontend_client/**
+
   build-release:
     command: noop
     deps:
@@ -31,6 +34,7 @@ tasks:
       - build-release-js
     options:
       cache: false
+
   build-release-js:
     script: >-
       WEBPACK_BUNDLE=production rspack build
@@ -41,6 +45,7 @@ tasks:
       - '@group(rspack)'
     outputs:
       - resources/frontend_client/**
+
   build-release-static-viz:
     script: >-
       WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
@@ -51,6 +56,7 @@ tasks:
       - '@group(rspack)'
     outputs:
       - resources/frontend_client/**
+
   build-static-viz:
     script: >-
       WEBPACK_BUNDLE=production rspack --config rspack.static-viz.config.js
@@ -58,11 +64,13 @@ tasks:
       - build-release-cljs
     options:
       cache: false
+
   build-stats:
     script: >-
       rspack --json > stats.json
     options:
       cache: false
+
   build-storybook:
     script: >-
       NODE_OPTIONS=--max-old-space-size=8192 storybook build
@@ -73,6 +81,7 @@ tasks:
       - .storybook/**
     outputs:
       - storybook-static/**
+
   chromatic:
     script: >-
       NODE_OPTIONS=--max-old-space-size=8192 chromatic
