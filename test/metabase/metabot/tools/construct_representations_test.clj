@@ -160,6 +160,23 @@
                 (is (= exported
                        (get-in redo [:structured-output :query-json])))))))))))
 
+(deftest top-level-and-filter-split-into-separate-filters-end-to-end-test
+  (testing (str "An LLM-authored `filters: [[\"and\" ...]]` comes out as separate filters, so the\n"
+                "notebook shows each one individually instead of one merged custom expression (BOT-1446).")
+    (with-mp-and-stubs!
+      (fn []
+        (let [q (get-in (construct/execute-representations-query
+                         (query-data
+                          {"lib/type" "mbql/query"
+                           "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                        "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                        "filters"      [["and" {}
+                                                         [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100]
+                                                         ["between" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]] 1 10]]]}]}))
+                        [:structured-output :query])]
+          (is (= [:> :between]
+                 (map first (lib/filters q 0)))))))))
+
 (deftest unknown-table-surfaces-agent-error-test
   (with-mp-and-stubs!
     (fn []
