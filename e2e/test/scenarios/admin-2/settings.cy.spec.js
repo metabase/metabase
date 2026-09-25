@@ -883,7 +883,7 @@ describe("scenarios > admin > settings > map settings", () => {
 });
 
 // Ensure the webhook tester docker container is running
-// docker run -p 9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
+// docker run -p 127.0.0.1:9080:8080/tcp tarampampam/webhook-tester:1.1.0 serve --create-session 00000000-0000-0000-0000-000000000000
 describe("notifications", { tags: "@external" }, () => {
   beforeEach(() => {
     H.resetWebhookTester();

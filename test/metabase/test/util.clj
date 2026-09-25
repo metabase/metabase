@@ -406,6 +406,20 @@
        :schedule        "0 0 * * * ?"
        :ui_display_type :cron/raw}))
 
+   :model/TransformTest
+   (fn [_]
+     (default-timestamped
+      {:creator_id   (rasta-id)
+       :name         (str "Test Transform Test " (u/generate-nano-id))
+       :inputs       []
+       :expectations []}))
+
+   :model/TransformTestRun
+   (fn [_]
+     {:status         "started"
+      :start_time     (t/instant)
+      :last_heartbeat (t/instant)})
+
    :model/TransformRun
    (fn [_]
      {:status     "succeeded"

@@ -6,6 +6,9 @@ import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/p
 import { useSdkInternalNavigation } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { createEmbeddingSdkMode } from "embedding-sdk-bundle/lib/modes/EmbeddingSdkMode";
 import { getEmbeddingMode } from "embedding-sdk-bundle/lib/modes/getEmbeddingMode";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { DASHBOARD_EDITING_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -28,6 +31,7 @@ export type EditableDashboardProps = SdkDashboardProps &
   EditableDashboardOwnProps;
 
 const EditableDashboardContent = (props: EditableDashboardProps) => {
+  const globalPlugins = useSdkSelector(getPlugins);
   const { push: pushNavigation } = useSdkInternalNavigation();
 
   const {
@@ -59,15 +63,18 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
           DASHBOARD_ACTION.REFRESH_INDICATOR,
         ];
 
+  const plugins: MetabasePluginsConfig = useMemo(() => {
+    return { ...globalPlugins, ...props.plugins };
+  }, [globalPlugins, props.plugins]);
+
   const clickActionMode = useMemo(
     () =>
       getEmbeddingMode({
         queryMode: createEmbeddingSdkMode({ pushNavigation }),
         // Unjustified type cast. FIXME
-        plugins: props.drillThroughQuestionProps
-          ?.plugins as InternalMetabasePluginsConfig,
+        plugins: plugins as InternalMetabasePluginsConfig,
       }),
-    [pushNavigation, props.drillThroughQuestionProps?.plugins],
+    [plugins, pushNavigation],
   );
 
   return (

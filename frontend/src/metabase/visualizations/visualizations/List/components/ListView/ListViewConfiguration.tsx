@@ -382,7 +382,9 @@ export const ListViewConfiguration = ({
                         className={cx(S.iconColorButton, {
                           [S.selected]: color === iconConfig.selectedIconColor,
                         })}
-                        variant="subtle"
+                        variant="transparent"
+                        size="compact-md"
+                        p={0}
                         bg={color}
                         onClick={() => {
                           handleConfigurationChange({

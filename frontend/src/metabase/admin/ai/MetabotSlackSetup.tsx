@@ -223,7 +223,8 @@ export function MetabotSlackSetup() {
                 </ConnectionDetails>
                 <Flex justify="flex-end">
                   <Button
-                    c="feedback-negative"
+                    variant="light"
+                    color="negative"
                     onClick={handleOpen}
                   >{t`Remove`}</Button>
                 </Flex>

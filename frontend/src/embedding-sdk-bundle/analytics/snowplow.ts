@@ -81,19 +81,20 @@ export function initSdkTracker({
     platform: "web",
     eventMethod: "post",
     contexts: { webPage: true },
-    // Plain JSON on the wire. The main-app tracker uses the default (encodeBase64:true);
+    // Plain JSON on the wire. The main-app tracker keeps base64 on;
     // the SDK tracker is new, so there's no legacy format to preserve.
     encodeBase64: false,
     // Deliver through the instance proxy, not the collector's tp2 path.
     postPath: "/api/analytics-proxy",
     // No cookies / localStorage: the SDK must not touch the host page's storage.
-    // This also makes cookie-domain config (e.g. discoverRootDomain) irrelevant.
     stateStorageStrategy: "none",
+    // v4 defaults this to true, and the test-cookie probe ignores stateStorageStrategy.
+    discoverRootDomain: false,
     // Server-side anonymisation: strip IP + network_userid, send the SP-Anonymous header.
     anonymousTracking: { withServerAnonymisation: true },
     // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
     // credentialed requests, so credentials must be omitted.
-    withCredentials: false,
+    credentials: "omit",
     plugins: [createSdkInstanceContextPlugin(store)],
   });
   return true;

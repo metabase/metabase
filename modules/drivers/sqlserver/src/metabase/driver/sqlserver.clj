@@ -39,7 +39,8 @@
    [metabase.util.performance :as perf :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
-   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (com.microsoft.sqlserver.jdbc ISQLServerConnection)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)))
@@ -77,6 +78,7 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/index-ddl                   true
+                              :transforms/testing                     true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -109,10 +111,6 @@
 (defmethod driver/db-start-of-week :sqlserver
   [_]
   :sunday)
-
-(defmethod driver.sql/default-schema :sqlserver
-  [_]
-  "dbo")
 
 (defn- quote-schema [s] (sql.u/quote-name :sqlserver :schema s))
 (defn- quote-field  [s] (sql.u/quote-name :sqlserver :field s))
@@ -166,6 +164,42 @@
     (keyword "bigint identity")   :type/BigInteger
     (keyword "decimal identity")  :type/Decimal
     (keyword "numeric identity")  :type/Decimal} column-type))
+
+(def ^:private jdbc-type->base-type
+  {Types/BIGINT                  :type/BigInteger
+   Types/BIT                     :type/Boolean
+   Types/BOOLEAN                 :type/Boolean
+   Types/CHAR                    :type/Text
+   Types/DATE                    :type/Date
+   Types/DECIMAL                 :type/Decimal
+   Types/DOUBLE                  :type/Float
+   Types/FLOAT                   :type/Float
+   Types/INTEGER                 :type/Integer
+   Types/LONGNVARCHAR            :type/Text
+   Types/LONGVARCHAR             :type/Text
+   Types/NCHAR                   :type/Text
+   Types/NUMERIC                 :type/Decimal
+   Types/NVARCHAR                :type/Text
+   Types/REAL                    :type/Float
+   Types/SMALLINT                :type/Integer
+   Types/TIME                    :type/Time
+   Types/TIME_WITH_TIMEZONE      :type/TimeWithTZ
+   Types/TIMESTAMP               :type/DateTime
+   Types/TIMESTAMP_WITH_TIMEZONE :type/DateTimeWithZoneOffset
+   Types/TINYINT                 :type/Integer
+   Types/VARCHAR                 :type/Text})
+
+(defmethod sql-jdbc.sync/describe-table-fields :sqlserver
+  [driver conn table db-name-or-nil]
+  ;; When TYPE_NAME is a user-defined type alias (`CREATE TYPE Key10 FROM varchar(10)`),
+  ;; `database-type->base-type` can't resolve it. The MSSQL JDBC driver already exposes the underlying
+  ;; base type as `DATA_TYPE` (a `java.sql.Types` code), so use it as a fallback. `:database-type` stays
+  ;; the alias name, so the original type is still visible in field metadata.
+  (into #{}
+        (map (fn [{:keys [base-type jdbc-type] :as col}]
+               (cond-> col
+                 (= base-type :type/*) (assoc :base-type (get jdbc-type->base-type jdbc-type base-type)))))
+        ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table db-name-or-nil)))
 
 (defmulti ^:private type->database-type
   "Internal type->database-type multimethod for SQL Server that dispatches on type."
@@ -1189,6 +1223,30 @@
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
         modified-sql (sql-tools/add-into-clause driver sql-query table-name)]
     [modified-sql sql-params]))
+
+(defmethod driver/temp-table-name :sqlserver
+  [_driver]
+  (str "#mb_test_" (str/replace (str (random-uuid)) "-" "")))
+
+(defmethod driver/compile-create-temp-table :sqlserver
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword table)))]
+    [(sql-tools/add-into-clause driver sql-query table-name) sql-params]))
+
+(defmethod driver/do-with-test-connection :sqlserver
+  [driver database f]
+  ((get-method driver/do-with-test-connection :sql-jdbc)
+   driver
+   database
+   (fn [^Connection conn]
+     (let [^ISQLServerConnection sqlserver-conn (.unwrap conn ISQLServerConnection)
+           prepare-method                        (.getPrepareMethod sqlserver-conn)]
+       (.setPrepareMethod sqlserver-conn "scopeTempTablesToConnection")
+       (try
+         (f conn)
+         (finally
+           (.setPrepareMethod sqlserver-conn prepare-method)))))))
 
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]

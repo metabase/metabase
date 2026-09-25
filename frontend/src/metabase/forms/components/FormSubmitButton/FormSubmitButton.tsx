@@ -24,6 +24,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     failedLabel,
     disabled,
     color,
+    variant,
     onSuccess,
     ...props
   }: FormSubmitButtonProps,
@@ -37,13 +38,17 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     successLabel,
     failedLabel,
   });
-  const submitColor = getSubmitButtonColor(status, { color });
+  const hasStatusColor = variant && variant !== "default";
+  const submitColor = hasStatusColor
+    ? getSubmitButtonColor(status, { color })
+    : color;
 
   return (
     <Button
       {...props}
       ref={ref}
       type="submit"
+      variant={variant}
       color={submitColor}
       disabled={isDisabled}
       loading={status === "pending"}
@@ -61,9 +66,9 @@ const getSubmitButtonColor = (
 ) => {
   switch (status) {
     case "fulfilled":
-      return "feedback-positive";
+      return "positive";
     case "rejected":
-      return "feedback-negative";
+      return "negative";
     default:
       return color;
   }

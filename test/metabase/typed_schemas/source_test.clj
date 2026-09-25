@@ -6,6 +6,7 @@
   database."
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.typed-schemas.scope :as scope]
@@ -63,6 +64,27 @@
                               #"Collections not found"
                               (source/library-scope source/app-db-source
                                                     {:library-collection-refs [{:id (:id plain-collection)}]})))))))
+
+(deftest metrics-honour-library-collection-scope-test
+  (mt/with-temp [:model/Collection root    {:name "Library", :type "library", :location "/"}
+                 :model/Collection metrics {:name     "Metrics"
+                                            :type     "library-metrics"
+                                            :location (collection/children-location root)}
+                 :model/Collection child   {:name     "Child"
+                                            :type     "library-metrics"
+                                            :location (collection/children-location metrics)}
+                 :model/Card _metric       {:name          "Library revenue"
+                                            :type          :metric
+                                            :collection_id (:id child)}]
+    (mt/with-test-user :crowberto
+      (let [{:keys [metric-collection-ids]}
+            (source/library-scope source/app-db-source
+                                  {:library-collection-refs [{:id (:id metrics)}]})]
+        (is (= ["libraryRevenue"]
+               (map :key
+                    (source/metrics source/app-db-source nil metric-collection-ids))))
+        (is (= []
+               (source/metrics source/app-db-source nil #{})))))))
 
 (deftest tables-test
   (mt/with-temp [:model/Database db {}

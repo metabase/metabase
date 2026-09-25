@@ -43,7 +43,8 @@
            "Setting"
            "Transform"
            "TransformJob"
-           "TransformTag"]))
+           "TransformTag"
+           "TransformTest"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -170,6 +171,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

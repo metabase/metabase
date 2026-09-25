@@ -22,6 +22,7 @@
    [:settings           {:optional true} [:maybe [:or ms/UserSettings :string]]]
    [:token-scopes       {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked {:optional true} :boolean]
+   [:data-app-scoped?     {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
    ;; only API-key auth resolves these two: `:api-key-id` identifies the key itself (for per-key usage analytics),
    ;; and `:api-key-creator-id` is the real human who created the key (distinct from `:metabase-user-id`, the key's
@@ -127,6 +128,7 @@
    [:token-scopes            {:optional true} [:maybe [:set [:or :keyword :string]]]]
    [:token-scopes-checked    {:optional true} :boolean]
    [:authenticated-via-oauth? {:optional true} :boolean]
+   [:data-app-scoped?        {:optional true} :boolean]
    [:mcp-ui-session-id       {:optional true} [:maybe :string]]
    [:mcp-ui-credential       {:optional true} [:maybe
                                                [:map {:closed true}
