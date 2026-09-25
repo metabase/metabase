@@ -45,6 +45,11 @@ export const METABOT_PROFILES = {
       return t`SQL`;
     },
   },
+  megabot: {
+    get label() {
+      return t`Megabot`;
+    },
+  },
   // deprecated
   slack: {
     get label() {
@@ -86,10 +91,21 @@ export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   NLQ: "nlq",
   SQL: "sql",
+  MEGABOT: "megabot",
+  EXPLORATIONS: "explorations",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
+const HISTORY_ENABLED_PROFILES: ReadonlySet<string | undefined> = new Set([
+  METABOT_PROFILE_OVERRIDES.DEFAULT,
+  METABOT_PROFILE_OVERRIDES.NLQ,
+  METABOT_PROFILE_OVERRIDES.MEGABOT,
+]);
+
 export const isHistoryEnabledProfile = (profile: string | undefined) =>
-  profile === undefined || profile === "nlq";
+  HISTORY_ENABLED_PROFILES.has(profile);
+
+// the only provider whose usage the token counter reports (see `MessageMetadata.provider`)
+export const TOKEN_USAGE_PROVIDER = "anthropic";
 
 export const resolveMetabotProfileId = (
   profile: MetabotProfileId | undefined,
@@ -124,13 +140,32 @@ export const TOOL_MESSAGES = {
     active: () => t`Inspecting the visualization`,
     done: () => t`Inspected the visualization`,
   },
+  ask_user: {
+    active: () => t`Asking for clarification`,
+    done: () => t`Asked for clarification`,
+  },
   analyze_data: {
     active: () => t`Analyzing the data`,
     done: () => t`Analyzed the data`,
   },
+  // writes replace the done label with a tool_title naming what changed, so it only shows for reads
+  call_api: {
+    active: () => t`Working on it`,
+    done: () => t`Looked up details`,
+  },
   construct_notebook_query: {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
+  },
+  conversation_search: {
+    active: () => t`Searching past conversations`,
+    done: () => t`Searched past conversations`,
+  },
+  // API discovery is plumbing the user doesn't need to see
+  describe_api_endpoint: { active: () => undefined, done: () => undefined },
+  describe_app_db: {
+    active: () => t`Reading the app database schema`,
+    done: () => t`Read the app database schema`,
   },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
@@ -140,8 +175,49 @@ export const TOOL_MESSAGES = {
     active: () => t`Getting transform details`,
     done: () => t`Got transform details`,
   },
+  list_api_endpoints: { active: () => undefined, done: () => undefined },
   list_available_fields: { active: () => undefined, done: () => undefined },
+  load_mcp_tools: {
+    active: () => t`Loading external tools`,
+    done: () => t`Loaded external tools`,
+  },
   load_skill: { active: () => undefined, done: () => undefined },
+  query_app_db: {
+    active: () => t`Reading app metadata`,
+    done: () => t`Read app metadata`,
+  },
+  run_warehouse_query: {
+    active: () => t`Querying the warehouse`,
+    done: () => t`Queried the warehouse`,
+  },
+  run_warehouse_sql: {
+    active: () => t`Running SQL`,
+    done: () => t`Ran SQL`,
+  },
+  show_result: {
+    active: () => t`Rendering the result`,
+    done: () => t`Rendered the result`,
+  },
+  write_note: {
+    active: () => t`Saving a note`,
+    done: () => t`Saved a note`,
+  },
+  read_note: {
+    active: () => t`Reading notes`,
+    done: () => t`Read notes`,
+  },
+  delete_note: {
+    active: () => t`Deleting a note`,
+    done: () => t`Deleted a note`,
+  },
+  read_web_page: {
+    active: () => t`Reading web page`,
+    done: () => t`Read web page`,
+  },
+  read_conversation: {
+    active: () => t`Reading a past conversation`,
+    done: () => t`Read a past conversation`,
+  },
   read_resource: {
     active: (count) =>
       count == null
@@ -160,7 +236,18 @@ export const TOOL_MESSAGES = {
             count,
           ),
   },
+  recent_chats: {
+    active: () => t`Looking up recent chats`,
+    done: () => t`Looked up recent chats`,
+  },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
+  // a settled save replaces the done label with a tool_title naming what was saved and where
+  save_result: {
+    active: () => t`Saving the result`,
+    done: () => t`Saved the result`,
+  },
+  // the link card it shows is the step's visible result
+  show_page_link: { active: () => undefined, done: () => undefined },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {
     active: () => t`Checking available data sources`,
@@ -180,6 +267,10 @@ export const TOOL_MESSAGES = {
   },
   todo_read: { active: () => t`Planning`, done: () => t`Planned` },
   todo_write: { active: () => t`Planning`, done: () => t`Planned` },
+  web_search: {
+    active: () => t`Searching the web`,
+    done: () => t`Searched the web`,
+  },
   write_transform_python: {
     active: () => t`Writing Python`,
     done: () => t`Wrote Python`,

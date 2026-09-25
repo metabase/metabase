@@ -71,6 +71,19 @@ describe("chain of thought duration timing", () => {
     });
   });
 
+  it("stamps the tool step's own end time so its runtime can be shown", () => {
+    const convo = produce(createConversation(), (d) => {
+      addChainTool(d, { id: "t1", name: "run_warehouse_query", nowMs: 1000 });
+      endChainTool(d, "t1", 13500);
+    });
+    expect(chainOf(convo)?.steps[0]).toMatchObject({
+      kind: "tool",
+      status: "ended",
+      startedAtMs: 1000,
+      endedAtMs: 13500,
+    });
+  });
+
   it("leaves a settled chain's span alone when its tool ends late", () => {
     const convo = produce(createConversation(), (d) => {
       addChainTool(d, { id: "t1", name: "analyze_data", nowMs: 1000 });

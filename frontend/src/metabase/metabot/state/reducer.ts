@@ -6,7 +6,10 @@ import {
 import { type WritableDraft, castDraft } from "immer";
 import _ from "underscore";
 
-import type { SearchResultItem } from "metabase/api/ai-streaming/schemas";
+import type {
+  SearchResultItem,
+  WebSearchResultItem,
+} from "metabase/api/ai-streaming/schemas";
 import { logout } from "metabase/redux/auth";
 import { LOCATION_CHANGE, type Location, matchPath } from "metabase/router";
 import * as Urls from "metabase/urls";
@@ -40,6 +43,7 @@ import {
   resetReactionStateForConversation,
   setChainToolSearchResults,
   setChainToolTitle,
+  setChainToolWebResults,
   startAgentMessage,
   startChainReasoning,
   startUserMessage,
@@ -49,10 +53,16 @@ import type {
   MetabotMessage,
   MetabotMessagePart,
   MetabotState,
+  MetabotTokenUsage,
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
-import { createMessageId, hasInProgressMessage } from "./utils";
+import {
+  addTokenUsage,
+  createMessageId,
+  hasInProgressMessage,
+  isRenderableMessagePart,
+} from "./utils";
 
 const isLocationChange = (
   action: UnknownAction,
@@ -306,6 +316,25 @@ export const metabot = createSlice({
         setChainToolSearchResults(convo, toolCallId, { totalCount, results });
       },
     ),
+    toolCallWebResults: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          totalCount: number;
+          results: WebSearchResultItem[];
+        }>,
+      ) => {
+        const { toolCallId, totalCount, results } = action.payload;
+        setChainToolWebResults(convo, toolCallId, { totalCount, results });
+      },
+    ),
+    // each snapshot is cumulative for the turn, so it replaces the last one
+    turnTokenUsageUpdated: convoReducer(
+      (convo, action: ConvoPayloadAction<{ usage: MetabotTokenUsage }>) => {
+        convo.turnTokenUsage = action.payload.usage;
+      },
+    ),
     toolCallTitled: convoReducer(
       (
         convo,
@@ -399,9 +428,12 @@ export const metabot = createSlice({
         state.conversations[conversationId] ??
         castDraft(createConversation({ conversationId }));
 
-      convo.messages = castDraft(
-        messages.map((t) => ({ ...t, parts: [...t.parts] })),
-      );
+      // typed outside castDraft: inferring the filter under Draft<T> hits TS2589
+      const renderableMessages: MetabotMessage[] = messages.map((t) => ({
+        ...t,
+        parts: t.parts.filter(isRenderableMessagePart),
+      }));
+      convo.messages = castDraft(renderableMessages);
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
       convo.title = title;
@@ -434,6 +466,11 @@ export const metabot = createSlice({
           convo.isProcessing = true;
           convo.hasMessagedInSession = true;
           convo.stateBeforeTurn = convo.state;
+          convo.completedTokenUsage = addTokenUsage(
+            convo.completedTokenUsage,
+            convo.turnTokenUsage,
+          );
+          convo.turnTokenUsage = undefined;
           startAgentMessage(convo, action.meta.arg.assistant_message_id);
           ensureChain(convo);
         }

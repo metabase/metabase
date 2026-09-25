@@ -42,6 +42,7 @@
    [metabase.llm.init]
    [metabase.logger.init]
    [metabase.login-history.init]
+   [metabase.mcp-client.init]
    [metabase.mcp.init]
    [metabase.metabot.init]
    [metabase.mfa.init]

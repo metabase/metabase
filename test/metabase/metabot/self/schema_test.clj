@@ -133,3 +133,21 @@
         (is (contains? inner-keys :name))
         (is (contains? inner-keys :visible))
         (is (not (contains? inner-keys :secret)))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; tool-function tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel tool-function-parameters-test
+  (testing "the parameter schema is derived from :schema"
+    (is (= {:name        "t"
+            :description "d"
+            :parameters  {:type "object" :properties {:q {:type "string"}} :required [:q]}}
+           (schema/tool-function {:tool-name "t" :doc "d" :schema [:=> [:cat [:map [:q :string]]] :any]}))))
+  (testing "a ready-made :parameters JSON Schema is sent as is"
+    (let [parameters {:type "object" :properties {:q {:type "string" :description "Query"}} :required ["q"]}]
+      (is (= parameters
+             (:parameters (schema/tool-function {:tool-name  "t"
+                                                 :doc        "d"
+                                                 :schema     [:=> [:cat [:map-of :keyword :any]] :any]
+                                                 :parameters parameters})))))))

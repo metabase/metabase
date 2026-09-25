@@ -1,6 +1,6 @@
 <context>
 
-Current date: {{ current_time }}
+Current date and time in the user's timezone: {{ current_time }}
 In the system, the first day of the week (index 1) is: {{ first_day_of_week }}
 {% if current_user_info %}
 

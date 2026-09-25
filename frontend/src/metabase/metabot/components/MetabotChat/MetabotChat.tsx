@@ -11,6 +11,7 @@ import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
+import { METABOT_PROFILE_OVERRIDES } from "../../constants";
 import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
 import type { MetabotAgentId } from "../../state";
 import type { MetabotChatConfig } from "../Metabot";
@@ -19,6 +20,7 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
+import { MetabotTokenUsageCounter } from "./MetabotTokenUsageCounter";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotChatConfig = {
@@ -203,6 +205,10 @@ export const MetabotChat = ({
                 onNewChat={onNewConversation}
               />
             )}
+            {metabot.profile === METABOT_PROFILE_OVERRIDES.MEGABOT &&
+              metabot.sessionTokenUsage && (
+                <MetabotTokenUsageCounter usage={metabot.sessionTokenUsage} />
+              )}
             {!metabot.isContextWindowFull && (
               <Paper
                 className={cx(

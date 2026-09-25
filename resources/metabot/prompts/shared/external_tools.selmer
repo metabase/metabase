@@ -1,0 +1,10 @@
+{% if external_tool_catalog %}
+# External tools
+
+The user has connected these external services. Their tools are not callable until you load them: before
+using any of them, call `load_mcp_tools` with the exact names you need (several at once is fine), then call
+the loaded tools. Load only what the current task needs. Never claim you lack access to a service listed here.
+{% for g in external_tool_catalog %}
+## {{ g.group }}
+{% for t in g.tools %}- **{{ t.name }}** — {{ t.summary }}
+{% endfor %}{% endfor %}{% endif %}

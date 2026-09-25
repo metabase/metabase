@@ -35,17 +35,17 @@
 
       (string? (:current_time_with_timezone context))
       (let [offset-time (OffsetDateTime/parse (:current_time_with_timezone context))
-            formatter DateTimeFormatter/ISO_LOCAL_DATE_TIME]
+            formatter DateTimeFormatter/ISO_OFFSET_DATE_TIME]
         (.format formatter offset-time))
 
       (string? (:current_time context))
       (:current_time context)
 
       :else
-      (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))
+      (.format DateTimeFormatter/ISO_OFFSET_DATE_TIME (OffsetDateTime/now)))
     (catch Exception e
       (log/errorf "Error formatting current time: %s" (ex-message e))
-      (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME (OffsetDateTime/now)))))
+      (.format DateTimeFormatter/ISO_OFFSET_DATE_TIME (OffsetDateTime/now)))))
 
 ;;; SQL Dialect Extraction
 

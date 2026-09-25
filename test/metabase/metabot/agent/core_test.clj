@@ -19,10 +19,13 @@
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.external-mcp :as external-mcp]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -112,6 +115,59 @@
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
+(defn- ask-user-parts
+  "An ask_user call and its successful output, as `loop-step` sees them."
+  [id question & options]
+  (let [user-question {:question question :options (vec options)}]
+    [{:type :tool-input :id id :function "ask_user"}
+     {:type :tool-output :id id :result {:output            question
+                                         :structured-output user-question
+                                         :user-question     user-question}}]))
+
+(deftest terminal-user-questions-test
+  (let [terminal #{"ask_user"}]
+    (testing "returns the question of a successful terminal call"
+      (is (= [{:question "Which database?" :options ["Sample" "Prod"]}]
+             (#'agent/terminal-user-questions terminal (ask-user-parts "a" "Which database?" "Sample" "Prod")))))
+    (testing "returns every question in call order, even when outputs arrive out of order"
+      (let [[in-a out-a] (ask-user-parts "a" "First?")
+            [in-b out-b] (ask-user-parts "b" "Second?")]
+        (is (= ["First?" "Second?"]
+               (map :question (#'agent/terminal-user-questions terminal [in-a in-b out-b out-a]))))))
+    (testing "ignores a tool that is not terminal in this profile"
+      (is (= [] (#'agent/terminal-user-questions #{} (ask-user-parts "a" "Which database?")))))
+    (testing "ignores a failed call (no :structured-output)"
+      (is (= [] (#'agent/terminal-user-questions
+                 terminal
+                 [{:type :tool-input :id "a" :function "ask_user"}
+                  {:type :tool-output :id "a" :result {:output "Failed to ask the user: boom"}}]))))
+    (testing "ignores a successful terminal call that carries no question"
+      (is (= [] (#'agent/terminal-user-questions
+                 #{"edit_sql_query"}
+                 [{:type :tool-input :id "a" :function "edit_sql_query"}
+                  {:type :tool-output :id "a" :result {:output "ok" :structured-output {:query-id "q1"}}}]))))))
+
+(deftest user-question-text-test
+  (testing "the question, then the options as a numbered list"
+    (is (= "Which database?\n\n1. Sample\n2. Prod"
+           (#'agent/user-question-text "" {:question "Which database?" :options ["Sample" "Prod"]}))))
+  (testing "no server-authored words, so a non-English conversation stays in its language"
+    (is (= "Яка база даних?\n\n1. Sample"
+           (#'agent/user-question-text nil {:question "Яка база даних?" :options ["Sample"]}))))
+  (testing "just the question when there are no options"
+    (is (= "What date range?"
+           (#'agent/user-question-text "" {:question "What date range?" :options []}))))
+  (testing "leaves out a question the model already wrote, ignoring case and whitespace"
+    (is (= "1. Sample\n2. Prod"
+           (#'agent/user-question-text "I need to know:  which\ndatabase?"
+                                       {:question "Which database?" :options ["Sample" "Prod"]}))))
+  (testing "keeps the question when the model only wrote a preamble"
+    (is (= "Which database?\n\n1. Sample"
+           (#'agent/user-question-text "I need one more detail."
+                                       {:question "Which database?" :options ["Sample"]}))))
+  (testing "nil when the model already wrote the question and there are no options"
+    (is (nil? (#'agent/user-question-text "Which database?" {:question "Which database?" :options []})))))
+
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))
   ([profile-id capabilities]
@@ -127,6 +183,46 @@
                     :profile-id profile-id
                     :context    {:capabilities capabilities}}))))
      @captured)))
+
+(deftest deferred-external-tools-are-declared-after-loading-test
+  (let [deferred  {"fake__echo" {:tool-name  "fake__echo"
+                                 :doc        "Echoes text."
+                                 :schema     [:=> [:cat [:map-of :keyword :any]] :any]
+                                 :parameters {:type "object" :properties {:text {:type "string"}}}
+                                 :deferred   {:group "Fake" :summary "Echoes text."}
+                                 :fn         (fn [{:keys [text]}] {:output text})}}
+        captured! (fn [messages]
+                    (let [captured (atom [])]
+                      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                                         llm-metabot-provider test-provider]
+                        (mt/with-dynamic-fn-redefs
+                          [tools/with-external-mcp-tools (fn [tools _user-id]
+                                                           (assoc (merge tools deferred)
+                                                                  external-mcp/load-tool-name
+                                                                  (external-mcp/load-tool-entry deferred)))
+                           self/call-llm (fn [_model system _parts tools _tracking-opts _llm-opts]
+                                           (swap! captured conj {:system system :tools (set (keys tools))})
+                                           (mut/mock-llm-response [{:type :text :text "Hello"}]))]
+                          (mt/with-current-user (mt/user->id :crowberto)
+                            (into [] (agent/run-agent-loop {:messages   messages
+                                                            :state      {}
+                                                            :profile-id :internal
+                                                            :context    {:capabilities []}})))))
+                      (first @captured)))
+        load-call {:role :assistant :content "" :tool_calls [{:id        "c1"
+                                                              :name      external-mcp/load-tool-name
+                                                              :arguments "{\"names\":[\"fake__echo\"]}"}]}]
+    (testing "a fresh conversation advertises the deferred tool in the prompt but declares only the load tool"
+      (let [{:keys [system tools]} (captured! [{:role :user :content "hi"}])]
+        (is (contains? tools external-mcp/load-tool-name))
+        (is (not (contains? tools "fake__echo")))
+        (is (str/includes? system "- **fake__echo** — Echoes text."))))
+    (testing "once the conversation has loaded the tool it is declared on later requests"
+      (let [{:keys [tools]} (captured! [{:role :user :content "hi"}
+                                        load-call
+                                        {:role :tool :tool_call_id "c1" :content "## fake__echo"}
+                                        {:role :user :content "now use it"}])]
+        (is (contains? tools "fake__echo"))))))
 
 (deftest client-claimed-sql-capability-is-clamped-to-actual-permissions-test
   (mt/with-no-data-perms-for-all-users!
@@ -254,6 +350,55 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(defn- run-megabot-ask-user-turn!
+  "Run one megabot turn whose first LLM response is `first-response-parts` (ending in an ask_user call)."
+  [first-response-parts]
+  (let [call-count (atom 0)]
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      ;; the tool executor lives inside `call-llm`, so redef the transport to let the tool run
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                          (if (= 1 (swap! call-count inc))
+                                                            (mut/mock-llm-response first-response-parts)
+                                                            (mut/mock-llm-response [{:type :text :id "t9" :text "Unexpected."}])))]
+        (let [parts (mt/as-admin
+                      (into [] (agent/run-agent-loop
+                                {:messages   [{:role :user :content "How many orders are there?"}]
+                                 :state      {}
+                                 :profile-id :megabot})))]
+          {:llm-calls @call-count :parts parts})))))
+
+(defn- text-of
+  "All streamed text, joined as the client sees it (model text arrives as many small deltas)."
+  [parts]
+  (->> parts (filter #(= :text (:type %))) (map :text) str/join))
+
+(deftest ask-user-question-is-shown-as-assistant-text-test
+  (let [ask-user {:type      :tool-input
+                  :id        "t1"
+                  :function  "ask_user"
+                  :arguments {:question "Which database do you mean?"
+                              :options  ["Sample Database" "Production"]}}]
+    (testing "a turn that ends on ask_user streams the question and numbered options as text"
+      (let [{:keys [llm-calls parts]} (run-megabot-ask-user-turn! [ask-user])
+            question-idx (u/index-of #(and (= :text (:type %))
+                                           (str/includes? (:text %) "Which database do you mean?"))
+                                     parts)
+            state-idx    (u/index-of #(= "state" (:data-type %)) parts)]
+        (is (= 1 llm-calls)
+            "ask_user is terminal for megabot, so the model gets no further step")
+        (is (= :terminal-tool (:finish-reason (last parts))))
+        (is (str/includes? (text-of parts) "Which database do you mean?\n\n1. Sample Database\n2. Production"))
+        (is (and question-idx state-idx (< question-idx state-idx))
+            "the question comes before the state part that closes the turn")))
+    (testing "a question the model already wrote is not repeated; the options still appear"
+      (let [{:keys [parts]} (run-megabot-ask-user-turn!
+                             [{:type :text :id "t0" :text "Which database do you mean?"}
+                              ask-user])
+            text (text-of parts)]
+        (is (= 1 (count (re-seq #"Which database do you mean\?" text))))
+        (is (str/includes? text "1. Sample Database\n2. Production"))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin
@@ -1165,3 +1310,66 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest compact-tool-outputs-test
+  (let [big  (apply str (repeat 3000 "x"))
+        pair (fn [id fn-name output]
+               [{:type :tool-input  :id id :function fn-name :arguments {}}
+                {:type :tool-output :id id :result {:output output}}])]
+    (testing "old, large tool outputs are elided to a stub; the last keep-recent are kept full"
+      (let [parts   (vec (concat [{:type :text :text "hello"}]
+                                 (mapcat #(pair (str "c" %) "query_app_db" big) (range 5))))
+            out     (#'agent/compact-tool-outputs parts {:keep-recent 3 :threshold 2000 :batch 1})
+            outputs (->> out (filter #(= :tool-output (:type %))) (mapv #(get-in % [:result :output])))]
+        (is (= 5 (count outputs)))
+        (is (str/includes? (nth outputs 0) "elided to save context"))
+        (is (str/includes? (nth outputs 0) "query_app_db")
+            "the stub names the tool (looked up from the paired :tool-input part)")
+        (is (str/includes? (nth outputs 1) "elided to save context"))
+        (is (= big (nth outputs 2)) "the last 3 outputs are kept verbatim")
+        (is (= big (nth outputs 3)))
+        (is (= big (nth outputs 4)))
+        (is (= {:type :text :text "hello"} (first out)) "non-tool-output parts are untouched")))
+    (testing "outputs under the threshold are never elided, even when old"
+      (let [parts   (vec (mapcat #(pair (str "c" %) "query_app_db" "tiny") (range 5)))
+            out     (#'agent/compact-tool-outputs parts {:keep-recent 1 :threshold 2000})
+            outputs (->> out (filter #(= :tool-output (:type %))) (mapv #(get-in % [:result :output])))]
+        (is (every? #(= "tiny" %) outputs))))
+    (testing "old, large outputs are elided a whole batch at a time, oldest first"
+      (let [elided (fn [n-outputs]
+                     (->> (#'agent/compact-tool-outputs
+                           (vec (mapcat #(pair (str "c" %) "query_app_db" big) (range n-outputs)))
+                           {:keep-recent 1 :threshold 2000 :batch 2})
+                          (filter #(= :tool-output (:type %)))
+                          (mapv #(str/includes? (get-in % [:result :output]) "elided to save context"))))]
+        (is (= [false false] (elided 2)) "one old output is less than a batch")
+        (is (= [true true false] (elided 3)))
+        (is (= [true true false false] (elided 4)) "the prefix doesn't change until the next batch fills")
+        (is (= [true true true true false] (elided 5)))))))
+
+(deftest compact-tool-outputs-lead-test
+  (let [big  (apply str (repeat 3000 "x"))
+        stub (fn [output]
+               (->> (#'agent/compact-tool-outputs
+                     (vec (mapcat (fn [id]
+                                    [{:type :tool-input  :id id :function "call_api" :arguments {}}
+                                     {:type :tool-output :id id :result {:output output}}])
+                                  ["c0" "c1"]))
+                     {:keep-recent 1 :threshold 2000 :batch 1})
+                    (filter #(= :tool-output (:type %)))
+                    first
+                    :result
+                    :output))]
+    (testing "an elided output keeps its lead, the text before its first blank line"
+      (let [lead "HTTP 200\nCreated dashboard 42 \"Sales\". Link it as [Sales](metabase://dashboard/42)."
+            out  (stub (str lead "\n\n" big))]
+        (is (str/starts-with? out (str lead "\n[The rest of this call_api result was elided to save context")))
+        (is (not (str/includes? out big)))))
+    (testing "a lead too long to be a summary is dropped with the rest"
+      (is (str/starts-with? (stub (str (apply str (repeat 600 "y")) "\n\n" big))
+                            "[This call_api result was elided to save context")))
+    (testing "the stub never tells the model to repeat a call, which would repeat a change"
+      (doseq [output [big (str "HTTP 200\n\n" big)]]
+        (let [out (stub output)]
+          (is (not (re-find #"(?i)re-run" out)))
+          (is (str/includes? out "never repeat a call that created or changed something")))))))

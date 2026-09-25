@@ -10,14 +10,19 @@
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.conversation-recall-index :as recall-index]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.jdbc.options :as t2.jdbc.options]))
+
+(set! *warn-on-reflection* true)
 
 (declare collection metabot-metrics-and-models-query root-collections-of-types)
 
@@ -47,6 +52,28 @@
   "Whether a Metabot with `metabot-id` exists."
   [metabot-id :- ms/PositiveInt]
   (t2/exists? :model/Metabot :id metabot-id))
+
+(mu/defn run-read-only-app-db-sql
+  "Run a raw SQL string verbatim against the application database inside a **rollback-only**
+  transaction and return the result rows. Used only by the experimental megabot `query_app_db` tool.
+
+  The tool restricts `sql` to read statements (SELECT / WITH / EXPLAIN / SHOW) before calling this;
+  the rollback-only transaction is the real guarantee: even a write that slips past that keyword
+  check (a data-modifying CTE, `EXPLAIN ANALYZE <dml>`, a volatile function) is undone rather than
+  committed. A plain read has nothing to roll back and returns its rows normally.
+
+  At most `max-rows` rows are fetched — the cap is applied by the JDBC driver, so a huge table is never
+  realized in memory — and the statement is canceled after `timeout-seconds` (skipped on servers where
+  `.setQueryTimeout` would send unparseable SQL; see [[u.connection/server-rejects-query-timeout?]])."
+  [sql             :- :string
+   max-rows        :- ms/PositiveInt
+   timeout-seconds :- ms/PositiveInt]
+  (t2/with-transaction [conn nil {:rollback-only true}]
+    (binding [t2.jdbc.options/*options*
+              (cond-> (assoc t2.jdbc.options/*options* :max-rows max-rows)
+                (not (u.connection/server-rejects-query-timeout? conn))
+                (assoc :timeout timeout-seconds))]
+      (t2/query conn [sql]))))
 
 (mu/defn update-metabot!
   "Apply `changes` to the Metabot with `metabot-id`."
@@ -275,6 +302,38 @@
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
+(defn recall-conversations
+  "Owned conversations with completed recallable turns, newest first, optionally bounded by activity time."
+  [user-id excluded-id {:keys [before after n]}]
+  (t2/query {:select [:c.id :c.title [[:max :m.created_at] :updated_at]]
+             :from [[:metabot_conversation :c]]
+             :join [[:metabot_message :m] [:= :m.conversation_id :c.id]]
+             :where [:and [:= :c.user_id user-id]
+                     (when excluded-id [:not= :c.id excluded-id])
+                     [:in :m.profile_id (vec recall-index/profiles)]
+                     [:= :m.deleted_at nil] [:= :m.role "assistant"]
+                     [:= :m.finished true] [:= :m.error nil]]
+             :group-by [:c.id :c.title]
+             :having [:and
+                      (when before [:< [:max :m.created_at] before])
+                      (when after [:> [:max :m.created_at] after])]
+             :order-by [[[:max :m.created_at] :desc] [:c.id :asc]]
+             :limit (or n 3)}))
+
+(defn recall-backfill-page
+  "Conversations in ID order for a resumable index sweep, optionally restricted to one owner."
+  [{:keys [after-id user-id limit] :or {limit 25}}]
+  (t2/select [:model/MetabotConversation :id :user_id]
+             {:where [:and [:not= :user_id nil]
+                      (when after-id [:> :id after-id])
+                      (when user-id [:= :user_id user-id])]
+              :order-by [[:id :asc]] :limit limit}))
+
+(defn message-conversation-id
+  "Conversation ID of a persisted message."
+  [message-id]
+  (t2/select-one-fn :conversation_id :model/MetabotMessage :id message-id))
+
 (mu/defn participant?
   "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
@@ -496,17 +555,21 @@
 
 (defn- current-user-visible-table-clause
   "Honey SQL `{:where …}` (plus `:with` when the filter needs a CTE) restricting Tables to those visible to the
-  current user for querying."
-  []
-  (let [{table-where-clause :clause table-cte :with}
-        (mi/visible-filter-clause :model/Table
-                                  :id
-                                  {:user-id       api/*current-user-id*
-                                   :is-superuser? api/*is-superuser?*}
-                                  {:perms/view-data      :unrestricted
-                                   :perms/create-queries :query-builder-and-native})]
-    (cond-> {:where table-where-clause}
-      table-cte (assoc :with table-cte))))
+  current user for querying. `create-queries` is the least query permission a Table needs: the default,
+  `:query-builder-and-native`, keeps only Tables the user can write SQL against; `:query-builder` keeps every Table
+  they can query at all."
+  ([]
+   (current-user-visible-table-clause :query-builder-and-native))
+  ([create-queries]
+   (let [{table-where-clause :clause table-cte :with}
+         (mi/visible-filter-clause :model/Table
+                                   :id
+                                   {:user-id       api/*current-user-id*
+                                    :is-superuser? api/*is-superuser?*}
+                                   {:perms/view-data      :unrestricted
+                                    :perms/create-queries create-queries})]
+     (cond-> {:where table-where-clause}
+       table-cte (assoc :with table-cte)))))
 
 (mu/defn visible-table-summaries-for-current-user
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -545,17 +608,22 @@
 (mu/defn most-viewed-tables-visible-to-current-user
   "The ID, Database ID, name, schema, and description of up to `limit` active, unhidden Tables in the Database with
   `database-id` (which callers may pass as an invalid/nonexistent id to get no results back) that are visible to the
-  current user for querying, most viewed first."
-  [database-id :- :int
-   limit :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :name :schema :description]
-             :db_id database-id
-             :active true
-             :visibility_type nil
-             (assoc (current-user-visible-table-clause)
-                    :from     [(warehouse-schema-overlay/table-query)]
-                    :order-by [[:view_count :desc]]
-                    :limit    limit)))
+  current user for querying, most viewed first. By default only Tables the user can write SQL against count; pass
+  `create-queries` `:query-builder` to count every Table they can query (see [[current-user-visible-table-clause]])."
+  ([database-id :- :int
+    limit       :- ms/PositiveInt]
+   (most-viewed-tables-visible-to-current-user database-id limit :query-builder-and-native))
+  ([database-id    :- :int
+    limit          :- ms/PositiveInt
+    create-queries :- [:enum :query-builder :query-builder-and-native]]
+   (t2/select [:model/Table :id :db_id :name :schema :description]
+              :db_id database-id
+              :active true
+              :visibility_type nil
+              (assoc (current-user-visible-table-clause create-queries)
+                     :from     [(warehouse-schema-overlay/table-query)]
+                     :order-by [[:view_count :desc]]
+                     :limit    limit))))
 
 (mu/defn table-names
   "Up to `limit` IDs, names, and schemas of the active, unhidden Tables in the Database with `database-id`."
@@ -829,8 +897,9 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
-                                                   :metabot_chart_id        chart-id}))
+  (u/prog1 (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
+                                                            :metabot_chart_id        chart-id})
+    (recall-index/request-sync! conversation-id)))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -942,6 +1011,12 @@
    archived?    :- :boolean]
   (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
 
+(mu/defn entity-summary
+  "The name of the Card, Dashboard, Collection, or Document with `id` (plus `:type` for a Card), or nil."
+  [model :- [:enum :model/Card :model/Dashboard :model/Collection :model/Document]
+   id    :- ms/PositiveInt]
+  (t2/select-one (cond-> [model :name] (= model :model/Card) (conj :type)) :id id))
+
 (mu/defn transforms
   "The Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
@@ -1038,3 +1113,166 @@
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+
+;;; -------------------------------------------------- Megabot notes --------------------------------------------------
+
+(mu/defn note-catalog
+  "The key, summary, and last-updated time of every megabot note, most-recently-updated first.
+  Feeds the note catalog injected into the megabot system prompt."
+  []
+  (t2/select [:model/MetabotNote :note_key :summary :updated_at]
+             {:order-by [[:updated_at :desc] [:note_key :asc]]}))
+
+(mu/defn note-bodies-by-keys
+  "The key and full content of the megabot notes whose `note_key` is in `note-keys`. Feeds `read_note`."
+  [note-keys :- [:sequential :string]]
+  (when (seq note-keys)
+    (t2/select [:model/MetabotNote :note_key :content] :note_key [:in note-keys])))
+
+(mu/defn upsert-note!
+  "Insert or update the megabot note with `note-key`, setting its `summary`, `content`, and
+  `creator-id`. Returns the note's primary key."
+  [note-key :- :string
+   summary :- :string
+   content :- :string
+   creator-id :- [:maybe ::lib.schema.id/user]]
+  (mdb/update-or-insert! :model/MetabotNote {:note_key note-key}
+                         (fn [_existing]
+                           {:summary summary :content content :creator_id creator-id})))
+
+(mu/defn delete-note!
+  "Delete the megabot note with `note-key`, returning the number of rows deleted."
+  [note-key :- :string]
+  (t2/delete! :model/MetabotNote :note_key note-key))
+
+;;; ------------------------------------------------ Megabot app-db map ------------------------------------------------
+
+(def ^:private app-db-schema-excluded-table-prefixes
+  "Framework tables in the app db that carry no Metabase content: Liquibase bookkeeping and Quartz scheduler state."
+  ["databasechangelog" "qrtz_"])
+
+(defn- app-db-schema* []
+  (t2/with-connection [^java.sql.Connection conn]
+    (let [md       (.getMetaData conn)
+          catalog  (.getCatalog conn)
+          schema   (.getSchema conn)
+          lc       u/lower-case-en
+          ;; types are passed as nil and filtered here: H2 2.x reports tables as "BASE TABLE", not "TABLE"
+          tables   (with-open [rs (.getTables md catalog schema "%" nil)]
+                     (into []
+                           (comp (filter (comp #{"TABLE" "BASE TABLE" "VIEW"} :table_type))
+                                 (map (fn [row] {:name (lc (:table_name row))
+                                                 :raw  (:table_name row)
+                                                 :view? (= "VIEW" (:table_type row))}))
+                                 (remove (fn [{table-name :name}]
+                                           (some #(str/starts-with? table-name %)
+                                                 app-db-schema-excluded-table-prefixes))))
+                           (resultset-seq rs)))
+          columns  (with-open [rs (.getColumns md catalog schema "%" "%")]
+                     (->> (resultset-seq rs)
+                          (mapv (fn [row]
+                                  {:table     (lc (:table_name row))
+                                   :name      (lc (:column_name row))
+                                   :type      (lc (str (:type_name row)))
+                                   :nullable? (= "YES" (:is_nullable row))}))
+                          (group-by :table)))
+          fks-for  (fn [raw-table-name]
+                     (with-open [rs (.getImportedKeys md catalog schema raw-table-name)]
+                       (into {}
+                             (map (fn [row]
+                                    [(lc (:fkcolumn_name row))
+                                     (str (lc (:pktable_name row)) "." (lc (:pkcolumn_name row)))]))
+                             (resultset-seq rs))))]
+      (into (sorted-map)
+            (map (fn [{table-name :name :keys [raw view?]}]
+                   [table-name {:view?   view?
+                                :columns (mapv #(dissoc % :table) (get columns table-name))
+                                :fks     (if view? {} (fks-for raw))}]))
+            tables))))
+
+(defonce ^:private app-db-schema-cache
+  (atom {}))
+
+(defn app-db-schema
+  "The live application-database schema read from JDBC metadata, as a sorted map of lower-cased table name ->
+  `{:view? bool, :columns [{:name :type :nullable?}], :fks {column \"other_table.column\"}}`. Liquibase and Quartz
+  tables are left out. Cached per app db, since the schema only changes when migrations run at startup; an empty
+  result (an app db not migrated yet) is never cached."
+  []
+  (let [app-db-id (mdb/unique-identifier)]
+    (or (get @app-db-schema-cache app-db-id)
+        (let [schema (app-db-schema*)]
+          (when (seq schema)
+            (swap! app-db-schema-cache assoc app-db-id schema))
+          schema))))
+
+(mu/defn queryable-warehouse-databases
+  "The ID, name, engine, and initial sync status of the warehouse Databases a person can point a query at, by id: not
+  the audit database, not a stub placeholder created by deserialization, and not a router destination (queries go to
+  the router)."
+  []
+  (t2/select [:model/Database :id :name :engine :initial_sync_status]
+             {:where    [:and
+                         [:!= :id audit-app/audit-db-id]
+                         [:or [:= :is_stub false] [:= :is_stub nil]]
+                         [:= :router_database_id nil]]
+              :order-by [[:id :asc]]}))
+
+(mu/defn visible-table-counts-for-current-user
+  "Map of Database ID to the number of its active, unhidden Tables the current user can query (in the query builder
+  at least; SQL permission isn't needed), for the Databases with `database-ids`. A Database the user can query no Table
+  of is absent."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (if (empty? database-ids)
+    {}
+    (let [{visible :where cte :with} (current-user-visible-table-clause :query-builder)]
+      (into {}
+            (map (juxt :db_id :table_count))
+            (t2/query (cond-> {:select   [:db_id [:%count.* :table_count]]
+                               :from     [(warehouse-schema-overlay/table-query)]
+                               :where    [:and
+                                          [:in :db_id database-ids]
+                                          [:= :active true]
+                                          [:= :visibility_type nil]
+                                          visible]
+                               :group-by [:db_id]}
+                        cte (assoc :with cte)))))))
+
+(mu/defn databases-without-active-tables :- [:set ::lib.schema.id/database]
+  "The IDs, among `database-ids`, of the Databases with no active Table at all, whoever asks: sync hasn't found any
+  yet, or has found none."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (if (empty? database-ids)
+    #{}
+    (reduce disj
+            (set database-ids)
+            (t2/select-fn-set :db_id :model/Table :db_id [:in database-ids] :active true
+                              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))))
+
+(mu/defn visible-field-summaries
+  "The ID, Table ID, name, semantic type, and FK target of the active, non-retired Fields of the Tables with
+  `table-ids`, as users see them (user-set values applied), in database column order. Callers pass Tables the
+  current user can already query."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (when (seq table-ids)
+    (t2/select [:model/Field :id :table_id :name :semantic_type :fk_target_field_id]
+               {:from     [(warehouse-schema-overlay/field-query)]
+                :where    [:and
+                           [:in :table_id table-ids]
+                           [:= :active true]
+                           [:= :parent_id nil]
+                           [:or [:= :visibility_type nil] [:!= :visibility_type "retired"]]]
+                :order-by [[:table_id :asc] [:database_position :asc] [:id :asc]]})))
+
+(mu/defn visible-metrics-and-models-for-current-user
+  "The ID, type, name, description, Database ID, and source (Table ID or source Card ID) of up to `limit`
+  non-archived metric and model Cards the current user can see (analytics content excluded), most viewed first."
+  [limit :- ms/PositiveInt]
+  (t2/select [:model/Card :id :type :name :description :database_id :table_id :source_card_id :card_schema]
+             {:where    [:and
+                         [:in :type ["metric" "model"]]
+                         [:= :archived false]
+                         [:!= :database_id audit-app/audit-db-id]
+                         (collection.model/visible-collection-filter-clause :collection_id)]
+              :order-by [[[:coalesce :view_count 0] :desc] [:id :asc]]
+              :limit    limit}))

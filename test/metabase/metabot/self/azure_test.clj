@@ -202,6 +202,7 @@
 
 (deftest ^:parallel reasoning-model?-test
   (are [model expected] (= expected (azure/reasoning-model? model))
+    "anthropic/claude-opus-5-5"   true
     "anthropic/claude-opus-5"     true
     "anthropic/claude-opus-4-8"   true
     ;; dotted display-name spelling parses the same — deployment names are admin free text

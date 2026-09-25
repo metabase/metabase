@@ -1372,6 +1372,16 @@
                     :model/TransformTag
                     :model/User}}
 
+  mcp-client
+  {:team "Metabot"
+   :api  #{metabase.mcp-client.api metabase.mcp-client.core metabase.mcp-client.init}
+   :uses #{api
+           models
+           settings
+           system
+           util
+           util.config}}
+
   mcp.oauth-server
   {:team "UX West"
    :ns-prefix "metabase.oauth-server"
@@ -1441,6 +1451,7 @@
               analytics
               analytics.interface
               api
+              api-routes
               api-scope
               app-db
               audit-app
@@ -1456,6 +1467,7 @@
               lib.be
               lib.metadata
               lib.schema
+              mcp-client
               metabot.llm
               metabot.slackbot
               metrics
@@ -3879,7 +3891,8 @@
                      settings
                      task
                      util
-                     enterprise/cloud.add-ons}
+                     enterprise/cloud.add-ons
+                     enterprise/search.semantic}
    :model-imports #{:model/AiUsageLog :model/PermissionsGroup :model/PermissionsGroupMembership}}
 
   enterprise/metabot.agent-api

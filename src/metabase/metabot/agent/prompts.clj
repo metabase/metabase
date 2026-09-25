@@ -27,6 +27,13 @@
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
 
+;; Same reasoning as above: a prompt section about a tool is rendered only when that tool survived
+;; capability and scope filtering for this request. A profile that lists none of them renders none of
+;; the sections, so `internal.selmer` reads exactly as it did before these tools existed.
+(def ^:private warehouse-execution-tool-names
+  "Tools that run a query and return its rows to the model."
+  #{"run_warehouse_query" "run_warehouse_sql"})
+
 ;;; Template Loading
 
 (defn- load-resource
@@ -124,6 +131,23 @@
 
 ;;; High-Level API
 
+(defn deferred-tool-catalog
+  "The catalog the system prompt advertises for the deferred entries of `tools` (see the `:deferred` key of
+  [[metabase.metabot.self.core/ToolEntry]]): `[{:group ... :tools [{:name ... :summary ...} ...]} ...]`, groups
+  and tools in name order. Empty when nothing is deferred."
+  [tools]
+  (->> (vals tools)
+       (filter :deferred)
+       (group-by (comp :group :deferred))
+       (sort-by key)
+       (mapv (fn [[group entries]]
+               {:group group
+                :tools (->> entries
+                            (map (fn [{:keys [tool-name deferred]}]
+                                   {:name tool-name :summary (:summary deferred)}))
+                            (sort-by :name)
+                            vec)}))))
+
 (defn build-system-message-content
   "Build complete system message content from profile and context.
 
@@ -162,7 +186,14 @@
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
                                       (boolean (some sql-generation-tool-names (keys tools))))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
-            template-context     {:metabot_name              (metabot.settings/metabot-name)
+            tool-names           (set (keys tools))
+            template-context     {:has_warehouse_execution  (boolean (some tool-names warehouse-execution-tool-names))
+                                  :has_warehouse_sql        (contains? tool-names "run_warehouse_sql")
+                                  :has_app_db_access        (contains? tool-names "query_app_db")
+                                  :has_api_calls            (contains? tool-names "call_api")
+                                  :has_notes                (contains? tool-names "write_note")
+                                  :has_show_page_link       (contains? tool-names "show_page_link")
+                                  :metabot_name             (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
                                   :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
@@ -171,9 +202,11 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
+                                  :external_tool_catalog    (not-empty (deferred-tool-catalog tools))
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_conversation_recall  (contains? tools "conversation_search")
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty
                                                              (case template-name

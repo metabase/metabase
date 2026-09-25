@@ -194,3 +194,31 @@
       (is (not (str/includes? content "{%raw%}")))
       (is (not (str/includes? content "{% safe %}")))
       (is (not (str/includes? content "verbatim"))))))
+
+(deftest ^:parallel deferred-tool-catalog-test
+  (let [tools {"notion__search" {:tool-name "notion__search" :schema :any :fn identity
+                                 :deferred  {:group "Notion" :summary "Search Notion"}}
+               "linear__issues" {:tool-name "linear__issues" :schema :any :fn identity
+                                 :deferred  {:group "Linear" :summary "List issues"}}
+               "linear__create" {:tool-name "linear__create" :schema :any :fn identity
+                                 :deferred  {:group "Linear" :summary "Create an issue"}}
+               "search"         {:tool-name "search" :schema :any :fn identity}}]
+    (testing "deferred tools are grouped and ordered by name; other tools are left out"
+      (is (= [{:group "Linear" :tools [{:name "linear__create" :summary "Create an issue"}
+                                       {:name "linear__issues" :summary "List issues"}]}
+              {:group "Notion" :tools [{:name "notion__search" :summary "Search Notion"}]}]
+             (prompts/deferred-tool-catalog tools))))
+    (is (= [] (prompts/deferred-tool-catalog {"search" (get tools "search")})))))
+
+(deftest ^:parallel build-system-message-content-external-tools-test
+  (let [profile {:prompt-template "internal.selmer"}
+        tools   {"notion__search" {:tool-name "notion__search" :schema :any :fn identity
+                                   :deferred  {:group "Notion" :summary "Search Notion"}}}]
+    (testing "the internal prompt lists deferred external tools and how to load them"
+      (let [content (prompts/build-system-message-content profile {} tools [])]
+        (is (str/includes? content "# External tools"))
+        (is (str/includes? content "## Notion"))
+        (is (str/includes? content "- **notion__search** — Search Notion"))
+        (is (str/includes? content "`load_mcp_tools`"))))
+    (testing "the section is absent without deferred tools"
+      (is (not (str/includes? (prompts/build-system-message-content profile {} {} []) "# External tools"))))))

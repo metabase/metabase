@@ -23,6 +23,7 @@ import {
 import {
   AdminSettingInput,
   type AdminSettingInputProps,
+  BasicAdminSettingInput,
 } from "./AdminSettingInput";
 
 const setup = (props: AdminSettingInputProps<SettingKey>) => {
@@ -58,6 +59,25 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
 };
 
 describe("AdminSettingInput", () => {
+  it.each([null, undefined])(
+    "clears a password input when the stored value becomes %s",
+    (value) => {
+      const props = {
+        name: "metabot-web-search-api-key",
+        inputType: "password",
+        onChange: jest.fn(),
+      } as const;
+      const { rerender } = renderWithProviders(
+        <BasicAdminSettingInput {...props} value="**********ey" />,
+      );
+      const input = screen.getByDisplayValue("**********ey");
+
+      rerender(<BasicAdminSettingInput {...props} value={value} />);
+
+      expect(input).toHaveValue("");
+    },
+  );
+
   it("should not allow invalid settings", async () => {
     setup({
       title: "Fake Setting",

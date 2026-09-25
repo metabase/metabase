@@ -11,7 +11,6 @@
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.premium-features.core :as premium-features]
-   [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -36,6 +35,10 @@
 (def ^:private MalliSchema
   "A malli schema, in schema-form or as a compiled instance."
   [:and :any [:fn {:error/message "a malli schema"} mc/schema]])
+
+(def ^:private JsonSchema
+  "A JSON Schema object, keyed however its author keyed it, sent to the provider verbatim."
+  [:and :any [:fn {:error/message "a JSON Schema object"} map?]])
 
 (def ^:private AnthropicProviderMetadata
   "Anthropic-specific data carried on a reasoning part: a redacted-thinking block's opaque
@@ -76,13 +79,20 @@
    [:tool-name :string]
    [:doc {:optional true} [:maybe :string]]
    [:schema MalliSchema]
+   ;; A ready-made JSON Schema for the parameters, sent to the provider instead of translating `:schema`.
+   [:parameters {:optional true} [:maybe JsonSchema]]
    [:fn [:fn fn?]]
    [:decode {:optional true} [:maybe [:fn fn?]]]
    [:prompt {:optional true} [:maybe :string]]
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:scope {:optional true} [:maybe :string]]])
+   [:scope {:optional true} [:maybe :string]]
+   ;; A deferred tool is advertised to the model as a one-line catalog entry (`:group`, `:summary`) and only
+   ;; declared in full once the model has loaded it, so large tool sets do not cost their schemas on every request.
+   [:deferred {:optional true} [:maybe [:map {:closed true}
+                                        [:group :string]
+                                        [:summary :string]]]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -106,6 +116,10 @@
     [:structured-output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:structured_output {:optional true} [:maybe ::schema.v2/tool-io]]
     [:terminal-error?   {:optional true} :boolean]
+    ;; a question for the user; the agent loop shows it as assistant text when this call ends the turn
+    [:user-question     {:optional true} [:maybe [:map {:closed true}
+                                                  [:question :string]
+                                                  [:options {:optional true} [:maybe [:sequential :string]]]]]]
     [:data-parts        {:optional true} [:sequential DataPart]]
     [:resources         {:optional true} [:sequential ::schema.v2/tool-io]]
     [:instructions      {:optional true} [:maybe :string]]
@@ -114,11 +128,25 @@
                                                   [:message {:optional true} [:maybe :string]]
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
+(mr/def ::tool-call-argument
+  "A JSON-shaped tool argument. Objects at every depth may be keyed by strings (off the wire) or keywords (parsed
+  with keywordized keys), since the LLM's argument JSON is decoded that way before it is replayed to the provider."
+  [:or
+   :string
+   :keyword
+   number?
+   :boolean
+   :nil
+   [:sequential [:ref ::tool-call-argument]]
+   [:map-of {::mr/deliberately-open true, :description "nested tool call argument object"}
+    [:or :string :keyword] [:ref ::tool-call-argument]]])
+
 (def ^:private ToolCallArguments
   "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
-  string keys off the wire, keyword keys when built in Clojure."
+  string keys when replayed from stored history, keyword keys at every depth when parsed off the stream
+  (`parse-tool-arguments`) or built in Clojure."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
-   [:or :string :keyword] ::request.schema/json-value])
+   [:or :string :keyword] ::tool-call-argument])
 
 (def ^:private AISDKPart
   "One element of the `:input` sequence passed to a provider adapter: an AISDK part keyed by
@@ -538,6 +566,33 @@
        (format-sse-event {:type "finish" :finishReason "error"}) "\n"
        done-sse-line "\n"))
 
+(defn- ->aisdk-usage-by-model
+  "Translate accumulated `{\"provider/model\" {:promptTokens N :completionTokens N …}}` usage into the wire shape,
+  keyed the same way: `{:inputTokens N :outputTokens N :totalTokens N :cacheCreationTokens N :cacheReadTokens N
+  :cachedInputTokens N}`. The cache counts are a subset of :inputTokens (`:cachedInputTokens` mirrors cache-read),
+  0 without provider caching."
+  [usage-by-model]
+  (update-vals usage-by-model
+               (fn [{:keys [promptTokens completionTokens
+                            cacheCreationTokens cacheReadTokens]
+                     :or   {promptTokens 0 completionTokens 0
+                            cacheCreationTokens 0 cacheReadTokens 0}}]
+                 {:inputTokens         promptTokens
+                  :outputTokens        completionTokens
+                  :totalTokens         (+ promptTokens completionTokens)
+                  :cacheCreationTokens cacheCreationTokens
+                  :cacheReadTokens     cacheReadTokens
+                  :cachedInputTokens   cacheReadTokens})))
+
+(defn- total-usage
+  "Sum the per-model wire usage from [[->aisdk-usage-by-model]] into one total."
+  [aisdk-usage-by-model]
+  (reduce (partial merge-with +)
+          {:inputTokens 0 :outputTokens 0 :totalTokens 0
+           :cacheCreationTokens 0 :cacheReadTokens 0
+           :cachedInputTokens 0}
+          (vals aisdk-usage-by-model)))
+
 (defn- ->message-metadata
   "Translate accumulated per-model usage into the `finish` event's message
   metadata.
@@ -550,38 +605,30 @@
                     :cacheCreationTokens N :cacheReadTokens N :cachedInputTokens N}
             :usageByModel {\"provider/model\" {…}}
             :contextWindowTokens N
-            :contextTokens N}`
+            :contextTokens N
+            :provider \"anthropic\"}`
 
   `:contextTokens` is the final call's prompt + completion — how much of the window the
   conversation now occupies, measured against the same model `:contextWindowTokens`
-  describes. Both context keys are omitted when unknown.
+  describes. Both context keys, and `:provider`, are omitted when unknown.
 
-  Returns nil if no usage was observed. The cache counts are a subset of
-  :inputTokens (`:cachedInputTokens` mirrors cache-read), 0 without provider caching."
-  [usage-by-model last-call context-window-tokens]
+  Returns nil if no usage was observed."
+  [usage-by-model last-call context-window-tokens provider]
   (when (seq usage-by-model)
-    (let [by-model (update-vals
-                    usage-by-model
-                    (fn [{:keys [promptTokens completionTokens
-                                 cacheCreationTokens cacheReadTokens]
-                          :or   {promptTokens 0 completionTokens 0
-                                 cacheCreationTokens 0 cacheReadTokens 0}}]
-                      {:inputTokens         promptTokens
-                       :outputTokens        completionTokens
-                       :totalTokens         (+ promptTokens completionTokens)
-                       :cacheCreationTokens cacheCreationTokens
-                       :cacheReadTokens     cacheReadTokens
-                       :cachedInputTokens   cacheReadTokens}))
-          totals   (reduce (partial merge-with +)
-                           {:inputTokens 0 :outputTokens 0 :totalTokens 0
-                            :cacheCreationTokens 0 :cacheReadTokens 0
-                            :cachedInputTokens 0}
-                           (vals by-model))
+    (let [by-model (->aisdk-usage-by-model usage-by-model)
           {:keys [promptTokens completionTokens]} last-call]
-      (cond-> {:usage        totals
+      (cond-> {:usage        (total-usage by-model)
                :usageByModel by-model}
         context-window-tokens (assoc :contextWindowTokens context-window-tokens)
-        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))))))
+        promptTokens          (assoc :contextTokens (+ promptTokens (or completionTokens 0)))
+        provider              (assoc :provider provider)))))
+
+(defn- ->running-usage-metadata
+  "The `message-metadata` event's payload after each LLM call of a turn: the turn's usage so far, in the `finish`
+  metadata's `:usage` shape, plus `:provider` when known."
+  [usage-by-model provider]
+  (cond-> {:usage (total-usage (->aisdk-usage-by-model usage-by-model))}
+    provider (assoc :provider provider)))
 
 (defn- completion-finish-reason
   "The wire `finishReason` for a completed turn. A provider `tool-calls` stop collapses to
@@ -625,6 +672,10 @@
                              sees the same id we persist as `metabot_message.external_id`.
     :message-metadata      - When set, emitted as the `start` event's `messageMetadata`.
     :context-window-tokens - When set, echoed as `finish.messageMetadata.contextWindowTokens`.
+    :provider              - The provider type serving the turn (e.g. \"anthropic\"), echoed as
+                             `messageMetadata.provider` wherever usage is reported.
+    :stream-usage?         - When true, each `:usage` part also emits a `message-metadata` event
+                             carrying the turn's usage so far, so a client can show it mid-turn.
 
   Input types and their SSE events:
     :start (1st)      -> start + start-step
@@ -636,11 +687,11 @@
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
     :error            -> [start + start-step]? error
-    :usage            -> (accumulated; emitted as finish.message_metadata)
+    :usage            -> [message-metadata]? (accumulated; emitted as finish.message_metadata)
     :finish           -> (recorded — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
-  ([{:keys [message-id message-metadata context-window-tokens]}]
+  ([{:keys [message-id message-metadata context-window-tokens provider stream-usage?]}]
    (fn [rf]
      (let [error?            (volatile! false)
            finish-error-code (volatile! nil)
@@ -684,7 +735,7 @@
        (fn
          ([] (rf))
          ([result]
-          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens)
+          (let [metadata (merge (->message-metadata @usage-by-model @last-call context-window-tokens provider)
                                 (when @finish-error-code {:errorCode @finish-error-code}))
                 finish   (cond-> {:type         "finish"
                                   :finishReason (completion-finish-reason @finish-reason @error? @loop-finish-reason)}
@@ -792,7 +843,10 @@
                 (vswap! usage-by-model assoc model usage)
                 (when-let [fr (:finish-reason part)]
                   (vreset! finish-reason fr))
-                result)
+                (cond-> result
+                  stream-usage? (rf (format-sse-event
+                                     {:type            "message-metadata"
+                                      :messageMetadata (->running-usage-metadata @usage-by-model provider)}))))
 
               ;; Unknown types: emit as data parts
               (rf result (format-sse-event {:type (str "data-" (name (:type part)))

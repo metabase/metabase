@@ -35,6 +35,7 @@ Supported models:
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
 | Claude Opus 4.8   | `claude-opus-4-8`            | 1,000,000               |
 | Claude Opus 5     | `claude-opus-5`              | 1,000,000               |
+| Claude Opus 5.5   | `claude-opus-5-5`            | 1,000,000               |
 | Claude Sonnet 4.5 | `claude-sonnet-4-5-20250929` | 200,000                 |
 | Claude Sonnet 4.6 | `claude-sonnet-4-6`          | 1,000,000               |
 | Claude Sonnet 5   | `claude-sonnet-5`            | 1,000,000               |
@@ -87,6 +88,7 @@ Supported models:
 | Claude Opus 4.7        | `anthropic/claude-opus-4.7`       | 1,000,000               |
 | Claude Opus 4.8        | `anthropic/claude-opus-4.8`       | 1,000,000               |
 | Claude Opus 5          | `anthropic/claude-opus-5`         | 1,000,000               |
+| Claude Opus 5.5        | `anthropic/claude-opus-5.5`       | 1,000,000               |
 | Claude Sonnet 4.5      | `anthropic/claude-sonnet-4.5`     | 1,000,000               |
 | Claude Sonnet 4.6      | `anthropic/claude-sonnet-4.6`     | 1,000,000               |
 | Claude Sonnet 5        | `anthropic/claude-sonnet-5`       | 1,000,000               |
@@ -196,6 +198,7 @@ Supported models:
 | Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
 | Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
 | Claude Opus 5     | `anthropic/claude-opus-5`             |
+| Claude Opus 5.5   | `anthropic/claude-opus-5-5`           |
 | Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
 | Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
 | Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
@@ -243,6 +246,7 @@ Supported models:
 | Claude Opus 4.7      | `anthropic.claude-opus-4-7`  | 1,000,000               |
 | Claude Opus 4.8      | `anthropic.claude-opus-4-8`  | 1,000,000               |
 | Claude Opus 5        | `anthropic.claude-opus-5`    | 1,000,000               |
+| Claude Opus 5.5      | `anthropic.claude-opus-5-5`  | 1,000,000               |
 | Claude Sonnet 5      | `anthropic.claude-sonnet-5`  | 1,000,000               |
 | GPT-5.4              | `openai.gpt-5.4`             | 272,000                 |
 | GPT-5.4 (2026-03-05) | `openai.gpt-5.4-2026-03-05`  | 272,000                 |

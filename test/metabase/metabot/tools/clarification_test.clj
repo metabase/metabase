@@ -36,3 +36,26 @@
           "ask_for_sql_clarification must return :structured-output so the agent loop can stop")
       (is (not (contains? result :final-response?))
           "the tool-level :final-response? flag has been removed in favour of :terminal-tools"))))
+
+(deftest ask-user-tool-test
+  (testing "ask_user returns structured-output (terminal success signal), instructions, and output text"
+    (let [result (ask-clarification/ask-user-tool
+                  {:question "Which database?" :options ["Analytics" "Raw events"]})]
+      (is (= "Which database?" (get-in result [:structured-output :question])))
+      (is (= ["Analytics" "Raw events"] (get-in result [:structured-output :options])))
+      (is (str/includes? (:instructions result) "wait"))
+      (is (str/includes? (:output result) "Which database?"))
+      (is (str/includes? (:output result) "Analytics"))))
+  (testing "options default to an empty vector when omitted"
+    (let [result (ask-clarification/ask-user-tool {:question "What date range?"})]
+      (is (= [] (get-in result [:structured-output :options])))
+      (is (= {:question "What date range?" :options []} (:user-question result)))))
+  (testing "ask_user carries :user-question so the agent loop can show the question to the user"
+    (is (= {:question "Which database?" :options ["Analytics" "Raw events"]}
+           (:user-question (ask-clarification/ask-user-tool
+                            {:question "Which database?" :options ["Analytics" "Raw events"]})))))
+  (testing "ask_for_sql_clarification does not opt in (the :sql profile is unchanged)"
+    (is (not (contains? (ask-clarification/ask-for-sql-clarification-tool {:question "Which table?"})
+                        :user-question))))
+  (testing "ask_user carries no :scope metadata (megabot's unguarded style)"
+    (is (nil? (:scope (meta #'ask-clarification/ask-user-tool))))))

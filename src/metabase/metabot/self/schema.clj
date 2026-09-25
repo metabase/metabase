@@ -42,19 +42,24 @@
                 (filter-map-entries s)
                 s)))))
 
-(defn tool-function
-  "Converts a ToolEntry map (`:tool-name`, `:doc`, `:schema`) into the provider-neutral parts of a tool declaration:
-  `{:name ... :description ... :parameters <JSON Schema>}`. Adapters wrap this in their provider's envelope.
+(defn- schema->parameters
+  [schema]
+  (let [[_:=> [_:cat params] _out] schema]
+    (mjs/transform (filter-schema-by-features params) {:additionalProperties false})))
 
-  Filters feature-gated properties from the parameter schema (see [[filter-schema-by-features]]) and strips the
-  `Inputs: ...` block that `mu/defn` appends to the docstring."
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params                     (filter-schema-by-features params)
-        doc                        (if (str/starts-with? (or doc "") "Inputs: ")
-                                     ;; Strip the text that mu/defn adds.
-                                     (second (str/split doc #"\n\n  " 2))
-                                     doc)]
+(defn tool-function
+  "Converts a ToolEntry map (`:tool-name`, `:doc`, `:schema`, optional `:parameters`) into the provider-neutral parts
+  of a tool declaration: `{:name ... :description ... :parameters <JSON Schema>}`. Adapters wrap this in their
+  provider's envelope.
+
+  When the entry carries `:parameters`, that JSON Schema is sent as is. Otherwise the parameter schema is derived
+  from `:schema`, with feature-gated properties filtered out (see [[filter-schema-by-features]]). The `Inputs: ...`
+  block that `mu/defn` appends to the docstring is stripped."
+  [{:keys [tool-name doc schema parameters]}]
+  (let [doc (if (str/starts-with? (or doc "") "Inputs: ")
+              ;; Strip the text that mu/defn adds.
+              (second (str/split doc #"\n\n  " 2))
+              doc)]
     {:name        tool-name
      :description doc
-     :parameters  (mjs/transform params {:additionalProperties false})}))
+     :parameters  (or parameters (schema->parameters schema))}))

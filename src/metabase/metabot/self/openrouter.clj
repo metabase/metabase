@@ -63,6 +63,7 @@
   and would need an explicit token budget.
   `:reasoning-mandatory?` marks models where `reasoning {:enabled false}` is rejected with a 400."
   {"anthropic/claude-fable-5"        {:display-name "Claude Fable 5"          :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
+   "anthropic/claude-opus-5.5"       {:display-name "Claude Opus 5.5"         :context-window 1000000 :reasoning :renderable :reasoning-mandatory? true}
    "anthropic/claude-opus-5"         {:display-name "Claude Opus 5"           :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.8"       {:display-name "Claude Opus 4.8"         :context-window 1000000 :reasoning :renderable}
    "anthropic/claude-opus-4.7"       {:display-name "Claude Opus 4.7"         :context-window 1000000 :reasoning :renderable}
@@ -221,8 +222,9 @@
              (anthropic-current-gen? model)))))
 
 (def ^:private required-tool-choice-unsupported-models
-  "Models that don't support `:tool_choice \"required\"`"
-  #{"qwen/qwen3.8-max"})
+  "Models that don't support `:tool_choice \"required\"`. Anthropic rejects a forced tool choice
+  starting with Claude Opus 5.5."
+  #{"qwen/qwen3.8-max" "anthropic/claude-opus-5.5"})
 
 (defn- supports-required-tool-choice?
   "Whether `model` accepts `:tool_choice \"required\"`."

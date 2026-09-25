@@ -4,9 +4,9 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import type { MetabotAgentChainOfThoughtMessage } from "metabase/metabot/state";
-import { createMockDashboard } from "metabase-types/api/mocks";
+import { createMockCard, createMockDashboard } from "metabase-types/api/mocks";
 
 import { MetabotChainOfThought } from "./MetabotChainOfThought";
 
@@ -236,6 +236,78 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
   });
 
+  it("shows how long a warehouse query took once it has ended", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "run_warehouse_query",
+            status: "ended",
+            startedAtMs: 1000,
+            endedAtMs: 75400,
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 76000,
+      }),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByText("Queried the warehouse")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-tool-elapsed")).toHaveTextContent(
+      "1m 14s",
+    );
+  });
+
+  it("counts up while a warehouse query is still running", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(21000);
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "run_warehouse_query",
+            status: "started",
+            startedAtMs: 9000,
+          },
+        ],
+        startedAtMs: 9000,
+      }),
+      true,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(screen.getByTestId("metabot-tool-elapsed")).toHaveTextContent("12s");
+    jest.useRealTimers();
+  });
+
+  it("shows no runtime for tools that are not warehouse queries", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "analyze_data",
+            status: "ended",
+            startedAtMs: 1000,
+            endedAtMs: 9000,
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 9000,
+      }),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button"));
+    expect(
+      screen.queryByTestId("metabot-tool-elapsed"),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
     setup(
       chain({
@@ -298,6 +370,49 @@ describe("MetabotChainOfThought", () => {
     );
     // no link title yet (the card doesn't exist mid-save) -> the generic verb
     expect(screen.getAllByText("Saving").length).toBeGreaterThan(0);
+  });
+
+  it("labels a settled save_result step with its title as is, linking what was saved and where", async () => {
+    fetchMock.get(
+      "path:/api/card/7",
+      createMockCard({ id: 7, name: "Sales by Month" }),
+    );
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "save_result",
+            // the backend's localized title already carries the verb
+            title:
+              "Saved [Sales by Month](metabase://question/7) to [Ops](metabase://dashboard/123)",
+            status: "ended",
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    const label = await screen.findByText("Saved to");
+    expect(label).toHaveTextContent("Saved Sales by Month to Ops");
+    expect(label).not.toHaveTextContent("Saved Saved");
+    expect(await screen.findByText("Sales by Month")).toBeInTheDocument();
+    expect(await screen.findByText("Ops")).toBeInTheDocument();
+  });
+
+  it("labels a running save_result step with its generic verb", () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "t1", name: "save_result", status: "started" },
+        ],
+      }),
+      true,
+    );
+    expect(screen.getAllByText("Saving the result").length).toBeGreaterThan(0);
   });
 
   it("keeps the top-level preview generic but names the entity in the active row", async () => {
@@ -402,6 +517,88 @@ describe("MetabotChainOfThought", () => {
     await expandChain();
     expect(screen.getByText(/Searched for revenue/)).toBeInTheDocument();
     expect(screen.getByText("No results")).toBeInTheDocument();
+  });
+
+  it("shows a web search with stacked favicons and external result links", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "web_search",
+            title: "metabase release",
+            status: "ended",
+            webResults: {
+              totalCount: 5,
+              results: [
+                {
+                  title: "Metabase 0.60 release notes",
+                  url: "https://www.metabase.com/releases/0.60",
+                  domain: "metabase.com",
+                  snippet: "What's new",
+                },
+                {
+                  title: "Metabase on GitHub",
+                  url: "https://github.com/metabase/metabase",
+                  domain: "github.com",
+                },
+                { title: "Docs", url: "https://docs.example.com/a" },
+                { title: "News", url: "https://news.example.org/b" },
+                { title: "Blog", url: "https://blog.example.net/c" },
+              ],
+            },
+          },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(
+      screen.getByText(/Searched the web for metabase release/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("5 results")).toBeInTheDocument();
+    // three stacked favicons plus an overflow badge for the other two domains
+    expect(screen.getByText("+2")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("5 results"));
+    // under jsdom, role queries treat the expanded Collapse body as hidden
+    const link = screen.getByRole("link", {
+      name: /Metabase 0.60 release notes/,
+      hidden: true,
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.metabase.com/releases/0.60",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveTextContent("metabase.com");
+    expect(
+      within(link).getByRole("img", { name: "metabase.com", hidden: true }),
+    ).toHaveAttribute(
+      "src",
+      "https://www.google.com/s2/favicons?domain=metabase.com&sz=32",
+    );
+  });
+
+  it("labels a read_web_page step with the sites read", async () => {
+    setup(
+      chain({
+        steps: [
+          {
+            kind: "tool",
+            id: "t1",
+            name: "read_web_page",
+            title: "metabase.com",
+            status: "started",
+          },
+        ],
+      }),
+      true,
+    );
+    await expandChain();
+    expect(screen.getByText("Reading metabase.com")).toBeInTheDocument();
   });
 
   it("gives read_resource a real label and hides load_skill entirely", async () => {

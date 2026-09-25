@@ -36,6 +36,11 @@ export function MetabotNavPane() {
             label={t`Authorizations`}
             path="/admin/metabot/mcp/authorizations"
           />
+          <AdminNavItem
+            disabled={!areAiFeaturesEnabled}
+            label={t`External servers`}
+            path="/admin/metabot/mcp/external"
+          />
         </AdminNavItem>
         {AiControlsNavItems}
       </AdminNavWrapper>

@@ -7,6 +7,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.conversation-recall-index :as recall-index]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
@@ -424,7 +425,9 @@
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
-    (used-tables/record-used-tables! assistant-msg-id kept-parts)))
+    (used-tables/record-used-tables! assistant-msg-id kept-parts)
+    (when (and finished? (nil? error) (contains? recall-index/profiles profile-id))
+      (recall-index/request-sync! (metabot.db/message-conversation-id assistant-msg-id)))))
 
 (defn leaf-message
   "The conversation's most recent, non-deleted assistant message, or nil.

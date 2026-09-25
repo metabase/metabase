@@ -53,6 +53,23 @@
   :export?    true
   :feature    :ai-controls)
 
+(defsetting metabot-web-search-api-key
+  (deferred-tru "API key for the web search provider (Serper) behind Metabot''s web_search and read_web_page tools.")
+  :type       :string
+  :sensitive? true
+  :encryption :when-encryption-key-set
+  :visibility :admin
+  :export?    false)
+
+(defsetting metabot-web-search-enabled?
+  "Whether a web search API key is configured, which enables Metabot's web tools."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(boolean (not-empty (metabot-web-search-api-key)))
+  :doc        false)
+
 (defsetting metabot-chat-system-prompt
   (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack).")
   :type       :string
@@ -97,6 +114,13 @@
   :type       :boolean
   :visibility :internal
   :default    true
+  :export?    false)
+
+(defsetting megabot-api-read-only?
+  (deferred-tru "Kill switch for the experimental megabot `call_api` tool: when true, only GET requests are allowed (no writes).")
+  :type       :boolean
+  :visibility :internal
+  :default    false
   :export?    false)
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------

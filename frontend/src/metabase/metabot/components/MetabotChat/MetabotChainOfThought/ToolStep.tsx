@@ -7,14 +7,21 @@ import { Collapse, Icon, Text, UnstyledButton } from "metabase/ui";
 
 import S from "./MetabotChainOfThought.module.css";
 import { SearchResultsList } from "./SearchResults";
+import { StackedFavicons } from "./StackedFavicons";
+import { WebResultsList } from "./WebResults";
 import { SEARCH_TOOL_NAME } from "./constants";
+import { useNow } from "./hooks";
 import {
   type ToolChainStep,
   activeToolLabel,
   doneToolLabel,
+  formatElapsed,
+  isTimedTool,
+  isWebTool,
   renderTitle,
   searchResultCount,
   titledToolLabel,
+  toolElapsedMs,
 } from "./utils";
 
 const toolLabelContent = (step: ToolChainStep, done: boolean) => {
@@ -32,6 +39,24 @@ const toolLabelContent = (step: ToolChainStep, done: boolean) => {
       </>
     );
   }
+  if (isWebTool(step.name)) {
+    const label =
+      titledToolLabel(step, done) ??
+      (done ? doneToolLabel(step.name) : activeToolLabel(step.name));
+    return (
+      <>
+        {renderTitle(label)}
+        {step.webResults && (
+          <>
+            <StackedFavicons results={step.webResults.results} />
+            <span className={S.resultCount}>
+              {searchResultCount(step.webResults)}
+            </span>
+          </>
+        )}
+      </>
+    );
+  }
   const specific = titledToolLabel(step, done);
   if (specific) {
     return renderTitle(specific);
@@ -39,17 +64,39 @@ const toolLabelContent = (step: ToolChainStep, done: boolean) => {
   return done ? doneToolLabel(step.name) : activeToolLabel(step.name);
 };
 
+const ToolElapsed = ({
+  step,
+  live,
+}: {
+  step: ToolChainStep;
+  live: boolean;
+}) => {
+  const now = useNow(live && step.endedAtMs == null);
+  const elapsedMs = toolElapsedMs(step, now, live);
+  if (elapsedMs == null) {
+    return null;
+  }
+  return (
+    <span className={S.resultCount} data-testid="metabot-tool-elapsed">
+      {formatElapsed(elapsedMs)}
+    </span>
+  );
+};
+
 const ToolStepLabel = ({
   step,
   done,
+  live,
   className,
 }: {
   step: ToolChainStep;
   done: boolean;
+  live: boolean;
   className?: string;
 }) => (
   <Text component="span" className={className} c="inherit" lh="inherit">
     {toolLabelContent(step, done)}
+    {isTimedTool(step.name) && <ToolElapsed step={step} live={live} />}
   </Text>
 );
 
@@ -81,7 +128,8 @@ export const ToolStep = ({
   animate: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const hasResults = !!step.searchResults?.results.length;
+  const hasResults =
+    !!step.searchResults?.results.length || !!step.webResults?.results.length;
 
   return (
     <div className={S.toolStep}>
@@ -91,7 +139,11 @@ export const ToolStep = ({
         aria-expanded={hasResults ? open : undefined}
         onClick={hasResults ? () => setOpen((prev) => !prev) : undefined}
       >
-        <ToolStepLabel step={step} done={done} />
+        <ToolStepLabel
+          step={step}
+          done={done}
+          live={animate && step.status === "started"}
+        />
         {hasResults && (
           <Icon
             name="chevronright"
@@ -103,6 +155,7 @@ export const ToolStep = ({
       {hasResults && (
         <Collapse in={open}>
           <SearchResultsList step={step} animate={animate} />
+          <WebResultsList step={step} animate={animate} />
         </Collapse>
       )}
     </div>

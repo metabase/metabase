@@ -89,8 +89,8 @@
       (testing model
         (is (nil? (request-body-temperature model))))))
   (testing "neither does current-generation Claude, whose OpenRouter ids use dots for the minor version"
-    (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
-                   "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
+    (doseq [model ["anthropic/claude-fable-5" "anthropic/claude-opus-5.5" "anthropic/claude-opus-5"
+                   "anthropic/claude-opus-4.8" "anthropic/claude-opus-4.7" "anthropic/claude-sonnet-5"]]
       (testing model
         (is (nil? (request-body-temperature model)))))))
 
@@ -157,6 +157,29 @@
                  :tool_choice "auto"})]
       (is (= "auto" (:tool_choice body))))))
 
+(deftest ^:parallel request-body-opus-5-5-downgrades-forced-tool-choice-test
+  (testing "Anthropic rejects a forced tool choice on Opus 5.5, so structured output runs under auto"
+    (let [body (openrouter/openrouter-request-body
+                {:model      "anthropic/claude-opus-5.5"
+                 :input      [{:role :user :content "hi"}]
+                 :schema     {:type "object" :properties {:answer {:type "string"}}}
+                 :max-tokens 512})]
+      (is (=? {:tool_choice "auto"
+               :tools       [{:function {:name "structured_output"}}]}
+              body))
+      (testing "with no reasoning disable, which it rejects, and the cap floored for the mandatory thinking"
+        (is (not (contains? body :reasoning)))
+        (is (= 2048 (:max_tokens body))))))
+  (testing "an explicit tool_choice required is downgraded too"
+    (is (= "auto" (:tool_choice (openrouter/openrouter-request-body
+                                 {:model       "anthropic/claude-opus-5.5"
+                                  :input       [{:role :user :content "hi"}]
+                                  :tools       [{:tool-name "get_thing"
+                                                 :doc       "Get a thing."
+                                                 :schema    [:=> [:cat [:map [:id :int]]] :any]
+                                                 :fn        identity}]
+                                  :tool_choice "required"}))))))
+
 (deftest ^:parallel request-body-other-models-keep-required-tool-choice-test
   (testing "models that accept a forced tool call keep tool_choice required"
     (doseq [model ["anthropic/claude-haiku-4.5" "openai/gpt-5.4" "z-ai/glm-5.2"]]
@@ -180,6 +203,7 @@
   (are [model expected] (= expected (openrouter/reasoning-model? model))
     "anthropic/claude-sonnet-4.6" true
     "anthropic/claude-fable-5"    true
+    "anthropic/claude-opus-5.5"   true
     "moonshotai/kimi-k3"          true
     "z-ai/glm-5.2"                true
     "openai/gpt-5.5"              true
@@ -262,7 +286,7 @@
 
 (deftest ^:parallel reasoning-class-partition-test
   (testing "every whitelisted model is deliberately classified, and the class drives the body"
-    (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
+    (let [renderable         #{"anthropic/claude-fable-5" "anthropic/claude-opus-5.5" "anthropic/claude-opus-5" "anthropic/claude-opus-4.8"
                                "anthropic/claude-opus-4.7" "anthropic/claude-opus-4.6" "anthropic/claude-sonnet-5"
                                "anthropic/claude-sonnet-4.6" "deepseek/deepseek-v4-pro" "deepseek/deepseek-v4-pro-0813"
                                "deepseek/deepseek-v4-flash-0731" "mistralai/mistral-medium-3-5" "moonshotai/kimi-k3"

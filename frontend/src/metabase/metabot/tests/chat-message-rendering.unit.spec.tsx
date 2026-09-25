@@ -15,6 +15,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { PageLinkData } from "metabase/api/ai-streaming/schemas";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import type {
   MetabotIncompleteFinishReason,
@@ -273,6 +274,47 @@ describe("AgentMessage", () => {
 
       expect(await screen.findByText("Q3 report")).toBeInTheDocument();
       expect(await screen.findByText("Accounts by Day")).toBeInTheDocument();
+    });
+  });
+
+  describe("page_link", () => {
+    const setupPageLink = (data: PageLinkData) =>
+      setup({
+        parts: [
+          {
+            id: "l1",
+            role: "agent",
+            type: "data_part",
+            part: { type: "data-page_link", data },
+          },
+        ],
+      });
+
+    it("renders a link card to the page, with the icon of the item it shows", () => {
+      setupPageLink({
+        url: "/dashboard/7",
+        title: "Sales",
+        model: "dashboard",
+      });
+
+      const card = screen.getByTestId("metabot-inline-page-link");
+      expect(
+        within(card).getByRole("link", { name: "Open Sales" }),
+      ).toHaveAttribute("href", "/dashboard/7");
+      expect(within(card).getByLabelText("dashboard icon")).toBeInTheDocument();
+    });
+
+    it("gives an app page that isn't an item a generic link icon", () => {
+      setupPageLink({ url: "/admin/settings/email", title: "Email settings" });
+
+      const card = screen.getByTestId("metabot-inline-page-link");
+      expect(
+        within(card).getByRole("link", { name: "Open Email settings" }),
+      ).toHaveAttribute("href", "/admin/settings/email");
+      expect(within(card).getByLabelText("link icon")).toBeInTheDocument();
+      expect(
+        within(card).queryByLabelText("dashboard icon"),
+      ).not.toBeInTheDocument();
     });
   });
 

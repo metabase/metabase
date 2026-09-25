@@ -27,6 +27,7 @@ import {
   Center,
   Flex,
   Icon,
+  Stack,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -112,9 +113,11 @@ export function MetabotInlineChart({
 
   const [isRunRequested, { open: requestRun }] = useDisclosure(false);
   const shouldRunQuery = !readonly || isRunRequested;
-  const { data: dataset, error } = useGetAdhocQueryQuery(
-    shouldRunQuery ? datasetQuery : skipToken,
-  );
+  const {
+    data: dataset,
+    error,
+    refetch,
+  } = useGetAdhocQueryQuery(shouldRunQuery ? datasetQuery : skipToken);
 
   const rawSeries = useMemo(
     () => (dataset ? [{ card, data: dataset.data }] : null),
@@ -172,7 +175,17 @@ export function MetabotInlineChart({
           </Center>
         ) : chartError ? (
           <Center h="100%" p="lg">
-            <ErrorView error={chartError.message} icon={chartError.icon} />
+            <Stack align="center" gap="sm">
+              <ErrorView error={chartError.message} icon={chartError.icon} />
+              <Button
+                variant="subtle"
+                size="compact-md"
+                leftSection={<Icon name="refresh" aria-hidden />}
+                onClick={refetch}
+              >
+                {t`Try again`}
+              </Button>
+            </Stack>
           </Center>
         ) : !rawSeries ? (
           <LoadingAndErrorWrapper loading />

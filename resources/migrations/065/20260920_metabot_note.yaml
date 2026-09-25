@@ -1,0 +1,81 @@
+## Persistent notes for the experimental megabot profile
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.qn7wm2
+      author: sergiivozniuk
+      comment: metabot_note table
+      changes:
+        - createTable:
+            tableName: metabot_note
+            remarks: Persistent notes the experimental megabot profile reads and writes across conversations (schema quirks, trustworthy tables, metric definitions, saved SQL). Shared across the instance.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Auto-incrementing primary key
+              - column:
+                  name: note_key
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: 'Stable slug the agent uses to read or update a note; globally unique'
+              - column:
+                  name: summary
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                  remarks: 'One-line description shown in the note catalog injected into the system prompt'
+              - column:
+                  name: content
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full markdown body of the note, returned only on demand via read_note'
+              - column:
+                  name: creator_id
+                  type: int
+                  constraints:
+                    nullable: true
+                  remarks: 'FK to the user who last wrote the note; nullable and kept if that user is deleted'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When this note was first created'
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'When this note was last updated'
+
+  - changeSet:
+      id: v65.qn7wm2-uq
+      author: sergiivozniuk
+      comment: Unique constraint on metabot_note.note_key
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_note
+            columnNames: note_key
+            constraintName: uq_metabot_note_note_key
+
+  - changeSet:
+      id: v65.qn7wm2-fk-creator
+      author: sergiivozniuk
+      comment: FK from metabot_note.creator_id to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_note
+            baseColumnNames: creator_id
+            constraintName: fk_metabot_note_creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            onDelete: SET NULL

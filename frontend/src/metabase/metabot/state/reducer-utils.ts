@@ -19,6 +19,7 @@ import {
   type MetabotMessagePart,
   type MetabotSearchResults,
   type MetabotState,
+  type MetabotWebResults,
   fixedMetabotAgentIds,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -237,6 +238,17 @@ export const setChainToolSearchResults = (
   }
 };
 
+export const setChainToolWebResults = (
+  convo: WritableDraft<MetabotConversationState>,
+  toolCallId: string,
+  webResults: MetabotWebResults,
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.webResults = webResults;
+  }
+};
+
 export const setChainToolTitle = (
   convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
@@ -258,6 +270,7 @@ export const endChainTool = (
     return;
   }
   found.step.status = "ended";
+  found.step.endedAtMs = nowMs;
   if (!found.chain.finished && nowMs != null) {
     found.chain.endedAtMs = nowMs;
   }
@@ -300,7 +313,11 @@ const conversationDefaultsByAgentId: Partial<
     profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
   },
   ask: {
-    profileOverride: METABOT_PROFILE_OVERRIDES.NLQ,
+    profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
+  },
+  // the side panel runs the megabot profile directly, the same as the Ask page
+  omnibot: {
+    profileOverride: METABOT_PROFILE_OVERRIDES.MEGABOT,
   },
 };
 

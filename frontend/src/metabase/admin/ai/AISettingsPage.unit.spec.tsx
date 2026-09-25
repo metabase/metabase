@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -25,6 +26,7 @@ import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSettingDefinition,
@@ -67,6 +69,7 @@ const setup = async ({
   metabots = buildDefaultMetabots(),
   collections = defaultSeedCollections,
   page = "ai-features",
+  webSearchSetting = {},
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
@@ -78,6 +81,7 @@ const setup = async ({
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
   page?: Page;
+  webSearchSetting?: Partial<SettingDefinition<"metabot-web-search-api-key">>;
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
@@ -103,6 +107,11 @@ const setup = async ({
     createMockSettingDefinition({
       key: "llm-metabot-provider",
       value: null,
+    }),
+    createMockSettingDefinition({
+      key: "metabot-web-search-api-key",
+      value: null,
+      ...webSearchSetting,
     }),
   ]);
   setupUpdateSettingEndpoint();
@@ -130,6 +139,7 @@ const setup = async ({
 
   const view = renderWithProviders(getPageRoute(page), {
     withRouter: true,
+    withUndos: true,
     initialRoute: initialRoute ?? getInitialRoute(page),
     storeInitialState: {
       settings: createMockSettingsState(settings),
@@ -179,6 +189,102 @@ describe("AISettingsPage", () => {
         selector: '[aria-disabled="true"] *',
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Web search", {
+        selector: '[aria-disabled="true"] *',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([FIXED_METABOT_IDS.DEFAULT, FIXED_METABOT_IDS.EMBEDDED])(
+    "shows the shared web search setting for Metabot %s",
+    async (metabotId) => {
+      await setup({
+        enableEmbedding: true,
+        initialRoute: `/admin/metabot?metabot_id=${metabotId}`,
+      });
+
+      expect(screen.getByRole("heading", { name: "Web search" })).toBeVisible();
+      expect(screen.getByLabelText("Serper API key")).toHaveAttribute(
+        "type",
+        "password",
+      );
+    },
+  );
+
+  it.each([
+    { action: "adds", savedValue: null, newValue: "serper-new-key" },
+    {
+      action: "replaces",
+      savedValue: "**********ld",
+      newValue: "serper-new-key",
+    },
+    { action: "clears", savedValue: "**********ey", newValue: "" },
+  ])("$action the Serper API key on blur", async ({ savedValue, newValue }) => {
+    await setup({ webSearchSetting: { value: savedValue } });
+
+    const input = screen.getByLabelText("Serper API key");
+    await userEvent.clear(input);
+    if (newValue) {
+      await userEvent.type(input, newValue);
+    }
+    const refreshedValue = newValue ? "**********ey" : null;
+    fetchMock.removeRoute("settings-list");
+    setupSettingsEndpoints([
+      createMockSettingDefinition({
+        key: "metabot-web-search-api-key",
+        value: refreshedValue,
+      }),
+    ]);
+    await userEvent.tab();
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+    const requests = await findRequests("PUT");
+    expect(requests).toHaveLength(1);
+    expect(requests[0].url).toContain(
+      "/api/setting/metabot-web-search-api-key",
+    );
+    expect(requests[0].body).toEqual({ value: newValue });
+    await waitFor(() => expect(input).toHaveValue(refreshedValue ?? ""));
+  });
+
+  it("keeps a masked Serper key unchanged when focused and blurred", async () => {
+    await setup({ webSearchSetting: { value: "**********ey" } });
+
+    const input = screen.getByLabelText("Serper API key");
+    expect(input).toHaveValue("**********ey");
+    await userEvent.click(input);
+    await userEvent.tab();
+
+    expect(await findRequests("PUT")).toHaveLength(0);
+  });
+
+  it("shows the environment variable instead of an editable Serper key", async () => {
+    await setup({
+      webSearchSetting: {
+        is_env_setting: true,
+        env_name: "MB_METABOT_WEB_SEARCH_API_KEY",
+      },
+    });
+
+    expect(
+      screen.getByText("MB_METABOT_WEB_SEARCH_API_KEY"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Serper API key")).not.toBeInTheDocument();
+  });
+
+  it("shows an error when saving the Serper key fails", async () => {
+    await setup();
+    setupUpdateSettingEndpoint({ status: 500 });
+
+    const input = screen.getByLabelText("Serper API key");
+    await userEvent.type(input, "serper-new-key");
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText("Error saving metabot-web-search-api-key"),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue("serper-new-key");
   });
 
   it("shows docs links on the MCP page", async () => {
@@ -203,6 +309,7 @@ describe("AISettingsPage", () => {
       screen.queryByText("Connect to an AI provider"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("Metabot settings")).not.toBeInTheDocument();
+    expect(screen.queryByText("Web search")).not.toBeInTheDocument();
     expect(screen.getByText("Disable all AI features")).toBeInTheDocument();
   });
 

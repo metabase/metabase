@@ -130,7 +130,18 @@ describe("MetabotAsk", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not show the conversation history control for a non-internal/nlq profile", async () => {
+  it("shows the conversation history control for the megabot profile", async () => {
+    setupMetabotAsk({
+      metabotInitialState: askConversation("profileOverride", "megabot"),
+    });
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("metabot-conversation-history"),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the conversation history control for a profile without history", async () => {
     setupMetabotAsk({
       metabotInitialState: askConversation("profileOverride", "sql"),
     });

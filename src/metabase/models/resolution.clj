@@ -67,8 +67,10 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/McpConnection                     metabase.mcp-client.models.mcp-connection
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
+    :model/McpServer                         metabase.mcp-client.models.mcp-server
     :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
@@ -77,6 +79,7 @@
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/MetabotNote                       metabase.metabot.models.metabot-note
     :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback
     :model/MetabotUsedTable                  metabase.metabot.models.metabot-used-table
     :model/AiUsageLog                        metabase.metabot.models.ai-usage-log

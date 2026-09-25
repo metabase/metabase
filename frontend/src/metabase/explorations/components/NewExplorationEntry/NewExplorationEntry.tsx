@@ -14,6 +14,7 @@ import { EXPLORATIONS_AGENT_ID } from "metabase/explorations/components/NewExplo
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
   useUserMetabotPermissions,
@@ -76,7 +77,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
     trackExplorationAgentMessageSent("entry");
     submitInput(prompt, {
       preventOpenSidebar: true,
-      profile: "explorations",
+      profile: METABOT_PROFILE_OVERRIDES.EXPLORATIONS,
     });
 
     goToPlanPage();

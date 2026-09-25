@@ -251,6 +251,7 @@
   Excludes `openai.gpt-oss*`, which are not invokable through the mantle `/openai/v1` routes.
   Context windows are from the per-model cards at https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html"
   {"anthropic.claude-fable-5"   {:display-name "Claude Fable 5"        :context-window 1000000}
+   "anthropic.claude-opus-5-5"  {:display-name "Claude Opus 5.5"       :context-window 1000000}
    "anthropic.claude-opus-5"    {:display-name "Claude Opus 5"         :context-window 1000000}
    "anthropic.claude-opus-4-8"  {:display-name "Claude Opus 4.8"       :context-window 1000000}
    "anthropic.claude-opus-4-7"  {:display-name "Claude Opus 4.7"       :context-window 1000000}

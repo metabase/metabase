@@ -183,3 +183,7 @@ export function adminAiSettings() {
 export function adminMcpSettings() {
   return `${adminAiSettings()}/mcp`;
 }
+
+export function adminExternalMcpServers() {
+  return `${adminMcpSettings()}/external`;
+}
