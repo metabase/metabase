@@ -6,6 +6,7 @@ import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
@@ -35,6 +36,7 @@ import {
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
+  getYAxisSides,
   getYAxisUnpinFromZeroDefault,
   isShowStackValuesValid,
   isStackingValueValid,
@@ -712,6 +714,23 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
+// Not `useRawSeries`: it would also change the left label's default.
+const isYAxisSplit = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+) => {
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+
+  try {
+    const sides = getYAxisSides(rawSeries, vizSettings);
+    return sides.left && sides.right;
+  } catch (error) {
+    console.warn("Error computing y-axis sides", error);
+    return false;
+  }
+};
+
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
@@ -1005,6 +1024,8 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Label`;
     },
+    getTitle: (series, vizSettings) =>
+      isYAxisSplit(series, vizSettings) ? t`Left axis label` : t`Label`,
     index: 2,
     get group() {
       return t`Y-axis`;
@@ -1024,6 +1045,25 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.y_axis.right.title_text": {
+    getSection: () => t`Axes`,
+    get title() {
+      return t`Right axis label`;
+    },
+    index: 2,
+    get group() {
+      return t`Y-axis`;
+    },
+    widget: "input",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.y_axis.labels_enabled"] === false ||
+      !isYAxisSplit(series, vizSettings),
+    // No getDefault: an unset value is what makes the right axis inherit the
+    // left label, so saved questions keep their current rendering.
+    getProps: (_series, vizSettings) => ({
+      placeholder: vizSettings["graph.y_axis.title_text"],
+    }),
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

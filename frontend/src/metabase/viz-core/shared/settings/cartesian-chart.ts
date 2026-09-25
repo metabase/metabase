@@ -18,11 +18,21 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
+import { getBoxPlotModel } from "../../echarts/boxplot/model";
 import {
   getCardsColumns,
   getCardsReferencedColumns,
+  getChartSeriesModels,
 } from "../../echarts/cartesian/model";
+import { getYAxisSplit } from "../../echarts/cartesian/model/axis";
+import {
+  getDatasetExtents,
+  getJoinedCardsDataset,
+} from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
+import { getStackModels } from "../../echarts/cartesian/model/stack";
+import type { YAxisSides } from "../../echarts/cartesian/model/types";
+import { hasValidColumnsSelected } from "../../lib/graph/columns";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
@@ -276,6 +286,78 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 };
 
 export const getDefaultIsAutoSplitEnabled = () => true;
+
+/**
+ * Which sides the chart splits its series onto. The renderer labels its axes
+ * from this split, not from which series the legend shows, so the sidebar can
+ * answer it without knowing the hidden series.
+ */
+export function getYAxisSides(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+): YAxisSides {
+  const [firstSeries] = rawSeries;
+
+  if (
+    firstSeries == null ||
+    !hasValidColumnsSelected(settings, firstSeries.data)
+  ) {
+    return { left: false, right: false };
+  }
+
+  const display = firstSeries.card.display;
+
+  // A waterfall builds its one y-axis through `getYAxisModel` directly.
+  if (display === "waterfall") {
+    return { left: true, right: false };
+  }
+
+  // A box plot splits its series through its own `getYAxisSplit`, over
+  // extents taken from the computed boxes.
+  if (display === "boxplot") {
+    const { leftAxisSeriesKeys, rightAxisSeriesKeys } = getBoxPlotModel(
+      rawSeries,
+      settings,
+    );
+    return {
+      left: leftAxisSeriesKeys.size > 0,
+      right: rightAxisSeriesKeys.size > 0,
+    };
+  }
+
+  const cardsColumns = getCardsColumns(rawSeries, settings);
+  const { seriesModels } = getChartSeriesModels(
+    rawSeries,
+    cardsColumns,
+    [],
+    settings,
+  );
+  const stackModels = getStackModels(seriesModels, settings);
+  // `getCartesianChartModel` sorts the dataset before taking extents; sorting
+  // cannot move a min or a max, so the unsorted dataset gives the same split.
+  const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
+  const seriesExtents = getDatasetExtents(
+    seriesModels.map((seriesModel) => seriesModel.dataKey),
+    dataset,
+  );
+
+  // `getScatterPlotModel` passes `false`, so a scatter plot only splits through
+  // an explicit per-series axis assignment.
+  const isAutoSplitSupported = display !== "scatter";
+
+  const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
+    seriesModels,
+    stackModels,
+    seriesExtents,
+    settings,
+    isAutoSplitSupported,
+  );
+
+  return {
+    left: leftAxisSeriesKeys.size > 0,
+    right: rightAxisSeriesKeys.size > 0,
+  };
+}
 
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,

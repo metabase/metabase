@@ -228,7 +228,7 @@ export function computeSplit(
   return best;
 }
 
-const getYAxisSplit = (
+export const getYAxisSplit = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
   seriesExtents: SeriesExtents,
@@ -421,12 +421,19 @@ export const getYAxisFormatter = (
 const getYAxisLabel = (
   seriesNames: string[],
   settings: ComputedVisualizationSettings,
+  isSplitRightAxis: boolean,
 ) => {
   if (settings["graph.y_axis.labels_enabled"] === false) {
     return undefined;
   }
 
-  const specifiedAxisName = settings["graph.y_axis.title_text"];
+  // A right label that is unset or blank inherits the left one. Unset covers
+  // questions saved before the right axis had its own label; blank covers
+  // clearing the field, which has to return to what its placeholder shows.
+  const specifiedAxisName = isSplitRightAxis
+    ? settings["graph.y_axis.right.title_text"] ||
+      settings["graph.y_axis.title_text"]
+    : settings["graph.y_axis.title_text"];
 
   if (specifiedAxisName != null) {
     return specifiedAxisName;
@@ -501,6 +508,7 @@ interface YAxisModelOptions {
   formattingOptions?: ColumnSettings;
   gridSize?: VisualizationGridSize;
   showLabel?: boolean;
+  isSplitRightAxis?: boolean;
 }
 
 export function getYAxisModel(
@@ -517,6 +525,7 @@ export function getYAxisModel(
     formattingOptions,
     gridSize,
     showLabel = true,
+    isSplitRightAxis = false,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -530,7 +539,9 @@ export function getYAxisModel(
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
-  const label = showLabel ? getYAxisLabel(seriesNames, settings) : undefined;
+  const label = showLabel
+    ? getYAxisLabel(seriesNames, settings, isSplitRightAxis)
+    : undefined;
   const formatter = getYAxisFormatter(
     column,
     settings,
@@ -636,6 +647,11 @@ export function getYAxesModels(
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
       gridSize,
+      // A right axis with nothing on the left is the chart's only axis, and
+      // the only axis takes the one label field the sidebar shows for it.
+      // Read the split, not the visible keys, so hiding every left series in
+      // the legend does not swap the right axis over to the left label.
+      isSplitRightAxis: leftAxisSeriesKeysSet.size > 0,
     },
   );
 

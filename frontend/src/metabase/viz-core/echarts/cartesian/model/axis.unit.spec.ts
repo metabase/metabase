@@ -1,21 +1,33 @@
+import { createMockSeriesModel } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
-import type { RowValue } from "metabase-types/api";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  DatasetColumn,
+  RowValue,
+  SeriesSettings,
+} from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDatetimeColumn,
   createMockSingleSeries,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 
+import type { ComputedVisualizationSettings } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 
 import {
   computeSplit,
   getXAxisDateRangeFromSortedXAxisValues,
   getXAxisModel,
+  getYAxesModels,
 } from "./axis";
 import { isTimeSeriesAxis } from "./guards";
 import type {
+  ChartDataset,
+  DataKey,
   DimensionModel,
+  LegacySeriesSettingsObjectKey,
   SeriesExtents,
   TimeSeriesXAxisModel,
 } from "./types";
@@ -180,5 +192,133 @@ describe("getXAxisDateRangeFromSortedXAxisValues", () => {
       dayjs.utc("2022-03-01T00:00:00Z"),
       dayjs.utc("2022-04-01T00:00:00Z"),
     ]);
+  });
+});
+
+describe("getYAxesModels", () => {
+  const LEFT_SERIES_KEY = "revenue";
+  const RIGHT_SERIES_KEY = "orders";
+
+  const seriesModels = [
+    createMockSeriesModel({ dataKey: LEFT_SERIES_KEY }),
+    createMockSeriesModel({ dataKey: RIGHT_SERIES_KEY }),
+  ];
+
+  const dataset: ChartDataset = [
+    { [X_AXIS_DATA_KEY]: "Jan", [LEFT_SERIES_KEY]: 1, [RIGHT_SERIES_KEY]: 900 },
+    {
+      [X_AXIS_DATA_KEY]: "Feb",
+      [LEFT_SERIES_KEY]: 2,
+      [RIGHT_SERIES_KEY]: 1000,
+    },
+  ];
+
+  const columnByDataKey: Record<DataKey, DatasetColumn> = {
+    [LEFT_SERIES_KEY]: createMockColumn({ name: LEFT_SERIES_KEY }),
+    [RIGHT_SERIES_KEY]: createMockColumn({ name: RIGHT_SERIES_KEY }),
+  };
+
+  const assignSeriesToAxis = ({
+    card,
+  }: LegacySeriesSettingsObjectKey): SeriesSettings =>
+    card._seriesKey === RIGHT_SERIES_KEY ? { axis: "right" } : { axis: "left" };
+
+  const getSplitAxesModels = (settings: ComputedVisualizationSettings) =>
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      dataset,
+      { series: assignSeriesToAxis, ...settings },
+      columnByDataKey,
+      true,
+      [],
+      false,
+    );
+
+  it("should label both axes with the legacy 'graph.y_axis.title_text' when no right-axis label is stored", () => {
+    // Deleting this test lets saved split-axis questions silently lose their
+    // right-axis label, which used to come from the single shared key.
+    const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
+      "graph.y_axis.title_text": "Legacy label",
+    });
+
+    expect(checkNotNull(leftAxisModel).label).toBe("Legacy label");
+    expect(checkNotNull(rightAxisModel).label).toBe("Legacy label");
+  });
+
+  it("should fall back to the left label when the right one is cleared to blank", () => {
+    const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
+      "graph.y_axis.title_text": "Orders placed",
+      "graph.y_axis.right.title_text": "",
+    });
+
+    expect(checkNotNull(leftAxisModel).label).toBe("Orders placed");
+    expect(checkNotNull(rightAxisModel).label).toBe("Orders placed");
+  });
+
+  it("should label each axis from its own setting when both are stored", () => {
+    const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
+      "graph.y_axis.title_text": "Revenue",
+      "graph.y_axis.right.title_text": "Orders",
+    });
+
+    expect(checkNotNull(leftAxisModel).label).toBe("Revenue");
+    expect(checkNotNull(rightAxisModel).label).toBe("Orders");
+  });
+
+  it("should keep the right label when the legend hides every left series", () => {
+    const { leftAxisModel, rightAxisModel } = getYAxesModels(
+      [
+        createMockSeriesModel({ dataKey: LEFT_SERIES_KEY, visible: false }),
+        createMockSeriesModel({ dataKey: RIGHT_SERIES_KEY }),
+      ],
+      dataset,
+      dataset,
+      {
+        series: assignSeriesToAxis,
+        "graph.y_axis.title_text": "Revenue",
+        "graph.y_axis.right.title_text": "Orders",
+      },
+      columnByDataKey,
+      true,
+      [],
+      false,
+    );
+
+    expect(leftAxisModel).toBeNull();
+    expect(checkNotNull(rightAxisModel).label).toBe("Orders");
+  });
+
+  it("should label a right axis with no left axis from 'graph.y_axis.title_text'", () => {
+    // The sidebar hides the right label field on a one-axis chart, so a right
+    // label stored while the chart was split must not keep driving this axis.
+    const { leftAxisModel, rightAxisModel } = getYAxesModels(
+      seriesModels,
+      dataset,
+      dataset,
+      {
+        series: () => ({ axis: "right" }),
+        "graph.y_axis.title_text": "Shown in the sidebar",
+        "graph.y_axis.right.title_text": "Stale right label",
+      },
+      columnByDataKey,
+      true,
+      [],
+      false,
+    );
+
+    expect(leftAxisModel).toBeNull();
+    expect(checkNotNull(rightAxisModel).label).toBe("Shown in the sidebar");
+  });
+
+  it("should suppress both labels when 'graph.y_axis.labels_enabled' is false", () => {
+    const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
+      "graph.y_axis.labels_enabled": false,
+      "graph.y_axis.title_text": "Revenue",
+      "graph.y_axis.right.title_text": "Orders",
+    });
+
+    expect(checkNotNull(leftAxisModel).label).toBeUndefined();
+    expect(checkNotNull(rightAxisModel).label).toBeUndefined();
   });
 });

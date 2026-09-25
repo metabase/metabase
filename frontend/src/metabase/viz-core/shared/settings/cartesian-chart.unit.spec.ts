@@ -1,16 +1,29 @@
-import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
+import type {
+  DatasetData,
+  RawSeries,
+  VisualizationDisplay,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
+  createMockDataset,
   createMockDatasetData,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
+
+import { getBoxPlotModel } from "../../echarts/boxplot/model";
+import { getCartesianChartModel } from "../../echarts/cartesian/model";
+import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
+import { getScatterPlotModel } from "../../echarts/cartesian/scatter/model";
+import type { RenderingContext } from "../../types";
+import { DEFAULT_VISUALIZATION_THEME } from "../utils/theme";
 
 import {
   getDefaultBoxplotDimensions,
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
+  getYAxisSides,
 } from "./cartesian-chart";
 
 const createSeries = ({
@@ -276,4 +289,299 @@ describe("getDefaultBoxplotDimensions", () => {
     // "status" has cardinality 2, "category" has cardinality 3
     expect(result).toEqual(["status"]);
   });
+});
+
+describe("getYAxisSides", () => {
+  const MONTH = "month";
+  const CATEGORY = "category";
+  const REVENUE = "revenue";
+  const ORDERS = "orders";
+
+  const renderingContext: RenderingContext = {
+    getColor: (name) => name,
+    measureText: () => 10,
+    measureTextHeight: () => 10,
+    fontFamily: "Arial",
+    theme: DEFAULT_VISUALIZATION_THEME,
+  };
+
+  // The real computed settings always carry the per-series accessor; the chart
+  // model reads each series' display through it.
+  const lineSeries = () => ({ display: "line" as const });
+
+  const pinnedRight =
+    (...keys: string[]) =>
+    ({ card }: LegacySeriesSettingsObjectKey) =>
+      keys.includes(String(card._seriesKey))
+        ? { ...lineSeries(), axis: "right" as const }
+        : lineSeries();
+
+  const createTwoMetricSeries = (
+    rows: DatasetData["rows"],
+    display: VisualizationDisplay = "line",
+  ): RawSeries => [
+    createMockSingleSeries(
+      createMockCard({ display }),
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: MONTH, base_type: "type/Text" }),
+            createMockColumn({ name: REVENUE, base_type: "type/Number" }),
+            createMockColumn({ name: ORDERS, base_type: "type/Number" }),
+          ],
+          rows,
+        }),
+      }),
+    ),
+  ];
+
+  const createBreakoutSeries = (): RawSeries => [
+    createMockSingleSeries(
+      createMockCard({ display: "line" }),
+      createMockDataset({
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: MONTH, base_type: "type/Text" }),
+            createMockColumn({ name: CATEGORY, base_type: "type/Text" }),
+            createMockColumn({ name: ORDERS, base_type: "type/Number" }),
+          ],
+          rows: [
+            ["Jan", "a", 1],
+            ["Jan", "b", 10],
+            ["Jan", "c", 10000],
+            ["Feb", "a", 2],
+            ["Feb", "b", 20],
+            ["Feb", "c", 20000],
+          ],
+        }),
+      }),
+    ),
+  ];
+
+  const twoMetricSettings = {
+    "graph.dimensions": [MONTH],
+    "graph.metrics": [REVENUE, ORDERS],
+    "graph.y_axis.auto_split": true,
+    series: lineSeries,
+  };
+
+  const breakoutSettings = {
+    "graph.dimensions": [MONTH, CATEGORY],
+    "graph.metrics": [ORDERS],
+    "graph.y_axis.auto_split": true,
+    series: lineSeries,
+  };
+
+  const divergentRows = [
+    ["Jan", 1, 900],
+    ["Feb", 2, 1000],
+  ];
+
+  const similarRows = [
+    ["Jan", 900, 950],
+    ["Feb", 1000, 1100],
+  ];
+
+  // The sidebar decides which axis label fields to offer and the renderer
+  // decides which axes to draw, through different code. A disagreement either
+  // hides the setting for an axis that exists or offers one for an axis that
+  // does not.
+  it.each([
+    {
+      name: "two metrics on ranges far apart",
+      sides: { left: true, right: true },
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: twoMetricSettings,
+    },
+    {
+      name: "two metrics on similar ranges",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: twoMetricSettings,
+    },
+    {
+      name: "the automatic split turned off",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.y_axis.auto_split": false },
+    },
+    {
+      name: "a single metric",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.metrics": [REVENUE] },
+    },
+    {
+      name: "one series pinned to the right axis",
+      sides: { left: true, right: true },
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: pinnedRight(ORDERS),
+      },
+    },
+    {
+      name: "every series pinned to the right axis, leaving no left axis",
+      sides: { left: false, right: true },
+      rawSeries: createTwoMetricSeries(similarRows),
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: pinnedRight(REVENUE, ORDERS),
+      },
+    },
+    {
+      name: "every breakout series pinned to the right axis",
+      sides: { left: false, right: true },
+      rawSeries: createBreakoutSeries(),
+      settings: { ...breakoutSettings, series: pinnedRight("a", "b", "c") },
+    },
+    {
+      name: "split panels",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(divergentRows),
+      settings: { ...twoMetricSettings, "graph.split_panels": true },
+    },
+    {
+      name: "stacked bars",
+      sides: { left: true, right: false },
+      rawSeries: createTwoMetricSeries(divergentRows, "bar"),
+      settings: {
+        ...twoMetricSettings,
+        series: () => ({ display: "bar" as const }),
+        "stackable.stack_type": "stacked" as const,
+      },
+    },
+    {
+      name: "a breakout, where one metric column means no automatic split",
+      sides: { left: true, right: false },
+      rawSeries: createBreakoutSeries(),
+      settings: breakoutSettings,
+    },
+    {
+      name: "a breakout series pinned right, then grouped into Other",
+      sides: { left: true, right: false },
+      rawSeries: createBreakoutSeries(),
+      settings: {
+        ...breakoutSettings,
+        "graph.max_categories_enabled": true,
+        "graph.max_categories": 2,
+        series: pinnedRight("c"),
+      },
+    },
+  ])(
+    "agrees with the axes the chart model builds for $name",
+    ({ rawSeries, settings, sides }) => {
+      const chartModel = getCartesianChartModel(
+        rawSeries,
+        settings,
+        [],
+        renderingContext,
+      );
+
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
+    },
+  );
+
+  it("reports no axes when the chart plots nothing", () => {
+    expect(getYAxisSides([], {})).toEqual({ left: false, right: false });
+  });
+
+  it.each([
+    { name: "no dimension", settings: { "graph.dimensions": [] } },
+    { name: "no metric", settings: { "graph.metrics": [] } },
+  ])(
+    "reports no axes for a chart that cannot render yet, with $name",
+    ({ settings }) => {
+      expect(
+        getYAxisSides(createTwoMetricSeries(divergentRows), {
+          ...twoMetricSettings,
+          ...settings,
+        }),
+      ).toEqual({ left: false, right: false });
+    },
+  );
+
+  it("reports a left axis only for a waterfall, which never builds a right one", () => {
+    expect(
+      getYAxisSides(createTwoMetricSeries(divergentRows, "waterfall"), {
+        ...twoMetricSettings,
+        "graph.metrics": [REVENUE],
+      }),
+    ).toEqual({ left: true, right: false });
+  });
+
+  it.each([
+    {
+      name: "two metrics on ranges far apart",
+      sides: { left: true, right: true },
+      settings: twoMetricSettings,
+    },
+    {
+      name: "the automatic split turned off",
+      sides: { left: true, right: false },
+      settings: { ...twoMetricSettings, "graph.y_axis.auto_split": false },
+    },
+    {
+      name: "every series pinned to the right axis",
+      sides: { left: false, right: true },
+      settings: {
+        ...twoMetricSettings,
+        "graph.y_axis.auto_split": false,
+        series: pinnedRight(REVENUE, ORDERS),
+      },
+    },
+  ])(
+    "agrees with the axes the box plot model builds for $name",
+    ({ settings, sides }) => {
+      const rawSeries = createTwoMetricSeries(divergentRows, "boxplot");
+      const chartModel = getBoxPlotModel(rawSeries, settings);
+
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
+    },
+  );
+
+  it.each([
+    {
+      name: "two metrics on ranges far apart, which never split on their own",
+      sides: { left: true, right: false },
+      settings: twoMetricSettings,
+    },
+    {
+      name: "one series pinned to the right axis",
+      sides: { left: true, right: true },
+      settings: { ...twoMetricSettings, series: pinnedRight(ORDERS) },
+    },
+    {
+      name: "every series pinned to the right axis",
+      sides: { left: false, right: true },
+      settings: { ...twoMetricSettings, series: pinnedRight(REVENUE, ORDERS) },
+    },
+  ])(
+    "agrees with the axes the scatter plot model builds for $name",
+    ({ settings, sides }) => {
+      const rawSeries = createTwoMetricSeries(divergentRows, "scatter");
+      const chartModel = getScatterPlotModel(
+        rawSeries,
+        settings,
+        [],
+        renderingContext,
+      );
+
+      expect({
+        left: chartModel.leftAxisModel != null,
+        right: chartModel.rightAxisModel != null,
+      }).toEqual(sides);
+      expect(getYAxisSides(rawSeries, settings)).toEqual(sides);
+    },
+  );
 });

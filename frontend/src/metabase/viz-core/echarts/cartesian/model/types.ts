@@ -193,9 +193,14 @@ export type TrendLinesModel = {
   seriesModels: TrendLineSeriesModel[];
 };
 
+export type YAxisSide = "left" | "right";
+
+/** Which sides of a chart have a y-axis. Both false when it plots nothing. */
+export type YAxisSides = Record<YAxisSide, boolean>;
+
 export type StackDisplay = "bar" | "area";
 export type StackModel = {
-  axis: "left" | "right";
+  axis: YAxisSide;
   display: StackDisplay;
   seriesKeys: DataKey[];
 };

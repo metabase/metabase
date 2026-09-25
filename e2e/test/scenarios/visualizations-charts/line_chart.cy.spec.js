@@ -516,6 +516,69 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.get("g.axis.yr").should("not.exist");
     });
+
+    it("should label each side of a split y-axis separately", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["min", ["field", ORDERS.TOTAL, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+      });
+
+      H.openVizSettingsSidebar();
+      H.vizSettingsSidebar().findByText("Axes").click();
+
+      cy.log("an unset right label inherits the left one");
+      H.vizSettingsSidebar()
+        .findByLabelText("Left axis label")
+        .clear()
+        .type("Revenue")
+        .blur();
+      H.vizSettingsSidebar()
+        .findByLabelText("Right axis label")
+        .should("have.attr", "placeholder", "Revenue");
+      H.echartsContainer().findAllByText("Revenue").should("have.length", 2);
+
+      cy.log("the right label applies to the right axis only");
+      H.vizSettingsSidebar()
+        .findByLabelText("Right axis label")
+        .type("Smallest order")
+        .blur();
+      H.echartsContainer()
+        .findByText("Revenue")
+        .then((leftLabel) => {
+          const { x: xLeft } = H.getXYTransform(leftLabel);
+          H.echartsContainer()
+            .findByText("Smallest order")
+            .then((rightLabel) => {
+              const { x: xRight } = H.getXYTransform(rightLabel);
+              expect(xRight).to.be.greaterThan(xLeft);
+            });
+        });
+
+      cy.log("a chart with one y-axis offers one label");
+      H.vizSettingsSidebar().findByText("Split y-axis when necessary").click();
+      H.echartsContainer().findByText("Revenue").should("be.visible");
+      H.echartsContainer().findByText("Smallest order").should("not.exist");
+      H.vizSettingsSidebar().findByDisplayValue("Revenue").should("be.visible");
+      H.vizSettingsSidebar()
+        .findByLabelText("Right axis label")
+        .should("not.exist");
+      H.vizSettingsSidebar()
+        .findByLabelText("Left axis label")
+        .should("not.exist");
+    });
   });
 
   describe("color series", () => {
