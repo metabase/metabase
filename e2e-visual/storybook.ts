@@ -113,7 +113,7 @@ function readStoryIndex(): string {
   const indexPath = path.join(STORYBOOK_STATIC_DIR, "index.json");
   if (!existsSync(indexPath)) {
     throw new Error(
-      `${indexPath} does not exist. Run "bun run build-storybook" first, or set STORYBOOK_URL.`,
+      `${indexPath} does not exist. Run "bun run build-storybook:visual" first, or set STORYBOOK_URL.`,
     );
   }
   return readFileSync(indexPath, "utf8");
