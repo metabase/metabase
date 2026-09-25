@@ -199,7 +199,10 @@ export const GoalValueInput = ({
         return measure.result_column_name ?? null;
       }
 
-      const card = await fetchCard({ id: entityId }, true).unwrap();
+      const card = await fetchCard(
+        { id: entityId, ignore_error: true },
+        true,
+      ).unwrap();
       const numericColumns = getNumericColumnOptions(
         card.result_metadata ?? [],
       );
