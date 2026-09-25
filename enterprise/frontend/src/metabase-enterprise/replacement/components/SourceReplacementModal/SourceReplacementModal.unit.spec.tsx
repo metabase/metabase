@@ -49,7 +49,9 @@ function setup({ checkInfo, dependents }: SetupOpts) {
 async function waitForDependents() {
   await waitFor(() =>
     expect(
-      fetchMock.callHistory.called("path:/api/ee/dependencies/graph/dependents"),
+      fetchMock.callHistory.called(
+        "path:/api/ee/dependencies/graph/dependents",
+      ),
     ).toBe(true),
   );
 }

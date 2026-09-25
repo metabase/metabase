@@ -179,9 +179,7 @@ describe("command palette", () => {
       event: "metric_create_started",
       triggered_from: "command_palette",
     });
-    await waitFor(() =>
-      expect(router?.location.pathname).toBe("/metric/new"),
-    );
+    await waitFor(() => expect(router?.location.pathname).toBe("/metric/new"));
   });
 
   it("should rank the most relevant action first", async () => {

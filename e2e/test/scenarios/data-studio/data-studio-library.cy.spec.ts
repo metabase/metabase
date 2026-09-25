@@ -220,9 +220,7 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModal().button("Cancel").click();
 
       H.modal().button("Create").click();
-      cy.wait("@createCollection")
-        .its("response.statusCode")
-        .should("eq", 200);
+      cy.wait("@createCollection").its("response.statusCode").should("eq", 200);
 
       H.DataStudio.Library.collectionItem("Collection Before Edit").should(
         "be.visible",
@@ -260,9 +258,7 @@ describe("scenarios > data studio > library", () => {
       H.popover().findByText("Archive").click();
       H.modal().button("Archive").click();
 
-      cy.wait("@updateCollection")
-        .its("response.statusCode")
-        .should("eq", 200);
+      cy.wait("@updateCollection").its("response.statusCode").should("eq", 200);
       H.undoToast()
         .findByText('"Collection After Edit" has been archived')
         .should("be.visible");
@@ -313,9 +309,7 @@ describe("scenarios > data studio > library", () => {
       H.entityPickerModal().button("Select").click();
       H.modal().button("Save").click();
 
-      cy.wait("@updateCollection")
-        .its("response.statusCode")
-        .should("eq", 200);
+      cy.wait("@updateCollection").its("response.statusCode").should("eq", 200);
 
       H.DataStudio.Library.expandCollection("Destination Collection");
       H.DataStudio.Library.result("Collection To Move")

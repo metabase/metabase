@@ -72,7 +72,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
       H.expectUnstructuredSnowplowEvent({
         event: "data_studio_bulk_sync_settings_clicked",
       });
-      H.modal().findByRole("button", { name: /Sync table schemas/ }).click();
+      H.modal()
+        .findByRole("button", { name: /Sync table schemas/ })
+        .click();
       H.modal()
         .findByRole("button", { name: /Sync triggered!/ })
         .should("be.visible");
@@ -89,7 +91,9 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
         result: "success",
       });
 
-      H.modal().findByRole("button", { name: /Re-scan tables/ }).click();
+      H.modal()
+        .findByRole("button", { name: /Re-scan tables/ })
+        .click();
       H.modal()
         .findByRole("button", { name: /Scan triggered!/ })
         .should("be.visible");

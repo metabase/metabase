@@ -144,7 +144,9 @@ describe("SnippetHeader", () => {
         "href",
         "/data-studio/library?expandedId=root&expandedId=11&expandedId=12",
       );
-      expect(screen.getByRole("link", { name: "Child Folder" })).toHaveAttribute(
+      expect(
+        screen.getByRole("link", { name: "Child Folder" }),
+      ).toHaveAttribute(
         "href",
         "/data-studio/library?expandedId=root&expandedId=11&expandedId=12&expandedId=13",
       );

@@ -67,9 +67,7 @@ describe("scenarios > data studio > snippets", () => {
       cy.log("Cancel restores the saved content in the editor");
       H.DataStudio.Snippets.editor.type(" WHERE id = 2");
       H.DataStudio.Snippets.cancelButton().click();
-      H.DataStudio.Snippets.editor
-        .value()
-        .should("eq", "SELECT * FROM orders");
+      H.DataStudio.Snippets.editor.value().should("eq", "SELECT * FROM orders");
 
       H.DataStudio.Snippets.editor.type(" WHERE id = 1");
 

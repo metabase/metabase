@@ -112,7 +112,10 @@ describe(
 
         cy.log("all direct dependents are listed in the modal");
         SourceReplacement.getModal()
-          .findByRole("tab", { name: "6 items will be changed", timeout: 15000 })
+          .findByRole("tab", {
+            name: "6 items will be changed",
+            timeout: 15000,
+          })
           .click();
         SourceReplacement.getModal()
           .should("contain", "Q1 plain")

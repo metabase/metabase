@@ -120,7 +120,7 @@ function getEmptyStateRow(description: string) {
   if (!row) {
     throw new Error(`No empty state row for "${description}"`);
   }
-  return within(row);
+  return row;
 }
 
 const ORDERS_TABLE_ITEM = createMockCollectionItem({
@@ -141,18 +141,20 @@ describe("LibraryPage", () => {
 
     const dataRow = getEmptyStateRow(DATA_EMPTY_STATE);
     expect(
-      dataRow.getByRole("button", { name: "Publish a table" }),
+      within(dataRow).getByRole("button", { name: "Publish a table" }),
     ).toBeInTheDocument();
 
     const metricsRow = getEmptyStateRow(METRICS_EMPTY_STATE);
-    expect(metricsRow.getByRole("link", { name: "New metric" })).toHaveAttribute(
+    expect(
+      within(metricsRow).getByRole("link", { name: "New metric" }),
+    ).toHaveAttribute(
       "href",
       expect.stringContaining(`collectionId=${METRICS_COLLECTION.id}`),
     );
 
     const snippetsRow = getEmptyStateRow(SNIPPETS_EMPTY_STATE);
     expect(
-      snippetsRow.getByRole("link", { name: "New snippet" }),
+      within(snippetsRow).getByRole("link", { name: "New snippet" }),
     ).toBeInTheDocument();
   });
 
@@ -164,10 +166,12 @@ describe("LibraryPage", () => {
     expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();
 
     await userEvent.click(
-      dataRow.getByRole("button", { name: "Publish a table" }),
+      within(dataRow).getByRole("button", { name: "Publish a table" }),
     );
 
-    expect(await screen.findByTestId("entity-picker-modal")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("entity-picker-modal"),
+    ).toBeInTheDocument();
   });
 
   it("excludes empty states from search results", async () => {
@@ -206,9 +210,9 @@ describe("LibraryPage", () => {
       [DATA_EMPTY_STATE, METRICS_EMPTY_STATE, SNIPPETS_EMPTY_STATE].forEach(
         (description) => {
           const row = getEmptyStateRow(description);
-          expect(row.getByText(description)).toBeInTheDocument();
-          expect(row.queryByRole("button")).not.toBeInTheDocument();
-          expect(row.queryByRole("link")).not.toBeInTheDocument();
+          expect(within(row).getByText(description)).toBeInTheDocument();
+          expect(within(row).queryByRole("button")).not.toBeInTheDocument();
+          expect(within(row).queryByRole("link")).not.toBeInTheDocument();
         },
       );
     });

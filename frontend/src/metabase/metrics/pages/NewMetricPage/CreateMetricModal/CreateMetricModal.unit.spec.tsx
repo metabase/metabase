@@ -41,17 +41,17 @@ describe("CreateMetricModal", () => {
     const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
     const { onCreate } = setup();
 
-    await userEvent.type(
-      await screen.findByLabelText("Name"),
-      "Total Revenue",
-    );
+    await userEvent.type(await screen.findByLabelText("Name"), "Total Revenue");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
     expect(fetchMock.callHistory.calls("card-create")).toHaveLength(1);
     // The create mock echoes the POST body back as the card.
     const createdCard = onCreate.mock.calls[0][0];
-    expect(createdCard).toMatchObject({ name: "Total Revenue", type: "metric" });
+    expect(createdCard).toMatchObject({
+      name: "Total Revenue",
+      type: "metric",
+    });
     expect(trackSimpleEvent).toHaveBeenCalledWith({
       event: "metric_created",
       triggered_from: "main_app",
