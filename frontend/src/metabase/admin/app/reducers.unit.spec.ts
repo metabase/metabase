@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { getStore } from "__support__/entities-store";
 import { Api } from "metabase/api/api";
 import { currentUserApi } from "metabase/current-user";
+import { combineReducers } from "metabase/redux";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { appReducer, getAdminPaths } from "./reducers";
@@ -33,14 +34,17 @@ describe("admin paths reducer", () => {
       createMockUser({ is_superuser: isAdmin }),
     );
     const store = getStore(
-      { [Api.reducerPath]: Api.reducer, app: appReducer },
+      {
+        [Api.reducerPath]: Api.reducer,
+        admin: combineReducers({ app: appReducer }),
+      },
       {},
       [Api.middleware],
     );
 
-    const initialKeys = store.getState().app.paths.map(({ key }) => key);
+    const initialKeys = store.getState().admin.app.paths.map(({ key }) => key);
     await store.dispatch(currentUserApi.endpoints.getCurrentUser.initiate());
-    const keys = store.getState().app.paths.map(({ key }) => key);
+    const keys = store.getState().admin.app.paths.map(({ key }) => key);
 
     store.dispatch(Api.util.resetApiState());
     return { initialKeys, keys };
