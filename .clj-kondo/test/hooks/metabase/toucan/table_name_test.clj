@@ -34,6 +34,9 @@
   (testing "defmethod t2/table-name inside <module>/models/<model>.clj is allowed"
     (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
                                 "/repo/src/metabase/foo/models/bar.clj"))))
+  (testing "nested module directories are also allowed"
+    (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
+                                "/repo/enterprise/backend/src/metabase_enterprise/foo/bar/models/baz.clj"))))
   (testing "enterprise modules are also allowed"
     (is (empty? (lint-defmethod '(defmethod t2/table-name :model/Foo [_] :foo)
                                 "/repo/enterprise/backend/src/metabase_enterprise/foo/models.clj"))))

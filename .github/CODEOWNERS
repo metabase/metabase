@@ -57,6 +57,8 @@ enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
 
 # @metabase/metabot-backend
+# TODO (Chris 2026-09-25) -- drop the embeddings, entity_retrieval and semantic_search lines once no open PR has
+# files at those pre-move paths. Until then they keep Metabot as a required reviewer on PRs that haven't rebased.
 enterprise/backend/src/metabase_enterprise/embeddings @metabase/metabot-backend
 enterprise/backend/src/metabase_enterprise/entity_retrieval @metabase/metabot-backend
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot-backend

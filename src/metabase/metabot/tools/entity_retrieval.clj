@@ -13,13 +13,13 @@
 
   The var/namespace name (`entity-retrieval`) is retained deliberately — the module is a home for
   information retrieval generally, not 1:1 with this index or tool.
-  Runs in the enterprise pgvector store via [[metabase.entity-retrieval.core]]."
+  Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
