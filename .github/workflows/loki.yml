@@ -1,4 +1,4 @@
-name: Loki Visual Regression Testing
+name: Storybook Visual Tests
 
 on:
   workflow_call:
@@ -16,12 +16,14 @@ jobs:
   gate:
     uses: ./.github/workflows/test.gate.yml
     with:
-      filters: frontend_loki_all
+      filters: frontend_loki_all frontend_visual_all
 
   # Without a plan there is nothing to narrow, so this is skipped and every story runs.
   story-selection:
     needs: gate
-    if: ${{ needs.gate.outputs.run == 'true' && inputs.test-plan-artifact-id != '' }}
+    if: >-
+      ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_loki_all')
+      && inputs.test-plan-artifact-id != '' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -54,7 +56,7 @@ jobs:
     # compares equal to '0' in GitHub expressions, so an empty selection is marked with a
     # non-numeric value.
     if: >-
-      ${{ !cancelled() && needs.gate.outputs.run == 'true'
+      ${{ !cancelled() && contains(fromJSON(needs.gate.outputs.matched), 'frontend_loki_all')
       && needs.story-selection.result != 'failure'
       && needs.story-selection.outputs.selection != 'empty' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -113,6 +115,43 @@ jobs:
           name: loki-report
           include-hidden-files: true
           path: .loki/
+          if-no-files-found: ignore
+
+  playwright-visual-test:
+    name: playwright-run
+    needs: gate
+    if: ${{ contains(fromJSON(needs.gate.outputs.matched), 'frontend_visual_all') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development bun run build-pure:cljs
+
+      - name: Build Storybook
+        run: bun run build-storybook:visual
+
+      - name: Run visual tests
+        run: |
+          echo "CPU cores: $(nproc)"
+          bun run test-visual:docker
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-report
+          path: |
+            e2e-visual/report/
+            e2e-visual/test-results/
           if-no-files-found: ignore
 
   loki-tests-result:

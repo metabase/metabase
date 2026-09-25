@@ -122,6 +122,7 @@ describe("file-paths.yaml", () => {
     "backend_all",
     "frontend_all",
     "frontend_loki_all",
+    "frontend_visual_all",
     "e2e_all",
     "embedding_sdk_components",
     "embedding_sdk_host_sample_apps",
@@ -271,7 +272,7 @@ describe("file-paths.yaml", () => {
   it.each([
     "e2e-visual/stories.spec.ts",
     "e2e-visual/__screenshots__/components-buttons-button--compact.png",
-    ".github/workflows/visual-tests.yml",
+    ".github/workflows/loki.yml",
     ".github/workflows/run-tests.yml",
     ".storybook/preview.tsx",
     "package.json",
