@@ -27,6 +27,7 @@
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.custom-values :as custom-values]
+   [metabase.parameters.field :as parameters.field]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -3932,6 +3933,28 @@
             (is (set/subset? #{["Barney's Beanery"] ["bigmista's barbecue"]}
                              (-> response :values set)))
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
+
+(deftest field-filter-values-truncation-test
+  (testing "A capped field-filter dropdown can search for values outside its initial page (#76143)"
+    (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
+      (let [url (param-values-url field-filter-card (:field-values param-keys))
+            all-values (:values (mt/user-http-request :crowberto :get 200 url))
+            total (count all-values)]
+        (is (> total 2))
+        (doseq [[limit more?] [[2 true] [total false] [(inc total) false]]]
+          (with-redefs [parameters.field/default-max-field-search-limit limit]
+            (is (= {:values (vec (take limit all-values)),
+                    :has_more_values more?,
+                    :field_id (mt/id :venues :name)}
+                   (mt/user-http-request :crowberto :get 200 url)))))
+        (with-redefs [parameters.field/default-max-field-search-limit 2]
+          (let [missing-value (ffirst (drop 2 all-values))
+                response (mt/user-http-request :crowberto :get 200
+                                               (param-values-url field-filter-card
+                                                                 (:field-values param-keys)
+                                                                 missing-value))]
+            (is (true? (:has_more_values response)))
+            (is (some #{[missing-value]} (:values response)))))))))
 
 (deftest field-filter-values-without-create-queries-permission-test
   (testing "Users without create-queries permission can still get field filter values for saved cards (#GHY-1605)"
