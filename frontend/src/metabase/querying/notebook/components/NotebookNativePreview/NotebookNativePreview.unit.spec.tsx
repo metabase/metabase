@@ -2,7 +2,10 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { createMockMetadata } from "__support__/metadata";
-import { setupNativeQuerySnippetEndpoints } from "__support__/server-mocks";
+import {
+  setupNativeQuerySnippetEndpoints,
+  setupUserMetabotPermissionsEndpoint,
+} from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -51,6 +54,7 @@ function setup({
   const onConvertClick = jest.fn<void, [Question]>();
 
   setupNativeQuerySnippetEndpoints();
+  setupUserMetabotPermissionsEndpoint();
   fetchMock.post("path:/api/dataset/native", {
     query: "native query",
     collection,
