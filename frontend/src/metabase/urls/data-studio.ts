@@ -321,6 +321,10 @@ export function dataStudioSchemaViewer(args?: DataStudioSchemaViewerParams) {
   return `${SCHEMA_VIEWER_BASE_URL}?${params.toString()}`;
 }
 
+export function dataStudioEmbeddingMap() {
+  return `${ROOT_URL}/embedding-map`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }

@@ -190,3 +190,32 @@
                   (is (= #{"baseline" "belligerent" "ancillary" "adjunct"}
                          (query {:term-queries     ["baseline" "belligerent"]
                                  :semantic-queries ["ancillary"]}))))))))))))
+
+(comment
+
+  (require '[metabase.api.common :as api]
+           '[metabase.permissions.core :as perms]
+           '[metabase.request.core :as request]
+           '[metabase.search.config :as search.config]
+           '[metabase.search.core :as search.core])
+
+  (defn semantic-search
+    ([query]
+     (semantic-search 7 query))
+    ([user-id query]
+     (request/with-current-user user-id
+       (:data
+        (search.core/search
+         (search.core/search-context
+          {:search-string query
+           :search-engine "semantic"
+           :context :search-bar
+           :models search.config/all-models
+           :limit 10
+           :current-user-id api/*current-user-id*
+           :current-user-perms @api/*current-user-permissions-set*
+           :is-superuser? api/*is-superuser?*
+           :is-sandboxed-user? (perms/sandboxed-user?)
+           :is-impersonated-user? (perms/impersonated-user?)}))))))
+
+  (first (semantic-search "tired")))
