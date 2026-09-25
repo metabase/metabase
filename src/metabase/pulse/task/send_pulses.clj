@@ -34,14 +34,18 @@
                                                          :archived false
                                                          ;; alerts should all be migrated to notifications by now
                                                          :alert_condition nil)]
-        (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
-          (task-history/with-task-history {:task         "send-pulse"
-                                           :task_details {:pulse-id    pulse-id
-                                                          :channel-ids (seq channel-ids)}}
-            (log/debugf "Starting Pulse Execution: %d" pulse-id)
-            (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
-            (log/debugf "Finished Pulse Execution: %d" pulse-id)
-            :done))
+        ;; a trashed Dashboard keeps its triggers so restoring it resumes them; skip before opening a task run,
+        ;; which nothing would complete since `pulse.send/send-pulse!` sends nothing for an archived Dashboard
+        (if (pulse.db/dashboard-archived? (:dashboard_id pulse))
+          (log/debugf "Dashboard of Pulse %d is archived, Skipping." pulse-id)
+          (task-history/with-task-run (some-> (pulse.send/pulse->task-run-info pulse) (assoc :auto-complete false))
+            (task-history/with-task-history {:task         "send-pulse"
+                                             :task_details {:pulse-id    pulse-id
+                                                            :channel-ids (seq channel-ids)}}
+              (log/debugf "Starting Pulse Execution: %d" pulse-id)
+              (pulse.send/send-pulse! pulse :channel-ids channel-ids :async? true)
+              (log/debugf "Finished Pulse Execution: %d" pulse-id)
+              :done)))
         (log/debugf "Pulse %d not found, Skipping." pulse-id))
       (catch Throwable e
         (log/errorf "Error sending Pulse %d to channel ids: %s: %s" pulse-id (str/join ", " channel-ids) (ex-message e))))))

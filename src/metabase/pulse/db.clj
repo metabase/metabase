@@ -25,6 +25,11 @@
   [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
   (t2/select-one :model/Dashboard :id dashboard-id))
 
+(mu/defn dashboard-archived? :- :boolean
+  "Whether the Dashboard with `dashboard-id` exists and is archived."
+  [dashboard-id :- [:maybe ::lib.schema.id/dashboard]]
+  (t2/exists? :model/Dashboard :id dashboard-id :archived true))
+
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
