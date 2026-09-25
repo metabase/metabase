@@ -31,11 +31,12 @@
    [:user-id [:maybe pos-int?]]
    [:context {:optional true} :any]])
 
-(mr/def ::publicize
+(mr/def :event/card-public-link-created
   [:map {:closed true}
    [:user-id pos-int?]
-   [:object-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Card %)]]])
+   [:object-id pos-int?]])
 
-(mr/def :event/card-public-link-created ::publicize)
-(mr/def :event/card-public-link-deleted ::publicize)
+(mr/def :event/card-public-link-deleted
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])

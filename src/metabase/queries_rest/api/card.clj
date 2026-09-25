@@ -880,17 +880,16 @@
                          [:card-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card (api/check-not-archived (api/read-check :model/Card card-id))
-        {existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
+  (api/check-not-archived (api/read-check :model/Card card-id))
+  (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (let [changes {:public_uuid       <>
-                                  :made_public_by_id api/*current-user-id*}]
-                     (queries-rest.db/update-card! card-id changes)
-                     (events/publish-event! :event/card-public-link-created
-                                            {:object    (merge card changes)
-                                             :object-id card-id
-                                             :user-id   api/*current-user-id*}))))]
+                   (queries-rest.db/update-card! card-id
+                                                 {:public_uuid       <>
+                                                  :made_public_by_id api/*current-user-id*})
+                   (events/publish-event! :event/card-public-link-created
+                                          {:object-id card-id
+                                           :user-id api/*current-user-id*})))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -906,15 +905,13 @@
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card    (queries-rest.db/card card-id)
-        changes {:public_uuid       nil
-                 :made_public_by_id nil}]
-    (api/check-404 (:public_uuid card))
-    (queries-rest.db/update-card! card-id changes)
-    (events/publish-event! :event/card-public-link-deleted
-                           {:object    (merge card changes)
-                            :object-id card-id
-                            :user-id   api/*current-user-id*}))
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
+  (queries-rest.db/update-card! card-id
+                                {:public_uuid       nil
+                                 :made_public_by_id nil})
+  (events/publish-event! :event/card-public-link-deleted
+                         {:object-id card-id
+                          :user-id api/*current-user-id*})
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
