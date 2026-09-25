@@ -554,6 +554,21 @@
                             :type    string?}}
               (last result))))))
 
+(deftest ^:parallel tool-failure-log-level-test
+  (let [run-failing (fn [e]
+                      (into [] (self.core/tool-executor-xf {"failing" {:fn (fn [_] (throw e))}})
+                            (test-util/parts->aisdk-chunks
+                             [{:type :tool-input :id "call-f" :function "failing" :arguments {}}])))]
+    (testing "an unexpected tool failure is logged at error with its exception"
+      (let [e (ex-info "boom" {})]
+        (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
+          (run-failing e)
+          (is (= [[:error e]] (map (juxt :level :e) (messages)))))))
+    (testing "an agent error is not"
+      (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :error]]
+        (run-failing (ex-info "No such field" {:agent-error? true}))
+        (is (empty? (messages)))))))
+
 (deftest ^:parallel tool-executor-xf-test-6
   (testing "tool-executor-xf handles nil arguments for no-arg tools"
     (let [chunks (test-util/parts->aisdk-chunks
