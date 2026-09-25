@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.channel.settings :as channel.settings]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
@@ -9,7 +10,9 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.test :as mt]))
+   [metabase.notification.models :as models.notification]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest all-tools-test
   (testing "profile tools are vars with required metadata"
@@ -276,3 +279,27 @@
           [_:=> [_:cat params] _out] schema]
       (is (not-any? #(= :queries_state (first %)) (rest params)))
       (is (not-any? #(= :charts_state (first %)) (rest params))))))
+
+(deftest slackbot-schedules-keep-their-day-test
+  (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
+                              channel.settings/slack-cached-channels-and-usernames
+                              (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+    (mt/with-model-cleanup [:model/Notification :model/Pulse]
+      (mt/with-temp [:model/Card      {card-id :id} {}
+                     :model/Dashboard {dash-id :id} {}]
+        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
+          (mt/with-current-user (mt/user->id :crowberto)
+            (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                              {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
+              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
+              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
+        (testing "alerts"
+          (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
+                 (->> (models.notification/notifications-for-card card-id)
+                      (mapcat :subscriptions)
+                      (into #{} (map :cron_schedule))))))
+        (testing "dashboard subscriptions"
+          (is (= #{[:weekly "mon" nil] [:monthly "mon" :first]}
+                 (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                      (mapcat :channels)
+                      (into #{} (map (juxt :schedule_type :schedule_day :schedule_frame)))))))))))
