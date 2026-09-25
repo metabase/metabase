@@ -2,12 +2,12 @@
 
 tasks:
   eslint-fix:
-    script:
-      eslint --cache
-      --cache-strategy content
-      --max-warnings 0
-      --report-unused-disable-directives
-      --fix
+    script: |-
+      eslint --cache \
+      --cache-strategy content \
+      --max-warnings 0 \
+      --report-unused-disable-directives \
+      --fix \
       enterprise/frontend frontend e2e
     deps:
       - build-cljs
@@ -15,7 +15,7 @@ tasks:
       cache: false
 
   find-never-defined-css-variables:
-    script:
+    script: |-
       tsx bin/find-never-defined-css-variables/find-never-defined-css-variables.ts
     inputs:
       - frontend/**/*.css
@@ -23,8 +23,8 @@ tasks:
       - bin/find-never-defined-css-variables/**
 
   format:
-    script:
-      oxfmt --write
+    script: |-
+      oxfmt --write \
       '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
     options:
       cache: false
@@ -41,25 +41,25 @@ tasks:
       cache: false
 
   lint-css:
-    script:
+    script: |-
       stylelint --cache './frontend/**/*.css'
     inputs:
       - frontend/**/*.css
       - .stylelintrc.json
 
   lint-docs-links:
-    script:
+    script: |-
       ./bin/verify-doc-links
     inputs:
       - docs/**
       - bin/verify-doc-links
 
   lint-eslint:
-    script:
-      eslint --cache
-      --cache-strategy content
-      --max-warnings 0
-      --report-unused-disable-directives
+    script: |-
+      eslint --cache \
+      --cache-strategy content \
+      --max-warnings 0 \
+      --report-unused-disable-directives \
       enterprise/frontend frontend e2e
     deps:
       - build-cljs
@@ -70,8 +70,8 @@ tasks:
       - eslint.config.mjs
 
   lint-format:
-    script:
-      oxfmt --check
+    script: |-
+      oxfmt --check \
       '{frontend,enterprise/frontend,e2e}/**/*.{js,jsx,ts,tsx,css}'
     inputs:
       - "@group(frontend)"
@@ -79,30 +79,30 @@ tasks:
       - .oxfmtrc.json
 
   lint-openapi:
-    script:
-      redocly lint resources/openapi/openapi.json
-      --skip-rule security-defined
-      --skip-rule operation-operationId
-      --skip-rule no-unused-components
-      --skip-rule info-license --skip-rule no-path-trailing-slash
-      --skip-rule no-identical-paths
-      --skip-rule no-ambiguous-paths
-      --skip-rule path-parameters-defined
+    script: |-
+      redocly lint resources/openapi/openapi.json \
+      --skip-rule security-defined \
+      --skip-rule operation-operationId \
+      --skip-rule no-unused-components \
+      --skip-rule info-license --skip-rule no-path-trailing-slash \
+      --skip-rule no-identical-paths \
+      --skip-rule no-ambiguous-paths \
+      --skip-rule path-parameters-defined \
       --skip-rule spec-components-invalid-map-name
     inputs:
       - resources/openapi/openapi.json
 
   lint-yaml:
-    script:
+    script: |-
       yamllint **/*.{yaml,yml} --ignore=node_modules/**/*.{yaml,yml}
     inputs:
       - "**/*.yaml"
       - "**/*.yml"
 
   module-boundaries:
-    script:
-      eslint --config eslint.config.module-boundaries.mjs
-      'frontend/src/**/*.{ts,tsx}'
+    script: |-
+      eslint --config eslint.config.module-boundaries.mjs \
+      'frontend/src/**/*.{ts,tsx}' \
       'enterprise/frontend/src/**/*.{ts,tsx}'
     deps:
       - build-cljs
@@ -111,7 +111,7 @@ tasks:
       - eslint.config.module-boundaries.mjs
 
   type-check:
-    script:
+    script: |-
       ./node_modules/typescript7/bin/tsc --noEmit
     deps:
       - build-cljs

@@ -2,7 +2,7 @@
 
 tasks:
   build-cljs:
-    script:
+    script: |-
       shadow-cljs compile app
     inputs:
       - "@group(cljs)"
@@ -10,7 +10,7 @@ tasks:
       - target/cljs_dev/**
 
   build-hot-cljs:
-    script:
+    script: |-
       shadow-cljs watch app
     options:
       persistent: true
@@ -19,7 +19,7 @@ tasks:
       outputStyle: stream
 
   build-release-cljs:
-    script:
+    script: |-
       shadow-cljs release app
     deps:
       - clean-release-cljs
@@ -29,7 +29,7 @@ tasks:
       - target/cljs_release/**
 
   build-watch-cljs:
-    script:
+    script: |-
       shadow-cljs watch app
     options:
       persistent: true
@@ -46,22 +46,22 @@ tasks:
       cache: false
 
   clean-dev-cljs:
-    script:
+    script: |-
       rm -rf target/cljs_dev/*
     options:
       cache: false
 
   clean-release-cljs:
-    script:
+    script: |-
       rm -rf target/cljs_release/*
     options:
       cache: false
 
   cljs-nrepl:
-    script:
-      shadow-cljs node-repl
-      -d cider/cider-nrepl:0.57.0
-      -d cider/piggieback:0.6.1
+    script: |-
+      shadow-cljs node-repl \
+      -d cider/cider-nrepl:0.57.0 \
+      -d cider/piggieback:0.6.1 \
       -d refactor-nrepl/refactor-nrepl:3.11.0
     options:
       persistent: true
@@ -70,19 +70,19 @@ tasks:
       outputStyle: stream
 
   cljs-server-restart:
-    script:
+    script: |-
       shadow-cljs restart
     options:
       cache: false
 
   cljs-server-start:
-    script:
+    script: |-
       shadow-cljs start
     options:
       cache: false
 
   cljs-server-stop:
-    script:
+    script: |-
       shadow-cljs stop
     options:
       cache: false

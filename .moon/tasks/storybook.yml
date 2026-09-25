@@ -2,7 +2,7 @@
 
 tasks:
   build-storybook:
-    script:
+    script: |-
       NODE_OPTIONS=--max-old-space-size=8192 storybook build
     deps:
       - build-cljs
@@ -13,7 +13,7 @@ tasks:
       - storybook-static/**
 
   chromatic:
-    script:
+    script: |-
       NODE_OPTIONS=--max-old-space-size=8192 chromatic
     deps:
       - build-cljs
@@ -21,7 +21,7 @@ tasks:
       cache: false
 
   storybook:
-    script:
+    script: |-
       storybook dev -p 6006
     deps:
       - build-cljs
@@ -32,9 +32,9 @@ tasks:
       outputStyle: stream
 
   storybook-embedding-sdk:
-    script:
-      IS_EMBEDDING_SDK=true
-      storybook dev -c frontend/src/embedding-sdk-shared/.storybook
+    script: |-
+      IS_EMBEDDING_SDK=true \
+      storybook dev -c frontend/src/embedding-sdk-shared/.storybook \
       -p 6006
     deps:
       - build-cljs
@@ -45,23 +45,23 @@ tasks:
       outputStyle: stream
 
   test-visual-loki:
-    script:
+    script: |-
       NODE_ENV=development loki test --chromeFlags='--headless --disable-gpu'
     options:
       cache: false
 
   test-visual-loki-approve-diff:
-    script:
-      ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _
+    script: |-
+      ls .loki/difference | xargs -I _ find .loki/current -name _ | xargs -I _ \
       cp _ .loki/reference/
     options:
       cache: false
 
   test-visual-loki-ci:
-    script:
-      NODE_ENV=development
-      loki test --chromeFlags='--headless --disable-gpu'
-      --reactUri file:./storybook-static
+    script: |-
+      NODE_ENV=development \
+      loki test --chromeFlags='--headless --disable-gpu' \
+      --reactUri file:./storybook-static \
       --verboseRenderer
     deps:
       - build-storybook
@@ -69,28 +69,28 @@ tasks:
       cache: false
 
   test-visual-loki-prune:
-    script:
-      ls .loki/reference
-      | grep -v "$(ls .loki/current)"
+    script: |-
+      ls .loki/reference \
+      | grep -v "$(ls .loki/current)" \
       | xargs -I {} rm .loki/reference/{}
     options:
       cache: false
 
   test-visual-loki-report:
-    script:
-      node frontend/test/generate-loki-report-json.js
-      && reg-cli --from .loki/report.json
+    script: |-
+      node frontend/test/generate-loki-report-json.js \
+      && reg-cli --from .loki/report.json \
       --report .loki/report.html
     options:
       cache: false
 
   test-visual-loki-report-open:
-    script:
-      NODE_ENV=development
-      loki test --chromeFlags='--headless --disable-gpu'
-      || (echo "Visual test failed, opening report..."
-      && node frontend/test/generate-loki-report-json.js
-      && reg-cli --from .loki/report.json --report .loki/report.html
+    script: |-
+      NODE_ENV=development \
+      loki test --chromeFlags='--headless --disable-gpu' \
+      || (echo "Visual test failed, opening report..." \
+      && node frontend/test/generate-loki-report-json.js \
+      && reg-cli --from .loki/report.json --report .loki/report.html \
       && open-cli .loki/report.html)
     options:
       cache: false

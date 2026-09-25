@@ -23,9 +23,9 @@ tasks:
       outputStyle: stream
 
   build-hot-js:
-    script:
-      NODE_OPTIONS=--max-old-space-size=8192
-      WEBPACK_BUNDLE=hot
+    script: |-
+      NODE_OPTIONS=--max-old-space-size=8192 \
+      WEBPACK_BUNDLE=hot \
       rspack serve
     deps:
       - clean-dev-js
@@ -36,7 +36,7 @@ tasks:
       outputStyle: stream
 
   build-static-viz-watch:
-    script:
+    script: |-
       rspack --config rspack.static-viz.config.js --watch
     deps:
       - build-cljs
@@ -58,8 +58,8 @@ tasks:
       outputStyle: stream
 
   build-watch-js:
-    script:
-      NODE_OPTIONS=--max-old-space-size=8192
+    script: |-
+      NODE_OPTIONS=--max-old-space-size=8192 \
       rspack serve --watch
     deps:
       - build-cljs
@@ -70,7 +70,7 @@ tasks:
       outputStyle: stream
 
   cloud-backend:
-    script:
+    script: |-
       clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev
     options:
       persistent: true
@@ -102,7 +102,7 @@ tasks:
       outputStyle: stream
 
   dev-backend:
-    script:
+    script: |-
       clojure -M:run:dev:dev-start --hot
     options:
       persistent: true
@@ -111,7 +111,7 @@ tasks:
       outputStyle: stream
 
   dev-backend-ee:
-    script:
+    script: |-
       clojure -M:run:ee:dev:dev-start --hot
     options:
       persistent: true
@@ -158,7 +158,7 @@ tasks:
       outputStyle: stream
 
   email-dev:
-    script:
+    script: |-
       bun dev/email-preview/serve.ts
     options:
       persistent: true
