@@ -61,6 +61,7 @@ jobs:
       frontend_unit_infra: ${{ steps.changes.outputs.frontend_unit_infra }}
       frontend_loki_infra: ${{ steps.changes.outputs.frontend_loki_infra }}
       frontend_loki_all: ${{ steps.changes.outputs.frontend_loki_all }}
+      frontend_visual_infra: ${{ steps.changes.outputs.frontend_visual_infra }}
       frontend_visual_all: ${{ steps.changes.outputs.frontend_visual_all }}
       shared_sources: ${{ steps.changes.outputs.shared_sources }}
       documentation: ${{ steps.changes.outputs.documentation }}
@@ -333,6 +334,7 @@ jobs:
       skip-playwright: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_visual_all != 'true' }}
+      playwright-infra-touched: ${{ needs.files-changed.outputs.frontend_visual_infra == 'true' }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 

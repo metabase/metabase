@@ -163,4 +163,18 @@ describe("file-paths.yaml", () => {
   ])("does not run the visual tests when %s changes", (file) => {
     expect(matches("frontend_visual_all", file)).toBe(false);
   });
+
+  it.each([
+    "e2e-visual/stories.spec.ts",
+    "e2e-visual/__screenshots__/components-buttons-button--compact.png",
+  ])("runs every visual test story when %s changes", (file) => {
+    expect(matches("frontend_visual_infra", file)).toBe(true);
+  });
+
+  it.each([
+    "frontend/src/metabase/ui/Button.stories.tsx",
+    ".loki/reference/chrome.laptop-Button.png",
+  ])("allows a change to %s to narrow the visual tests", (file) => {
+    expect(matches("frontend_visual_infra", file)).toBe(false);
+  });
 });
