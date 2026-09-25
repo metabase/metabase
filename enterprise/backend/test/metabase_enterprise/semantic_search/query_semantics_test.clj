@@ -159,7 +159,8 @@
       (mt/as-admin
         (semantic.tu/with-test-db! {:mode :mock-initialized}
           (semantic.tu/with-only-semantic-weights
-            (when-not (every? #{nil :arctic-embed-l-v2} (map :vector-fixture fixtures/cases))
+            (when-not (every? #(contains? #{nil :arctic-embed-l-v2} %)
+                              (map :vector-fixture fixtures/cases))
               (throw (ex-info "Unknown vector fixture" {})))
             (doseq [case fixtures/cases
                     :when (nil? (:vector-fixture case))]

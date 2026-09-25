@@ -19,6 +19,7 @@
     button { cursor: pointer; }
     .tab { border: 1px solid #c8d4e2; background: white; color: #29405c; border-radius: 9px; padding: 9px 15px; }
     .tab[aria-selected="true"] { background: #173c71; border-color: #173c71; color: white; }
+    .corpus-description { max-width: 850px; margin: -8px 0 20px; }
     .card { background: white; border: 1px solid #dce5ef; border-radius: 14px; box-shadow: 0 2px 9px #213f6610; padding: 20px; }
     .engine-guide { margin: 18px 0 26px; }
     .engine-table { min-width: 950px; table-layout: fixed; }
@@ -67,6 +68,27 @@
     .empty { color: #5b6d83; padding: 18px 0; }
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } .case-list { max-height: 280px; } }
     @media (max-width: 600px) { body { padding: 18px 12px 50px; } .summary-grid, .query-grid { grid-template-columns: 1fr; } .toolbar { flex-wrap: wrap; } }
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; background: #101722; color: #e4edf7; }
+      .muted, .note, .metric .label, .case-button .focus, .query-box .small, .empty { color: #aabbd0; }
+      .card { background: #1b2839; border-color: #354963; box-shadow: none; }
+      .tab, .toolbar input, .toolbar select { background: #1b2839; color: #e4edf7; border-color: #53677e; }
+      .tab[aria-selected="true"] { background: #2e67a8; border-color: #2e67a8; color: white; }
+      th, td { border-color: #34465c; }
+      th, .engine-table tbody th { color: #b7c9de; }
+      .engine-table thead th { background: #263a52; color: #e4edf7; }
+      .engine-table tbody tr:nth-child(even) { background: #203047; }
+      .case-button:hover { background: #263b52; }
+      .case-button[aria-current="true"] { background: #25476c; border-color: #6d9cd4; }
+      .query-box { background: #172335; border-color: #344963; }
+      code { background: #293c52; }
+      .badge { background: #204632; color: #a4e2b6; }
+      .badge.divergent { background: #523b1e; color: #ffd08a; }
+      .hit { color: #72d999; }
+      .miss { color: #8295aa; }
+      .extra { color: #ffc26b; }
+      .absent { color: #ff929d; }
+    }
   </style>
 </head>
 <body>
@@ -95,7 +117,7 @@
             <td><strong>Any</strong> word can suffice (OR).</td>
             <td><code>red shoes</code> needs both <code>red</code> and <code>shoes</code> somewhere (AND).</td>
             <td>AND by default; <code>or</code> gives alternatives.</td>
-            <td>Whole-query similarity; no AND/OR rule.</td>
+            <td>Whole-query similarity; no fixed AND/OR rule.</td>
           </tr>
           <tr>
             <th scope="row">Partial words</th>
@@ -109,7 +131,7 @@
             <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
             <td><code>or</code>, <code>-</code>, and quotes are literal.</td>
             <td><code>or</code>, <code>-word</code>, and quoted phrases work; unquoted <code>and</code> is ignored.</td>
-            <td>Not enforced as operators.</td>
+            <td>May shape the embedding's meaning, but not as fixed Boolean or phrase rules.</td>
           </tr>
           <tr>
             <th scope="row">Language</th>
@@ -125,9 +147,10 @@
   </section>
 
   <nav class="tabs" aria-label="Corpus">
-    <button class="tab" data-corpus="sameQuery" aria-selected="true">Same query</button>
-    <button class="tab" data-corpus="translations" aria-selected="false">Translated queries</button>
+    <button class="tab" data-corpus="sameQuery" aria-selected="true">Identical Queries</button>
+    <button class="tab" data-corpus="translations" aria-selected="false">Adapted Queries</button>
   </nav>
+  <p class="corpus-description muted" id="corpus-description" aria-live="polite">Every engine receives the same query. Differences show how each interprets it.</p>
 
   <section class="summary-grid" id="metrics" aria-label="Corpus summary"></section>
   <section class="tables">
@@ -175,6 +198,9 @@
 
     function renderSummary() {
       const summary = current().summary;
+      $("corpus-description").textContent = state.corpus === "sameQuery"
+        ? "Every engine receives the same query. Differences show how each interprets it."
+        : "Queries may be adapted per engine to best match the same intended results. The chosen target engine’s hits provide the gold set for scoring.";
       $("metrics").innerHTML = [
         [summary.count, "Queries / comparisons"],
         [summary.allEqual, "All four engines agree"],
