@@ -1829,9 +1829,8 @@
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
             (is (= "aborted" (:initial_sync_status response)))
-            (testing "the failure cause appears somewhere in the database the admin page reads"
-              (is (some #(and (string? %) (str/includes? % "glue:GetDatabases"))
-                        (tree-seq coll? seq response)))))
+            (testing "the admin page reads the failure cause from the database"
+              (is (str/includes? (str (:initial_sync_error response)) "glue:GetDatabases"))))
           (testing "GET /api/database, which the sync status panel reads, carries the cause too"
             (is (str/includes? (->> (mt/user-http-request :crowberto :get 200 "database")
                                     :data
