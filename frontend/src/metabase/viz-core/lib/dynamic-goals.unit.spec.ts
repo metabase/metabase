@@ -911,6 +911,8 @@ describe("dynamic goal settings per display", () => {
     expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scatter", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("scatter", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("waterfall", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("waterfall", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
   });
 

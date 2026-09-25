@@ -28,6 +28,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   row: ["graph.goal_value"],
   scalar: ["scalar.segments"],
   scatter: ["graph.goal_value"],
+  waterfall: ["graph.goal_value"],
 };
 
 export function getDynamicGoalSettingKeys(
