@@ -17,6 +17,17 @@ fileGroups:
     - tsconfig.json
     - tsconfig.base.json
     - tsconfig.sdk.json
+  # Tracked files under resources/frontend_client that the build reads.
+  # That directory is a mix: these are inputs, app/dist and the generated
+  # html files are outputs.
+  frontendClient:
+    - resources/frontend_client/*_template.html
+    - resources/frontend_client/init.html
+    - resources/frontend_client/inline_js/**
+    - resources/frontend_client/app/assets/**
+    - resources/frontend_client/app/fonts/**
+    - resources/frontend_client/app/img/**
+    - resources/frontend_client/app/instance-loading-page/**
   rspack:
     - rspack.*.js
     - rspack.config.js

@@ -23,8 +23,15 @@ tasks:
     inputs:
       - "@group(frontend)"
       - "@group(rspack)"
+      - "@group(frontendClient)"
     outputs:
-      - resources/frontend_client/**
+      - resources/frontend_client/app/dist/**
+      - resources/frontend_client/index.html
+      - resources/frontend_client/public.html
+      - resources/frontend_client/embed.html
+      - resources/frontend_client/embed-sdk.html
+      - resources/frontend_client/data-app.html
+      - resources/frontend_client/embed-mcp.html
 
   build-release:
     command: noop
@@ -43,8 +50,15 @@ tasks:
     inputs:
       - "@group(frontend)"
       - "@group(rspack)"
+      - "@group(frontendClient)"
     outputs:
-      - resources/frontend_client/**
+      - resources/frontend_client/app/dist/**
+      - resources/frontend_client/index.html
+      - resources/frontend_client/public.html
+      - resources/frontend_client/embed.html
+      - resources/frontend_client/embed-sdk.html
+      - resources/frontend_client/data-app.html
+      - resources/frontend_client/embed-mcp.html
 
   build-release-static-viz:
     script: |-
@@ -55,8 +69,9 @@ tasks:
     inputs:
       - "@group(frontend)"
       - "@group(rspack)"
+      - "@group(frontendClient)"
     outputs:
-      - resources/frontend_client/**
+      - resources/frontend_client/app/dist/**
 
   build-static-viz:
     script: |-
