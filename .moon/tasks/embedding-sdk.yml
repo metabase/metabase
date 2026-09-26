@@ -1,4 +1,16 @@
 # Embedding SDK: bundle, package, types and docs.
+#
+# FIXME: five tasks below declare the whole of resources/embedding-sdk as their
+# output: build-embedding-sdk-node, build-release-embedding-sdk-bundle,
+# build-release-embedding-sdk-package, embedding-sdk-generate-package and
+# embedding-sdk-generate-package-support-files. Each one writes a different
+# subset, so their cache entries overlap and a hit on one can restore a snapshot
+# taken before another had written. build-embedding-sdk-package runs all five in
+# order, which is exactly where that bites.
+#
+# Each task should declare only the paths it writes. Nothing here is verified
+# against what the rspack configs and generator scripts actually emit, unlike
+# build-cljs and build-js.
 
 tasks:
   build-embedding-sdk-node:
