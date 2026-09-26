@@ -100,9 +100,6 @@ const parameters = {
       date: /Date$/,
     },
   },
-  // A play function that throws logs the error and the story still renders.
-  // addon-interactions sets this too, and the Storybook test build leaves that addon out.
-  throwPlayFunctionExceptions: false,
 };
 
 const argTypes = {
