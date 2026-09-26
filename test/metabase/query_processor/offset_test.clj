@@ -169,6 +169,8 @@
 (deftest ^:parallel legacy-query-normalization-test
   (testing "Make sure legacy queries work correctly as they come in from the REST API (not-yet-normalized) (#42323)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
+      ;; TODO(mbql5-migration): exercises legacy-MBQL normalization (§5) — the not-yet-normalized legacy map IS the
+      ;; fixture under test (#42323); porting to lib would pre-normalize it. Keep on the old macro.
       (let [query (-> (mt/mbql-query orders
                         {:aggregation [[:offset
                                         ;; missing UUID. Even in legacy we're supposed to be keeping the UUID.
@@ -191,15 +193,17 @@
 (deftest ^:parallel sort-by-offset-aggregation-test
   (testing "Should be able to sort by an Offset() expression in an aggregation (#42554)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/offset)
-      (let [query (-> (mt/mbql-query orders
-                        {:breakout    [[:field %created_at {:base-type :type/DateTime, :temporal-unit :month}]],
-                         :aggregation [[:offset
-                                        {:display-name "X", :name "X", :lib/uuid "59590ea6-b853-4c2f-99dd-a3b0f5662fa7"}
-                                        [:sum [:field %total {:base-type :type/Float}]]
-                                        -1]]
-                         :order-by [[:asc [:aggregation 0]]]
-                         :limit    3})
-                      (assoc-in [:middleware :format-rows?] false))]
+      (let [mp         (mt/metadata-provider)
+            orders     (lib.metadata/table mp (mt/id :orders))
+            created-at (lib.metadata/field mp (mt/id :orders :created_at))
+            total      (lib.metadata/field mp (mt/id :orders :total))
+            query      (-> (lib/query mp orders)
+                           (lib/breakout (lib/with-temporal-bucket created-at :month))
+                           (lib/aggregate (lib/update-options (lib/offset (lib/sum total) -1)
+                                                              assoc :name "X" :display-name "X"))
+                           (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0)))
+                           (lib/limit 3)
+                           (assoc-in [:middleware :format-rows?] false))]
         (mt/with-native-query-testing-context query
           (is (= (if (tx/sorts-nil-first? driver/*driver* :type/Float)
                    [[#t "2016-04-01" nil]
