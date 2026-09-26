@@ -42,18 +42,14 @@
   (testing "a registry entry becomes a flat map of what the page says about it"
     (is (= {:name        "search"
             :title       "Search"
-            :description "Search."
             :scope       {:id "agent:content:read" :description "See your Metabase content and data structure"}
             :effect      :read-only
             :idempotent? false
             :inline-ui?  false
             :arguments   []}
            (#'mcp-tools-dox/tool->entry search-tool))))
-  (testing "the description is flattened onto one line and its template syntax fenced from the docs site's Liquid pass"
-    ;; `execute_sql` and `document_write` spell out `{{tag}}` and `{% card … %}` in exactly Liquid's syntax
-    (is (= "Put values behind {% raw %}{{tag}}{% endraw %} or a {% raw %}{% card id=1 %}{% endraw %} embed."
-           (:description (#'mcp-tools-dox/tool->entry
-                          (assoc search-tool :description "Put values behind {{tag}} or a\n  {% card id=1 %} embed."))))))
+  (testing "the tool's own description is written for the model and is not carried onto the page"
+    (is (not (contains? (#'mcp-tools-dox/tool->entry search-tool) :description))))
   (testing "a scope no `defscope` registered has no wording"
     (is (= {:id "agent:nope" :description nil}
            (:scope (#'mcp-tools-dox/tool->entry (assoc search-tool :scope "agent:nope"))))))
@@ -91,13 +87,11 @@
   (let [problems (fn [tool] (#'mcp-tools-dox/entry-problems (#'mcp-tools-dox/tool->entry tool)))]
     (testing "a documentable tool has no problems"
       (is (= [] (problems search-tool))))
-    (testing "a tool with nothing to say is refused rather than rendered as an empty section"
-      (is (=? [#"No description for MCP tool \"search\".*"] (problems (dissoc search-tool :description)))))
     (testing "a scope no `defscope` registered is refused"
       ;; a scope string the consent screen can't explain is a bug, not a page to publish
       (is (=? [#".*uses scope \"agent:nope\", which no defscope describes.*"] (problems (assoc search-tool :scope "agent:nope")))))
-    (testing "every problem is reported, not just the first"
-      (is (= 2 (count (problems {:name "nope"})))))))
+    (testing "a tool with no description is still documentable: the page shows its facts and arguments, not its prose"
+      (is (= [] (problems (dissoc search-tool :description)))))))
 
 (deftest ^:parallel page-problems-test
   (let [entries (fn [& tools] (map #'mcp-tools-dox/tool->entry tools))]
@@ -266,11 +260,6 @@
                   (->> (v2.registry/list-tools {:supports-mcp-ui? true})
                        (remove #'mcp-tools-dox/app-only?)
                        (map :name)))))
-    (testing "an entry's description is the tool's own, without the permission preamble tools/list prepends"
-      ;; the page states the scope as a bullet; the manifest opens every description with it for clients that
-      ;; replace a scope denial with their own text
-      (doseq [{:keys [name description]} tools]
-        (is (not (str/starts-with? description "Requires the ")) (str name " carries the tools/list preamble"))))
     (testing "the MCP Apps tools are the ones carrying a :_meta :ui block, which is how the page flags them"
       ;; `:inline-ui?` keys off `:_meta`; keep it in step with the extension the tool actually requires
       (doseq [{:keys [name _meta required-extensions]} tools]
@@ -329,11 +318,13 @@
                                first))]
           (is (str/includes? (section-of "Visualize query") "Interactive:"))
           (is (not (str/includes? (section-of "Search") "Interactive:")))))
-      (testing "each section runs facts, then description, then arguments"
+      (testing "each section runs facts, then arguments, with no description paragraph between them"
+        ;; the tool's description is written for the model and is wordy for a reader; the argument notes carry the prose
         (let [section (second (str/split markdown #"\n## Search\n"))]
           (is (< (str/index-of section "Tool name:")
                  (str/index-of section "Permission scope:")
-                 (str/index-of section "Arguments:")))))
+                 (str/index-of section "Arguments:")))
+          (is (re-find #"(?m)^- [^\n]*\n\nArguments:\n" section) "something other than the facts list precedes Arguments:")))
       (testing "scopes are published with the consent screen's wording"
         (is (str/includes? markdown "Permission scope: `agent:content:read`")))
       (testing "arguments are listed without claiming which are required"

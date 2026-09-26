@@ -5,7 +5,8 @@
 
   The page is written from the registry's manifest — the same tool entries a client receives from `tools/list`, plus
   the `:scope` that answer strips. Each tool is first read into a plain map by [[tool->entry]]; everything after that
-  renders those maps."
+  renders those maps. A tool's own description is written for the model and stays off the page; the argument notes
+  are the prose readers get."
   (:require
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
@@ -139,11 +140,10 @@
 (defn- tool->entry
   "Everything the page says about `tool`, as data. The one place the scope registry is consulted: `:scope` carries
   the consent screen's wording under `:description`, or nil when no `defscope` registered the scope."
-  [{tool-name :name :keys [scope description inputSchema annotations] :as tool}]
+  [{tool-name :name :keys [scope inputSchema annotations] :as tool}]
   (let [{:keys [readOnlyHint idempotentHint]} annotations]
     {:name        tool-name
      :title       (tool-title tool)
-     :description (page-prose description)
      :scope       {:id scope :description (page-prose (api-scope/scope-description scope))}
      :effect      (tool-effect tool)
      ;; a read is trivially repeatable, so idempotence is only worth saying about a writer
@@ -156,11 +156,8 @@
 
 (defn- entry-problems
   "Why `entry` can't be documented, as messages."
-  [{entry-name :name :keys [description scope]}]
+  [{entry-name :name :keys [scope]}]
   (cond-> []
-    (nil? description)
-    (conj (str "No description for MCP tool " (pr-str entry-name) ". Give its deftool a docstring."))
-
     (nil? (:description scope))
     (conj (str "MCP tool " (pr-str entry-name) " uses scope " (pr-str (:id scope))
                ", which no defscope describes. Declare it with metabase.api-scope.core/defscope."))))
@@ -245,12 +242,11 @@
     (md/table ["Argument" "Type" "Description"] (map argument-row arguments))))
 
 (defn- tool-section
-  "One tool's section: heading, facts, description, arguments."
-  [{:keys [title description] :as entry}]
+  "One tool's section: heading, facts, arguments."
+  [{:keys [title] :as entry}]
   (md/paragraphs
    [(md/heading 2 title)
     (facts-bullets entry)
-    (md/sentence description)
     (md/labeled-block "Arguments:" (arguments-markdown entry))]))
 
 (defn- document-markdown

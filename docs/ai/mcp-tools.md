@@ -15,7 +15,7 @@ These are the tools an AI client can call once you've [connected it to your Meta
 
 Some clients (like Claude Desktop) ask you to approve or block each tool the first time it's used.
 
-The descriptions and argument notes here are exactly what your agent sees (which is why they sound robotic). Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
+The argument notes here are exactly what your agent sees (which is why they sound robotic). Several tools take or return a `query_handle`. A handle stands for a query that already ran (or was validated), so your agent can visualize or save exactly that query without sending it again. By default, handles expire after 24 hours.
 
 Your agent will use `execute_query` for anything Metabase's query language can express (counts, sums, grouping, filtering, joins) and `execute_sql` for the rest (window functions, CTEs, engine-specific functions), or when you ask for SQL outright.
 
@@ -24,8 +24,6 @@ Your agent will use `execute_query` for anything Metabase's query language can e
 - Tool name: `alert_write`
 - Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
 - Creates or changes content.
-
-Create or update an alert: a notification sent on a schedule when a saved question's results meet a condition. method: "create" requires card_id (the question) and schedule; method: "update" requires id and changes only the fields you pass. schedule is {schedule_type: "hourly" | "daily" | "weekly" | "monthly", schedule_hour? (0-23, required for daily, weekly, and monthly), schedule_minute? (0-59, hourly only), schedule_day? ("mon"…"sun", required for weekly, and picks the weekday for a monthly "first" or "last" frame), schedule_frame? ("first" | "mid" | "last", required for monthly — "mid" is the 15th and takes no schedule_day)} — never a cron string. condition is {type: "has_result" (default) | "goal_above" | "goal_below", send_once?: boolean} — the goal conditions need a goal line on the question's chart, and send_once pauses the alert (active: false) after it first fires. Delivery is one channel: "email" (default) with recipients, a list mixing user ids and email addresses that defaults to you, or "slack" with slack_channel, a channel name like "#data-team" (recipients don't apply). Passing any of channel, slack_channel, or recipients on update replaces the alert's delivery; omit them all to leave it alone. active: false pauses an alert and true resumes it — alerts have no archived state, and this tool cannot delete one. An alert's question is fixed at creation. Creating an alert, changing its delivery or its schedule, resuming a paused one, or clearing send_once additionally requires the agent:query:run scope — the alert runs the question and delivers its results. Pausing one never does. Alerts are for saved questions; use subscription_write to schedule a whole dashboard.
 
 Arguments:
 
@@ -48,8 +46,6 @@ Arguments:
 - Creates or changes content.
 - Running it again with the same arguments has the same effect as running it once.
 
-Add or remove a bookmark on content for the calling user — the same starred/favorites list the Metabase sidebar shows. Pass type (question, model, metric, dashboard, collection, or document), id (numeric or 21-char entity_id), and bookmarked: true to bookmark or false to un-bookmark. Both directions are idempotent: bookmarking something already bookmarked, or un-bookmarking something that isn't, succeeds and reports the resulting state. Bookmarks are per-user and grant no access — the item must already be readable by the caller. The item's name comes back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement. This response is the only place bookmark state is reported: no tool reads a bookmark back, search and get_content carry no bookmarked field, and there is no bookmark listing — so keep this result if you need it later rather than spending calls looking for a read path.
-
 Arguments:
 
 | Argument     | Type              | Description                                                                                                                              |
@@ -63,8 +59,6 @@ Arguments:
 - Tool name: `browse_collection`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
-
-Browse collections structurally. Two modes: items (default) answers "what's in this one collection" — a paged, mixed-type listing you can filter and sort; tree answers "how is the hierarchy laid out" — collections only, depth-limited and budgeted so a whole instance fits in one response, with truncation markers naming the call that expands a branch. One uniform id over every partition: a numeric id, a 21-char entity_id, "root" (re-rooted per namespace), or "trash" (archived content, items mode only). items mode lists one collection's contents with type/created_by/pinned_state/sort_column/sort_direction and limit/offset paging (limit default 50, max 500) in the {data, returned, total} envelope; browsing the trash or an archived collection returns archived children. tree mode returns the nested subcollection structure (collections only, no items, no pagination) down to depth (default 2, max 10) under a per-node child cap and total node budget; trimmed or deeper nodes carry a marker naming the expansion call, e.g. … 14 more under "Finance" — browse_collection(id: 45, mode: "tree"); archived subtrees and the trash never appear in trees. For content search or recents use the search tool.
 
 Arguments:
 
@@ -90,8 +84,6 @@ Arguments:
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
 
-Browse the data hierarchy: databases → schemas → tables → fields. Actions: list_databases — databases you can see; list_schemas — schema names in a database; list_tables — tables in a database, scoped to `schema` (omit it for databases without schemas) and optionally narrowed with `search`; list_models — models built on a database; get_fields — field metadata for up to 20 tables in one call, each table carrying its measures, segments, metrics, and related tables (FK targets with column names) for query construction. list_* actions return the {data, returned, total} envelope paged with limit/offset. get_fields returns whole tables within a response byte budget and names any tables it had to omit; a single table too large for the budget comes back as a position-ordered field slice with a continuation offset.
-
 Arguments:
 
 | Argument          | Type             | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -113,8 +105,6 @@ Arguments:
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
 
-Create, rename, move, archive, or restore a collection — the folders that hold questions, dashboards, models, and documents. method: "create" requires name and accepts description, parent_id, namespace, and authority_level; method: "update" requires id and accepts name, description, parent_id, archived, and authority_level. parent_id nests a new collection or moves an existing one: pass a numeric id, a 21-character entity_id, or "root" for the top level; omitting it on create means your personal collection (the root collection for a namespaced one), and omitting it on update leaves the collection where it is. You need write access to the parent. archived: true moves the collection and everything in it to the trash, false restores it — there is no hard delete, and omitting archived leaves the trashed state alone. To move something out of the trash, pass archived: false together with parent_id; parent_id on its own would leave it trashed. namespace is create-only ("snippets" for SQL snippet folders, "transforms" for the transform folders transform_write files transforms into); collections cannot move between namespaces. authority_level "official" marks the collection Official and needs an admin on an instance with that feature. description and authority_level can be set, rewritten, and cleared — to erase one, name it in clear (clear: ["description"]); sending null does not work, because unset properties are stripped before the tool sees them. Personal collections themselves cannot be created or moved, but you can nest collections inside one by passing its id as parent_id. Returns the resulting collection, including authority_level and namespace, so no follow-up read is needed.
-
 Arguments:
 
 | Argument          | Type              | Description                                                                                                                                                                                                                                                                       |
@@ -134,8 +124,6 @@ Arguments:
 - Tool name: `dashboard_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
-
-Create or update a dashboard and edit its layout with ordered ops. On update the ops are one atomic save — nothing is written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry cannot double-add. Create is not atomic: the dashboard row is written first and the ops applied second, so a failure on that second save leaves an empty dashboard behind (the ops are compiled beforehand, but per-field parameter-mapping permission checks run only on the real save). Find it by name and finish it with method "update" — calling create again leaves a second one. method: "create" requires name; "update" requires id and accepts archived (true trashes, false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text, add_heading, add_link, add_iframe, add_action, duplicate_card, replace_card, move, resize, remove, set_series, patch_dashcard, add_tab, rename_tab, move_tab, duplicate_tab, remove_tab, add_parameter, update_parameter, remove_parameter, move_parameter, wire_parameter, unwire_parameter. Before your first add_parameter or wire_parameter, read learn("dashboard-filters") unless already loaded — parameter types, target grammar, linked filters, value sources; learn("dashboard-layout") covers the 24-column grid, per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a clean dry run can still be rejected. Returns the resulting dashboard, so no follow-up read is needed. Requires write permission on the dashboard and read permission on every referenced card.
 
 Arguments:
 
@@ -161,8 +149,6 @@ Arguments:
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Creates or changes content.
 
-Create or update a document. method: "create" | "update". Documents are Metabase-flavored Markdown: CommonMark plus {% raw %}{% card id=118 name="…" %}{% endraw %} block embeds of saved questions you can read (build with question_write first; an id that doesn't resolve fails the write; the embed is given a height for you), {% raw %}{% entity id="42" model="dashboard" %}{% endraw %} inline links (models: card, dataset, metric, dashboard, collection, table, database, document), and ::: fenced layout containers — ::: flex {columns=[60,40]} holds 1-3 cells (prose in ::: supporting, or a card embed); ::: resize {height=442 minHeight=280} pins the height of one flex container or embed; a bare ::: line closes the innermost container, so every opener needs its name. No Markdown tables - embed a table-display question instead. Before authoring layout containers, call learn("documents") — the grammar, nesting rules, and a worked example. A card not already owned by the document is cloned into it on write and its id rewritten, so always take the returned content_markdown as the current text. Create: name + content_markdown; optional collection_id (omit for your personal collection; "root" for the root collection) and collection_position. Update: id + exactly one of content_markdown (a deliberate full-body rewrite — re-creates every block, orphaning every comment thread anchored to the body) or edits: [{old_str, new_str, replace_all?}] (each old_str must match the current server-side Markdown exactly once; 0 or >1 matches is an error — extend the snippet or set replace_all; new_str is parsed as Markdown; blocks keep their ids and comment anchors through edits to their text, so only a removed block loses its comments); edits: [] changes only name/collection_id/collection_position/archived without touching the body (archived: true trashes, false restores; name renames). To unset a property rather than change it, name it in clear: ["collection_position"] — a null does not clear, since strict clients fill every unset property with null and those are stripped. The response lists changed_blocks and orphaned_comment_threads, and carries content_markdown_unavailable in place of content_markdown when the stored body holds a block with no Markdown form — the write still happened, but this body cannot be edited or rewritten as Markdown — get_content omits content_markdown for it too, and rewriting it from any flattened text would discard the block that has no Markdown form. Writes are last-write-wins — no version check, a concurrent change between read and write is overwritten; a stale old_str failing to match is the only staleness signal.
-
 Arguments:
 
 | Argument              | Type              | Description                                                                                                                                                                                                                                                                                                      |
@@ -183,8 +169,6 @@ Arguments:
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Creates or changes content.
 
-Copy a question, dashboard, or document into a collection — cheaper and safer than reading the original and re-creating it, and it preserves everything the read projections leave out. Pass type, id (numeric or 21-char entity_id), and optionally collection_id (omit to copy into your personal collection; "root" for the root collection) and new_name (defaults to "Copy of <source name>"). is_deep_copy is dashboards-only: false (the default) makes the copy point at the original's questions, true duplicates those questions into the destination collection as well — a dashboard that holds questions saved inside it can only be copied with is_deep_copy: true. Any copy of a dashboard, shallow or deep, reports cards it had to leave behind as `uncopied` — cards you can't read (reported as an id alone) or that are in the trash; the copy simply omits them, so check this field on every dashboard copy. A question saved inside a document can't be duplicated on its own — duplicate the document instead. Duplicating is creating: you need curate permission on the destination collection. The copy's name and collection come back only when your token also holds agent:content:read; without it the response is a minimal acknowledgement carrying the id, the type, and a count of any uncopied cards.
-
 Arguments:
 
 | Argument        | Type              | Description                                                                                                                                               |
@@ -200,8 +184,6 @@ Arguments:
 - Tool name: `execute_query`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
 - Read-only.
-
-The default way to answer a question from data: validate and execute a structured (MBQL) query over a table, model, metric, or saved question, returning rows plus a query_handle. Use it first for any count, sum, average, group-by, filter, sort, or join — including one-liners like "how many X do we have" — and fall back to execute_sql only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Only this route validates against database metadata and names what did not resolve, pages with a cursor, and saves as a question that wires to dashboard filters as-is — so any card bound for a filtered dashboard starts here; a raw-SQL card needs template tags first. Pass exactly one of: query (a fresh query in the dialect below), query_handle (re-run a stored query), or cursor (continue a truncated result). Every call returns a query_handle — it holds the query that ran without the cursor's paging position, so saving or visualizing from any page gives the whole question rather than that one page. validate_only: true checks against schema + database metadata and mints a handle without executing. Results are cols + rows with returned/truncated counts; on next_cursor, call again with cursor (row_limit alongside keeps the page size) until truncated is false, otherwise narrow the query (filter/aggregate) or raise row_limit (max 2000). row_limit is the page size, not the bound on the result: "the first N / top N rows" is a stage limit: N with an order-by (example below), served row_limit rows per call, whose last page arrives truncated: false with no next_cursor — never count pages by hand to stop at N. Dialect (JSON): tables and columns go by NUMERIC ID — never invent or guess ids, never base64, never a schema-qualified name. A bare row count needs only the table id browse_data list_tables (or search) already returned; browse_data get_fields gives field ids when the query filters, groups, or aggregates over a column. Top level: {"lib/type": "mbql/query", "stages": [...]}; each stage "lib/type": "mbql.stage/mbql" plus source-table: <numeric table id> or source-card: <numeric card id> on the FIRST stage only — later stages read the previous stage's output. Every clause is ["op", {}, ...args], options map mandatory at position 1. Field refs: ["field", {}, <numeric field id>], or a bare column-name string against a previous stage (["field", {}, "count"]). Stage keys: filters, aggregation, breakout, expressions, fields, joins, order-by, limit. Simplest aggregate (row count of one table — the whole query for "how many rows"): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]]}]}. Example (row count by month): {"lib/type": "mbql/query", "stages": [{"lib/type": "mbql.stage/mbql", "source-table": <TABLE_ID>, "aggregation": [["count", {}]], "breakout": [["field", {"temporal-unit": "month"}, <FIELD_ID>]]}]}. First N rows (e.g. the first 400 ids, ascending) is a stage with only "source-table", "fields": [["field", {}, <FIELD_ID>]], "order-by": [["asc", {}, ["field", {}, <FIELD_ID>]]], "limit": 400. <TABLE_ID> and <FIELD_ID> are placeholders — ids differ per instance, so resolve yours with browse_data before calling. get_content's definition include returns queries in this same shape, so an edited definition can be sent back as-is. Call learn("query-dialect") before authoring a non-trivial query (joins, expressions, multi-stage); learn("query-dialect", "operators") lists every operator. Native SQL is rejected at any depth — it belongs in execute_sql.
 
 Arguments:
 
@@ -220,8 +202,6 @@ Arguments:
 - Permission scope: `agent:sql:run` — Write and run its own raw SQL on your connected databases
 - Can overwrite or delete existing data or content.
 
-Escape hatch for execute_query, the default for every question MBQL can express (see its description): execute a raw SQL string against a database, returning rows plus a query_handle. Use only for what MBQL cannot express (window functions, CTEs, set operations, engine-specific functions), an explicit request for SQL, or a structured attempt rejected for a reason you cannot fix. Raw SQL is checked only by the warehouse (no metadata validation, no teaching errors naming what is wrong), and a card saved from it cannot be filtered on a dashboard until rewritten with template tags. Requires native-query permission on the database and the instance-level mcp-execute-sql-enabled setting — both enforced even with validate_only: true. The sql runs verbatim against the warehouse, so it is the injection surface — never splice caller- or user-supplied values into it; put values behind {% raw %}{{tag}}{% endraw %} placeholders bound via template_tag_values, driver-level prepared-statement parameters that are injection-safe for the values. {% raw %}{{snippet: …}}{% endraw %} and {% raw %}{{#123}}{% endraw %} card-reference tags splice server-side SQL text and can never be populated through template_tag_values. validate_only: true mints a query_handle without executing (tags and permissions checked; the SQL text itself is not) — stage SQL for saving or visualizing without pulling rows into context. The query_handle is accepted by question_write; execute_query is MBQL-only and rejects it. Results are cols + rows with returned/truncated counts. No cursor pagination: the server cannot know whether arbitrary SQL has a total order, so page it yourself — ORDER BY a unique key plus WHERE <key> > <last value returned>, which is exact where an offset would silently repeat or skip rows. Otherwise narrow the SQL (filters/aggregation) or raise row_limit (max 2000).
-
 Arguments:
 
 | Argument              | Type    | Description                                                                                                                                                                                                                                                                                                                                     |
@@ -239,8 +219,6 @@ Arguments:
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
 
-Fetch content by {type, id} — the typed read for anything found via search or browse_collection. Batch up to 10 items of mixed types; each is permission-checked independently and a bad item returns {type, id, error} without failing the batch. Types: question, model, metric, measure, dashboard, document, collection, snippet, segment, alert, subscription, transform. Ids: numeric or 21-char entity_id. Concise shapes are task-focused: a question carries its source (database id and name, table, source card), display, a one-line query summary — for a native question the head of its query text rather than a placeholder — raw template_tags (in the stored shape question_write accepts back verbatim — read-modify-write round-trips), and materialized parameters (the same tags viewed as parameters, not a second concept); a dashboard returns the editing skeleton (tabs, parameters with wired dashcard ids, one summary row per dashcard with position/size/series/inline parameters), never the raw REST dashcards; a document returns its body text as content_markdown — the same field name document_write takes and returns, so a read-modify-write needs no renaming (a body holding a block with no Markdown form returns content_markdown_unavailable in its place instead: that document cannot be edited or rewritten as Markdown); alerts and subscriptions return condition, schedule, channels, recipients (redacted for non-admins); a transform returns source type, target, latest run. include adds sections on demand — definition returns the stored query (numeric ids), the same shape execute_query and question_write accept, so read-modify-write round-trips; visualization_settings returns a question's or model's stored chart settings, the same property question_write takes back, so a chart can be read back and patched; comments returns a document's threads, each anchored to the exact character range of its block in the returned markdown.
-
 Arguments:
 
 | Argument          | Type            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -255,8 +233,6 @@ Arguments:
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
 
-Fetch the valid values for one filter on a dashboard or saved question, so you filter with real values instead of guessing. Pass target ("dashboard" or "question" — the latter accepts any card id: question, model, or metric), id (numeric or 21-char entity_id), and parameter_id from get_content's `parameters` (each lists id, name, type). Values come back as [value] pairs, or [value, display_label] when the column is remapped — filter with the first element, show the second. query searches a large list rather than paging it; constraints (dashboards only) chain-filters — pass the other filters' current selections keyed by parameter id to get only the values still valid alongside them. Paged with limit (default 100, max 1000) and offset. A parameter with nothing behind it (e.g. a free-text template tag) returns no values. A column-backed date parameter answers with its range instead of a value list — {kind: "date", min, max, distinct_dates, accepts} — where accepts is the grammar to write a value in ("YYYY-MM-DD", "YYYY-MM-DD~YYYY-MM-DD", "past30days", "thisyear") and min/max are the column's real first and last dates to write between. constraints narrow the range as they narrow a list; query, limit and offset don't apply to it. Pair with run_saved_question, which takes these values as its `parameters`.
-
 Arguments:
 
 | Argument       | Type              | Description                                                                                                                                                                                                                    |
@@ -269,13 +245,25 @@ Arguments:
 | `query`        | string            | Return only values matching this search string. Use it to narrow a large value list.                                                                                                                                           |
 | `target`       | string            | One of: `dashboard`, `question`. Whether id names a dashboard or a card. "question" covers any card — question, model, or metric.                                                                                              |
 
+## Glossary
+
+- Tool name: `glossary`
+- Permission scope: `agent:content:read` — See your Metabase content and data structure
+- Read-only.
+
+Arguments:
+
+| Argument | Type    | Description                                                                                                           |
+| -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `limit`  | integer | Range: 1 to 500. Maximum entries to return (default 50, max 500). Ignored with "term", which is a lookup, not a page. |
+| `offset` | integer | Number of entries to skip, for paging (default 0). Ignored with "term".                                               |
+| `term`   | string  | The term to define, matched case-insensitively. Omit to list terms with their definitions.                            |
+
 ## Learn
 
 - Tool name: `learn`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
-
-Read this server's task docs (skills) for the write dialects the schemas can't fully describe. learn() lists topics; learn(topic) returns that skill whole; learn(topic, reference) one of its reference files. Topics: query-dialect (the query language for execute_query and question_write's query; reference "operators" = operator catalog), native-parameters (template tags and field filters for native SQL), dashboard-filters (dashboard parameters and the wire_parameter target grammar), dashboard-layout (24-column grid, sizes, tabs), documents (document_write's Markdown grammar), transforms (transform_write: materializing a query into a warehouse table), visualization-settings (display choice and settings; reference "settings" = per-chart key catalog). Read the matching topic before your first complex write of that kind; skip when already in context.
 
 Arguments:
 
@@ -289,8 +277,6 @@ Arguments:
 - Tool name: `measure_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
-
-Create or update a measure: a named, reusable MBQL aggregation attached to one table, referenced inside another query's aggregation as ["measure", id]. A measure is not a metric — metrics are standalone saved cards queryable on their own; a measure belongs to a table and is only usable inside a query against it. method: "create" requires table_id, name, definition; "update" requires id and revision_message and accepts name, description, definition, archived (true trashes, false restores — no hard delete). definition holds exactly one aggregation, in either shape: the aggregation clause get_content's "definition" include returns for a measure (the same clause execute_query takes in stages[0].aggregation), as the one-element array or bare clause, reassembled onto table_id; or a full single-stage query. For a full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live in a read-only remote-synced collection.
 
 Arguments:
 
@@ -311,8 +297,6 @@ Arguments:
 - Tool name: `metric_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
-
-Create or update a metric: a saved, reusable aggregation that lives in a collection and can be queried on its own or referenced from other queries. A metric is not a measure — a measure belongs to one table and is only usable inside a query against that table, while a metric is standalone content. method: "create" requires name and one query source; method: "update" requires id and accepts archived (true trashes, false restores — there is no hard delete). Pass the query as definition (a full single-stage query in the same numeric-id shape execute_query takes and get_content's "definition" include returns) or as a query_handle from execute_query — one or the other, not both. The query must have exactly one aggregation (count, sum, average…) and at most one grouping; anything else is a teaching error, so build it with execute_query first. Native SQL cannot be a metric — save it with question_write. Optional: description, display (how the result is visualized; defaults to "scalar", so a metric with a grouping usually wants "line" or "bar"), collection_id (omit to save to your personal collection; pass "root" for the root collection), collection_position to pin. Updating a card that is a question or a model is refused rather than retyping it. Requires write permission on the metric and curate permission on the target collection.
 
 Arguments:
 
@@ -335,8 +319,6 @@ Arguments:
 - Tool name: `question_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
-
-Create, update, or archive a saved question or model. method: "create" | "update". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn("query-dialect"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn("native-parameters") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type ("question" default, or "model"), description, collection_id (omit = your personal collection; "root" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn("visualization-settings") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type "model"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write.
 
 Arguments:
 
@@ -367,8 +349,6 @@ Arguments:
 - Read-only.
 - Interactive: renders a chart inline in your AI client. Only available in clients that support inline visualizations.
 
-Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar.
-
 Arguments:
 
 | Argument       | Type   | Description                                                                                                      |
@@ -380,8 +360,6 @@ Arguments:
 - Tool name: `run_saved_question`
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
 - Read-only.
-
-Run a saved question (card) by numeric id or entity_id, returning rows inline. Pass each parameter as {id, value} where id is the parameter's id or slug — the stored target and type always apply and client-supplied ones are ignored, so you can set a filter's value but never repoint it at another field. Both native template-tag parameters ({% raw %}{{variable}}{% endraw %} and field-filter tags) and declared filter-widget parameters can be set; value types are checked per parameter. Discover them with get_content (a question's concise shape carries its template tags and materialized parameters). Results are cols + rows with returned/truncated counts, capped by row_limit. No query_handle and no cursor: on truncation, narrow through the card's parameters or raise row_limit (max 2000).
 
 Arguments:
 
@@ -396,8 +374,6 @@ Arguments:
 - Tool name: `search`
 - Permission scope: `agent:content:read` — See your Metabase content and data structure
 - Read-only.
-
-Find content across the Metabase instance by relevance. Two modes: (1) ranked search — term_queries (keywords) and/or semantic_queries (natural language), optionally narrowed by type, collection_id (scopes to the collection subtree), created_by: "me", archived: true; (2) recent: true — your recently viewed items. A query is required for mode (1): to browse or list without one (a collection's contents, a database's tables, your content in a collection), use browse_collection or browse_data instead — this tool redirects query-less listings there. type: ["snippet"] searches SQL snippets you can read by name and must be requested on its own, not alongside other types. Transforms are searchable by admins only — other users browse them with browse_collection(namespace: "transforms"). Returns {data, returned, total}; total is the number of matches, capped at the search ranking limit — so a large total is a floor (the response says "at least N"). An empty {data: [], total: 0} means no match against the search index, which on a freshly started instance can still be building — if content you can reach with browse_collection or browse_data does not turn up here, prefer those over concluding it is absent.
 
 Arguments:
 
@@ -421,8 +397,6 @@ Arguments:
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Can overwrite or delete existing data or content.
 
-Create or update a segment: a named, reusable MBQL filter attached to one table, referenced from other queries' filters. method: "create" requires table_id, name, definition; "update" requires id and revision_message and accepts name, description, definition, archived (true trashes, false restores — no hard delete). definition holds only filters, in either shape: the array of filter clauses get_content's "definition" include returns for a segment (the same clauses execute_query takes in stages[0].filters), reassembled onto table_id; or a full single-stage query. For a full query table_id must name the definition's own source table; a mismatch is a teaching error. Not admin-only: writing requires superuser OR a data analyst with unrestricted view-data on the table, and the table must not live in a read-only remote-synced collection.
-
 Arguments:
 
 | Argument           | Type              | Description                                                                                                                                                                                                                                                                                                                                          |
@@ -442,8 +416,6 @@ Arguments:
 - Tool name: `subscription_write`
 - Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
 - Creates or changes content.
-
-Create or update a dashboard subscription — scheduled delivery of a whole dashboard, e.g. "send me this dashboard every Monday morning". method: "create" requires dashboard_id and schedule; method: "update" requires id and accepts archived (true pauses and trashes it, false restores — there is no hard delete). The server assembles what gets sent from the dashboard's own cards, so you never list them. schedule is {schedule_type: "hourly" | "daily" | "weekly" | "monthly", schedule_hour?, schedule_day?, schedule_frame?} — daily and up need schedule_hour, weekly also needs schedule_day, monthly needs schedule_frame. channel is "email" (default) or "slack"; Slack needs slack_channel, email takes recipients (user ids or raw email addresses, defaulting to you). parameters ({id, value} pairs naming the dashboard's own filters) makes a filtered subscription. On update, only the fields you pass change: a schedule-only update keeps the recipients, and a recipients list replaces the current one. A subscription that already delivers to both email and Slack needs channel to say which to edit. Creating a subscription, changing its delivery or its schedule, or restoring a trashed one additionally requires the agent:query:run scope — the subscription runs the dashboard's questions and delivers the results. Trashing one never does. This is for dashboards on a schedule — use alert_write for a question that fires on a condition. Requires read permission on the dashboard; only its creator (or an admin) can update it.
 
 Arguments:
 
@@ -466,8 +438,6 @@ Arguments:
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
 - Creates or changes content.
 
-Create or update a transform: a saved query that Metabase runs to materialize its results into a real table in your warehouse, which questions and other transforms can then query. method: "create" requires name, target, and one query source; method: "update" requires id and changes only the fields you pass. Pass the query as definition ({"type": "query", "query": …} — the shape get_content's "definition" include returns, with the query in the same numeric-id dialect execute_query takes) or as a query_handle from execute_query or execute_sql — one or the other, not both. Native SQL is fine: save an execute_sql handle. target is the output table, {name, schema?}; a schema is required on databases that have schemas, and on update target patches the current one, so passing only name renames the table. The target database always follows the query's database. Creating a transform whose target table already exists is refused — a transform creates its table, it doesn't adopt one. Optional: description, collection_id (a transform folder; omit for the top level of the transforms tree), tag_ids (replaces the current list; jobs select transforms by tag). Two things this tool deliberately can't do: python transforms and incremental (checkpoint/append/merge) loading are authored in Metabase, and an update that would rewrite either is refused rather than degrading it. There is no archive or delete here either — transforms have no trash, so removing one is done in Metabase. Running a transform is separate from writing it. Requires transforms permission on the source database and the transforms feature enabled. Before your first transform_write, read learn("transforms") unless already in context — the source shapes, what patching `target` renames, and the refusals above in full.
-
 Arguments:
 
 | Argument        | Type              | Description                                                                                                                                                                                                                                                   |
@@ -489,8 +459,6 @@ Arguments:
 - Permission scope: `agent:query:run` — Run queries against your connected databases and see the results
 - Read-only.
 - Interactive: renders a chart inline in your AI client. Only available in clients that support inline visualizations.
-
-Visualize a query as an interactive chart or table, rendered inline in the conversation. Pass exactly one of: query_handle (preferred — a handle from execute_query or execute_sql, MBQL or native SQL) or query (a fresh query, in the same dialect execute_query takes). The chart type is inferred from the result shape. Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI.
 
 Arguments:
 
