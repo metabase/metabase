@@ -25,14 +25,24 @@
     (set/subset? left right)   :left-subset
     :else                     :incomparable))
 
+(defn matching-pair-count
+  "Count engine pairs with identical result sets in one case."
+  [results]
+  (count (filter (fn [[left right]] (= (results left) (results right))) engine-pairs)))
+
+(defn conforming-engines
+  "Engines whose results equal the correct result set, in engine order."
+  [correct results]
+  (filterv (fn [engine] (= correct (results engine))) engines))
+
 (defn score
-  "Precision, recall, and F1 against one target engine's gold result set.
+  "Precision, recall, and F1 against a correct result set.
 
   Both empty sets score 1 on all three measures; a one-sided empty set scores 0."
-  [gold hits]
-  (let [shared    (count (set/intersection gold hits))
-        precision (if (empty? hits) (if (empty? gold) 1 0) (/ shared (count hits)))
-        recall    (if (empty? gold) (if (empty? hits) 1 0) (/ shared (count gold)))
+  [correct hits]
+  (let [shared    (count (set/intersection correct hits))
+        precision (if (empty? hits) (if (empty? correct) 1 0) (/ shared (count hits)))
+        recall    (if (empty? correct) (if (empty? hits) 1 0) (/ shared (count correct)))
         f1        (if (zero? (+ precision recall))
                     0
                     (/ (* 2 precision recall) (+ precision recall)))]
@@ -54,11 +64,11 @@
         cases))
 
 (defn translation-rows
-  "One result row per nested comparison, with the target engine's hits as gold."
+  "One result row per nested comparison, with its declared correct result set."
   [cases]
   (into []
         (mapcat (fn [{:keys [id config docs comparisons] :as case}]
-                  (for [{:keys [focus target] :as comparison} comparisons
+                  (for [{:keys [focus correct] :as comparison} comparisons
                         :let [specs (into {}
                                           (map (fn [engine]
                                                  [engine (fixtures/comparison-spec case comparison engine)]))
@@ -67,8 +77,7 @@
                      :focus       focus
                      :config      config
                      :docs        docs
-                     :target      target
-                     :gold        (get-in specs [target :hits])
+                     :correct     (set correct)
                      :specs       specs
                      :results     (update-vals specs :hits)})))
         cases))
@@ -103,28 +112,21 @@
 
 (defn- engine-score-summary
   [rows engine]
-  (let [scores        (map (fn [{:keys [gold results]}] (score gold (results engine))) rows)
-        target-groups (vals (group-by :target rows))]
-    {:precision   (mean (map :precision scores))
-     :recall      (mean (map :recall scores))
-     :f1          (mean (map :f1 scores))
-     :balanced-f1 (mean (map (fn [group]
-                               (mean (map (fn [{:keys [gold results]}]
-                                            (:f1 (score gold (results engine))))
-                                          group)))
-                             target-groups))
-     :exact       (count (filter (fn [{:keys [gold results]}]
-                                   (= gold (results engine)))
-                                 rows))}))
+  (let [scores (map (fn [{:keys [correct results]}] (score correct (results engine))) rows)]
+    {:precision (mean (map :precision scores))
+     :recall    (mean (map :recall scores))
+     :f1        (mean (map :f1 scores))
+     :exact     (count (filter (fn [{:keys [correct results]}]
+                                 (= correct (results engine)))
+                               rows))}))
 
 (defn summary
-  "Calculate both corpuses' divergence and target-gold fidelity from fixture cases."
+  "Calculate both corpuses' divergence and fidelity to the correct result sets from fixture cases."
   [cases]
   (let [scenarios    (scenario-rows cases)
         translations (translation-rows cases)]
     {:same-query   (membership-summary scenarios)
      :translations (assoc (membership-summary translations)
-                          :target-counts (frequencies (map :target translations))
                           :scores (into {}
                                         (map (fn [engine] [engine (engine-score-summary translations engine)]))
                                         engines))}))

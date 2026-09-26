@@ -1,7 +1,9 @@
 ;; Isolated search scenarios shared by in-place, app-db, and semantic tests.
 ;; A comparison inherits the scenario query and hits unless an engine provides
 ;; a complete alternative {:query ..., :hits ...} pair. Hits are compared as sets,
-;; not ranks.
+;; not ranks. Comparisons belong here only when at least one engine uses a
+;; different query. `:correct` declares the intended result set, which no
+;; engine need achieve.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :config "simple"
@@ -18,14 +20,14 @@
            :appdb-postgres [:C :D]
            :semantic       {:keyword [:C :D], :vector []}}
   :comparisons
-  [{:focus  "OR across ordinary tokens"
-    :target :in-place
+  [{:focus   "OR across ordinary tokens"
+    :correct [:A :B :C :D]
     :alternatives
     {:appdb-h2       {:query "amber", :hits [:A :C :D]}
      :appdb-postgres {:query "amber or cobalt", :hits [:A :B :C :D]}
      :semantic       {:query "amber or cobalt", :hits [:A :B :C :D]}}}
-   {:focus  "conjunction of substrings"
-    :target :appdb-h2
+   {:focus   "conjunction of substrings"
+    :correct [:C :D]
     :alternatives
     {:in-place {:query "amber", :hits [:A :C :D]}}}]}
  {:id     "infix-substring"
@@ -41,10 +43,7 @@
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres [:B :C]
-           :semantic       {:keyword [:B :C], :vector []}}
-  :comparisons
-  [{:focus  "arbitrary infix substring"
-    :target :in-place}]}
+           :semantic       {:keyword [:B :C], :vector []}}}
  {:id     "two-substrings-one-word"
   :focus  "H2 satisfies two required substrings inside one word"
   :config "simple"
@@ -71,10 +70,7 @@
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:A :B :C :E]
            :appdb-postgres [:A :B :E]
-           :semantic       {:keyword [:A :B :E], :vector []}}
-  :comparisons
-  [{:focus  "prefix only on the final word"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:A :B :E], :vector []}}}
  {:id     "nonfinal-prefix"
   :focus  "only the final PostgreSQL word is prefix-completed"
   :config "simple"
@@ -103,14 +99,14 @@
            :appdb-postgres [:A :B :C :D]
            :semantic       {:keyword [:A :B :C :D], :vector []}}
   :comparisons
-  [{:focus  "`or` must literally occur"
-    :target :appdb-h2
+  [{:focus   "`or` must literally occur"
+    :correct [:D]
     :alternatives
     {:in-place       {:query "or", :hits [:D :E]}
      :appdb-postgres {:query "amber \"or\" cobalt", :hits [:D]}
      :semantic       {:query "amber \"or\" cobalt", :hits [:D]}}}
-   {:focus  "explicit alternation"
-    :target :appdb-postgres
+   {:focus   "explicit alternation"
+    :correct [:A :B :C :D]
     :alternatives
     {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
      :appdb-h2 {:query "amber", :hits [:A :C :D]}}}]}
@@ -127,8 +123,8 @@
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector []}}
   :comparisons
-  [{:focus  "exclusion"
-    :target :appdb-postgres
+  [{:focus   "exclusion"
+    :correct [:A]
     :alternatives
     {:in-place {:query "amber", :hits [:A :B :D]}
      :appdb-h2 {:query "amber", :hits [:A :B :D]}}}]}
@@ -145,8 +141,8 @@
            :appdb-postgres [:A :C :D]
            :semantic       {:keyword [:A :C :D], :vector []}}
   :comparisons
-  [{:focus  "ordered phrase"
-    :target :appdb-postgres
+  [{:focus   "ordered phrase"
+    :correct [:A :C :D]
     :alternatives
     {:in-place {:query "amber cobalt", :hits [:A :B :C :D]}
      :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D]}}}]}
@@ -164,8 +160,8 @@
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector []}}
   :comparisons
-  [{:focus  "`and` is literal text, not an intersection"
-    :target :in-place
+  [{:focus   "`and` is literal text, not an intersection"
+    :correct [:A :B :C :D :E]
     :alternatives
     {:appdb-h2       {:query "amber", :hits [:A :B :C]}
      :appdb-postgres {:query "amber or \"and\" or cobalt", :hits [:A :B :C :D :E]}
@@ -184,8 +180,8 @@
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector []}}
   :comparisons
-  [{:focus  "English stopword"
-    :target :appdb-postgres
+  [{:focus   "English stopword"
+    :correct [:A :B]
     :alternatives
     {:in-place {:query "widget", :hits [:A :B]}
      :appdb-h2 {:query "widget", :hits [:A :B]}}}]}
@@ -216,8 +212,8 @@
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector []}}
   :comparisons
-  [{:focus  "English stemming"
-    :target :appdb-postgres
+  [{:focus   "English stemming"
+    :correct [:A :B]
     :alternatives
     {:in-place {:query "run gate", :hits [:A :B :C :D :E]}
      :appdb-h2 {:query "run gate", :hits [:A :B :C]}}}]}
@@ -259,10 +255,7 @@
   :expect {:in-place       [:A :C :D]
            :appdb-h2       [:A]
            :appdb-postgres [:A]
-           :semantic       {:keyword [:A], :vector [:B]}}
-  :comparisons
-  [{:focus  "vector-only meaning match"
-    :target :semantic}]}
+           :semantic       {:keyword [:A], :vector [:B]}}}
  {:id     "vector-negation-leak"
   :focus  "keyword negation cannot exclude a vector-only hit"
   :config "simple"
@@ -278,8 +271,8 @@
            :appdb-postgres [:A]
            :semantic       {:keyword [:A], :vector [:B]}}
   :comparisons
-  [{:focus  "lexical NOT cannot exclude a vector hit"
-    :target :semantic
+  [{:focus   "lexical NOT cannot exclude a vector hit"
+    :correct [:A :B]
     :alternatives
     {:in-place       {:query "amber", :hits [:A :B :D]}
      :appdb-h2       {:query "amber", :hits [:A :B :D]}
@@ -295,10 +288,7 @@
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus  "stopword-only query becomes an empty text query"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [], :vector []}}}
  {:id     "simple-stopword-only"
   :focus  "same stopword-only query with simple configuration"
   :config "simple"
@@ -327,12 +317,7 @@
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
            :appdb-postgres [:C :D :F]
-           :semantic       {:keyword [:C :D :F], :vector []}}
-  :comparisons
-  [{:focus  "reproduce H2's literal percent substring"
-    :target :appdb-h2}
-   {:focus  "reproduce PostgreSQL's punctuation tokenization"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:C :D :F], :vector []}}}
  {:id     "underscore-punctuation"
   :focus  "underscore is literal in substring search but token punctuation in PostgreSQL"
   :config "simple"
@@ -346,10 +331,7 @@
   :expect {:in-place       [:B]
            :appdb-h2       [:B]
            :appdb-postgres [:B :D :E]
-           :semantic       {:keyword [:B :D :E], :vector []}}
-  :comparisons
-  [{:focus  "reproduce PostgreSQL's `_` tokenization"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:B :D :E], :vector []}}}
  {:id     "percent-only"
   :focus  "percent alone matches only literal percent text in substring search"
   :config "simple"
@@ -361,10 +343,7 @@
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
            :appdb-postgres []
-           :semantic       {:keyword [], :vector []}}
-  :comparisons
-  [{:focus  "literal percent-only H2 search"
-    :target :appdb-h2}]}
+           :semantic       {:keyword [], :vector []}}}
  {:id     "english-phrase-stopword"
   :focus  "English stopword inside a positional phrase"
   :config "english"
@@ -379,8 +358,8 @@
            :appdb-postgres [:A :C :E]
            :semantic       {:keyword [:A :C :E], :vector []}}
   :comparisons
-  [{:focus  "English stopword inside a phrase"
-    :target :appdb-postgres
+  [{:focus   "English stopword inside a phrase"
+    :correct [:A :C :E]
     :alternatives
     {:in-place {:query "amber cobalt", :hits [:A :B :C :D :E]}
      :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D :E]}}}]}
@@ -396,10 +375,7 @@
   :expect {:in-place       [:A :D :E]
            :appdb-h2       [:E]
            :appdb-postgres [:A :E]
-           :semantic       {:keyword [:A :E], :vector []}}
-  :comparisons
-  [{:focus  "phrase with a retained `and`"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:A :E], :vector []}}}
  {:id     "unfinished-quote"
   :focus  "unfinished opening quote keeps phrase but completes final word"
   :config "simple"
@@ -415,8 +391,8 @@
            :appdb-postgres [:A :B :D :E :F]
            :semantic       {:keyword [:A :B :D :E :F], :vector []}}
   :comparisons
-  [{:focus  "unfinished quote with final-word completion"
-    :target :appdb-postgres
+  [{:focus   "unfinished quote with final-word completion"
+    :correct [:A :B :D :E :F]
     :alternatives
     {:in-place {:query "amber co", :hits [:A :B :C :D :E :F]}
      :appdb-h2 {:query "amber co", :hits [:A :B :C :D :E :F]}}}]}
@@ -433,10 +409,7 @@
   :expect {:in-place       [:D :F]
            :appdb-h2       [:F]
            :appdb-postgres [:D :E :F]
-           :semantic       {:keyword [:D :E :F], :vector []}}
-  :comparisons
-  [{:focus  "closing quote disables completion"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:D :E :F], :vector []}}}
  {:id     "or-branch-prefix"
   :focus  "only final OR-branch term receives prefix completion"
   :config "simple"
@@ -454,8 +427,8 @@
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector []}}
   :comparisons
-  [{:focus  "prefix placement across OR branches"
-    :target :appdb-postgres
+  [{:focus   "prefix placement across OR branches"
+    :correct [:B :C :D :F :G]
     :alternatives
     {:in-place {:query "amb co", :hits [:A :B :C :D :E :F :G]}
      :appdb-h2 {:query "co", :hits [:C :D :E :F :G]}}}]}
@@ -474,8 +447,8 @@
            :appdb-postgres [:A :D]
            :semantic       {:keyword [:A :D], :vector []}}
   :comparisons
-  [{:focus  "negation of a prefix"
-    :target :appdb-postgres
+  [{:focus   "negation of a prefix"
+    :correct [:A :D]
     :alternatives
     {:in-place {:query "amber", :hits [:A :B :C :D :E]}
      :appdb-h2 {:query "amber", :hits [:A :B :C :D :E]}}}]}
@@ -493,10 +466,7 @@
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
            :appdb-postgres [:A :E]
-           :semantic       {:keyword [:A :E], :vector []}}
-  :comparisons
-  [{:focus  "negation without a positive term"
-    :target :appdb-postgres}]}
+           :semantic       {:keyword [:A :E], :vector []}}}
  {:id     "like-escape-percent"
   :focus  "LIKE escape character and percent are both literal query text"
   :config "simple"
@@ -524,8 +494,8 @@
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}
   :comparisons
-  [{:focus  "quoting or recovers a lexeme but not substring matches"
-    :target :in-place
+  [{:focus   "quoting or recovers a lexeme but not substring matches"
+    :correct [:A :B :C]
     :alternatives
     {:appdb-postgres {:query "\"or\"", :hits [:A]}
      :semantic       {:query "\"or\"", :hits [:A]}}}]}

@@ -93,11 +93,8 @@
 (deftest translated-query-semantics-test
   (let [dialect (available-appdb-dialect)]
     (doseq [{:keys [id config docs comparisons] :as case} fixtures/cases
-            {:keys [focus target] :as comparison} comparisons]
-      (testing (str id " / " focus " (target " target ")")
-        ;; Keep the translated target anchored to its same-query scenario oracle.
-        (is (= (fixtures/expected-hits case target)
-               (:hits (fixtures/comparison-spec case comparison target))))
+            {:keys [focus] :as comparison} comparisons]
+      (testing (str id " / " focus)
         (let [{:keys [query hits]} (fixtures/comparison-spec case comparison :in-place)]
           (check-in-place-query! docs query hits))
         (when dialect
