@@ -1,5 +1,7 @@
 /* eslint-disable import/order */
 
+import { useEffect } from "react";
+
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
 import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
@@ -38,6 +40,24 @@ import {
   formatDateRange,
 } from "embedding-sdk-bundle/lib/format-date-range";
 import { DateRangePopover } from "embedding-sdk-bundle/components/public/DateRangePopover/DateRangePopover";
+import {
+  isHostReactVersionSupported,
+  logUnsupportedReactVersionOnce,
+} from "embedding-sdk-bundle/lib/host-react-version";
+
+const isReactVersionSupported = isHostReactVersionSupported();
+
+function useLogUnsupportedReactVersion() {
+  useEffect(() => {
+    logUnsupportedReactVersionOnce();
+  }, []);
+}
+
+function UnsupportedReactVersionMetabotSubscriber() {
+  useLogUnsupportedReactVersion();
+
+  return null;
+}
 
 /**
  * IMPORTANT!
@@ -65,10 +85,25 @@ export const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   getAvailableFonts,
   getLoginStatus,
   getUser,
-  useInitData,
-  useLogVersionInfo,
+  // How the package uses these three:
+  //   useInitData       -> MetabaseProvider calls it to start the SDK, which is
+  //                        what useMetabaseAuthStatus and useCurrentUser read
+  //   useLogVersionInfo -> MetabaseProvider calls it to log the package and
+  //                        bundle versions; nothing reads it back
+  //   MetabotSubscriber -> MetabaseProvider renders it, and it is what backs
+  //                        useMetabot
+  // All three run outside ComponentProvider, so on a too-old host React there
+  // is no error box to put in their place and the stand-in only logs.
+  useInitData: isReactVersionSupported
+    ? useInitData
+    : useLogUnsupportedReactVersion,
+  useLogVersionInfo: isReactVersionSupported
+    ? useLogVersionInfo
+    : useLogUnsupportedReactVersion,
+  MetabotSubscriber: isReactVersionSupported
+    ? MetabotSubscriber
+    : UnsupportedReactVersionMetabotSubscriber,
   validateFunctionSchema,
-  MetabotSubscriber,
   SdkThemeProviderWithStore,
   queryDataset,
   queryQuestion,

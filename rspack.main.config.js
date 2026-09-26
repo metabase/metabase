@@ -15,6 +15,9 @@ const {
 } = require("./frontend/build/shared/rspack/bundle-stats");
 
 const {
+  EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
+} = require("./frontend/build/embedding-sdk/constants/react-version");
+const {
   IS_DEV_MODE,
   LICENSE_TEXT,
   WEBPACK_BUNDLE,
@@ -424,6 +427,8 @@ const config = {
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
+      // The iframe embed, MCP apps and data apps render SDK bundle code.
+      EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
     }),
     ...COMPRESSION_CONFIG,
   ],
