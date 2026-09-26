@@ -4,6 +4,7 @@ type Registration = {
   path: string;
   load: LoadPage;
   isExact: boolean;
+  isBackgroundOnly: boolean;
   isStarted: boolean;
 };
 
@@ -23,13 +24,30 @@ const registrations: Registration[] = [];
  *
  * `exact` matches the whole path instead. The home page needs it: every path
  * starts with "/", so a prefix registration would fetch it from any link.
+ *
+ * `backgroundOnly` keeps a page out of the fetch that a link triggers, leaving
+ * it to `prefetchRegisteredPages`. Use it where no link points at the page, so
+ * hovering is never a signal that it is wanted: a modal that a menu on the page
+ * opens, or a section that only some people can reach.
  */
 export function registerPagePrefetch(
   path: string,
   load: LoadPage,
-  { exact = false }: { exact?: boolean } = {},
+  {
+    exact = false,
+    backgroundOnly = false,
+  }: {
+    exact?: boolean;
+    backgroundOnly?: boolean;
+  } = {},
 ): void {
-  registrations.push({ path, load, isExact: exact, isStarted: false });
+  registrations.push({
+    path,
+    load,
+    isExact: exact,
+    isBackgroundOnly: backgroundOnly,
+    isStarted: false,
+  });
 }
 
 /**
@@ -46,7 +64,7 @@ export function prefetchPage(path: string): void {
       ? path === registration.path
       : path.startsWith(registration.path);
 
-    if (registration.isStarted || !matches) {
+    if (registration.isStarted || registration.isBackgroundOnly || !matches) {
       continue;
     }
 
@@ -67,14 +85,22 @@ function getConnection(): NetworkInformation | undefined {
 }
 
 /**
+ * Whether the connection is one worth spending a guess on.
+ *
+ * Not a metered or slow one, where guessing wrong is most expensive and the
+ * pages being guessed at are the largest chunks the app has.
+ */
+function isConnectionWorthGuessingOn(): boolean {
+  const connection = getConnection();
+  return !connection?.saveData && !/2g/.test(connection?.effectiveType ?? "");
+}
+
+/**
  * Whether a link coming into view should start its fetch.
  *
  * Only where hovering cannot: a device with a pointer already prefetches on
  * hover, which is a far better signal of intent than a link merely being on
  * screen. This covers the touch devices that never fire one.
- *
- * Not on a metered or slow connection, where guessing wrong is most expensive
- * and the pages being guessed at are the largest chunks the app has.
  */
 function shouldPrefetchOnVisible(): boolean {
   if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
@@ -85,8 +111,85 @@ function shouldPrefetchOnVisible(): boolean {
     return false;
   }
 
-  const connection = getConnection();
-  return !connection?.saveData && !/2g/.test(connection?.effectiveType ?? "");
+  return isConnectionWorthGuessingOn();
+}
+
+// Long enough that the callback runs after the app has settled, short enough
+// that a tab which is never idle still gets its pages.
+const IDLE_TIMEOUT_MS = 10_000;
+const NO_IDLE_CALLBACK_DELAY_MS = 3_000;
+
+function nextIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    const run = () => resolve();
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(run, { timeout: IDLE_TIMEOUT_MS });
+      return;
+    }
+    window.setTimeout(run, NO_IDLE_CALLBACK_DELAY_MS);
+  });
+}
+
+/**
+ * One page at a time, and only while the tab has nothing else to do.
+ *
+ * The browser runs a chunk as it arrives, so the cost of a page is main thread
+ * time and not only a request. Waiting for the tab to be idle again between
+ * pages is what keeps that off the moment the user starts doing something. One
+ * at a time also means a page the user asks for competes with a single
+ * background request rather than with all of them.
+ */
+async function startPendingRegistrationsInTurn(
+  shouldStart?: () => boolean,
+): Promise<void> {
+  await nextIdle();
+  if (shouldStart && !shouldStart()) {
+    return;
+  }
+
+  for (const registration of registrations) {
+    if (registration.isStarted) {
+      continue;
+    }
+
+    registration.isStarted = true;
+    try {
+      await registration.load();
+    } catch {
+      registration.isStarted = false;
+    }
+
+    await nextIdle();
+  }
+}
+
+/**
+ * Fetch every registered page once the tab is idle.
+ *
+ * Each file the app serves is named after its contents, so a deploy replaces all
+ * of them. A tab open from before the deploy asks for names nobody serves any
+ * more, and the page it asks for cannot be opened. A page fetched before that
+ * deploy is held by the bundler for the life of the tab, so it stays available
+ * however long the tab stays open.
+ *
+ * This lowers how often that happens. It does not remove it. A page nobody
+ * registered still has to be fetched when the user asks for it, and so does a
+ * chunk that a registered page asks for in turn.
+ *
+ * `shouldStart` is read when the tab goes idle, not when this is called, so a
+ * caller can decline on what it knows by then. The app uses it to fetch nothing
+ * for a visitor who is sitting on the login page.
+ */
+export function prefetchRegisteredPages({
+  shouldStart,
+}: {
+  shouldStart?: () => boolean;
+} = {}): void {
+  if (typeof window === "undefined" || !isConnectionWorthGuessingOn()) {
+    return;
+  }
+
+  void startPendingRegistrationsInTurn(shouldStart);
 }
 
 const observedPaths = new WeakMap<Element, string>();
