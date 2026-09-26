@@ -31,7 +31,6 @@ export const createMockQueryBuilderUIControlsState = (
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,
-  modalContext: null,
   dataReferenceStack: null,
   highlightedNativeQueryLineNumbers: [],
   isShowingListViewConfiguration: false,
@@ -78,7 +77,6 @@ export const createMockQueryBuilderState = (
   selectedTimelineEventIds: [],
 
   metadataDiff: {},
-  visibleTimelineEventIds: [],
 
   currentState: null,
 

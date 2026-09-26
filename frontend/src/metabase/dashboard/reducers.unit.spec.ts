@@ -11,8 +11,15 @@ import {
   SET_EDITING_DASHBOARD,
   SET_SIDEBAR,
   fetchCardDataAction,
+  fetchDashboard,
+  markTimelineEventsShown,
+  selectTimelineEvents,
+  setDashCardTimelineEventsEnabled,
+  setDashCardTimelineEventsVisibility,
 } from "./actions";
+import { SIDEBAR_NAME } from "./constants";
 import { dashboardReducers as reducer } from "./reducers";
+import { timelineEvents } from "./reducers-typed";
 
 const TEST_DASHBOARD = createMockDashboard();
 
@@ -43,6 +50,12 @@ describe("dashboard reducers", () => {
       parameterValues: {},
       draftParameterValues: {},
       sidebar: { props: {} },
+      timelineEvents: {
+        overrides: {},
+        enabledByDashCard: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      },
       slowCards: {},
       loadingControls: {
         isLoading: false,
@@ -425,6 +438,93 @@ describe("dashboard reducers", () => {
         },
       });
       expect(result.dashcardData).toEqual({ 5: { 2: { data: [] } } });
+    });
+  });
+
+  describe("timelineEvents selection", () => {
+    const selectedState = () =>
+      reducer(
+        undefined,
+        selectTimelineEvents({ dashcardId: 1, eventIds: [100] }),
+      );
+
+    it("keeps the selected events while the events sidebar is open", () => {
+      const state = reducer(selectedState(), {
+        type: SET_SIDEBAR,
+        payload: { name: SIDEBAR_NAME.events },
+      });
+      expect(state.timelineEvents.selection).toEqual({
+        dashcardId: 1,
+        eventIds: [100],
+      });
+    });
+
+    it("drops the selected events when another sidebar replaces the events one", () => {
+      const state = reducer(selectedState(), {
+        type: SET_SIDEBAR,
+        payload: { name: SIDEBAR_NAME.sharing },
+      });
+      expect(state.timelineEvents.selection).toBeNull();
+    });
+
+    it("drops the selected events when the sidebar closes", () => {
+      const state = reducer(selectedState(), { type: CLOSE_SIDEBAR });
+      expect(state.timelineEvents.selection).toBeNull();
+    });
+
+    const overriddenState = () =>
+      reducer(
+        selectedState(),
+        setDashCardTimelineEventsVisibility({
+          1: { "timeline.selected_timeline_ids": [10] },
+        }),
+      );
+
+    it("resets when dashboard editing starts", () => {
+      const state = reducer(overriddenState(), {
+        type: SET_EDITING_DASHBOARD,
+        payload: TEST_DASHBOARD,
+      });
+      expect(state.timelineEvents).toEqual({
+        overrides: {},
+        enabledByDashCard: {},
+        selection: null,
+        hasTrackedEventsShown: false,
+      });
+    });
+
+    it("drops the session overrides when the dashboard is refetched", () => {
+      const overridden = reducer(
+        overriddenState(),
+        setDashCardTimelineEventsEnabled({ dashcardId: 1, isEnabled: false }),
+      );
+      const state = timelineEvents(overridden.timelineEvents, {
+        type: fetchDashboard.fulfilled.type,
+      });
+      expect(state.overrides).toEqual({});
+      expect(state.enabledByDashCard).toEqual({});
+      expect(state.selection).toEqual({ dashcardId: 1, eventIds: [100] });
+    });
+  });
+
+  describe("timelineEvents tracking", () => {
+    const trackedState = () => reducer(undefined, markTimelineEventsShown());
+
+    it("remembers that the shown events were tracked", () => {
+      expect(trackedState().timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("keeps the tracking across dashboard editing", () => {
+      const state = reducer(trackedState(), {
+        type: SET_EDITING_DASHBOARD,
+        payload: TEST_DASHBOARD,
+      });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(true);
+    });
+
+    it("forgets the tracking when another dashboard is opened", () => {
+      const state = reducer(trackedState(), { type: INITIALIZE });
+      expect(state.timelineEvents.hasTrackedEventsShown).toBe(false);
     });
   });
 });

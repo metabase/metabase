@@ -24,6 +24,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -768,8 +769,127 @@
   (cond->> (lib/normalize ::queries.schema/card card)
     (mu.fn/instrument-ns? *ns*) (mu.fn/validate-output {:fn-name `normalize-card} [:maybe ::queries.schema/card])))
 
+(defn timeline-events-supported-display?
+  "Whether `display`, a keyword or string, supports timeline events."
+  [display]
+  ;; Keep this aligned with the frontend's canDisplayTimelineEvents registry check.
+  (contains? #{:line :bar :area :combo :scatter :waterfall} (keyword display)))
+
+(defn- events-enabled? [visibility]
+  (not (false? (:timeline_events.enabled visibility))))
+
+(defn- setting-ids
+  "The ids stored under `k` in `visibility`. Settings saved before these keys were validated can hold anything, so a
+  malformed value counts as no ids rather than throwing — otherwise the card could never be repaired."
+  [visibility k]
+  (let [ids (get visibility k)]
+    (if (sequential? ids) (filter pos-int? ids) [])))
+
+(defn- selected-timeline-ids [visibility]
+  (setting-ids visibility :timeline.selected_timeline_ids))
+
+(defn- excluded-event-ids [visibility]
+  (setting-ids visibility :timeline.excluded_timeline_event_ids))
+
+(defn- newly-revealed-timeline-ids
+  [visibility previous-visibility reveals-all?]
+  (let [selected-ids (set (selected-timeline-ids visibility))]
+    (if reveals-all?
+      selected-ids
+      (let [added-ids    (set/difference selected-ids (set (selected-timeline-ids previous-visibility)))
+            hidden-ids   (set (excluded-event-ids visibility))
+            unhidden-ids (into [] (remove hidden-ids) (excluded-event-ids previous-visibility))]
+        (into added-ids
+              (filter selected-ids)
+              (models.db/timeline-ids-of-events unhidden-ids))))))
+
+(defn- check-timeline-visibility-permissions!
+  [card previous-card]
+  ;; No bound user means an internal write (serdes import, migrations, tasks) rather than a request.
+  (when api/*current-user-id*
+    (let [visibility-keys     [:timeline.selected_timeline_ids :timeline.excluded_timeline_event_ids
+                               :timeline_events.enabled]
+          visibility          (select-keys (:visualization_settings card) visibility-keys)
+          previous-visibility (select-keys (:visualization_settings previous-card) visibility-keys)
+          draws-events?       (fn [visibility display]
+                                (and (events-enabled? visibility) (timeline-events-supported-display? display)))
+          reveals-all?        (and (draws-events? visibility (:display card))
+                                   (not (draws-events? previous-visibility (:display previous-card))))]
+      (when (or reveals-all? (not= visibility previous-visibility))
+        (when-some [excluded-ids (:timeline.excluded_timeline_event_ids visibility)]
+          (api/check-400 (and (sequential? excluded-ids) (every? pos-int? excluded-ids))
+                         (tru "Excluded timeline event IDs must be a sequence of positive integers.")))
+        (when-some [timeline-ids (:timeline.selected_timeline_ids visibility)]
+          (api/check-400 (and (sequential? timeline-ids) (every? pos-int? timeline-ids))
+                         (tru "Selected timeline IDs must be a sequence of positive integers."))
+          ;; Timelines the card already showed stay visible whatever the user saves, so only the difference is
+          ;; checked. Deleted timelines are skipped when rendering, so a stale id must not block saving the card.
+          (doseq [timeline (queries.db/timelines
+                            (newly-revealed-timeline-ids visibility previous-visibility reveals-all?))]
+            (api/read-check timeline)))))))
+
+(defn card-exposed-timeline-ids
+  "The ids of the timelines whose events `card` shows on a dashboard. The public payload and the checks guarding it
+  both read this, so they cannot drift apart."
+  [{:keys [display] settings :visualization_settings}]
+  ;; Archived cards count too: archiving is undone by a plain `archived: false`, which runs no timeline check.
+  (let [timeline-ids (:timeline.selected_timeline_ids settings)]
+    (when (and (timeline-events-supported-display? display)
+               (events-enabled? settings)
+               (sequential? timeline-ids))
+      (filter pos-int? timeline-ids))))
+
+(defn dashcard-hides-card-events?
+  "Whether `dashcard` never shows its card's timeline events, whatever the card selects: a visualizer dashcard renders
+  its own visualization, an action dashcard renders a button, and a virtual dashcard has no card of its own. The
+  public payload and the checks guarding it both read this, so they cannot drift apart."
+  [dashcard]
+  (let [settings (:visualization_settings dashcard)]
+    (or (contains? settings :visualization)
+        (some? (:action_id dashcard))
+        (some? (:virtual_card settings)))))
+
+(defn check-shared-dashboard-timeline-permissions!
+  "Placing `cards` on `dashboard` shows their selected timeline events to anyone who opens it when the dashboard is
+  publicly shared or embedded, so the current user needs read access to those timelines."
+  [dashboard cards]
+  (when (and api/*current-user-id*
+             (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+    (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
+      (doseq [timeline (queries.db/timelines timeline-ids)]
+        (api/read-check timeline)))))
+
+(defn check-shared-dashboard-timeline-permissions-for-card-ids!
+  "[[check-shared-dashboard-timeline-permissions!]] for the saved Cards with `card-ids`."
+  [dashboard card-ids]
+  (when (seq card-ids)
+    (check-shared-dashboard-timeline-permissions! dashboard (queries.db/cards (set card-ids)))))
+
+(defn check-newly-exposed-dashcards-timeline-permissions!
+  "[[check-shared-dashboard-timeline-permissions!]] for the cards `new-dashcards` newly expose on `dashboard`. A card
+  is grandfathered only when `existing-dashcards` already shows its events, so turning a dashcard that hides them
+  into one that shows them is checked like any other placement."
+  [dashboard existing-dashcards new-dashcards]
+  (let [exposed-card-ids  (comp (remove dashcard-hides-card-events?) (keep :card_id))
+        existing-card-ids (into #{} exposed-card-ids existing-dashcards)
+        new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
+    (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
+
+(def ^:dynamic *copy-source-card*
+  "The Card a new Card is being copied from, if any. Its timeline visibility settings count as the previous state, so
+  copying a Card does not require read access to the timelines it already selects."
+  nil)
+
+(defmacro with-copy-source-card
+  "Runs `body`, treating a Card inserted within it as a copy of `source-card`: an inherited timeline selection does
+  not require read access to those timelines. `source-card` must be a Card the current user has already passed a
+  read check on, and `body` should perform only the single copy insert."
+  [source-card & body]
+  `(binding [*copy-source-card* ~source-card] ~@body))
+
 (t2/define-before-insert :model/Card
   [card]
+  (check-timeline-visibility-permissions! card *copy-source-card*)
   (u/prog1
     (-> card
         (assoc :metabase_version config/mb-version-string
@@ -829,8 +949,11 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (some-> card t2/changes normalize-card)
-        card    (normalize-card card)]
+  (let [previous-card (t2/original card)
+        changes       (some-> card t2/changes normalize-card)
+        card          (normalize-card card)]
+    (when (or (contains? changes :visualization_settings) (contains? changes :display))
+      (check-timeline-visibility-permissions! card previous-card))
     (collection/check-allowed-content (:type card) (:collection_id changes))
     (-> card
         (dissoc :verified-result-metadata?)
@@ -970,6 +1093,9 @@
    ;; you can't specify the dashboard_tab_id and not a dashboard_id
    (api/check-400 (not (and (:dashboard_tab_id input-card-data)
                             (not (:dashboard_id input-card-data)))))
+   ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
+   (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
+     (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id :document_id]

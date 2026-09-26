@@ -828,7 +828,7 @@
   (resolve/export-fk (export-resolver) id model))
 
 (defmacro ^:private fk-elide
-  "If a call to `*export-fk*` inside of this fails, do not export the whole data structure"
+  "Returns nil when an FK target no longer exists; rethrows other failures."
   [& body]
   `(try
      ~@body
@@ -1637,6 +1637,20 @@
                                   :else cols)]
                [k updated-cols]))))))
 
+(defn- timeline-setting-ids
+  "The ids stored under a `:timeline.*` visualization setting. Settings saved before these keys were validated can
+  hold anything, so a non-sequential value counts as no ids rather than throwing mid-export."
+  [ids]
+  (when (sequential? ids) ids))
+
+(defn- export-fks [ids model]
+  (u/keepv #(when (pos-int? %) (fk-elide (*export-fk* % model))) (timeline-setting-ids ids)))
+
+(defn- export-timeline-events [settings]
+  (-> settings
+      (m/update-existing :timeline.selected_timeline_ids export-fks :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids export-fks :model/TimelineEvent)))
+
 (defn export-visualization-settings
   "Given the `:visualization_settings` map, convert all its field-ids to portable `[db schema table field]` form."
   [settings]
@@ -1647,6 +1661,7 @@
         export-viz-click-behavior
         export-visualizer-settings
         export-pivot-table
+        export-timeline-events
         (update :column_settings export-column-settings))))
 
 (defn- import-viz-link-card
@@ -1727,6 +1742,18 @@
   (binding [resolve/*import-resolver* resolve.default/lenient-import-resolver]
     (import-visualizer-settings settings)))
 
+(defn- timeline-event-ref? [ref]
+  (and (vector? ref) (= 2 (count ref)) (every? entity-id? ref)))
+
+(defn- import-fks [refs ref? model]
+  (u/keepv #(when (ref? %) (fk-elide (*import-fk* % model))) (timeline-setting-ids refs)))
+
+(defn- import-timeline-events [settings]
+  (-> settings
+      ;; Keep explicit empty selections: removing the key would restore collection defaults.
+      (m/update-existing :timeline.selected_timeline_ids import-fks entity-id? :model/Timeline)
+      (m/update-existing :timeline.excluded_timeline_event_ids import-fks timeline-event-ref? :model/TimelineEvent)))
+
 (defn import-visualization-settings
   "Given an EDN value as exported by [[export-visualization-settings]], convert its portable `[db schema table field]`
   references into Field IDs."
@@ -1738,6 +1765,7 @@
         import-viz-click-behavior
         import-visualizer-settings
         import-pivot-table
+        import-timeline-events
         (update :column_settings import-column-settings))))
 
 (defn- viz-link-card-deps
@@ -1764,6 +1792,18 @@
       ;; that to actually attach to a filter to check what it looks like.
       nil)))
 
+(defn- timeline-events-deps
+  [allow-int-ids? settings]
+  (let [selected-ids (timeline-setting-ids (:timeline.selected_timeline_ids settings))
+        excluded-ids (timeline-setting-ids (:timeline.excluded_timeline_event_ids settings))
+        timeline-ids (concat
+                      (filter #(or (raw-ref-id? allow-int-ids? %) (entity-id? %)) selected-ids)
+                      (if allow-int-ids?
+                        (mapcat models.db/timeline-ids-of-events
+                                (partition-all query-batch-size (filter pos-int? excluded-ids)))
+                        (map first (filter timeline-event-ref? excluded-ids))))]
+    (into #{} (map (fn [id] [{:model "Timeline" :id id}])) timeline-ids)))
+
 (defn visualization-settings-deps
   "Given the :visualization_settings (possibly nil) for an entity, return any embedded serdes-deps as a set.
   Always returns an empty set even if the input is nil. For `allow-int-ids?` see [[mbql-deps]]."
@@ -1780,7 +1820,8 @@
         click-behavior-deps       (viz-click-behavior-deps viz)]
     (->> (concat column-settings-keys-deps
                  column-settings-vals-deps
-                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps])
+                 [(mbql-deps allow-int-ids? viz) link-card-deps click-behavior-deps
+                  (timeline-events-deps allow-int-ids? viz)])
          (filter some?)
          (reduce set/union #{}))))
 

@@ -230,6 +230,52 @@
                            :id        "[\"dimension\",[\"field\",54,{\"source-field\":53}]]"
                            :dimension ["dimension" [:field 54 {:source-field 53}]]}}}}}}})))))
 
+(deftest ^:parallel import-old-timeline-events-settings-test
+  (testing "source-instance numeric IDs cannot select unrelated destination timelines or hide their events"
+    (let [settings {:graph.show_values                    true
+                    :timeline.selected_timeline_ids       [7]
+                    :timeline.excluded_timeline_event_ids [42]}]
+      (is (= {:graph.show_values                    true
+              :timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel export-malformed-timeline-events-settings-test
+  (testing "values that are not numeric IDs are dropped on export instead of failing it"
+    (let [settings {:timeline.selected_timeline_ids       [1 "abc" nil]
+                    :timeline.excluded_timeline_event_ids [2 -1 "xyz"]}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       ["Timeline___1"]
+                :timeline.excluded_timeline_event_ids ["TimelineEvent___2"]}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{[{:model "Timeline" :id 1}]}
+             (serdes/visualization-settings-deps true (update settings :timeline.excluded_timeline_event_ids
+                                                              (partial remove pos-int?))))))))
+
+(deftest ^:parallel scalar-timeline-events-settings-test
+  (testing "a setting holding a scalar instead of a list counts as no ids rather than failing export or deps"
+    (let [settings {:timeline.selected_timeline_ids       7
+                    :timeline.excluded_timeline_event_ids true}]
+      (binding [serdes/*export-fk* (fn [id model] (format "%s___%d" (name model) id))]
+        (is (= {:timeline.selected_timeline_ids       []
+                :timeline.excluded_timeline_event_ids []}
+               (select-keys (serdes/export-visualization-settings settings) (keys settings)))))
+      (is (= #{} (serdes/visualization-settings-deps true settings)))
+      (is (= {:timeline.selected_timeline_ids       []
+              :timeline.excluded_timeline_event_ids []}
+             (select-keys (serdes/import-visualization-settings settings) (keys settings)))))))
+
+(deftest ^:parallel excluded-timeline-events-deps-without-selection-test
+  (testing "excluded events pull in their Timeline even when the card selects no timelines, so the Timeline loads
+            first and the exclusions survive the import instead of un-hiding the events"
+    (let [eid (fn [c] (apply str (repeat 21 c)))]
+      (is (= #{[{:model "Timeline" :id (eid \a)}]
+               [{:model "Timeline" :id (eid \c)}]}
+             (serdes/visualization-settings-deps
+              false
+              {:timeline.excluded_timeline_event_ids [[(eid \a) (eid \b)]
+                                                      [(eid \c) (eid \d)]]}))))))
+
 (deftest ^:parallel import-viz-settings-test
   (binding [serdes/*import-field-fk* (constantly 3)]
     (is (= {:column_settings

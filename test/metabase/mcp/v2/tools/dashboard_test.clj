@@ -103,6 +103,43 @@
           (testing "the dashcard got a real id, not the temp one"
             (is (pos-int? (get-in result [:dashcards 0 :id])))))))))
 
+(deftest add-card-with-restricted-timeline-to-shared-dashboard-test
+  (testing "adding a card to a shared dashboard needs read access to the timelines it shows, as in the REST writer"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card card {:display                :line
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that"
+                     (tool-error (call-tool! :rasta nil "dashboard_write"
+                                             (wire {:method "update" :id (:id dashboard)
+                                                    :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dashboard))))))))
+
+(deftest move-card-between-tabs-on-shared-dashboard-test
+  (testing "deleting a tab and re-adding its card on another tab in one update exposes nothing new, as in REST"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Card card {:display                :line
+                                       :visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}}
+                     :model/Dashboard dashboard {:public_uuid (str (random-uuid))}
+                     :model/DashboardTab tab-a {:dashboard_id (:id dashboard) :name "A" :position 0}
+                     :model/DashboardTab tab-b {:dashboard_id (:id dashboard) :name "B" :position 1}
+                     :model/DashboardCard _ {:dashboard_id (:id dashboard) :dashboard_tab_id (:id tab-a)
+                                             :card_id (:id card) :row 0 :col 0 :size_x 4 :size_y 4}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (mt/with-current-user (mt/user->id :rasta)
+          (dashboards.write/update-dashboard!
+           (:id dashboard)
+           {:tabs      [tab-b]
+            :dashcards [{:id -1 :card_id (:id card) :dashboard_tab_id (:id tab-b)
+                         :row 0 :col 0 :size_x 4 :size_y 4}]}))
+        (is (= [(:id tab-b)]
+               (map :dashboard_tab_id (t2/select :model/DashboardCard :dashboard_id (:id dashboard)))))))))
+
 (deftest create-with-a-bad-op-writes-nothing-test
   (testing "GHY-4147: a create whose ops fail leaves no dashboard behind — otherwise the agent sees
             an error, retries, and ends up with a pile of empty dashboards"
