@@ -6,10 +6,13 @@ import {
   baselineProblems,
   checkContracts,
 } from "./contracts";
+import type { GeneratedOperation } from "./operations";
 import {
   COMPILER_OPTIONS,
   ENDPOINT_BUILDER,
   cleanupFixtures,
+  generatedFiles,
+  generatedSources,
   programFrom,
 } from "./test-fixtures";
 import { TypeWalkError } from "./type-comparison";
@@ -31,14 +34,23 @@ function replaceOnce(source: string, target: string, replacement: string) {
   );
 }
 
+const erdOperation: GeneratedOperation = {
+  method: "GET",
+  path: "/api/erd/{database-id}",
+  data: "GetApiErdData",
+  responses: "GetApiErdResponses",
+};
+
 function check({
   frontend,
   backend,
+  operations = [erdOperation],
   endpoint,
   options = {},
 }: {
   frontend: string;
   backend: string;
+  operations?: GeneratedOperation[];
   endpoint: string;
   options?: ts.CompilerOptions;
 }) {
@@ -49,14 +61,14 @@ function check({
     ${frontend}
     const endpoints = { example: ${endpoint} };
   `,
-      "types.gen.d.ts": backend,
+      ...generatedSources(backend, operations),
     },
     { options, checked: ["endpoint.ts"] },
   );
   return checkContracts(
     program,
     [files["endpoint.ts"] ?? ""],
-    files["types.gen.d.ts"] ?? "",
+    generatedFiles(files),
     root,
   );
 }
@@ -257,9 +269,43 @@ describe("API contract checks", () => {
     ]);
   });
 
+  it("should leave a route with two backend operations unverified", () => {
+    const results = check({
+      frontend,
+      backend,
+      operations: [erdOperation, { ...erdOperation, path: "/api/erd/{id}" }],
+      endpoint,
+    });
+    expect(results).toEqual([
+      expect.objectContaining({
+        id: `${ENDPOINT_ID}:endpoint`,
+        status: "unverified",
+        message: "Ambiguous backend operations for GET /api/erd/{param}",
+      }),
+    ]);
+  });
+
+  it("should leave the response unverified when the operation has no responses type", () => {
+    const results = check({
+      frontend,
+      backend,
+      operations: [{ ...erdOperation, responses: undefined }],
+      endpoint,
+    });
+    expect(resultFor(results, "response")).toMatchObject({
+      status: "unverified",
+      message: "Backend does not declare a successful response schema.",
+    });
+  });
+
   it("should fail closed when generation produces no recognizable operations", () => {
     expect(() =>
-      check({ frontend, backend: "export type Nothing = {};", endpoint }),
+      check({
+        frontend,
+        backend: "export type Nothing = {};",
+        operations: [],
+        endpoint,
+      }),
     ).toThrow(/No operations found/);
   });
 });
@@ -536,14 +582,14 @@ describe("walks that do not finish", () => {
       ${frontendTypes}
       const endpoints = { example: ${endpoint} };
     `,
-      "types.gen.d.ts": backendTypes,
+      ...generatedSources(backendTypes, [erdOperation]),
     });
     configureChecker?.(program.getTypeChecker());
     return () =>
       checkContracts(
         program,
         [files["endpoint.ts"] ?? ""],
-        files["types.gen.d.ts"] ?? "",
+        generatedFiles(files),
         root,
         options,
       );
@@ -655,7 +701,7 @@ describe("type printing order", () => {
   ) {
     const { root, files } = programFrom(
       {
-        "types.gen.d.ts": backendDeclarations,
+        ...generatedSources(backendDeclarations, [erdOperation]),
         ...Object.fromEntries(
           Object.entries(endpoints).map(
             ([name, { declarations, endpoint }]) => [
@@ -672,14 +718,17 @@ describe("type printing order", () => {
       },
       { checked: [] },
     );
-    const generated = files["types.gen.d.ts"] ?? "";
-    const endpointFiles = Object.values(files).filter(
-      (file) => file !== generated,
+    const generated = generatedFiles(files);
+    const endpointFiles = Object.keys(endpoints).map(
+      (name) => files[`${name}.ts`] ?? "",
     );
     // The program is built twice, so the order the endpoint files are read in is what changes.
     const run = (ordered: string[]) =>
       checkContracts(
-        ts.createProgram([...ordered, generated], COMPILER_OPTIONS),
+        ts.createProgram(
+          [...ordered, generated.declarations, generated.operations],
+          COMPILER_OPTIONS,
+        ),
         ordered,
         generated,
         root,
@@ -761,7 +810,7 @@ describe("request comparison rules", () => {
       try {
         const results = check({
           frontend,
-          backend: operation({
+          ...operation({
             method: "Post",
             url: "/api/user/{id}",
             path: "path: { id: number }",
@@ -825,6 +874,7 @@ describe("request comparison rules", () => {
       const results = check({
         frontend: `${frontend} type Args = ${argument};`,
         backend: `export type ${method}UserData = { url: "/api/user"; ${contract} }; export type ${method}UserResponses = { "2XX": { id: number } };`,
+        operations: [userOperation(method)],
         endpoint: request("Args", `arg => (${expression})`),
       });
       expect(resultFor(results, part)?.status).toBe(status);
@@ -877,7 +927,7 @@ describe("request comparison rules", () => {
   ])("%s", (_name, argument, backendBody, status) => {
     const results = check({
       frontend: `${frontend} type Args = ${argument};`,
-      backend: operation({ method: "Post", body: `body: ${backendBody}` }),
+      ...operation({ method: "Post", body: `body: ${backendBody}` }),
       endpoint: request(
         "Args",
         '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -886,17 +936,33 @@ describe("request comparison rules", () => {
     expect(resultFor(results, "request.body")?.status).toBe(status);
   });
 
+  function userOperation(
+    method: string,
+    url = "/api/user",
+  ): GeneratedOperation {
+    return {
+      method,
+      path: url,
+      data: `${method}UserData`,
+      responses: `${method}UserResponses`,
+    };
+  }
+
   function operation({
     method = "Get",
     url = "/api/user",
     path = "path?: never",
     query = "query?: never",
     body = "body?: never",
+    declarations = "",
   } = {}) {
-    return `
+    return {
+      backend: `${declarations}
       export type ${method}UserData = { url: "${url}"; ${body}; ${query}; ${path} };
       export type ${method}UserResponses = { "2XX": { id: number } };
-    `;
+    `,
+      operations: [userOperation(method, url)],
+    };
   }
 
   function request(argument: string, query: string) {
@@ -906,7 +972,12 @@ describe("request comparison rules", () => {
   it("should inspect nested cache keys after removing the top-level key", () => {
     const results = check({
       frontend: `${frontend} type Args = { __rtkCacheKey?: unknown; child?: Args };`,
-      backend: `type Backend = { __rtkCacheKey?: string; child?: Backend }; ${operation({ method: "Post", body: "body: { child?: Backend }" })}`,
+      ...operation({
+        method: "Post",
+        body: "body: { child?: Backend }",
+        declarations:
+          "type Backend = { __rtkCacheKey?: string; child?: Backend };",
+      }),
       endpoint: request(
         "Args",
         '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -918,7 +989,12 @@ describe("request comparison rules", () => {
   it("should leave conversions in a recursive JSON body unverified", () => {
     const results = check({
       frontend: `${frontend} interface TreeNode { date: Date; children: TreeNode[] }`,
-      backend: `type BackendNode = { date: string; children: BackendNode[] }; ${operation({ method: "Post", body: "body: BackendNode" })}`,
+      ...operation({
+        method: "Post",
+        body: "body: BackendNode",
+        declarations:
+          "type BackendNode = { date: string; children: BackendNode[] };",
+      }),
       endpoint: request(
         "TreeNode",
         '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -939,7 +1015,11 @@ describe("request comparison rules", () => {
     }
     const results = check({
       frontend: `${frontend} ${graph.join("\n")}`,
-      backend: `${graph.join("\n")} ${operation({ method: "Post", body: "body: T24" })}`,
+      ...operation({
+        method: "Post",
+        body: "body: T24",
+        declarations: graph.join("\n"),
+      }),
       endpoint: request(
         "T24",
         '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -951,7 +1031,7 @@ describe("request comparison rules", () => {
   it("should compare the text String gives for query values", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         query: "query: { ids: number[]; archived: boolean; limit: number }",
       }),
       endpoint: request(
@@ -973,7 +1053,11 @@ describe("request comparison rules", () => {
     const recursive = (backend: string) =>
       check({
         frontend: `${frontend} interface TreeNode { id: number; children: TreeNode[] }`,
-        backend: `export type BackendNode = ${backend}; ${operation({ method: "Post", body: "body: BackendNode" })}`,
+        ...operation({
+          method: "Post",
+          body: "body: BackendNode",
+          declarations: `export type BackendNode = ${backend};`,
+        }),
         endpoint: request(
           "TreeNode",
           '(body) => ({ method: "POST", url: "/api/user", body })',
@@ -996,7 +1080,7 @@ describe("request comparison rules", () => {
   it("should reject a query key the backend type does not declare", () => {
     const results = check({
       frontend,
-      backend: operation({ query: "query?: { other?: boolean }" }),
+      ...operation({ query: "query?: { other?: boolean }" }),
       endpoint: request(
         "{ ignore_view: boolean }",
         '(params) => ({ url: "/api/user", params })',
@@ -1013,7 +1097,7 @@ describe("request comparison rules", () => {
   it("should reject a body key the backend type does not declare, at any depth", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         method: "Post",
         body: "body: { user: { name: string } }",
       }),
@@ -1033,7 +1117,7 @@ describe("request comparison rules", () => {
   it("should compare the text String gives for a URL tag with the backend path parameter", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         url: "/api/user/{id}",
         path: "path: { id: number }",
       }),
@@ -1055,7 +1139,7 @@ describe("request comparison rules", () => {
   it("should compare the text String gives for a template span with the backend path parameter", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         url: "/api/user/{id}",
         path: "path: { id: number }",
       }),
@@ -1070,7 +1154,7 @@ describe("request comparison rules", () => {
   it("should send no query parameters for a void params argument", () => {
     const results = check({
       frontend,
-      backend: operation(),
+      ...operation(),
       endpoint: request("void", '(params) => ({ url: "/api/user", params })'),
     });
     expect(resultFor(results, "request.query")?.status).toBe("compatible");
@@ -1079,7 +1163,7 @@ describe("request comparison rules", () => {
   it("should still check the object part of a params argument that may be void", () => {
     const results = check({
       frontend,
-      backend: operation(),
+      ...operation(),
       endpoint: request(
         "{ limit: number } | void",
         '(params) => ({ url: "/api/user", params })',
@@ -1094,7 +1178,7 @@ describe("request comparison rules", () => {
   it("should require the backend to accept no query when params may be void", () => {
     const results = check({
       frontend,
-      backend: operation({ query: "query: { limit: number }" }),
+      ...operation({ query: "query: { limit: number }" }),
       endpoint: request(
         "{ limit: number } | void",
         '(params) => ({ url: "/api/user", params })',
@@ -1106,7 +1190,7 @@ describe("request comparison rules", () => {
   it("should reject a body built from an empty object rest when the backend declares no body", () => {
     const results = check({
       frontend,
-      backend: operation({ method: "Delete" }),
+      ...operation({ method: "Delete" }),
       endpoint: request(
         "{ id: number }",
         '({ id, ...body }) => ({ method: "DELETE", url: "/api/user", body })',
@@ -1123,7 +1207,7 @@ describe("request comparison rules", () => {
   it("should leave a body built from an empty object rest unverified against a declared body", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         method: "Delete",
         body: "body?: { reason?: string }",
       }),
@@ -1138,7 +1222,7 @@ describe("request comparison rules", () => {
   it("should still check an empty object type that is not an object rest", () => {
     const results = check({
       frontend: `${frontend} declare const empty: {};`,
-      backend: operation(),
+      ...operation(),
       endpoint: request("void", '() => ({ url: "/api/user", params: empty })'),
     });
     expect(resultFor(results, "request.query")?.status).toBe("mismatch");
@@ -1147,7 +1231,7 @@ describe("request comparison rules", () => {
   it("should reject a URL tag that can become an empty path segment", () => {
     const results = check({
       frontend,
-      backend: operation({
+      ...operation({
         url: "/api/user/{user-id}",
         path: 'path: { "user-id": number }',
       }),
@@ -1165,7 +1249,7 @@ describe("request comparison rules", () => {
   it("should send a null POST body as an empty JSON object", () => {
     const optional = check({
       frontend,
-      backend: operation({ method: "Post", body: "body?: { a?: string }" }),
+      ...operation({ method: "Post", body: "body?: { a?: string }" }),
       endpoint: request(
         "void",
         '() => ({ method: "POST", url: "/api/user", body: null })',
@@ -1174,7 +1258,7 @@ describe("request comparison rules", () => {
     expect(resultFor(optional, "request.body")?.status).toBe("compatible");
     const required = check({
       frontend,
-      backend: operation({ method: "Post", body: "body: { a: string }" }),
+      ...operation({ method: "Post", body: "body: { a: string }" }),
       endpoint: request(
         "void",
         '() => ({ method: "POST", url: "/api/user", body: null })',
@@ -1270,14 +1354,23 @@ describe("endpoint identities", () => {
             `${contents}\nexport {};`,
           ]),
         ),
-        "types.gen.d.ts": `export type GetApiUserData = { url: "/api/user"; body?: never; query?: never; path?: never };
+        ...generatedSources(
+          `export type GetApiUserData = { url: "/api/user"; body?: never; query?: never; path?: never };
        export type GetApiUserResponses = { "2XX": {} };`,
+          [
+            {
+              method: "GET",
+              path: "/api/user",
+              data: "GetApiUserData",
+              responses: "GetApiUserResponses",
+            },
+          ],
+        ),
       },
       { checked: [] },
     );
-    const generated = files["types.gen.d.ts"] ?? "";
-    const paths = Object.values(files).filter((file) => file !== generated);
-    return checkContracts(program, paths, generated, root);
+    const paths = Object.keys(sources).map((name) => files[name] ?? "");
+    return checkContracts(program, paths, generatedFiles(files), root);
   };
 
   it("should preserve exemptions across file moves and line changes", () => {

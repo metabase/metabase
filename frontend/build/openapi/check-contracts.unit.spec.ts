@@ -3,10 +3,12 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+import { operationsDeclarations } from "./operations";
 import {
   BASELINE_PATH,
   CONTRACTS_REPORT_PATH,
   GENERATED_DECLARATIONS_PATH,
+  GENERATED_OPERATIONS_PATH,
 } from "./paths";
 import { ENDPOINT_BUILDER } from "./test-fixtures";
 
@@ -61,6 +63,17 @@ describe("contract checker CLI", () => {
       endpointSource("{ owner: { email: string } }"),
     );
     write(GENERATED_DECLARATIONS_PATH, generatedDeclarations());
+    write(
+      GENERATED_OPERATIONS_PATH,
+      operationsDeclarations([
+        {
+          method: "GET",
+          path: "/api/user",
+          data: "GetApiUserData",
+          responses: "GetApiUserResponses",
+        },
+      ]),
+    );
     write(BASELINE_PATH, "[]");
   });
 
