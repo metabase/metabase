@@ -29,5 +29,9 @@
   "include": ["**/*"],
   // Data-app fixtures and host apps are standalone SDK apps (built by Vite,
   // typechecked by their own tsconfig) — not part of the e2e TS program.
-  "exclude": ["support/assets/data-apps", "embedding-sdk-host-apps"]
+  "exclude": [
+    "support/assets/data-apps",
+    "embedding-sdk-host-apps",
+    "regression-corpus"
+  ]
 }
