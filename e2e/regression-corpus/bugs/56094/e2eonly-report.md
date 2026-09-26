@@ -13,7 +13,7 @@ Semantic revert of the load-bearing change in `frontend/src/metabase/query_build
 The fix commit (`3ca4c5a`) touched 2 product files, but the `QuestionDisplayToggle.tsx` change only added a `data-testid` used by the e2e — inert product-wise. The `selectors.ts` change is the load-bearing fix.
 
 ## 2. Witness
-Added to the existing `getIsVisualized` describe block in `frontend/src/metabase/query_builder/selectors.unit.spec.ts`, asserting on the pure `resultFunc` seam of the reselect selector:
+Added to the existing `getIsVisualized` describe block in `frontend/src/metabase/query_builder/selectors.unit.spec.ts`, asserting on the pure `resultFunc` of the reselect selector:
 
 ```ts
 it("should be true when display is table and only `table.pivot_column` is set (metabase#56094)", () => {

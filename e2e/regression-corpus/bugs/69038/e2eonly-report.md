@@ -75,7 +75,7 @@ In the dashboard visualizer, clicking "View as table" opens the tabular preview 
 
 ## 4. Outcome
 
-**witness_authored** — the bug is unit-catchable at the `Table.settings["table.pivot"].getDefault` seam, so the e2e is replaceable by this jest unit test.
+**witness_authored** — the bug is unit-catchable at the `Table.settings["table.pivot"].getDefault` function, so the e2e is replaceable by this jest unit test.
 
 ## 5. Confidence
 

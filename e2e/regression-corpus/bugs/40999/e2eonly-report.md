@@ -18,7 +18,7 @@ Semantic revert of fix commit `6a3d185b` in `frontend/src/metabase/visualization
 This exactly re-creates the pre-fix state (the original commit uncommented that same `widget: "select"` line).
 
 ### 2. Witness
-Added `frontend/src/metabase/visualizations/visualizations/Map/Map.unit.spec.ts` (new file). It exercises the real production `Map.settings["map.pin_type"]` definition through the real `getSettingsWidgets` seam, which filters out any setting whose `widget` is falsy (`.filter((widget) => widget.widget)` in `settings.ts:257`):
+Added `frontend/src/metabase/visualizations/visualizations/Map/Map.unit.spec.ts` (new file). It exercises the real production `Map.settings["map.pin_type"]` definition through the real `getSettingsWidgets` function, which filters out any setting whose `widget` is falsy (`.filter((widget) => widget.widget)` in `settings.ts:257`):
 
 ```ts
 import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
@@ -48,4 +48,4 @@ Without `widget: "select"`, the "Pin type" map setting has no widget, so `getSet
 `witness_authored` — the bug is unit-catchable. The observable (a setting appearing as an editable widget) lives in a pure function `getSettingsWidgets` whose filtering behavior is fully exercisable in jsdom without rendering Leaflet, so the e2e is replaceable at the unit level.
 
 ### 5. Confidence
-High. The mutation is byte-for-byte the inverse of the fix commit's product change, applied at the drifted location. The witness discriminates purely on the mutated property via the same seam the real settings sidebar uses (definition → `getSettingsWidgets` → `.filter(w => w.widget)`), and empirically flips PASS→FAIL on exactly this edit with a clean value assertion (no compile error).
+High. The mutation is byte-for-byte the inverse of the fix commit's product change, applied at the drifted location. The witness discriminates purely on the mutated property via the same code path the real settings sidebar uses (definition → `getSettingsWidgets` → `.filter(w => w.widget)`), and empirically flips PASS→FAIL on exactly this edit with a clean value assertion (no compile error).

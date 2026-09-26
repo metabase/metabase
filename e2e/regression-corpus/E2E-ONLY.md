@@ -34,7 +34,7 @@ it to **20%** (3/15). Truth is between — irreducible is now precisely characte
 **browser measurement** (`getBoundingClientRect` / `ResizeObserver` / pixel overlap). The 4 cases:
 63711 (CSS `grid-auto-rows` overflow), 58923 (scroll-container padding), 67399 (SDK `ResizeObserver`
 sizing), 61164 (virtualized row overlap on sort). Routing (65500), chart "geometry" (55853, 63671),
-and transient render-timing (55631) all reduced to pure seams.
+and transient render-timing (55631) all reduced to pure functions a unit test can call.
 
 ### CI ground truth (39 of 42 run; 3 witness-only from patch drift)
 
@@ -57,25 +57,25 @@ Two findings worth their own line:
 ## What the sample teaches
 
 - **"e2e-only" ≈ "nobody wrote a unit test," not "can't."** Even in the population most likely to
-  be irreducible, ~96% had a testable seam.
+  be irreducible, ~96% had a point a unit test could assert on.
 - **Seemingly-visual bugs reduce to computable values.** Map/dateline → marker *count* (5369);
   bar-chart labels → tick *options* (60475); editor overflow → a *computed* rem height (69722).
 - **Multi-file fixes didn't raise the irreducible rate.** Every `pf=2` fix had a single
-  load-bearing seam; the extra files were test hooks, snapshots, or `data-testid`s.
+  load-bearing change; the extra files were test hooks, snapshots, or `data-testid`s.
 - **The irreducible line is precise: a browser *measurement*.** Layout driven by a JS computation
   is unit-testable (69722); layout requiring `scrollHeight`/`getBoundingClientRect` is not (63711).
 - **Some e2es guard nothing.** 17% were vacuous — culling them loses no coverage regardless.
 
 The forward-facing distillation is the **`e2e-to-unit` skill** (`.claude/skills/e2e-to-unit/`):
-the seam catalogue, the irreducible classifier, and the witness verification, applied to new specs.
+the test-target catalogue, the irreducible classifier, and the witness verification, applied to new specs.
 
 ## Caveats / honesty
 
 - **Sample bias.** 27 of 851, skewed toward single-file (`pf=1`) fixes and, in wave 1, more
   tractable areas. Treat ~96% as an optimistic upper bound until larger/harder slices (deep
   multi-file, the 156 `test_only`) are measured.
-- **Logic vs wiring.** A seam unit test replaces the *logic*, not the proof that the real flow
-  *calls* the seam. Some culls should keep a thin container/integration smoke test.
+- **Logic vs wiring.** A function-level unit test replaces the *logic*, not the proof that the real flow
+  *calls* that function. Some culls should keep a thin container/integration smoke test.
 - **Witnesses are authored, not landed.** 68998 needs its Clojure witness written; 59671's crash
   site is partly superseded by later upstream hardening (the witness injects the historical shape).
 - **3 CI runs were skipped** (59671, 51717, 56094) because their mutation patches didn't apply to

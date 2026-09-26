@@ -12,16 +12,16 @@ ln -sfn /Users/fraser/Documents/code/metabase/target        target
 ln -sfn /Users/fraser/Documents/code/metabase/node_modules  node_modules
 bun run test-unit-keep-cljs <spec>     # run from worktree root
 ```
-See also `scripts/e2e-to-unit-instructions` seam catalogue in `.claude/skills/e2e-to-unit/SKILL.md`.
+See also `scripts/e2e-to-unit-instructions` test-target catalogue in `.claude/skills/e2e-to-unit/SKILL.md`.
 
 ## Steps
 1. `git show <fix_commit> --stat` and read the diff: the product change + the shipped e2e repro
    tell you the bug. Find where that logic lives NOW (it may have drifted).
-2. **Find the seam** (pure fn / reducer / thunk / RTK-Query tag / router param / container render).
+2. **Find the test target** (pure fn / reducer / thunk / RTK-Query tag / router param / container render).
    Trace the e2e's assertion back to the nearest computable value. If the observable is only a real
    **browser measurement** (`getBoundingClientRect`/`ResizeObserver` pixels, CSS overflow) → it's
-   irreducible; if it's backend `.clj[c]` → it's BE. See "no seam" below.
-3. **Author the witness** as a real landed unit test at the seam (follow the file's conventions,
+   irreducible; if it's backend `.clj[c]` → it's BE. See "no test target" below.
+3. **Author the witness** as a real landed unit test at the test target (follow the file's conventions,
    lint-clean). Verify it PASSES on clean HEAD.
 4. **Prove it discriminates**: apply a minimal semantic mutation reintroducing the bug → the witness
    FAILS (clean value/DOM assertion) → **revert the mutation** (product code back to HEAD, `git diff`
@@ -32,10 +32,10 @@ See also `scripts/e2e-to-unit-instructions` seam catalogue in `.claude/skills/e2
 6. **Final check**: product code UNCHANGED; a new/edited unit spec added; the e2e repro removed.
    Run the witness once more → PASSES.
 
-## No seam (do NOT cull — leave the e2e in place)
+## No test target (do NOT cull — leave the e2e in place)
 - **Irreducible** (real-browser geometry/measurement, cross-page routing, browser API jsdom lacks):
   report `keep_e2e` + class, add NO unit test, DELETE nothing.
-- **Backend** (`.clj[c]` fix): report `be_deftest` (a Clojure `deftest` is the oracle) + the seam,
+- **Backend** (`.clj[c]` fix): report `be_deftest` (a Clojure `deftest` is the oracle) + the test target,
   add NO jest test, DELETE nothing (a separate BE wave handles it).
 
 ## Report (end with)

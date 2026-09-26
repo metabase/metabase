@@ -25,7 +25,7 @@ Oracle: `bun run test-unit-keep-cljs frontend/src/metabase/visualizations/visual
 Custom pivot-table column titles (row-header labels set via `column_title` / column display names) are rendered without applying the content-translation dictionary. On an embedded dashboard with a locale + translation dictionary, a renamed pivot column such as "Category" → "La catégorie" stays untranslated. This is exactly what the e2e (grep `metabase#63296`) checks: it expects `La catégorie` in the embedded dashboard card.
 
 ### 4. Outcome
-`witness_authored` — the bug is unit-catchable. The translation seam (`tc(getTitleForColumn(...))`) is exercised by rendering the pivot table with a mocked translate hook and asserting on the header cell text in jsdom; no real browser, routing, layout geometry, or network is required.
+`witness_authored` — the bug is unit-catchable. The translation call (`tc(getTitleForColumn(...))`) is exercised by rendering the pivot table with a mocked translate hook and asserting on the header cell text in jsdom; no real browser, routing, layout geometry, or network is required.
 
 ### 5. Confidence
 High. The mutation is the exact inverse of the shipped one-line fix, at the same logical site (drifted file). The witness discriminates cleanly (assertion failure, not a compile/runtime error): passes on clean, fails on mutant, and the failure message directly reflects the untranslated title. The witness is a faithful unit-level stand-in for the e2e's "translated custom pivot column title appears" assertion.

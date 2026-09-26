@@ -15,7 +15,7 @@ Done. Outcome: **witness_authored**. The bug is unit-catchable and the e2e is re
 
 ## 2. Witness
 
-New spec `frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.unit.spec.ts`. It builds a PRODUCTS query, applies default binning to PRICE, adds it as a breakout, then asserts on the exported `getBreakoutListItem` seam:
+New spec `frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.unit.spec.ts`. It builds a PRODUCTS query, applies default binning to PRICE, adds it as a breakout, then asserts on the exported `getBreakoutListItem` function:
 
 ```ts
 const item = getBreakoutListItem(query, STAGE_INDEX, breakout);

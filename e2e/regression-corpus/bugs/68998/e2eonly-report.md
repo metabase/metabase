@@ -24,14 +24,14 @@ I have everything needed. Here is my report.
        (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))
 ```
 
-This single seam feeds both call sites the fix touched (`dashcards->param-id->field-ids*` and `dashboard-param->field-ids`, both now routed through `mapping->param-dashcard-info` → `find-card-for-mapping`), so the one-point revert fully reintroduces the behavior. `medley` (`m`) is still used elsewhere in the file (lines 113/166/171/261), so the mutant compiles with no unused-require. The `[:dashcards :card :series]` hydration was left intact — harmless, since resolution now ignores `:series` regardless.
+This single function feeds both call sites the fix touched (`dashcards->param-id->field-ids*` and `dashboard-param->field-ids`, both now routed through `mapping->param-dashcard-info` → `find-card-for-mapping`), so the one-point revert fully reintroduces the behavior. `medley` (`m`) is still used elsewhere in the file (lines 113/166/171/261), so the mutant compiles with no unused-require. The `[:dashcards :card :series]` hydration was left intact — harmless, since resolution now ignores `:series` regardless.
 
 ## 2. Witness
 
 **none — the buggy computation lives entirely in Clojure backend code; there is no JS module to assert on.**
 
 - Oracle harness (`bun run test-unit-keep-cljs <spec>`) runs jest against JS/TS. The mutation is in Clojure server code, so no jest test can execute the mutated code path — a witness is structurally impossible, not merely hard.
-- I verified the closest frontend seam, `frontend/src/metabase/parameters/utils/dashboards.ts`. Its `getMappings` (lines 114-118) already correctly resolves the mapped card by `card_id` across `[card, ...series]`, and `buildSavedDashboardParameter` (lines ~208-227) derives a parameter's fields purely from `fields?.[parameter.id]` — i.e. `Dashboard["param_fields"]`, an **opaque server-computed input**. That `param_fields` map is exactly the output my Clojure mutation corrupts. A jest test would hand `param_fields` to the FE directly, so it cannot observe the backend's mis-resolution. The FE side was already correct before and after the fix (the fix commit touched no FE files).
+- I verified the closest frontend code, `frontend/src/metabase/parameters/utils/dashboards.ts`. Its `getMappings` (lines 114-118) already correctly resolves the mapped card by `card_id` across `[card, ...series]`, and `buildSavedDashboardParameter` (lines ~208-227) derives a parameter's fields purely from `fields?.[parameter.id]` — i.e. `Dashboard["param_fields"]`, an **opaque server-computed input**. That `param_fields` map is exactly the output my Clojure mutation corrupts. A jest test would hand `param_fields` to the FE directly, so it cannot observe the backend's mis-resolution. The FE side was already correct before and after the fix (the fix commit touched no FE files).
 
 ## 3. Bug summary
 
@@ -43,6 +43,6 @@ On a dashboard where one dashcard combines cards from **multiple datasources** (
 
 ## 5. Confidence
 
-**High** on the mutation faithfully reintroducing the bug: it is the exact inverse of the fix's core mechanism (card lookup for a mapping) at the one seam both fixed call sites funnel through; the pre-fix code likewise used only `(:card dashcard)`. **High** on `no_witness`: the fix commit changed only `params.clj` + the e2e spec (zero FE product code), and the one plausible FE seam consumes the backend's `param_fields` as opaque data rather than recomputing field-ids, so no jest assertion can discriminate clean HEAD from the mutant.
+**High** on the mutation faithfully reintroducing the bug: it is the exact inverse of the fix's core mechanism (card lookup for a mapping) at the one function both fixed call sites funnel through; the pre-fix code likewise used only `(:card dashcard)`. **High** on `no_witness`: the fix commit changed only `params.clj` + the e2e spec (zero FE product code), and the one plausible FE code path consumes the backend's `param_fields` as opaque data rather than recomputing field-ids, so no jest assertion can discriminate clean HEAD from the mutant.
 
 Mutation left applied in the worktree at `/Users/fraser/Documents/code/metabase/.claude/worktrees/agent-ac160c0e143b6f9fb/src/metabase/parameters/params.clj`.

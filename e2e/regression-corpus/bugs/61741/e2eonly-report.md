@@ -4,7 +4,7 @@ The task is complete. Both the product mutation and the witness are left in the 
 
 ### 1. git diff (product mutation)
 
-The fix commit's mechanism (`shouldRenderAsNightMode = isNightMode && (isFullscreen || isEmbeddingIframe)` in `dashboard/context/context.tsx`) was **entirely removed** by the later "Dark mode" refactor (#64016, commit `952aeefd585`). Night-mode-as-a-boolean-class no longer exists; the embed theme is now resolved to a Mantine color scheme and applied via CSS. So a blind `git apply -R` is impossible — I reintroduced the *behavior* at its modern seam.
+The fix commit's mechanism (`shouldRenderAsNightMode = isNightMode && (isFullscreen || isEmbeddingIframe)` in `dashboard/context/context.tsx`) was **entirely removed** by the later "Dark mode" refactor (#64016, commit `952aeefd585`). Night-mode-as-a-boolean-class no longer exists; the embed theme is now resolved to a Mantine color scheme and applied via CSS. So a blind `git apply -R` is impossible — I reintroduced the *behavior* at its modern location.
 
 `frontend/src/metabase/AppThemeProvider.tsx`:
 ```diff

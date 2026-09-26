@@ -20,7 +20,7 @@ File: `/Users/fraser/Documents/code/metabase/.claude/worktrees/agent-ad57bf8e5f9
 
 ## 2. Witness
 
-**None — no unit seam exists.** See outcome/confidence below.
+**None — no unit test can catch it.** See outcome/confidence below.
 
 ## 3. Bug summary
 
@@ -44,4 +44,4 @@ So both the mutated and clean code produce byte-identical jest DOM output (all m
 
 **High** that the mutation faithfully reintroduces the bug: it is a line-exact semantic revert of the fix commit's sole product change (`grid-auto-rows: max-content`), applied at the same grid rule that the original fix targeted, just at its new file location.
 
-**High** that no unit seam exists: the fix touches only a CSS grid sizing property; the discriminating signal is real-browser box geometry, which jest's jsdom cannot compute and whose CSS input jest discards entirely. This is a textbook layout/geometry case where the Cypress e2e is genuinely load-bearing.
+**High** that no unit test can catch it: the fix touches only a CSS grid sizing property; the discriminating signal is real-browser box geometry, which jest's jsdom cannot compute and whose CSS input jest discards entirely. This is a textbook layout/geometry case where the Cypress e2e is genuinely load-bearing.

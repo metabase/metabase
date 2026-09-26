@@ -14,7 +14,7 @@ Semantic revert applied to `frontend/src/metabase/querying/components/QueryVisua
 +    (result?.error == null || isDirtyStateShownForError);
 ```
 
-This is the load-bearing product change. The fix's two product files were (a) adding the `missingRequiredParameter` constant to the server-error-types map and (b) consuming it in the overlay-visibility predicate. The predicate is the behavioral seam; I reverted both the clause and its now-dead import. (The constant still exists in `server-error-types.ts` — unused now, harmless.)
+This is the load-bearing product change. The fix's two product files were (a) adding the `missingRequiredParameter` constant to the server-error-types map and (b) consuming it in the overlay-visibility predicate. The predicate is where the behavior changes; I reverted both the clause and its now-dead import. (The constant still exists in `server-error-types.ts` — unused now, harmless.)
 
 ### 2. Witness
 Added spec: `frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.dirty-overlay.unit.spec.tsx`

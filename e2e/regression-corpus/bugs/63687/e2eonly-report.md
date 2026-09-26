@@ -18,7 +18,7 @@ Semantic revert of fix commit `c56432c2` (which moved to `src/metabase/embedding
 ```
 
 ### 2. Witness
-None — backend fix. The observable is the HTTP status of a Clojure API endpoint governed by request-bound user/permission context (`request/as-admin` binds `*current-user*` to an admin with `#{"/"}` perms via `metabase.request.session/do-as-admin`). There is no frontend/jsdom seam: the frontend just renders `<img>` tiles from the embed URL; the pass/fail is decided entirely server-side by the query processor's permission enforcement. A jest test cannot discriminate it.
+None — backend fix. The observable is the HTTP status of a Clojure API endpoint governed by request-bound user/permission context (`request/as-admin` binds `*current-user*` to an admin with `#{"/"}` perms via `metabase.request.session/do-as-admin`). There is no frontend logic for jsdom to test: the frontend just renders `<img>` tiles from the embed URL; the pass/fail is decided entirely server-side by the query processor's permission enforcement. A jest test cannot discriminate it.
 
 The correct oracle is a Clojure `deftest` in the existing namespace `test/metabase/embedding_rest/api/embed_test.clj` (which already exercises these exact endpoints at lines 1881–1906). The bug-catching version must call the endpoint **anonymously** (no session user — as a real static-embed iframe does) and assert HTTP 200:
 ```clojure

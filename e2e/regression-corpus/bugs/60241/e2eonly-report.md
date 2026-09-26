@@ -36,6 +36,6 @@ Creating a user and assigning them to the Administrators group did not invalidat
 `witness_authored` — the bug is unit-catchable. The behavior lives entirely in a pure RTK Query cache-invalidation declaration; a store-level unit test with fetch-mock observes the refetch (or its absence) without any browser, routing, or layout dependency. The e2e is replaceable at the unit level.
 
 ### 5. Confidence
-High. The mutation is the exact inverse of the shipped fix at the same seam, and the observable mechanism the e2e depends on (tag invalidation → refetch of the subscribed group list → updated role in UI) is precisely what the witness asserts at the store level. The witness cleanly flips (PASS clean / FAIL mutant) on the single tag being present vs absent.
+High. The mutation is the exact inverse of the shipped fix at the same site, and the observable mechanism the e2e depends on (tag invalidation → refetch of the subscribed group list → updated role in UI) is precisely what the witness asserts at the store level. The witness cleanly flips (PASS clean / FAIL mutant) on the single tag being present vs absent.
 
 Note: the worktree needed one missing dep, `@stardazed/streams-text-encoding@1.0.2` (declared in this branch's package.json but absent from the shared `node_modules`), copied in from the bun cache so jest-setup could load — an additive environment fix, no source change.

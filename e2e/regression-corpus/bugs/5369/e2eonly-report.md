@@ -29,7 +29,7 @@ When a pin map's viewport pans across the international date line, points that s
 
 ## 4. Outcome
 
-**witness_authored** — the bug is unit-catchable, so the e2e is replaceable. The wrapping logic in `_createMarkers` is a near-pure seam: it depends only on `map.getBounds()` (west/east) and the input points, and its observable effect (how many markers get added to `pinMarkerLayer`) is directly countable with a stubbed map and a real leaflet layer group — no real browser, tile rendering, geometry, or routing needed.
+**witness_authored** — the bug is unit-catchable, so the e2e is replaceable. The wrapping logic in `_createMarkers` is nearly pure: it depends only on `map.getBounds()` (west/east) and the input points, and its observable effect (how many markers get added to `pinMarkerLayer`) is directly countable with a stubbed map and a real leaflet layer group — no real browser, tile rendering, geometry, or routing needed.
 
 ## 5. Confidence
 

@@ -4,7 +4,7 @@ Both the product mutation and the witness are in the worktree. Here is the repor
 
 ## 1. git diff (product mutation)
 
-The fix commit `6e3aca9` touched two product files. The `context.tsx` change (`initialValues={{ ...initialValues }}` → `initialValues={initialValues}`, plus an `enableReinitialize` flag) is a render-timing concern that has since been superseded by an unrelated refactor (`FormValuesPatcher`, `useMemo`-stabilized `initialValues`, no more `enableReinitialize`). The **pure seam** is the `util.ts` change to `getName`. Semantic revert applied to current code:
+The fix commit `6e3aca9` touched two product files. The `context.tsx` change (`initialValues={{ ...initialValues }}` → `initialValues={initialValues}`, plus an `enableReinitialize` flag) is a render-timing concern that has since been superseded by an unrelated refactor (`FormValuesPatcher`, `useMemo`-stabilized `initialValues`, no more `enableReinitialize`). The **pure-function part** of the fix is the `util.ts` change to `getName`. Semantic revert applied to current code:
 
 `frontend/src/metabase/common/components/SaveQuestionForm/util.ts` (`getName`, ad-hoc branch):
 ```diff
@@ -36,7 +36,7 @@ When saving a brand-new ad-hoc question, the user types a name (e.g. "Custom") a
 
 ## 4. Outcome
 
-**witness_authored** — the bug is unit-catchable. The defect lives in the pure function `getName`/`getInitialValues` (a value derivation), so a jsdom-free jest assertion on the returned `name` fully discriminates clean from mutant. The e2e's real value was only its tight timing window to observe a transient render; the underlying decision is a pure seam and is faithfully covered at the unit level.
+**witness_authored** — the bug is unit-catchable. The defect lives in the pure function `getName`/`getInitialValues` (a value derivation), so a jsdom-free jest assertion on the returned `name` fully discriminates clean from mutant. The e2e's real value was only its tight timing window to observe a transient render; the underlying decision is a pure function and is faithfully covered at the unit level.
 
 ## 5. Confidence
 

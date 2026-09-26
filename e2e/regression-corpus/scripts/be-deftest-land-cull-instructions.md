@@ -21,8 +21,8 @@ the harness provides.
 1. `git show <fix_commit> --stat` and read the diff. Identify the `.clj[c]` product change and
    whether the SAME commit shipped a `deftest`. The FE report (if referenced) already named a
    candidate oracle — start there.
-2. **Locate the oracle.** Find the `deftest` that asserts the FIXED behavior at the seam. It
-   usually already exists (shipped with the fix). Confirm it's present on HEAD.
+2. **Locate the oracle.** Find the `deftest` that asserts the FIXED behavior at the unit level.
+   It usually already exists (shipped with the fix). Confirm it's present on HEAD.
 3. **Verify it PASSES on clean HEAD**: `./bin/test-agent :only '[ns/test]'` → 0 failures.
 4. **Prove it discriminates**: apply a minimal semantic mutation reintroducing the bug to the
    product `.clj[c]` file → run the oracle → it FAILS (assertion failure, not a compile error)
@@ -38,7 +38,7 @@ the harness provides.
 
 ## If no discriminating deftest is possible
 - If the behavior genuinely can't be pinned by a Clojure test (e.g. it's an integration/route
-  concern with no unit seam), report `keep_e2e` + why, cull nothing.
+  concern with nothing to test at the unit level), report `keep_e2e` + why, cull nothing.
 
 ## Report (end with)
 1. **Outcome** — `landed` (deftest confirmed/written + e2e culled) / `keep_e2e (reason)`.

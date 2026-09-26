@@ -2,7 +2,7 @@ Everything is in place. Here is the final report.
 
 ## 1. git diff (product mutation) — the semantic revert
 
-Reverted `getCellValues` in `frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx` to its pre-fix shape: it now iterates `Object.keys(rowGroups)` + `table.getRow(rowId)` instead of `table.getRowModel().rows` (visual/sorted order). See diff above. (The one non-mutation change is `export` on `getCellValues` — added purely to give the witness a seam; it does not affect behavior.)
+Reverted `getCellValues` in `frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx` to its pre-fix shape: it now iterates `Object.keys(rowGroups)` + `table.getRow(rowId)` instead of `table.getRowModel().rows` (visual/sorted order). See diff above. (The one non-mutation change is `export` on `getCellValues` — added purely so the witness can call it; it does not affect behavior.)
 
 The bug mechanism: the data grid does not set a custom `getRowId`, so TanStack row ids default to the original data index as strings ("0","1","2",…). `Object.keys()` on those integer-like keys always returns them in **ascending numeric order** — i.e. original data order — regardless of the table's current sort. So after sorting, copied cells come out in source-data order, not the visual order the user sees.
 

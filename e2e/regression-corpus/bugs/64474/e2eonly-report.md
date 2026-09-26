@@ -33,4 +33,4 @@ While a SQL transform preview is running, clicking the run/cancel button again s
 
 ## 5. Confidence
 
-High. The mutation faithfully reproduces the historical bug: the fix's essence was making the cancel handler actually terminate the in-flight request instead of being a no-op (`return null`), and the mutation restores that exact no-op. The witness isolates precisely that seam — clean code calls `abortRef.current()` (the stored `action.abort`), the mutant does not — and discriminates cleanly (1 vs 0 calls), with the mutation left in the worktree and the added spec alongside it.
+High. The mutation faithfully reproduces the historical bug: the fix's essence was making the cancel handler actually terminate the in-flight request instead of being a no-op (`return null`), and the mutation restores that exact no-op. The witness isolates precisely that difference — clean code calls `abortRef.current()` (the stored `action.abort`), the mutant does not — and discriminates cleanly (1 vs 0 calls), with the mutation left in the worktree and the added spec alongside it.

@@ -36,7 +36,7 @@ jsdom implements no CSS layout engine:
 - `offsetHeight`/`clientHeight`/`scrollWidth`/`clientWidth` are hardcoded to `0`, so `isScrollableHorizontally` always returns `false` regardless of the CSS — it cannot discriminate clean vs. mutant.
 - jsdom does not apply CSS-module stylesheet rules, `white-space` wrapping, `text-overflow`, or `flex-shrink` geometry; `getComputedStyle` returns only inline styles.
 
-There is no JS seam: the component (`Listbox.tsx`) applies `S.label`/`S.icon` as static `className`s (lines 122, 130, 133, 135); no TypeScript reads or branches on these style values, so there is no exported function or DOM assertion a unit test could pin. The bug manifests only through real browser layout.
+There is no JS logic to test: the component (`Listbox.tsx`) applies `S.label`/`S.icon` as static `className`s (lines 122, 130, 133, 135); no TypeScript reads or branches on these style values, so there is no exported function or DOM assertion a unit test could pin. The bug manifests only through real browser layout.
 
 ### 3. Bug summary
 

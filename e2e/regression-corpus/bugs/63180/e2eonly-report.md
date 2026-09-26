@@ -25,7 +25,7 @@ When a custom expression is created fresh via the Combine/Extract shortcut, the 
 
 ## 4. Outcome
 
-`witness_authored` — the bug is unit-catchable. The seam (`hasSourceChanged` → `allowPopoverExit` → CloseModal) is fully reproducible in jsdom by rendering the exported `Editor` with `clause !== initialClause`. The e2e is replaceable by this unit test.
+`witness_authored` — the bug is unit-catchable. The logic (`hasSourceChanged` → `allowPopoverExit` → CloseModal) is fully reproducible in jsdom by rendering the exported `Editor` with `clause !== initialClause`. The e2e is replaceable by this unit test.
 
 ## 5. Confidence
 

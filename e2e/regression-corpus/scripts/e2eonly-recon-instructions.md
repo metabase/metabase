@@ -29,7 +29,7 @@ bun run test-unit-keep-cljs <spec>     # run from worktree root
 1. `git show <fix_commit> --stat` and read the diff — the product change + the shipped e2e repro
    tell you what behavior the bug has. Locate where that logic lives now.
 2. Apply a **minimal semantic revert** to current product code that reintroduces the bug.
-3. **Try to author a witness**: find the pure/near-pure seam in the reverted logic and write a
+3. **Try to author a witness**: find the pure/near-pure function in the reverted logic and write a
    jest assertion on it (a value/DOM assertion at the mutation site, or on the exported fn).
    Verify: PASSES on clean HEAD, FAILS on the mutant (clean assertion, not a compile error).
    - If you succeed → the bug is unit-catchable → outcome `witness_authored`.
@@ -47,4 +47,4 @@ bun run test-unit-keep-cljs <spec>     # run from worktree root
 4. **Outcome** — `witness_authored` (bug is unit-catchable → e2e replaceable) or `no_witness`
    (irreducibly e2e; say which class: layout/geometry, routing/multi-page, real-network, browser API).
 5. **Confidence** — why the mutation faithfully reintroduces the bug; if `no_witness`, why no unit
-   seam exists.
+   test can catch it.

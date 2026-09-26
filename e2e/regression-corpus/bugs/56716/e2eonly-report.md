@@ -29,7 +29,7 @@ With a crossfilter click behavior on a dashboard, clicking the same column value
 
 ## 4. Outcome
 
-`witness_authored` — the bug is unit-catchable at the redux-thunk seam; the e2e is replaceable by this jest unit test.
+`witness_authored` — the bug is unit-catchable at the redux thunk; the e2e is replaceable by this jest unit test.
 
 ## 5. Confidence
 

@@ -15,8 +15,8 @@ index 00000000000..fc8b349abcb
 +// render → infinite re-render loop) instead of being passed a function.
 +function setup() {
 +  const storeInitialState = createMockState({
-+    // The `reference` reducer is registered in makeMainReducers; preload it so
-+    // the component renders its edit header (the seam that holds the bug).
++    // The `reference` reducer is registered in makeMainReducers, so preload its state here.
++    // With isEditing set, the component renders its edit header, where the crash happens.
 +    reference: {
 +      isEditing: true,
 +      isLoading: true,

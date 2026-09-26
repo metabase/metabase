@@ -13,7 +13,7 @@ This is the semantic revert of fix commit `c5d7b5`. The fix commit changed `rein
 
 ## 2. Witness
 
-Added `frontend/src/metabase/reference/segments/SegmentFieldDetail.unit.spec.tsx` — a jsdom render test that mounts the connected component with `reference.isEditing = true` (and `isLoading = true` to isolate the edit-header seam without rendering the full body). It asserts the edit-mode render does not throw and the "Cancel" button appears.
+Added `frontend/src/metabase/reference/segments/SegmentFieldDetail.unit.spec.tsx` — a jsdom render test that mounts the connected component with `reference.isEditing = true` (and `isLoading = true` to isolate the edit header without rendering the full body). It asserts the edit-mode render does not throw and the "Cancel" button appears.
 
 Oracle command:
 ```

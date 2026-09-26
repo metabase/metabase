@@ -28,7 +28,7 @@ Oracle command: `bun run test-unit-keep-cljs frontend/src/metabase/query_builder
 `UI_CONTROLS_SIDEBAR_DEFAULTS` does not include `isShowingTemplateTagsEditor`, whereas `CLOSED_NATIVE_EDITOR_SIDEBARS` does. Without the spread, opening the question info sidesheet while the native **Variables** (template tags) sidebar is already open leaves `isShowingTemplateTagsEditor: true`. Both sidebars render, with the variables sidebar stacked on top, so the info sidesheet is not interactive (the e2e clicks the "History" tab and checks for "You created this"). The fix closes native editor sidebars when opening the info sidebar.
 
 ### 4. Outcome
-`witness_authored` — the bug is unit-catchable at the reducer seam; the e2e is replaceable by this jest test.
+`witness_authored` — the bug is unit-catchable at the reducer; the e2e is replaceable by this jest test.
 
 ### 5. Confidence
 High. The mutation is the exact inverse of the fix commit's product change, at the same reducer case, and the observable (`isShowingTemplateTagsEditor` staying `true` after `OPEN_QUESTION_INFO`) is precisely the state that leaves the variables sidebar visible over the info sidebar in the e2e. The reducer is a pure function of `(state, action)`, so the unit assertion discriminates the behavior directly with no render/routing/browser dependency.

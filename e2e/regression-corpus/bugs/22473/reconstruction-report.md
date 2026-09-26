@@ -17,7 +17,7 @@ None — I reverted all edits after determining no valid oracle exists. (Working
 ### (2) Oracle resolution
 - Test namespace today: `metabase.pulse.api.pulse-test` (moved from `test/metabase/api/pulse_test.clj`), file `/Users/fraser/Documents/code/metabase/.claude/worktrees/agent-ad6853de11589aa56/test/metabase/pulse/api/pulse_test.clj`
 - Both `list-test` (line 868) and `get-pulse-test` (line 960) are modified (not new) deftests carrying fix-added assertions.
-- Localized the fix in `api/pulse.clj` to one seam: the addition of `maybe-strip-sensitive-metadata` (dissoc `:cards` / channel `:recipients` when the user lacks full collection-read perms but can still read the pulse as creator/recipient). Everything else in that commit's diff is either a pure rename (`filter-pulses-recipients` → `maybe-filter-pulses-recipients`) or a refactor with identical runtime effect (`api/read-check` → `let-404` + `check-403`, both gated on `mi/can-read?`).
+- Localized the fix in `api/pulse.clj` to one change: the addition of `maybe-strip-sensitive-metadata` (dissoc `:cards` / channel `:recipients` when the user lacks full collection-read perms but can still read the pulse as creator/recipient). Everything else in that commit's diff is either a pure rename (`filter-pulses-recipients` → `maybe-filter-pulses-recipients`) or a refactor with identical runtime effect (`api/read-check` → `let-404` + `check-403`, both gated on `mi/can-read?`).
 
 ### (3) Why neither test discriminates on this file, after empirical verification (debug prints via `./bin/test-agent`, then reverted)
 

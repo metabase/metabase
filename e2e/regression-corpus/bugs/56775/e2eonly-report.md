@@ -23,7 +23,7 @@ Oracle: `bun run test-unit-keep-cljs frontend/src/metabase/query_builder/actions
 - Clean HEAD: **PASS** (`card` = unwrapped model card, `query: {source-table: 2}`).
 - Mutant: **FAIL** — clean deep-equality diff: got the composed wrapper `{lib/type mbql/query, stages:[{source-card: 1}]}` instead of the model's `{type: query, query: {source-table: 2}}`.
 
-Note: I assert on the `setCurrentState` payload rather than the dispatched router `push` descriptor. The dispatched-navigation path throws `push is not a function` in this jest environment (a sibling agent worktree pollutes jest-haste-map), which the thunk swallows via `console.warn`. `setCurrentState` carries the identical `card` value and runs before the push, so it's the robust seam.
+Note: I assert on the `setCurrentState` payload rather than the dispatched router `push` descriptor. The dispatched-navigation path throws `push is not a function` in this jest environment (a sibling agent worktree pollutes jest-haste-map), which the thunk swallows via `console.warn`. `setCurrentState` carries the identical `card` value and runs before the push, so it's the robust thing to assert on.
 
 ## 3. Bug summary
 

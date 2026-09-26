@@ -5,7 +5,7 @@ Both changes are in the worktree. Task complete.
 **Outcome: `witness_authored`** — the bug is unit-catchable; the e2e is replaceable by a jest unit test.
 
 ### 1. git diff (product mutation) — the semantic revert
-The fix commit's product change (`frontend/src/metabase/api/session.ts`, guard `response.data && typeof response.data === "object"`) has since been refactored into the shared helper `frontend/src/metabase/api/utils/lifecycle.ts` (`handleQueryFulfilled`). I reintroduced the bug at that current seam:
+The fix commit's product change (`frontend/src/metabase/api/session.ts`, guard `response.data && typeof response.data === "object"`) has since been refactored into the shared helper `frontend/src/metabase/api/utils/lifecycle.ts` (`handleQueryFulfilled`). I reintroduced the bug in that helper:
 
 ```diff
 --- a/frontend/src/metabase/api/utils/lifecycle.ts

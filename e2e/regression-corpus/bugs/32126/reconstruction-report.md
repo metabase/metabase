@@ -29,7 +29,7 @@ _Verbatim final report from the worktree-isolated reconstruction agent (a592aac1
                 results         (map (if (seq query)
 ```
 
-(The `filter-values-from-field-refs` function still exists in the file but is now unreferenced dead code — the fix's actual behavioral seam was the fallback dispatch in `chain-filter`, which I reverted.)
+(The `filter-values-from-field-refs` function still exists in the file but is now unreferenced dead code — the fix's actual behavioral change was the fallback dispatch in `chain-filter`, which I reverted.)
 
 **Note on file location**: the code has since been moved from `src/metabase/api/dashboard.clj` (as named in the task) to `src/metabase/parameters/dashboard.clj` as part of a module extraction. Same function (`chain-filter`), same logic, just relocated. The historical `filter-values-from-field-refs` helper also picked up an additional fallback (`lib/parameter-target-expression-ref`) since the original fix, but that's an orthogonal later enhancement, not something I needed to touch.
 

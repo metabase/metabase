@@ -34,7 +34,7 @@ Before the fix the entity-picker modal was a fixed 57.5rem (920px) wide. Deeper 
 
 ### 4. Outcome
 
-**witness_authored** — the bug is unit-catchable. The observable in the e2e is real-browser rendered `width` in px (920→1097→1200→1198), which jsdom cannot compute; but the *product logic that produces it* — the monotone-max `min-width` state driven by the resize callback — is a near-pure seam directly assertable at the unit level via the Mantine style prop. The e2e is replaceable by this jest witness.
+**witness_authored** — the bug is unit-catchable. The observable in the e2e is real-browser rendered `width` in px (920→1097→1200→1198), which jsdom cannot compute; but the *product logic that produces it* — the monotone-max `min-width` state driven by the resize callback — is nearly pure and directly assertable at the unit level via the Mantine style prop. The e2e is replaceable by this jest witness.
 
 ### 5. Confidence
 

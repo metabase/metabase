@@ -32,4 +32,4 @@ In the native query editor, a very long single line of SQL (the e2e uses `select
 
 ### 5. Confidence
 
-High that the mutation faithfully reintroduces the bug: it deletes exactly the declarations the fix commit added, on the same `.editor` class, and `min-width: 0` on a flex child is the canonical cause/cure for the "long content overflows and pushes siblings off-screen" flexbox pathology the e2e checks. High that no unit seam exists: the fix touches zero JS/TS; the only observable is flex layout geometry, which jsdom does not compute.
+High that the mutation faithfully reintroduces the bug: it deletes exactly the declarations the fix commit added, on the same `.editor` class, and `min-width: 0` on a flex child is the canonical cause/cure for the "long content overflows and pushes siblings off-screen" flexbox pathology the e2e checks. High that no unit test can catch it: the fix touches zero JS/TS; the only observable is flex layout geometry, which jsdom does not compute.

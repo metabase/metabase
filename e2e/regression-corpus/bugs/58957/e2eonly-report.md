@@ -18,7 +18,7 @@ Semantic revert of fix `106a53e50c` in `frontend/src/metabase/redux/downloads.ts
 ```
 
 ## 2. Witness
-Added to the existing `frontend/src/metabase/redux/downloads.unit.spec.ts` (block `getDatasetParams - embed question (token-based)`), exercising the exported `getDatasetParams` seam with `token` set (→ static-embed question) and a single date param in `window.location.search`:
+Added to the existing `frontend/src/metabase/redux/downloads.unit.spec.ts` (block `getDatasetParams - embed question (token-based)`), exercising the exported `getDatasetParams` function with `token` set (→ static-embed question) and a single date param in `window.location.search`:
 
 ```ts
 it("encodes a single-occurrence filter value as a scalar, not an array (metabase#58957)", async () => {
