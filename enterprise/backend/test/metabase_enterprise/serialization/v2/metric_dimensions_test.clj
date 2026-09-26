@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -13,6 +14,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
    [metabase.warehouses.models.database :as models.database]
    [toucan2.core :as t2]))
 
@@ -38,6 +40,13 @@
         (get mapped (no-labels path)))
       (ingest-errors [_]
         []))))
+
+(defn- through-yaml
+  "What a file-based import reads back: YAML carries no keywords, so keyword values come back as strings."
+  [entity]
+  (-> (dump/yaml-content entity)
+      (yaml/parse-string {:key-fn serdes.ingest/parse-key})
+      serdes.ingest/read-timestamps))
 
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name)) entities))
@@ -154,6 +163,16 @@
       (let [source     (ts/with-db source-db (create-source-metric!))
             serialized (ts/with-db source-db (into [] (serdes.extract/extract {})))]
         (assert-portable-extraction! serialized)
+        (ts/with-db dest-db
+          (prepare-destination!)
+          (serdes.load/load-metabase! (ingestion-in-memory serialized))
+          (assert-remapped-import! source))))))
+
+(deftest metric-v2-dimensions-yaml-round-trip-test
+  (testing "curated metric dimensions and mappings import from YAML, where their types are strings"
+    (ts/with-dbs [source-db dest-db]
+      (let [source     (ts/with-db source-db (create-source-metric!))
+            serialized (ts/with-db source-db (mapv through-yaml (serdes.extract/extract {})))]
         (ts/with-db dest-db
           (prepare-destination!)
           (serdes.load/load-metabase! (ingestion-in-memory serialized))
