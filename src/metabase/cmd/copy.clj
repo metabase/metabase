@@ -172,6 +172,7 @@
       :model/Tenant
       :model/ConnectionImpersonation
       :model/CustomVizPlugin
+      :model/ContentDiagnosticsFinding
       :model/TransformTest
       :model/TransformTestRun])))
 

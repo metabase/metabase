@@ -290,6 +290,8 @@ export const transformApi = Api.injectEndpoints({
           idTag("transform", id),
           listTag("transform-run"),
           listTag("transform-dag-run"),
+          // deleting a transform resolves any content-diagnostics finding for it
+          listTag("content-diagnostics-finding"),
         ]),
     }),
     deleteTransformTarget: builder.mutation<void, TransformId>({
