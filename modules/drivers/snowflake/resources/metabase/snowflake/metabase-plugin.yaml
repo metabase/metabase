@@ -49,7 +49,6 @@ driver:
       type: password
       placeholder: "eyJhbGciOi..."
       visible-if:
-        auth-mode: wif
         wif-provider: OIDC
     - name: wif-token-file-path
       display-name: OIDC token file path
@@ -57,7 +56,6 @@ driver:
       type: string
       placeholder: "/var/run/secrets/tokens/oidc-token"
       visible-if:
-        auth-mode: wif
         wif-provider: OIDC
     - name: private-key
       display-name: RSA private key (PKCS#8/.p8)
