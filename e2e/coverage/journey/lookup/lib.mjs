@@ -116,7 +116,13 @@ function nsSourceFile(ctx, ns) {
 }
 
 function resolveFrontend(index, loc, ctx) {
-  const result = { kind: "frontend", keys: [], functions: [], notes: [] };
+  const result = {
+    kind: "frontend",
+    file: loc.file,
+    keys: [],
+    functions: [],
+    notes: [],
+  };
   const fileFnmap = index.fnmap[loc.file];
   if (!fileFnmap) {
     result.notes.push(
@@ -404,6 +410,7 @@ function resolveBackend(index, loc, ctx) {
     }
   }
   result.ns = ns;
+  result.file = file;
   for (const name of names) {
     result.classes.push(name);
     result.keys.push(`be:${name}`);

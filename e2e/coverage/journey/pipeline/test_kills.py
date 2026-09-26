@@ -102,6 +102,11 @@ def mutant(stratum, killed_by, ran, location=None, errored=(), file=None, unconf
     return entry
 
 
+def boot_mutant(ran, **tags):
+    """A baseline mutant with no location that a remaining test kills, tagged as the corpus tags one unless `tags` says otherwise."""
+    return mutant("server-state", [REMAINING], ran + [REMAINING]) | ({"stratum_coarse": "baseline"} if not tags else tags)
+
+
 KILLS = {
     "unique": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE),
     "twin": mutant("wiring", [TWIN_MYSQL, TWIN_POSTGRES], [TWIN_MYSQL, TWIN_POSTGRES, REMAINING], L_TWIN),
@@ -119,6 +124,7 @@ CANDIDATES = [UNIQUE, TWIN_MYSQL, TWIN_POSTGRES, UNREACHED, FAILED, UNIT, ERRORE
 
 COVER_KEEPS = "the kills-first cover keeps it for kills it shares only with other candidates"
 COVER_KEEPS_UNCONFIRMED = "the kills-first cover keeps it for unconfirmed kills it shares only with other candidates"
+NEEDS_BASELINE = "needs a baseline check"
 EXPECTED = {
     UNIQUE: ("keep", "unique kills"),
     UNREACHED: ("unmeasured", "1 qualifying mutants, fewer than 2"),
@@ -146,12 +152,67 @@ UNCONFIRMED_KILLS = {
 UNCONFIRMED_CANDIDATES = [REPRO_69160, REPRO_35009, BOOKMARKS, UNIQUE, TWIN_MYSQL, TWIN_POSTGRES]
 UNCONFIRMED_EXPECTED = {
     REPRO_69160: ("provisional-keep", "unconfirmed unique kills"),
-    REPRO_35009: ("delete", "no unique kill"),
-    BOOKMARKS: ("delete", "no unique kill"),
+    REPRO_35009: ("unmeasured", NEEDS_BASELINE),
+    BOOKMARKS: ("unmeasured", NEEDS_BASELINE),
     UNIQUE: ("keep", "unique kills"),
     TWIN_POSTGRES: ("keep", COVER_KEEPS),
     TWIN_MYSQL: ("delete", "no unique kill"),
 }
+
+
+L_FAILED = {"file": "frontend/src/metabase/querying/notebook/components/NotebookDataPicker/NotebookDataPicker.tsx"}
+L_PARAMS = {"file": "src/metabase/parameters/params.clj"}
+L_TARGETS = {"file": L_TARGET_FIELD["file"]}
+
+
+def shared(name, count, stratum, candidates, location):
+    """`count` mutants at the location that the candidates and a remaining test all run and kill."""
+    return {f"{name}-{i}": mutant(stratum, candidates + [REMAINING], candidates + [REMAINING], location) for i in range(1, count + 1)}
+
+
+ACCEPT_KILLS = {
+    **shared("unique", 5, "logic", [UNIQUE], L_UNIQUE),
+    **shared("twin", 4, "wiring", [TWIN_MYSQL, TWIN_POSTGRES], L_TWIN),
+    **shared("failed", 4, "logic", [FAILED], L_FAILED),
+    **shared("35009", 4, "logic", [REPRO_35009], L_35009),
+    "35009-unique": mutant("logic", [REPRO_35009], [REPRO_35009, REMAINING], L_35009),
+    **shared("69160", 4, "logic", [REPRO_69160], L_69160),
+    "69160-unconfirmed": mutant("logic", [], [REPRO_69160, REMAINING], L_69160, unconfirmed_by=[REPRO_69160]),
+    **shared("paired", 3, "wiring", [PAIRED], L_PAIRED),
+    **shared("params", 4, "logic", [BACKEND], L_PARAMS),
+    **shared("targets", 4, "logic", [FILE_ONLY], L_TARGETS),
+    **{f"unit-{i}": mutant("logic", [JEST], [UNIT, JEST], L_UNIT) for i in range(1, 5)},
+}
+ACCEPT_CANDIDATES = [UNIQUE, TWIN_MYSQL, TWIN_POSTGRES, FAILED, REPRO_35009, REPRO_69160, PAIRED, BACKEND, FILE_ONLY, UNIT, ABSENT]
+ACCEPT_MIN_MUTANTS = 10
+
+
+def prior_entry(module, score):
+    entry = {"relative_churn": 0.05, "fix_commits": 1, "corpus_regressions": 0}
+    if module:
+        entry["module"] = module
+    if score is not None:
+        entry["score"] = score
+    return entry
+
+
+PRIOR = {
+    "meta": {"base_commit": "8317274709c"},
+    "files": {
+        L_UNIQUE["file"]: prior_entry("fe:quiet", 0.1),
+        L_TWIN["file"]: prior_entry("fe:quiet", 0.2),
+        L_FAILED["file"]: prior_entry("fe:notebook", 0.1),
+        L_35009["file"]: prior_entry("fe:search", 0.1),
+        L_69160["file"]: prior_entry("fe:native", 0.1),
+        L_PAIRED["file"]: prior_entry("fe:collections", 0.1),
+        L_PARAMS["file"]: prior_entry("be:parameters", None),
+        L_TARGETS["file"]: prior_entry(None, 0.1),
+        L_UNIT["file"]: prior_entry("fe:uploads", 0.1),
+    },
+    "modules": {"fe:quiet": {"relative_churn": 0.05, "fix_commits": 2, "corpus_regressions": 0, "score": 0.15}},
+}
+CI_HISTORY = {"tests": {UNIQUE: {"failures": 4, "real": 0, "flakes": 4}, TWIN_POSTGRES: {"failures": 1, "real": 1, "flakes": 0}}}
+ACCEPTED_HEADING = "\nAccepted, on a stated risk and not a measured delete\n"
 
 
 def outcomes(result, candidate_ids):
@@ -233,6 +294,21 @@ class Helpers(unittest.TestCase):
             with open(plain, "w") as f:
                 f.write(f"{ABSENT}\n\n{BARE}\n")
             self.assertEqual(kills.read_candidates([jsonl, plain, MISSING]), [UNIQUE, BARE, ABSENT, MISSING])
+
+    def test_rule_of_three(self):
+        self.assertEqual([kills.rule_of_three(n) for n in (None, 0, 3, 4, 30)], [None, None, None, 0.75, 0.1])
+
+    def test_coarse_stratum(self):
+        finer = ["logic", "intra-frontend-wiring", "boundary-wiring", "browser-measurement", "store-state", "server-state",
+                 "cross-page-timing"]
+        self.assertEqual([kills.coarse_stratum({"stratum": s}) for s in finer],
+                         ["logic", "wiring", "wiring", "wiring", "state", "state", "state"])
+        self.assertEqual(kills.coarse_stratum({"stratum": "server-state", "stratum_coarse": "baseline"}), "baseline")
+        self.assertEqual([kills.coarse_stratum({"stratum": s}) for s in ("wiring", "baseline", None)], ["wiring", "baseline", None])
+
+    def test_static_importers_look_through_barrels(self):
+        graph = {"barrels": ["index.ts"], "importers": {"a.ts": ["index.ts", "b.ts"], "index.ts": ["c.ts"], "b.ts": ["d.ts"]}}
+        self.assertEqual(kills.static_importers(["a.ts"], graph), {"index.ts", "b.ts", "c.ts"})
 
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
@@ -327,22 +403,25 @@ class UnconfirmedKills(unittest.TestCase):
         })
 
     def test_an_unconfirmed_unique_kill_turns_a_delete_or_an_unmeasured_into_a_provisional_keep(self):
-        confirmed_only = write_json({mid: {k: v for k, v in m.items() if k != "unconfirmed_by"} for mid, m in UNCONFIRMED_KILLS.items()})
+        booted = UNCONFIRMED_KILLS | {"boot": boot_mutant([REPRO_69160])}
+        confirmed_only = write_json({mid: {k: v for k, v in m.items() if k != "unconfirmed_by"} for mid, m in booted.items()})
+        with_unconfirmed = write_json(booted)
         try:
             for min_mutants, strata, otherwise in ((1, [], "delete"), (kills.MIN_MUTANTS, STRATA, "unmeasured")):
                 with self.subTest(otherwise):
                     by_file = {f: kills.evaluate(INDEX, f, [REPRO_69160], min_mutants, strata)["candidates"][REPRO_69160]["verdict"]
-                               for f in (confirmed_only, self.kills_file)}
-                    self.assertEqual(by_file, {confirmed_only: otherwise, self.kills_file: "provisional-keep"})
+                               for f in (confirmed_only, with_unconfirmed)}
+                    self.assertEqual(by_file, {confirmed_only: otherwise, with_unconfirmed: "provisional-keep"})
         finally:
             os.unlink(confirmed_only)
+            os.unlink(with_unconfirmed)
 
     def test_the_cover_keeps_every_candidate_with_an_unconfirmed_unique_kill(self):
         self.assertEqual(set(self.result["kills_cover"]["kept"]), {REPRO_69160, UNIQUE, TWIN_POSTGRES})
 
     def test_reports(self):
         summary = self.result["summary"]
-        self.assertEqual(summary["verdicts"], {"keep": 2, "provisional-keep": 1, "delete": 3, "unmeasured": 0})
+        self.assertEqual(summary["verdicts"], {"keep": 2, "provisional-keep": 1, "delete": 1, "unmeasured": 2, "accepted": 0})
         self.assertEqual(summary["reasons"]["provisional-keep: unconfirmed unique kills"], 1)
         self.assertEqual(summary["strata"]["provisional-keep, tests with an unconfirmed unique kill in the stratum"], {"logic": 1})
         text = kills.report(self.result)
@@ -370,7 +449,7 @@ class UnconfirmedKills(unittest.TestCase):
     def test_one_of_two_twins_that_share_only_an_unconfirmed_kill_is_kept(self):
         twins = [TWIN_MYSQL, TWIN_POSTGRES]
         result = self.evaluate_alone({"twins": mutant("logic", [], twins + [REMAINING], L_TWIN, unconfirmed_by=twins)}, twins)
-        self.assertEqual(outcomes(result, twins), [("delete", "no unique kill"), ("provisional-keep", COVER_KEEPS_UNCONFIRMED)])
+        self.assertEqual(outcomes(result, twins), [("provisional-keep", COVER_KEEPS_UNCONFIRMED), ("unmeasured", NEEDS_BASELINE)])
         [kept] = result["kills_cover"]["kept"]
         self.assertEqual({t: result["candidates"][t]["cover_kept_for"] for t in twins},
                          {t: {"logic": ["twins"]} if t == kept else {} for t in twins})
@@ -380,14 +459,14 @@ class UnconfirmedKills(unittest.TestCase):
     def test_one_of_three_candidates_that_share_only_an_unconfirmed_kill_is_kept(self):
         three = [BOOKMARKS, BOOKMARK_COLLECTION, BOOKMARK_MODEL]
         result = self.evaluate_alone({"three": mutant("state", [], three + [REMAINING], unconfirmed_by=three)}, three)
-        self.assertEqual(outcomes(result, three), [("delete", "no unique kill")] * 2 + [("provisional-keep", COVER_KEEPS_UNCONFIRMED)])
+        self.assertEqual(outcomes(result, three), [("provisional-keep", COVER_KEEPS_UNCONFIRMED)] + [("unmeasured", NEEDS_BASELINE)] * 2)
 
     def test_a_twin_with_a_confirmed_kill_is_kept_over_a_twin_with_an_unconfirmed_one(self):
         twins = [TWIN_MYSQL, TWIN_POSTGRES]
         result = self.evaluate_alone(
             {"mix": mutant("logic", [TWIN_MYSQL], twins + [REMAINING], L_TWIN, unconfirmed_by=[TWIN_POSTGRES])}, twins)
         self.assertEqual(outcomes(result, [TWIN_MYSQL]), [("keep", "unique kills")])
-        self.assertEqual(outcomes(result, [TWIN_POSTGRES]), [("delete", "no unique kill")])
+        self.assertEqual(outcomes(result, [TWIN_POSTGRES]), [("unmeasured", NEEDS_BASELINE)])
         self.assertEqual(result["kills_cover"]["kept"], [TWIN_MYSQL])
         self.assertEqual({t: result["candidates"][t]["cover_kept_for"] for t in twins}, {TWIN_MYSQL: {"logic": ["mix"]}, TWIN_POSTGRES: {}})
 
@@ -402,6 +481,212 @@ class UnconfirmedKills(unittest.TestCase):
         kept = next(t for t in twins if result["candidates"][t]["verdict"] == "keep")
         self.assertEqual({t: result["candidates"][t]["cover_kept_for"] for t in twins + [BOOKMARKS]},
                          {t: {"logic": ["twins-and-bookmarks"]} if t == kept else {} for t in twins} | {BOOKMARKS: {"state": ["bookmarks"]}})
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class Accepted(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.kills_file = write_json(ACCEPT_KILLS)
+        cls.prior_file = write_json(PRIOR)
+        cls.ci_history_file = write_json(CI_HISTORY)
+        cls.result = cls.evaluate()
+        cls.rows = cls.result["candidates"]
+
+    @classmethod
+    def tearDownClass(cls):
+        for path in (cls.kills_file, cls.prior_file, cls.ci_history_file):
+            os.unlink(path)
+
+    @classmethod
+    def evaluate(cls, kills_file=None, **options):
+        options = {"prior_path": cls.prior_file, "ci_history_path": cls.ci_history_file, "cap": 2} | options
+        return kills.evaluate(INDEX, kills_file or cls.kills_file, ACCEPT_CANDIDATES, ACCEPT_MIN_MUTANTS, [], **options)
+
+    @classmethod
+    def evaluate_entries(cls, entries, **options):
+        path = write_json(entries)
+        try:
+            return cls.evaluate(path, **options)
+        finally:
+            os.unlink(path)
+
+    @staticmethod
+    def accepted(result):
+        return {cid for cid, r in result["candidates"].items() if r["verdict"] == "accepted"}
+
+    def test_the_cap_accepts_the_lowest_priors_first(self):
+        self.assertEqual(self.accepted(self.result), {UNIQUE, TWIN_MYSQL})
+        self.assertEqual(self.rows[UNIQUE]["acceptance"] | {"ci_history": None}, {
+            "prior": {"score": 0.1, "files": {L_UNIQUE["file"]: 0.1}}, "prior_over": "reached code only",
+            "sampled": 5, "bound": 0.6, "modules": ["fe:quiet"], "missing": {}, "survivors": [], "outcome": "accepted",
+            "ci_history": None,
+        })
+        self.assertEqual((self.rows[TWIN_MYSQL]["acceptance"]["bound"], self.rows[TWIN_MYSQL]["acceptance"]["prior"]["score"]), (0.75, 0.2))
+        self.assertEqual((self.rows[TWIN_POSTGRES]["verdict"], self.rows[TWIN_POSTGRES]["acceptance"]["outcome"]),
+                         ("unmeasured", "over the module cap"))
+
+    def test_a_candidate_exactly_at_the_cap_is_accepted(self):
+        self.assertEqual(self.accepted(self.evaluate(cap=3)), {UNIQUE, TWIN_MYSQL, TWIN_POSTGRES})
+        self.assertEqual(self.accepted(self.evaluate(cap=1)), {UNIQUE})
+
+    def test_each_missing_field_keeps_a_candidate_unmeasured(self):
+        expected = {
+            PAIRED: {"bound": "3/n bounds nothing for n = 3"},
+            BACKEND: {"prior": f"no score in the prior for {L_PARAMS['file']}"},
+            FILE_ONLY: {"module": f"no module in the prior for {L_TARGETS['file']}"},
+            ABSENT: {"prior": "no mutants sampled, so no reached locations", "sampled": "not in the kill matrix",
+                     "bound": "no mutants sampled", "module": "no mutants sampled, so no reached locations"},
+        }
+        for cid, missing in expected.items():
+            with self.subTest(cid):
+                row = self.rows[cid]
+                self.assertEqual((row["verdict"], row["acceptance"]["outcome"], row["acceptance"]["missing"]),
+                                 ("unmeasured", "missing fields", missing))
+        without_prior = self.evaluate(prior_path=None)
+        self.assertEqual(self.accepted(without_prior), set())
+        self.assertEqual(without_prior["candidates"][UNIQUE]["acceptance"]["missing"],
+                         {"prior": "no location prior given", "module": "no location prior given"})
+
+    def test_accepted_never_overrides_keep_provisional_keep_or_a_failed_capture(self):
+        result = self.evaluate(cap=100, max_prior=1)
+        rows = result["candidates"]
+        self.assertEqual([rows[c]["verdict"] for c in (REPRO_35009, REPRO_69160)], ["keep", "provisional-keep"])
+        self.assertNotIn("acceptance", rows[REPRO_35009])
+        self.assertNotIn("acceptance", rows[REPRO_69160])
+        failed = rows[FAILED]
+        self.assertEqual((failed["verdict"], failed["acceptance"]["missing"], failed["acceptance"]["outcome"]),
+                         ("unmeasured", {}, "never: did not pass in the capture"))
+
+    def test_accepted_has_its_own_section_in_the_output(self):
+        section = self.result["accepted"]
+        self.assertEqual(set(section["candidates"]), {UNIQUE, TWIN_MYSQL})
+        self.assertEqual(section["modules"]["fe:quiet"],
+                         {"accepted": sorted([UNIQUE, TWIN_MYSQL]), "over_cap": [TWIN_POSTGRES], "prior": 0.15})
+        self.assertEqual(section["missing"], {"prior": 2, "sampled": 1, "bound": 2, "module": 2})
+        self.assertEqual((section["prior"]["graph"], section["prior"]["over"]), (None, "reached code only"))
+        self.assertEqual(self.result["summary"]["verdicts"], {"keep": 1, "provisional-keep": 1, "delete": 0, "unmeasured": 7, "accepted": 2})
+        text = kills.report(self.result)
+        self.assertNotIn("\nDelete\n", text)
+        self.assertIn(f"{ACCEPTED_HEADING}  location prior {self.prior_file}\n", text)
+        self.assertLess(text.index(ACCEPTED_HEADING),
+                        text.index(f"\n  {UNIQUE}\n      module fe:quiet, prior 0.1, 5 mutants sampled, bound 0.6\n"))
+        self.assertIn(f"  Over the module cap\n    fe:quiet\n      {TWIN_POSTGRES}\n", text)
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "verdicts.json")
+            done = subprocess.run(
+                [sys.executable, kills.__file__, "--index", INDEX, "--kills", self.kills_file,
+                 *sum((["--candidates", c] for c in ACCEPT_CANDIDATES), []),
+                 "--min-mutants", str(ACCEPT_MIN_MUTANTS), "--require-strata", "", "--prior", self.prior_file,
+                 "--ci-history", self.ci_history_file, "--accept-cap", "2", "--out", out],
+                stdout=subprocess.PIPE, text=True, check=True,
+            )
+            with open(out) as f:
+                written = json.load(f)
+        self.assertEqual(written["accepted"], section)
+        self.assertIn(ACCEPTED_HEADING, done.stdout)
+
+    def test_a_candidate_that_kills_none_of_its_mutants_needs_a_baseline_check(self):
+        self.assertEqual((self.rows[UNIT]["verdict"], self.rows[UNIT]["acceptance"]["outcome"]), ("unmeasured", NEEDS_BASELINE))
+        for tag, boot in (("stratum_coarse", boot_mutant([UNIT])), ("stratum", boot_mutant([UNIT], stratum="baseline"))):
+            with self.subTest(tag):
+                self.assertIn(UNIT, self.accepted(self.evaluate_entries(ACCEPT_KILLS | {"boot": boot})))
+
+    def test_a_sampled_mutant_no_remaining_test_kills_blocks_accepted(self):
+        survivors = {
+            "killed by nothing": mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE),
+            "killed only unconfirmed": mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]),
+            "killed only by another candidate": mutant("logic", [TWIN_MYSQL], [UNIQUE, TWIN_MYSQL, REMAINING], L_UNIQUE),
+        }
+        for name, survivor in survivors.items():
+            with self.subTest(name):
+                row = self.evaluate_entries(ACCEPT_KILLS | {"survivor": survivor})["candidates"][UNIQUE]
+                a = row["acceptance"]
+                self.assertEqual((row["verdict"], a["outcome"], a["survivors"], a["sampled"]),
+                                 ("unmeasured", "survivor in sample", ["survivor"], 6))
+
+    def test_static_importers_widen_the_prior_when_the_prior_has_a_graph_file(self):
+        caller, barrel, app, unscored = (
+            f"frontend/src/metabase/{name}" for name in ("caller.tsx", "public/index.ts", "App.tsx", "unscored.tsx"))
+        prior = PRIOR | {"files": PRIOR["files"] | {
+            caller: prior_entry("fe:elsewhere", 0.3), barrel: prior_entry("fe:public", 0.1), app: prior_entry("fe:app", 0.9)}}
+        graph = {"barrels": [barrel], "importers": {
+            L_UNIQUE["file"]: [caller], L_TWIN["file"]: [barrel], barrel: [app], L_PAIRED["file"]: [unscored]}}
+        with tempfile.TemporaryDirectory() as d:
+            prior_path, graph_path = os.path.join(d, "prior.json"), os.path.join(d, "prior-graph.json")
+            for path, data in ((prior_path, prior), (graph_path, graph)):
+                with open(path, "w") as f:
+                    json.dump(data, f)
+            result = self.evaluate(prior_path=prior_path)
+        rows = result["candidates"]
+        self.assertEqual({k: rows[UNIQUE]["acceptance"][k] for k in ("prior", "prior_over", "modules", "outcome")}, {
+            "prior": {"score": 0.3, "files": {L_UNIQUE["file"]: 0.1}, "callers": {caller: 0.3}},
+            "prior_over": "reached code plus static importers", "modules": ["fe:quiet"], "outcome": "accepted",
+        })
+        self.assertEqual((rows[TWIN_MYSQL]["acceptance"]["prior"]["callers"], rows[TWIN_MYSQL]["acceptance"]["outcome"]),
+                         ({barrel: 0.1, app: 0.9}, "prior above the maximum"))
+        self.assertEqual(rows[PAIRED]["acceptance"]["missing"]["prior"], f"no score in the prior for {unscored}")
+        self.assertEqual((result["accepted"]["prior"]["graph"], result["accepted"]["prior"]["over"]),
+                         (graph_path, "reached code plus static importers"))
+
+    def test_a_prior_above_the_maximum_stays_unmeasured(self):
+        rows = self.evaluate(max_prior=0.15)["candidates"]
+        self.assertEqual({c: rows[c]["acceptance"]["outcome"] for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)},
+                         {UNIQUE: "accepted", TWIN_MYSQL: "prior above the maximum", TWIN_POSTGRES: "prior above the maximum"})
+
+    def test_ci_history_is_recorded_and_decides_nothing(self):
+        self.assertEqual({c: self.rows[c]["acceptance"]["ci_history"] for c in (UNIQUE, TWIN_POSTGRES, UNIT)},
+                         {UNIQUE: CI_HISTORY["tests"][UNIQUE], TWIN_POSTGRES: CI_HISTORY["tests"][TWIN_POSTGRES], UNIT: None})
+        without = self.evaluate(ci_history_path=None)["candidates"]
+        self.assertNotIn("ci_history", without[UNIQUE]["acceptance"])
+        self.assertEqual({c: (r["verdict"], r.get("acceptance", {}).get("outcome")) for c, r in without.items()},
+                         {c: (r["verdict"], r.get("acceptance", {}).get("outcome")) for c, r in self.rows.items()})
+
+
+UNIT_MISSES = {f"unit-{i}": mutant("logic", [JEST], [UNIT, JEST], L_UNIT) for i in range(1, 5)}
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class DeleteChecks(unittest.TestCase):
+    def verdict(self, entries, min_mutants, strata):
+        """UNIT's verdict and reason for a kills file of these entries, which the pipeline must give too."""
+        path = write_json(entries)
+        try:
+            row = kills.evaluate(INDEX, path, [UNIT], min_mutants, strata)["candidates"][UNIT]
+            pipeline = pipeline_verdicts(path, [UNIT], min_mutants, strata)[UNIT]
+        finally:
+            os.unlink(path)
+        self.assertEqual({f: pipeline.get(f) for f in COMPARED}, {f: row.get(f) for f in COMPARED})
+        return row["verdict"], row["reason"]
+
+    def test_a_candidate_that_kills_none_of_its_mutants_needs_a_baseline_check_before_delete(self):
+        errored_boot = mutant("server-state", [REMAINING], [UNIT, REMAINING], errored=[UNIT]) | {"stratum_coarse": "baseline"}
+        cases = {"no baseline mutant": UNIT_MISSES, "a baseline mutant it errored on": UNIT_MISSES | {"boot": errored_boot}}
+        for name, entries in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.verdict(entries, 4, []), ("unmeasured", NEEDS_BASELINE))
+
+    def test_a_baseline_mutant_run_or_a_kill_passes_the_baseline_check(self):
+        cases = {
+            "stratum_coarse baseline": UNIT_MISSES | {"boot": boot_mutant([UNIT])},
+            "stratum baseline": UNIT_MISSES | {"boot": boot_mutant([UNIT], stratum="baseline")},
+            "a kill": UNIT_MISSES | {"unit-1": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT)},
+        }
+        for name, entries in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.verdict(entries, 4, []), ("delete", "no unique kill"))
+
+    def test_required_strata_compare_the_coarse_stratum(self):
+        logic = {"a": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT)}
+        cases = {
+            "finer wiring name": ({"stratum": "intra-frontend-wiring"}, ("delete", "no unique kill")),
+            "finer state name": ({"stratum": "store-state"}, ("unmeasured", "no qualifying wiring mutant")),
+            "stratum_coarse over the finer name": ({"stratum": "store-state", "stratum_coarse": "wiring"}, ("delete", "no unique kill")),
+        }
+        for name, (tags, expected) in cases.items():
+            with self.subTest(name):
+                entries = logic | {"b": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT) | tags}
+                self.assertEqual(self.verdict(entries, 2, ["logic", "wiring"]), expected)
 
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")

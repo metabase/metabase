@@ -74,6 +74,7 @@ for (const [name, group] of Object.entries(request.locations ?? {})) {
     resolved: resolved.map((r) => ({
       location: r.location,
       kind: r.kind,
+      file: r.file ?? null,
       keys: r.keys.length,
       resolved: describeResolved(r),
       notes: r.notes ?? [],

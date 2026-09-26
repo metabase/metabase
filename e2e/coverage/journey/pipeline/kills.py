@@ -1,4 +1,4 @@
-"""Reads a kill matrix and turns it into a keep, provisional-keep, delete or unmeasured verdict per candidate test.
+"""Reads a kill matrix and turns it into a keep, provisional-keep, delete, unmeasured or accepted verdict per candidate test.
 
 The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant id:
 
@@ -7,7 +7,9 @@ The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant
      "unconfirmed_by": [test id, ...],   e2e kills seen once and not reproduced on rerun
      "errored":        [test id, ...],   failed for another reason (crash, timeout, setup), never a kill
      "ran":            [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored
-     "stratum":        "logic" | "wiring" | "state" | "baseline",
+     "stratum":        "logic" | "intra-frontend-wiring" | "store-state" | "boundary-wiring" | "server-state"
+                       | "cross-page-timing" | "browser-measurement", or a coarse stratum,
+     "stratum_coarse": "logic" | "wiring" | "state" | "baseline",
      "origin":         "<regression id>" or "synthetic",
      "file":           "<repo-relative path>"   optional, see file_reach()
    }}
@@ -16,6 +18,9 @@ A test id is "<spec path>::<Cypress full title>" for e2e,
 "<spec path>::<jest fullName>" for jest and "<namespace>/<var>" for deftest.
 An entry that is a bare list of test ids, {"<mutant id>": [killer test id, ...]}, is read as killed_by with `ran` unknown,
 and so is an entry without `ran`.
+
+A mutant's coarse stratum is its `stratum_coarse`, else the coarse stratum COARSE_STRATA gives its `stratum`, else its `stratum`.
+Required strata name coarse strata, and a baseline mutant is one whose coarse stratum is baseline.
 
 The candidates are the e2e tests of a pipeline run, or the tests given to the command below.
 Every other id is a remaining test: it counts when deciding whether some other test kills a mutant,
@@ -27,18 +32,48 @@ The kills-first cover keeps a candidate for every mutant that candidates kill an
 where a mutant's killers are the tests in its `killed_by`, or in its `unconfirmed_by` when `killed_by` is empty.
   keep              it has a unique kill, or the cover keeps it for kills it shares only with other candidates
   provisional-keep  not a keep, and it has an unconfirmed unique kill or the cover keeps it
-  delete            no unique kill of either kind, at least `min_mutants` qualifying mutants, and every required stratum among them
+  delete            no unique kill of either kind, at least `min_mutants` qualifying mutants, every required stratum among them,
+                    and it passes the baseline check
   unmeasured        anything else, including no kill matrix, `ran` unknown, or a test that failed in the capture or isn't in it
 A qualifying mutant sits in the candidate's reached code,
 and both the candidate and at least one other test ran against it without erroring.
+A candidate passes the baseline check with a confirmed kill among its qualifying mutants or a run against a baseline mutant,
+because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
+
+An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
+when it has all four of these fields:
+  prior    the highest `score` the location prior gives the files of its qualifying mutants' locations,
+           and their static importers when the prior has a graph file
+  sampled  n, the number of its qualifying mutants
+  bound    3/n, the rule of three: remaining tests killed all n, so their miss rate there is below 3/n at 95% confidence.
+           It is missing while n is 3 or less, where 3/n bounds nothing
+  module   the location prior's module for each of the files of its qualifying mutants' locations
+It also needs a confirmed kill by a remaining test on every one of the n, the baseline check, and a prior of at most `max_prior`.
+Each module takes at most `cap` accepted candidates, lowest prior first, then lowest bound.
+A candidate over several modules counts against each of them.
+
+The location prior is JSON keyed by repo-relative file, with a rollup per module:
+
+  {"files":   {"<path>": {"module": "<module>", "score": <0 to 1, higher is riskier>, ...}},
+   "modules": {"<module>": {"score": ..., ...}}}
+
+Its graph file sits beside it as `<prior name>-graph.json`:
+
+  {"barrels": [<path>, ...], "importers": {"<path>": [<importing path>, ...]}}
+
+A file's static importers are the files that import it, and through a barrel, the files that import the barrel.
+
+The CI history is JSON keyed by test id. A candidate's entry is copied onto its acceptance and never decides it.
 
 As a command, it takes the candidates' reached code from a reach index instead of a pipeline run:
 
   python3 kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
-                   [--min-mutants <k>] [--require-strata <s,...>] [--out <json file>] [--repo <path>] [--sha <commit>]
+                   [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--ci-history <file>]
+                   [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
 
 There a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`,
 in any form lookup.mjs takes, and a candidate reaches the mutant when it ran a function or class the location resolves to.
+The pipeline takes no location prior, so it never gives accepted.
 """
 
 import argparse
@@ -51,10 +86,31 @@ import subprocess
 import sys
 import types
 
-VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured")
+VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured", "accepted")
 MIN_MUTANTS = 5
 REQUIRED_STRATA = "logic,wiring"
+# Two, so one wrong prior takes at most two tests out of a module before an escape there brings them back.
+ACCEPT_CAP = 2
+# At or below the median file, when the score is a percentile.
+MAX_PRIOR = 0.5
+ACCEPT_FIELDS = ("prior", "sampled", "bound", "module")
+BOUND_RULE = "3/n, the rule of three: when remaining tests kill all n sampled mutants, their miss rate is below 3/n at 95% confidence"
+PRIOR_REACHED = "reached code only"
+PRIOR_WITH_IMPORTERS = "reached code plus static importers"
+COARSE_STRATA = {
+    "logic": "logic",
+    "intra-frontend-wiring": "wiring",
+    "boundary-wiring": "wiring",
+    "browser-measurement": "wiring",
+    "store-state": "state",
+    "server-state": "state",
+    "cross-page-timing": "state",
+}
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def coarse_stratum(entry):
+    return entry.get("stratum_coarse") or COARSE_STRATA.get(entry.get("stratum"), entry.get("stratum"))
 
 
 def load(path, run):
@@ -75,6 +131,7 @@ def load(path, run):
         ran_known = ran_known and ran is not None
         m = {
             "stratum": entry.get("stratum"), "origin": entry.get("origin"), "file": entry.get("file"),
+            "coarse": coarse_stratum(entry), "files": {entry["file"]} if entry.get("file") else set(),
             "located": bool(entry.get("file")), "ran_known": ran is not None,
         }
         for field in ("killed_by", "unconfirmed_by", "errored", "ran"):
@@ -186,8 +243,11 @@ def cover_kills(tests, mutants, secondary, costs):
     return kills_first_cover(primary, secondary, costs)
 
 
-def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
-    """`reach(t)` gives a function that says whether test t reached a located mutant, file_reach(run) by default."""
+def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, accept=None):
+    """`reach(t)` gives a function that says whether test t reached a located mutant, file_reach(run) by default.
+
+    With `accept`, from read_acceptance(), every unmeasured candidate gets an `acceptance` and can become accepted.
+    """
     tests = run.tests
     mutants = kills["mutants"] if kills else {}
     reach = reach or file_reach(run)
@@ -209,6 +269,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
         return {s: [mid for mid in mids if mutants[mid]["stratum"] == s] for s in {mutants[mid]["stratum"] for mid in mids}}
 
     out = {}
+    evidence = {}
     for t in tests:
         if kills is None:
             out[t.key] = {"verdict": "unmeasured", "reason": "no kill matrix"}
@@ -244,7 +305,18 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
             "qualifying_without_location": dict(collections.Counter(
                 mutants[mid]["stratum"] for mid in qualifying if not mutants[mid]["located"])),
         }
-        missing = [s for s in required_strata if not strata.get(s)]
+        ran_known = all(mutants[mid]["ran_known"] for mid in mine)
+        located = [mid for mid in qualifying if mutants[mid]["located"]]
+        evidence[t.key] = {
+            "sampled": len(qualifying) if ran_known else None,
+            "files": set().union(*(mutants[mid]["files"] for mid in located)),
+            "fileless": sum(1 for mid in located if not mutants[mid]["files"]),
+            "survivors": sorted(mid for mid in qualifying if not mutants[mid]["killed_by_others"]),
+            "killed": any(mid in killed_by_test[t.id] for mid in qualifying),
+            "ran_baseline": any(mutants[mid]["coarse"] == "baseline" for mid in ran_by_test[t.id] - errored_by_test[t.id]),
+        }
+        coarse = {mutants[mid]["coarse"] for mid in qualifying}
+        missing = [s for s in required_strata if s not in coarse]
         if unique:
             verdict, reason = "keep", "unique kills"
         elif any(mutants[mid]["killed_by"] for mid in cover_kept_for):
@@ -257,16 +329,171 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None):
             verdict, reason = "unmeasured", "not in the capture run, so its reached code is unknown"
         elif t.state != "passed":
             verdict, reason = "unmeasured", f"{t.state} in the capture run, so its reached code is incomplete"
-        elif not all(mutants[mid]["ran_known"] for mid in mine):
+        elif not ran_known:
             verdict, reason = "unmeasured", "ran unknown"
         elif len(qualifying) < min_mutants:
             verdict, reason = "unmeasured", f"{len(qualifying)} qualifying mutants, fewer than {min_mutants}"
         elif missing:
             verdict, reason = "unmeasured", f"no qualifying {', '.join(missing)} mutant"
+        elif not passes_baseline_check(evidence[t.key]):
+            verdict, reason = "unmeasured", "needs a baseline check"
         else:
             verdict, reason = "delete", "no unique kill"
         out[t.key] = {"verdict": verdict, "reason": reason, **detail}
+    if accept is not None:
+        accept_unmeasured(tests, out, evidence, accept)
     return out
+
+
+def passes_baseline_check(evidence):
+    return evidence["killed"] or evidence["ran_baseline"]
+
+
+def rule_of_three(n):
+    """3/n, or None when n is 3 or less and 3/n bounds nothing."""
+    return round(3 / n, 4) if n and n > 3 else None
+
+
+def static_importers(files, graph):
+    importers, barrels = graph["importers"], set(graph.get("barrels") or [])
+    found, stack = set(), [i for f in files for i in importers.get(f, [])]
+    while stack:
+        f = stack.pop()
+        if f not in found:
+            found.add(f)
+            if f in barrels:
+                stack.extend(importers.get(f, []))
+    return found - set(files)
+
+
+def listed(paths, most=5):
+    return ", ".join(paths[:most]) + (f" and {len(paths) - most} more" if len(paths) > most else "")
+
+
+def acceptance_fields(test_id, evidence, reason, accept):
+    """The four fields an accepted verdict records, and which of them are missing and why."""
+    n = evidence["sampled"] if evidence else None
+    files = sorted(evidence["files"]) if evidence else []
+    bound = rule_of_three(n)
+    prior, modules, missing = None, [], {}
+    if accept.prior is None:
+        missing["prior"] = missing["module"] = "no location prior given"
+    elif not n:
+        missing["prior"] = missing["module"] = "no mutants sampled, so no reached locations"
+    elif not files or evidence["fileless"]:
+        why = "a sampled mutant's location resolves to no file" if evidence["fileless"] else "none of its sampled mutants has a location"
+        missing["prior"] = missing["module"] = why
+    else:
+        callers = sorted(static_importers(files, accept.graph)) if accept.graph else []
+        entries = {f: accept.prior["files"].get(f) or {} for f in files + callers}
+        unscored = [f for f in files + callers if entries[f].get("score") is None]
+        unassigned = [f for f in files if not entries[f].get("module")]
+        if unscored:
+            missing["prior"] = f"no score in the prior for {listed(unscored)}"
+        else:
+            prior = {"score": max(entries[f]["score"] for f in files + callers),
+                     "files": {f: entries[f]["score"] for f in files}}
+            if accept.graph:
+                prior["callers"] = {f: entries[f]["score"] for f in callers}
+        if unassigned:
+            missing["module"] = f"no module in the prior for {listed(unassigned)}"
+        else:
+            modules = sorted({entries[f]["module"] for f in files})
+    if n is None:
+        missing["sampled"] = "ran unknown for some of its mutants" if evidence else reason
+    elif n == 0:
+        missing["sampled"] = "no qualifying mutants"
+    if bound is None:
+        missing["bound"] = f"3/n bounds nothing for n = {n}" if n else "no mutants sampled"
+    record = {
+        "prior": prior, "prior_over": PRIOR_WITH_IMPORTERS if accept.graph else PRIOR_REACHED,
+        "sampled": n, "bound": bound, "modules": modules,
+        "missing": {f: missing[f] for f in ACCEPT_FIELDS if f in missing},
+        "survivors": evidence["survivors"] if evidence else [],
+        "outcome": None,
+    }
+    if accept.ci_history is not None:
+        record["ci_history"] = accept.ci_history.get(test_id)
+    return record
+
+
+def accept_unmeasured(tests, out, evidence, accept):
+    """Accepts the unmeasured candidates whose fields allow it, lowest prior then lowest bound first, while their modules have room."""
+    ready = []
+    for t in tests:
+        row = out[t.key]
+        if row["verdict"] != "unmeasured":
+            continue
+        ev = evidence.get(t.key)
+        row["acceptance"] = a = acceptance_fields(t.key, ev, row["reason"], accept)
+        if t.state != "passed":
+            a["outcome"] = "never: did not pass in the capture"
+        elif a["missing"]:
+            a["outcome"] = "missing fields"
+        elif a["survivors"]:
+            a["outcome"] = "survivor in sample"
+        elif not passes_baseline_check(ev):
+            a["outcome"] = "needs a baseline check"
+        elif a["prior"]["score"] > accept.max_prior:
+            a["outcome"] = "prior above the maximum"
+        else:
+            ready.append(t)
+    taken = collections.Counter()
+    for t in sorted(ready, key=lambda t: (out[t.key]["acceptance"]["prior"]["score"], out[t.key]["acceptance"]["bound"], t.id)):
+        a = out[t.key]["acceptance"]
+        if any(taken[m] >= accept.cap for m in a["modules"]):
+            a["outcome"] = "over the module cap"
+            continue
+        taken.update(a["modules"])
+        a["outcome"] = "accepted"
+        out[t.key]["verdict"] = "accepted"
+
+
+def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR):
+    prior = graph = graph_path = ci_history = None
+    if prior_path:
+        with open(prior_path) as f:
+            prior = json.load(f)
+        if not isinstance(prior.get("files"), dict):
+            raise ValueError(f"{prior_path} has no `files` object, so it isn't a location prior")
+        graph_path = os.path.splitext(prior_path)[0] + "-graph.json"
+        if os.path.isfile(graph_path):
+            with open(graph_path) as f:
+                graph = json.load(f)
+        else:
+            graph_path = None
+    if ci_history_path:
+        with open(ci_history_path) as f:
+            ci_history = json.load(f)
+        if isinstance(ci_history.get("tests"), dict):
+            ci_history = ci_history["tests"]
+    return types.SimpleNamespace(prior=prior, prior_file=prior_path, graph=graph, graph_file=graph_path,
+                                 ci_history=ci_history, ci_history_file=ci_history_path, cap=cap, max_prior=max_prior)
+
+
+def accepted_section(rows, accept):
+    """The accepted verdicts apart from the others, with the settings they were given under."""
+    records = {cid: r["acceptance"] for cid, r in rows.items() if "acceptance" in r}
+    rollup = (accept.prior or {}).get("modules") or {}
+    modules = {}
+    for cid, a in sorted(records.items()):
+        if a["outcome"] in ("accepted", "over the module cap"):
+            for m in a["modules"]:
+                entry = modules.setdefault(m, {"accepted": [], "over_cap": [], "prior": (rollup.get(m) or {}).get("score")})
+                entry["accepted" if a["outcome"] == "accepted" else "over_cap"].append(cid)
+    return {
+        "cap": accept.cap,
+        "max_prior": accept.max_prior,
+        "bound": BOUND_RULE,
+        "prior": {"file": accept.prior_file, "base_commit": ((accept.prior or {}).get("meta") or {}).get("base_commit"),
+                  "graph": accept.graph_file, "over": PRIOR_WITH_IMPORTERS if accept.graph else PRIOR_REACHED},
+        "ci_history": accept.ci_history_file,
+        "candidates": {cid: a for cid, a in records.items() if a["outcome"] == "accepted"},
+        "modules": dict(sorted(modules.items())),
+        "outcomes": dict(collections.Counter(a["outcome"] for a in records.values()).most_common()),
+        "missing": {f: n for f in ACCEPT_FIELDS
+                    if (n := sum(1 for a in records.values() if a["outcome"] == "missing fields" and f in a["missing"]))},
+    }
 
 
 def summarize(results, keys=None):
@@ -290,6 +517,7 @@ def summarize(results, keys=None):
             "provisional-keep, tests with an unconfirmed unique kill in the stratum": dict(strata["provisional-keep"]),
             "delete, tests with a qualifying mutant in the stratum": dict(strata["delete"]),
             "unmeasured, tests with a qualifying mutant in the stratum": dict(strata["unmeasured"]),
+            "accepted, tests with a qualifying mutant in the stratum": dict(strata["accepted"]),
         },
     }
 
@@ -348,7 +576,8 @@ def index_reach(index_dir, test_ids, locations, repo=None, sha=None):
 
 
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
-             repo=None, sha=None):
+             repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR):
+    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior)
     candidate_ids = list(dict.fromkeys(candidate_ids))
     with open(kills_path) as f:
         raw = json.load(f)
@@ -368,6 +597,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     for mid, m in kills["mutants"].items():
         resolved = reach["locations"].get(mid)
         m["located"] = resolved is not None
+        m["files"] = {r["file"] for r in resolved["resolved"] if r["file"]} if resolved else set()
         m["reached_by"] = {position[cid] for cid in resolved["reach"]} if resolved else set()
         if not resolved:
             how = "no location, so every candidate that ran it counts as reaching it"
@@ -387,7 +617,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     secondary = [set(in_index[c.key]["keys"]) if c.key in in_index else set() for c in candidates]
     kept, universe = cover_kills(candidates, kills["mutants"], secondary, [1] * len(candidates))
     results = verdicts(run, kills, set(kept), min_mutants, required_strata,
-                       reach=lambda t: lambda m: t.id in m["reached_by"])
+                       reach=lambda t: lambda m: t.id in m["reached_by"], accept=accept)
 
     with open(os.path.join(index_dir, "tests.json")) as f:
         index_ids = {t["id"] for t in json.load(f)}
@@ -408,6 +638,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
         "required_strata": required_strata,
         "candidates_not_in_index": [c.key for c in candidates if c.state is None],
         "summary": summarize(results),
+        "accepted": accepted_section(results, accept),
         "kills_cover": {"mutants": universe, "kept": [candidates[i].key for i in sorted(kept)]},
         "candidates": {c.key: {"state": c.state, **results[c.key]} for c in candidates},
         "mutants": mutants,
@@ -420,6 +651,33 @@ def by_stratum(counts):
 
 def ids_by_stratum(groups):
     return "; ".join(f"{s or 'no stratum'} {', '.join(mids)}" for s, mids in sorted(groups.items(), key=lambda x: str(x[0])))
+
+
+def accepted_report(a):
+    lines = [
+        "",
+        "Accepted, on a stated risk and not a measured delete",
+        f"  location prior {a['prior']['file']}" if a["prior"]["file"] else "  no location prior given",
+        f"  the prior covers {a['prior']['over']}" + (f", from {a['prior']['graph']}" if a["prior"]["graph"] else ""),
+        f"  at most {a['cap']} per module, lowest prior first, and a prior of at most {a['max_prior']}",
+        f"  bound {a['bound']}",
+    ]
+    for cid, r in sorted(a["candidates"].items()):
+        lines += [
+            f"  {cid}",
+            f"      module {', '.join(r['modules'])}, prior {r['prior']['score']}, {r['sampled']} mutants sampled, bound {r['bound']}",
+        ]
+        if r.get("ci_history") is not None:
+            lines.append(f"      CI history {json.dumps(r['ci_history'])}")
+    over = {m: e["over_cap"] for m, e in a["modules"].items() if e["over_cap"]}
+    if over:
+        lines.append("  Over the module cap")
+        for m, cids in over.items():
+            lines += [f"    {m}", *(f"      {cid}" for cid in cids)]
+    lines += ["  Not accepted", *(f"  {n:>4}  {outcome}" for outcome, n in a["outcomes"].items() if outcome != "accepted")]
+    if a["missing"]:
+        lines.append(f"  Missing fields: {', '.join(f'{field} {n}' for field, n in a['missing'].items())}")
+    return lines
 
 
 def report(result):
@@ -457,6 +715,7 @@ def report(result):
             lines += [f"  {cid}", f"      {why}"]
             if r["cover_kept_for"]:
                 lines.append(f"      kept by the cover for {ids_by_stratum(r['cover_kept_for'])}")
+    lines += accepted_report(result["accepted"])
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
         lines += ["", "Mutants whose location resolves to no code, so no candidate reaches them"]
@@ -474,13 +733,18 @@ def report(result):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Keep, delete or unmeasured verdicts from a kills file and a reach index.")
+    parser = argparse.ArgumentParser(
+        description="Keep, provisional-keep, delete, unmeasured or accepted verdicts from a kills file and a reach index.")
     parser.add_argument("--index", default=os.environ.get("JOURNEY_LOOKUP_INDEX"), help="the reach index, or JOURNEY_LOOKUP_INDEX")
     parser.add_argument("--kills", required=True, help="the kills file")
     parser.add_argument("--candidates", action="append", required=True,
                         help="a file of test ids or a single test id, repeatable")
     parser.add_argument("--min-mutants", type=int, default=MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
     parser.add_argument("--require-strata", default=REQUIRED_STRATA, help="strata a delete verdict needs among them")
+    parser.add_argument("--prior", help="the location prior, which an accepted verdict needs, with its graph file beside it if it has one")
+    parser.add_argument("--ci-history", help="CI failure history by test id, recorded on each acceptance")
+    parser.add_argument("--accept-cap", type=int, default=ACCEPT_CAP, help="accepted verdicts a module can take")
+    parser.add_argument("--max-prior", type=float, default=MAX_PRIOR, help="the highest prior an accepted verdict can have")
     parser.add_argument("--out", help="write the full result here as JSON")
     parser.add_argument("--repo", help="the git repo for source reads, default the one lookup/ is in")
     parser.add_argument("--sha", help="read source at this commit instead of the captured one")
@@ -488,7 +752,8 @@ def main():
     if not args.index:
         parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
     required = [x for x in args.require_strata.split(",") if x]
-    result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha)
+    result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha,
+                      args.prior, args.ci_history, args.accept_cap, args.max_prior)
     if args.out:
         with open(args.out, "w") as f:
             json.dump(result, f, indent=1)

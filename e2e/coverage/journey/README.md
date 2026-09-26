@@ -3,7 +3,7 @@
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
 - **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, provisional-keep, delete or unmeasured verdict.
-- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
 
@@ -48,7 +48,7 @@ The steps, in order:
 | `--backend-baseline` | `union` (default) also drops backend classes that any shard's coverage baseline ran. `shard` subtracts each shard's own baseline only |
 | `--kills <file>`     | a kills file, below                                                                                      |
 | `--min-mutants <k>`  | qualifying mutants a delete verdict needs, default 5                                                     |
-| `--require-strata`   | strata a delete verdict needs among them, default `logic,wiring`                                         |
+| `--require-strata`   | coarse strata a delete verdict needs among them, default `logic,wiring`                                  |
 | `--fe-code`          | what the duplicate verdicts' frontend Jaccard compares: `functions` (default), `branches` (branch arms) or `both` |
 | `--cover-branches`   | also break the kills-first cover's ties on branch arms                                                   |
 
@@ -98,7 +98,8 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
     "unconfirmed_by": ["<test id>", ...],
     "errored": ["<test id>", ...],
     "ran": ["<test id>", ...],
-    "stratum": "logic" | "wiring" | "state" | "baseline",
+    "stratum": "logic" | "intra-frontend-wiring" | "store-state" | "boundary-wiring" | "server-state" | "cross-page-timing" | "browser-measurement",
+    "stratum_coarse": "logic" | "wiring" | "state" | "baseline",
     "origin": "<regression id>" | "synthetic",
     "file": "<repo-relative path>"
   }
@@ -109,6 +110,13 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 - `unconfirmed_by` holds e2e kills seen once but not reproduced on a rerun. They never count towards a keep or a delete.
 - `errored` holds tests that failed for another reason, like a crash, a timeout or a setup failure. They are never kills.
 - A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
+- A mutant's coarse stratum is its `stratum_coarse`. Without one, it's the coarse stratum of its `stratum` from this table, or else its `stratum` as written. `--require-strata` and the baseline check compare coarse strata, and a baseline mutant is one whose coarse stratum is `baseline`.
+
+  | `stratum`                                                     | Coarse stratum |
+  | ------------------------------------------------------------- | -------------- |
+  | `logic`                                                       | `logic`        |
+  | `intra-frontend-wiring`, `boundary-wiring`, `browser-measurement` | `wiring`   |
+  | `store-state`, `server-state`, `cross-page-timing`            | `state`        |
 - `file` is optional. With it, a mutant counts towards a test's delete verdict only when the test ran a function of that file, or a class of that namespace for `.clj` and `.cljc`. Without it, being in `ran` counts as reaching the mutant.
 - An entry that is a bare list of test ids is read as `killed_by`, with `ran` unknown.
 - Over the reach index instead of a run, a mutant can also carry a `location` or `locations`. See [Verdicts from a kills file](#verdicts-from-a-kills-file).
@@ -117,8 +125,9 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 
 - **keep:** the test has a kill no other test has, or the kills-first cover keeps it for kills it shares only with other tests of the run.
 - **provisional-keep:** not a keep, but the test has an unconfirmed kill no other test has, or the kills-first cover keeps it for unconfirmed kills it shares only with other tests of the run. For every mutant that only tests of the run kill, the cover keeps one test in its `killed_by`, or one in its `unconfirmed_by` when `killed_by` is empty, so an unconfirmed kill blocks a delete but never makes a keep.
-- **delete:** no unique kill, at least `--min-mutants` qualifying mutants, and every `--require-strata` stratum among them. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too.
+- **delete:** no unique kill, at least `--min-mutants` qualifying mutants, every `--require-strata` stratum among them, and the baseline check passed. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too. The baseline check passes with a confirmed kill among the qualifying mutants, or a run against a baseline mutant without erroring, because only a baseline mutant run shows whether a test that kills nothing it reaches still guards boot. A test that fails it is unmeasured, with the reason "needs a baseline check".
 - **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
+- **accepted:** an unmeasured test deleted on a stated risk, never a measured delete. Only `kills.py` over the index gives it, and only with a location prior. See [Accepted verdicts](#accepted-verdicts).
 
 ## Reach lookup
 
@@ -167,11 +176,12 @@ Each test contributes one attempt: the last passing attempt of the main run, els
 
 ### Verdicts from a kills file
 
-`pipeline/kills.py` gives each candidate a keep, provisional-keep, delete or unmeasured verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
+`pipeline/kills.py` gives each candidate a keep, provisional-keep, delete, unmeasured or accepted verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
 
 ```
 python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
-    [--min-mutants <k>] [--require-strata <s,...>] [--out <json file>] [--repo <path>] [--sha <commit>]
+    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--ci-history <file>] [--accept-cap <k>] [--max-prior <x>]
+    [--out <json file>] [--repo <path>] [--sha <commit>]
 ```
 
 | Option                      | Meaning                                                                                                   |
@@ -180,7 +190,11 @@ python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file
 | `--kills <file>`            | a [kills file](#kills-file)                                                                                |
 | `--candidates <file or id>` | the tests proposed for deletion. A file holds one test id per line, a JSON list, or JSON lines with a `deleted_test` or `id` field. Anything else is read as one test id. Repeat it for more |
 | `--min-mutants <k>`         | qualifying mutants a delete verdict needs, default 5                                                       |
-| `--require-strata`          | strata a delete verdict needs among them, default `logic,wiring`                                           |
+| `--require-strata`          | coarse strata a delete verdict needs among them, default `logic,wiring`                                    |
+| `--prior <file>`            | the location prior, which an accepted verdict needs. See [Accepted verdicts](#accepted-verdicts)           |
+| `--ci-history <file>`       | CI failure history keyed by test id, at the top level or under `tests`. Each candidate's entry is recorded on its acceptance and never decides it |
+| `--accept-cap <k>`          | accepted verdicts one module can take, default 2                                                           |
+| `--max-prior <x>`           | the highest prior an accepted verdict can have, default 0.5                                                |
 | `--out <file>`              | where to write the full result as JSON                                                                     |
 | `--repo`, `--sha`           | as for `lookup.mjs`                                                                                        |
 
@@ -191,16 +205,70 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 - **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
 - **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
 
-It prints a short report. With `--out`, it also writes JSON with these keys:
+It prints a short report, with the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
 
-- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on
+- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on. An unmeasured or accepted candidate also has an `acceptance`, below
+- `accepted`: the accepted verdicts on their own, below
 - `summary`: verdicts, reasons, and candidates per stratum
 - `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to, and how many candidates reach it
 - `kills_cover`: the candidates the cover keeps
 - `kills`: counts by stratum and by reach, and the kills file's e2e ids that aren't in the index
 - `candidates_not_in_index`
 
-The tests run a synthetic kills file through both this command and the pipeline's verdicts, and need the index of run 36089233978:
+#### Accepted verdicts
+
+An accepted verdict is an unmeasured test deleted on a stated risk. It's never a measured delete, which is why the report and the JSON keep it apart from the other verdicts.
+
+An unmeasured candidate that passed in the capture becomes accepted when it has all four fields:
+
+| Field     | Meaning                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------- |
+| `prior`   | the highest `score` the location prior gives the files of its qualifying mutants' locations, and their static importers when the prior has a graph file. The index resolves each location to its file |
+| `sampled` | n, the number of its qualifying mutants                                                                    |
+| `bound`   | 3/n, the rule of three. Remaining tests killed all n, so their miss rate at those locations is below 3/n at 95% confidence. It's missing while n is 3 or less, where 3/n bounds nothing |
+| `module`  | the location prior's module for each file of its qualifying mutants' locations. The index has no modules, so they come from the prior |
+
+It also needs:
+
+- a prior of at most `--max-prior`, default 0.5, which is no file above the median when the score is a percentile.
+- a confirmed kill by a remaining test on every one of its n qualifying mutants. A remaining test is one that isn't a candidate, and a sampled mutant that none kills is a survivor, with the outcome `survivor in sample`.
+- the baseline check, as for delete.
+
+Each module takes at most `--accept-cap` accepted verdicts, default 2, so one wrong prior takes at most two tests out of a module before an escape there brings them back. Candidates are taken lowest prior first, then lowest bound, then in `--candidates` order. A candidate whose files span several modules counts against each of them.
+
+A keep or provisional-keep is never accepted, and neither is a candidate that didn't pass in the capture.
+
+The location prior is JSON keyed by repo-relative file, with a rollup per module:
+
+```
+{
+  "meta": {"base_commit": "<sha>"},
+  "files": {
+    "<path>": {"module": "<module>", "relative_churn": ..., "fix_commits": ..., "corpus_regressions": ..., "score": <0 to 1, higher is riskier>}
+  },
+  "modules": {"<module>": {..., "score": ...}}
+}
+```
+
+Only `score` and `module` decide anything. A file missing from the prior, or one without a `score` or a `module`, leaves that field missing.
+
+**Callers:** when the location prior has a graph file beside it, named `<prior name>-graph.json`, the prior also covers the static importers of the reached files. That's the files that import them and, through a barrel, the files that import the barrel. The prior's `callers` holds their scores, and each acceptance's `prior_over` says `reached code plus static importers`. Without a graph file it says `reached code only`. Modules come from the reached files alone.
+
+```
+{"barrels": ["<path>", ...], "importers": {"<path>": ["<importing path>", ...]}}
+```
+
+Every unmeasured candidate's `acceptance` has the four fields, `prior_over`, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `accepted`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
+
+The top-level `accepted` key has:
+
+- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, its `graph` file and what it covers, and the `ci_history` file
+- `candidates`: each accepted candidate with its `acceptance`
+- `modules`: for each module that accepted a candidate or turned one away at the cap, those candidates and the rollup's `prior`
+- `outcomes`: the number of unmeasured and accepted candidates with each outcome
+- `missing`: among the candidates with `missing fields`, the number missing each field
+
+The tests run a synthetic kills file through both this command and the pipeline's verdicts, and a synthetic location prior through the accepted verdict. They need the index of run 36089233978:
 
 ```
 JOURNEY_LOOKUP_INDEX=<index dir> python3 e2e/coverage/journey/pipeline/test_kills.py
