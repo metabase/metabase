@@ -409,7 +409,7 @@
     (contains? updates :schedule)
     (message/raw "Changing an alert's schedule")
 
-    ;; `send_once` archives the alert after its first send, so clearing it turns one scheduled run
+    ;; `send_once` pauses the alert (`active: false`) after its first send, so clearing it turns one scheduled run
     ;; into an unbounded series — the same commitment a new schedule makes. Only an explicit
     ;; `false` counts: nested nulls survive the boundary's stripping, so `send_once: null` is an
     ;; omission.
@@ -425,8 +425,7 @@
    [:id {:optional true}
     [:maybe [:or
              [:int {:description "Numeric id of the alert to update."}]
-             [:string {:description (str "The numeric id as a string, for clients that send every id as a "
-                                         "string. Alerts have no entity_id.")}]]]]
+             [:string {:description "The same numeric id as a string. Alerts have no entity_id."}]]]]
    [:card_id {:optional true}
     [:maybe [:or
              [:int {:description "Numeric id of the saved question the alert runs. Fixed at creation."}]
@@ -475,8 +474,7 @@
     [:maybe [:sequential {:description (str "Who gets the email: numeric user ids, or email addresses. Defaults "
                                             "to you. On update this replaces the current list. Not used for "
                                             "channel \"slack\".")}
-             [:or [:int {:description "Numeric id of a Metabase user."}]
-              [:string {:min 1 :description "An email address."}]]]]]
+             [:or :int [:string {:min 1}]]]]]
    [:active {:optional true}
     [:maybe [:boolean {:description (str "false pauses the alert, true resumes it (resuming needs the "
                                          "agent:query:run scope). Defaults to true on create. Alerts have no "

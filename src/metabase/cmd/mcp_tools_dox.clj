@@ -9,7 +9,6 @@
   are the prose readers get."
   (:require
    [clojure.string :as str]
-   [metabase.api-scope.core :as api-scope]
    [metabase.cmd.common :as cmd.common]
    [metabase.cmd.markdown :as md]
    ;; Required for its side effect: loading it loads every tool namespace, which registers itself.
@@ -138,13 +137,13 @@
     (false? destructiveHint) :writes))
 
 (defn- tool->entry
-  "Everything the page says about `tool`, as data. The one place the scope registry is consulted: `:scope` carries
-  the consent screen's wording under `:description`, or nil when no `defscope` registered the scope."
+  "Everything the page says about `tool`, as data. `:scope` carries the consent screen's English wording under
+  `:description`, the same label the manifest uses, or nil when no `defscope` registered the scope."
   [{tool-name :name :keys [scope inputSchema annotations] :as tool}]
   (let [{:keys [readOnlyHint idempotentHint]} annotations]
     {:name        tool-name
      :title       (tool-title tool)
-     :scope       {:id scope :description (page-prose (api-scope/scope-description scope))}
+     :scope       {:id scope :description (page-prose (v2.registry/english-scope-label scope))}
      :effect      (tool-effect tool)
      ;; a read is trivially repeatable, so idempotence is only worth saying about a writer
      :idempotent? (boolean (and idempotentHint (not readOnlyHint)))

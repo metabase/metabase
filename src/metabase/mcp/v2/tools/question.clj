@@ -510,8 +510,7 @@
                                      "learn(\"native-parameters\") before first passing template_tags.")}
              [:database_id [:or
                             [:int {:description "Numeric id of the database the SQL runs against."}]
-                            [:string {:description (str "The numeric database id as a string, for clients that "
-                                                        "send every id as a string. Databases have no entity_id.")}]]]
+                            [:string {:description "The same numeric id as a string. Databases have no entity_id."}]]]
              [:sql [:string {:min 1 :description "The SQL text. Write template tags as {{tag}}."}]]
              [:template_tags {:optional true}
               [:maybe [:map-of

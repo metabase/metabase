@@ -713,7 +713,6 @@
    :api #{metabase.cmd.copy metabase.cmd.core metabase.cmd.dump-to-h2}
    :uses #{api
            api-routes
-           api-scope
            app-db
            mcp
            metabot
