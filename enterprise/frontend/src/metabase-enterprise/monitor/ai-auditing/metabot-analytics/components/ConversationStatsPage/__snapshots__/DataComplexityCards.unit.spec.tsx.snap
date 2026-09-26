@@ -194,7 +194,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
         </div>
         <div
           data-accordion="true"
-          data-variant="default"
+          data-variant="separated"
         >
           <div>
             <button
@@ -345,7 +345,7 @@ exports[`DataComplexityCards renders the data complexity cards 2`] = `
         </div>
         <div
           data-accordion="true"
-          data-variant="default"
+          data-variant="separated"
         >
           <div>
             <button

@@ -95,6 +95,8 @@
 /* the card fades as a whole, so the disabled control must not fade a second time */
 .CollapsibleAccordion .CollapsibleControl:disabled {
   opacity: 1;
+  background-color: transparent;
+  color: inherit;
 }
 
 /* a disabled card is a preview rather than a blocked action, so its header shows a plain cursor */
