@@ -138,14 +138,12 @@ export const Logs = ({
                 )}
 
                 <Button
-                  size="lg"
                   component={Link}
                   to={Urls.monitorLogLevels()}
                   leftSection={<Icon name="pulse" />}
                 >{t`Customize log levels`}</Button>
 
                 <Button
-                  size="lg"
                   disabled={!hasFilteredLogs}
                   leftSection={<Icon name="download" />}
                   variant="filled"

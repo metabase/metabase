@@ -109,6 +109,13 @@ export const SearchUserPicker = ({
               onChange={(event) => setUserFilter(event.currentTarget.value)}
               mt="-0.25rem"
               miw="18ch"
+              styles={{
+                input: {
+                  border: "none",
+                  backgroundColor: "transparent",
+                  boxShadow: "none",
+                },
+              }}
             />
           </SearchUserItemContainer>
         </SearchUserSelectBox>

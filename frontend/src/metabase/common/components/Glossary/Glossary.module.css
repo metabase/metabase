@@ -54,13 +54,14 @@
   visibility: hidden;
 }
 
-.input {
+.input,
+.inputError {
   border: none;
+  box-shadow: none !important;
+  background-color: transparent !important;
   padding-inline: 0 !important;
 }
 
 .inputError {
-  border: none;
-  padding-inline: 0 !important;
   color: var(--mb-color-feedback-negative) !important;
 }

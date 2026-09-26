@@ -295,7 +295,12 @@ function ModernDataPicker({
           value={dataSourceSearchQuery}
           variant="unstyled"
           styles={{
-            input: { background: "transparent ", border: "none", p: 0 },
+            input: {
+              background: "transparent ",
+              border: "none",
+              boxShadow: "none",
+              p: 0,
+            },
           }}
           leftSection={<Icon name="search" />}
           onChange={(e) => setDataSourceSearchQuery(e.currentTarget.value)}

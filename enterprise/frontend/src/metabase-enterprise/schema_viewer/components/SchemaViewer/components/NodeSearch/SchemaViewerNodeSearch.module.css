@@ -1,3 +1,15 @@
+.input {
+  background-color: var(--mb-color-background_surface-primary);
+  background-image: linear-gradient(
+    var(--mb-color-input-background),
+    var(--mb-color-input-background)
+  );
+
+  &:focus-within {
+    background-image: none;
+  }
+}
+
 .options {
   padding: 0.5rem;
 }
