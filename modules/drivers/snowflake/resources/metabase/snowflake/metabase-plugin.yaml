@@ -23,17 +23,48 @@ driver:
       visible-if:
         use-hostname: false
     - user
-    - name: use-password
-      display-name: "Authenticate with user and password"
-      description: Snowflake will soon block password authentication.
-      type: boolean
-      default: false
+    - name: auth-mode
+      display-name: Authentication method
+      type: select
+      default: key-pair
+      required: true
+      options:
+        - {name: "RSA key pair",                 value: "key-pair"}
+        - {name: "Workload Identity Federation", value: "wif"}
+        - {name: "Username & password",          value: "password"}
+    - name: wif-provider
+      display-name: Workload identity provider
+      type: select
+      required: true
+      options:
+        - {name: "OpenID Connect (JWT)", value: "OIDC"}
+        - {name: "AWS",                  value: "AWS"}
+        - {name: "Azure",                value: "AZURE"}
+        - {name: "Google Cloud",         value: "GCP"}
+      visible-if:
+        auth-mode: wif
+    - name: wif-token
+      display-name: OIDC token
+      helper-text: Paste a JWT for a one-off test. Metabase does not refresh tokens.
+      type: password
+      placeholder: "eyJhbGciOi..."
+      visible-if:
+        auth-mode: wif
+        wif-provider: OIDC
+    - name: wif-token-file-path
+      display-name: OIDC token file path
+      helper-text: A file readable by the Metabase server (e.g. a Kubernetes projected token). Preferred over a pasted JWT because the driver re-reads it per connection.
+      type: string
+      placeholder: "/var/run/secrets/tokens/oidc-token"
+      visible-if:
+        auth-mode: wif
+        wif-provider: OIDC
     - name: private-key
       display-name: RSA private key (PKCS#8/.p8)
       type: secret
       secret-kind: pem-cert
       visible-if:
-        use-password: false
+        auth-mode: key-pair
       required: true
     - name: private-key-passphrase
       display-name: Private key passphrase
@@ -41,11 +72,12 @@ driver:
       type: password
       placeholder: "********"
       visible-if:
-        use-password: false
+        auth-mode: key-pair
     - merge:
       - password
       - visible-if:
-          use-password: true
+          auth-mode: password
+        description: Snowflake will soon block password authentication.
         required: true
     - name: warehouse
       display-name: Warehouse

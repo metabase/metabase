@@ -53,9 +53,19 @@ The database username for the account that you want to use to connect to your da
 
 On your app.snowflake.com account page, you can find Users and roles under Admin > Users & Roles.
 
+### Authentication method
+
+Pick how Metabase authenticates to Snowflake:
+
+- **RSA key pair** — key-based auth.
+- **Workload Identity Federation** — keyless auth using a token from an OIDC provider, AWS, Azure, or Google Cloud.
+- **Username & password** — Snowflake will soon block password authentication.
+
+The fields that appear below depend on which method you pick.
+
 ### Password
 
-The password for the username that you use to connect to the database.
+The password for the username that you use to connect to the database. Snowflake plans to end support for password authentication; new connections should use RSA key pair or Workload Identity Federation instead.
 
 ### RSA private key (PEM)
 
@@ -64,6 +74,25 @@ Not required. You have the option of using a **Local file path** or an **Uploade
 ### Private key passphrase
 
 Only required if your private key is encrypted.
+
+### Workload Identity Federation
+
+Metabase forwards a workload-identity token to Snowflake; Snowflake validates it against a service user you provision with `CREATE USER ... WORKLOAD_IDENTITY = (...)`. See Snowflake's [Workload identity federation docs](https://docs.snowflake.com/en/user-guide/workload-identity-federation) for the trust-policy syntax. Requires Snowflake JDBC driver 3.26.0 or newer (bundled with Metabase).
+
+#### Workload identity provider
+
+- **OpenID Connect (JWT)** — you supply the token (see next two fields).
+- **AWS**, **Azure**, or **Google Cloud** — no additional credential fields in Metabase. The Snowflake JDBC driver runs the corresponding cloud SDK's credential chain — typically the standard cloud environment variables first, then the cloud's instance metadata service — and forwards whatever identity it finds.
+
+#### OIDC token
+
+A JWT you paste into Metabase. Convenient for a one-off test. Metabase does not refresh the token, so once it expires the connection will fail until you paste a new one.
+
+#### OIDC token file path
+
+Path to a file on the Metabase server that contains the JWT (for example, a Kubernetes projected service-account token at `/var/run/secrets/tokens/oidc-token`). The Snowflake driver re-reads this file per connection, so tokens rotated in place — the standard Kubernetes pattern — flow through without any change in Metabase.
+
+If both the pasted token and the file path are set, the file path wins.
 
 ### Warehouse
 
