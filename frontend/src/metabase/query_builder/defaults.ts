@@ -27,6 +27,7 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,
+  isShowingNodeBuilder: false,
   notebookNativePreviewSidebarWidth: null,
   showSidebarTitle: false,
   modal: null,

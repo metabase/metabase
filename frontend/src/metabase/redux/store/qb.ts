@@ -55,6 +55,7 @@ export interface QueryBuilderUIControls {
   snippetCollectionId: number | null;
   datasetEditorTab: DatasetEditorTab;
   isShowingNotebookNativePreview: boolean;
+  isShowingNodeBuilder: boolean;
   notebookNativePreviewSidebarWidth: number | null;
   showSidebarTitle: boolean;
   modal: QueryModalType | null;

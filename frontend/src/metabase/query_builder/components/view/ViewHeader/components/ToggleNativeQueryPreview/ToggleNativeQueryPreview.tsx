@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Button, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import { trackNotebookNativePreviewShown } from "../../../../../analytics";
@@ -38,7 +38,11 @@ export const ToggleNativeQueryPreview = ({
   const dispatch = useDispatch();
   const {
     isShowingNotebookNativePreview,
-  }: { isShowingNotebookNativePreview: boolean } = useSelector(getUiControls);
+    isShowingNodeBuilder,
+  }: {
+    isShowingNotebookNativePreview: boolean;
+    isShowingNodeBuilder: boolean;
+  } = useSelector(getUiControls);
 
   const engineType = getEngineNativeType(question.database()?.engine);
   const buttonText = isShowingNotebookNativePreview
@@ -54,6 +58,23 @@ export const ToggleNativeQueryPreview = ({
 
     trackNotebookNativePreviewShown(question, !isShowingNotebookNativePreview);
   };
+
+  if (isShowingNodeBuilder) {
+    return (
+      <Tooltip label={buttonText} position="top">
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          leftSection={<Icon name="code_block" />}
+          aria-label={buttonText}
+          aria-pressed={isShowingNotebookNativePreview}
+          onClick={handleClick}
+        >
+          {t`Query`}
+        </Button>
+      </Tooltip>
+    );
+  }
 
   return (
     <Tooltip label={buttonText} position="top">

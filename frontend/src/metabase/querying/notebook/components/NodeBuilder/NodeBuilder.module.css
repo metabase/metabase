@@ -1,0 +1,314 @@
+.root {
+  /* The builder's palette. Blue, purple and green are chart accents; the rest are stops of the app's octopus, seafoam and orion ramps, plus a muted flamingo for Filter. None of those have tokens. */
+  --builder-table: var(--mb-color-accent0-dark);
+  --builder-join: hsla(240, 46%, 58%, 1);
+  --builder-expression: hsla(28, 60%, 42%, 1);
+  --builder-filter: hsla(334, 40%, 50%, 1);
+  --builder-summarize: var(--mb-color-accent2-dark);
+  --builder-sort: hsla(180, 44%, 33%, 1);
+  --builder-limit: hsla(205, 8%, 43%, 1);
+  --builder-result: var(--mb-color-accent1-dark);
+  /* Prettify's pink, shared by its icon and the fireworks. */
+
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* Blocks are measured while hidden, then the settled graph fades in. */
+.settleOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mb-color-background_page-secondary);
+}
+
+/* A quick startup shows only the blank background; the spinner is for slow ones. */
+.settleOverlay > * {
+  opacity: 0;
+  animation: settle-spinner 200ms ease 400ms forwards;
+}
+
+@keyframes settle-spinner {
+  to {
+    opacity: 1;
+  }
+}
+
+.canvas.settling .flow {
+  opacity: 0;
+  transition: none;
+}
+
+.flow {
+  width: 100%;
+  height: 100%;
+  background: var(--mb-color-background_page-secondary);
+  transition: opacity 250ms ease;
+
+  :global(.react-flow__controls) {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 16px var(--mb-color-shadow);
+  }
+
+  /* Bigger targets than React Flow's 26px defaults, with hover and press feedback. */
+  :global(.react-flow__controls-button) {
+    width: 2.25rem;
+    height: 2.25rem;
+    background: var(--mb-color-background_page-primary);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
+    fill: var(--mb-color-text-primary);
+    transition:
+      background 100ms ease,
+      fill 100ms ease;
+  }
+
+  :global(.react-flow__controls-button) svg {
+    width: 1rem;
+    height: 1rem;
+    max-width: none;
+    max-height: none;
+  }
+
+  :global(.react-flow__controls-button:hover) {
+    background: var(--mb-color-background_page-secondary);
+    fill: var(--mb-color-core-brand);
+  }
+
+  :global(.react-flow__controls-button:active) {
+    background: var(--mb-color-border-neutral);
+  }
+
+  :global(.react-flow__edge-path) {
+    stroke-linecap: round;
+  }
+
+  /* Only the header is the drag handle, so the body should not promise a drag. */
+  :global(.react-flow__node.draggable) {
+    cursor: default;
+  }
+}
+
+.tableList {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.paletteList {
+  max-height: 13rem;
+  overflow-y: auto;
+}
+
+.groupHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--mb-color-text-tertiary);
+  background: var(--mb-color-background_page-primary);
+  cursor: pointer;
+}
+
+.groupHeader:hover {
+  color: var(--mb-color-text-secondary);
+}
+
+.paletteGroup:first-child .groupHeader {
+  border-top: 0;
+}
+
+.groupChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.groupName {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+  transition: background 120ms ease;
+}
+
+.paletteItem:hover {
+  background: var(--mb-color-background_page-secondary);
+  color: var(--mb-color-core-brand);
+}
+
+.disabledGroup .paletteItem {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.disabledGroup .paletteItem:hover {
+  background: transparent;
+  color: var(--mb-color-text-primary);
+}
+
+.disabledGroup .paletteItem:hover .paletteAdd {
+  opacity: 0;
+}
+
+/* Mantine sets the hover tint inline, so the opaque surface lives on the panel under the button. */
+.toolbar {
+  border-radius: var(--mantine-radius-default);
+}
+
+/* All toolbar buttons share Prettify's sizing, and stay opaque when hovered
+   so the canvas behind never shows through. */
+.toolbar .toolbarButton {
+  height: auto;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.toolbar .toolbarButton:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+/* Icon-only toolbar buttons: no gap left for a label. */
+.toolbar .iconButton :global(.mantine-Button-section) {
+  margin: 0;
+}
+
+.stableLabel {
+  display: inline-grid;
+}
+
+.stableLabel > * {
+  grid-area: 1 / 1;
+}
+
+.stableGhost {
+  visibility: hidden;
+}
+
+/* A centered React Flow panel only gets half the canvas to shrink into; size it to its content instead. */
+.dockPanel {
+  width: max-content;
+  max-width: calc(100cqw - 2rem);
+}
+
+.dock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  user-select: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  background: var(--mb-color-background_page-primary);
+  box-shadow: 0 8px 24px var(--mb-color-shadow);
+}
+
+.dockChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dockChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  padding: 0.375rem 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: var(--mb-color-core-white_constant);
+  /* Same darkening as the block headers, so a chip previews the block it drops. No darker tokens exist for these hues. */
+  background: color-mix(in srgb, var(--chip-color), black 20%);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: grab;
+  user-select: none;
+  transition: background 120ms ease;
+}
+
+.dockChip:hover,
+.dockChip:focus-visible {
+  filter: brightness(1.08);
+}
+
+.dockChip:active {
+  cursor: grabbing;
+}
+
+.dockTable {
+  --chip-color: var(--builder-table);
+}
+
+.dockJoin {
+  --chip-color: var(--builder-join);
+}
+
+.dockExpression {
+  --chip-color: var(--builder-expression);
+}
+
+.dockFilter {
+  --chip-color: var(--builder-filter);
+}
+
+.dockSummarize {
+  --chip-color: var(--builder-summarize);
+}
+
+.dockSort {
+  --chip-color: var(--builder-sort);
+}
+
+.dockLimit {
+  --chip-color: var(--builder-limit);
+}
+
+/* Sits on the wire that crosses into the next stage of the query. */
+.stageLabel {
+  position: absolute;
+  pointer-events: none;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  color: var(--mb-color-core-white_constant);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
