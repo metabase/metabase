@@ -55,6 +55,10 @@ cypress.env.json
 /e2e/tmp/db_dumps/*
 !/e2e/tmp/db_dumps/.gitkeep
 /e2e/support/assets/example_custom_viz_plugin*.tgz
+/e2e-visual/profile
+/e2e-visual/report
+/e2e-visual/scratch
+/e2e-visual/test-results
 # Coverage artifacts
 /e2e/coverage-manifest-raw
 /e2e/coverage-manifest

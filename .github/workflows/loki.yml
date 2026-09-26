@@ -1,10 +1,18 @@
-name: Loki Visual Regression Testing
+name: Storybook Visual Tests
 
 on:
   workflow_call:
     inputs:
       skip:
         description: "Skip the Loki visual tests."
+        type: boolean
+        default: false
+      skip-playwright:
+        description: "Skip the Playwright visual tests."
+        type: boolean
+        default: false
+      playwright-infra-touched:
+        description: "Whether the Playwright visual test runner changed, which runs every story."
         type: boolean
         default: false
       test-plan-artifact-id:
@@ -88,7 +96,7 @@ jobs:
       - name: Build Storybook
         env:
           STORYBOOK_STORY_PATHS_FILE: ${{ steps.loki-selection.outputs.paths-file }}
-        run: bun run build-storybook
+        run: bun run build-storybook:test
 
       - name: Run Loki Visual Tests
         # Loki drops stories with parameters.loki.skip, and exits non-zero when that leaves the selection empty.
@@ -106,6 +114,83 @@ jobs:
           name: loki-report
           include-hidden-files: true
           path: .loki/
+          if-no-files-found: ignore
+
+  playwright-visual-test:
+    name: playwright-run
+    needs: story-selection
+    if: ${{ !cancelled() && !inputs.skip-playwright && (inputs.playwright-infra-touched || needs.story-selection.outputs.selection != 'empty') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development bun run build-pure:cljs
+
+      - name: Prepare story selection
+        id: visual-selection
+        if: ${{ !inputs.playwright-infra-touched && needs.story-selection.outputs.test-plan-artifact-id != '' }}
+        uses: ./.github/actions/prepare-test-selection
+        with:
+          suite: loki
+          test-plan-artifact-id: ${{ needs.story-selection.outputs.test-plan-artifact-id }}
+
+      - name: Build Storybook
+        env:
+          STORYBOOK_STORY_PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
+        run: bun run build-storybook:test
+
+      - name: Run visual tests
+        env:
+          PATHS_FILE: ${{ steps.visual-selection.outputs.paths-file }}
+        # e2e-visual drops stories outside its default filters or tagged no-visual, and Playwright exits non-zero when that leaves no tests.
+        run: |
+          echo "CPU cores: $(nproc)"
+          if [ -n "$PATHS_FILE" ]; then
+            VISUAL_FILES=$(jq -r 'join(",")' "$PATHS_FILE")
+            export VISUAL_FILES
+            bun run test-visual:docker --pass-with-no-tests
+          else
+            bun run test-visual:docker
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-report
+          path: |
+            e2e-visual/report/
+            e2e-visual/test-results/
+          if-no-files-found: ignore
+
+      - name: Profile a sample of stories
+        if: ${{ !cancelled() && env.VISUAL_PROFILE_SAMPLE != '' }}
+        env:
+          VISUAL_SNAPSHOT_DIR: e2e-visual/profile/screenshots
+        run: |
+          for workers in 1 4; do
+            VISUAL_PROFILE=1 VISUAL_PROFILE_DIR="e2e-visual/profile/w$workers" VISUAL_WORKERS=$workers \
+              bun run test-visual:docker --update-snapshots all --repeat-each 3 --grep "$VISUAL_PROFILE_SAMPLE" || true
+            cp e2e-visual/test-results/results.json "e2e-visual/profile/w$workers-results.json" || true
+          done
+          VISUAL_PROFILE=trace VISUAL_PROFILE_DIR=e2e-visual/profile/trace VISUAL_WORKERS=1 \
+            bun run test-visual:docker --update-snapshots all --grep "$VISUAL_PROFILE_TRACE_SAMPLE" || true
+
+      - name: Upload profile
+        if: ${{ !cancelled() && env.VISUAL_PROFILE_SAMPLE != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-profile
+          path: e2e-visual/profile/
           if-no-files-found: ignore
 
   loki-tests-result:

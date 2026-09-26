@@ -1,0 +1,85 @@
+name: Update Visual Test Screenshots
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  update-screenshots:
+    if: github.event.label.name == 'ci:update-visual-snapshots'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Prepare frontend environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
+      - name: Compile CLJS
+        run: NODE_ENV=development bun run build-pure:cljs
+
+      - name: Build Storybook
+        run: bun run build-storybook:test
+
+      - name: Update screenshots
+        run: bun run test-visual:docker --update-snapshots
+
+      - name: Remove screenshots of deleted stories
+        run: bun run test-visual:prune
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if [[ -n "$(git status --porcelain e2e-visual/__screenshots__/)" ]]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and Push Changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        run: |
+          git config --global user.name "Metabase Automation"
+          git config --global user.email "github-automation@metabase.com"
+          git add e2e-visual/__screenshots__/
+          git commit -m "Update visual test screenshots" --no-verify
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Notify No Changes
+        if: steps.check-changes.outputs.has_changes == 'false'
+        uses: ./.github/actions/notify-pull-request
+        with:
+          include-log: false
+          message: No visual differences were found. All visual test screenshots are up to date.
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-update-report
+          path: |
+            e2e-visual/report/
+            e2e-visual/test-results/
+          if-no-files-found: ignore
+
+      - name: Remove 'ci:update-visual-snapshots' label
+        if: always()
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          script: |
+            github.rest.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'ci:update-visual-snapshots'
+            });

@@ -55,6 +55,7 @@ export const Default: StoryFn<{ series: RawSeries }> = ({
 Default.parameters = {
   loki: { skip: true },
 };
+Default.tags = ["no-visual"];
 
 export const WithLongNames = () => {
   // Unjustified type cast. FIXME
@@ -105,3 +106,4 @@ export const WithLongNames = () => {
 WithLongNames.parameters = {
   loki: { skip: true },
 };
+WithLongNames.tags = ["no-visual"];

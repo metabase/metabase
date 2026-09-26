@@ -111,6 +111,21 @@ frontend_loki_all:
   - *frontend_sources
   - *frontend_loki_infra
 
+frontend_visual_infra: &frontend_visual_infra
+  - "e2e-visual/**"
+
+frontend_visual_all:
+  - *frontend_sources
+  - *shared_ci
+  - *frontend_visual_infra
+  - ".github/workflows/loki.yml"
+  - ".storybook/**"
+  - "frontend/test/__support__/**"
+  - "patches/**"
+  - "resources/frontend_client/**"
+  - "frontend/**/*.svg"
+  - "enterprise/frontend/**/*.svg"
+
 # Everything the ci-scripts jest project runs or depends on.
 # test-unit ignores that project, so this filter is the only thing that reruns it.
 ci_scripts:

@@ -595,6 +595,23 @@ const configs = [
     },
   },
   {
+    files: ["e2e-visual/**/*"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "no-console": "off",
+    },
+  },
+  {
+    files: ["e2e-visual/playwright.config.ts"],
+    rules: {
+      "import/no-default-export": "off",
+    },
+  },
+  {
     files: ["frontend/test/**/*"],
     languageOptions: {
       globals: {
