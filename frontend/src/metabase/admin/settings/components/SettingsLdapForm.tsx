@@ -6,7 +6,9 @@ import * as Yup from "yup";
 import {
   getDefaultPlaceholder,
   getExtraFormFieldProps,
+  getStoredFieldValue,
 } from "metabase/admin/settings/utils";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -155,7 +157,7 @@ export const SettingsLdapForm = () => {
         validationSchema={schema}
         enableReinitialize
       >
-        {({ dirty }) => (
+        {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               <SettingsSection
@@ -281,6 +283,22 @@ export const SettingsLdapForm = () => {
               <LdapGroupMappingSection
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
+                onToggle={(enabled) => {
+                  // the group fields hide with the switch, so unsaved edits must not ride along on the next save
+                  if (!enabled) {
+                    setFieldValue(
+                      "ldap-group-base",
+                      initialValues["ldap-group-base"],
+                    );
+                    // the membership filter only exists on EE, so the key can be missing from the form
+                    if ("ldap-group-membership-filter" in initialValues) {
+                      setFieldValue(
+                        "ldap-group-membership-filter",
+                        initialValues["ldap-group-membership-filter"],
+                      );
+                    }
+                  }
+                }}
               >
                 <FormTextInput
                   name="ldap-group-base"
@@ -305,6 +323,7 @@ export const SettingsLdapForm = () => {
                 />
               </Flex>
             </Stack>
+            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} />
           </Form>
         )}
       </FormProvider>
@@ -316,21 +335,15 @@ export const getFormValues = (
   settingDetails: SettingDefinitionMap,
   settingValues: EnterpriseSettings,
 ): LdapFormValues => {
-  // unset fields stay empty so the default shows as the placeholder; env-locked ones show the env value
-  const storedValue = (key: LdapTextKey): string | null => {
-    const setting = settingDetails[key];
-    if (setting?.is_env_setting) {
-      return settingValues[key] ?? null;
-    }
-    return setting?.value ?? null;
-  };
+  const storedValue = (key: LdapTextKey): string | null =>
+    getStoredFieldValue(settingDetails[key], settingValues[key]);
 
-  const portSetting = settingDetails["ldap-port"];
   const values: LdapFormValues = {
     "ldap-host": storedValue("ldap-host"),
-    "ldap-port": portSetting?.is_env_setting
-      ? settingValues["ldap-port"]
-      : (portSetting?.value ?? null),
+    "ldap-port": getStoredFieldValue(
+      settingDetails["ldap-port"],
+      settingValues["ldap-port"],
+    ),
     "ldap-security": settingValues["ldap-security"] ?? "none",
     "ldap-bind-dn": storedValue("ldap-bind-dn"),
     "ldap-password": storedValue("ldap-password"),

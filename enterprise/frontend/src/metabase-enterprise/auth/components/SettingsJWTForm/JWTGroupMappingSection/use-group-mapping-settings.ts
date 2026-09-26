@@ -7,6 +7,7 @@ import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import {
   settingsApi,
+  useGetSettingsQuery,
   useSetting,
   useUpdateSettingsMutation,
 } from "metabase/settings";
@@ -20,6 +21,7 @@ export type GroupMappingSettingsState = {
   syncEnabled: boolean;
   mappings: MappingsType;
   isSaving: boolean;
+  isAdminSettingsFetching: boolean;
   saveSettings: (
     settings: GroupMappingSettings,
     options?: { successMessage?: string },
@@ -34,6 +36,7 @@ export function useGroupMappingSettings(): GroupMappingSettingsState {
   const [updateSettings] = useUpdateSettingsMutation();
   const syncEnabled = useSetting("jwt-group-sync") ?? false;
   const mappings = useSetting("jwt-group-mappings") ?? EMPTY_MAPPINGS;
+  const { isFetching: isAdminSettingsFetching } = useGetSettingsQuery();
   const [isSaving, setIsSaving] = useState(false);
 
   const saveSettings = async (
@@ -73,5 +76,11 @@ export function useGroupMappingSettings(): GroupMappingSettingsState {
     }
   };
 
-  return { syncEnabled, mappings, isSaving, saveSettings };
+  return {
+    syncEnabled,
+    mappings,
+    isSaving,
+    isAdminSettingsFetching,
+    saveSettings,
+  };
 }

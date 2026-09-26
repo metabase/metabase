@@ -30,23 +30,20 @@ import {
   Title,
 } from "metabase/ui";
 
-import S from "./LdapGroupMappingSection.module.css";
+import S from "./SamlGroupMappingSection.module.css";
 
-// mapping names are group DNs, which the backend validates on write
-const LDAP_GROUP_DN_EXAMPLE = "cn=people,ou=groups,dc=example,dc=org";
-
-type LdapGroupMappingSectionProps = {
+type SamlGroupMappingSectionProps = {
   children: React.ReactNode;
   disabled?: boolean;
   onToggle?: (enabled: boolean) => void;
 } & BoxProps;
 
-export function LdapGroupMappingSection({
+export function SamlGroupMappingSection({
   children,
   disabled = false,
   onToggle,
   ...boxProps
-}: LdapGroupMappingSectionProps) {
+}: SamlGroupMappingSectionProps) {
   const inputId = useId();
   const descriptionId = useId();
   const dispatch = useDispatch();
@@ -58,7 +55,7 @@ export function LdapGroupMappingSection({
     updateSettingResult,
     isLoading,
     isFetching: isAdminSettingsFetching,
-  } = useAdminSetting("ldap-group-sync");
+  } = useAdminSetting("saml-group-sync");
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
@@ -77,12 +74,12 @@ export function LdapGroupMappingSection({
         "getSessionProperties",
         undefined,
         (draft) => {
-          draft["ldap-group-sync"] = enabled;
+          draft["saml-group-sync"] = enabled;
         },
       ),
     );
     const { error } = await updateSetting({
-      key: "ldap-group-sync",
+      key: "saml-group-sync",
       value: enabled,
     });
     if (error) {
@@ -92,7 +89,6 @@ export function LdapGroupMappingSection({
     }
   };
 
-  // the card sits inside the page form, so Enter must not reach its submit button
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -117,10 +113,9 @@ export function LdapGroupMappingSection({
               {t`Group mapping`}
             </Text>
           </Title>
-          {/* the env line sits inside the description, so assistive tech hears why the switch is locked */}
           <Box id={descriptionId}>
             <Text c="text-secondary" {...SETTINGS_CARD_DESCRIPTION_PROPS}>
-              {t`Automatically assign people to ${applicationName} groups based on their LDAP group membership`}
+              {t`Automatically assign people to ${applicationName} groups based on groups from your SAML identity provider`}
             </Text>
             {envName != null && (
               <Text c="text-secondary" mt="sm">{t`Using ${envName}`}</Text>
@@ -138,7 +133,7 @@ export function LdapGroupMappingSection({
       </Flex>
       {isChecked && !disabled && (
         <Stack gap="lg">
-          <LdapGroupMappings />
+          <SamlGroupMappings />
           {children}
         </Stack>
       )}
@@ -146,11 +141,10 @@ export function LdapGroupMappingSection({
   );
 }
 
-function LdapGroupMappings() {
-  const { settingDetails } = useAdminSetting("ldap-group-mappings");
-  // LDAP users are never tenants, so tenant groups stay out of the picker
-  const groupLookup = useGroupLookup({ tenancy: "internal" });
-  const groupMapping = useGroupMappings({ settingKey: "ldap-group-mappings" });
+function SamlGroupMappings() {
+  const { settingDetails } = useAdminSetting("saml-group-mappings");
+  const groupLookup = useGroupLookup();
+  const groupMapping = useGroupMappings({ settingKey: "saml-group-mappings" });
   const deletion = useMappingDeletion({ groupMapping, groupLookup });
   const editor = useMappingEditor({ groupMapping, groupLookup });
   const isBusy = groupMapping.isSaving || deletion.isDeleting;
@@ -180,8 +174,8 @@ function LdapGroupMappings() {
         deletion={deletion}
         readOnly={isLocked}
         disabled={isBusy}
-        nameLabel={t`LDAP group name`}
-        namePlaceholder={LDAP_GROUP_DN_EXAMPLE}
+        nameLabel={t`SAML group name`}
+        namePlaceholder={t`Enter SAML group...`}
         emptyMessage={t`No mappings yet`}
       />
     </Stack>

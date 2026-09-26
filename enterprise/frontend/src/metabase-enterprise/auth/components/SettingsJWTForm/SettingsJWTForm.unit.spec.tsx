@@ -48,6 +48,7 @@ const setup = async ({
   provisioningSaveDelayMs,
   cascadeStatus,
   cascadeDelayMs,
+  propertiesReadDelayMs,
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
@@ -67,6 +68,7 @@ const setup = async ({
   provisioningSaveDelayMs?: number;
   cascadeStatus?: number;
   cascadeDelayMs?: number;
+  propertiesReadDelayMs?: number;
 } = {}) => {
   const settingDefinitions: SettingDefinition[] = [
     { key: "use-tenants", value: useTenants ?? false },
@@ -133,7 +135,9 @@ const setup = async ({
     "jwt-group-sync": groupSync ?? false,
     "jwt-group-mappings": groupMappings ?? {},
   });
-  const settingsStore = setupStatefulSettingsEndpoints(sessionSettings);
+  const settingsStore = setupStatefulSettingsEndpoints(sessionSettings, {
+    readDelay: propertiesReadDelayMs,
+  });
   // the shared helper keeps the admin list static, so serve it here with whatever the store has changed since setup
   const initialSettings = { ...settingsStore };
   fetchMock.get(
@@ -673,6 +677,25 @@ describe("SettingsJWTForm", () => {
       await setup({ jwtEnabled: true, configured: true });
 
       expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
+    });
+
+    it("holds the mode control until the settings refetch after the write lands", async () => {
+      // the properties mock answers reads late, so the refetch the write triggers can be seen
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        propertiesReadDelayMs: 200,
+      });
+      const automatic = () => screen.getByRole("radio", { name: "Automatic" });
+      await waitFor(() => expect(automatic()).toBeEnabled());
+
+      await userEvent.click(automatic());
+      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+
+      expect(automatic()).toBeChecked();
+      expect(automatic()).toBeDisabled();
+      await waitFor(() => expect(automatic()).toBeEnabled());
+      expect(automatic()).toBeChecked();
     });
 
     it("writes a new mapping immediately without touching the page form", async () => {
