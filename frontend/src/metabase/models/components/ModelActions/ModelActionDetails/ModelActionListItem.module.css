@@ -1,0 +1,25 @@
+.actionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.actionSubtitlePart:not(:last-child)::after {
+  content: "·";
+  margin-left: var(--mantine-spacing-xs);
+  margin-right: var(--mantine-spacing-xs);
+}
+
+.actionCard {
+  border-radius: var(--mantine-radius-xs);
+}
+
+.codeBlock {
+  font-family: var(--mb-default-monospace-font-family);
+  white-space: pre-wrap;
+}

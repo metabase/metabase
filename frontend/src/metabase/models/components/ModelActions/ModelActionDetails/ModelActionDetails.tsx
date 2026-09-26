@@ -10,7 +10,16 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
+import {
+  ActionIcon,
+  Alert,
+  Box,
+  Button,
+  Flex,
+  Icon,
+  Menu,
+  rem,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -21,14 +30,7 @@ import {
 } from "metabase-lib/v1/actions/utils";
 import type { Database, WritebackAction } from "metabase-types/api";
 
-import {
-  EmptyStateActionContainer,
-  EmptyStateContainer,
-  EmptyStateMessage,
-  EmptyStateTitle,
-} from "../EmptyState.styled";
-
-import { ActionList, ActionsHeader, Root } from "./ModelActionDetails.styled";
+import S from "./ModelActionDetails.module.css";
 import ModelActionListItem from "./ModelActionListItem";
 import { useEnableImplicitActionsForModel } from "./useEnableImplicitActionsForModel";
 
@@ -97,7 +99,11 @@ function ModelActionDetails({ model }: Props) {
       const actionUrl = Urls.action(model.card(), action.id);
 
       return (
-        <li key={action.id} aria-label={action.name}>
+        <li
+          key={action.id}
+          className={S.actionListItem}
+          aria-label={action.name}
+        >
           <ModelActionListItem
             action={action}
             actionUrl={actionUrl}
@@ -115,9 +121,13 @@ function ModelActionDetails({ model }: Props) {
   const newActionUrl = Urls.newAction(model.card());
 
   return (
-    <Root data-testid="model-action-details">
+    <Box w="100%" h="100%" data-testid="model-action-details">
       {canWrite && (
-        <ActionsHeader data-testid="model-actions-header">
+        <Flex
+          justify="flex-end"
+          align="center"
+          data-testid="model-actions-header"
+        >
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {hasActionsMenu && (
             <Menu position="bottom-end">
@@ -145,7 +155,7 @@ function ModelActionDetails({ model }: Props) {
               </Menu.Dropdown>
             </Menu>
           )}
-        </ActionsHeader>
+        </Flex>
       )}
       {database && !hasActionsEnabled && (
         <Alert
@@ -158,9 +168,14 @@ function ModelActionDetails({ model }: Props) {
         </Alert>
       )}
       {actions.length > 0 ? (
-        <ActionList aria-label={t`Action list`}>
+        <Box
+          component="ul"
+          className={S.actionList}
+          mt="lg"
+          aria-label={t`Action list`}
+        >
           {actionsSorted.map(renderActionListItem)}
-        </ActionList>
+        </Box>
       ) : (
         <NoActionsState
           hasCreateButton={canWrite && supportsImplicitActions}
@@ -168,7 +183,7 @@ function ModelActionDetails({ model }: Props) {
         />
       )}
       {confirmationModal}
-    </Root>
+    </Box>
   );
 }
 
@@ -180,18 +195,38 @@ function NoActionsState({
   onCreateClick: () => void;
 }) {
   return (
-    <EmptyStateContainer>
-      <EmptyStateTitle>{t`No actions have been created yet.`}</EmptyStateTitle>
-      <EmptyStateMessage>{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</EmptyStateMessage>
+    <Flex
+      direction="column"
+      justify="center"
+      gap="sm"
+      h="100%"
+      maw={rem(400)}
+      m="auto"
+      ta="center"
+    >
+      <Box
+        component="h4"
+        fz={rem(16)}
+        fw={700}
+        c="text-primary"
+      >{t`No actions have been created yet.`}</Box>
+      <Box
+        component="p"
+        fz="md"
+        fw={400}
+        lh="1.18rem"
+        mt="sm"
+        c="text-secondary"
+      >{t`Get started quickly with some basic actions to create, edit and delete, or create your own from scratch.`}</Box>
       {hasCreateButton && (
-        <EmptyStateActionContainer>
+        <Box mt="lg">
           <Button
             leftSection={<Icon name="bolt" />}
             onClick={onCreateClick}
           >{t`Create basic actions`}</Button>
-        </EmptyStateActionContainer>
+        </Box>
       )}
-    </EmptyStateContainer>
+    </Flex>
   );
 }
 

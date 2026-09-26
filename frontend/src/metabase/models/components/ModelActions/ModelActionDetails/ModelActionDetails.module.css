@@ -1,0 +1,11 @@
+.actionList {
+  width: 70%;
+
+  @media screen and (--breakpoint-max-md) {
+    width: 100%;
+  }
+}
+
+.actionListItem:not(:first-of-type) {
+  margin-top: 2.25rem;
+}

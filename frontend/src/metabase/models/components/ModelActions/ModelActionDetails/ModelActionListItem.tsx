@@ -1,25 +1,17 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback } from "react";
+import cx from "classnames";
+import { type ReactNode, useCallback } from "react";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Menu, Tooltip, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
-import {
-  ActionCardContainer,
-  ActionHeader,
-  ActionRunButtonContainer,
-  ActionSubtitle,
-  ActionSubtitlePart,
-  ActionTitle,
-  CodeBlock,
-  ImplicitActionCardContentRoot,
-} from "./ModelActionListItem.styled";
+import S from "./ModelActionListItem.module.css";
 
 interface Props {
   action: WritebackAction;
@@ -28,6 +20,22 @@ interface Props {
   canEdit: boolean;
   canArchive: boolean;
   onArchive: (action: WritebackAction) => void;
+}
+
+function CodeBlock({ children }: { children: ReactNode }) {
+  return (
+    <Box
+      component="pre"
+      className={cx(S.actionCard, S.codeBlock)}
+      p="lg"
+      m={0}
+      fz="xs"
+      c="text-primary-inverse"
+      bg="text-primary"
+    >
+      {children}
+    </Box>
+  );
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
@@ -48,9 +56,16 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
 
 function ImplicitActionCardContent() {
   return (
-    <ImplicitActionCardContentRoot>
+    <Flex
+      className={S.actionCard}
+      align="center"
+      p="lg"
+      c="text-secondary"
+      bg="background_page-tertiary"
+      fw={400}
+    >
       <div>{t`Auto tracking schema`}</div>
-    </ImplicitActionCardContentRoot>
+    </Flex>
   );
 }
 
@@ -79,22 +94,34 @@ function ModelActionListItem({
 
   return (
     <>
-      <ActionHeader>
+      <Flex align="flex-end" justify="space-between">
         <div>
-          <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
-          <ActionSubtitle>
+          <Link className={S.actionTitle} to={actionUrl}>
+            {action.name}
+          </Link>
+          <Box
+            component="span"
+            display="block"
+            mt="xxs"
+            fz="sm"
+            fw={700}
+            lh="0.875rem"
+            c="text-secondary"
+          >
             {action.type === "implicit" && (
-              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
+              <span className={S.actionSubtitlePart}>{t`Basic action`}</span>
             )}
             {action.public_uuid && (
-              <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
+              <span
+                className={S.actionSubtitlePart}
+              >{t`Public action form`}</span>
             )}
             {action.creator && (
-              <ActionSubtitlePart>
+              <span className={S.actionSubtitlePart}>
                 {t`Created by ${action.creator.common_name}`}
-              </ActionSubtitlePart>
+              </span>
             )}
-          </ActionSubtitle>
+          </Box>
         </div>
         <Menu position="bottom-end">
           <Menu.Target>
@@ -123,8 +150,8 @@ function ModelActionListItem({
             )}
           </Menu.Dropdown>
         </Menu>
-      </ActionHeader>
-      <ActionCardContainer>
+      </Flex>
+      <Box pos="relative" mt="md">
         {action.type === "query" ? (
           <QueryActionCardContent action={action} />
         ) : action.type === "implicit" ? (
@@ -132,7 +159,7 @@ function ModelActionListItem({
         ) : null}
         {canRun && (
           <>
-            <ActionRunButtonContainer>
+            <Box pos="absolute" top={rem(8)} right={rem(8)}>
               <Tooltip label={t`Run`}>
                 <ActionIcon
                   variant="subtle"
@@ -144,7 +171,7 @@ function ModelActionListItem({
                   <Icon name="play" />
                 </ActionIcon>
               </Tooltip>
-            </ActionRunButtonContainer>
+            </Box>
             <ActionExecuteModal
               opened={executeModalOpened}
               actionId={action.id}
@@ -152,7 +179,7 @@ function ModelActionListItem({
             />
           </>
         )}
-      </ActionCardContainer>
+      </Box>
       {confirmationModal}
     </>
   );
