@@ -1,0 +1,104 @@
+# Production and release builds.
+
+tasks:
+  build:
+    command: noop
+    deps:
+      - build-cljs
+      - build-js
+    options:
+      cache: false
+
+  build-custom-viz-fixtures:
+    script: |-
+      node enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
+    inputs:
+      - enterprise/frontend/src/custom-viz/**
+
+  build-js:
+    script: |-
+      rspack build
+    deps:
+      - build-cljs
+    inputs:
+      - "@group(frontend)"
+      - "@group(rspack)"
+      - "@group(frontendClient)"
+    outputs:
+      - resources/frontend_client/app/dist/**
+      - resources/frontend_client/index.html
+      - resources/frontend_client/public.html
+      - resources/frontend_client/embed.html
+      - resources/frontend_client/embed-sdk.html
+      - resources/frontend_client/data-app.html
+      - resources/frontend_client/embed-mcp.html
+
+  build-release:
+    command: noop
+    deps:
+      - build-release-cljs
+      - build-release-js
+    options:
+      cache: false
+
+  build-release-js:
+    script: |-
+      WEBPACK_BUNDLE=production \
+      rspack build
+    deps:
+      - build-release-cljs
+    inputs:
+      - "@group(frontend)"
+      - "@group(rspack)"
+      - "@group(frontendClient)"
+    outputs:
+      - resources/frontend_client/app/dist/**
+      - resources/frontend_client/index.html
+      - resources/frontend_client/public.html
+      - resources/frontend_client/embed.html
+      - resources/frontend_client/embed-sdk.html
+      - resources/frontend_client/data-app.html
+      - resources/frontend_client/embed-mcp.html
+
+  build-release-static-viz:
+    script: |-
+      WEBPACK_BUNDLE=production \
+      rspack --config rspack.static-viz.config.js
+    deps:
+      - build-release-cljs
+    inputs:
+      - "@group(frontend)"
+      - "@group(rspack)"
+      - "@group(frontendClient)"
+    outputs:
+      - resources/frontend_client/app/dist/**
+
+  build-static-viz:
+    script: |-
+      WEBPACK_BUNDLE=production \
+      rspack --config rspack.static-viz.config.js
+    deps:
+      - build-release-cljs
+    options:
+      cache: false
+
+  build-stats:
+    script: |-
+      rspack --json > stats.json
+    options:
+      cache: false
+
+  clean-dev-js:
+    script: |-
+      rm -rf resources/frontend_client/app/dist \
+             resources/frontend_client/app/embedding-sdk \
+             target/classes/frontend_client/app/dist \
+             target/classes/frontend_client/app/embedding-sdk
+    options:
+      cache: false
+
+  remove-webpack-cache:
+    script: |-
+      rm -rf ./node_modules/.cache
+    options:
+      cache: false

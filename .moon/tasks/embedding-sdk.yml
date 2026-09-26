@@ -1,0 +1,153 @@
+# Embedding SDK: bundle, package, types and docs.
+#
+# FIXME: five tasks below declare the whole of resources/embedding-sdk as their
+# output: build-embedding-sdk-node, build-release-embedding-sdk-bundle,
+# build-release-embedding-sdk-package, embedding-sdk-generate-package and
+# embedding-sdk-generate-package-support-files. Each one writes a different
+# subset, so their cache entries overlap and a hit on one can restore a snapshot
+# taken before another had written. build-embedding-sdk-package runs all five in
+# order, which is exactly where that bites.
+#
+# Each task should declare only the paths it writes. Nothing here is verified
+# against what the rspack configs and generator scripts actually emit, unlike
+# build-cljs and build-js.
+
+tasks:
+  build-embedding-sdk-node:
+    script: |-
+      rspack --config rspack.embedding-sdk-node.config.js
+    deps:
+      - build-cljs
+    inputs:
+      - "@group(sdk)"
+      - "@group(rspack)"
+    outputs:
+      - resources/embedding-sdk/**
+
+  build-embedding-sdk-node-watch:
+    script: |-
+      rspack --config rspack.embedding-sdk-node.config.js --watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-embedding-sdk-package:
+    command: noop
+    deps:
+      - embedding-sdk-clean-dist
+      - build-release-cljs
+      - embedding-sdk-generate-package
+      - embedding-sdk-generate-package-support-files
+      - build-release-embedding-sdk-package
+      - build-embedding-sdk-node
+      - embedding-sdk-dts-generate
+    options:
+      cache: false
+      runDepsInParallel: false
+
+  build-release-embedding-sdk-bundle:
+    script: |-
+      WEBPACK_BUNDLE=production rspack --config \
+      rspack.embedding-sdk-bundle.config.js
+    deps:
+      - build-release-cljs
+    inputs:
+      - "@group(sdk)"
+      - "@group(rspack)"
+    outputs:
+      - resources/embedding-sdk/**
+
+  build-release-embedding-sdk-package:
+    script: |-
+      WEBPACK_BUNDLE=production \
+      rspack --config rspack.embedding-sdk-package.config.js
+    deps:
+      - build-release-cljs
+    inputs:
+      - "@group(sdk)"
+      - "@group(rspack)"
+    outputs:
+      - resources/embedding-sdk/**
+
+  embedding-eajs-docs-generate:
+    script: |-
+      typedoc --options ./.typedoc/typedoc.eajs-markdown.config.js
+    options:
+      cache: false
+
+  embedding-sdk-clean-dist:
+    script: |-
+      rm -rf resources/embedding-sdk/dist
+    options:
+      cache: false
+
+  embedding-sdk-clean-tsbuildinfo:
+    script: |-
+      rm -rf resources/embedding-sdk/.tsbuildinfo
+    options:
+      cache: false
+
+  embedding-sdk-cli-snippets-type-check:
+    script: |-
+      ./bin/embedding-sdk/type-check-embedding-sdk-cli-snippets.sh
+    inputs:
+      - "@group(sdk)"
+      - bin/embedding-sdk/**
+
+  embedding-sdk-docs-generate:
+    script: |-
+      typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options \
+      ./.typedoc/typedoc.markdown.config.js
+    deps:
+      - build-release-embedding-sdk-package
+      - embedding-sdk-dts-generate
+    options:
+      cache: false
+
+  embedding-sdk-docs-snippets-type-check:
+    script: |-
+      ./bin/embedding-sdk/type-check-embedding-sdk-docs-snippets.sh
+    inputs:
+      - "@group(sdk)"
+      - bin/embedding-sdk/**
+      - docs/**
+
+  embedding-sdk-dts-fixup:
+    script: |-
+      node ./bin/embedding-sdk/fixup-types-after-compilation.js
+    inputs:
+      - bin/embedding-sdk/**
+
+  embedding-sdk-dts-generate:
+    script: |-
+      ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true \
+      && node ./bin/embedding-sdk/fixup-types-after-compilation.js
+    deps:
+      - embedding-sdk-clean-tsbuildinfo
+    options:
+      cache: false
+
+  embedding-sdk-generate-package:
+    script: |-
+      node ./bin/embedding-sdk/generate-sdk-package-files.js
+    inputs:
+      - bin/embedding-sdk/**
+    outputs:
+      - resources/embedding-sdk/**
+
+  embedding-sdk-generate-package-support-files:
+    script: |-
+      tsx \
+      enterprise/frontend/src/embedding-sdk-package/bin/generate-package-support-files.ts
+    inputs:
+      - enterprise/frontend/src/embedding-sdk-package/bin/**
+    outputs:
+      - resources/embedding-sdk/**
+
+  embedding-sdk-publish:
+    script: |-
+      cd ./resources/embedding-sdk && npm publish
+    options:
+      cache: false
