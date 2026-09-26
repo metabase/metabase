@@ -29,8 +29,9 @@ fileGroups:
     - babel.config.json
   sdk:
     - enterprise/frontend/src/embedding-sdk-package/**
-    - enterprise/frontend/src/embedding-sdk-bundle/**
-    - enterprise/frontend/src/embedding-sdk-shared/**
+    - enterprise/frontend/src/embedding-sdk-ee/**
+    - frontend/src/embedding-sdk-bundle/**
+    - frontend/src/embedding-sdk-shared/**
 
 taskOptions:
   outputStyle: buffer-only-failure
