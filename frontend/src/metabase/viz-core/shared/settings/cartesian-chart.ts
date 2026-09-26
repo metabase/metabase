@@ -31,7 +31,10 @@ import {
 } from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
 import { getStackModels } from "../../echarts/cartesian/model/stack";
-import type { YAxisSides } from "../../echarts/cartesian/model/types";
+import type {
+  DataKey,
+  YAxisSeriesNames,
+} from "../../echarts/cartesian/model/types";
 import { hasValidColumnsSelected } from "../../lib/graph/columns";
 import {
   getMaxDimensionsSupported,
@@ -287,42 +290,60 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 
 export const getDefaultIsAutoSplitEnabled = () => true;
 
+const getSeriesNamesBySide = (
+  seriesModels: { dataKey: DataKey; name: string }[],
+  leftAxisSeriesKeys: Set<DataKey>,
+  rightAxisSeriesKeys: Set<DataKey>,
+): YAxisSeriesNames => {
+  const getNames = (keys: Set<DataKey>) =>
+    keys.size > 0
+      ? seriesModels
+          .filter(({ dataKey }) => keys.has(dataKey))
+          .map(({ name }) => name)
+      : null;
+
+  return {
+    left: getNames(leftAxisSeriesKeys),
+    right: getNames(rightAxisSeriesKeys),
+  };
+};
+
 /**
- * Which sides the chart splits its series onto. The renderer labels its axes
+ * The series the chart splits onto each y-axis. The renderer labels its axes
  * from this split, not from which series the legend shows, so the sidebar can
  * answer it without knowing the hidden series.
  */
-export function getYAxisSides(
+export function getYAxisSeriesNames(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-): YAxisSides {
+): YAxisSeriesNames {
   const [firstSeries] = rawSeries;
 
   if (
     firstSeries == null ||
     !hasValidColumnsSelected(settings, firstSeries.data)
   ) {
-    return { left: false, right: false };
+    return { left: null, right: null };
   }
 
   const display = firstSeries.card.display;
 
-  // A waterfall builds its one y-axis through `getYAxisModel` directly.
+  // A waterfall builds its one y-axis through `getYAxisModel` directly, with no
+  // series names, so only a typed label names it.
   if (display === "waterfall") {
-    return { left: true, right: false };
+    return { left: [], right: null };
   }
 
   // A box plot splits its series through its own `getYAxisSplit`, over
   // extents taken from the computed boxes.
   if (display === "boxplot") {
-    const { leftAxisSeriesKeys, rightAxisSeriesKeys } = getBoxPlotModel(
-      rawSeries,
-      settings,
+    const { seriesModels, leftAxisSeriesKeys, rightAxisSeriesKeys } =
+      getBoxPlotModel(rawSeries, settings);
+    return getSeriesNamesBySide(
+      seriesModels,
+      leftAxisSeriesKeys,
+      rightAxisSeriesKeys,
     );
-    return {
-      left: leftAxisSeriesKeys.size > 0,
-      right: rightAxisSeriesKeys.size > 0,
-    };
   }
 
   const cardsColumns = getCardsColumns(rawSeries, settings);
@@ -353,10 +374,11 @@ export function getYAxisSides(
     isAutoSplitSupported,
   );
 
-  return {
-    left: leftAxisSeriesKeys.size > 0,
-    right: rightAxisSeriesKeys.size > 0,
-  };
+  return getSeriesNamesBySide(
+    seriesModels,
+    leftAxisSeriesKeys,
+    rightAxisSeriesKeys,
+  );
 }
 
 export const getDefaultXAxisScale = (

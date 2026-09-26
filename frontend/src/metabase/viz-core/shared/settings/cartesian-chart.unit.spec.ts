@@ -15,7 +15,10 @@ import { getBoxPlotModel } from "../../echarts/boxplot/model";
 import { getCartesianChartModel } from "../../echarts/cartesian/model";
 import type { LegacySeriesSettingsObjectKey } from "../../echarts/cartesian/model/types";
 import { getScatterPlotModel } from "../../echarts/cartesian/scatter/model";
-import type { RenderingContext } from "../../types";
+import type {
+  ComputedVisualizationSettings,
+  RenderingContext,
+} from "../../types";
 import { DEFAULT_VISUALIZATION_THEME } from "../utils/theme";
 
 import {
@@ -23,7 +26,7 @@ import {
   getDefaultColumns,
   getDefaultDimensions,
   getDefaultMetrics,
-  getYAxisSides,
+  getYAxisSeriesNames,
 } from "./cartesian-chart";
 
 const createSeries = ({
@@ -291,7 +294,15 @@ describe("getDefaultBoxplotDimensions", () => {
   });
 });
 
-describe("getYAxisSides", () => {
+describe("getYAxisSeriesNames", () => {
+  const getYAxisSides = (
+    rawSeries: RawSeries,
+    settings: ComputedVisualizationSettings,
+  ) => {
+    const { left, right } = getYAxisSeriesNames(rawSeries, settings);
+    return { left: left != null, right: right != null };
+  };
+
   const MONTH = "month";
   const CATEGORY = "category";
   const REVENUE = "revenue";

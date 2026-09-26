@@ -418,7 +418,7 @@ export const getYAxisFormatter = (
   };
 };
 
-const getYAxisLabel = (
+export const getYAxisLabel = (
   seriesNames: string[],
   settings: ComputedVisualizationSettings,
   isSplitRightAxis: boolean,

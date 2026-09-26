@@ -195,8 +195,11 @@ export type TrendLinesModel = {
 
 export type YAxisSide = "left" | "right";
 
-/** Which sides of a chart have a y-axis. Both false when it plots nothing. */
-export type YAxisSides = Record<YAxisSide, boolean>;
+/**
+ * The names of the series each y-axis plots, which an unset axis label is
+ * derived from. `null` for a side with no axis.
+ */
+export type YAxisSeriesNames = Record<YAxisSide, string[] | null>;
 
 export type StackDisplay = "bar" | "area";
 export type StackModel = {
