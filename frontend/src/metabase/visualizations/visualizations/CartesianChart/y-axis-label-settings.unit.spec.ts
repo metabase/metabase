@@ -37,6 +37,12 @@ const ORDERS = createMockColumn({
   base_type: "type/Number",
   semantic_type: null,
 });
+const QUANTITY = createMockColumn({
+  name: "quantity",
+  display_name: "Quantity",
+  base_type: "type/Number",
+  semantic_type: null,
+});
 
 const getLabelWidgets = (
   cols: ReturnType<typeof createMockColumn>[],
@@ -102,6 +108,54 @@ describe("y-axis label settings", () => {
       title: "Right axis label",
       group: "Y-axis",
       hidden: false,
+    });
+  });
+
+  describe("placeholders on a split chart", () => {
+    const THREE_METRICS = {
+      "graph.dimensions": ["month"],
+      "graph.metrics": ["revenue", "orders", "quantity"],
+    };
+
+    it("should name the axis that plots one series when the other mixes two", () => {
+      const { left, right } = getLabelWidgets(
+        [MONTH, REVENUE, ORDERS, QUANTITY],
+        [
+          ["Jan", 900, 1, 800],
+          ["Feb", 1000, 2, 950],
+        ],
+        THREE_METRICS,
+      );
+
+      expect(left?.props.placeholder).toBeUndefined();
+      expect(right?.props.placeholder).toBe("Orders");
+    });
+
+    it("should name the left axis when the right one mixes two series", () => {
+      const { left, right } = getLabelWidgets(
+        [MONTH, REVENUE, ORDERS, QUANTITY],
+        [
+          ["Jan", 900, 1, 3],
+          ["Feb", 1000, 2, 4],
+        ],
+        THREE_METRICS,
+      );
+
+      expect(left?.props.placeholder).toBe("Revenue");
+      expect(right?.props.placeholder).toBeUndefined();
+    });
+
+    it("should show a typed left label on the right axis until it gets its own", () => {
+      const { right } = getLabelWidgets(
+        [MONTH, REVENUE, ORDERS, QUANTITY],
+        [
+          ["Jan", 900, 1, 800],
+          ["Feb", 1000, 2, 950],
+        ],
+        { ...THREE_METRICS, "graph.y_axis.title_text": "Money" },
+      );
+
+      expect(right?.props.placeholder).toBe("Money");
     });
   });
 });
