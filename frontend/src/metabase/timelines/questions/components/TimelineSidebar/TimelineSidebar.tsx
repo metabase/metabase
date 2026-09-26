@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";

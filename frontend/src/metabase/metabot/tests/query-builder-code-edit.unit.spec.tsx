@@ -29,6 +29,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
+import { getMetabotState } from "../state";
 import { sendAgentRequest } from "../state/actions";
 
 import {
@@ -211,9 +212,9 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore
-        .getState()
-        .metabot.conversations[conversationId]?.messages.at(-1),
+      getMetabotState(typedStore.getState()).conversations[
+        conversationId
+      ]?.messages.at(-1),
     ).toMatchObject({
       role: "agent",
       externalId: "msg_test_code_edit",
