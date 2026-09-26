@@ -1,6 +1,7 @@
 (ns metabase.typed-schemas.schema.metric-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.metabot.core :as metabot]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -54,6 +55,37 @@
   (testing "stage source-card emits sourceCardId"
     (is (= 42 (#'schema.metric/source-card-id
                {:dataset_query {:stages [{:source-card 42}]}})))))
+
+(defn- orders-metric-query
+  [filters]
+  (lib/test-query
+   (mt/metadata-provider)
+   {:stages [{:source       {:type :table :id (mt/id :orders)}
+              :filters      filters
+              :aggregations [{:type :operator :operator :sum
+                              :args [{:type :column :name "TOTAL" :table-id (mt/id :orders)}]}]}]}))
+
+(deftest metric-filters-test
+  (testing "a metric's filters are described the way the query builder names them"
+    (mt/with-temp [:model/Card card {:type          :metric
+                                     :database_id   (mt/id)
+                                     :dataset_query (orders-metric-query
+                                                     [{:type :operator :operator :>=
+                                                       :args [{:type :column :name "CREATED_AT" :table-id (mt/id :orders)}
+                                                              {:type :literal :value "2025-01-01"}]}
+                                                      {:type :operator :operator :=
+                                                       :args [{:type :column :name "CATEGORY"
+                                                               :source-field-id (mt/id :orders :product_id)}
+                                                              {:type :literal :value "Widget"}]}])}]
+      (is (= ["Created At is greater than or equal to \"2025-01-01\"" "Category is Widget"]
+             (#'schema.metric/metric-filters card)))))
+  (testing "a metric without filters has none"
+    (mt/with-temp [:model/Card card {:type          :metric
+                                     :database_id   (mt/id)
+                                     :dataset_query (orders-metric-query [])}]
+      (is (nil? (#'schema.metric/metric-filters card)))))
+  (testing "a card without a query has none"
+    (is (nil? (#'schema.metric/metric-filters {:id 247 :dataset_query {}})))))
 
 (deftest metric-details-skips-default-temporal-breakout-test
   (let [requested (atom nil)]

@@ -1,5 +1,5 @@
 (ns metabase.lib.query.test-spec
-  (:refer-clojure :exclude [mapv name])
+  (:refer-clojure :exclude [mapv name some])
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -33,7 +33,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]))
+   [metabase.util.performance :refer [mapv some]]))
 
 (mu/defn- find-source :- [:or ::lib.schema.metadata/table ::lib.schema.metadata/card]
   [metadata-providerable         :- ::lib.schema.metadata/metadata-providerable
@@ -42,28 +42,42 @@
     :table (lib.metadata/table metadata-providerable spec-id)
     :card  (lib.metadata/card metadata-providerable spec-id)))
 
-(mu/defn- matches-column? :- :boolean
-  [query                                   :- ::lib.schema/query
-   _stage-number                           :- :int
-   {:keys [name table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
-   column                     :- ::lib.schema.metadata/column]
-  (cond-> (= name (:name column))
-    (some? table-id) (and (= table-id (:table-id column)))
-    (some? source-name) (and (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
-    (some? source-field-id) (and (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
-    (some? display-name) (and (= display-name (:display-name column)))))
+(mu/defn- matches-scope? :- :boolean
+  [query                                                      :- ::lib.schema/query
+   {:keys [table-id source-name source-field-id display-name]} :- ::lib.schema.test-spec/test-order-by-spec
+   column                                                     :- ::lib.schema.metadata/column]
+  (and (or (nil? table-id) (= table-id (:table-id column)))
+       (or (nil? source-name) (= source-name (some->> column :table-id (lib.metadata/table query) :name)))
+       (or (nil? source-field-id) (= source-field-id ((some-fn :fk-field-id :lib/original-fk-field-id) column)))
+       (or (nil? display-name) (= display-name (:display-name column)))))
+
+(defn- previous-stage-column-matches
+  "A later stage sees the previous stage's result columns, and the columns joinable through their FKs, which can share
+  a name. Result columns are returned under unique names (`sum`, `sum_2`), so those decide first, then the name the
+  column had before deduplication. Returns nil when neither picks exactly one result column."
+  [column-name columns]
+  (let [result-columns (filterv #(= :source/previous-stage (:lib/source %)) columns)]
+    (some (fn [name-key]
+            (let [matches (filterv #(= column-name (name-key %)) result-columns)]
+              (when (= 1 (count matches))
+                matches)))
+          [:lib/deduplicated-name :lib/original-name])))
 
 (mu/defn- find-column :- ::lib.schema.metadata/column
   [query             :- ::lib.schema/query
-   stage-number      :- :int
+   _stage-number     :- :int
    available-columns :- [:sequential ::lib.schema.metadata/column]
-   column-spec       :- ::lib.schema.test-spec/test-order-by-spec]
-  (let [columns (filterv (partial matches-column? query stage-number column-spec) available-columns)]
+   {column-name :name, index :index, :as column-spec} :- ::lib.schema.test-spec/test-order-by-spec]
+  (let [scoped  (filterv (partial matches-scope? query column-spec) available-columns)
+        by-name (filterv #(= column-name (:name %)) scoped)
+        columns (if (some? index)
+                  by-name
+                  (or (previous-stage-column-matches column-name scoped) by-name))]
     (case (count columns)
       0 (throw (ex-info "No column found" {:columns available-columns, :column-spec column-spec}))
       1 (first columns)
-      (if (:index column-spec)
-        (get columns (:index column-spec))
+      (if index
+        (get columns index)
         (throw (ex-info "Multiple columns found" {:columns columns, :column-spec column-spec}))))))
 
 (mu/defn- append-fields :- ::lib.schema/query
