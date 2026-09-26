@@ -10,6 +10,7 @@ tasks:
       - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
     outputs:
       - frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
+      - frontend/src/metabase/querying/expressions/tokenizer/lezer.terms.ts
 
   generate-license-disclaimer:
     script: |-

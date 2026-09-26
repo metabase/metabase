@@ -57,3 +57,7 @@ tasks:
     inputs:
       - bun.lock
       - package.json
+    # bun install runs the prepare hook, which is husky regenerating these.
+    # Declaring them means a restored cache carries the git hooks too.
+    outputs:
+      - .husky/_/**

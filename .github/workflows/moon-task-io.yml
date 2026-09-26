@@ -1,0 +1,54 @@
+name: Moon task IO
+
+# The audit re-runs each build with a forced cache miss, so it is slow. The
+# declarations it checks only go stale when a build config moves, and the rspack,
+# shadow-cljs and tsconfig files have changed 115 times since 2021, so roughly
+# twice a month. Path filter plus a weekly run rather than every pull request.
+on:
+  pull_request:
+    paths:
+      - ".moon/**"
+      - "rspack.*.config.js"
+      - "rspack.config.js"
+      - "shadow-cljs.edn"
+      - "tsconfig*.json"
+      - ".github/workflows/moon-task-io.yml"
+      - "bin/audit-task-io.sh"
+  schedule:
+    # Mondays, 05:00 UTC. Catches drift a path filter cannot see, such as a
+    # dependency changing where it writes.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Install moon
+        uses: jdx/mise-action@v3
+      - name: Audit the tasks that declare outputs
+        run: |
+          bin/audit-task-io.sh \
+            deps \
+            build-cljs \
+            build-release-cljs \
+            generate-expression-parser \
+            build-js \
+            build-release-js \
+            build-release-static-viz \
+            build-storybook \
+            embedding-sdk-generate-package \
+            embedding-sdk-generate-package-support-files \
+            build-embedding-sdk-node \
+            build-release-embedding-sdk-bundle \
+            build-release-embedding-sdk-package

@@ -1,0 +1,13 @@
+# Paths bin/audit-task-io.sh may ignore when a task writes them without
+# declaring them as outputs. One prefix per line.
+#
+# Only a tool's own internal cache belongs here. A real build artifact must be
+# declared, or a cache hit leaves it stale.
+#
+# Each entry needs a reason, because the alternative to ignoring a path is
+# usually to declare it and let moon cache it, which is often the better trade.
+
+# shadow-cljs keeps its incremental compilation state here, ~146 MB. Declaring it
+# would make cold cljs builds restore instead of recompile (24s today), but it
+# would also put 146 MB per hash into the CAS. Worth revisiting.
+.shadow-cljs/
