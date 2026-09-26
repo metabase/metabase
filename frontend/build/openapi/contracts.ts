@@ -5,6 +5,7 @@ import {
   type SentPart,
   modelClientRequest,
 } from "./client-request";
+import { routeKey } from "./operations";
 import { type RtkRequest, resolveRtkRequest } from "./rtk-request";
 import { typeShape } from "./shape";
 import {
@@ -20,6 +21,7 @@ import {
   renderDiagnostics,
 } from "./type-comparison";
 import {
+  elementTypes,
   hasComputedName,
   member,
   propertyName,
@@ -56,6 +58,11 @@ interface Operation {
   responses: ts.Type | undefined;
 }
 
+interface GeneratedFiles {
+  declarations: string;
+  operations: string;
+}
+
 interface CheckContext extends CompareContext {
   generated: ts.SourceFile;
   operations: Map<string, Operation[]>;
@@ -83,20 +90,23 @@ interface ResolvedEndpoint {
 export function checkContracts(
   program: ts.Program,
   endpointFiles: string[],
-  generatedFile: string,
+  generatedFiles: GeneratedFiles,
   root: string,
   options: Pick<CompareContext, "walkStepBudget" | "walkDepthBudget"> = {},
 ): ContractResult[] {
-  assertCheckable(program, [generatedFile, ...endpointFiles], root);
+  assertCheckable(
+    program,
+    [generatedFiles.declarations, generatedFiles.operations, ...endpointFiles],
+    root,
+  );
   const checker = program.getTypeChecker();
-  const generated = program.getSourceFile(generatedFile);
-  if (!generated) {
-    throw new Error(`Missing generated declarations: ${generatedFile}`);
-  }
   const context: CheckContext = {
     checker,
-    generated,
-    operations: backendOperations(checker, generated),
+    generated: generatedSource(program, generatedFiles.declarations),
+    operations: generatedOperations(
+      checker,
+      generatedSource(program, generatedFiles.operations),
+    ),
     root,
     ...options,
   };
@@ -171,48 +181,51 @@ function assertCheckable(
   }
 }
 
-function routeKey(method: string, path: string): string {
-  return `${method.toUpperCase()} ${path.replace(/\{[^}]+\}/g, "{}")}`;
+function generatedSource(program: ts.Program, file: string): ts.SourceFile {
+  const source = program.getSourceFile(file);
+  if (!source) {
+    throw new Error(`Missing generated declarations: ${file}`);
+  }
+  return source;
 }
 
-function backendOperations(
+function generatedOperations(
   checker: ts.TypeChecker,
   source: ts.SourceFile,
 ): Map<string, Operation[]> {
-  const aliases = new Map(
-    source.statements
-      .filter(ts.isTypeAliasDeclaration)
-      .map((n) => [n.name.text, n]),
+  const declaration = source.statements.find(
+    (statement) =>
+      ts.isInterfaceDeclaration(statement) &&
+      statement.name.text === "Operations",
   );
-  const result = new Map<string, Operation[]>();
-  for (const [name, node] of aliases) {
-    const method =
-      /^(Get|Post|Put|Patch|Delete|Head|Options|Trace).+Data$/.exec(name)?.[1];
-    if (!method) {
-      continue;
-    }
-    const data = checker.getTypeAtLocation(node);
-    const url = propertyType(checker, data, "url", node);
-    if (!url?.isStringLiteral()) {
-      continue;
-    }
-    const response = aliases.get(name.replace(/Data$/, "Responses"));
-    const key = routeKey(method, url.value);
-    result.set(key, [
-      ...(result.get(key) ?? []),
-      {
-        path: url.value,
-        data,
-        responses: response && checker.getTypeAtLocation(response),
-      },
-    ]);
-  }
-  if (!result.size) {
+  const routes = declaration
+    ? checker.getTypeAtLocation(declaration).getProperties()
+    : [];
+  if (!routes.length) {
     throw new Error(
       "No operations found in generated declarations. Run bun run types:generate.",
     );
   }
-  return result;
+  return new Map(
+    routes.map((route) => [
+      route.name,
+      elementTypes(
+        checker,
+        checker.getTypeOfSymbolAtLocation(route, source),
+      ).map((candidate) => {
+        const path = propertyType(checker, candidate, "path", source);
+        const data = propertyType(checker, candidate, "data", source);
+        if (!path?.isStringLiteral() || !data) {
+          throw new Error(`Malformed generated operation for ${route.name}.`);
+        }
+        return {
+          path: path.value,
+          data,
+          responses: propertyType(checker, candidate, "responses", source),
+        };
+      }),
+    ]),
+  );
 }
 
 function discoverEndpoints(

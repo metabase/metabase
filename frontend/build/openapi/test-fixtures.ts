@@ -4,6 +4,8 @@ import path from "path";
 
 import ts from "typescript";
 
+import { type GeneratedOperation, operationsDeclarations } from "./operations";
+
 /**
  * The request shape RTK hands to `baseQuery` (frontend/src/metabase/api/api.ts:59-65).
  * `defineEndpoint` and `EndpointBuilder` type a fixture's query function the way RTK's builder does,
@@ -43,6 +45,26 @@ interface FixtureProgram {
   files: Record<string, string>;
   program: ts.Program;
   checker: ts.TypeChecker;
+}
+
+const DECLARATIONS_FILE = "types.gen.d.ts";
+const OPERATIONS_FILE = "operations.gen.d.ts";
+
+export function generatedSources(
+  declarations: string,
+  operations: GeneratedOperation[],
+): Record<string, string> {
+  return {
+    [DECLARATIONS_FILE]: declarations,
+    [OPERATIONS_FILE]: operationsDeclarations(operations),
+  };
+}
+
+export function generatedFiles(files: Record<string, string>) {
+  return {
+    declarations: files[DECLARATIONS_FILE] ?? "",
+    operations: files[OPERATIONS_FILE] ?? "",
+  };
 }
 
 export const COMPILER_OPTIONS: ts.CompilerOptions = {

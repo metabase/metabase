@@ -17,6 +17,7 @@ import {
   BASELINE_PATH,
   CONTRACTS_REPORT_PATH,
   GENERATED_DECLARATIONS_PATH,
+  GENERATED_OPERATIONS_PATH,
 } from "./paths";
 
 const USAGE =
@@ -27,6 +28,7 @@ const FIX_SKILL_PATH = ".claude/skills/fix-api-contract/SKILL.md";
 const root = process.cwd();
 const baselinePath = resolve(root, BASELINE_PATH);
 const generatedPath = resolve(root, GENERATED_DECLARATIONS_PATH);
+const operationsPath = resolve(root, GENERATED_OPERATIONS_PATH);
 const reportPath = resolve(root, CONTRACTS_REPORT_PATH);
 
 interface CliOptions {
@@ -102,11 +104,17 @@ function runChecks(): ContractResult[] {
     rootNames: [
       ...endpointFiles,
       generatedPath,
+      operationsPath,
       ...config.fileNames.filter((file) => file.endsWith(".d.ts")),
     ],
     options: { ...config.options, incremental: false, noEmit: true },
   });
-  return checkContracts(program, endpointFiles, generatedPath, root);
+  return checkContracts(
+    program,
+    endpointFiles,
+    { declarations: generatedPath, operations: operationsPath },
+    root,
+  );
 }
 
 function countByStatus(results: ContractResult[]): StatusCounts {
