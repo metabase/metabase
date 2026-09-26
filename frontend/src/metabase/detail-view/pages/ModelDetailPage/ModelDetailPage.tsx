@@ -13,7 +13,7 @@ import {
   getTableQuery,
 } from "metabase/detail-view/utils";
 import { useDispatch, useSelector } from "metabase/redux";
-import { closeNavbar, setDetailView } from "metabase/redux/app";
+import { setDetailView } from "metabase/redux/app";
 import { useParams } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
@@ -77,10 +77,6 @@ export function ModelDetailPage() {
 
   const dispatch = useDispatch();
   const isNavBarOpen = useSelector(getIsNavbarOpen);
-
-  useEffect(() => {
-    dispatch(closeNavbar());
-  }, [dispatch]);
 
   useEffect(() => {
     if (table) {
