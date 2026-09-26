@@ -9,9 +9,5 @@
 
 .button:hover .badge,
 .button:focus-visible .badge {
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-background_surface-warning-strong) 92%,
-    var(--mb-color-text-primary)
-  );
+  background-color: var(--mb-color-background_surface-warning);
 }

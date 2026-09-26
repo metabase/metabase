@@ -1,12 +1,5 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  addUserToGroup,
-  createDataAppApiKey,
-  dataAppIframe,
-  dataAppPermissionGroupId,
-  mockDataApp,
-  syncDataAppResources,
-} from "e2e/support/helpers";
+import type { WritebackAction } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -47,9 +40,8 @@ describe(
   () => {
     // Restore the source files and remove the lockfile before each synchronization.
     const restoreAuthoredFixture = () => {
-      cy.writeFile(ACTION_FILE(), declaration(1));
       cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
-      cy.task("removeDataAppPaths", { paths: [LOCKFILE()] });
+      cy.task("removeDataAppPaths", { paths: [ACTION_FILE(), LOCKFILE()] });
     };
 
     beforeEach(() => {
@@ -66,88 +58,80 @@ describe(
       });
 
       restoreAuthoredFixture();
-      createDataAppApiKey().as("apiKey");
+      H.createDataAppApiKey().as("apiKey");
+
+      cy.get<number>("@modelId")
+        .then((modelId) =>
+          H.createImplicitAction({ model_id: modelId, kind: "create" }),
+        )
+        .its("body")
+        .as("sourceAction");
+
+      cy.get<WritebackAction>("@sourceAction").then(({ id }) =>
+        cy.writeFile(ACTION_FILE(), declaration(id)),
+      );
+
+      cy.get<string>("@apiKey")
+        .then((apiKey) => H.syncDataAppResources(apiKey, APP_ROOT()))
+        .then(({ ok, error }) => {
+          expect(error, "sync-resources failed").to.eq(null);
+          expect(ok).to.eq(true);
+        });
+
+      cy.readFile(LOCKFILE())
+        .its("models")
+        .should("have.length", 1)
+        .its("0.actions")
+        .should("have.length", 1)
+        .its("0.copiedActionId")
+        .should("be.a", "number")
+        .as("copiedActionId");
     });
 
     after(() => {
       restoreAuthoredFixture();
     });
 
-    /** Declares the model's action, synchronizes, and returns both action IDs. */
-    const syncApp = () =>
-      cy.get<number>("@modelId").then((modelId) =>
-        H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
-          ({ body: action }) => {
-            cy.writeFile(ACTION_FILE(), declaration(action.id));
-
-            return cy.get<string>("@apiKey").then((apiKey) =>
-              syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
-                expect(error, "sync-resources failed").to.eq(null);
-                expect(ok).to.eq(true);
-
-                return cy
-                  .readFile(`${APP_ROOT()}/resources_metadata.json`)
-                  .then((lockfile) => {
-                    const copiedActionId =
-                      lockfile.models?.[0]?.actions?.[0]?.copiedActionId;
-
-                    if (typeof copiedActionId !== "number") {
-                      throw new Error(
-                        "The sync wrote no action to the lockfile.",
-                      );
-                    }
-
-                    return cy.wrap(
-                      { sourceActionId: action.id, copiedActionId },
-                      { log: false },
-                    );
-                  });
-              }),
-            );
-          },
-        ),
-      );
-
     it("executes the synchronized copy rather than the authored action", () => {
-      syncApp().then(({ sourceActionId, copiedActionId }) => {
-        expect(copiedActionId).not.to.eq(sourceActionId);
-
-        cy.intercept("POST", "/api/action/*/execute").as("execute");
-        mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-        cy.visit(`/apps/${APP_SLUG}`);
-
-        dataAppIframe(APP_DISPLAY_NAME).within(() => {
-          cy.findByTestId("action-execute", { timeout: 30000 }).click();
-          cy.findByTestId("action-output").should("have.text", "executed");
-        });
-
-        // The proof that production took the synchronized path.
-        cy.wait("@execute")
-          .its("request.url")
-          .should("contain", `/api/action/${copiedActionId}/execute`);
+      cy.get<WritebackAction>("@sourceAction").then(({ id }) => {
+        cy.get<number>("@copiedActionId").should("not.equal", id);
       });
+
+      executePublishedAction();
     });
 
-    it("lets a member of the app's group execute it", () => {
-      syncApp().then(({ copiedActionId }) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToGroup(groupId, USERS.normal.email);
+    it("lets a member of an assigned group execute the synchronized action", () => {
+      H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+      cy.get<number>("@groupId").then((groupId) =>
+        H.addUserToGroup(groupId, USERS.normal.email),
+      );
 
-          cy.signInAsNormalUser();
-          cy.intercept("POST", "/api/action/*/execute").as("execute");
-          mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-          cy.visit(`/apps/${APP_SLUG}`);
-
-          dataAppIframe(APP_DISPLAY_NAME).within(() => {
-            cy.findByTestId("action-execute", { timeout: 30000 }).click();
-            cy.findByTestId("action-output").should("have.text", "executed");
-          });
-
-          cy.wait("@execute")
-            .its("request.url")
-            .should("contain", `/api/action/${copiedActionId}/execute`);
-        });
-      });
+      cy.signInAsNormalUser();
+      executePublishedAction();
     });
   },
 );
+
+function executePublishedAction() {
+  cy.intercept("POST", "/api/action/*/execute").as("execute");
+  H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+  H.openDataApp(APP_SLUG);
+
+  H.dataAppIframe(APP_DISPLAY_NAME)
+    .findByRole("button", { name: "execute" })
+    .should("be.visible")
+    .click();
+
+  cy.wait("@execute").its("request.url").as("executeUrl");
+  cy.get<number>("@copiedActionId").then((copiedActionId) => {
+    cy.get<string>("@executeUrl").should(
+      "contain",
+      `/api/action/${copiedActionId}/execute`,
+    );
+  });
+
+  H.dataAppIframe(APP_DISPLAY_NAME)
+    .findByTestId("action-output")
+    .should("be.visible")
+    .and("have.text", "executed");
+}

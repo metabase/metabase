@@ -72,14 +72,14 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
             </Menu.Item>
           )}
 
-          {app.permission_group_id != null && (
+          {
             <Menu.Item
               component={Link}
-              to={`/admin/settings/apps/${app.name}/users`}
+              to={`/admin/settings/apps/${encodeURIComponent(app.name)}/groups`}
             >
-              {t`Manage user access`}
+              {t`Manage group access`}
             </Menu.Item>
-          )}
+          }
 
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}

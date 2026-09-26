@@ -7,6 +7,7 @@ import type {
   CollectionPermission,
   CollectionPermissionsGraph,
   DataApp,
+  GroupInfo,
 } from "metabase-types/api";
 
 import type { DataAppTestEnv } from "./data-app-test-env";
@@ -31,7 +32,6 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   bundle_path: `data_apps/${DATA_APP_NAME}/dist/index.js`,
   enabled: true,
   resource_collection_id: null,
-  permission_group_id: null,
   table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
@@ -377,20 +377,21 @@ export function buildDataAppHostApp() {
   });
 }
 
-/** The app's own permission group — the one its viewers are given. */
-export function dataAppPermissionGroupId(slug: string) {
-  return cy.request<DataApp>(`/api/apps/${slug}`).then(({ body }) => {
-    const groupId = body.permission_group_id;
+/** Create and assign an ordinary group for an access-control test. */
+export function assignDataAppTestGroup(slug: string) {
+  cy.request<GroupInfo>("POST", "/api/permissions/group", {
+    name: `Test app readers: ${slug}`,
+  })
+    .its("body")
+    .as("dataAppTestGroup");
 
-    if (typeof groupId !== "number") {
-      throw new Error(`Data app ${slug} has no permission group.`);
-    }
+  cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
+    cy.request("POST", `/api/apps/${slug}/groups`, { group_ids: [id] }),
+  );
 
-    return cy.wrap(groupId, { log: false });
-  });
+  return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
 }
 
-/** Puts a user in the app's own permission group, as granting app access does. */
 const DATA_APP_DEV_HOST_APP_DIR =
   "e2e/embedding-sdk-host-apps/vite-6-data-app-host-app";
 

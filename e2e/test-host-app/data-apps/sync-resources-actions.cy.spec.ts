@@ -1,18 +1,14 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  addUserToGroup,
-  createDataAppApiKey,
-  dataAppHostAppRoot,
-  dataAppPermissionGroupId,
-  declareDataAppActions,
-  moveDataAppModelToCollection,
-  removeDataAppActionDeclaration,
-  resetDataAppHostAppSources,
-  syncDataAppResources,
-} from "e2e/support/helpers";
-import type { Card } from "metabase-types/api";
+import type { Card, WritebackAction } from "metabase-types/api";
 
 const { H } = cy;
+
+type SyncedAction = {
+  modelId: number;
+  action: WritebackAction;
+  copiedModel: Card;
+  copiedAction: WritebackAction;
+};
 
 const TEST_TABLE = "scoreboard_actions";
 const MODEL_NAME = "Scoreboard model";
@@ -20,7 +16,7 @@ const MODEL_NAME = "Scoreboard model";
 /** `syncResources` takes the app's slug from its directory name. */
 const APP_SLUG = "vite-6-data-app-host-app";
 
-const APP_ROOT = () => dataAppHostAppRoot();
+const APP_ROOT = () => H.dataAppHostAppRoot();
 
 /**
  * Drives the real `sync-resources` CLI against a live instance, so the copies are
@@ -44,17 +40,17 @@ describe(
         modelName: MODEL_NAME,
       });
 
-      resetDataAppHostAppSources();
-      createDataAppApiKey().as("apiKey");
+      H.resetDataAppHostAppSources();
+      H.createDataAppApiKey().as("apiKey");
     });
 
     after(() => {
-      resetDataAppHostAppSources();
+      H.resetDataAppHostAppSources();
     });
 
     const sync = () =>
       cy.get<string>("@apiKey").then((apiKey) => {
-        syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
+        H.syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
           expect(error, "sync-resources failed").to.eq(null);
           expect(ok).to.eq(true);
         });
@@ -79,7 +75,7 @@ describe(
     /** Runs a sync that must be refused, and returns the message it refused with. */
     const syncExpectingRefusal = (message: string) =>
       cy.get<string>("@apiKey").then((apiKey) => {
-        syncDataAppResources(apiKey, APP_ROOT()).should(({ ok, error }) => {
+        H.syncDataAppResources(apiKey, APP_ROOT()).should(({ ok, error }) => {
           expect(ok, "sync-resources should have refused").to.eq(false);
           expect(error).to.contain(message);
         });
@@ -90,7 +86,7 @@ describe(
       cy.get<number>("@modelId").then((modelId) =>
         H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
           ({ body: action }) => {
-            declareDataAppActions(APP_ROOT(), [action.id]);
+            H.declareDataAppActions(APP_ROOT(), [action.id]);
             return cy.wrap({ modelId, action }, { log: false });
           },
         ),
@@ -116,7 +112,7 @@ describe(
           ({ body: create }) => {
             H.createImplicitAction({ model_id: modelId, kind: "update" }).then(
               ({ body: update }) => {
-                declareDataAppActions(APP_ROOT(), [create.id, update.id]);
+                H.declareDataAppActions(APP_ROOT(), [create.id, update.id]);
 
                 sync();
 
@@ -152,7 +148,7 @@ describe(
                 });
 
                 // The model survives: its sibling still needs it.
-                removeDataAppActionDeclaration(APP_ROOT(), update.id);
+                H.removeDataAppActionDeclaration(APP_ROOT(), update.id);
                 sync();
 
                 copiedModels().then((models) => {
@@ -162,7 +158,7 @@ describe(
                   });
                 });
 
-                removeDataAppActionDeclaration(APP_ROOT(), create.id);
+                H.removeDataAppActionDeclaration(APP_ROOT(), create.id);
                 sync();
 
                 copiedModels().should("have.length", 0);
@@ -182,7 +178,7 @@ describe(
       cy.get<number>("@modelId").then((modelId) => {
         H.createImplicitAction({ model_id: modelId, kind: "create" }).then(
           ({ body: action }) => {
-            declareDataAppActions(APP_ROOT(), [action.id]);
+            H.declareDataAppActions(APP_ROOT(), [action.id]);
             sync();
 
             copiedModels().then(([copy]) => {
@@ -265,57 +261,58 @@ describe(
     });
 
     describe("permissions", () => {
-      const joinAppGroup = () =>
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          addUserToGroup(groupId, USERS.normal.email);
-          return cy.wrap(groupId, { log: false });
-        });
+      beforeEach(() => {
+        syncOneAction().as("syncedAction");
+        H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+        cy.get<number>("@groupId").then((groupId) =>
+          H.addUserToGroup(groupId, USERS.normal.email),
+        );
+      });
 
       // The copy is the whole point of the model copy: an app's viewers hold
       // read on the app's collection, so only the copy is reachable to them.
       it("lets the app's group execute the copy but not the action it was copied from", () => {
-        syncOneAction().then(({ modelId, action, copiedAction }) => {
-          // An action is readable through its model, and the fixture model sits
-          // in the root collection the normal user's groups can read.
-          moveDataAppModelToCollection({
-            modelId,
-            name: "Source models",
-            access: "none",
-          });
-          joinAppGroup();
+        cy.get<SyncedAction>("@syncedAction").then(
+          ({ modelId, action, copiedAction }) => {
+            // An action is readable through its model, and the fixture model sits
+            // in the root collection the normal user's groups can read.
+            H.moveDataAppModelToCollection({
+              modelId,
+              name: "Source models",
+              access: "none",
+            });
 
-          cy.signInAsNormalUser();
-          cy.request({
-            method: "POST",
-            url: `/api/action/${copiedAction.id}/execute`,
-            body: { parameters: { team_name: "Data App FC", score: 7 } },
-          })
-            .its("status")
-            .should("be.oneOf", [200, 204]);
+            cy.signInAsNormalUser();
+            cy.request({
+              method: "POST",
+              url: `/api/action/${copiedAction.id}/execute`,
+              body: { parameters: { team_name: "Data App FC", score: 7 } },
+            })
+              .its("status")
+              .should("be.oneOf", [200, 204]);
 
-          // The same request against the source, so the two are like for like.
-          cy.request({
-            method: "POST",
-            url: `/api/action/${action.id}/execute`,
-            body: { parameters: { team_name: "Data App FC", score: 7 } },
-            failOnStatusCode: false,
-          })
-            .its("status")
-            .should("eq", 403);
+            // The same request against the source, so the two are like for like.
+            cy.request({
+              method: "POST",
+              url: `/api/action/${action.id}/execute`,
+              body: { parameters: { team_name: "Data App FC", score: 7 } },
+              failOnStatusCode: false,
+            })
+              .its("status")
+              .should("eq", 403);
 
-          cy.request({
-            url: `/api/action/${action.id}`,
-            failOnStatusCode: false,
-          })
-            .its("status")
-            .should("eq", 403);
-        });
+            cy.request({
+              url: `/api/action/${action.id}`,
+              failOnStatusCode: false,
+            })
+              .its("status")
+              .should("eq", 403);
+          },
+        );
       });
 
       it("reports a copy that was deleted in Metabase without being re-synced", () => {
-        syncOneAction().then(({ copiedAction }) => {
-          joinAppGroup();
-
+        cy.get<SyncedAction>("@syncedAction").then(({ copiedAction }) => {
           // The source still names this copy, but a production bundle built
           // before the deletion keeps addressing it.
           cy.request("DELETE", `/api/action/${copiedAction.id}`);
@@ -333,25 +330,26 @@ describe(
       });
 
       it("does not widen access to the model the copy was made from", () => {
-        syncOneAction().then(({ modelId, copiedModel }) => {
-          // The fixture model is created in the root collection, which the
-          // normal user's groups can read, so close it before asking whether
-          // the app's group opened anything.
-          moveDataAppModelToCollection({
-            modelId,
-            name: "Source models",
-            access: "none",
-          });
-          joinAppGroup();
+        cy.get<SyncedAction>("@syncedAction").then(
+          ({ modelId, copiedModel }) => {
+            // The fixture model is created in the root collection, which the
+            // normal user's groups can read, so close it before asking whether
+            // the app's group opened anything.
+            H.moveDataAppModelToCollection({
+              modelId,
+              name: "Source models",
+              access: "none",
+            });
 
-          cy.signInAsNormalUser();
-          cy.request(`/api/card/${copiedModel.id}`)
-            .its("body.id")
-            .should("eq", copiedModel.id);
-          cy.request({ url: `/api/card/${modelId}`, failOnStatusCode: false })
-            .its("status")
-            .should("eq", 403);
-        });
+            cy.signInAsNormalUser();
+            cy.request(`/api/card/${copiedModel.id}`)
+              .its("body.id")
+              .should("eq", copiedModel.id);
+            cy.request({ url: `/api/card/${modelId}`, failOnStatusCode: false })
+              .its("status")
+              .should("eq", 403);
+          },
+        );
       });
     });
 
@@ -359,7 +357,7 @@ describe(
       it("reuses the existing copies when copiedActionId is missing from the source", () => {
         syncOneAction().then(({ action, copiedModel, copiedAction }) => {
           // Rewriting the declarations drops the injected ID, as a bad merge would.
-          declareDataAppActions(APP_ROOT(), [action.id]);
+          H.declareDataAppActions(APP_ROOT(), [action.id]);
           sync();
 
           actionsOnModel(copiedModel.id).then((actions) => {
@@ -528,7 +526,7 @@ describe(
                 model_id: modelId,
                 kind: "update",
               }).then(({ body: update }) => {
-                declareDataAppActions(APP_ROOT(), [create.id, update.id]);
+                H.declareDataAppActions(APP_ROOT(), [create.id, update.id]);
                 sync();
 
                 copiedModels().then(([copiedModel]) => {
@@ -543,7 +541,7 @@ describe(
                     cy.request("PUT", `/api/action/${copyOfUpdate.id}`, {
                       model_id: modelId,
                     });
-                    removeDataAppActionDeclaration(APP_ROOT(), update.id);
+                    H.removeDataAppActionDeclaration(APP_ROOT(), update.id);
 
                     syncExpectingRefusal(
                       `no longer hangs off copied model ${copiedModel.id}`,

@@ -59,8 +59,8 @@
       (is (mi/can-read? :model/DataApp 1))
       (is (mi/can-write? :model/DataApp 1))
       (is (mi/can-create? :model/DataApp {}))))
-  (testing "any signed-in user can read (view), but write/create stay superuser-only"
+  (testing "an unassigned user cannot read, write, or create"
     (binding [api/*is-superuser?* false]
-      (is (mi/can-read? :model/DataApp 1))
+      (is (not (mi/can-read? :model/DataApp 1)))
       (is (not (mi/can-write? :model/DataApp 1)))
       (is (not (mi/can-create? :model/DataApp {}))))))

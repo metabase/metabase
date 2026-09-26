@@ -2,6 +2,7 @@
   "`permissions` module API namespace."
   (:require
    [metabase.permissions.data-access-token]
+   [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -37,12 +38,12 @@
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
+ [metabase.permissions.db
+  group-tenant-flags]
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
-  data-app-group-ids
-  data-app-view-data-permission-level
   disable-perms-cache
   download-perms-level
   full-database-permission-for-user
@@ -106,6 +107,7 @@
   set-has-full-permissions-for-set?
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
+  group-display-name
   non-magic-groups
   all-users-magic-group-type
   sync-data-analyst-group-for-oss!]
