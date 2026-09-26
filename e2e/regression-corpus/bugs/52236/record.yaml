@@ -20,12 +20,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "metabase.lib.drill-thru.pivot-test/returns-pivot-test-2a-cat+loc-with-date"
   expected_failure: "\"multi-stage query\" variant: expected {:type :drill-thru/pivot, :dimensions (...)}, actual nil"
-notes: "fix_commit: GitHub closes the issue with #52925 (9b4a0918176), which removed the multi-stage guard, fixed the drill's stage handling and re-enabled the multi-stage test variants; July mapped 3e046e5735e (#52239), the stopgap that added the guard and disabled the drill for multi-stage queries while the issue stayed open; the patch re-adds that guard, so the drill is missing rather than erroring as first reported; the two multi-stage e2e tests exist at the July base and HEAD but not at 8317274709c; July's deftests had their multi-stage variants re-enabled by #52925; returns-pivot-test-2c-explicit-join-cat+loc-with-cat was added by #52925"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; fix_commit: GitHub closes the issue with #52925 (9b4a0918176), which removed the multi-stage guard, fixed the drill's stage handling and re-enabled the multi-stage test variants; July mapped 3e046e5735e (#52239), the stopgap that added the guard and disabled the drill for multi-stage queries while the issue stayed open; the patch re-adds that guard, so the drill is missing rather than erroring as first reported; the two multi-stage e2e tests exist at the July base and HEAD but not at 8317274709c; July's deftests had their multi-stage variants re-enabled by #52925; returns-pivot-test-2c-explicit-join-cat+loc-with-cat was added by #52925"

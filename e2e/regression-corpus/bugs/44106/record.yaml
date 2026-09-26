@@ -22,7 +22,7 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.common.unit.spec.tsx::PublicOrEmbeddedDashboardPage should select the tab from the url"

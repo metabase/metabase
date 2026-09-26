@@ -19,7 +19,7 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/dashboard/click-behavior/dashboard-click-drill.unit.spec.ts::getClickBehavior falls back to the click behavior configured on a clicked dimension (#73448)"

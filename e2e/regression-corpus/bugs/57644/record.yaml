@@ -16,7 +16,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -24,4 +24,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx::DataSourceSelectors (metabase#57644) does not auto-open the database picker when there is only one database"
   expected_failure: "expect(queryByText(\"Sample Database\")).not.toBeInTheDocument(); found <div>Sample Database</div> (picker auto-opened)"
-notes: "base_commit is the parent of July's CI mutant 8c6520c8608 (run 29135035590); the multiple-database e2e and jest tests are controls that pass on the mutant; they name this issue so they stay in fix_tests; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 8c6520c8608 (run 29135035590); the multiple-database e2e and jest tests are controls that pass on the mutant; they name this issue so they stay in fix_tests; fe_be_boundary inferred"

@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions — single-year x-axis (metabase#63671) rejects intermediate (mid-year) ticks so the year label is not duplicated"
-  expected_failure: "expect(canRender(2025-07-01)).toBe(false); Expected: false, Received: true"
-notes: "base_commit is the parent of July's CI mutant ca5a18bf095 (run 29135053525); the fix changed getPadding (intervalsCount === 1 to <= 1); since the ECharts 6.1.0 upgrade (6bf214f2c23) a start-of-year tick guard citing this issue is what prevents the duplicate, so the mutant removes that guard instead (e2eonly-report.md §1); odc from the original fix; the start-of-year jest test is a control that passes on the mutant; fe_be_boundary inferred"
+  test: "frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions should label a single-year x-axis only once (metabase#63671)"
+  expected_failure: "expect(received).toEqual(expected): Expected [\"2025\"], Received [\"2025\", \"2025\"] (ticks.unit.spec.ts:98)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant ca5a18bf095 (run 29135053525); the fix changed getPadding (intervalsCount === 1 to <= 1); since the ECharts 6.1.0 upgrade (6bf214f2c23) a start-of-year tick guard citing this issue is what prevents the duplicate, so the mutant removes that guard instead (e2eonly-report.md §1); odc from the original fix; the start-of-year jest test is a control that passes on the mutant; fe_be_boundary inferred"

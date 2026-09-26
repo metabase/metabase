@@ -1,0 +1,55 @@
+diff --git a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx
+index 84826bd93eb..595c5ce038d 100644
+--- a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx
++++ b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx
+@@ -8,6 +8,7 @@ import {
+ } from "__support__/server-mocks";
+ import { createMockSettingsState, createMockState } from "__support__/state";
+ import {
++  act,
+   renderWithProviders,
+   screen,
+   waitFor,
+@@ -205,4 +206,42 @@ describe("SearchBar", () => {
+       expect(location.search).toEqual("?q=bar");
+     });
+   });
++
++  describe("dismissing search on navigation", () => {
++    it("should dismiss the search results when navigating to a new page", async () => {
++      const { router } = setup();
++
++      await userEvent.click(getSearchBar());
++      expect(
++        screen.getByTestId("search-results-floating-container"),
++      ).toBeInTheDocument();
++
++      act(() => router.navigate("/collection/root"));
++
++      await waitFor(() => {
++        expect(
++          screen.queryByTestId("search-results-floating-container"),
++        ).not.toBeInTheDocument();
++      });
++    });
++
++    it("should not dismiss the search results when the location is replaced (metabase#35009)", async () => {
++      const { router } = setup();
++
++      await userEvent.click(getSearchBar());
++      expect(
++        screen.getByTestId("search-results-floating-container"),
++      ).toBeInTheDocument();
++
++      act(() => router.navigate("/dashboard/1", { replace: true }));
++
++      await waitFor(() => {
++        expect(router.location.pathname).toEqual("/dashboard/1");
++      });
++
++      expect(
++        screen.getByTestId("search-results-floating-container"),
++      ).toBeInTheDocument();
++    });
++  });
+ });

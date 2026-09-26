@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
+index 92b366f66f1..64fabd36d8e 100644
+--- a/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
++++ b/frontend/src/metabase/nav/components/search/SearchBar/SearchBar.tsx
+@@ -145,7 +145,7 @@ function SearchBar({
+   }, [previousLocation, location]);
+ 
+   useEffect(() => {
+-    if (previousLocation !== location && navigationType !== "REPLACE") {
++    if (previousLocation !== location) {
+       // deactivate search when page changes
+       setInactive();
+     }

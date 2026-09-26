@@ -1,0 +1,10 @@
+diff --git a/frontend/src/metabase/utils/errors/server-error-types.ts b/frontend/src/metabase/utils/errors/server-error-types.ts
+index 8f164d49670..62fb854fa03 100644
+--- a/frontend/src/metabase/utils/errors/server-error-types.ts
++++ b/frontend/src/metabase/utils/errors/server-error-types.ts
+@@ -1,4 +1,4 @@
+ export const SERVER_ERROR_TYPES = {
+-  missingRequiredParameter: "missing-required-parameter",
++  missingRequiredParameter: "missing-required-parameters",
+   missingPermissions: "missing-required-permissions",
+ };

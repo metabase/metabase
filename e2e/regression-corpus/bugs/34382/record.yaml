@@ -14,12 +14,12 @@ bug:
   stratum: state
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers INITIALIZE should return unchanged state if `clearCache: false` passed"
   expected_failure: "toEqual: draftParameterValues expected {\"60bca071\": [\"Gadget\", \"Doohickey\", \"Gizmo\"]}, received {}"
-notes: "fix_commit: July recorded none; GitHub closes the issue with #34399 (914bce89359), whose reducer change matches the report; stratum state: the mutant always wipes the draft filter values on INITIALIZE instead of keeping them across navigation; the shipped reducers.unit.spec.js became .ts; the fix's sibling test \"should reset state if `clearCache`: false` is not passed\" doesn't fail on this bug; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was not recorded; fix_commit: July recorded none; GitHub closes the issue with #34399 (914bce89359), whose reducer change matches the report; stratum state: the mutant always wipes the draft filter values on INITIALIZE instead of keeping them across navigation; the shipped reducers.unit.spec.js became .ts; the fix's sibling test \"should reset state if `clearCache`: false` is not passed\" doesn't fail on this bug; fe_be_boundary inferred"

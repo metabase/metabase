@@ -20,12 +20,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
-  patch: inverse.patch
-  method: inverse
-  status: pending
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.unit.spec.ts::useChartEvents emits grouped dimensions when the Other slice is clicked (#5334)"
-  expected_failure: "expect(onVisualizationClick).toHaveBeenCalledWith(objectContaining({ dimensions: [{ value: [\"Gizmo\", \"Doohickey\"], ... }] })) fails; the Other slice click returns early"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the pie chart click handler, the drill filter in lib (cljc) and drill filtering in querying; module taken from the pie chart click handler, where the Other slice click is dropped; July's fe_unit kill on query-drill.unit.spec.ts is an import failure under this mutant (the patch removes isGroupedDimensionClick and shouldHideDrill, which that spec imports), so those four tests don't fail as assertions; CopyValueAction's #5334 test was added to master after the July base; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (the lib drill code runs client-side, no API contract changes)"
+  expected_failure: "expect(jest.fn()).toHaveBeenCalledWith(...expected) -- Expected: ObjectContaining {value: 93, dimensions: [{value: [\"Gizmo\", \"Doohickey\"], ...}]} -- Number of calls: 0"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the pie chart click handler, the drill filter in lib (cljc) and drill filtering in querying; module taken from the pie chart click handler, where the Other slice click is dropped; July's fe_unit kill on query-drill.unit.spec.ts is an import failure under this mutant (the patch removes isGroupedDimensionClick and shouldHideDrill, which that spec imports), so those four tests don't fail as assertions; CopyValueAction's #5334 test was added to master after the July base; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (the lib drill code runs client-side, no API contract changes)"

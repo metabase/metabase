@@ -16,7 +16,7 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "enterprise/frontend/src/embedding/data-picker/DataSelector/tests/DataSourceSelector.unit.spec.tsx::DataSourceSelector both models and tables are available should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step"

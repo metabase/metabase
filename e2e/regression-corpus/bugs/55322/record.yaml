@@ -14,7 +14,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/reference/segments/SegmentFieldDetail.unit.spec.tsx::SegmentFieldDetail (metabase#55322) renders the edit header without crashing while editing"
   expected_failure: "expect(() => setup()).not.toThrow(); threw \"Too many re-renders. React limits the number of renders to prevent an infinite loop.\""
-notes: "base_commit is the parent of July's CI mutant 89c8eb44e96 (run 29139243187); stratum wiring: the mutant passes the result of calling handleReset as the reinitializeForm prop instead of a function; the bug is itself a render crash, so the witness's not.toThrow assertion is the discriminating check; witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 89c8eb44e96 (run 29139243187); stratum wiring: the mutant passes the result of calling handleReset as the reinitializeForm prop instead of a function; the bug is itself a render crash, so the witness's not.toThrow assertion is the discriminating check; witness landed and e2e culled on this branch; fe_be_boundary inferred"

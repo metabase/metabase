@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
-  patch: inverse.patch
-  method: inverse
-  status: pending
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
   retired_reason: null
 hint:
-  test: "metabase.revisions.impl.dashboard-test/revert-dashboard-with-deleted-parameter-card-source-test"
-  expected_failure: "(is (nil? (:values_source_type deleted-source-param)) \"values_source_type should be removed\") fails"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; both deftests shipped with the fix and July's revisions-module run recorded 2 failures and 1 error on the mutant; July's e2e leg ran and failed as expected (POST /api/dashboard/:id returns 500 instead of 200); the e2e is culled on this branch but present at 8317274709c; expected_failure inferred from the deftest's assertion, July recorded only the e2e failure"
+  test: "metabase.revisions.impl.dashboard-test/revert-dashboard-with-archived-parameter-card-source-test"
+  expected_failure: "FAIL dashboard_test.clj:760 values_source_type should be removed; expected: (nil? (:values_source_type archived-source-param)) actual: (not (nil? :card))"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; both deftests shipped with the fix and July's revisions-module run recorded 2 failures and 1 error on the mutant; July's e2e leg ran and failed as expected (POST /api/dashboard/:id returns 500 instead of 200); the e2e is culled on this branch but present at 8317274709c; expected_failure inferred from the deftest's assertion, July recorded only the e2e failure"

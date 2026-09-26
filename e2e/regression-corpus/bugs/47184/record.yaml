@@ -18,9 +18,9 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "metabase.lib.card-test/->card-metadata-column-test"
   expected_failure: null
-notes: "Mutant mismatch: July's reconstruction.patch breaks the stage-number migration helper from the dashboard-filter stages epic (#47167), and its oracle set-stage-number-in-parameter-mappings-test tests that migration; rebuild from #47936, which sets :effective-type on card columns that come from an aggregation (lib/card.cljc); fix_commit: GitHub closes the issue with #47936 (d8786ffc632, \"Fixes #47184\"); July mapped 66948709328 (#47167, the epic, merged two months after the issue closed); the two e2e tests came with the epic and were removed from master by 4701e5f8dc5, so their ids are from the July base; ->card-metadata-column-test shipped with #47936 and should catch a rebuilt mutant, unverified; module, odc and stratum from #47936, July area app-db/custom-migrations describes the unrelated mutant"
+notes: "stale because the patch reintroduces a different behaviour from the statement and needs rebuilding (checked 2026-09-25); Mutant mismatch: July's reconstruction.patch breaks the stage-number migration helper from the dashboard-filter stages epic (#47167), and its oracle set-stage-number-in-parameter-mappings-test tests that migration; rebuild from #47936, which sets :effective-type on card columns that come from an aggregation (lib/card.cljc); fix_commit: GitHub closes the issue with #47936 (d8786ffc632, \"Fixes #47184\"); July mapped 66948709328 (#47167, the epic, merged two months after the issue closed); the two e2e tests came with the epic and were removed from master by 4701e5f8dc5, so their ids are from the July base; ->card-metadata-column-test shipped with #47936 and should catch a rebuilt mutant, unverified; module, odc and stratum from #47936, July area app-db/custom-migrations describes the unrelated mutant"

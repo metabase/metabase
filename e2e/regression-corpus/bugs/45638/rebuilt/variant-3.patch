@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/public/hooks/use-set-embed-font.ts b/frontend/src/metabase/public/hooks/use-set-embed-font.ts
+index 880954fc3db..bba58b0dea1 100644
+--- a/frontend/src/metabase/public/hooks/use-set-embed-font.ts
++++ b/frontend/src/metabase/public/hooks/use-set-embed-font.ts
+@@ -11,7 +11,7 @@ export const useSetEmbedFont = ({ location }: { location: Location }) => {
+ 
+   useEffect(() => {
+     // Unjustified type cast. FIXME
+-    const { font } = parseHashOptions(location.hash) as EmbeddingHashOptions;
++    const { font } = parseHashOptions(location.search) as EmbeddingHashOptions;
+ 
+     dispatch(
+       setOptions({

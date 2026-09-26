@@ -16,7 +16,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -24,4 +24,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.unit.spec.tsx::PreviewQueryButton.shouldRender (metabase#60534) renders for a native query that only has a snippet"
   expected_failure: "expect(PreviewQueryButton.shouldRender({ question })).toBe(true); Expected: true, Received: false"
-notes: "base_commit is the parent of July's CI mutant b328a3b84d2 (run 29133462327); the two other landed tests are controls that pass on the mutant; they name this issue so they stay in fix_tests; e2eonly.yaml mutation_files has a truncated path (\"rontend/...\"); fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant b328a3b84d2 (run 29133462327); the two other landed tests are controls that pass on the mutant; they name this issue so they stay in fix_tests; e2eonly.yaml mutation_files has a truncated path (\"rontend/...\"); fe_be_boundary inferred"

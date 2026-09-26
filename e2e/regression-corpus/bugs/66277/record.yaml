@@ -18,12 +18,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
-  patch: reconstruction.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/value-formatting/date.unit.spec.tsx::formatDateTimeForParameter should format hour"
-  expected_failure: "formatDateTimeForParameter should format hour: Expected \"2020-01-01T06:00\", Received \"2020-01-01\""
-notes: "the date spec shipped as metabase/lib/formatting/date.unit.spec.tsx and is at value-formatting/date.unit.spec.tsx at 8317274709c (the report ran it from visualizations/lib/formatting); the patched file has also moved to value-formatting/date.tsx at 8317274709c; the two click-behavior tests are July witnesses landed on this branch (da261afed6f), which also culled the e2e; the describe's other e2e names alias 58556 and is left to that record; fe_be_boundary inferred; fix_tests include the e2e repro of alias 58556"
+  test: "frontend/src/metabase/dashboard/utils/click-behavior.unit.spec.ts::metabase/dashboard/utils/click-behavior formatSourceForTarget should pass hour-granularity dates to linked questions as a time range (metabase#66277)"
+  expected_failure: "expect(received).toEqual(expected); Expected: \"2020-01-01T06:00~2020-01-01T07:00\", Received: \"2020-01-01\" (minute case likewise: expected \"2020-01-01T06:30~2020-01-01T06:31\", received \"2020-01-01\")"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's reconstruction.patch at an unrecorded base commit; July's mutant hit the other half of the fix: it broke the dashboard-filter path in formatDateTimeForParameter (the #58556 case), while this issue's statement and e2e are about the linked-question path in formatDateToRangeForParameter, which the rebuild targets; the date spec shipped as metabase/lib/formatting/date.unit.spec.tsx and is at value-formatting/date.unit.spec.tsx at 8317274709c (the report ran it from visualizations/lib/formatting); the patched file has also moved to value-formatting/date.tsx at 8317274709c; the two click-behavior tests are July witnesses landed on this branch (da261afed6f), which also culled the e2e; the describe's other e2e names alias 58556 and is left to that record; fe_be_boundary inferred; fix_tests include the e2e repro of alias 58556"

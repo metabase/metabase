@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx::NotebookContainer does not render the native query preview sidebar when the question's database lacks native write permission (metabase#49904)"
-  expected_failure: "expect(queryByTestId(\"native-query-preview-sidebar\")).not.toBeInTheDocument(); found <div data-testid=\"native-query-preview-sidebar\" />"
-notes: "base_commit is the parent of July's CI mutant e138b91f09e (run 29139267465); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave4.jsonl); the fix also rewrote \"should not show empty sidebar when no data source is selected\" in notebook-native-preview-sidebar.cy.spec.ts for the new gating, left out because it doesn't name this issue; fe_be_boundary inferred"
+  expected_failure: "expect(element).not.toBeInTheDocument() expected document not to contain element, found <div data-testid=\"native-query-preview-sidebar\" /> instead (NotebookContainer.unit.spec.tsx:65)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant e138b91f09e (run 29139267465); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave4.jsonl); the fix also rewrote \"should not show empty sidebar when no data source is selected\" in notebook-native-preview-sidebar.cy.spec.ts for the new gating, left out because it doesn't name this issue; fe_be_boundary inferred"

@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+index fe7332e398f..82c25c67f64 100644
+--- a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
++++ b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+@@ -159,9 +159,7 @@ function getClickObjectDimensions(
+   nodes: SliceTreeNode[],
+ ): ClickObjectDimension[] {
+   return nodes.map((node) => ({
+-    value: node.isOther
+-      ? getOtherSliceDimensionValue(node)
+-      : getValueFromDimensionKey(node.key),
++    value: getValueFromDimensionKey(node.key),
+     column: getDimensionColumn(node),
+   }));
+ }

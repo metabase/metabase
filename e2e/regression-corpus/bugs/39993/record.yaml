@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/querying/viz-settings/utils/sync-viz-settings.unit.spec.tsx::syncVizSettings table.columns should handle adding new columns with column.name changes"
   expected_failure: "expect(received).toEqual(expected): expected [ID, ID_3 (disabled), ID_2]; received [ID, ID_2 (disabled)], the setting kept its stale name"
-notes: "base_commit is the parent of July's CI mutant c2911aef053 (run 29125392993); the mutant reverts only the rename-tracking half of #45180 (settings follow a renamed column), not the removal of field-ref matching; the jest test is the rewritten descendant of the fix's \"should handle name changes when a column with a duplicate name is added and ids are available\" in visualizations/lib/sync-settings.unit.spec.ts, per reconstruction-report.md §3; the fix's other shipped spec edits (dataset.unit.spec.ts, TableColumnPanel.unit.spec.tsx) don't survive by name; July's CI run of the e2e passed on this mutant (E2E-ORACLE-PILOT.md: e2e vacuous); fe_be_boundary inferred; fix_tests include the e2e repro of alias 25885"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, b8673198cd4c3aa9f70782f41526dd009f27b933; base_commit is the parent of July's CI mutant c2911aef053 (run 29125392993); the mutant reverts only the rename-tracking half of #45180 (settings follow a renamed column), not the removal of field-ref matching; the jest test is the rewritten descendant of the fix's \"should handle name changes when a column with a duplicate name is added and ids are available\" in visualizations/lib/sync-settings.unit.spec.ts, per reconstruction-report.md §3; the fix's other shipped spec edits (dataset.unit.spec.ts, TableColumnPanel.unit.spec.tsx) don't survive by name; July's CI run of the e2e passed on this mutant (E2E-ORACLE-PILOT.md: e2e vacuous); fe_be_boundary inferred; fix_tests include the e2e repro of alias 25885"

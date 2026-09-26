@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+index fe7332e398f..54766d3ac04 100644
+--- a/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
++++ b/frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.ts
+@@ -183,6 +183,10 @@ function handleClick(
+     getSliceKeyPath(event),
+   );
+ 
++  if (sliceTreeNode.isOther) {
++    return;
++  }
++
+   const rowIndex = sliceTreeNode.rowIndex;
+   const row = rowIndex != null ? dataProp.rows[rowIndex] : undefined;
+ 

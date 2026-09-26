@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase-lib/v1/parameters/utils/filters.ts b/frontend/src/metabase-lib/v1/parameters/utils/filters.ts
+index e7ed076e74a..1e5f05d1842 100644
+--- a/frontend/src/metabase-lib/v1/parameters/utils/filters.ts
++++ b/frontend/src/metabase-lib/v1/parameters/utils/filters.ts
+@@ -105,7 +105,7 @@ export function columnFilterForParameter(
+ ): (column: Lib.ColumnMetadata) => boolean {
+   return (column) =>
+     isParameterCompatibleWithColumn(parameter, {
+-      isString: Lib.isStringOrStringLike(column),
++      isString: Lib.isString(column),
+       isNumeric: Lib.isNumeric(column),
+       isBoolean: Lib.isBoolean(column),
+       isTemporal: Lib.isTemporal(column),

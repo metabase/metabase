@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/redux/tables.ts b/frontend/src/metabase/redux/tables.ts
+index 6857eaf401c..0bc92603b63 100644
+--- a/frontend/src/metabase/redux/tables.ts
++++ b/frontend/src/metabase/redux/tables.ts
+@@ -81,13 +81,6 @@ export const fetchTableMetadataAndForeignKeys =
+       ...getForeignKeyTableIds(fields, storeFields).map((tableId) =>
+         dispatch(fetchTableMetadata({ id: tableId }, options)),
+       ),
+-      // overridden model FK columns have fk_target_field_id but the target
+-      // field is not in the store — load the field instead of the table
+-      ...getMissingTargetFieldIds(fields, storeFields).map((fieldId) =>
+-        runRtkEndpoint({ id: fieldId }, dispatch, fieldApi.endpoints.getField, {
+-          forceRefetch: options.reload ?? false,
+-        }),
+-      ),
+     ]);
+   };
+ 

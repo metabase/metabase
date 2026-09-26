@@ -17,12 +17,12 @@ bug:
   stratum: logic
   fe_be_boundary: true
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx::ArchivedBulkActions shows an error message instead of success when a delete fails"
   expected_failure: "findByText(\"There was an error permanently deleting these items.\") finds nothing; the success message shows instead"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the backend delete check (a misspelled shared tenant namespace in the allowed set) and the trash's bulk delete, which reported success before the requests finished; module from the backend check; July's be_unit kill of collection-deletion-prohibitions only compares the 400 error message the fix reworded, so it's a wording kill rather than a behaviour kill; the enterprise deftest the fix added (its testing string cites #74148) wasn't run by July; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (one behaviour fixed on both sides)"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the fix spans the backend delete check (a misspelled shared tenant namespace in the allowed set) and the trash's bulk delete, which reported success before the requests finished; module from the backend check; July's be_unit kill of collection-deletion-prohibitions only compares the 400 error message the fix reworded, so it's a wording kill rather than a behaviour kill; the enterprise deftest the fix added (its testing string cites #74148) wasn't run by July; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred (one behaviour fixed on both sides)"

@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts::QB Actions > initializeQB models ${questionType} doesn't lock display"
   expected_failure: "expect(received).toBeFalsy(); Received: true (models › structured model and native model › doesn't lock display)"
-notes: "fix_tests: the jest test's describe title is the loop variable ${questionType}; its runtime names are \"QB Actions > initializeQB models structured model doesn't lock display\" and \"... native model doesn't lock display\" (see reconstruction-report.md §3); the fix also added \"locks display\" tests for saved questions, which don't fail on this bug"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; fix_tests: the jest test's describe title is the loop variable ${questionType}; its runtime names are \"QB Actions > initializeQB models structured model doesn't lock display\" and \"... native model doesn't lock display\" (see reconstruction-report.md §3); the fix also added \"locks display\" tests for saved questions, which don't fail on this bug"

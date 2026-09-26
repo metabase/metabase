@@ -15,7 +15,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/query_builder/actions/navigation.unit.spec.ts::popState — shouldUpdateUrl runs a model card without updating the url (shouldUpdateUrl:false)"
   expected_failure: "expect(setCardAndRunSpy).toHaveBeenCalledWith(expect.anything(), { shouldUpdateUrl: false }); received shouldUpdateUrl: true"
-notes: "base_commit is the parent of July's CI mutant cec0d74a1e7 (run 29139257543); July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the witness landed on this branch under a describe that doesn't name the issue, and its question-card case is a control that passes on the mutant; the fix's defaults.ts change (queryBuilderMode default) isn't part of the mutant (e2eonly-report.md §1); e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant cec0d74a1e7 (run 29139257543); July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the witness landed on this branch under a describe that doesn't name the issue, and its question-card case is a control that passes on the mutant; the fix's defaults.ts change (queryBuilderMode default) isn't part of the mutant (e2eonly-report.md §1); e2e culled on this branch; fe_be_boundary inferred"

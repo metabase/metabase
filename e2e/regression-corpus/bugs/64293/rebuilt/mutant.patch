@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+index fc35ef3ff12..1c2b07f65d5 100644
+--- a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
++++ b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+@@ -8,7 +8,6 @@ import { Warnings } from "metabase/common/components/Warnings";
+ import QueryBuilderS from "metabase/css/query_builder.module.css";
+ import { Box, Flex, Stack, Text } from "metabase/ui";
+ import { isMac } from "metabase/utils/browser";
+-import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+ import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
+ import { prefetchVisualizationComponent } from "metabase/viz-core";
+ import * as Lib from "metabase-lib";
+@@ -51,9 +50,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
+     isRunnable &&
+     !isRunning &&
+     !isNativeEditorOpen &&
+-    (result?.error == null ||
+-      isDirtyStateShownForError ||
+-      result?.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
++    (result?.error == null || isDirtyStateShownForError);
+ 
+   return (
+     <Box pos="relative" h="100%" className={cx(className, S.root)}>

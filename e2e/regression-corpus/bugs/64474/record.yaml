@@ -14,7 +14,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results-cancel.unit.spec.ts::useQueryResults > cancel (metabase#64474) aborts the in-flight query when cancelQuery is called"
   expected_failure: "expect(mockAbort).toHaveBeenCalledTimes(1); Received number of calls: 0"
-notes: "base_commit is the parent of July's CI mutant 3586e956c8d (run 29133450964); stratum wiring: the mutant turns cancelQuery into a no-op, dropping the call to the in-flight request's abort; the fix lived in the enterprise transforms hook, which has since moved to frontend/src/metabase/querying/editor, so the mutant patches the new location (e2eonly-report.md §1); e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 3586e956c8d (run 29133450964); stratum wiring: the mutant turns cancelQuery into a no-op, dropping the call to the in-flight request's abort; the fix lived in the enterprise transforms hook, which has since moved to frontend/src/metabase/querying/editor, so the mutant patches the new location (e2eonly-report.md §1); e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"

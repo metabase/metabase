@@ -15,12 +15,12 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
-  patch: reconstruction.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/public/hooks/use-set-embed-font.unit.spec.tsx::useSetEmbedFont sets and updates font"
-  expected_failure: "expect(getEmbedOptionsState().font).toBe(\"Roboto\"); Expected: \"Roboto\", Received: undefined"
-notes: "stratum wiring: the mutant stops passing the hash font to setOptions; the original bug was the embedded question never applying the font, and the mutant moves the fault into the useSetEmbedFont hook that now owns it (see reconstruction-report.md §5); fix_commit: July's config has none; the report and GitHub both give #52368 (abfda359b06); the hook test is the renamed descendant of the fix's \"useEmbedFont sets and updates font\"; the PublicOrEmbeddedQuestion test was landed on this branch, which also culled the e2e; fe_be_boundary inferred"
+  test: "frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx::PublicOrEmbeddedQuestion should apply the font from the `#font` hash parameter (metabase#45638)"
+  expected_failure: "expect(getFont(store.getState())).toBe(\"Roboto\") -- Expected: \"Roboto\", Received: \"Lato\""
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's reconstruction.patch at an unrecorded base commit; stratum wiring: the mutant stops passing the hash font to setOptions; the original bug was the embedded question never applying the font, and the mutant moves the fault into the useSetEmbedFont hook that now owns it (see reconstruction-report.md §5); fix_commit: July's config has none; the report and GitHub both give #52368 (abfda359b06); the hook test is the renamed descendant of the fix's \"useEmbedFont sets and updates font\"; the PublicOrEmbeddedQuestion test was landed on this branch, which also culled the e2e; fe_be_boundary inferred"

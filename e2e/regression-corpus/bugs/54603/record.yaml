@@ -19,12 +19,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx::ParameterSidebar removing a parameter that affects active subscriptions (metabase#54603) warns before removing a parameter that is used by an active subscription"
   expected_failure: "expect(removeParameter).not.toHaveBeenCalled(); Received number of calls: 1; findByRole(\"dialog\") not found"
-notes: "GitHub labels the issue a new feature; the e2e tests were culled on this branch against the shipped jest tests (commit da261afed6f)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; GitHub labels the issue a new feature; the e2e tests were culled on this branch against the shipped jest tests (commit da261afed6f)"

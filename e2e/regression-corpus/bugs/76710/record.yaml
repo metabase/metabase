@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
-  patch: inverse.patch
-  method: inverse
-  status: pending
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/redux/tables.unit.spec.ts::fetchTableMetadataAndForeignKeys resolves and loads the table even when a foreign key target field is forbidden"
-  expected_failure: "expect(store.dispatch(fetchTableMetadataAndForeignKeys({ id: TABLE_ID }))).resolves.toBeUndefined() fails; the forbidden FK target fetch rejects"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; July's killed_by names only the spec file; the resolves-with-forbidden-target test is the one the fix added; query-runs-when-fk-target-table-blocked-test is a later backend parity test naming this issue and checks the backend query, not the frontend metadata load that fails; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"
+  expected_failure: "expect(received).resolves.toBeUndefined() -- Received promise rejected instead of resolved; Rejected to value: {\"data\": \"You don't have permissions to do that.\", \"status\": 403}"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; July's killed_by names only the spec file; the resolves-with-forbidden-target test is the one the fix added; query-runs-when-fk-target-table-blocked-test is a later backend parity test naming this issue and checks the backend query, not the frontend metadata load that fails; the e2e was culled on this branch and resolves at 8317274709c; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"

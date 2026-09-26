@@ -19,9 +19,9 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 55678 should ignore parameters mapped to post-aggregation stages when doing query drills (metabase#55678)"
   expected_failure: "findByText(\"Created At: Month is Apr 1–30, 2025\").should(\"be.visible\") fails after clicking \"See this Order\""
-notes: "Mutant mismatch: July's patch reverts the stage-aware lookup in getMappingOptionByTarget, which only the parameter-mapping UI and auto-wiring use; the drill crash comes from applyParameter in querying/parameters/utils/query.ts applying a target whose stage index is past the drilled query's last stage; rebuild by dropping that stageIndex >= stageCount guard from 4de6e9f7e23; July found the shipped query.unit.spec.ts test naming this issue no longer discriminates that guard (see reconstruction-report.md §2), so no unit test is known to catch it; module and stratum from the real fix, July area parameters/mapping-options describes the mutant; the mapping-options tests shipped with the fix (spec moved .js to .tsx) and catch the patch; expected_failure inferred from the e2e's assertion"
+notes: "stale because the patch reintroduces a different behaviour from the statement and needs rebuilding (checked 2026-09-25); Mutant mismatch: July's patch reverts the stage-aware lookup in getMappingOptionByTarget, which only the parameter-mapping UI and auto-wiring use; the drill crash comes from applyParameter in querying/parameters/utils/query.ts applying a target whose stage index is past the drilled query's last stage; rebuild by dropping that stageIndex >= stageCount guard from 4de6e9f7e23; July found the shipped query.unit.spec.ts test naming this issue no longer discriminates that guard (see reconstruction-report.md §2), so no unit test is known to catch it; module and stratum from the real fix, July area parameters/mapping-options describes the mutant; the mapping-options tests shipped with the fix (spec moved .js to .tsx) and catch the patch; expected_failure inferred from the e2e's assertion"

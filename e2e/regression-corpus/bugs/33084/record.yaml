@@ -14,7 +14,7 @@ bug:
   stratum: state
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/actions/hooks/use-action-initial-values.unit.spec.ts::useActionInitialValues refetches initial values when fetchInitialValues changes after a prefetch (metabase#33084)"
   expected_failure: "waitFor(() => expect(result.current.initialValues).toEqual({ id: 10 })) times out; initial values stay { id: 5 }"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum state: the mutant's hasPrefetchedValues gate suppresses the refetch when the object changes; config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness and culled the e2e on this branch; expected_failure inferred from the witness's assertion, July recorded none; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum state: the mutant's hasPrefetchedValues gate suppresses the refetch when the object changes; config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness and culled the e2e on this branch; expected_failure inferred from the witness's assertion, July recorded none; fe_be_boundary inferred"

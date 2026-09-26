@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+index fc35ef3ff12..40b74e9b525 100644
+--- a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
++++ b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+@@ -47,7 +47,6 @@ export function QueryVisualization(props: QueryVisualizationProps) {
+   }, [display]);
+   const isDirtyStateShown =
+     canRun &&
+-    isResultDirty &&
+     isRunnable &&
+     !isRunning &&
+     !isNativeEditorOpen &&

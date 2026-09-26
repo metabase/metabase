@@ -17,9 +17,9 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/query_builder/store/selectors.unit.spec.ts::getIsResultDirty native query native editor selection/cursor should correctly get selected text when there are multiple selected ranges"
   expected_failure: "TypeError: Cannot destructure property 'row' of 'undefined' (a thrown error, not an assertion)"
-notes: "Mutant mismatch: July's reconstruction.patch makes the singular selection selector return the whole range array, which crashes the selected-text and cursor selectors with a TypeError instead of running only the last selection; a rebuild should follow #56420's querying.ts change (run getAllNativeEditorSelectedText rather than the single-range text); lowest_level integration because July's jest oracle only throws on this mutant and doesn't observe the run behaviour (see config.yaml reconstruction_notes); odc Function/Class/Object because the fix changed the selection state from one range to many; selectors.ts and its spec moved to query_builder/store/ in a7815e9354e after the July base"
+notes: "stale because the patch reintroduces a different behaviour from the statement and needs rebuilding (checked 2026-09-25); Mutant mismatch: July's reconstruction.patch makes the singular selection selector return the whole range array, which crashes the selected-text and cursor selectors with a TypeError instead of running only the last selection; a rebuild should follow #56420's querying.ts change (run getAllNativeEditorSelectedText rather than the single-range text); lowest_level integration because July's jest oracle only throws on this mutant and doesn't observe the run behaviour (see config.yaml reconstruction_notes); odc Function/Class/Object because the fix changed the selection state from one range to many; selectors.ts and its spec moved to query_builder/store/ in a7815e9354e after the July base"

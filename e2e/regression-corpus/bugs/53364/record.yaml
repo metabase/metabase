@@ -17,9 +17,9 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "e2e/test/scenarios/question/saved.cy.spec.js::scenarios > question > saved should not add scrollbar to duplicate modal if question name is long (metabase#53364)"
   expected_failure: "expect($modal.clientWidth).to.be.equal($modal.scrollWidth) fails"
-notes: "Mutant mismatch: July's reconstruction.patch drops the form's initialTouched, so the too-long-name validation error isn't shown when the modal opens; that is the fix's secondary change, while the reported layout break was fixed by the new ModalHeader ellipsis CSS, which a rebuild should revert (common/components/ModalContent/ModalHeader.module.css); the jest test shipped with the fix but guards the validation half, and the report says the layout half is guarded only by the e2e (see reconstruction-report.md §5); lowest_level browser-measurement because the e2e compares clientWidth with scrollWidth and the fix is a CSS-module change; odc, module and stratum from the layout half; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"
+notes: "stale because the patch reintroduces a different behaviour from the statement and needs rebuilding (checked 2026-09-25); Mutant mismatch: July's reconstruction.patch drops the form's initialTouched, so the too-long-name validation error isn't shown when the modal opens; that is the fix's secondary change, while the reported layout break was fixed by the new ModalHeader ellipsis CSS, which a rebuild should revert (common/components/ModalContent/ModalHeader.module.css); the jest test shipped with the fix but guards the validation half, and the report says the layout half is guarded only by the e2e (see reconstruction-report.md §5); lowest_level browser-measurement because the e2e compares clientWidth with scrollWidth and the fix is a CSS-module change; odc, module and stratum from the layout half; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

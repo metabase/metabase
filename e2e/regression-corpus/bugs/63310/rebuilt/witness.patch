@@ -1,0 +1,78 @@
+diff --git a/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/setup.tsx b/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/setup.tsx
+index 34d0961ae0d..33fcbc59399 100644
+--- a/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/setup.tsx
++++ b/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/setup.tsx
+@@ -12,6 +12,7 @@ import type {
+   DashboardCard,
+   DashboardTab,
+   TokenFeatures,
++  User,
+ } from "metabase-types/api";
+ import {
+   createMockCard,
+@@ -20,6 +21,7 @@ import {
+   createMockDashboardTab,
+   createMockDatabase,
+   createMockTokenFeatures,
++  createMockUser,
+ } from "metabase-types/api/mocks";
+ 
+ import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
+@@ -36,6 +38,7 @@ export type SetupOpts = {
+   tokenFeatures?: TokenFeatures;
+   dashboardTitle: string;
+   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
++  currentUser?: User | null;
+ };
+ 
+ export async function setup(
+@@ -46,6 +49,7 @@ export async function setup(
+     tokenFeatures = createMockTokenFeatures(),
+     dashboardTitle,
+     enterprisePlugins,
++    currentUser = createMockUser(),
+   }: SetupOpts = { dashboardTitle: "" },
+ ) {
+   mockSettings({
+@@ -103,7 +107,7 @@ export async function setup(
+       element={<PublicOrEmbeddedDashboardPage />}
+     />,
+     {
+-      storeInitialState: createMockState(),
++      storeInitialState: createMockState({ currentUser }),
+       withRouter: true,
+       initialRoute: href,
+     },
+diff --git a/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.database-request.unit.spec.tsx b/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.database-request.unit.spec.tsx
+new file mode 100644
+index 00000000000..276e32f16e2
+--- /dev/null
++++ b/frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.database-request.unit.spec.tsx
+@@ -0,0 +1,27 @@
++import fetchMock from "fetch-mock";
++
++import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
++import { screen } from "__support__/ui";
++
++import { setup } from "./setup";
++
++describe("PublicOrEmbeddedDashboardPage > database requests", () => {
++  beforeEach(() => {
++    setupLastDownloadFormatEndpoints();
++  });
++
++  it("should not call `GET /api/database` in a static embedding (metabase#63310)", async () => {
++    await setup({ dashboardTitle: "Orders in a dashboard", currentUser: null });
++
++    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
++
++    const listDatabaseCalls = fetchMock.callHistory
++      .calls()
++      .filter(
++        (call) =>
++          call.options.method?.toUpperCase() === "GET" &&
++          /^\/api\/(embed\/)?database$/.test(new URL(call.url).pathname),
++      );
++    expect(listDatabaseCalls).toHaveLength(0);
++  });
++});

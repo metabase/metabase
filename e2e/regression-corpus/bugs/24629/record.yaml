@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/common/components/TokenField/TokenField.unit.spec.tsx::TokenField should not add a recipient when Escape is pressed (metabase#24629)"
-  expected_failure: "expect(values()).not.toHaveTextContent(\"bar\"); received \"bar\" (Escape committed the selected option)"
-notes: "base_commit is the parent of July's CI mutant 53db1a83b3a (run 29139231565); the witness is July-written (witness.patch, landed on this branch); fe_be_boundary inferred"
+  test: "frontend/src/metabase/notifications/channels/RecipientPicker.unit.spec.tsx::recipient picker onChange should not add the highlighted user when Escape is pressed (metabase#24629)"
+  expected_failure: "expect(jest.fn()).not.toHaveBeenCalledWith(...expected); call 3 received [Barb, Nancy] (Escape committed the highlighted option)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 53db1a83b3a (run 29139231565); the witness is July-written (witness.patch, landed on this branch); fe_be_boundary inferred"

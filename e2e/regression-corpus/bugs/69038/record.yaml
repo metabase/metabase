@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx::table.pivot getDefault with a visualizer preview card (metabase#69038) should not throw for a 3-column visualizer preview card (empty dataset_query)"
-  expected_failure: "getDefault(visualizerPreviewSeries) throws \"Invalid query: query cannot be empty\" instead of returning false"
-notes: "base_commit is the parent of July's CI mutant 5bf9a8b3827 (run 29133470086); July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the fix's HeaderCellWithColumnInfo change isn't reached in the visualizer preview and isn't part of the mutant (e2eonly-report.md §1); the bug is a render crash, so the thrown error is the discriminating failure; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"
+  test: "frontend/src/metabase/visualizer/components/TabularPreviewModal/TabularPreviewModal.unit.spec.tsx::TabularPreviewModal should show the merged data of a three-column chart (metabase#69038)"
+  expected_failure: "expect(received).not.toThrow() -- Error message: \"Invalid query: query cannot be empty\", thrown by question?.query() at HeaderCellWithColumnInfo.tsx:48 while rendering the preview modal"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; July's mutant hit the other half of the fix: it removed the try/catch around isNative in table.pivot getDefault, which never crashed a render because getComputedSetting catches it; the rebuild reverses the HeaderCellWithColumnInfo change and restores the empty dataset_query that triggered it; base_commit is the parent of July's CI mutant 5bf9a8b3827 (run 29133470086); July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the fix's HeaderCellWithColumnInfo change isn't reached in the visualizer preview and isn't part of the mutant (e2eonly-report.md §1); the bug is a render crash, so the thrown error is the discriminating failure; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"

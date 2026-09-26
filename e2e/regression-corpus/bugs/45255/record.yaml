@@ -18,7 +18,7 @@ mutant:
   base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/value-formatting/value.unit.spec.tsx::formatValue should format null as (empty) when stringifyNull option is true"

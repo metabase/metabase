@@ -15,7 +15,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx::CreateDashboardModal surfaces a server validation error when creating with a blank name (metabase#63176)"
   expected_failure: "findByText(\"value must be a non-blank string.\") times out; the name input stays aria-invalid=\"false\" with no Failed state"
-notes: "base_commit is the parent of July's CI mutant 316cd9bf826 (run 29129259306); the witness never landed, so its id comes from witness.patch applied to the July base; create-dashboard-blank-name-test is a later backend parity test naming this issue and checks the API rejects the name, not that the modal shows the error; fe_be_boundary inferred false (the frontend swallows an error the API already returns)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 316cd9bf826 (run 29129259306); the witness never landed, so its id comes from witness.patch applied to the July base; create-dashboard-blank-name-test is a later backend parity test naming this issue and checks the API rejects the name, not that the modal shows the error; fe_be_boundary inferred false (the frontend swallows an error the API already returns)"

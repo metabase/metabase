@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx b/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
+index 23cc160e372..d2c59e46635 100644
+--- a/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
++++ b/frontend/src/metabase/dashboard/components/Dashboard/components/Grid.tsx
+@@ -56,7 +56,7 @@ export const Grid = ({
+    */
+   const hasDataAccess = useSelector(canUserCreateQueries);
+   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+-  const canCreateQuestions = hasDataAccess || hasNativeWrite;
++  const canCreateQuestions = hasDataAccess && hasNativeWrite;
+ 
+   const handleSetEditing = useCallback(() => {
+     if (!isEditing) {

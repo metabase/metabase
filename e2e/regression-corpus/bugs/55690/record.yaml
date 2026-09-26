@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/common/components/Pickers/EntityPicker/components/test/EntityPickerModal-grow.unit.spec.tsx::EntityPickerModal width (metabase#55690) should grow its min-width to fit content, but never shrink back"
   expected_failure: "expect(content.style.minWidth).toBe(\"min(920px, 80vw)\"); Received: \"\""
-notes: "base_commit is the parent of July's CI mutant 06d63304f65 (run 29139240052); the e2e measures rendered widths, but the witness drives the ResizeObserver callback directly and asserts the min-width style, so July classed it unit-catchable; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 06d63304f65 (run 29139240052); the e2e measures rendered widths, but the witness drives the ResizeObserver callback directly and asserts the min-width style, so July classed it unit-catchable; fe_be_boundary inferred"

@@ -16,12 +16,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
-  patch: inverse.patch
-  method: inverse
-  status: pending
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase-lib/v1/parameters/utils/template-tag-options.unit.spec.ts::parameters/utils/template-tag-options getParameterOptionsForField should return string options for a TextLike field"
-  expected_failure: "expect(availableOptions.length > 0 && availableOptions.every((option) => option.type.startsWith(\"string\"))).toBe(true); received false"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the TextLike test shipped in template-tag-options.unit.spec.js, converted to .ts in #79545; the fix's filters.unit.spec.ts case sits in a forEach with a template-literal title, so that id keeps the ${...} text and covers every generated case; the e2e was deleted from master by 4701e5f8dc5 (\"Remove querying e2e tests made redundant by backend test parity\") and resolves only at 56879decb0a, yet the bug is frontend-only and enum-field-filter-test (a later backend parity test naming this issue) runs the query on the backend, so it can't catch it; also killed by DimensionPickerSidebar.unit.spec.tsx, which postdates the fix and wasn't written for it; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"
+  expected_failure: "expect(received).toBe(expected) // Object.is equality; Expected: true; Received: false (template-tag-options.unit.spec.ts:97)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the TextLike test shipped in template-tag-options.unit.spec.js, converted to .ts in #79545; the fix's filters.unit.spec.ts case sits in a forEach with a template-literal title, so that id keeps the ${...} text and covers every generated case; the e2e was deleted from master by 4701e5f8dc5 (\"Remove querying e2e tests made redundant by backend test parity\") and resolves only at 56879decb0a, yet the bug is frontend-only and enum-field-filter-test (a later backend parity test naming this issue) runs the query on the backend, so it can't catch it; also killed by DimensionPickerSidebar.unit.spec.tsx, which postdates the fix and wasn't written for it; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"

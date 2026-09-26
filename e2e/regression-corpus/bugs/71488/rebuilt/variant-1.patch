@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/components/FunnelNormal.tsx b/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
+index a317def7851..da5fc54deda 100644
+--- a/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
++++ b/frontend/src/metabase/visualizations/components/FunnelNormal.tsx
+@@ -97,7 +97,7 @@ export function FunnelNormal({
+   // locales. We must match against the same untranslated values here,
+   // otherwise content-translated dimension values won't match their keys
+   // and the funnel renders empty (metabase#71488).
+-  const rowsForKeys = getRowsForStableKeys(series.data);
++  const rowsForKeys = rows;
+   const sortedRows = getSortedRows(
+     rows,
+     rowsForKeys,

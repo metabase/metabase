@@ -16,12 +16,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
-  patch: inverse.patch
-  method: inverse
-  status: pending
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
+  method: reconstructed
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/components/FunnelNormal.unit.spec.ts::FunnelNormal row matching (metabase#71488) returns translated rows for display while matching on untranslated keys"
-  expected_failure: "July's mutant deletes getSortedRows, so this errors (getSortedRows is not a function); a mutant keeping the export fails expect(sortedRows).toHaveLength(3)"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the three jest tests shipped with the fix and target exactly this matching, but July's inverse mutant also deletes the exported getSortedRows they import, so its recorded kill is an error rather than an assertion failure; lowest_level stays unit because the tests observe the bug once a rebuilt mutant keeps the export; the e2e is culled on this branch but present at 8317274709c; fe_be_boundary inferred"
+  expected_failure: "expect(received).toHaveLength(expected) Expected length: 3 Received length: 0 Received array: [] (FunnelNormal.unit.spec.ts:60)"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's inverse.patch at 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the three jest tests shipped with the fix and target exactly this matching, but July's inverse mutant also deletes the exported getSortedRows they import, so its recorded kill is an error rather than an assertion failure; lowest_level stays unit because the tests observe the bug once a rebuilt mutant keeps the export; the e2e is culled on this branch but present at 8317274709c; fe_be_boundary inferred"

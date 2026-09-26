@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+index c30bd0c8118..c9e1cf5da1f 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
+@@ -320,7 +320,6 @@ export function DashCardVisualization({
+         // This guarantees a visualization always rerenders on changes
+         started_at: new Date().toISOString(),
+         columnValuesMapping,
+-        json_query: rawSeries[0].json_query,
+         _isVisualizer: true,
+       },
+     ];

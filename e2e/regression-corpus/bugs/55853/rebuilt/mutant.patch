@@ -1,0 +1,24 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+index 277be58d0df..48ebe839f6c 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+@@ -72,6 +72,8 @@ const getEvenlySpacedIndices = (
+   return Array.from(result);
+ };
+ 
++const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
++
+ const getValuesToMeasure = (min: number, max: number): number[] => {
+   if (min === max) {
+     return [min];
+@@ -203,7 +205,9 @@ const getYAxisTicksWidth = (
+   const measuredValues = valuesToMeasure.map((rawValue) => {
+     let value = rawValue;
+ 
+-    if (!isPercent && !areDecimalTicksExpected) {
++    if (isPercent) {
++      value = roundToHundredth(rawValue);
++    } else if (!areDecimalTicksExpected) {
+       value = Math.round(rawValue);
+     }
+ 

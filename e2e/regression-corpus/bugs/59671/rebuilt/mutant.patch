@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.ts b/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.ts
+index a3b0f87d61b..8f38f9531cc 100644
+--- a/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.ts
++++ b/frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.ts
+@@ -87,11 +87,9 @@ export function useModelsAndOption(
+       gridSize,
+     );
+ 
+-    if (model.dimensionModel.column) {
+-      model.dimensionModel.column.display_name = tc(
+-        model.dimensionModel.column.display_name,
+-      );
+-    }
++    model.dimensionModel.column.display_name = tc(
++      model.dimensionModel.column.display_name,
++    );
+     return model;
+   }, [
+     card.display,

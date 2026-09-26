@@ -1,0 +1,13 @@
+diff --git a/src/metabase/lib/drill_thru/underlying_records.cljc b/src/metabase/lib/drill_thru/underlying_records.cljc
+index ba072a33b2e..f2649254177 100644
+--- a/src/metabase/lib/drill_thru/underlying_records.cljc
++++ b/src/metabase/lib/drill_thru/underlying_records.cljc
+@@ -174,7 +174,7 @@
+                                        filter-column)]
+                           (cond
+                             values
+-                            [(apply lib.filter/filter-clause :in column values)]
++                            [(lib.filter/= column (first values))]
+ 
+                             (nil? value)
+                             [(lib.filter/is-null column)]

@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "metabase.parameters.chain-filter-test/use-cached-field-values-for-remapped-field-test"
   expected_failure: "expected {:values [[2 \"American\"] [3 \"Artisan\"] [4 \"Asian\"]]}, actual {:values ([2] [3] [4])}"
-notes: "GitHub has no closing PR and closed the issue on 2025-03-11, well after this 2023 fix, so kept July's fix_commit; the fix's targets.unit.spec.ts change is for #20656, not this issue"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; GitHub has no closing PR and closed the issue on 2025-03-11, well after this 2023 fix, so kept July's fix_commit; the fix's targets.unit.spec.ts change is for #20656, not this issue"

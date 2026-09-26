@@ -13,7 +13,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/visualizations-tabular/table.cy.spec.js::scenarios > visualizations > table > dashboards context should update row heights correctly when sorting with text wrapping enabled (metabase#61164)"
   expected_failure: "rects[i].top === rects[i-1].bottom fails after sorting; rows overlap"
-notes: "base_commit is the parent of July's CI mutant 1c4710a1b9d (run 29135065628); stratum wiring: the mutant reads row heights by the virtual index attribute instead of the dataset index prop; the fix (sorting added to the re-measure callback's dependencies) was superseded by #70384 (7a7585be68c), so the mutant reverts that successor mechanism (e2eonly-report.md §2); irreducible per E2E-ONLY.md (virtualizer row geometry) and July's CI run confirmed the e2e catches it; expected_failure paraphrases the e2e's assertion from e2eonly-report.md §3; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 1c4710a1b9d (run 29135065628); stratum wiring: the mutant reads row heights by the virtual index attribute instead of the dataset index prop; the fix (sorting added to the re-measure callback's dependencies) was superseded by #70384 (7a7585be68c), so the mutant reverts that successor mechanism (e2eonly-report.md §2); irreducible per E2E-ONLY.md (virtualizer row geometry) and July's CI run confirmed the e2e catches it; expected_failure paraphrases the e2e's assertion from e2eonly-report.md §3; fe_be_boundary inferred"

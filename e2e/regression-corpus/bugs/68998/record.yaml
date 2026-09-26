@@ -15,7 +15,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "metabase.parameters.params-test/dashcards->param-field-ids-resolves-series-card-test"
   expected_failure: "(is (= #{(mt/id :products :category)} (get param->ids \"p1\"))) fails; the mapping resolves to the main card's field"
-notes: "base_commit is the parent of July's CI mutant 255ebf8d340 (run 29129227359); e2eonly.yaml says no_witness_backend, but the land-and-cull pass (d3835864f16) landed dashcards->param-field-ids-resolves-series-card-test, verified to fail under the same revert, and culled the e2e on this branch; can-filter-on-multi-database-params-test is a later backend parity test naming this issue (#77062); expected_failure inferred from the landed deftest's assertion and commit message; fe_be_boundary inferred (backend-only fix)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 255ebf8d340 (run 29129227359); e2eonly.yaml says no_witness_backend, but the land-and-cull pass (d3835864f16) landed dashcards->param-field-ids-resolves-series-card-test, verified to fail under the same revert, and culled the e2e on this branch; can-filter-on-multi-database-params-test is a later backend parity test naming this issue (#77062); expected_failure inferred from the landed deftest's assertion and commit message; fe_be_boundary inferred (backend-only fix)"

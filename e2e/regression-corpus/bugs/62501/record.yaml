@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/api/utils/lifecycle.unit.spec.ts::handleQueryFulfilled does not call handleSuccess when the response is an HTML string from a redirect (metabase#62501)"
   expected_failure: "expect(handleSuccess).not.toHaveBeenCalled(); Received number of calls: 1 (called with the HTML string)"
-notes: "base_commit is the parent of July's CI mutant 82a9be05209 (run 29129268992); the witness never landed: the jest id comes from witness.patch, which adds lifecycle.unit.spec.ts as a new file, so it resolves at no ref yet; July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the fix's guard in api/session.ts moved into api/utils/lifecycle.ts, so the mutant patches the shared helper (e2eonly-report.md §1); fe_be_boundary inferred false (the frontend mishandles a redirected response; no API shape changes)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 82a9be05209 (run 29129268992); the witness never landed: the jest id comes from witness.patch, which adds lifecycle.unit.spec.ts as a new file, so it resolves at no ref yet; July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the fix's guard in api/session.ts moved into api/utils/lifecycle.ts, so the mutant patches the shared helper (e2eonly-report.md §1); fe_be_boundary inferred false (the frontend mishandles a redirected response; no API shape changes)"

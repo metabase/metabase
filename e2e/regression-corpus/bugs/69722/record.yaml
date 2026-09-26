@@ -14,7 +14,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorAvailableHeight.unit.spec.tsx::DatasetEditor native editor availableHeight (metabase#69722) caps the model native editor height to the available height"
   expected_failure: "expect(getEditorHeightRem()).toBeLessThan(41); Expected: < 41, Received: 41"
-notes: "base_commit is the parent of July's CI mutant 3df10379729 (run 29133466705); stratum wiring: the mutant passes the container height under the wrong prop name (viewHeight), so the native editor never receives availableHeight; July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; E2E-ONLY.md cites this as a geometry e2e beaten by a computed-height unit witness; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 3df10379729 (run 29133466705); stratum wiring: the mutant passes the container height under the wrong prop name (viewHeight), so the native editor never receives availableHeight; July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; E2E-ONLY.md cites this as a geometry e2e beaten by a computed-height unit witness; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"

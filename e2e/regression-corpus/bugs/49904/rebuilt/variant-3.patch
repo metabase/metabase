@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+index 322cd802b1e..0876e387a97 100644
+--- a/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
++++ b/frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx
+@@ -54,7 +54,7 @@ export const NotebookContainer = ({
+ 
+   const renderNativePreview =
+     isShowingNotebookNativePreview &&
+-    canShowNativePreview({ question, queryBuilderMode: "notebook" });
++    canShowNativePreview({ question, queryBuilderMode: "view" });
+ 
+   const minNotebookWidth = 640;
+   const minSidebarWidth = 428;

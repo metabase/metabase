@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..2b666214d2f 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -124,7 +124,7 @@ export const getTicksOptions = (
+   // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+   if (largestInterval.unit === "year") {
+     canRender = (date: Dayjs) =>
+-      isWithinRange(date) && date.month() === 0 && date.date() === 1;
++      isWithinRange(date) && date.month() === 1 && date.date() === 1;
+   }
+ 
+   if (!maxInterval) {

@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/common/hooks/is-route-in-sync.witness.unit.spec.ts::isRouteInSync (metabase#65500 witness) returns false inside an iframe when the router route lags window.location"
   expected_failure: "expect(isRouteInSync(\"/dashboard/9999990\")).toBe(false); Expected: false, Received: true"
-notes: "base_commit is the parent of July's CI mutant a1df1aa3f82 (run 29135069053); the fix guarded DashboardApp and QueryBuilder; that guard now lives in the shared isRouteInSync helper, which the mutant neuters; also killed by frontend/src/metabase/common/hooks/is-route-in-sync.unit.spec.ts::isRouteInSync in an iframe should return false when the current pathname does not match the location pathname, added later by #67724 without naming this issue; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant a1df1aa3f82 (run 29135069053); the fix guarded DashboardApp and QueryBuilder; that guard now lives in the shared isRouteInSync helper, which the mutant neuters; also killed by frontend/src/metabase/common/hooks/is-route-in-sync.unit.spec.ts::isRouteInSync in an iframe should return false when the current pathname does not match the location pathname, added later by #67724 without naming this issue; fe_be_boundary inferred"

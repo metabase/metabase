@@ -17,7 +17,7 @@ mutant:
   base_commit: ba83271710dffe4162a49724635399cc72cbedcc
   patch: mutation.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx::NotebookContainer native preview layout (metabase#67767) shows the resizable (not full-width) native preview at a medium viewport (900px)"

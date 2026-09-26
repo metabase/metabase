@@ -17,7 +17,7 @@ mutant:
   base_commit: ba83271710dffe4162a49724635399cc72cbedcc
   patch: mutation.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.unit.spec.tsx::ObjectDetail resets navigation state when the query result shrinks (metabase#54317)"

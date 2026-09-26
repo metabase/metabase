@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..2c95df5c680 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -18,7 +18,7 @@ import {
+ // will be rendered without the second tick. However, for ["2022-01-02", "2022-01-03"] ECharts would correctly render two ticks as needed.
+ // The workaround is to add more padding on sides for this corner case.
+ export const getPadding = (intervalsCount: number) => {
+-  if (intervalsCount <= 1) {
++  if (intervalsCount === 1) {
+     return 5 / 6;
+   }
+ 

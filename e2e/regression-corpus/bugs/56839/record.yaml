@@ -13,12 +13,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.unit.spec.tsx::FkTargetPicker should filter options using based on label and description"
   expected_failure: "after typing \"tAbLe 1\", getByText(\"Public.Table 1 → Field A\") finds nothing"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; fix_tests: the e2e sits under describe(`data model > ${area}`) run for area admin and data studio, kept as printed; the fix shipped it in admin/datamodel/datamodel.cy.spec.js; July's isolation-confirmed jest kill is by frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.unit.spec.tsx::FkTargetPicker should filter options using based on label and description (added in #57325 after the fix; after typing \"tAbLe 1\" getByText(\"Public.Table 1 → Field A\") finds nothing), plus DataModel.unit.spec.tsx and DataModelV1.unit.spec.tsx (spec paths only); none shipped with the fix or names the issue, so they aren't fix_tests; the hint is the FkTargetPicker kill; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; fix_tests: the e2e sits under describe(`data model > ${area}`) run for area admin and data studio, kept as printed; the fix shipped it in admin/datamodel/datamodel.cy.spec.js; July's isolation-confirmed jest kill is by frontend/src/metabase/metadata/components/FkTargetPicker/FkTargetPicker.unit.spec.tsx::FkTargetPicker should filter options using based on label and description (added in #57325 after the fix; after typing \"tAbLe 1\" getByText(\"Public.Table 1 → Field A\") finds nothing), plus DataModel.unit.spec.tsx and DataModelV1.unit.spec.tsx (spec paths only); none shipped with the fix or names the issue, so they aren't fix_tests; the hint is the FkTargetPicker kill; fe_be_boundary inferred"

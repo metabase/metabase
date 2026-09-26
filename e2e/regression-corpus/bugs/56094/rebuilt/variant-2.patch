@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/store/selectors.ts b/frontend/src/metabase/query_builder/store/selectors.ts
+index 57379a3f965..fcc746c363d 100644
+--- a/frontend/src/metabase/query_builder/store/selectors.ts
++++ b/frontend/src/metabase/query_builder/store/selectors.ts
+@@ -1049,7 +1049,7 @@ export const getIsVisualized = createSelector(
+       question.display() !== "pivot" &&
+       question.display() !== "list") ||
+       (settings != null &&
+-        (settings["table.pivot"] ||
++        (settings["table.pivot"] &&
+           (question.display() === "table" && settings["table.pivot_column"])))), // last case - pivot_column is set but display is set to table viz (#56094)
+ );
+ 

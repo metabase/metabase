@@ -15,7 +15,7 @@ bug:
   stratum: state
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
   status: pending
@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/api/collection.unit.spec.ts::collectionApi bookmark cache invalidation (metabase#44499) refetches the bookmarks list after archiving a collection"
   expected_failure: "waitFor(() => expect(await countBookmarkRequests()).toBe(2)) times out; the bookmarks list isn't refetched after archiving"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum state: the mutant drops the bookmark list tag invalidation on collection archive/restore; config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness on this branch; bookmark-hidden-when-parent-collection-trashed-test is a later backend parity test naming this issue and checks the API result, not the sidebar cache; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum state: the mutant drops the bookmark list tag invalidation on collection archive/restore; config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness on this branch; bookmark-hidden-when-parent-collection-trashed-test is a later backend parity test naming this issue and checks the API result, not the sidebar cache; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"

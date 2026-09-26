@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue #55984 should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)"
   expected_failure: "expect(H.isScrollableHorizontally($el[0])).to.be.false fails for the completions list"
-notes: "base_commit is the parent of July's CI mutant f4efa50b5de (run 29139254780); CSS-module-only fix, no_witness_layout in July; July's CI run of the e2e passed on this mutant, so the e2e also missed it in headless CI (evidence/e2e-only-batch-wave4.jsonl); expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant f4efa50b5de (run 29139254780); CSS-module-only fix, no_witness_layout in July; July's CI run of the e2e passed on this mutant, so the e2e also missed it in headless CI (evidence/e2e-only-batch-wave4.jsonl); expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

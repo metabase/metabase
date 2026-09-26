@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx::LeafletMap zoom preservation on component update should preserve the user's current zoom on a pure resize (metabase#11211)"
   expected_failure: "expect(setViewSpy).toHaveBeenCalledWith(expect.anything(), 10); Expected: Anything, 10 / Received: [40, -100], 4"
-notes: "base_commit is the parent of July's CI mutant 45a869f303b (run 29139246002); the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 45a869f303b (run 29139246002); the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"

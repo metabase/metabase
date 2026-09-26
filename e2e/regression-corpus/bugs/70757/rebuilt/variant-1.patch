@@ -1,0 +1,27 @@
+diff --git a/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
+index fe703580ea0..d9ab4a8b5f7 100644
+--- a/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
++++ b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
+@@ -8,7 +8,6 @@ import {
+ } from "metabase/common/components/QuestionDownloadWidget";
+ import { useEmbeddingEntityContext } from "metabase/embedding/context";
+ import type { StackProps } from "metabase/ui";
+-import { getComputedSettingsForSeries } from "metabase/viz-core";
+ 
+ import { useSdkQuestionContext } from "../../context";
+ 
+@@ -28,13 +27,7 @@ const DownloadWidgetInner = ({
+   const { withDownloads, parameterValues } = useSdkQuestionContext();
+   const { token } = useEmbeddingEntityContext();
+ 
+-  const visualizationSettings = useMemo(
+-    () =>
+-      getComputedSettingsForSeries([
+-        { card: question.card(), data: result.data },
+-      ]),
+-    [question, result],
+-  );
++  const visualizationSettings = useMemo(() => question.settings(), [question]);
+ 
+   // For Guest Embeds, downloads must honor the active editable filter state
+   // (EMB-1549). The `params` slug-keyed map mirrors what `runQuestionQuerySdk`

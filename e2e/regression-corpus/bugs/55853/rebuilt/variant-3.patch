@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+index 277be58d0df..cba5a984174 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/layout/index.ts
+@@ -85,7 +85,7 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
+     middleValues.push(min + step * i);
+   }
+ 
+-  return [...middleValues, min, max];
++  return [...middleValues, min];
+ };
+ 
+ const getYAxisExtentToMeasure = (

@@ -14,7 +14,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputDate.unit.spec.tsx::TableActionInputDate should fire onChange with the restored date when the value changes (metabase#70647)"
   expected_failure: "expect(onChange).toHaveBeenLastCalledWith(\"2020-02-15\") fails and expect(onEnter).not.toHaveBeenCalled() fails; the change goes to onEnter"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant routes the date input's change to the onEnter callback instead of onChange/onBlur; the hole-closer test (MATRIX.md, landed on this branch with the e2e culled) resolves only at HEAD; expected_failure from config.yaml hole_closed notes and the test's assertions; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant routes the date input's change to the onEnter callback instead of onChange/onBlur; the hole-closer test (MATRIX.md, landed on this branch with the e2e culled) resolves only at HEAD; expected_failure from config.yaml hole_closed notes and the test's assertions; fe_be_boundary inferred"

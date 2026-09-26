@@ -16,9 +16,9 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "e2e/test/scenarios/question-reproductions/reproductions-4.cy.spec.js::issue 45359 loads app fonts correctly (metabase#45359)"
   expected_failure: null
-notes: "Mutant mismatch: the issue is a CI test-environment font problem and e52eaee0ba3 (#45274) is a repro PR whose only non-test change renames the FormFileInput storybook file, so reversing it just re-adds FormFileInput.stores.tsx and changes no product behaviour; no product fix for this issue exists in the data, so there is nothing to rebuild from and retiring is likely; GitHub lists no closing PR; the e2e repro was tagged @skip, never ran, and was deleted from master in #81011 (15ef5d5b973), so its id resolves only at 56879decb0a and HEAD; odc, module (the storybook file's folder) and lowest_level are guesses from the issue (the only observable is document.fonts in a real browser, and MATRIX.md classes it unit-untestable); fe_be_boundary inferred; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug"
+notes: "stale because the patch reintroduces a different behaviour from the statement and needs rebuilding (checked 2026-09-25); Mutant mismatch: the issue is a CI test-environment font problem and e52eaee0ba3 (#45274) is a repro PR whose only non-test change renames the FormFileInput storybook file, so reversing it just re-adds FormFileInput.stores.tsx and changes no product behaviour; no product fix for this issue exists in the data, so there is nothing to rebuild from and retiring is likely; GitHub lists no closing PR; the e2e repro was tagged @skip, never ran, and was deleted from master in #81011 (15ef5d5b973), so its id resolves only at 56879decb0a and HEAD; odc, module (the storybook file's folder) and lowest_level are guesses from the issue (the only observable is document.fonts in a real browser, and MATRIX.md classes it unit-untestable); fe_be_boundary inferred; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug"

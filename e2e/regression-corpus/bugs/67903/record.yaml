@@ -16,7 +16,7 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue #67903 should not show preview table headers on top of other elements (metabase#67903)"

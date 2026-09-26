@@ -20,7 +20,7 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect using router when using a relative URL with leading slash: \"%s\""

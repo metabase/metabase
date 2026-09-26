@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/components/expressions/Editor/Editor.witness.unit.spec.tsx::Editor (metabase#63180 witness) treats a shortcut-generated clause (clause !== initialClause) as unsaved changes, guarding outside clicks"
   expected_failure: "findByText(\"Keep editing your custom expression?\") fails; the confirmation never renders"
-notes: "base_commit is the parent of July's CI mutant 2137d681d52 (run 29135056633); July contradicts itself: E2E-ONLY.md lists 63180 among e2es that missed their bug, but evidence/e2e-only-batch-wave3.jsonl records the e2e run failing on the mutant (caught); fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 2137d681d52 (run 29135056633); July contradicts itself: E2E-ONLY.md lists 63180 among e2es that missed their bug, but evidence/e2e-only-batch-wave3.jsonl records the e2e run failing on the mutant (caught); fe_be_boundary inferred"

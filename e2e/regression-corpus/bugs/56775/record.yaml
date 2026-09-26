@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/query_builder/actions/url.unit.spec.ts::QB Actions > updateUrl (navigation producer contract) carries the unwrapped model card (not the composed ad-hoc card) for an ad-hoc model (metabase#56775)"
   expected_failure: "expect(newState.card.dataset_query).toEqual(modelCard.dataset_query); received the composed query with stages [{source-card: 1}]"
-notes: "base_commit is the parent of July's CI mutant ea78b1ed4c4 (run 29139228724); left out \"issue 55486 should render the correct query after using the back button in a model (metabase#56775)\", which reuses this title under issue 55486's describe and tests editor-tab back/forward, a different bug; the fix's logic moved from navigation.ts to url.ts (e2eonly-report.md §1); witness landed and both e2e blocks culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant ea78b1ed4c4 (run 29139228724); left out \"issue 55486 should render the correct query after using the back button in a model (metabase#56775)\", which reuses this title under issue 55486's describe and tests editor-tab back/forward, a different bug; the fix's logic moved from navigation.ts to url.ts (e2eonly-report.md §1); witness landed and both e2e blocks culled on this branch; fe_be_boundary inferred"

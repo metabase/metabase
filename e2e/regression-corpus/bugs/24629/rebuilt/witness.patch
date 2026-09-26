@@ -1,0 +1,39 @@
+diff --git a/frontend/src/metabase/notifications/channels/RecipientPicker.unit.spec.tsx b/frontend/src/metabase/notifications/channels/RecipientPicker.unit.spec.tsx
+index 6d44da48e60..712ea9e65ba 100644
+--- a/frontend/src/metabase/notifications/channels/RecipientPicker.unit.spec.tsx
++++ b/frontend/src/metabase/notifications/channels/RecipientPicker.unit.spec.tsx
+@@ -108,6 +108,34 @@ describe("recipient picker", () => {
+       ]);
+     });
+ 
++    it("should not add the highlighted user when Escape is pressed (metabase#24629)", async () => {
++      const onRecipientsChange = jest.fn();
++
++      renderWithProviders(
++        <RecipientPicker
++          recipients={[TEST_USERS[0]]}
++          users={TEST_USERS}
++          onRecipientsChange={onRecipientsChange}
++          invalidRecipientText={() => ""}
++        />,
++      );
++
++      await userEvent.type(await screen.findByRole("combobox"), "Na");
++      expect(
++        await screen.findByRole("option", { name: /Nancy/ }),
++      ).toBeInTheDocument();
++
++      await userEvent.keyboard("{Escape}");
++
++      expect(onRecipientsChange).not.toHaveBeenCalledWith([
++        TEST_USERS[0],
++        TEST_USERS[5],
++      ]);
++      expect(
++        screen.queryByRole("option", { name: /Nancy/ }),
++      ).not.toBeInTheDocument();
++    });
++
+     it("should support adding emails", async () => {
+       const onRecipientsChange = jest.fn();
+ 

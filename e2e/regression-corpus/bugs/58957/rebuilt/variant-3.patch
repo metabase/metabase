@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/redux/downloads.ts b/frontend/src/metabase/redux/downloads.ts
+index 90a1c09643e..a7b84fcf200 100644
+--- a/frontend/src/metabase/redux/downloads.ts
++++ b/frontend/src/metabase/redux/downloads.ts
+@@ -383,7 +383,7 @@ const getEmbedQuestionParams = (
+   // editable filter state. Fall back to the params provided by the caller.
+   // Static embed iframes encode filter values in the iframe URL, so read them
+   // from window.location.search.
+-  const downloadParameters = isEmbeddingSdk()
++  const downloadParameters = !isEmbeddingSdk()
+     ? params
+     : convertSearchParamsToObject(new URLSearchParams(window.location.search));
+ 

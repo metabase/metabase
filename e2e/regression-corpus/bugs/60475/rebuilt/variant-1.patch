@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..0361753b469 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -96,10 +96,6 @@ export const getTicksOptions = (
+       isWithinRange(date) &&
+       date.date() === 1 &&
+       date.month() % largestInterval.count === 0;
+-    maxInterval = getTimeSeriesIntervalDuration({
+-      count: 1,
+-      unit: "day",
+-    });
+   }
+ 
+   // HACK: Similarly to weekly ticks, ECharts does not support quarterly ticks natively.

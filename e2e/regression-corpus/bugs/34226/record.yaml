@@ -18,7 +18,7 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx::SearchBar dismissing search on navigation should not dismiss the search results when the location is replaced (metabase#35009)"

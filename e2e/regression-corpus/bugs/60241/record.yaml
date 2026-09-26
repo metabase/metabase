@@ -14,7 +14,7 @@ bug:
   stratum: state
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/api/user.unit.spec.ts::userApi createUser cache invalidation (metabase#60241) refetches the permissions-group list after creating a user"
   expected_failure: "expect(await countGroupsRequests()).toBe(2) times out; only the initial GET /api/permissions/group happens"
-notes: "base_commit is the parent of July's CI mutant f3e2b67773c (run 29129278672); stratum state: the mutant drops the permissions-group cache invalidation from createUser; the landed witness on this branch is a rewrite of witness.patch (same subscription-and-refetch check, different names), so expected_failure is adapted from the report's \"Expected length: 2, Received length: 1\"; e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant f3e2b67773c (run 29129278672); stratum state: the mutant drops the permissions-group cache invalidation from createUser; the landed witness on this branch is a rewrite of witness.patch (same subscription-and-refetch check, different names), so expected_failure is adapted from the report's \"Expected length: 2, Received length: 1\"; e2e culled on this branch; fe_be_boundary inferred"

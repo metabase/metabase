@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/data-grid/hooks/use-cell-selection.unit.spec.tsx::getCellValues (metabase#67432) copies rows in the table's visual (sorted) order"
   expected_failure: "toEqual([\"Cheetah\", \"Buffalo\", \"Aardvark\"]); Received [\"Aardvark\", \"Buffalo\", \"Cheetah\"]"
-notes: "base_commit is the parent of July's CI mutant 112c47eaab3 (run 29129232840); the witness never landed, so its id comes from witness.patch; it imports getCellValues, which only mutation.patch exports, so it can't run against clean code as captured; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 112c47eaab3 (run 29129232840); the witness never landed, so its id comes from witness.patch; it imports getCellValues, which only mutation.patch exports, so it can't run against clean code as captured; fe_be_boundary inferred"

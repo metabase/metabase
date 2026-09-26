@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/common/components/SaveQuestionForm/util.unit.spec.ts::SaveQuestionForm utils getInitialValues should keep the display name over the query description for a new ad-hoc question (metabase#55631)"
   expected_failure: "expect(result.name).toBe(\"Custom\"); Expected: \"Custom\", Received: \"Table 1\""
-notes: "base_commit is the parent of July's CI mutant a46fad9e656 (run 29135059538); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave3.jsonl); the mutant reverts only the util.ts half of the fix, since the context.tsx half is superseded (e2eonly-report.md §1), which may be why the e2e can't see the flash; also killed by frontend/src/metabase/common/components/SaveQuestionForm/util.unit.spec.ts::SaveQuestionForm utils getInitialValues should return correct initial values for a new question, which predates the fix; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant a46fad9e656 (run 29135059538); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave3.jsonl); the mutant reverts only the util.ts half of the fix, since the context.tsx half is superseded (e2eonly-report.md §1), which may be why the e2e can't see the flash; also killed by frontend/src/metabase/common/components/SaveQuestionForm/util.unit.spec.ts::SaveQuestionForm utils getInitialValues should return correct initial values for a new question, which predates the fix; fe_be_boundary inferred"

@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/query_builder/store/reducer.ts b/frontend/src/metabase/query_builder/store/reducer.ts
+index 3bd08dd101e..1167978b640 100644
+--- a/frontend/src/metabase/query_builder/store/reducer.ts
++++ b/frontend/src/metabase/query_builder/store/reducer.ts
+@@ -297,7 +297,6 @@ const uiControls = createReducer<QueryBuilderUIControls>(
+       }))
+       .addCase(OPEN_QUESTION_INFO, (state) =>
+         setUIControls(state, {
+-          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+           ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+           isShowingQuestionInfoSidebar: true,
+         }),

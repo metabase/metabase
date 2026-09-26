@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..9a921214eb5 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -122,7 +122,7 @@ export const getTicksOptions = (
+   // single-point year domain. Unlike week/month/quarter, the year path had no
+   // boundary guard, so two ticks in the same year both format as that year and
+   // duplicate the label (metabase#63671). Filter to start-of-year ticks only.
+-  if (largestInterval.unit === "year") {
++  if (!isSingleItem && largestInterval.unit === "year") {
+     canRender = (date: Dayjs) =>
+       isWithinRange(date) && date.month() === 0 && date.date() === 1;
+   }

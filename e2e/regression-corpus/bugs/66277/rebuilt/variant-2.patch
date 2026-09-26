@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/value-formatting/date.tsx b/frontend/src/metabase/value-formatting/date.tsx
+index da03c0560f4..35f2d242287 100644
+--- a/frontend/src/metabase/value-formatting/date.tsx
++++ b/frontend/src/metabase/value-formatting/date.tsx
+@@ -810,7 +810,7 @@ export function formatDateToRangeForParameter(
+ 
+ function getEndOfInterval(start: Dayjs, unit: DatetimeUnit | null) {
+   if (unit === "hour" || unit === "minute") {
+-    return start.clone().add(1, unit);
++    return start.clone().endOf(unit);
+   }
+   return start.clone().endOf(unit);
+ }

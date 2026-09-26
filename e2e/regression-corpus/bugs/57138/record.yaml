@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.unit.spec.tsx::CreateOrEditQuestionAlertModal should hide the allowed email domains from non-admins without settings access (metabase#57138)"
   expected_failure: "Unable to find an element with the text: You're only allowed to email alerts to allowed domains"
-notes: "base_commit is the parent of July's CI mutant 3c095d80dcd (run 29139251734); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave4.jsonl); the patch changes both the question alert modal (notifications) and the dashboard subscription sidebar (dashboard), module from the alert modal the e2e and witness exercise; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 3c095d80dcd (run 29139251734); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave4.jsonl); the patch changes both the question alert modal (notifications) and the dashboard subscription sidebar (dashboard), module from the alert modal the e2e and witness exercise; fe_be_boundary inferred"

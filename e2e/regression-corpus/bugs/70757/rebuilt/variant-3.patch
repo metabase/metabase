@@ -1,0 +1,13 @@
+diff --git a/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
+index fe703580ea0..c5c2b221cf5 100644
+--- a/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
++++ b/frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx
+@@ -33,7 +33,7 @@ const DownloadWidgetInner = ({
+       getComputedSettingsForSeries([
+         { card: question.card(), data: result.data },
+       ]),
+-    [question, result],
++    [question],
+   );
+ 
+   // For Guest Embeds, downloads must honor the active editable filter state

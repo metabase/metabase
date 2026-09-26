@@ -15,7 +15,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.unit.spec.tsx::RemappingPicker (metabase#62626) does not fetch field values when display value is not 'custom' and the dropdown is closed"
   expected_failure: "expect(fieldValuesCalls()).toHaveLength(0); Expected length: 0, Received length: 1"
-notes: "base_commit is the parent of July's CI mutant c6cc4cee3a3 (run 29139261109); the e2e sits in a describe titled with a template (${area} at 8317274709c, %s at the July base), kept as list-tests prints it; the positive-control jest test passes on the mutant; witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant c6cc4cee3a3 (run 29139261109); the e2e sits in a describe titled with a template (${area} at 8317274709c, %s at the July base), kept as list-tests prints it; the positive-control jest test passes on the mutant; witness landed and e2e culled on this branch; fe_be_boundary inferred"

@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.unit.spec.ts::BreakoutColumnList/util getBreakoutListItem (metabase#57697) should not include the binning strategy in the display name of a binned breakout column"
   expected_failure: "expect(item?.displayName).toBe(\"Price\"); Received: \"Price: Auto binned\""
-notes: "base_commit is the parent of July's CI mutant 1945f3daf8f (run 29135042976); the e2e title has a double space before \"(metabase#57697)\", kept as written; the e2e moved from reproductions-3 to reproductions-4 after the fix; witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 1945f3daf8f (run 29135042976); the e2e title has a double space before \"(metabase#57697)\", kept as written; the e2e moved from reproductions-3 to reproductions-4 after the fix; witness landed and e2e culled on this branch; fe_be_boundary inferred"

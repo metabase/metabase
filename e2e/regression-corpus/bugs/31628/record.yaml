@@ -28,7 +28,7 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/components/ScalarValue/utils.unit.spec.ts::findSize returns the min size if text cannot fit into the target height"

@@ -1,0 +1,14 @@
+diff --git a/src/metabase/revisions/impl/dashboard.clj b/src/metabase/revisions/impl/dashboard.clj
+index 71f6615be0e..58f5308482c 100644
+--- a/src/metabase/revisions/impl/dashboard.clj
++++ b/src/metabase/revisions/impl/dashboard.clj
+@@ -92,8 +92,7 @@
+ (defmethod revision/revert-to-revision! :model/Dashboard
+   [model dashboard-id user-id serialized-dashboard]
+   ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
+-  (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
+-        serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
++  (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))]
+     (queries/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
+     ;; Update the dashboard description / name / permissions
+     ((get-method revision/revert-to-revision! :default) model dashboard-id user-id

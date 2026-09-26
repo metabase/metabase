@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
-  test: "frontend/src/metabase/query_builder/selectors.unit.spec.ts::getIsVisualized should be true when display is table and only `table.pivot_column` is set (metabase#56094)"
-  expected_failure: "expect(getIsVisualized.resultFunc(question, settings)).toBeTruthy(); Received: undefined"
-notes: "mutation.patch also carries an unrelated hunk exporting getTimeseriesDataInterval, from the agent worktree's divergent base; July skipped the CI e2e run because the patch didn't apply to master (E2E-ONLY.md caveats), so base_commit is unrecorded; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); the fix's QuestionDisplayToggle change only added a test id; witness landed and e2e culled on this branch; fe_be_boundary inferred"
+  test: "frontend/src/metabase/query_builder/store/selectors.unit.spec.ts::getIsVisualized should stay truthy when an implicit pivot table is switched to the raw data view (metabase#56094)"
+  expected_failure: "expect(received).toBeTruthy() Received: false at selectors.unit.spec.ts:522 expect(getIsVisualized(state)).toBeTruthy()"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at an unrecorded base commit; mutation.patch also carries an unrelated hunk exporting getTimeseriesDataInterval, from the agent worktree's divergent base; July skipped the CI e2e run because the patch didn't apply to master (E2E-ONLY.md caveats), so base_commit is unrecorded; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); the fix's QuestionDisplayToggle change only added a test id; witness landed and e2e culled on this branch; fe_be_boundary inferred"

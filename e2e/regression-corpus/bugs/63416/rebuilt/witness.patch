@@ -1,0 +1,114 @@
+diff --git a/frontend/src/metabase/dashboard/components/DashCard/Dashcard.unit.spec.tsx b/frontend/src/metabase/dashboard/components/DashCard/Dashcard.unit.spec.tsx
+index e8e7f452ffd..e765803d4e5 100644
+--- a/frontend/src/metabase/dashboard/components/DashCard/Dashcard.unit.spec.tsx
++++ b/frontend/src/metabase/dashboard/components/DashCard/Dashcard.unit.spec.tsx
+@@ -547,6 +547,109 @@ describe("DashCard", () => {
+     ]);
+   });
+ 
++  it("should include dashboard filters when downloading a single-source visualizer dashcard as csv (metabase#63416)", async () => {
++    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
++    const sourceCard = createMockCard({
++      id: 63,
++      name: "63416 Question",
++      display: "line",
++    });
++    const dashboardParameter = createMockParameter({
++      id: "5aefc726",
++      name: "Text",
++      slug: "string",
++      type: "string/=",
++      value: ["Doohickey"],
++      target: [
++        "dimension",
++        ["field", "CATEGORY", { "base-type": "type/Text" }],
++        { "stage-number": 0 },
++      ],
++    });
++    const visualizerDashcard = createMockDashboardCard({
++      card_id: sourceCard.id,
++      card: sourceCard,
++      visualization_settings: {
++        visualization: {
++          display: "line",
++          columnValuesMapping: {
++            COLUMN_1: [
++              {
++                sourceId: `card:${sourceCard.id}`,
++                originalName: "CREATED_AT",
++                name: "COLUMN_1",
++              },
++            ],
++            COLUMN_2: [
++              {
++                sourceId: `card:${sourceCard.id}`,
++                originalName: "count",
++                name: "COLUMN_2",
++              },
++            ],
++          },
++          settings: {
++            "graph.dimensions": ["COLUMN_1"],
++            "graph.metrics": ["COLUMN_2"],
++          },
++        },
++      },
++    });
++    const dashboard = createMockDashboard({
++      dashcards: [visualizerDashcard],
++      parameters: [dashboardParameter],
++    });
++    const downloadPath = `path:/api/dashboard/${dashboard.id}/dashcard/${visualizerDashcard.id}/card/${sourceCard.id}/query/csv`;
++    fetchMock.post(downloadPath, {
++      status: 200,
++      body: "",
++      headers: {
++        "Content-Disposition": 'attachment; filename="results.csv"',
++      },
++    });
++
++    setup({
++      dashboard,
++      dashcard: visualizerDashcard,
++      dashcardData: {
++        [visualizerDashcard.id]: {
++          [sourceCard.id]: createMockDataset({
++            data: {
++              cols: [
++                createMockColumn({
++                  name: "CREATED_AT",
++                  display_name: "Created At",
++                }),
++                createMockColumn({ name: "count", display_name: "Count" }),
++              ],
++              rows: [["2027-01-01T00:00:00Z", 42]],
++            },
++            json_query: {
++              ...createMockStructuredDatasetQuery(),
++              parameters: [dashboardParameter],
++            },
++            status: "completed",
++          }),
++        },
++      },
++    });
++
++    await user.click(getIcon("ellipsis"));
++    await user.click(await screen.findByText("Download results"));
++    await user.click(await screen.findByRole("radio", { name: ".csv" }));
++    await user.click(screen.getByTestId("download-results-button"));
++
++    await waitFor(() => {
++      expect(fetchMock.callHistory.calls(downloadPath)).toHaveLength(1);
++    });
++
++    const call = fetchMock.callHistory.lastCall(downloadPath);
++    const body = new URLSearchParams(await call?.request?.text());
++    expect(JSON.parse(body.get("parameters") ?? "[]")).toEqual([
++      dashboardParameter,
++    ]);
++  });
++
+   describe("visualizer dashcard download permissions", () => {
+     const sourceCard = createMockCard({
+       id: 42,

@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts::setOrUnsetParameterValues (metabase#59049) should not reset a parameter that already matches when only partially equal"
   expected_failure: "expect(byId[\"1\"]).toBe(\"Gadget\"); Expected: \"Gadget\", Received: null"
-notes: "base_commit is the parent of July's CI mutant 888a17642f2 (run 29129274064); the witness never landed on this branch, so its id comes from witness.patch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 888a17642f2 (run 29129274064); the witness never landed on this branch, so its id comes from witness.patch; fe_be_boundary inferred"

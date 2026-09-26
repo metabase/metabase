@@ -13,12 +13,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts"
   expected_failure: "number parameters number/between should deserialize [\"9007199254740993\", \"9007199254740995\"]: expected [9007199254740993n, 9007199254740995n], received the raw strings"
-notes: "base_commit is the parent of July's CI mutant d591473b74e (run 29125382789); the fix's array branch in parseParameterValueForNumber survives as string coercion in deserializeNumberParameterValue; the mutant leaves URL values as strings instead of reproducing the original crash, and July's CI run of the e2e passed on it (E2E-ORACLE-PILOT.md: e2e vacuous); hint.test is a spec path because the oracle is an it.each case, named in expected_failure; July's oracle (34 failing number-parameter cases) was added later in #62614, didn't ship with the fix and isn't specific to this bug, so it's not in fix_tests; the fix's shipped jest spec FieldValuesWidget.unit.spec.js and its virtual-field code were deleted in #56739 (see reconstruction-report.md §5); fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, b8673198cd4c3aa9f70782f41526dd009f27b933; base_commit is the parent of July's CI mutant d591473b74e (run 29125382789); the fix's array branch in parseParameterValueForNumber survives as string coercion in deserializeNumberParameterValue; the mutant leaves URL values as strings instead of reproducing the original crash, and July's CI run of the e2e passed on it (E2E-ORACLE-PILOT.md: e2e vacuous); hint.test is a spec path because the oracle is an it.each case, named in expected_failure; July's oracle (34 failing number-parameter cases) was added later in #62614, didn't ship with the fix and isn't specific to this bug, so it's not in fix_tests; the fix's shipped jest spec FieldValuesWidget.unit.spec.js and its virtual-field code were deleted in #56739 (see reconstruction-report.md §5); fe_be_boundary inferred"

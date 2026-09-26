@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "metabase.legacy-mbql.schema-test/emptyable-filter-test"
   expected_failure: "the 6 string/string-expression cases (is-empty/not-empty of \"\", \"A\", [:ltrim \"A\"]) fail Malli validation; the 4 Field cases pass"
-notes: "no reconstruction report for this entry, only config.yaml notes; the e2e shipped in custom-column-reproductions.cy.spec.js and now lives in custom-column-reproductions-2; is-empty-not-empty-accept-string-expressions-test is a later backend parity test naming this issue"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; no reconstruction report for this entry, only config.yaml notes; the e2e shipped in custom-column-reproductions.cy.spec.js and now lives in custom-column-reproductions-2; is-empty-not-empty-accept-string-expressions-test is a later backend parity test naming this issue"

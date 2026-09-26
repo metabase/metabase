@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+index fe7b83b539e..f71f63cd2c2 100644
+--- a/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
++++ b/frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.ts
+@@ -91,7 +91,7 @@ export const getTicksOptions = (
+   // Setting a fixed minInterval causes ECharts to skip months because some months
+   // (like February with 28 days) are shorter than others (31 days).
+   // Instead, we force ECharts to generate daily ticks and filter to month starts.
+-  if (largestInterval.unit === "month") {
++  if (interval.unit === "month") {
+     canRender = (date: Dayjs) =>
+       isWithinRange(date) &&
+       date.date() === 1 &&

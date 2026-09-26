@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/querying/common/components/DatePicker/SpecificDatePicker/SingleDatePicker/SingleDatePicker.unit.spec.tsx::SingleDatePicker should be able to add time"
   expected_failure: "onChange toHaveBeenLastCalledWith({ date: DATE, hasTime: true }); received hasTime: false"
-notes: "the fix reworked a dozen DatePicker specs to the new { date, hasTime } value shape; only the discriminating one is listed; its filter.unit.spec.ts cases are gone since the logic moved into src/metabase/lib/fe_util.cljc (see reconstruction-report.md §5); the SingleDatePicker spec moved from querying/components to querying/common/components; date-vs-datetime-equality-filter-test is a later backend parity test naming this issue; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix reworked a dozen DatePicker specs to the new { date, hasTime } value shape; only the discriminating one is listed; its filter.unit.spec.ts cases are gone since the logic moved into src/metabase/lib/fe_util.cljc (see reconstruction-report.md §5); the SingleDatePicker spec moved from querying/components to querying/common/components; date-vs-datetime-equality-filter-test is a later backend parity test naming this issue; fe_be_boundary inferred"

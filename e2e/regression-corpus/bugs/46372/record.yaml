@@ -16,7 +16,7 @@ mutant:
   base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
   patch: inverse.patch
   method: inverse
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 46372 should not show a scrollbar when auto-connecting a dashcard filter (metabase#46372)"

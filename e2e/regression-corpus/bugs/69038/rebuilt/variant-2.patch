@@ -1,0 +1,25 @@
+diff --git a/frontend/src/metabase/visualizer/selectors.ts b/frontend/src/metabase/visualizer/selectors.ts
+index 52237674705..7d4e65c9099 100644
+--- a/frontend/src/metabase/visualizer/selectors.ts
++++ b/frontend/src/metabase/visualizer/selectors.ts
+@@ -11,7 +11,7 @@ import {
+   isCartesianChart,
+ } from "metabase/viz-core";
+ import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+-import type { DatasetData, RawSeries } from "metabase-types/api";
++import type { Card, DatasetData, RawSeries } from "metabase-types/api";
+ 
+ import {
+   createDataSource,
+@@ -251,9 +251,9 @@ export const getTabularPreviewSeries = createSelector(
+         ...rest,
+         card: {
+           display: "table",
+-          dataset_query: STRUCTURED_QUERY_TEMPLATE,
++          dataset_query: {},
+           visualization_settings: {},
+-        },
++        } as Card,
+       },
+     ] satisfies RawSeries;
+   },

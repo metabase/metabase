@@ -13,7 +13,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: inverse.patch
   method: inverse
   status: pending
@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 55673 should be able to close a header popover using Escape (metabase#55673)"
   expected_failure: "cy.focused().should(\"have.attr\", \"data-testid\", \"click-actions-sort-control-sort.ascending\") fails, so Escape never reaches the popover"
-notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant drops the trapFocus prop from the click-actions popover; July records an fe_unit hole and never ran the e2e leg; expected_failure inferred from the e2e's assertions; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant drops the trapFocus prop from the click-actions popover; July records an fe_unit hole and never ran the e2e leg; expected_failure inferred from the e2e's assertions; fe_be_boundary inferred"

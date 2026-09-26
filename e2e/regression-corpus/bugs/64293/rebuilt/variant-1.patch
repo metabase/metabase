@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+index fc35ef3ff12..f1baabc329f 100644
+--- a/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
++++ b/frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.tsx
+@@ -53,7 +53,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
+     !isNativeEditorOpen &&
+     (result?.error == null ||
+       isDirtyStateShownForError ||
+-      result?.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
++      result?.error === SERVER_ERROR_TYPES.missingRequiredParameter);
+ 
+   return (
+     <Box pos="relative" h="100%" className={cx(className, S.root)}>

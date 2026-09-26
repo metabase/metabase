@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
+index d3446e1faf3..282578e2747 100644
+--- a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
++++ b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
+@@ -259,7 +259,7 @@ export function useMultiAutocomplete({
+     }
+     if (event.key === "Escape" && combobox.dropdownOpened) {
+       event.stopImmediatePropagation();
+-      combobox.closeDropdown();
++      combobox.clickSelectedOption();
+     }
+   };
+ 

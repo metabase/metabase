@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setOrUnsetParameterValues should unset a non-primitive value that structurally equals the current value (metabase#56716)"
   expected_failure: "expect(state.dashboard.parameterValues[\"123\"]).toBe(null); Expected: null, Received: [4.6]"
-notes: "base_commit is the parent of July's CI mutant 45514935c55 (run 29139234259); witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, 6188ef843f96682cd85598d2c27ccf043365ac5f; base_commit is the parent of July's CI mutant 45514935c55 (run 29139234259); witness landed and e2e culled on this branch; fe_be_boundary inferred"

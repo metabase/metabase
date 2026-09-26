@@ -13,12 +13,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: unknown
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/parameters/components/widgets/TextWidget/TextWidget.unit.spec.tsx::TextWidget should keep zero value when pressing enter"
   expected_failure: "expect(element).toHaveValue(\"0\"); Expected 0, Received \"\""
-notes: "the fix's own jest edit was an import rename (see reconstruction-report.md §5), so no unit test shipped with it; July's killing tests are general: \"TextWidget should keep zero value when pressing enter\" predates the fix (#27342) and \"TextWidget should not call setValue twice when pressing enter\" came later (#64187), so neither is in fix_tests; the hint points at the first; the component moved from metabase/components/TextWidget to parameters/components/widgets/TextWidget; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix's own jest edit was an import rename (see reconstruction-report.md §5), so no unit test shipped with it; July's killing tests are general: \"TextWidget should keep zero value when pressing enter\" predates the fix (#27342) and \"TextWidget should not call setValue twice when pressing enter\" came later (#64187), so neither is in fix_tests; the hint points at the first; the component moved from metabase/components/TextWidget to parameters/components/widgets/TextWidget; fe_be_boundary inferred"

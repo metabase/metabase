@@ -15,12 +15,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers Should accurately describe loading state should be complete when the dashboard doesn't have cards to load"
   expected_failure: "expect(received).toEqual(expected): loadingStatus expected \"complete\", received \"idle\""
-notes: "the patch reverts only the reducer hunk (an empty dashboard's loading never completes); the fix's DashboardApp/context changes, which only the e2e covers, stay in place, so whether the double-add itself comes back is unverified (see reconstruction-report.md §4-5); the jest test shipped in reducers.unit.spec.js, renamed by the fix from \"should stay idle with no cards to load\""
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the patch reverts only the reducer hunk (an empty dashboard's loading never completes); the fix's DashboardApp/context changes, which only the e2e covers, stay in place, so whether the double-add itself comes back is unverified (see reconstruction-report.md §4-5); the jest test shipped in reducers.unit.spec.js, renamed by the fix from \"should stay idle with no cards to load\""

@@ -14,12 +14,12 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
-  patch: mutation.patch
+  base_commit: "8317274709c"
+  patch: rebuilt/mutant.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/visualizations/Map/Map.unit.spec.ts::Map viz settings (metabase#40999) should expose the 'Pin type' setting as an editable widget"
-  expected_failure: "expect(widgets.map((w) => w.id)).toContain(\"map.pin_type\"); Received array []"
-notes: "base_commit is the parent of July's CI mutant 02f57954179 (run 29135027787); stratum wiring: the mutant drops the setting's widget, so the settings sidebar never registers the Pin type control; the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"
+  expected_failure: "expect(received).toContain(expected) // indexOf; Expected value: \"map.pin_type\"; Received array: []"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 02f57954179 (run 29135027787); stratum wiring: the mutant drops the setting's widget, so the settings sidebar never registers the Pin type control; the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"

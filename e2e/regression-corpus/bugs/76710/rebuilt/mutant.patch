@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/redux/tables.ts b/frontend/src/metabase/redux/tables.ts
+index 6857eaf401c..c81fb62e3ea 100644
+--- a/frontend/src/metabase/redux/tables.ts
++++ b/frontend/src/metabase/redux/tables.ts
+@@ -77,7 +77,7 @@ export const fetchTableMetadataAndForeignKeys =
+     const fields = getTableFields(state, id);
+     const storeFields = getShallowFields(state, UNFILTERED);
+ 
+-    await Promise.allSettled([
++    await Promise.all([
+       ...getForeignKeyTableIds(fields, storeFields).map((tableId) =>
+         dispatch(fetchTableMetadata({ id: tableId }, options)),
+       ),

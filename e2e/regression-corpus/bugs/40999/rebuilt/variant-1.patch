@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx b/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
+index 55ad9834606..e483021b9da 100644
+--- a/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
++++ b/frontend/src/metabase/visualizations/visualizations/Map/definition.tsx
+@@ -134,7 +134,7 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
+               ? "tiles"
+               : "markers",
+       getHidden: (_series, vizSettings) =>
+-        !isPinMapType(vizSettings["map.type"]),
++        isPinMapType(vizSettings["map.type"]),
+     },
+     ...fieldSetting("map.latitude_column", {
+       get title() {

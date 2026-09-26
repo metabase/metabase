@@ -14,7 +14,7 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.unit.spec.tsx::SnippetSidebar shows a back button in a top-level snippet folder (metabase#63405)"
   expected_failure: "expect(within(header).queryByLabelText(\"chevronleft icon\")).toBeInTheDocument(); Received: null"
-notes: "base_commit is the parent of July's CI mutant 1d0e0ca9aa3 (run 29129253968); the witness never landed on this branch, so its id comes from witness.patch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); mentions of base_commit below refer to July's, ba83271710dffe4162a49724635399cc72cbedcc; base_commit is the parent of July's CI mutant 1d0e0ca9aa3 (run 29129253968); the witness never landed on this branch, so its id comes from witness.patch; fe_be_boundary inferred"

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/redux/downloads.ts b/frontend/src/metabase/redux/downloads.ts
+index 90a1c09643e..894890082bf 100644
+--- a/frontend/src/metabase/redux/downloads.ts
++++ b/frontend/src/metabase/redux/downloads.ts
+@@ -363,7 +363,7 @@ const convertSearchParamsToObject = (params: URLSearchParams) => {
+   for (const [key, value] of params.entries()) {
+     if (object[key]) {
+       // Unjustified type cast. FIXME
+-      object[key] = ([] as string[]).concat(object[key], value);
++      object[key] = value;
+     } else {
+       object[key] = value;
+     }

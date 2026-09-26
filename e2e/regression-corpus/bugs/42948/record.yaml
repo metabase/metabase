@@ -17,7 +17,7 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/visualizations/visualizations/SmartScalar/tests/SmartScalar.unit.spec.tsx::SmartScalar should not error when latest value is null (metabase#42948)"

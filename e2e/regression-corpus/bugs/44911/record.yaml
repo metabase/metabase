@@ -14,7 +14,7 @@ bug:
   stratum: wiring
   fe_be_boundary: false
 mutant:
-  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  base_commit: "8317274709c"
   patch: mutation.patch
   method: reconstructed
   status: pending
@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.unit.spec.tsx::ArchivedBulkActions does not clear selection when the delete confirmation is canceled (metabase#44911)"
   expected_failure: "expect(clearSelected).not.toHaveBeenCalled(); Expected 0 calls, received 1"
-notes: "base_commit is the parent of July's CI mutant 05c4f154764 (run 29133233883), whose diff differs from mutation.patch; stratum wiring: the mutant hands the move modal the clearing handler as onClose and adds clearSelected to the delete dialog's close handler; July's CI e2e run used a mutant with only the CollectionBulkActions hunk, and mutation.patch was recaptured later with the ArchivedBulkActions hunk, which the witness covers; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); the witness covers only the delete-cancel path (e2eonly-report.md §4); witness landed and e2e culled on this branch; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies only with git apply --3way (checked 2026-09-25); mentions of base_commit below refer to July's, 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 05c4f154764 (run 29133233883), whose diff differs from mutation.patch; stratum wiring: the mutant hands the move modal the clearing handler as onClose and adds clearSelected to the delete dialog's close handler; July's CI e2e run used a mutant with only the CollectionBulkActions hunk, and mutation.patch was recaptured later with the ArchivedBulkActions hunk, which the witness covers; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); the witness covers only the delete-cancel path (e2eonly-report.md §4); witness landed and e2e culled on this branch; fe_be_boundary inferred"

@@ -14,12 +14,12 @@ bug:
   stratum: logic
   fe_be_boundary: false
 mutant:
-  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  base_commit: "8317274709c"
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: live
   retired_reason: null
 hint:
   test: "metabase.request.session-test/as-admin-test"
   expected_failure: "as-admin-test \"as-admin preserves any locale settings\": expected \"fr\", actual nil; expected \"French\", actual \"English\""
-notes: "the issue is a feature request and #49441 spans frontend and backend; July's mutant reverts only the backend part (as-admin keeps the caller's locale), which the e2e checks through the translated \"Count\" label; as-admin-test moved from metabase.server.middleware.session-test and the fix added its locale assertions (see reconstruction-report.md §2); left out \"issue 8490 static embeddings with `#locale` should show translate the loading message (metabase#50182)\", which sits in this issue's describe but tests #50182's loading message (added by #50841)"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was 56879decb0aac2ad61b5bc5737ebd4afc56e5f81; the issue is a feature request and #49441 spans frontend and backend; July's mutant reverts only the backend part (as-admin keeps the caller's locale), which the e2e checks through the translated \"Count\" label; as-admin-test moved from metabase.server.middleware.session-test and the fix added its locale assertions (see reconstruction-report.md §2); left out \"issue 8490 static embeddings with `#locale` should show translate the loading message (metabase#50182)\", which sits in this issue's describe but tests #50182's loading message (added by #50841)"

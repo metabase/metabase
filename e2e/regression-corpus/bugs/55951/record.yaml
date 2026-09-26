@@ -17,7 +17,7 @@ mutant:
   base_commit: unknown
   patch: reconstruction.patch
   method: reconstructed
-  status: pending
+  status: stale
   retired_reason: null
 hint:
   test: "frontend/src/metabase/querying/common/components/DataSelector/DataSelector.unit.spec.tsx::DataSelector should fetch db, schema, and table progressively"
