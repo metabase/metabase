@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { getNullDisplayValue } from "metabase/utils/constants";
@@ -137,7 +137,7 @@ function getTimeEnabledOptionsForUnit(
   }
 
   if (options.length === 2) {
-    options[1].name = t`On`;
+    options[1].name = c("option is On; as opposed to Off").t`On`;
   }
 
   return options;
