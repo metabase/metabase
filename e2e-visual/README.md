@@ -82,4 +82,5 @@ VISUAL_SNAPSHOT_DIR=e2e-visual/scratch bun run test-visual
 ## Other settings
 
 - `VISUAL_WORKERS` sets the number of workers. The default is 4 on CI and half the CPU cores locally.
+- `VISUAL_PROFILE=1` writes a JSON timeline of each story's boot to `e2e-visual/profile/` (or `VISUAL_PROFILE_DIR`): webpack module evaluation, Storybook's render phases and loaders, the story import, MSW's service worker, font loads and long tasks. `VISUAL_PROFILE=trace` also writes a Chromium performance trace per story, which DevTools can open.
 - The comparison `threshold` and `maxDiffPixelRatio` in `playwright.config.ts` are starting values. Tune them from a stress run on CI.
