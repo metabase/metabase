@@ -9,6 +9,7 @@ import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
+import { getHostReactMajorVersion } from "./host-react-version";
 
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
@@ -37,6 +38,8 @@ export const USAGE_PROBLEM_MESSAGES = {
   // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
   DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
   JWT_EXP_NULL: `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
+  // eslint-disable-next-line no-literal-metabase-strings -- only shown to developers of the host app.
+  REACT_18_DEPRECATED: `This application uses React 18. The Metabase modular embedding SDK will require React 19 in a future release, and this embed will stop working once your Metabase instance is upgraded to it. Please upgrade your application to React 19.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
@@ -49,6 +52,10 @@ export const SDK_INTRODUCTION_DOCS_URL =
   // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
   "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
 
+const SDK_PREREQUISITES_DOCS_URL =
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
+  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#modular-embedding-sdk-prerequisites";
+
 /** Documentation for each kind of SDK usage problems */
 export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   API_KEYS_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
@@ -57,6 +64,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
   DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
   JWT_EXP_NULL: SDK_AUTH_DOCS_URL,
+  REACT_18_DEPRECATED: SDK_PREREQUISITES_DOCS_URL,
 } as const;
 
 /**
@@ -109,6 +117,8 @@ export function getSdkUsageProblem(
       isLocalhost,
       isEnabled,
       session,
+      hostReactMajorVersion: getHostReactMajorVersion(),
+      isEajs: isEmbeddingEajs(),
     })
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
@@ -120,6 +130,16 @@ export function getSdkUsageProblem(
         },
         () => toError("EMBEDDING_SDK_NOT_ENABLED"),
       )
+      // We do not allow using API keys in production.
+      .with({ isApiKey: true, hasTokenFeature: true, isLocalhost: false }, () =>
+        toError("API_KEYS_WITH_LICENSE"),
+      )
+      // The iframe embed renders with the React shipped by Metabase, so the
+      // host app's React version is not the customer's to upgrade there.
+      .with(
+        { hostReactMajorVersion: 18, isLocalhost: true, isEajs: false },
+        () => toWarning("REACT_18_DEPRECATED"),
+      )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
       // API keys are always enabled regardless of the "enable-embedding" setting,
@@ -129,10 +149,6 @@ export function getSdkUsageProblem(
       )
       .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: false }, () =>
         toWarning("API_KEYS_WITHOUT_LICENSE"),
-      )
-      // We do not allow using API keys in production.
-      .with({ isApiKey: true, hasTokenFeature: true }, () =>
-        toError("API_KEYS_WITH_LICENSE"),
       )
       .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
       .otherwise(() => null)
@@ -147,7 +163,7 @@ const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],
 });
 
-const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
+export const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "warning",
   title: getTitle(),

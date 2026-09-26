@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
+import { getHostReactMajorVersion } from "embedding-sdk-bundle/lib/host-react-version";
+import { printUsageProblemToConsole } from "embedding-sdk-bundle/lib/print-usage-problem";
+import { toWarning } from "embedding-sdk-bundle/lib/usage-problem";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import {
@@ -51,4 +55,11 @@ export const useLogVersionInfo = () => {
       );
     }
   }, [allowConsoleLog, sdkPackageVersion, sdkBundleVersion]);
+
+  useEffect(() => {
+    // Localhost already gets this warning from the usage problem banner.
+    if (getHostReactMajorVersion() === 18 && !getIsLocalhost()) {
+      printUsageProblemToConsole(toWarning("REACT_18_DEPRECATED"));
+    }
+  }, []);
 };
