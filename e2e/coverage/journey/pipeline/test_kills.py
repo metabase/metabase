@@ -310,6 +310,15 @@ class Helpers(unittest.TestCase):
         graph = {"barrels": ["index.ts"], "importers": {"a.ts": ["index.ts", "b.ts"], "index.ts": ["c.ts"], "b.ts": ["d.ts"]}}
         self.assertEqual(kills.static_importers(["a.ts"], graph), {"index.ts", "b.ts", "c.ts"})
 
+    def test_importer_summary_lists_the_highest_scored_importers(self):
+        importers = [f"i{n:02}.ts" for n in range(12)]
+        accept = types.SimpleNamespace(graph={"importers": {"a.ts": importers + ["unscored.ts"]}},
+                                       prior={"files": {f: {"score": n / 100} for n, f in enumerate(importers)}})
+        summary = kills.importer_summary(["a.ts"], accept)
+        self.assertEqual({k: summary[k] for k in ("role", "count", "unscored", "max")},
+                         {"role": "information only", "count": 13, "unscored": 1, "max": 0.11})
+        self.assertEqual(list(summary["highest"].items()), [(f"i{n:02}.ts", n / 100) for n in range(11, 1, -1)])
+
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
 class Verdicts(unittest.TestCase):
@@ -518,7 +527,7 @@ class Accepted(unittest.TestCase):
     def test_the_cap_accepts_the_lowest_priors_first(self):
         self.assertEqual(self.accepted(self.result), {UNIQUE, TWIN_MYSQL})
         self.assertEqual(self.rows[UNIQUE]["acceptance"] | {"ci_history": None}, {
-            "prior": {"score": 0.1, "files": {L_UNIQUE["file"]: 0.1}}, "prior_over": "reached code only",
+            "prior": {"score": 0.1, "files": {L_UNIQUE["file"]: 0.1}}, "prior_over": "reached files",
             "sampled": 5, "bound": 0.6, "modules": ["fe:quiet"], "missing": {}, "survivors": [], "outcome": "accepted",
             "ci_history": None,
         })
@@ -564,7 +573,8 @@ class Accepted(unittest.TestCase):
         self.assertEqual(section["modules"]["fe:quiet"],
                          {"accepted": sorted([UNIQUE, TWIN_MYSQL]), "over_cap": [TWIN_POSTGRES], "prior": 0.15})
         self.assertEqual(section["missing"], {"prior": 2, "sampled": 1, "bound": 2, "module": 2})
-        self.assertEqual((section["prior"]["graph"], section["prior"]["over"]), (None, "reached code only"))
+        self.assertEqual({k: section["prior"][k] for k in ("over", "callers", "graph", "importers")},
+                         {"over": "reached files", "callers": None, "graph": None, "importers": None})
         self.assertEqual(self.result["summary"]["verdicts"], {"keep": 1, "provisional-keep": 1, "delete": 0, "unmeasured": 7, "accepted": 2})
         text = kills.report(self.result)
         self.assertNotIn("\nDelete\n", text)
@@ -605,7 +615,7 @@ class Accepted(unittest.TestCase):
                 self.assertEqual((row["verdict"], a["outcome"], a["survivors"], a["sampled"]),
                                  ("unmeasured", "survivor in sample", ["survivor"], 6))
 
-    def test_static_importers_widen_the_prior_when_the_prior_has_a_graph_file(self):
+    def test_static_importers_are_recorded_and_never_gate(self):
         caller, barrel, app, unscored = (
             f"frontend/src/metabase/{name}" for name in ("caller.tsx", "public/index.ts", "App.tsx", "unscored.tsx"))
         prior = PRIOR | {"files": PRIOR["files"] | {
@@ -619,15 +629,54 @@ class Accepted(unittest.TestCase):
                     json.dump(data, f)
             result = self.evaluate(prior_path=prior_path)
         rows = result["candidates"]
-        self.assertEqual({k: rows[UNIQUE]["acceptance"][k] for k in ("prior", "prior_over", "modules", "outcome")}, {
-            "prior": {"score": 0.3, "files": {L_UNIQUE["file"]: 0.1}, "callers": {caller: 0.3}},
-            "prior_over": "reached code plus static importers", "modules": ["fe:quiet"], "outcome": "accepted",
+        self.assertEqual({k: rows[TWIN_MYSQL]["acceptance"][k] for k in ("prior", "prior_over", "importers", "outcome")}, {
+            "prior": {"score": 0.2, "files": {L_TWIN["file"]: 0.2}}, "prior_over": "reached files",
+            "importers": {"role": "information only", "count": 2, "unscored": 0, "max": 0.9, "highest": {app: 0.9, barrel: 0.1}},
+            "outcome": "accepted",
         })
-        self.assertEqual((rows[TWIN_MYSQL]["acceptance"]["prior"]["callers"], rows[TWIN_MYSQL]["acceptance"]["outcome"]),
-                         ({barrel: 0.1, app: 0.9}, "prior above the maximum"))
-        self.assertEqual(rows[PAIRED]["acceptance"]["missing"]["prior"], f"no score in the prior for {unscored}")
-        self.assertEqual((result["accepted"]["prior"]["graph"], result["accepted"]["prior"]["over"]),
-                         (graph_path, "reached code plus static importers"))
+        self.assertEqual((rows[PAIRED]["acceptance"]["importers"], rows[PAIRED]["acceptance"]["missing"]), (
+            {"role": "information only", "count": 1, "unscored": 1, "max": None, "highest": {}},
+            {"bound": "3/n bounds nothing for n = 3"}))
+
+        def gate(row):
+            a = row.get("acceptance") or {}
+            return row["verdict"], a.get("outcome"), a.get("prior"), a.get("missing")
+
+        self.assertEqual({c: gate(r) for c, r in rows.items()}, {c: gate(r) for c, r in self.rows.items()})
+        self.assertEqual({k: result["accepted"]["prior"][k] for k in ("over", "graph", "importers")},
+                         {"over": "reached files", "graph": graph_path, "importers": "information only"})
+        self.assertIn(f"\n  {TWIN_MYSQL}\n      module fe:quiet, prior 0.2, 4 mutants sampled, bound 0.75\n"
+                      "      2 static importers, highest score 0.9, information only\n", kills.report(result))
+
+    def test_direct_callers_gate_when_given(self):
+        hot, cool = (f"frontend/src/metabase/{name}" for name in ("hot.tsx", "cool.tsx"))
+        prior = PRIOR | {"files": PRIOR["files"] | {hot: prior_entry("fe:hot", 0.9), cool: prior_entry("fe:cool", 0.1)}}
+        callers = {UNIQUE: [hot], TWIN_MYSQL: [cool], TWIN_POSTGRES: []}
+        with tempfile.TemporaryDirectory() as d:
+            prior_path, callers_path, out = (os.path.join(d, name) for name in ("prior.json", "callers.json", "verdicts.json"))
+            for path, data in ((prior_path, prior), (callers_path, callers)):
+                with open(path, "w") as f:
+                    json.dump(data, f)
+            result = self.evaluate(prior_path=prior_path, callers_path=callers_path)
+            subprocess.run(
+                [sys.executable, kills.__file__, "--index", INDEX, "--kills", self.kills_file,
+                 *sum((["--candidates", c] for c in ACCEPT_CANDIDATES), []),
+                 "--min-mutants", str(ACCEPT_MIN_MUTANTS), "--require-strata", "", "--prior", prior_path,
+                 "--callers", callers_path, "--ci-history", self.ci_history_file, "--accept-cap", "2", "--out", out],
+                stdout=subprocess.DEVNULL, check=True,
+            )
+            with open(out) as f:
+                written = json.load(f)
+        rows = result["candidates"]
+        self.assertEqual({c: (rows[c]["acceptance"]["prior"], rows[c]["acceptance"]["outcome"]) for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)}, {
+            UNIQUE: ({"score": 0.9, "files": {L_UNIQUE["file"]: 0.1}, "callers": {hot: 0.9}}, "prior above the maximum"),
+            TWIN_MYSQL: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {cool: 0.1}}, "accepted"),
+            TWIN_POSTGRES: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {}}, "accepted"),
+        })
+        self.assertEqual(rows[UNIT]["acceptance"]["missing"], {"prior": "no entry for it in the callers file"})
+        self.assertEqual((rows[UNIQUE]["acceptance"]["prior_over"], result["accepted"]["prior"]["callers"]),
+                         ("reached files plus direct callers", callers_path))
+        self.assertEqual(written["accepted"], result["accepted"])
 
     def test_a_prior_above_the_maximum_stays_unmeasured(self):
         rows = self.evaluate(max_prior=0.15)["candidates"]

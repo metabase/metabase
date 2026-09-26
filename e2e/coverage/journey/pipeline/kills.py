@@ -43,7 +43,7 @@ because only a baseline mutant run shows whether a candidate that kills nothing 
 An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
 when it has all four of these fields:
   prior    the highest `score` the location prior gives the files of its qualifying mutants' locations,
-           and their static importers when the prior has a graph file
+           and the files of their direct callers when a callers file is given
   sampled  n, the number of its qualifying mutants
   bound    3/n, the rule of three: remaining tests killed all n, so their miss rate there is below 3/n at 95% confidence.
            It is missing while n is 3 or less, where 3/n bounds nothing
@@ -62,13 +62,21 @@ Its graph file sits beside it as `<prior name>-graph.json`:
   {"barrels": [<path>, ...], "importers": {"<path>": [<importing path>, ...]}}
 
 A file's static importers are the files that import it, and through a barrel, the files that import the barrel.
+Each acceptance records a summary of its files' static importers as information only, and they never change its prior.
+
+The callers file is JSON keyed by test id:
+
+  {"<test id>": [<caller path>, ...]}
+
+A candidate's entry lists the files of the direct callers of the functions its qualifying mutants sit in.
+When a callers file is given, a candidate without an entry has no prior.
 
 The CI history is JSON keyed by test id. A candidate's entry is copied onto its acceptance and never decides it.
 
 As a command, it takes the candidates' reached code from a reach index instead of a pipeline run:
 
   python3 kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
-                   [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--ci-history <file>]
+                   [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>]
                    [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
 
 There a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`,
@@ -95,8 +103,10 @@ ACCEPT_CAP = 2
 MAX_PRIOR = 0.5
 ACCEPT_FIELDS = ("prior", "sampled", "bound", "module")
 BOUND_RULE = "3/n, the rule of three: when remaining tests kill all n sampled mutants, their miss rate is below 3/n at 95% confidence"
-PRIOR_REACHED = "reached code only"
-PRIOR_WITH_IMPORTERS = "reached code plus static importers"
+PRIOR_REACHED = "reached files"
+PRIOR_WITH_CALLERS = "reached files plus direct callers"
+IMPORTERS_ROLE = "information only"
+IMPORTERS_LISTED = 10
 COARSE_STRATA = {
     "logic": "logic",
     "intra-frontend-wiring": "wiring",
@@ -366,6 +376,15 @@ def static_importers(files, graph):
     return found - set(files)
 
 
+def importer_summary(files, accept):
+    """How many static importers the files have, how many the prior doesn't score, and the highest-scored of them."""
+    importers = static_importers(files, accept.graph)
+    scores = {f: (accept.prior["files"].get(f) or {}).get("score") for f in importers}
+    scored = sorted(((s, f) for f, s in scores.items() if s is not None), key=lambda x: (-x[0], x[1]))
+    return {"role": IMPORTERS_ROLE, "count": len(importers), "unscored": len(importers) - len(scored),
+            "max": scored[0][0] if scored else None, "highest": {f: s for s, f in scored[:IMPORTERS_LISTED]}}
+
+
 def listed(paths, most=5):
     return ", ".join(paths[:most]) + (f" and {len(paths) - most} more" if len(paths) > most else "")
 
@@ -375,7 +394,7 @@ def acceptance_fields(test_id, evidence, reason, accept):
     n = evidence["sampled"] if evidence else None
     files = sorted(evidence["files"]) if evidence else []
     bound = rule_of_three(n)
-    prior, modules, missing = None, [], {}
+    prior, importers, modules, missing = None, None, [], {}
     if accept.prior is None:
         missing["prior"] = missing["module"] = "no location prior given"
     elif not n:
@@ -384,17 +403,21 @@ def acceptance_fields(test_id, evidence, reason, accept):
         why = "a sampled mutant's location resolves to no file" if evidence["fileless"] else "none of its sampled mutants has a location"
         missing["prior"] = missing["module"] = why
     else:
-        callers = sorted(static_importers(files, accept.graph)) if accept.graph else []
+        callers = sorted(set(accept.callers.get(test_id) or []) - set(files)) if accept.callers is not None else []
         entries = {f: accept.prior["files"].get(f) or {} for f in files + callers}
         unscored = [f for f in files + callers if entries[f].get("score") is None]
         unassigned = [f for f in files if not entries[f].get("module")]
-        if unscored:
+        if accept.callers is not None and test_id not in accept.callers:
+            missing["prior"] = "no entry for it in the callers file"
+        elif unscored:
             missing["prior"] = f"no score in the prior for {listed(unscored)}"
         else:
             prior = {"score": max(entries[f]["score"] for f in files + callers),
                      "files": {f: entries[f]["score"] for f in files}}
-            if accept.graph:
+            if accept.callers is not None:
                 prior["callers"] = {f: entries[f]["score"] for f in callers}
+        if accept.graph:
+            importers = importer_summary(files, accept)
         if unassigned:
             missing["module"] = f"no module in the prior for {listed(unassigned)}"
         else:
@@ -406,7 +429,8 @@ def acceptance_fields(test_id, evidence, reason, accept):
     if bound is None:
         missing["bound"] = f"3/n bounds nothing for n = {n}" if n else "no mutants sampled"
     record = {
-        "prior": prior, "prior_over": PRIOR_WITH_IMPORTERS if accept.graph else PRIOR_REACHED,
+        "prior": prior, "prior_over": accept.prior_over,
+        **({"importers": importers} if accept.graph else {}),
         "sampled": n, "bound": bound, "modules": modules,
         "missing": {f: missing[f] for f in ACCEPT_FIELDS if f in missing},
         "survivors": evidence["survivors"] if evidence else [],
@@ -449,8 +473,8 @@ def accept_unmeasured(tests, out, evidence, accept):
         out[t.key]["verdict"] = "accepted"
 
 
-def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR):
-    prior = graph = graph_path = ci_history = None
+def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None):
+    prior = graph = graph_path = ci_history = callers = None
     if prior_path:
         with open(prior_path) as f:
             prior = json.load(f)
@@ -467,7 +491,12 @@ def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_p
             ci_history = json.load(f)
         if isinstance(ci_history.get("tests"), dict):
             ci_history = ci_history["tests"]
+    if callers_path:
+        with open(callers_path) as f:
+            callers = json.load(f)
     return types.SimpleNamespace(prior=prior, prior_file=prior_path, graph=graph, graph_file=graph_path,
+                                 callers=callers, callers_file=callers_path,
+                                 prior_over=PRIOR_WITH_CALLERS if callers is not None else PRIOR_REACHED,
                                  ci_history=ci_history, ci_history_file=ci_history_path, cap=cap, max_prior=max_prior)
 
 
@@ -486,7 +515,8 @@ def accepted_section(rows, accept):
         "max_prior": accept.max_prior,
         "bound": BOUND_RULE,
         "prior": {"file": accept.prior_file, "base_commit": ((accept.prior or {}).get("meta") or {}).get("base_commit"),
-                  "graph": accept.graph_file, "over": PRIOR_WITH_IMPORTERS if accept.graph else PRIOR_REACHED},
+                  "over": accept.prior_over, "callers": accept.callers_file,
+                  "graph": accept.graph_file, "importers": IMPORTERS_ROLE if accept.graph else None},
         "ci_history": accept.ci_history_file,
         "candidates": {cid: a for cid, a in records.items() if a["outcome"] == "accepted"},
         "modules": dict(sorted(modules.items())),
@@ -576,8 +606,9 @@ def index_reach(index_dir, test_ids, locations, repo=None, sha=None):
 
 
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
-             repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR):
-    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior)
+             repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR,
+             callers_path=None):
+    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
     candidate_ids = list(dict.fromkeys(candidate_ids))
     with open(kills_path) as f:
         raw = json.load(f)
@@ -658,7 +689,8 @@ def accepted_report(a):
         "",
         "Accepted, on a stated risk and not a measured delete",
         f"  location prior {a['prior']['file']}" if a["prior"]["file"] else "  no location prior given",
-        f"  the prior covers {a['prior']['over']}" + (f", from {a['prior']['graph']}" if a["prior"]["graph"] else ""),
+        f"  the prior covers {a['prior']['over']}" + (f", from {a['prior']['callers']}" if a["prior"]["callers"] else ""),
+        *([f"  static importers from {a['prior']['graph']} are {a['prior']['importers']}"] if a["prior"]["graph"] else []),
         f"  at most {a['cap']} per module, lowest prior first, and a prior of at most {a['max_prior']}",
         f"  bound {a['bound']}",
     ]
@@ -667,6 +699,8 @@ def accepted_report(a):
             f"  {cid}",
             f"      module {', '.join(r['modules'])}, prior {r['prior']['score']}, {r['sampled']} mutants sampled, bound {r['bound']}",
         ]
+        if r.get("importers"):
+            lines.append(f"      {r['importers']['count']} static importers, highest score {r['importers']['max']}, {IMPORTERS_ROLE}")
         if r.get("ci_history") is not None:
             lines.append(f"      CI history {json.dumps(r['ci_history'])}")
     over = {m: e["over_cap"] for m, e in a["modules"].items() if e["over_cap"]}
@@ -742,6 +776,7 @@ def main():
     parser.add_argument("--min-mutants", type=int, default=MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
     parser.add_argument("--require-strata", default=REQUIRED_STRATA, help="strata a delete verdict needs among them")
     parser.add_argument("--prior", help="the location prior, which an accepted verdict needs, with its graph file beside it if it has one")
+    parser.add_argument("--callers", help="the files of each candidate's direct callers by test id, which the prior then covers too")
     parser.add_argument("--ci-history", help="CI failure history by test id, recorded on each acceptance")
     parser.add_argument("--accept-cap", type=int, default=ACCEPT_CAP, help="accepted verdicts a module can take")
     parser.add_argument("--max-prior", type=float, default=MAX_PRIOR, help="the highest prior an accepted verdict can have")
@@ -753,7 +788,7 @@ def main():
         parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
     required = [x for x in args.require_strata.split(",") if x]
     result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha,
-                      args.prior, args.ci_history, args.accept_cap, args.max_prior)
+                      args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
     if args.out:
         with open(args.out, "w") as f:
             json.dump(result, f, indent=1)

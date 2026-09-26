@@ -180,8 +180,8 @@ Each test contributes one attempt: the last passing attempt of the main run, els
 
 ```
 python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
-    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--ci-history <file>] [--accept-cap <k>] [--max-prior <x>]
-    [--out <json file>] [--repo <path>] [--sha <commit>]
+    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>] [--accept-cap <k>]
+    [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
 ```
 
 | Option                      | Meaning                                                                                                   |
@@ -192,6 +192,7 @@ python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file
 | `--min-mutants <k>`         | qualifying mutants a delete verdict needs, default 5                                                       |
 | `--require-strata`          | coarse strata a delete verdict needs among them, default `logic,wiring`                                    |
 | `--prior <file>`            | the location prior, which an accepted verdict needs. See [Accepted verdicts](#accepted-verdicts)           |
+| `--callers <file>`          | the files of each candidate's direct callers, keyed by test id. The prior then covers them too. See [Accepted verdicts](#accepted-verdicts) |
 | `--ci-history <file>`       | CI failure history keyed by test id, at the top level or under `tests`. Each candidate's entry is recorded on its acceptance and never decides it |
 | `--accept-cap <k>`          | accepted verdicts one module can take, default 2                                                           |
 | `--max-prior <x>`           | the highest prior an accepted verdict can have, default 0.5                                                |
@@ -223,7 +224,7 @@ An unmeasured candidate that passed in the capture becomes accepted when it has 
 
 | Field     | Meaning                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------- |
-| `prior`   | the highest `score` the location prior gives the files of its qualifying mutants' locations, and their static importers when the prior has a graph file. The index resolves each location to its file |
+| `prior`   | the highest `score` the location prior gives the files of its qualifying mutants' locations, and the files of their direct callers when `--callers` is given. The index resolves each location to its file |
 | `sampled` | n, the number of its qualifying mutants                                                                    |
 | `bound`   | 3/n, the rule of three. Remaining tests killed all n, so their miss rate at those locations is below 3/n at 95% confidence. It's missing while n is 3 or less, where 3/n bounds nothing |
 | `module`  | the location prior's module for each file of its qualifying mutants' locations. The index has no modules, so they come from the prior |
@@ -252,17 +253,27 @@ The location prior is JSON keyed by repo-relative file, with a rollup per module
 
 Only `score` and `module` decide anything. A file missing from the prior, or one without a `score` or a `module`, leaves that field missing.
 
-**Callers:** when the location prior has a graph file beside it, named `<prior name>-graph.json`, the prior also covers the static importers of the reached files. That's the files that import them and, through a barrel, the files that import the barrel. The prior's `callers` holds their scores, and each acceptance's `prior_over` says `reached code plus static importers`. Without a graph file it says `reached code only`. Modules come from the reached files alone.
+Each acceptance's `prior_over` says what the prior covers: `reached files`, or `reached files plus direct callers` with `--callers`. Modules come from the reached files alone.
+
+**Static importers:** when the location prior has a graph file beside it, named `<prior name>-graph.json`, each acceptance records the static importers of its reached files. That's the files that import them and, through a barrel, the files that import the barrel. They're information only and never change the prior, because importing a file isn't calling the function that changed. The record is a summary, since one file can have hundreds of importers: `role` (`information only`), `count`, `unscored` (how many the prior has no score for), the highest score as `max`, and the 10 highest-scored importers in `highest`.
 
 ```
 {"barrels": ["<path>", ...], "importers": {"<path>": ["<importing path>", ...]}}
 ```
 
-Every unmeasured candidate's `acceptance` has the four fields, `prior_over`, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `accepted`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
+**Direct callers:** with `--callers`, the prior also covers the files of the direct callers of the functions a candidate's qualifying mutants sit in. The file is JSON keyed by test id, and nothing produces it yet:
+
+```
+{"<test id>": ["<caller path>", ...]}
+```
+
+The prior's `callers` holds their scores. A candidate without an entry has no prior, and one with an empty list has no direct callers.
+
+Every unmeasured candidate's `acceptance` has the four fields, `prior_over`, `importers` when the prior has a graph file, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `accepted`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
 
 The top-level `accepted` key has:
 
-- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, its `graph` file and what it covers, and the `ci_history` file
+- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, what it covers, the `callers` file, the `graph` file and the `importers` role, and the `ci_history` file
 - `candidates`: each accepted candidate with its `acceptance`
 - `modules`: for each module that accepted a candidate or turned one away at the cap, those candidates and the rollup's `prior`
 - `outcomes`: the number of unmeasured and accepted candidates with each outcome
