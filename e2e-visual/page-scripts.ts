@@ -64,15 +64,6 @@ export function disableAnimations() {
   });
 }
 
-export function clearWebStorage() {
-  // Frames load after the story has started, so clearing in them could wipe what the story stored.
-  if (window !== window.top) {
-    return;
-  }
-  localStorage.clear();
-  sessionStorage.clear();
-}
-
 export function awaitLokiReady() {
   const lokiWindow: LokiWindow = window;
   return lokiWindow.loki?.awaitReady();
