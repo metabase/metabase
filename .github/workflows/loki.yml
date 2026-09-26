@@ -122,9 +122,6 @@ jobs:
     if: ${{ !cancelled() && !inputs.skip-playwright && (inputs.playwright-infra-touched || needs.story-selection.outputs.selection != 'empty') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
-    env:
-      VISUAL_PROFILE_SAMPLE: "\\[(components-buttons-button--compact|components-feedback-alert--default|design-system-colors--default|components-overlays-modal--opened|components-overlays-tooltip--overview|components-parameters-datepicker--specific-between|components-parameters-parametervaluewidget--default|viz-static-viz-piechart--default-settings|viz-static-viz-combochart--bar-linear-x-scale|viz-linechart--line-just-above-y-axis-max|viz-piechart--embedded-question|viz-barchart--short-bars-at-baseline|viz-treemapchart--two-level|viz-table--dashboard-table|datagrid-datagrid--combined-features|app-embed-publicorembeddeddashboardview--light-theme-default|app-embed-publicorembeddeddashboardview-filters--light-theme-text|app-embed-publicorembeddedquestionview--light-theme-default|components-documents--card-embed|app-palette--search|viz-customviz-calendarheatmap-question--light)\\]"
-      VISUAL_PROFILE_TRACE_SAMPLE: "\\[(components-buttons-button--compact|viz-linechart--line-just-above-y-axis-max|app-embed-publicorembeddeddashboardview-filters--light-theme-text)\\]"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
