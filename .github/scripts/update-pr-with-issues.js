@@ -98,6 +98,20 @@ async function httpsRequestWithBackoff(options, data = null, backoffOptions = {}
   }
 }
 
+// Linear identifiers (e.g. GHY-4651) the PR references the same ways Linear links them:
+// branch name prefix, title prefix, or a closing keyword in the body.
+function getLinearIdentifiers({ branch, title, body }) {
+  const ids = [];
+  const branchMatch = (branch || '').match(/^([a-z][a-z0-9]*-\d+)/i);
+  if (branchMatch) ids.push(branchMatch[1]);
+  const titleMatch = (title || '').match(/^\[?([A-Z][A-Z0-9]*-\d+)\b/);
+  if (titleMatch) ids.push(titleMatch[1]);
+  for (const m of (body || '').matchAll(/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):? ([A-Z][A-Z0-9]*-\d+)\b/gi)) {
+    ids.push(m[1]);
+  }
+  return [...new Set(ids.map(id => id.toUpperCase()))];
+}
+
 async function link_issues(github) {
 
   try {
@@ -166,19 +180,49 @@ async function link_issues(github) {
     console.log('Linear API response:');
     console.log(JSON.stringify(linearData) + "\n");
 
-    if (!linearData.data || !linearData.data.attachmentsForURL || linearData.data.attachmentsForURL.nodes.length === 0) {
+    const linearIssues = (linearData.data?.attachmentsForURL?.nodes || []).map(node => node.issue);
+
+    // When the PR was just opened, Linear may not have attached it yet, so the
+    // lookup above comes back empty. Also look up issues the PR names directly.
+    const identifiers = getLinearIdentifiers({
+      branch: process.env.HEAD_REF,
+      title: prInfo.data.title,
+      body: prInfo.data.body
+    });
+    for (const id of identifiers) {
+      if (linearIssues.some(issue => issue.identifier === id)) continue;
+      try {
+        // ponytail: one attempt, no backoff - unknown identifiers error out and retrying them wastes a minute each
+        const res = await httpsRequest({
+          hostname: 'api.linear.app',
+          path: '/graphql',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': linearApiKey
+          }
+        }, JSON.stringify({
+          query: `query($id: String!) { issue(id: $id) { id identifier attachments { nodes {url}}}}`,
+          variables: { id }
+        }));
+        if (res.data?.issue) linearIssues.push(res.data.issue);
+      } catch (err) {
+        console.log(`Could not look up Linear issue ${id}: ${err.message}`);
+      }
+    }
+
+    if (linearIssues.length === 0) {
       console.log('No Linear tasks linked to this PR');
       return;
     } else {
-      console.log(`Found ${linearData.data.attachmentsForURL.nodes.length} linked Linear tasks`);
+      console.log(`Found ${linearIssues.length} linked Linear tasks: ${linearIssues.map(i => i.identifier)}`);
     }
 
 
     // Extract GitHub issue numbers from all attachments in the linked Linear task
     const issueNumbers = [];
-    for (const node of linearData.data.attachmentsForURL.nodes) {
-      console.log(`checking node task: ${JSON.stringify(node)}`)
-      const linearIssue = node.issue;
+    for (const linearIssue of linearIssues) {
+      console.log(`checking task: ${JSON.stringify(linearIssue)}`)
 
       for (const attachment of linearIssue.attachments.nodes) {
         const url = attachment.url;
@@ -238,4 +282,4 @@ async function link_issues(github) {
   }
 }
 
-module.exports = {link_issues};
+module.exports = {link_issues, getLinearIdentifiers};
