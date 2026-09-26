@@ -45,6 +45,32 @@
     (is (= "## Anthropic" (md/heading 2 "Anthropic")))
     (is (= "### `MB_ADMIN_EMAIL`" (md/heading 3 (md/code "MB_ADMIN_EMAIL"))))))
 
+(deftest ^:parallel sentence-case-test
+  (are [expected title] (= expected (md/sentence-case title))
+    "Search Metabase content" "Search Metabase Content"
+    ;; acronyms keep their spelling wherever they fall, whichever convention the title came from
+    "Execute SQL"             "execute sql"
+    "Execute SQL"             "Execute Sql"
+    "Refresh UI credential"   "refresh ui credential"
+    ;; a word that merely contains an acronym is untouched
+    "Validate idea"           "validate idea"))
+
+(deftest ^:parallel escape-liquid-test
+  ;; the docs site runs Liquid over every page before Markdown, so prose that quotes Metabase's template syntax
+  ;; has to be fenced or the site either drops it or refuses the page
+  (are [expected s] (= expected (md/escape-liquid s))
+    "Bind {% raw %}{{tag}}{% endraw %} first."            "Bind {{tag}} first."
+    "{% raw %}{% card id=1 %}{% endraw %} embeds"          "{% card id=1 %} embeds"
+    "{% raw %}{{snippet: …}}{% endraw %} and {% raw %}{{#123}}{% endraw %}" "{{snippet: …}} and {{#123}}"
+    ;; two spans on one line are fenced separately, not swallowed into one greedy match
+    "{% raw %}{{a}}{% endraw %} then {% raw %}{{b}}{% endraw %}" "{{a}} then {{b}}"
+    ;; an opener with no closer would still break the page, so it is fenced on its own
+    "stray {% raw %}{{{% endraw %} brace"                  "stray {{ brace"
+    ;; single braces are Markdown-safe and mean something in document layout syntax
+    "::: flex {columns=[60,40]}"                           "::: flex {columns=[60,40]}"
+    "plain"                                                "plain"
+    ""                                                     nil))
+
 (deftest ^:parallel thousands-test
   (testing "large numbers are grouped without leaning on the default locale"
     (is (= "1,000,000" (md/thousands 1000000)))

@@ -714,6 +714,7 @@
    :uses #{api
            api-routes
            app-db
+           mcp
            metabot
            metabot.llm
            models
@@ -1311,7 +1312,8 @@
            metabase.mcp.core
            metabase.mcp.init
            metabase.mcp.usage
-           metabase.mcp.v2.api}
+           metabase.mcp.v2.api
+           metabase.mcp.v2.registry}
    :model-exports #{:model/McpSessionLog :model/McpToolCallLog}
    :uses #{activity-feed
            ai-tracing

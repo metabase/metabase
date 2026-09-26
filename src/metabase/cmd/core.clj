@@ -174,6 +174,12 @@
   (classloader/require 'metabase.cmd.ai-provider-dox)
   ((resolve 'metabase.cmd.ai-provider-dox/generate-dox!)))
 
+(defn ^:command mcp-tools-documentation
+  "Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients."
+  []
+  (classloader/require 'metabase.cmd.mcp-tools-dox)
+  ((resolve 'metabase.cmd.mcp-tools-dox/generate-dox!)))
+
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."

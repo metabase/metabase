@@ -30,7 +30,10 @@
    :scope       metabot.scope/agent-content-read
    :annotations {:readOnlyHint true :idempotentHint true}
    :args        [:map {:closed true}
-                 [:message {:optional true} [:maybe :string]]]}
+                 ;; described so the docs generator's tests, which read every registered tool's arguments, accept it
+                 ;; when a shared test JVM leaves it registered
+                 [:message {:optional true}
+                  [:maybe [:string {:description "Text to echo back; omitted echoes \"pong\"."}]]]]}
   [{:keys [message]} _context]
   (let [payload {:ok true :message (or message "pong")}]
     (common/success-content payload payload)))

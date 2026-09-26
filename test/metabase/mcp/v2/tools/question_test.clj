@@ -60,7 +60,12 @@
     (testing "native builds a native dataset_query"
       (let [q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id) :sql "SELECT 1"}} nil nil)]
-        (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]} q))))))
+        (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]} q))))
+    (testing "a numeric database_id sent as a string resolves like the integer"
+      (let [q (#'v2.question/resolve-query-source
+               {:native {:database_id (str (mt/id)) :sql "SELECT 1"}} nil nil)]
+        (is (=? {:database (mt/id)
+                 :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]} q))))))
 
 (deftest resolve-query-source-inline-error-without-message-test
   (testing "GHY-4544: a normalizer exception with no message contributes no text, rather than `null`"

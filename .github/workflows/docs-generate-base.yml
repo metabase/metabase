@@ -86,6 +86,16 @@ jobs:
           clojure -M:ee:doc ai-providers-documentation
         continue-on-error: false
 
+      - name: Generate MCP tool documentation
+        id: generate_mcp_tool_docs
+        # Same reason as the AI provider step: release branches without the generator would fail the command.
+        if: hashFiles('src/metabase/cmd/mcp_tools_dox.clj') != ''
+        run: |
+          set -e  # Exit on any error
+          echo "Generating MCP tool documentation..."
+          clojure -M:ee:doc mcp-tools-documentation
+        continue-on-error: false
+
       - name: Generate usage analytics documentation
         run: ./bin/generate-usage-analytics-docs.bb
 
@@ -176,6 +186,7 @@ jobs:
           - \`clojure -M:ee:doc api-documentation\`
           - \`clojure -M:ee:doc command-documentation\`
           - \`clojure -M:ee:doc ai-providers-documentation\`
+          - \`clojure -M:ee:doc mcp-tools-documentation\`
           - \`./bin/generate-usage-analytics-docs.bb\`
           - \`bun run embedding-sdk:docs:generate\`
           - \`bun run embedding-eajs:docs:generate\`

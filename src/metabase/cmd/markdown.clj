@@ -41,6 +41,47 @@
   ;; not `format`, whose grouping separator follows the default locale and so would differ between a laptop and CI
   (str/replace (str n) #"(\d)(?=(\d{3})+$)" "$1,"))
 
+(defn flatten-prose
+  "Collapse a run of whitespace in `s` into single spaces. Prose written as one line arrives ready to use, but prose
+  read off a Clojure docstring carries the newlines and indentation it was written with, which would break out of a
+  bullet or a table cell. Nil when nothing is left, so a blank description contributes nothing rather than an empty
+  line."
+  [s]
+  (some-> s str str/trim not-empty (str/replace #"\s+" " ")))
+
+(defn escape-liquid
+  "`s` with every span the docs site's Liquid pass would swallow — `{{ … }}` and `{% … %}`, or a lone opener —
+  wrapped in `{% raw %}…{% endraw %}`. Tool prose describes Metabase's own template syntax (`{{tag}}`,
+  `{% card … %}`) in exactly Liquid's spelling; unescaped, the site rejects the unknown tags and renders the
+  known-looking ones as blank. Balanced spans are tried first, then a bare opener, so an unclosed `{{` can't
+  still break the page."
+  [s]
+  (str/replace (str s) #"\{\{.*?\}\}|\{%.*?%\}|\{\{|\{%" "{% raw %}$0{% endraw %}"))
+
+(def ^:private fixed-case-words
+  "Words that keep their capitalization in a sentence-cased title, keyed by lowercase form."
+  {"sql"      "SQL"
+   "url"      "URL"
+   "uri"      "URI"
+   "api"      "API"
+   "ui"       "UI"
+   "id"       "ID"
+   "mbql"     "MBQL"
+   "metabase" "Metabase"})
+
+(defn sentence-case
+  "`title` with the first word capitalized and the rest lowered, except for the acronyms and names in
+  [[fixed-case-words]], which keep their spelling wherever they fall."
+  [title]
+  (->> (str/split title #" ")
+       (map-indexed (fn [i word]
+                      (let [lowered (str/lower-case word)]
+                        (or (get fixed-case-words lowered)
+                            (if (zero? i)
+                              (str/capitalize lowered)
+                              lowered)))))
+       (str/join " ")))
+
 (defn sentence
   "`s` as a sentence: forced out of i18n and terminated with a period. Nil when there is nothing to say, so a field
   whose text is blank contributes no stray `.` to its bullet.
@@ -87,12 +128,22 @@
   [label body]
   (paragraphs [label body]))
 
+(defn- escape-cell
+  "`s` with its pipes escaped. The table owns this rather than its callers: `|` is the one character the row syntax
+  reserves, and a description that contains one would otherwise split its row into extra columns."
+  [s]
+  (str/replace (str s) "|" "\\|"))
+
 (defn table
-  "A Markdown table. `rows` is a sequence of already-rendered cell vectors."
+  "A Markdown table. `rows` is a sequence of already-rendered cell vectors; a cell's pipes are escaped for it, so
+  callers pass their text as it reads."
   [headers rows]
   ;; columns are padded to a common width: the rendered page is what reviewers read in a PR diff, and a ragged table
   ;; is hard to scan there even though it renders identically
-  (let [widths    (apply mapv (fn [& cells] (apply max (map count cells))) headers rows)
+  (let [headers   (mapv escape-cell headers)
+        rows      (mapv #(mapv escape-cell %) rows)
+        ;; measured after escaping, so a cell that grew an escape still lines up with its column
+        widths    (apply mapv (fn [& cells] (apply max (map count cells))) headers rows)
         row->line (fn [cells]
                     (str "| " (str/join " | " (map #(format (str "%-" %2 "s") %1) cells widths)) " |"))]
     (str/join "\n"
