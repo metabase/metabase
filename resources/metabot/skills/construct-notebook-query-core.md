@@ -24,10 +24,10 @@ Return:
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["count", {}]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 Every clause is `["op", {}, ...args]` with a mandatory `{}` options map at position 1; every field reference uses a 4-segment portable FK in the last slot. These are the two most-violated rules.
@@ -59,7 +59,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
 ```
 
-The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
+The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
 
 Inside later stages, refer to a column produced by the previous stage by **string name** instead of a portable FK: `["field", {}, "count"]`, `["field", {}, "PRODUCT_ID"]`.
 
@@ -79,14 +79,14 @@ Filter (comparison + boolean combination):
 
 ```json
 "filters": [["and", {},
-  [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
+  [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+  ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
 
 Aggregation (on a field, plus `count`):
 
 ```json
-"aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]],
+"aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]],
                 ["count", {}]]
 ```
 
@@ -94,13 +94,13 @@ Breakout with temporal bucket:
 
 ```json
 "breakout": [["field", {"temporal-unit": "month"},
-              ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]
+              ["Sample Database", null, "ORDERS", "CREATED_AT"]]]
 ```
 
 Order by — direction wraps a ref; works on field refs or aggregation refs:
 
 ```json
-"order-by": [["desc", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
+"order-by": [["desc", {}, ["field", {}, ["Sample Database", null, "ORDERS", "CREATED_AT"]]],
              ["desc", {}, ["aggregation", {}, 0]]]
 ```
 

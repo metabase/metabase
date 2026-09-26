@@ -55,9 +55,9 @@
                      "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
                      "[\"<db>\", \"<schema>\", \"<table>\", \"<field>\"]]`. Minimal example — count of orders by "
                      "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
-                     "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
+                     "\"source-table\": [\"Sample Database\", null, \"ORDERS\"], \"aggregation\": "
                      "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
-                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
+                     "[\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
                      "`construct-notebook-query-*` skills for the full operator catalog, joins, expressions, "
                      "and multi-stage rules.")
    :required    ["lib/type" "stages"]
@@ -75,7 +75,7 @@
                                            "source-table" {:type        "array"
                                                            :minItems    3
                                                            :maxItems    3
-                                                           :items       {:type "string"}
+                                                           :items       {}
                                                            :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}

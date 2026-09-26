@@ -3,7 +3,10 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.agent-api.api]
+   [metabase.api.macros :as api.macros]
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.tools.construct :as construct]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -29,6 +32,19 @@
     (testing "examples use the exact sample database name, not the old abbreviated portable FK"
       (is (str/includes? prompt "Sample Database"))
       (is (not (re-find #"\[Sample\s*," prompt))))))
+
+(deftest ^:parallel sample-database-examples-use-a-null-schema-test
+  (doseq [[source text] {"construct_notebook_query.md"          (slurp (io/resource "metabot/prompts/tools/construct_notebook_query.md"))
+                         "construct-notebook-query-core.md"     (slurp (io/resource "metabot/skills/construct-notebook-query-core.md"))
+                         "construct-notebook-query-advanced.md" (slurp (io/resource "metabot/skills/construct-notebook-query-advanced.md"))
+                         "mbql-shape.selmer"                    (slurp (io/resource "metabot/prompts/shared/prompt_snippets/mbql-shape.selmer"))
+                         "construct_notebook_query tool"        (:description @#'construct/construct-notebook-query-json-schema)
+                         "Agent API construct_query tool"       (-> (api.macros/find-route 'metabase.agent-api.api :post "/v2/construct-query")
+                                                                    (get-in [:form :metadata :tool :description]))
+                         "Agent API reference.md"               (slurp (io/resource "metabase/agent_api/reference.md"))}]
+    (testing source
+      (is (= #{"null"}
+             (set (map second (re-seq #"\"Sample Database\",\s*([^,\s]+)" text))))))))
 
 (deftest ^:parallel render-system-prompt-test
   (testing "renders template with variables"
