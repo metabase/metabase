@@ -1,5 +1,5 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { userEvent, within } from "@storybook/test";
+import { screen, userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
@@ -408,17 +408,6 @@ function getLastPopover() {
   return within(lastPopover);
 }
 
-function getLastPopoverElement() {
-  // Unjustified type cast. FIXME
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
-
-  return lastPopover;
-}
-
 export const LightThemeText = {
   render: Template,
   args: createDefaultArgs(),
@@ -439,12 +428,12 @@ export const LightThemeTextWithValue = {
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
 
-    const popover = getLastPopover();
+    const popover = await screen.findByRole("dialog", { name: "Category" });
     await userEvent.type(
-      popover.getByPlaceholderText("Enter some text"),
+      within(popover).getByPlaceholderText("Enter some text"),
       "filter value",
     );
-    await userEvent.click(getLastPopoverElement());
+    await userEvent.click(popover);
   },
 };
 
@@ -923,10 +912,12 @@ export const LightThemeNumber = {
     });
     await userEvent.click(filter);
 
-    const popover = getLastPopover();
-    const searchInput = popover.getByPlaceholderText("Enter a number");
+    const popover = await screen.findByRole("dialog", {
+      name: "Number Equals",
+    });
+    const searchInput = within(popover).getByPlaceholderText("Enter a number");
     await userEvent.type(searchInput, "11");
-    await userEvent.click(getLastPopoverElement());
+    await userEvent.click(popover);
 
     await userEvent.type(searchInput, "99");
   },
