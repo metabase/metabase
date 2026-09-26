@@ -13,6 +13,8 @@ exec docker run --rm --init --ipc=host \
   --env STORYBOOK_URL \
   --env VISUAL_FILES \
   --env VISUAL_GREP \
+  --env VISUAL_PROFILE \
+  --env VISUAL_PROFILE_DIR \
   --env VISUAL_SNAPSHOT_DIR \
   --env VISUAL_WORKERS \
   --volume "$PWD:/work" \

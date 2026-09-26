@@ -13,3 +13,7 @@ export const SNAPSHOT_DIR = process.env.VISUAL_SNAPSHOT_DIR
 export const OUTPUT_DIR = path.join(__dirname, "test-results");
 
 export const CAPTURED_DIR = path.join(OUTPUT_DIR, "captured");
+
+export const PROFILE_DIR = process.env.VISUAL_PROFILE_DIR
+  ? path.resolve(process.env.VISUAL_PROFILE_DIR)
+  : path.join(__dirname, "profile");

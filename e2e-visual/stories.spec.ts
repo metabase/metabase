@@ -17,6 +17,7 @@ import {
   installLokiShim,
 } from "./page-scripts";
 import { CAPTURED_DIR } from "./paths";
+import { startProfiler } from "./profile";
 import {
   getSelectionFromEnv,
   getSnapshotName,
@@ -34,10 +35,13 @@ for (const story of selectStories(loadStories(), getSelectionFromEnv())) {
     const requests = trackRequests(page);
     await page.addInitScript(installLokiShim);
     await page.addInitScript(disableAnimations);
+    const profiler = await startProfiler(page);
+    profiler?.mark("open.start");
     await test.step("open the story", () =>
       page.goto(
         `iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`,
       ));
+    profiler?.mark("open.end");
 
     const result = await test.step("wait for the story to render", async () => {
       const handle = await page.waitForFunction(
@@ -47,6 +51,7 @@ for (const story of selectStories(loadStories(), getSelectionFromEnv())) {
       );
       return handle.jsonValue();
     });
+    profiler?.mark("render.seen");
     if (result?.status !== "rendered") {
       throw new Error(
         `Storybook failed to render the story: ${result?.message}`,
@@ -59,6 +64,8 @@ for (const story of selectStories(loadStories(), getSelectionFromEnv())) {
     await test.step("wait for async callbacks", () =>
       page.evaluate(awaitLokiReady));
     requests.assertNoneFailed();
+    profiler?.mark("ready");
+    await profiler?.finish(story.id, test.info());
 
     const clip = await test.step("fit the viewport to the story", async () => {
       const selector = result.chromeSelector ?? DEFAULT_SELECTOR;
