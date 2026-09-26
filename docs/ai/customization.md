@@ -32,7 +32,7 @@ Upload a custom icon. SVG or PNG with a transparent background gives the cleanes
 
 ![Metabot illustrations](./images/metabot-illustrations.png)
 
-Once you've uploaded a custom icon, this toggle appears and controls whether the default decorative illustrations show in the Metabot chat sidebar and on the AI exploration page.
+This toggle controls whether the default decorative illustrations show in the Metabot chat sidebar.
 
 ## Further reading
 
