@@ -1,5 +1,5 @@
 (ns metabase.driver.mongo.execute
-  (:refer-clojure :exclude [every? mapv])
+  (:refer-clojure :exclude [every? mapv some])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -14,8 +14,9 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv]])
+   [metabase.util.performance :refer [every? mapv some]])
   (:import
+   (com.mongodb MongoCommandException)
    (com.mongodb.client
     AggregateIterable
     ClientSession
@@ -207,6 +208,43 @@
                []
                (reducible-rows cursor first-row (post-process-row row-col-names))))))
 
+;; https://www.mongodb.com/docs/manual/reference/error-codes/
+;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/facet/#considerations
+(def ^:private facet-oversize-error-codes
+  "MongoDB command-error codes raised when a `$facet` stage overruns a size limit — 10334 for the 16 MB
+  BSON limit on the outer output document, 4031700 for the 100 MB in-memory limit on a single stage
+  inside a `$facet` branch (which cannot spill to disk)."
+  #{10334 4031700})
+
+(defn- pivot-pipeline?
+  "True iff `pipeline` contains a `$facet` stage."
+  [pipeline]
+  (boolean (some #(contains? % "$facet") pipeline)))
+
+(defn- translate-cursor-error
+  "Wrap a Throwable raised while opening the aggregation cursor into a QP-friendly `ex-info`. Pivot
+  queries whose `$facet` output overruns MongoDB's size limits get a message that names the two
+  remediations; everything else gets the generic wrapping."
+  [e native-query]
+  (let [code               (when (instance? MongoCommandException e)
+                             (.getErrorCode ^MongoCommandException e))
+        oversize-on-pivot? (and (contains? facet-oversize-error-codes code)
+                                (pivot-pipeline? (:query native-query)))]
+    (if oversize-on-pivot?
+      (ex-info (tru (str "Pivot result exceeded MongoDB''s $facet size limits. Reduce the pivot''s "
+                         "cardinality by adding filters or dropping breakouts with many distinct values, "
+                         "or ask an admin to disable the ''use-native-pivot-tables'' setting."))
+               {:driver     :mongo
+                :native     native-query
+                :type       driver-api/qp.error-type.invalid-query
+                :error-code code}
+               e)
+      (ex-info (tru "Error executing query: {0}" (ex-message e))
+               {:driver :mongo
+                :native native-query
+                :type   driver-api/qp.error-type.invalid-query}
+               e))))
+
 (defn execute-reducible-query
   "Process and run a native MongoDB query. This function expects initialized [[mongo.connection/*mongo-client*]]."
   [{{query :query collection-name :collection :as native-query} :native} respond]
@@ -228,9 +266,5 @@
                                                       driver.settings/*query-timeout-ms*)]
         (with-open [^MongoCursor cursor (try (.cursor aggregate)
                                              (catch Throwable e
-                                               (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                               {:driver :mongo
-                                                                :native native-query
-                                                                :type   driver-api/qp.error-type.invalid-query}
-                                                               e))))]
+                                               (throw (translate-cursor-error e native-query))))]
           (reduce-results native-query query cursor respond))))))
