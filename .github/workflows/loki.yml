@@ -122,6 +122,9 @@ jobs:
     if: ${{ !cancelled() && !inputs.skip-playwright && (inputs.playwright-infra-touched || needs.story-selection.outputs.selection != 'empty') }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
+    env:
+      VISUAL_PROFILE_SAMPLE: "\\[(components-buttons-button--compact|components-feedback-alert--default|design-system-colors--default|components-overlays-modal--opened|components-overlays-tooltip--overview|components-parameters-datepicker--specific-between|components-parameters-parametervaluewidget--default|viz-static-viz-piechart--default-settings|viz-static-viz-combochart--bar-linear-x-scale|viz-linechart--line-just-above-y-axis-max|viz-piechart--embedded-question|viz-barchart--short-bars-at-baseline|viz-treemapchart--two-level|viz-table--dashboard-table|datagrid-datagrid--combined-features|app-embed-publicorembeddeddashboardview--light-theme-default|app-embed-publicorembeddeddashboardview-filters--light-theme-text|app-embed-publicorembeddedquestionview--light-theme-default|components-documents--card-embed|app-palette--search|viz-customviz-calendarheatmap-question--light)\\]"
+      VISUAL_PROFILE_TRACE_SAMPLE: "\\[(components-buttons-button--compact|viz-linechart--line-just-above-y-axis-max|app-embed-publicorembeddeddashboardview-filters--light-theme-text)\\]"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -170,6 +173,27 @@ jobs:
           path: |
             e2e-visual/report/
             e2e-visual/test-results/
+          if-no-files-found: ignore
+
+      - name: Profile a sample of stories
+        if: ${{ !cancelled() && env.VISUAL_PROFILE_SAMPLE != '' }}
+        env:
+          VISUAL_SNAPSHOT_DIR: e2e-visual/profile/screenshots
+        run: |
+          for workers in 1 4; do
+            VISUAL_PROFILE=1 VISUAL_PROFILE_DIR="e2e-visual/profile/w$workers" VISUAL_WORKERS=$workers \
+              bun run test-visual:docker --update-snapshots all --repeat-each 3 --grep "$VISUAL_PROFILE_SAMPLE" || true
+            cp e2e-visual/test-results/results.json "e2e-visual/profile/w$workers-results.json" || true
+          done
+          VISUAL_PROFILE=trace VISUAL_PROFILE_DIR=e2e-visual/profile/trace VISUAL_WORKERS=1 \
+            bun run test-visual:docker --update-snapshots all --grep "$VISUAL_PROFILE_TRACE_SAMPLE" || true
+
+      - name: Upload profile
+        if: ${{ !cancelled() && env.VISUAL_PROFILE_SAMPLE != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-test-profile
+          path: e2e-visual/profile/
           if-no-files-found: ignore
 
   loki-tests-result:
