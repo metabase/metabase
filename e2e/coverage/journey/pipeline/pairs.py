@@ -41,6 +41,7 @@ def step_record(run, t, level, step):
         "urls": sorted({u for c in cuts for u in c.urls}),
         "fe": int(len(fe)),
         "be": int(len(be)),
+        "be_dump_cuts": max((c.backend_cuts for c in cuts), default=1),
     }
 
 
@@ -142,7 +143,8 @@ def clip(text, n=150):
 
 def format_step(prefix, s):
     ends = "; ".join(clip(e, 90) for e in s["ends_with"]) or "-"
-    line = f"{prefix}[{s['tokens'][0]}-{s['tokens'][1]}] {clip(s['label'], 110)}\n{prefix}    → {ends}   (+{s['fe']} fe, +{s['be']} be)"
+    be = f"+{s['be']} be" + (f" from a dump over {s['be_dump_cuts']} cuts" if s.get("be_dump_cuts", 1) > 1 else "")
+    line = f"{prefix}[{s['tokens'][0]}-{s['tokens'][1]}] {clip(s['label'], 110)}\n{prefix}    → {ends}   (+{s['fe']} fe, {be})"
     return line
 
 

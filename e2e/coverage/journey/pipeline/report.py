@@ -41,7 +41,8 @@ def main():
           f"{t['suite_seconds'] / 60:.1f} min of test time")
     ms = sum(s["totalMs"] for s in summary["shards"])
     print(f"extract: {ms / 1000:.1f}s ({ms / max(t['tests'], 1):.0f} ms per test)")
-    print(f"baseline-subtracted: {t['fe_functions']} fe functions in {t['fe_files']} files, {t['be_classes']} be classes in "
+    branches = f" ({t['fe_branch_arms']} branch arms)" if t.get("fe_branch_arms") else ""
+    print(f"baseline-subtracted: {t['fe_functions']} fe functions{branches} in {t['fe_files']} files, {t['be_classes']} be classes in "
           f"{t['be_namespaces']} namespaces, {t['api_routes']} API routes, {t['assertions_normalized']} distinct assertion messages, "
           f"{t.get('checks_normalized', '-')} distinct checks")
 
@@ -67,6 +68,9 @@ def main():
               f"{sh.get('cutsWithoutDump')} cuts without a backend dump, outcomes {sh.get('outcomes')}")
     if not lost:
         print("  every shard has tests, and every test has steps and backend classes with no recording errors")
+    merged = sum(sh.get("mergedCuts", 0) for sh in shards)
+    if merged:
+        print(f"  {merged} cuts whose backend dump was skipped or failed, with their code in a later dump")
     slow = sorted(shards, key=lambda sh: -sh["totalMs"])[:3]
     print("  slowest to extract: " + ", ".join(f"{sh['shard']} {sh['totalMs'] / 1000:.1f}s ({sh['tests']} tests)" for sh in slow))
 
@@ -151,9 +155,12 @@ def main():
     if kc:
         section("Kills-first cover")
         print(f"  {kc['tests_needed']}/{kc['out_of']} tests, {kc['seconds_needed'] / 60:.1f} of {kc['seconds_total'] / 60:.1f} min "
-              f"({kc['pct_of_suite_time']}%), {kc['items']} mutants that only e2e tests kill, {kc['specs_touched']} specs")
+              f"({kc['pct_of_suite_time']}%), {kc['items']} mutants that only e2e tests kill, {kc['specs_touched']} specs, "
+              f"ties broken on {', '.join(kc['tie_breaks'])}")
 
     section("Duplicate verdicts")
+    if overlap.get("fe_code_requested"):
+        print(f"--fe-code {overlap['fe_code_requested']} asked for branch arms, and the run has none, so the frontend Jaccard compares functions")
     for level in LEVELS:
         v = overlap["verdicts"][level]
         print(f"{level}: thresholds {v['same_code_threshold']}, {v['not_judged_failed_tests']} failed tests not judged, "

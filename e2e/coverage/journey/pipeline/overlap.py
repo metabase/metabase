@@ -1,5 +1,6 @@
-"""Usage: python overlap.py <work dir> <out dir> [--same-fe <jaccard>] [--same-be <jaccard>]
+"""Usage: python overlap.py <work dir> <out dir> [--same-fe <jaccard>] [--same-be <jaccard>] [--fe-code functions|branches|both]
                             [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
+                            [--cover-branches]
 
 Writes <out dir>/journey-overlap.json.
 Tests are "<spec path>::<full title>" throughout.
@@ -38,6 +39,7 @@ def item_sets(run):
         classes = t.classes.tolist()
         routes = t.routes
         out["functions"].append(set(fns))
+        out["branches"].append(set(t.branches.tolist()))
         out["files"].append(files)
         out["fe_areas"].append({run.file_area[f] for f in files})
         out["fe_modules"].append({run.file_module[f] for f in files})
@@ -347,6 +349,8 @@ def tagged(run, sets, *parts):
 
 
 FINE = ("functions", "be_classes", "checks_normalized")
+# The item set each --fe-code choice compares.
+FE_CODE = {"functions": "functions", "branches": "branches", "both": "functions_and_branches"}
 
 
 def weighted_covers(run, sets):
@@ -372,21 +376,22 @@ def weighted_covers(run, sets):
     for name in (
         "functions", "files", "fe_areas", "fe_modules", "be_classes", "be_namespaces", "be_modules",
         "api_routes", "pages", "checks_normalized", "assertions_normalized", "assertions_exact",
+        *(("branches",) if any(sets["branches"]) else ()),
     ):
         out["single"][name] = cover_report(run, *weighted_cover(sets[name], costs), costs)
     return out
 
 
-def kills_cover(run, sets, kills):
+def kills_cover(run, sets, kills, tie_breaks=FINE):
     """Keeps every mutant that some e2e test of the run kills and no other test does.
 
     Code and checks break ties, then time.
     """
     costs = [t.cost_ms for t in run.tests]
-    kept, universe = kill_matrix.cover_kills(run.tests, kills["mutants"], tagged(run, sets, *FINE), costs)
+    kept, universe = kill_matrix.cover_kills(run.tests, kills["mutants"], tagged(run, sets, *tie_breaks), costs)
     return cover_report(run, kept, universe, costs) | {
         "what": "kept tests for every mutant only e2e tests kill, ordered by kills, then code and checks, then time",
-        "tie_breaks": list(FINE),
+        "tie_breaks": list(tie_breaks),
     }, set(kept)
 
 
@@ -409,7 +414,7 @@ ALL_PAIRS_UP_TO = 2000
 KEEP_SAME_IT_AS = {"duplicate", "same_path_same_assertions_code_differs", "same_path_different_assertions", "path_is_prefix"}
 
 
-def verdicts(run, sets, fe_j, be_j, level, fe_threshold, be_threshold, examples=40):
+def verdicts(run, sets, fe_j, be_j, level, fe_threshold, be_threshold, fe_code="functions", examples=40):
     tests = run.tests
     path = [tuple(t.tokens[level].tolist()) for t in tests]
     asserts = sets[f"checks_{level}"]
@@ -454,7 +459,11 @@ def verdicts(run, sets, fe_j, be_j, level, fe_threshold, be_threshold, examples=
         same_code = fe_j[a, b] >= fe_threshold and be_j[a, b] >= be_threshold
         k = lcp(tests[a].tokens[level], tests[b].tokens[level])
         prefix = not same_path and k == min(len(path[a]), len(path[b]))
-        identical_code = np.array_equal(tests[a].fns, tests[b].fns) and np.array_equal(tests[a].classes, tests[b].classes)
+        identical_code = (
+            np.array_equal(tests[a].fns, tests[b].fns)
+            and np.array_equal(tests[a].classes, tests[b].classes)
+            and (fe_code == "functions" or np.array_equal(tests[a].branches, tests[b].branches))
+        )
         if same_path and same_asserts and identical_code:
             strict += 1
         if same_path and same_asserts and same_code:
@@ -501,7 +510,7 @@ def verdicts(run, sets, fe_j, be_j, level, fe_threshold, be_threshold, examples=
             pairs[v] = pairs[v][:examples] + [e for e in pairs[v][examples:] if e.get("compared_as") in KEEP_SAME_IT_AS]
     return {
         "level": level,
-        "same_code_threshold": {"fe_functions_jaccard": fe_threshold, "be_classes_jaccard": be_threshold},
+        "same_code_threshold": {f"fe_{FE_CODE[fe_code]}_jaccard": fe_threshold, "be_classes_jaccard": be_threshold},
         "duplicates_with_identical_code": strict,
         "not_judged_failed_tests": sum(1 for j in judged if not j),
         "definitions": dict(VERDICTS),
@@ -628,8 +637,8 @@ def noise_floor(run):
 
 def self_similarity(rows, class_key="classJaccard"):
     """The same test measured twice: code, route and assertion Jaccard, and whether its path and cut positions repeat."""
-    def dist(key):
-        values = np.array([r[key] for r in rows])
+    def dist(key, subset=rows):
+        values = np.array([r[key] for r in subset])
         return {
             "median": round(float(np.median(values)), 4),
             "p10": round(float(np.percentile(values, 10)), 4),
@@ -638,9 +647,11 @@ def self_similarity(rows, class_key="classJaccard"):
             "below_0.95": int((values < 0.95).sum()),
         }
 
+    branch_rows = [r for r in rows if "branchJaccard" in r]
     return {
         "tests": len(rows),
         "fe_functions_jaccard": dist("fnJaccard"),
+        **({"fe_branches_jaccard": dist("branchJaccard", branch_rows)} if branch_rows else {}),
         "be_classes_jaccard": dist(class_key if all(class_key in r for r in rows) else "classJaccard"),
         "routes_jaccard": dist("routeJaccard"),
         "assertions_jaccard": dist("assertJaccard"),
@@ -660,22 +671,33 @@ def main():
     parser.add_argument("--kills", help="kill matrix JSON, see kills.py")
     parser.add_argument("--min-mutants", type=int, default=kill_matrix.MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
     parser.add_argument("--require-strata", default=kill_matrix.REQUIRED_STRATA, help="strata a delete verdict needs among them")
+    parser.add_argument("--fe-code", choices=list(FE_CODE), default="functions",
+                        help="what the frontend Jaccard of the duplicate verdicts compares: functions (default), branch arms, or both")
+    parser.add_argument("--cover-branches", action="store_true", help="also break kills-first cover ties on branch arms")
     args = parser.parse_args()
     run = Run(args.work, backend_baseline=args.backend_baseline)
     sets = item_sets(run)
     kills = kill_matrix.load(args.kills, run) if args.kills else None
+    # Schema 1 captures have no branch hits, so there the branch options fall back to functions only.
+    has_branches = any(sets["branches"])
+    fe_code = args.fe_code if has_branches else "functions"
+    fe_name = FE_CODE[fe_code]
+    if fe_name == "functions_and_branches":
+        sets[fe_name] = tagged(run, sets, "functions", "branches")
+    tie_breaks = FINE + ("branches",) if args.cover_branches and has_branches else FINE
 
     grans = {}
     matrices = {}
     for name in (
-        "functions", "files", "fe_areas", "fe_modules", "fe_feature_modules", "pages", "api_routes",
+        "functions", "branches", "files", "fe_areas", "fe_modules", "fe_feature_modules", "pages", "api_routes",
         "be_modules_from_routes", "pages_plus_routes", "be_classes", "be_namespaces", "be_modules",
         "assertions_normalized", "assertions_exact", "checks_normalized", "path_tokens_normalized",
+        *([fe_name] if fe_name not in ("functions", "branches") else []),
     ):
         print("analyzing", name, file=sys.stderr)
         res, extra = analyze(run, name, sets[name])
         grans[name] = res
-        if name in ("functions", "be_classes") and extra:
+        if name in (fe_name, "be_classes") and extra:
             matrices[name] = extra
 
     def full_matrix(name):
@@ -689,10 +711,10 @@ def main():
         M[np.ix_(empty, empty)] = 1
         return M
 
-    fe_j, be_j = full_matrix("functions"), full_matrix("be_classes")
-    verdicts_by_level = {level: verdicts(run, sets, fe_j, be_j, level, args.same_fe, args.same_be) for level in LEVELS}
+    fe_j, be_j = full_matrix(fe_name), full_matrix("be_classes")
+    verdicts_by_level = {level: verdicts(run, sets, fe_j, be_j, level, args.same_fe, args.same_be, fe_code) for level in LEVELS}
 
-    cover_by_kills, cover_keeps = kills_cover(run, sets, kills) if kills else (None, set())
+    cover_by_kills, cover_keeps = kills_cover(run, sets, kills, tie_breaks) if kills else (None, set())
     required = [x for x in args.require_strata.split(",") if x]
     deletion = kill_matrix.verdicts(run, kills, cover_keeps, args.min_mutants, required)
     in_duplicates = verdicts_by_level["normalized"]["tests_in_pairs"].get("duplicate", [])
@@ -715,6 +737,7 @@ def main():
             "tests_by_source": dict(collections.Counter(t.source for t in run.tests)),
             "tests_by_state": dict(collections.Counter(t.state for t in run.tests)),
             "fe_functions": len(set().union(*sets["functions"])),
+            "fe_branch_arms": len(set().union(*sets["branches"])),
             "fe_files": len(set().union(*sets["files"])),
             "be_classes": len(set().union(*sets["be_classes"])),
             "be_namespaces": len(set().union(*sets["be_namespaces"])),
@@ -737,9 +760,19 @@ def main():
             "before_hooks": "A describe's before hooks run once, in its first test. Every test of the describe starts its path with "
             "their commands and holds their code, and the first test keeps only what its own hooks and body ran.",
             "assertions": "Assertions are Cypress assert log messages, with generated ids masked (both levels) and URL paths normalized (normalized level). Numbers stay literal. "
-            "Their recorded chain is the command current when the log arrived, usually the next command, so it is not part of the key. "
-            "checks_* key an assertion by its source line when static_align.py tied it to one, and by its message otherwise. Verdicts and covers use checks.",
+            "checks_* key an assertion by its expect() call site or its own command chain, with its message, when a schema 2 capture recorded one. "
+            "In schema 1 captures, the recorded chain is the command current when the log arrived, usually the next command, so it is not part of the key. "
+            "Those assertions are keyed by their source line when static_align.py tied them to one, and by their message otherwise. Verdicts and covers use checks.",
+            "request_bodies": "In schema 2 captures, a cy.request token carries its body: at the exact level a hash of the body "
+            "with run-varying values masked, or the capture's own hash marked ~raw when the body was clipped, "
+            "and at the normalized level the body with ids masked as in command arguments.",
+            "branches": "Branch arms come from schema 2 captures and are baseline-subtracted like functions. They are recorded per test only, "
+            "so a describe's before hooks add theirs to the test that ran them and to no other test of the describe.",
+            "backend_dumps": "In schema 2 captures, a cut whose backend dump was skipped or failed has its code in the next dump taken, "
+            "and every cut of that span holds the dump's classes.",
         },
+        "fe_code": fe_code,
+        **({"fe_code_requested": args.fe_code} if fe_code != args.fe_code else {}),
         "backend_baseline": run.backend_baseline,
         "before_hooks": run.suite_summary,
         "granularities": grans,

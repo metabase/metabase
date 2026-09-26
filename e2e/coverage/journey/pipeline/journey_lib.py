@@ -18,7 +18,8 @@ def arr(values):
 class Cut:
     __slots__ = (
         "pos", "trigger", "trigger_text", "phase", "fns", "classes", "raw_fns", "raw_classes",
-        "asserts", "assert_chains", "requests", "urls", "in_flight", "latency_ms", "t", "owner", "index",
+        "asserts", "assert_chains", "anchors", "sites", "requests", "urls", "in_flight", "latency_ms", "t", "owner", "index",
+        "merged", "backend_cuts",
     )
 
     def __init__(self, c, owner, index):
@@ -35,6 +36,11 @@ class Cut:
         self.raw_classes = c["rawClasses"]
         self.asserts = {level: c["asserts"][level] for level in LEVELS}
         self.assert_chains = c["assertChains"]
+        unanchored = [-1] * len(c["assertChains"])
+        self.anchors = {level: c.get("assertAnchors", {}).get(level, unanchored) for level in LEVELS}
+        self.sites = c.get("assertSites", [None] * len(unanchored))
+        self.merged = c.get("merged", 0)
+        self.backend_cuts = 1
         self.requests = c["requests"]
         self.urls = c["urls"]
         self.in_flight = c["inFlight"]
@@ -66,6 +72,8 @@ class Test:
         self.pages = r["pages"]
         self.raw_fn_count = r["rawFnCount"]
         self.raw_class_count = r["rawClassCount"]
+        self.branches = arr(r.get("branches", []))
+        self.raw_branch_count = r.get("rawBranchCount", 0)
         self.suite_prefix = r["suitePrefix"]
         self.suite_parts = r["suite"]
         self.suites = []
@@ -75,6 +83,12 @@ class Test:
         self.terminal = r["terminal"]
         self.phases = r["phases"]
         self.cuts = [Cut(c, self.id, i) for i, c in enumerate(r["cuts"])]
+        # When the dumps of the cuts before a cut were skipped or failed, its dump holds their backend code too,
+        # which could have run at any of them, so every cut of that span gets the dump's classes.
+        for i, cut in enumerate(self.cuts):
+            for other in self.cuts[i - cut.merged : i + 1]:
+                other.classes = cut.classes
+                other.backend_cuts = cut.merged + 1
         self.control = r.get("control")
         self.check = r.get("check")
         self.source = r.get("source")
@@ -156,16 +170,22 @@ class Run:
     def assertions(self, t, level):
         """(cut position, key, display) for each recorded assertion of a test, in order.
 
-        Assertions tied to a source line are keyed by that line, the rest by their message at the given level.
+        An assertion recorded with its expect() call site or its own chain is keyed by that and its message.
+        The others are keyed by the source line static alignment tied them to, or else by their message, at the given level.
         """
+        anchors = self.vocab.get("anchors", {}).get(level, [])
         out = []
         for cut in t.cuts:
             sources = self.static.get(str(cut.owner), {}).get("asserts", {})
             for k, a in enumerate(cut.asserts[level]):
                 message = self.assert_text(level, a)
                 src = sources.get(f"{cut.index}:{k}")
-                if src:
-                    via = f" (via {src['via'][0]})" if src["via"] else ""
+                via = f" (via {src['via'][0]})" if src and src["via"] else ""
+                anchor = cut.anchors[level][k]
+                if anchor >= 0:
+                    display = f"{src['text']}{via}  ⟵ {message}" if src else f"{message}  ⟵ {anchors[anchor]}"
+                    out.append((cut.pos, f"{anchors[anchor]} | {message}", display))
+                elif src:
                     out.append((cut.pos, f"src {src['text']}{via}", f"{src['text']}{via}  ⟵ {message}"))
                 else:
                     out.append((cut.pos, f"msg {message}", message))

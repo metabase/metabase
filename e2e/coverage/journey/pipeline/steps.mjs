@@ -1,5 +1,8 @@
 // Turns one test attempt's events into a path of tokens, its Cypress commands and cy.request calls, and places its step cuts' code on that path.
 // URL changes, app requests and assertion logs arrive asynchronously, so they stay out of the path and are kept per cut.
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+
 import { normalizePages } from "../../routes.mjs";
 
 export const LEVELS = ["exact", "normalized"];
@@ -134,6 +137,24 @@ function urlText(value, level) {
   return level === "exact" ? masked : normalizeUrl(masked);
 }
 
+// At the exact level a cy.request body is a hash of its canonical JSON with run-varying values masked,
+// as in a command's arguments, and at the normalized level it is that JSON with ids masked too.
+// A clipped body keeps the capture's hash of its whole text instead, marked "~raw" because run-varying values change it.
+function bodyText(event, level) {
+  if (event.bodyHash === undefined) {
+    return event.bodyType !== undefined ? ` body<${event.bodyType}>` : "";
+  }
+  if (level === "normalized" && event.body !== undefined) {
+    return ` body ${commandText(event.body, level)}`;
+  }
+  const whole =
+    event.body !== undefined &&
+    Buffer.byteLength(event.body) === event.bodyBytes;
+  return whole
+    ? ` body#${createHash("sha1").update(commandText(event.body, level)).digest("hex").slice(0, 16)}`
+    : ` body#${event.bodyHash}~raw`;
+}
+
 // Codemirror's "ͼ1a" classes and per-render ids like "mantine-6qkjzmq08" change between runs,
 // so the classes are dropped and the ids masked.
 // CSS-module and Mantine class hashes are fixed for a build, so they stay and identify the component.
@@ -161,6 +182,35 @@ export function assertionText(message, state, level) {
   return state && state !== "passed" ? `[${state}] ${text}` : text;
 }
 
+// "<repo path>:<line>" of an expect() or assert() call.
+// A call site without `file` has only a position in its spec's bundle, which differs between specs.
+export function callSiteText(callSite) {
+  if (!callSite?.file || callSite.line == null) {
+    return null;
+  }
+  const file = callSite.file
+    .replace(/^webpack:\/\/[^/]*\//, "")
+    .replace(/^\.\//, "");
+  const e2e = file.search(/(^|\/)e2e\//);
+  return `${e2e > 0 ? file.slice(e2e + 1) : file}:${callSite.line}`;
+}
+
+// What identifies an assertion besides its message: the call site of an expect(),
+// or else the chain a `.should()` belongs to.
+// It is null for schema 1 events,
+// and for schema 2 events with `"chainSource": "current"`,
+// whose chain is whatever command was running when the assertion ended.
+export function assertionAnchor(event, level) {
+  const site = callSiteText(event.callSite);
+  if (site) {
+    return `at ${site}`;
+  }
+  if (event.chainerId != null && event.chainSource !== "current") {
+    return `on ${commandText(event.chain ?? "", level)}`;
+  }
+  return null;
+}
+
 // Plumbing and the recording's own commands: coverage hooks, logging, aliases and callbacks.
 const DROPPED_COMMANDS = new Set([
   "log",
@@ -186,7 +236,7 @@ function tokenText(event, level) {
   const prefix =
     event.phase && event.phase !== "test" ? `${event.phase}: ` : "";
   if (event.kind === "request") {
-    return `${prefix}request ${event.method} ${urlText(event.path ?? "", level)}`;
+    return `${prefix}request ${event.method} ${urlText(event.path ?? "", level)}${bodyText(event, level)}`;
   }
   return prefix + commandText(event.chain ?? event.name ?? "", level);
 }
@@ -275,6 +325,10 @@ export function placeCuts(events, cuts, tokens) {
           "normalized",
         ),
         chain: event.chain ?? "",
+        site: callSiteText(event.callSite),
+        anchor: Object.fromEntries(
+          LEVELS.map((level) => [level, assertionAnchor(event, level)]),
+        ),
       });
     } else if (
       appApiRequest(event) ||

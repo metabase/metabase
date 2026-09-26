@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Usage: e2e/coverage/journey/pipeline/run_all_journey.sh <run id | run dir> [--out <dir>] [--rerun <run id | run dir>]...
 #          [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
+#          [--fe-code functions|branches|both] [--cover-branches]
 # Builds the step graph and the overlap analysis of an e2e journey-capture run.
 # A run id is downloaded into $JOURNEY_ANALYSIS_DIR/<run id>/artifacts first.
 # A run dir holds the downloaded shard directories.
@@ -8,6 +9,8 @@
 # --backend-baseline union (the default) also drops backend classes that any shard's coverage baseline ran,
 # and shard subtracts each shard's own baseline only.
 # --kills takes a kill matrix for keep, provisional-keep, delete or unmeasured verdicts (kills.py has the format).
+# --fe-code picks what the duplicate verdicts' frontend Jaccard compares,
+# and --cover-branches adds branch arms to the kills-first cover's tie-breaks.
 # Outputs go to --out (default $JOURNEY_ANALYSIS_DIR/<run id or dir name>): journey-graph.json, journey-overlap.json, report.txt, work/.
 # JOURNEY_ANALYSIS_DIR defaults to journey-analysis/ at the repo root, which is gitignored.
 # JOURNEY_PYTHON is a python with numpy and scipy.
@@ -44,7 +47,8 @@ while [ $# -gt 0 ]; do
     --out) OUT="$2"; shift 2 ;;
     --rerun) RERUN_ARGS+=(--rerun "$(run_dir "$2")"); shift 2 ;;
     --backend-baseline) JOURNEY_BACKEND_BASELINE="$2"; shift 2 ;;
-    --kills|--min-mutants|--require-strata) OVERLAP_ARGS+=("$1" "$2"); shift 2 ;;
+    --kills|--min-mutants|--require-strata|--fe-code) OVERLAP_ARGS+=("$1" "$2"); shift 2 ;;
+    --cover-branches) OVERLAP_ARGS+=("$1"); shift ;;
     *) OUT="$1"; shift ;;
   esac
 done

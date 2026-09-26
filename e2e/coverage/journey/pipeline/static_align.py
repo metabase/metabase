@@ -151,10 +151,21 @@ def compatible(parsed, message, text):
     return all(v in message for v in values)
 
 
+def tie(rec, static):
+    """Which source assertions a recorded one can be.
+
+    A recorded expect() call site limits it to the source assertions on that line, whatever its message.
+    """
+    site = rec.get("site")
+    if site and any(f"e2e/{s['src']}" == site for s in static):
+        return [f"e2e/{s['src']}" == site for s in static]
+    return [compatible(s["parsed"], rec["message"], s["text"]) for s in static]
+
+
 def align(recorded, static):
     """Longest order-preserving matching of recorded messages to compatible source assertions."""
     n, m = len(recorded), len(static)
-    ok = [[compatible(static[j]["parsed"], recorded[i]["message"], static[j]["text"]) for j in range(m)] for i in range(n)]
+    ok = [tie(recorded[i], static) for i in range(n)]
     best = [[0] * (m + 1) for _ in range(n + 1)]
     for i in range(n - 1, -1, -1):
         for j in range(m - 1, -1, -1):
@@ -223,6 +234,7 @@ def main():
     matches = data["matches"]
     out = {"tests": {}, "summary": {}}
     rec_total = rec_matched = static_total = static_matched = 0
+    with_site = tied_by_site = 0
     order_ratios = []
     for t in run.tests:
         key = matches.get(str(t.id))
@@ -237,10 +249,12 @@ def main():
         recorded = []
         for ci, cut in enumerate(t.cuts):
             for k, a in enumerate(cut.asserts["exact"]):
-                recorded.append({"cut": ci, "index": k, "message": run.assert_text("exact", a)})
+                recorded.append({"cut": ci, "index": k, "message": run.assert_text("exact", a), "site": cut.sites[k]})
         pairs = align(recorded, static)
         rec_total += len(recorded)
         rec_matched += len(pairs)
+        with_site += sum(1 for r in recorded if r["site"])
+        tied_by_site += sum(1 for i, j in pairs if recorded[i]["site"] and f"e2e/{static[j]['src']}" == recorded[i]["site"])
         parseable = [s for s in static if s["parsed"] is not None]
         static_total += len(parseable)
         static_matched += len(pairs)
@@ -275,6 +289,8 @@ def main():
         "tests": len(run.tests),
         "recorded_asserts": rec_total,
         "recorded_asserts_tied_to_source": rec_matched,
+        "recorded_asserts_with_call_site": with_site,
+        "recorded_asserts_tied_by_call_site": tied_by_site,
         "parseable_source_asserts": static_total,
         "source_asserts_found_in_recording": static_matched,
         "literal_order_agreement_median": ratios[len(ratios) // 2] if ratios else None,

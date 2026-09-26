@@ -204,12 +204,14 @@ def main():
         "notes": {
             "path": "Each test is a path of action tokens: Cypress commands and cy.request calls, in the order they started. "
             "Logging, aliases, callbacks and the recording's own commands are left out. "
-            "A describe's before hooks run once, in its first test, and every test of the describe starts with their commands.",
+            "A describe's before hooks run once, in its first test, and every test of the describe starts with their commands. "
+            "In schema 2 captures, a cy.request token carries a hash of its body at the exact level and the body itself at the normalized level.",
             "levels": "exact keeps literal arguments and masks only values that change between runs (uuids, tokens, dates, generated ids). "
             "normalized also masks entity ids: URL path segments and query values, alias numbers, values of id keys such as "
             "table_id or card_ids, and the ids in MBQL field references. Every other number, such as a viewport size, stays.",
             "nodes": "A node is a maximal run of tokens that the same set of tests share, keyed by the full prefix before it.",
             "code": "Each step cut's measured code, baseline-subtracted, lands on the node holding the last token before the cut. "
+            "A backend dump that also holds the code of earlier cuts whose dumps were skipped or failed counts for each of those cuts. "
             "code.fe/be is the union over the node's tests, feCommon/beCommon what every test with a cut there measured, "
             "prefix.feCommon/beCommon what every test through the node measured from the start of its path to the node's end.",
             "pruning": f"Nodes on a single test's path keep counts and labels, without tokens, top lists, sample assertions or URLs. "

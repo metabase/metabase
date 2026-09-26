@@ -13,7 +13,13 @@ import * as reader from "../../journey-capture.mjs";
 import { apiRoutes, normalizePages } from "../../routes.mjs";
 
 import { loadMappings } from "./mappings.mjs";
-import { LEVELS, buildPath, placeCuts, virtualCuts } from "./steps.mjs";
+import {
+  LEVELS,
+  buildPath,
+  callSiteText,
+  placeCuts,
+  virtualCuts,
+} from "./steps.mjs";
 
 const positional = [];
 const rerunDirs = [];
@@ -55,15 +61,18 @@ class Interner {
 
 const vocab = {
   fns: new Interner(),
+  branches: new Interner(),
   classes: new Interner(),
   routes: new Interner(),
   pages: new Interner(),
   tokens: Object.fromEntries(LEVELS.map((level) => [level, new Interner()])),
   asserts: Object.fromEntries(LEVELS.map((level) => [level, new Interner()])),
+  anchors: Object.fromEntries(LEVELS.map((level) => [level, new Interner()])),
   helpers: new Interner(),
   specs: new Interner(),
 };
 const fnNames = new Map();
+const branchMaps = new Map();
 
 const problems = {
   eventsWithoutPhase: 0,
@@ -72,17 +81,26 @@ const problems = {
   cutsNotMatchingTrigger: 0,
   attemptsWithoutSteps: 0,
   cutsWithoutBackendDump: 0,
+  cutsMergedIntoNextDump: 0,
+  cutsMergedIntoBeforeTest: 0,
+  cutsWithFailedDumpRequest: 0,
   failedBackendDumps: 0,
   frontendSumMismatches: 0,
   backendGapOver50ms: 0,
   backendOutOfOrderDumps: 0,
   absoluteFrontendFiles: new Set(),
   fnsOutsideRepo: 0,
+  branchesOutsideRepo: 0,
+  branchesNotInBranchmap: 0,
   classIdConflicts: 0,
   classIdConflictExamples: [],
   unknownClassIndices: 0,
   assertChainsEndingInShould: 0,
   assertEvents: 0,
+  assertsWithOwnChain: 0,
+  assertsWithCallSite: 0,
+  cyRequests: 0,
+  cyRequestsWithBody: 0,
   virtualCutMismatches: 0,
   virtualCutMismatchExamples: [],
   recording: {
@@ -91,6 +109,8 @@ const problems = {
     droppedCuts: 0,
     lateCuts: 0,
     lateStepDumpRequests: 0,
+    skippedDumps: 0,
+    failedDumpRequests: 0,
   },
   lazyNamespaceLoads: 0,
   duplicateTitles: 0,
@@ -268,6 +288,18 @@ function fnIds(functions) {
   return ids.sort((a, b) => a - b);
 }
 
+function branchIds(branches) {
+  const ids = [];
+  for (const arm of branches) {
+    if (arm.startsWith("/") || arm.startsWith("..")) {
+      problems.branchesOutsideRepo += 1;
+      continue;
+    }
+    ids.push(vocab.branches.id(arm));
+  }
+  return ids.sort((a, b) => a - b);
+}
+
 const classIds = (names) =>
   names.map((n) => vocab.classes.id(n)).sort((a, b) => a - b);
 
@@ -300,6 +332,74 @@ function loadFnNames(dir) {
       }
     }
   }
+}
+
+function loadBranchMaps(dir) {
+  for (const file of fs
+    .readdirSync(dir)
+    .filter((f) => f.startsWith("branchmap-"))) {
+    const data = JSON.parse(fs.readFileSync(path.join(dir, file), "utf8"));
+    for (const [absFile, branches] of Object.entries(data)) {
+      const rel = absFile.replace(
+        /^\/home\/runner\/work\/metabase\/metabase\//,
+        "",
+      );
+      if (!branchMaps.has(rel)) {
+        branchMaps.set(rel, branches);
+      }
+    }
+  }
+}
+
+// A cut with `dumpSkipped` or `dumpFailed` has its backend code in the next dump taken,
+// which after a describe's `before` hooks is the `beforeTest` dump of the root beforeEach.
+// Such cuts before a cut with neither a dump nor a flag stay unplaced, like that cut, whose request was lost.
+function mergedSpans(cuts) {
+  const merged = cuts.map(() => 0);
+  let intoBeforeTest = 0;
+  let pending = 0;
+  cuts.forEach((cut, index) => {
+    if (
+      pending > 0 &&
+      cuts[index - 1].phase === "before all" &&
+      cut.phase !== "before all"
+    ) {
+      intoBeforeTest += pending;
+      pending = 0;
+    }
+    if (cut.backend) {
+      merged[index] = pending;
+      pending = 0;
+    } else if (cut.dumpSkipped || cut.dumpFailed) {
+      pending += 1;
+    } else {
+      pending = 0;
+    }
+  });
+  return { merged, intoBeforeTest };
+}
+
+function assertFields(asserts) {
+  return {
+    asserts: Object.fromEntries(
+      LEVELS.map((level) => [
+        level,
+        asserts.map((a) => vocab.asserts[level].id(a[level])),
+      ]),
+    ),
+    assertChains: asserts.map((a) => a.chain),
+    assertAnchors: Object.fromEntries(
+      LEVELS.map((level) => [
+        level,
+        asserts.map((a) =>
+          a.anchor[level] === null
+            ? -1
+            : vocab.anchors[level].id(a.anchor[level]),
+        ),
+      ]),
+    ),
+    assertSites: asserts.map((a) => a.site),
+  };
 }
 
 function checkCuts(test) {
@@ -383,6 +483,7 @@ function* shardRecords(dir, source, shardTimings) {
   registerClasses(shard);
   recordBaselines(shard, source === mainSource);
   loadFnNames(dir);
+  loadBranchMaps(dir);
 
   const picked = shard.tests.map((entry) => ({
     entry,
@@ -460,6 +561,7 @@ function* shardRecords(dir, source, shardTimings) {
     withoutBackend: 0,
     recordingErrors: 0,
     cutsWithoutDump: 0,
+    mergedCuts: 0,
   };
   let k = 0;
   for (const { entry, finals } of picked) {
@@ -475,9 +577,13 @@ function* shardRecords(dir, source, shardTimings) {
       outcome.attempts += attempts;
       outcome.failed += test.state === "failed" ? 1 : 0;
       outcome.pending += test.state === "pending" ? 1 : 0;
-      outcome.cutsWithoutDump += (test.steps?.cuts ?? []).filter(
-        (c) => !c.backend?.classes,
-      ).length;
+      const spans = mergedSpans(test.steps?.cuts ?? []);
+      const mergedCuts =
+        spans.merged.reduce((n, m) => n + m, 0) + spans.intoBeforeTest;
+      outcome.cutsWithoutDump +=
+        (test.steps?.cuts ?? []).filter((c) => !c.backend?.classes).length -
+        mergedCuts;
+      outcome.mergedCuts += mergedCuts;
       outcome.withoutSteps += test.steps ? 0 : 1;
       outcome.withoutBackend += test.backend?.test?.classes ? 0 : 1;
       outcome.recordingErrors += test.capture?.errors ?? 0;
@@ -506,6 +612,17 @@ function* shardRecords(dir, source, shardTimings) {
           problems.assertEvents += 1;
           if (/\.(should|and)\([^()]*\)$/.test(e.chain ?? "")) {
             problems.assertChainsEndingInShould += 1;
+          }
+          if (e.chainerId != null && e.chainSource !== "current") {
+            problems.assertsWithOwnChain += 1;
+          }
+          if (callSiteText(e.callSite)) {
+            problems.assertsWithCallSite += 1;
+          }
+        } else if (e.kind === "request" && e.initiator === "cy.request") {
+          problems.cyRequests += 1;
+          if (e.bodyHash !== undefined || e.bodyType !== undefined) {
+            problems.cyRequestsWithBody += 1;
           }
         }
       }
@@ -538,6 +655,8 @@ function* shardRecords(dir, source, shardTimings) {
           0,
         ),
         rawClassCount: test.backend?.test?.classes?.length ?? 0,
+        branches: branchIds(netTest.branches ?? []),
+        rawBranchCount: (test.branchHits?.length ?? 0) / 4,
         lazyNamespaces: (test.backend?.test?.classes ?? []).filter((i) =>
           shard.classes[i]?.[0]?.endsWith("__init"),
         ).length,
@@ -586,13 +705,7 @@ function* shardRecords(dir, source, shardTimings) {
           rawFns: 0,
           rawClasses: 0,
           virtual: true,
-          asserts: Object.fromEntries(
-            LEVELS.map((level) => [
-              level,
-              entry.asserts.map((a) => vocab.asserts[level].id(a[level])),
-            ]),
-          ),
-          assertChains: entry.asserts.map((a) => a.chain),
+          ...assertFields(entry.asserts),
           requests: [...new Set(entry.requests.map(maps.canonicalRoute))].map(
             (r) => vocab.routes.id(r),
           ),
@@ -617,8 +730,14 @@ function* shardRecords(dir, source, shardTimings) {
             gapMs: check.backend.gapMs,
             wallMs: (test.durationMs ?? 0) + (test.capture?.drainMs ?? 0),
           });
+          problems.cutsWithoutBackendDump +=
+            test.steps.cuts.filter((c) => !c.backend).length - mergedCuts;
         }
-        problems.cutsWithoutBackendDump += check.backend?.cutsWithoutDump ?? 0;
+        problems.cutsMergedIntoNextDump += mergedCuts - spans.intoBeforeTest;
+        problems.cutsMergedIntoBeforeTest += spans.intoBeforeTest;
+        problems.cutsWithFailedDumpRequest += test.steps.cuts.filter(
+          (c) => c.dumpFailed,
+        ).length;
         problems.failedBackendDumps += check.backend?.failed ?? 0;
         problems.cutsNotMatchingTrigger += checkCuts(test);
 
@@ -661,13 +780,10 @@ function* shardRecords(dir, source, shardTimings) {
             classes: netStep ? classIds(netStep.backendClasses) : [],
             rawFns: (cut.f?.length ?? 0) / 3,
             rawClasses: cut.backend?.classes?.length ?? 0,
-            asserts: Object.fromEntries(
-              LEVELS.map((level) => [
-                level,
-                entry.asserts.map((a) => vocab.asserts[level].id(a[level])),
-              ]),
-            ),
-            assertChains: entry.asserts.map((a) => a.chain),
+            ...(cut.dumpSkipped && { dump: "skipped" }),
+            ...(cut.dumpFailed && { dump: "failed" }),
+            ...(spans.merged[index] > 0 && { merged: spans.merged[index] }),
+            ...assertFields(entry.asserts),
             requests: [...new Set(entry.requests.map(maps.canonicalRoute))].map(
               (r) => vocab.routes.id(r),
             ),
@@ -711,6 +827,12 @@ function* shardRecords(dir, source, shardTimings) {
             other.net.backendClasses,
           ),
           routeJaccard: jaccard(netTest.routes, other.net.routes),
+          ...(test.branchHits && {
+            branchJaccard: jaccard(
+              netTest.branches ?? [],
+              other.net.branches ?? [],
+            ),
+          }),
         };
         for (const level of LEVELS) {
           record.control[level] = compareSequences(
@@ -760,6 +882,8 @@ function sampleView(record) {
     source: record.source,
     fns: record.fns,
     classes: record.classes,
+    branches: record.branches,
+    rawBranchCount: record.rawBranchCount,
     routes: record.routes,
     tokens: record.tokens,
     asserts: record.cuts.flatMap((c) => c.asserts.normalized),
@@ -777,6 +901,10 @@ function compareSamples(a, b) {
     classJaccard: jaccard(a.classes, b.classes),
     classJaccardUnion: jaccard(outside(a.classes), outside(b.classes)),
     routeJaccard: jaccard(a.routes, b.routes),
+    ...(a.rawBranchCount > 0 &&
+      b.rawBranchCount > 0 && {
+        branchJaccard: jaccard(a.branches, b.branches),
+      }),
     assertJaccard: jaccard(a.asserts, b.asserts),
     exact: compareSequences(a.tokens.exact, b.tokens.exact),
     normalized: compareSequences(a.tokens.normalized, b.tokens.normalized),
@@ -833,6 +961,23 @@ for (const dir of reader.shardDirs(runDir)) {
     }
     out.write(JSON.stringify(record) + "\n");
   }
+}
+
+// "<type>:<line>" of a branch arm from the branchmap, or "" when the branchmap has no such arm.
+function branchLabel(arm) {
+  const at = arm.lastIndexOf("#");
+  const [branch, index] = arm
+    .slice(at + 1)
+    .split(":")
+    .map(Number);
+  const meta = branchMaps.get(arm.slice(0, at))?.[branch];
+  return meta && index < meta[3] ? `${meta[0]}:${meta[1]}` : "";
+}
+
+if (branchMaps.size > 0) {
+  problems.branchesNotInBranchmap = vocab.branches.values.filter(
+    (arm) => !branchLabel(arm),
+  ).length;
 }
 
 // The problem counts in the summary are the main run's.
@@ -993,6 +1138,8 @@ fs.writeFileSync(
     sha,
     fns: vocab.fns.values,
     fnNames: vocab.fns.values.map(fnLabel),
+    branches: vocab.branches.values,
+    branchLabels: vocab.branches.values.map(branchLabel),
     classes: vocab.classes.values,
     classNs: vocab.classes.values.map(maps.classNs),
     routes: vocab.routes.values,
@@ -1011,6 +1158,9 @@ fs.writeFileSync(
       .map((name) => vocab.classes.ids.get(name)),
     asserts: Object.fromEntries(
       LEVELS.map((level) => [level, vocab.asserts[level].values]),
+    ),
+    anchors: Object.fromEntries(
+      LEVELS.map((level) => [level, vocab.anchors[level].values]),
     ),
   }),
 );
@@ -1053,6 +1203,7 @@ fs.writeFileSync(
       shardMeta,
       vocab: {
         fns: vocab.fns.values.length,
+        branches: vocab.branches.values.length,
         classes: vocab.classes.values.length,
         routes: vocab.routes.values.length,
         tokens: Object.fromEntries(
@@ -1060,6 +1211,9 @@ fs.writeFileSync(
         ),
         asserts: Object.fromEntries(
           LEVELS.map((level) => [level, vocab.asserts[level].values.length]),
+        ),
+        anchors: Object.fromEntries(
+          LEVELS.map((level) => [level, vocab.anchors[level].values.length]),
         ),
       },
       problems: mainProblems,

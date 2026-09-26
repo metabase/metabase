@@ -35,7 +35,7 @@ gh run download <run id> -p 'journey-capture-shard-*' -p journey-capture-openapi
 The steps, in order:
 
 1. `repo_files.sh` copies the module boundaries, the API route maps and the backend module config at the run's commit.
-2. `extract.mjs` reads the run one shard at a time, keeps each test's final attempt and subtracts the baselines. It writes each test's code (frontend functions, backend classes, API routes, pages), its path of Cypress commands and `cy.request` calls, and its step cuts with the code and assertions each one holds.
+2. `extract.mjs` reads the run one shard at a time, keeps each test's final attempt and subtracts the baselines. It writes each test's code (frontend functions and branch arms, backend classes, API routes, pages), its path of Cypress commands and `cy.request` calls, and its step cuts with the code and assertions each one holds.
 3. `static-tests.mjs` parses the specs at the run's commit, and `static_align.py` ties recorded assertions to source lines and finds the describes with `before` hooks.
 4. `graph.py` builds the step graph: a prefix tree over the tests' paths, at an exact and a normalized level.
 5. `overlap.py` measures overlap at every granularity, a duration-weighted cover, duplicate verdicts and, with `--kills`, the kills-first cover and deletion verdicts.
@@ -49,6 +49,8 @@ The steps, in order:
 | `--kills <file>`     | a kills file, below                                                                                      |
 | `--min-mutants <k>`  | qualifying mutants a delete verdict needs, default 5                                                     |
 | `--require-strata`   | strata a delete verdict needs among them, default `logic,wiring`                                         |
+| `--fe-code`          | what the duplicate verdicts' frontend Jaccard compares: `functions` (default), `branches` (branch arms) or `both` |
+| `--cover-branches`   | also break the kills-first cover's ties on branch arms                                                   |
 
 | Environment variable   | Meaning                                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -58,6 +60,15 @@ The steps, in order:
 | `REPO_SLUG`            | where to download from, default `metabase/metabase`                                                      |
 
 Static alignment needs the run's commit in the local clone. Without it, assertions are keyed by their message only, and a describe's `before` hooks count only for the test that ran them.
+
+### Schema 2 captures
+
+The pipeline reads schema 1 and schema 2 captures. From a schema 2 capture it also uses:
+
+- **`cy.request` bodies.** A `cy.request` token carries its body: at the exact level a hash of the canonical body with run-varying values masked, as in command arguments, and at the normalized level the body with ids masked too. A body the capture clipped keeps the capture's own hash at the exact level, marked `~raw`, and that hash changes with any uuid or timestamp in the body. Two tests that set up different fixtures through the API no longer share a path. Two whose fixtures differ only in ids share it at the normalized level only.
+- **Each assertion's own chain.** An `expect()` or `assert()` with a call site is keyed by that `file:line` and its message, and a `.should()` on its own chain by that chain and its message. Assertions with `"chainSource": "current"` are keyed as in schema 1. `static_align.py` ties an assertion with a call site to the source assertions on that line, whatever its message.
+- **Branch arms**, as the `branches` granularity and through `--fe-code` and `--cover-branches`. A schema 1 run has none, and both options fall back to functions. Arms are recorded per test, not per step, so a describe's `before` hooks add theirs to the test that ran them only.
+- **Merged backend dumps.** A cut with `dumpSkipped` or `dumpFailed` has its backend code in the next dump taken, and every cut of that span holds the dump's classes. After a describe's `before` hooks, that dump is `beforeTest`. These cuts count as merged in the capture problems, not as missing.
 
 ### Outputs
 
