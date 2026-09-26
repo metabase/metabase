@@ -13,17 +13,16 @@ export function getUnsupportedReason(query: Lib.Query): string | null {
     return t`a native query`;
   }
   const trimmed = Lib.dropEmptyStages(query);
-  // MLv2 cannot hold an empty field list, so the canvas would put every column back.
-  const columns = Lib.fieldableColumns(trimmed, 0);
-  if (
-    columns.length > 0 &&
-    columns.every((column) => !Lib.displayInfo(trimmed, 0, column).selected)
-  ) {
-    return t`a column selection that leaves out every source column`;
+  if (!keepsSourceFields(trimmed)) {
+    return t`a column selection the canvas can't keep`;
   }
   for (const stageIndex of Lib.stageIndexes(trimmed)) {
     if (stageIndex === 0) {
       continue;
+    }
+    // A table block only picks columns on the first stage.
+    if (Lib.fields(trimmed, stageIndex).length > 0) {
+      return t`a column selection on a later stage`;
     }
     const followsSummarize =
       Lib.aggregations(trimmed, stageIndex - 1).length > 0 ||
@@ -33,4 +32,25 @@ export function getUnsupportedReason(query: Lib.Query): string | null {
     }
   }
   return null;
+}
+
+// A table block remembers which columns are left out, nothing more, and the
+// compiler rebuilds the field list from that in the table's own order. Any
+// field list that comes back different would overwrite the question on open.
+function keepsSourceFields(query: Lib.Query): boolean {
+  if (Lib.fields(query, 0).length === 0) {
+    return true;
+  }
+  const columns = Lib.fieldableColumns(query, 0);
+  const kept = columns.filter(
+    (column) => Lib.displayInfo(query, 0, column).selected,
+  );
+  const rebuilt =
+    kept.length > 0 && kept.length < columns.length
+      ? Lib.withFields(query, 0, kept)
+      : Lib.withFields(query, 0, []);
+  return (
+    JSON.stringify(Lib.toLegacyQuery(rebuilt)) ===
+    JSON.stringify(Lib.toLegacyQuery(query))
+  );
 }

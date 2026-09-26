@@ -734,6 +734,35 @@ describe("getUnsupportedReason", () => {
     expect(getUnsupportedReason(query)).not.toBeNull();
   });
 
+  it("refuses a reordered column list on the first stage", () => {
+    const query = createQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          fields: [
+            { type: "column", name: "TOTAL", tableId: ORDERS_ID },
+            { type: "column", name: "ID", tableId: ORDERS_ID },
+          ],
+        },
+      ],
+    });
+    expect(getUnsupportedReason(query)).not.toBeNull();
+  });
+
+  it("refuses a column selection on a later stage", () => {
+    const query = createQuery({
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [count],
+          breakouts: [{ type: "column", name: "TOTAL", tableId: ORDERS_ID }],
+        },
+        { fields: [{ type: "column", name: "count" }] },
+      ],
+    });
+    expect(getUnsupportedReason(query)).not.toBeNull();
+  });
+
   it("refuses a nested query that does not summarize first", () => {
     const query = createQuery({
       stages: [{ source: { type: "table", id: ORDERS_ID } }, { limit: 3 }],
