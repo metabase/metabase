@@ -648,6 +648,11 @@ The Topic column on the [Activity log](#activity-log) model takes one of:
 - transform-run-canceled
 - transform-run-start
 - transform-run-timeout
+- transform-test-create
+- transform-test-delete
+- transform-test-run-start
+- transform-test-run-timeout
+- transform-test-update
 - update-permission-failure
 - update-transform
 - upload-append

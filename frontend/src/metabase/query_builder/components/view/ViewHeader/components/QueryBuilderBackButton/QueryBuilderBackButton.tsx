@@ -11,8 +11,6 @@ import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 import { navigateBackToDashboard } from "../../../../../store/actions";
 import { getParentEntity } from "../../../../../store/selectors";
 
-import S from "./QueryBuilderBackButton.module.css";
-
 export type QueryBuilderBackButtonProps = {
   noLink?: boolean;
   onClick?: () => void;
@@ -57,7 +55,6 @@ export function QueryBuilderBackButton({
   return (
     <Tooltip label={label}>
       <ActionIcon
-        className={S.QueryBuilderBackButton}
         variant="outline"
         radius="xl"
         size="2.625rem"

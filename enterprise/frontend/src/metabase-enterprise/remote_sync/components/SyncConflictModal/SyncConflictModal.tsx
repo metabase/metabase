@@ -241,13 +241,11 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
         )}
 
         <Group gap="sm" justify="end" mt="xl">
-          <Button onClick={onClose} variant="subtle">
+          <Button onClick={onClose} variant="subtle" color="neutral">
             {t`Cancel`}
           </Button>
           <Button
-            color={
-              optionValue === "discard" ? "feedback-negative" : "core-brand"
-            }
+            color={optionValue === "discard" ? "negative" : "brand"}
             disabled={isButtonDisabled}
             leftSection={
               optionValue === "force-push" ? <Icon name="warning" /> : undefined

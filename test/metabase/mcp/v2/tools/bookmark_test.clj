@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.bookmark :as tools.bookmark]
    [metabase.metabot.scope :as metabot.scope]
@@ -30,7 +31,7 @@
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   [{:keys [result error]}]

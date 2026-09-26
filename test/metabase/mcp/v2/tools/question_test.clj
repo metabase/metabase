@@ -11,11 +11,13 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.question :as v2.question]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -32,6 +34,11 @@
     (or result
         {:isError true
          :content [{:type "text" :text (message/render (:message error))}]})))
+
+(defn- payload
+  "Decoded JSON payload of a successful tool result's text block."
+  [result]
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- orders-query
   "A Lib query over ORDERS — a runnable `:dataset_query` for fixtures that only need the card to
@@ -240,10 +247,24 @@
                             :stages [{:source-table (mt/id :orders)}]}}
             result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
         (is (not (:isError result)) (-> result :content first :text))
-        (let [card-id (:id (:structuredContent result))]
+        (let [card-id (:id (payload result))]
           (is (int? card-id))
           (is (= "Agent Q" (t2/select-one-fn :name :model/Card :id card-id)))
           (is (= :question (t2/select-one-fn :type :model/Card :id card-id))))))))
+
+(deftest write-result-is-text-only-test
+  (testing "GHY-4554: a successful question_write result has no structuredContent, and its text block opens
+            with a data boundary. Claude Code shows the model structuredContent in place of the text block,
+            so a structured copy of the payload would reach the model with no boundary around it."
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [result (call-tool #{"agent:content:write" "agent:content:read"} (str (random-uuid)) "question_write"
+                                {:method "create"
+                                 :name   "Text-only Q"
+                                 :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})]
+          (is (not (:isError result)) (-> result :content first :text))
+          (is (not (contains? result :structuredContent)))
+          (is (some? (v2.tu/data-parts (-> result :content first :text)))))))))
 
 (defn- mint-handle-via-execute!
   "Mint a query_handle for `query` the way `execute_query` does — straight into the handle store,
@@ -273,7 +294,7 @@
             result (call-tool #{"agent:content:write"} sid "question_write"
                               {:method "create" :name "From Handle" :query_handle handle})]
         (is (not (:isError result)) (-> result :content first :text))
-        (let [card-id (:id (:structuredContent result))]
+        (let [card-id (:id (payload result))]
           (is (int? card-id))
           (is (=? {:lib/type :mbql/query
                    :stages   [{:lib/type    :mbql.stage/mbql
@@ -319,7 +340,7 @@
               (is (not (:isError result)) (-> result :content first :text))
               (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
                       (t2/select-one-fn :dataset_query :model/Card
-                                        :id (:id (:structuredContent result)))))))
+                                        :id (:id (payload result)))))))
           (testing "the kill switch covers the handle route too"
             (mt/with-temporary-setting-values [mcp-execute-sql-enabled false]
               (let [sid    (str (random-uuid))
@@ -404,14 +425,14 @@
                                   (assoc base-args :name "Agent Q root" :collection_id "root"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (nil? (t2/select-one-fn :collection_id :model/Card
-                                        :id (:id (:structuredContent result)))))))
+                                        :id (:id (payload result)))))))
         (testing "omitted collection_id saves to the caller's personal collection"
           (let [personal-id (:id (collection/user->personal-collection (mt/user->id :crowberto)))
                 result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                                   (assoc base-args :name "Agent Q personal"))]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= personal-id (t2/select-one-fn :collection_id :model/Card
-                                                 :id (:id (:structuredContent result)))))))))))
+                                                 :id (:id (payload result)))))))))))
 
 (defn- create-model-result-metadata
   "Create a model card via the tool with `extra-args` merged in, returning its persisted
@@ -422,7 +443,7 @@
         result    (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write"
                              (merge base-args extra-args))]
     (is (not (:isError result)) (-> result :content first :text))
-    (t2/select-one-fn :result_metadata :model/Card :id (:id (:structuredContent result)))))
+    (t2/select-one-fn :result_metadata :model/Card :id (:id (payload result)))))
 
 (deftest create-model-with-column-metadata-test
   (mt/with-model-cleanup [:model/Card]
@@ -475,7 +496,7 @@
               result (call-tool #{"agent:content:write" "agent:sql:run"} (str (random-uuid))
                                 "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
-          (is (= :model (t2/select-one-fn :type :model/Card :id (:id (:structuredContent result))))))))))
+          (is (= :model (t2/select-one-fn :type :model/Card :id (:id (payload result))))))))))
 
 (deftest create-dashboard-question-test
   (mt/with-model-cleanup [:model/Card]
@@ -487,7 +508,7 @@
                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
               result (call-tool #{"agent:content:write"} (str (random-uuid)) "question_write" args)]
           (is (not (:isError result)) (-> result :content first :text))
-          (let [card-id (:id (:structuredContent result))]
+          (let [card-id (:id (payload result))]
             (is (= (:id dash) (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))))
 
 (deftest create-dashboard-question-model-type-rejected-test
@@ -575,7 +596,7 @@
                                                             "graph.goal_value" 50000}})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= {:graph.show_goal true :graph.goal_value 50000}
-                   (:visualization_settings (:structuredContent result)))))))
+                   (:visualization_settings (payload result)))))))
       (testing "and an update that leaves them alone still reports what is stored"
         (mt/with-temp [:model/Card card {:name                   "Chart"
                                          :display                :line
@@ -585,7 +606,7 @@
                                   {:method "update" :id (:id card) :description "d"})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= {:graph.goal_value 10}
-                   (:visualization_settings (:structuredContent result)))))))
+                   (:visualization_settings (payload result)))))))
       (testing "a card with nothing stored echoes {}"
         (mt/with-model-cleanup [:model/Card]
           (let [result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
@@ -593,7 +614,7 @@
                                    :query  {:database (mt/id)
                                             :stages   [{:source-table (mt/id :orders)}]}})]
             (is (not (:isError result)) (-> result :content first :text))
-            (is (= {} (:visualization_settings (:structuredContent result))))))))))
+            (is (= {} (:visualization_settings (payload result))))))))))
 
 (deftest ^:parallel semantic-type-accepts-relation-types-test
   (testing "type/PK and type/FK are relation types (not Semantic/*), accepted by the column schema and named
@@ -614,7 +635,7 @@
                                  :query  {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                                  :name   "By eid, renamed"})]
           (is (not (:isError result)) (-> result :content first :text))
-          (is (= (:id card) (:id (:structuredContent result))))
+          (is (= (:id card) (:id (payload result))))
           (is (= "By eid, renamed" (t2/select-one-fn :name :model/Card :id (:id card)))))))))
 
 (deftest update-checks-permissions-before-inferring-metadata-test
@@ -710,7 +731,7 @@
                                    :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})]
             (is (not (:isError result)) (-> result :content first :text))
             (is (= :list (t2/select-one-fn :display :model/Card
-                                           :id (:id (:structuredContent result))))))))
+                                           :id (:id (payload result))))))))
       (testing "a card that stays a question keeps its display"
         (mt/with-temp [:model/Card {card-id :id} {:display :bar :dataset_query (orders-query)}]
           (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
@@ -769,7 +790,7 @@
                                      {:method "create" :card_type "model"
                                       :name "Update Model"
                                       :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
-            card-id (:id (:structuredContent create-result))
+            card-id (:id (payload create-result))
             update-result (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                      {:method "update" :id card-id
                                       :column_metadata [{:name "TOTAL" :display_name "Total $"
@@ -794,7 +815,7 @@
                                        {:method "create" :card_type "model"
                                         :name "Iteratively Annotated Model"
                                         :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}})
-              card-id       (:id (:structuredContent create-result))
+              card-id       (:id (payload create-result))
               annotate!     (fn [column_metadata]
                               (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                          {:method "update" :id card-id :column_metadata column_metadata}))]
@@ -818,7 +839,7 @@
                                         :name "Clearable Override Model"
                                         :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
                                         :column_metadata [{:name "TOTAL" :semantic_type "type/Currency"}]})
-              card-id       (:id (:structuredContent create-result))
+              card-id       (:id (payload create-result))
               clear-result  (call-tool #{::scope/unrestricted} (str (random-uuid)) "question_write"
                                        {:method "update" :id card-id
                                         :column_metadata [{:name "TOTAL" :semantic_type nil}]})]
@@ -1012,7 +1033,7 @@
               (is (not (:isError result)) (-> result :content first :text))
               (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
                       (t2/select-one-fn :dataset_query :model/Card
-                                        :id (:id (:structuredContent result)))))))
+                                        :id (:id (payload result)))))))
           (testing "update is gated too — swapping a stored MBQL query for SQL stores the same capability"
             (mt/with-temp [:model/Card card {:dataset_query (orders-query)}]
               (let [update-args {:method "update" :id (:id card)
@@ -1049,7 +1070,7 @@
             (let [result (call-tool with-sql (str (random-uuid)) "question_write" native-inline)]
               (is (not (:isError result)) (-> result :content first :text))
               (is (=? {:stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
-                      (t2/select-one-fn :dataset_query :model/Card :id (:id (:structuredContent result)))))))
+                      (t2/select-one-fn :dataset_query :model/Card :id (:id (payload result)))))))
           (testing "a plain inline MBQL query is unaffected — still creatable with the write scope only"
             (let [result (call-tool write-only (str (random-uuid)) "question_write"
                                     {:method "create" :name "Plain MBQL Q"
@@ -1080,15 +1101,15 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (let [args  {:method "create" :name "Ack Q"
                      :query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}}
-              acked (:structuredContent (call-tool #{"agent:content:write"}
-                                                   (str (random-uuid)) "question_write" args))]
+              acked (payload (call-tool #{"agent:content:write"}
+                                        (str (random-uuid)) "question_write" args))]
           (is (pos-int? (:id acked)))
           (is (re-find #"agent:content:read" (:note acked)))
           (is (not (contains? acked :name)))
           (testing "with the read scope the full response comes back"
-            (let [full (:structuredContent (call-tool #{"agent:content:write" "agent:content:read"}
-                                                      (str (random-uuid)) "question_write"
-                                                      (assoc args :name "Full Q")))]
+            (let [full (payload (call-tool #{"agent:content:write" "agent:content:read"}
+                                           (str (random-uuid)) "question_write"
+                                           (assoc args :name "Full Q")))]
               (is (= "Full Q" (:name full))))))))))
 
 (deftest question-write-scopes-registered-test

@@ -249,8 +249,8 @@ function AddTableButton({
     <Box>
       <Button
         leftSection={<Icon name="add_data" />}
-        variant="subtle"
-        px={0}
+        variant="transparent"
+        size="compact-md"
         onClick={onClick}
         disabled={disabled}
       >
