@@ -1,18 +1,22 @@
 // Builds the reach index from journey-capture run directories.
-//   node build-index.mjs --run <dir> [--rerun <dir>] --out <index dir>
+//   node build-index.mjs --run <dir> [--rerun <dir>] --out <index dir> [--app-base <commit>]
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import * as reader from "../../journey-capture.mjs";
+import { mergedSpans } from "../pipeline/steps.mjs";
 
 import { parseArgs } from "./args.mjs";
+import { repoRoot } from "./source.mjs";
 
 const args = parseArgs(process.argv.slice(2), {
   multiple: ["rerun"],
 });
 if (!args.run || !args.out) {
   console.error(
-    "Usage: node build-index.mjs --run <dir> [--rerun <dir> ...] --out <index dir>",
+    "Usage: node build-index.mjs --run <dir> [--rerun <dir> ...] --out <index dir> [--app-base <commit>]",
   );
   process.exit(1);
 }
@@ -131,13 +135,17 @@ function summarizeAttempt(shard, raw, net) {
   }
   const cuts = raw.steps?.cuts ?? [];
   const files = raw.steps?.files ?? [];
-  for (const cut of cuts) {
-    // An assertion cut holds the code that ran up to and during that assertion, so the assertion counts.
-    const from =
+  // An assertion cut holds the code that ran up to and during that assertion, so the assertion counts.
+  const assertsFrom = (cut) =>
+    countFrom(
+      seqs,
       cut.trigger === "assert" && cut.triggerSeq != null
         ? cut.triggerSeq
-        : cut.seq;
-    const after = countFrom(seqs, from);
+        : cut.seq,
+    );
+  const { merged } = mergedSpans(cuts);
+  for (const [index, cut] of cuts.entries()) {
+    const after = assertsFrom(cut);
     const f = cut.f ?? [];
     for (let i = 0; i + 2 < f.length; i += 3) {
       if (f[i + 2] <= 0) {
@@ -148,6 +156,9 @@ function summarizeAttempt(shard, raw, net) {
         reached.set(id, after);
       }
     }
+    // When the dumps of the cuts before this one were skipped or failed, its dump holds their backend code too,
+    // so its classes count from the first cut of that span.
+    const spanAfter = assertsFrom(cuts[index - merged[index]]);
     for (const c of cut.backend?.classes ?? []) {
       const name = shard.classes[c]?.[0];
       if (!classNames.has(name)) {
@@ -155,7 +166,7 @@ function summarizeAttempt(shard, raw, net) {
       }
       const id = keyIds.get(`be:${name}`);
       if (reached.get(id) === -1) {
-        reached.set(id, after);
+        reached.set(id, spanAfter);
       }
     }
   }
@@ -283,6 +294,27 @@ fs.writeFileSync(
     0,
   ),
 );
+function mergeBase(sha) {
+  const repo = repoRoot(path.dirname(fileURLToPath(import.meta.url)));
+  try {
+    return execFileSync(
+      "git",
+      ["-C", repo, "merge-base", sha, "origin/master"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+    ).trim();
+  } catch {
+    return null;
+  }
+}
+
+const sha = reader.loadShard(reader.shardDirs(args.run)[0]).meta.sha;
+const appBase = args["app-base"] ?? mergeBase(sha);
+if (!appBase) {
+  log(
+    `warning: meta.json gets no appBase, because git finds no merge base of ${sha} and origin/master. Pass --app-base <commit> to set it.`,
+  );
+}
+
 fs.writeFileSync(path.join(args.out, "fnmap.json"), JSON.stringify(fnmap));
 fs.writeFileSync(
   path.join(args.out, "baseline.json"),
@@ -297,7 +329,8 @@ fs.writeFileSync(
   JSON.stringify(
     {
       builtAt: new Date().toISOString(),
-      sha: reader.loadShard(reader.shardDirs(args.run)[0]).meta.sha,
+      sha,
+      ...(appBase ? { appBase } : {}),
       runs: runs.map((run) => ({
         ...run,
         runId: reader.loadShard(reader.shardDirs(run.dir)[0]).meta.runId,

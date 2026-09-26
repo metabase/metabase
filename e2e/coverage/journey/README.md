@@ -3,7 +3,7 @@
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
 - **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, provisional-keep, delete or unmeasured verdict.
-- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict. `lookup/ledger.mjs` joins the index and a kills file into one row per code location.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
 
@@ -158,7 +158,7 @@ Line numbers are for the commit the run captured (`meta.json`'s `sha`). Source i
 - **Backend:** the JVM classes of the var, which are `<ns with - as _>$<munged var>` and its inner `$fn__N` classes. With `lines.json` in the index, a top-level form owns every class whose line range sits inside it, which also covers `defmethod` and `defendpoint` bodies. The backend baseline is the union of every shard's `coverage-baseline` classes.
 - **`.cljc` forms:** both the backend classes and the browser copy's functions whose source map origin lies inside the form (`cljs-origins.json`).
 
-A test **reaches** a location when its chosen attempt ran any of those functions or classes. It **reaches and asserts** when a later passing assertion exists in the same test. `assertsAfter` counts the passing assertions from the first step cut that held the location, including the assertion that triggered that cut. Assertions in `after` hooks don't count.
+A test **reaches** a location when its chosen attempt ran any of those functions or classes. It **reaches and asserts** when a later passing assertion exists in the same test. `assertsAfter` counts the passing assertions from the first step cut that held the location, including the assertion that triggered that cut. With a schema 2 capture's [merged backend dumps](#schema-2-captures), every cut of the span holds the dump's classes, so they count from its first cut. Assertions in `after` hooks don't count.
 
 Each test contributes one attempt: the last passing attempt of the main run, else a passing attempt of a rerun, else its last attempt. Tests with no passing attempt are left out of the results and listed separately.
 
@@ -285,15 +285,57 @@ The tests run a synthetic kills file through both this command and the pipeline'
 JOURNEY_LOOKUP_INDEX=<index dir> python3 e2e/coverage/journey/pipeline/test_kills.py
 ```
 
+### Location ledger
+
+```
+node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> --kills-base <commit> --out <dir>
+    [--locations <reach-counts.jsonl>] [--candidates <file or test id> ...] [--mutants-dir <dir>] [--allow-mixed] [--repo <path>]
+```
+
+`ledger.mjs` joins the index and a [kills file](#kills-file) into one row per code location. A row is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`. Mutant locations and `--locations` resolve as in [Locations](#locations), and the ones that resolve to the same function or form share a row. Each row holds the tests that reach it and assert afterwards, the mutants planted there, their confirmed killers per layer, and each mutant's `cheapest_layer`: the first of `tsc`, `contract`, `jest`, `deftest` and `e2e` with a confirmed kill, or `none`. Reach counts only tests that passed in the capture.
+
+| Option                      | Meaning                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `--index <dir>`             | the index, or `JOURNEY_LOOKUP_INDEX`                                                                       |
+| `--kills <file>`            | a [kills file](#kills-file). A mutant without a location sits in no row                                    |
+| `--kills-base <commit>`     | required. The commit the kills file's mutants were planted on, which the kills file doesn't record         |
+| `--out <dir>`               | where the outputs go                                                                                       |
+| `--locations <file>`        | `reach-counts.jsonl`. Each line's `locations` get rows, which record the line's `issue`                   |
+| `--candidates <file or id>` | the tests proposed for deletion, in any form `kills.py` takes. Repeat it for more. The CSV's `e2e_reach` and `e2e_reach_and_assert` leave them out |
+| `--mutants-dir <dir>`       | per-mutant `<mutant id>.json` files, whose `description` goes into the CSV, and `unit-results.json`, where a mutant's `typecheck` of `fails` is a kill at the `tsc` layer |
+| `--allow-mixed`             | join even when the bases differ, below                                                                     |
+| `--repo <path>`             | the git repo for source reads and commits, default the one this folder is in                               |
+
+**Base check:** the two inputs share a base when `--kills-base` is the captured commit, `meta.json`'s `sha`, or the app commit the capture branch sits on, `meta.json`'s `appBase`. In the second case, rows in files the capture branch changes are marked mixed. Any other base, or a commit missing from the repo, makes the join mixed, and `ledger.mjs` refuses it with exit code 2. `--allow-mixed` joins anyway and marks every row mixed. Without `--kills-base`, it exits with code 1.
+
+It writes three files to `--out`:
+
+- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers and `e2e_status`, the base check, the inputs, the demand list and the e2e floor.
+- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach` and `e2e_reach_and_assert` leave out the candidates, and the `_total` columns keep them.
+- `summary.md`, also printed: the counts, where the kills file's own `cheapest_layer` differs from the derived one, the demand list and the e2e floor.
+
+The **demand list** is the mutants with `cheapest_layer: none`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
+
+`ledger-verdicts.mjs` checks the ledger against `kills.py`:
+
+```
+node e2e/coverage/journey/lookup/ledger-verdicts.mjs --ledger <ledger.json> --verdicts <kills.py --out file> --candidates <file or test id> [--candidates ...]
+    [--min-mutants <k>] [--require-strata <s,...>] [--strata coarse]
+```
+
+It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
+
 ### Building an index
 
 ```
-node e2e/coverage/journey/lookup/build-index.mjs --run <run dir> [--rerun <run dir> ...] --out <index dir>
+node e2e/coverage/journey/lookup/build-index.mjs --run <run dir> [--rerun <run dir> ...] --out <index dir> [--app-base <commit>]
 node e2e/coverage/journey/lookup/build-lines.mjs --jar <metabase.jar from journey-capture-uberjar> --index <index dir>
 node e2e/coverage/journey/lookup/build-cljs-origins.mjs --maps <journey-capture-cljs dir> --index <index dir>
 ```
 
 A run dir holds the run's `journey-capture-shard-*` artifacts. To start from a run id, download them first, with `gh run download <run id> -p 'journey-capture-shard-*' -D <run dir>` or `e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>`. `build-index.mjs` takes about a minute for a 100-shard run.
+
+`build-index.mjs` records the app commit the capture branch sits on as `appBase` in `meta.json`, for the [location ledger](#location-ledger)'s base check. It's `--app-base` when given, and otherwise the merge base of the captured commit and `origin/master` in the repo this folder is in. When neither gives a commit, the index has no `appBase` and the build prints a warning.
 
 The other two steps are optional. Without `lines.json`, backend matching is by var name only, which misses `defmethod` bodies. Without `cljs-origins.json`, `.cljc` forms have no browser side. GitHub keeps the uberjar artifact for one day only.
 
@@ -301,7 +343,7 @@ The other two steps are optional. Without `lines.json`, backend matching is by v
 
 | File                | Content                                                                                                       |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `meta.json`         | runs, captured sha, counts                                                                                     |
+| `meta.json`         | runs, captured sha and its `appBase`, counts                                                                   |
 | `tests.json`        | per test: id, spec, title, run, shard, attempt, state, passing assertion count                                  |
 | `keys.json`         | the keys (`fe:<file>#<fnIndex>` or `be:<class>`) with offsets into `postings.bin`                              |
 | `postings.bin`      | per key, `uint32` pairs: test index, and 1 + assertions after the first cut holding the key (0 when no cut held it) |

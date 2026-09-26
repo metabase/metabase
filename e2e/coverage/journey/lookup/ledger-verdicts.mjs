@@ -360,6 +360,8 @@ function main() {
   }
   for (const id of expectedIds.filter((x) => x in got.results)) {
     const { state, ...want } = expected.candidates[id];
+    // `acceptance` comes from the location prior, which the ledger doesn't take.
+    delete want.acceptance;
     const have = got.results[id];
     if (state !== got.states[id]) {
       differences.push(

@@ -17,6 +17,7 @@ import {
   LEVELS,
   buildPath,
   callSiteText,
+  mergedSpans,
   placeCuts,
   virtualCuts,
 } from "./steps.mjs";
@@ -349,34 +350,6 @@ function loadBranchMaps(dir) {
       }
     }
   }
-}
-
-// A cut with `dumpSkipped` or `dumpFailed` has its backend code in the next dump taken,
-// which after a describe's `before` hooks is the `beforeTest` dump of the root beforeEach.
-// Such cuts before a cut with neither a dump nor a flag stay unplaced, like that cut, whose request was lost.
-function mergedSpans(cuts) {
-  const merged = cuts.map(() => 0);
-  let intoBeforeTest = 0;
-  let pending = 0;
-  cuts.forEach((cut, index) => {
-    if (
-      pending > 0 &&
-      cuts[index - 1].phase === "before all" &&
-      cut.phase !== "before all"
-    ) {
-      intoBeforeTest += pending;
-      pending = 0;
-    }
-    if (cut.backend) {
-      merged[index] = pending;
-      pending = 0;
-    } else if (cut.dumpSkipped || cut.dumpFailed) {
-      pending += 1;
-    } else {
-      pending = 0;
-    }
-  });
-  return { merged, intoBeforeTest };
 }
 
 function assertFields(asserts) {
