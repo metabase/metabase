@@ -205,7 +205,11 @@ async function link_issues(github) {
           query: `query($id: String!) { issue(id: $id) { id identifier attachments { nodes {url}}}}`,
           variables: { id }
         }));
-        if (res.data?.issue) linearIssues.push(res.data.issue);
+        if (res.data?.issue) {
+          linearIssues.push(res.data.issue);
+        } else {
+          console.log(`Linear issue ${id} not found: ${JSON.stringify(res)}`);
+        }
       } catch (err) {
         console.log(`Could not look up Linear issue ${id}: ${err.message}`);
       }
