@@ -183,35 +183,28 @@
   (perf/mapv #(nth row %) indexes))
 
 (defn- build-values-by-key
-  "Creates a mapping from row and column indexes to the values, as well as
-  metadata used for conditional formatting and drill-throughs."
+  "Creates a mapping from row and column indexes to the values needed to render each cell, plus the original `row`
+  itself in order to compute the metadata necessary for the drill-through click. See `get-normal-cell-values`."
   [rows cols row-indexes col-indexes val-indexes]
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)
-        col-names (perf/mapv :name (select-indexes cols val-indexes))
-        breakout-col-indexes (vec (keep-indexed (fn [index col]
-                                                  (when (= (:source col) "breakout")
-                                                    index))
-                                                cols))]
+        col-names (perf/mapv :name (select-indexes cols val-indexes))]
     (persistent!
      (reduce
       (fn [acc row]
-        (let [value-key  (perf/mapv #(ensure-consistent-type (nth row %)) col-and-row-indexes)
-              values     (select-indexes row val-indexes)
-              data       (perf/mapv-indexed (fn [^long index value]
-                                              {:value value
-                                               :colIdx index})
-                                            row)
-              dimensions (perf/mapv (fn [index]
-                                      {:value (nth row index)
-                                       :colIdx index})
-                                    breakout-col-indexes)]
+        (let [value-key (perf/mapv #(ensure-consistent-type (nth row %)) col-and-row-indexes)
+              values    (select-indexes row val-indexes)]
           (assoc! acc value-key
                   {:values values
                    :valueColNames col-names
-                   :data data
-                   :dimensions dimensions})))
+                   :row row})))
       (transient {})
       rows))))
+
+(defn- build-breakout-col-indexes [cols]
+  (vec (keep-indexed (fn [index col]
+                       (when (= (:source col) "breakout")
+                         index))
+                     cols)))
 
 (defn- sort-orders-from-settings
   [col-settings indexes]
@@ -294,10 +287,12 @@
         col-sort-orders (sort-orders-from-settings col-settings col-indexes)
         sorted-row-tree (sort-tree collapsed-row-tree row-sort-orders)
         sorted-col-tree (sort-tree col-tree col-sort-orders)
-        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)]
+        values-by-key   (build-values-by-key rows cols row-indexes col-indexes val-indexes)
+        breakout-col-indexes (build-breakout-col-indexes cols)]
     {:row-tree (:children sorted-row-tree)
      :col-tree (:children sorted-col-tree)
-     :values-by-key values-by-key}))
+     :values-by-key values-by-key
+     :breakout-col-indexes breakout-col-indexes}))
 
 (defn- format-values-in-tree
   "Walks a tree, formatting values and annotating each value with its color for
@@ -537,17 +532,25 @@
   `underlying-records` rely on this to identify the clicked aggregation and lift its inner filter (e.g. `count-where`,
   `sum-where`, `share`). Without them, clicking a pivot cell for `CountIf([X] = Y)` drills without the `X = Y` filter
   (#79023)."
-  [values-by-key index-values value-formatters val-indexes color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)]
-    (if data
-      (map-indexed (fn [index value]
-                     {:value ((nth value-formatters index) value)
-                      :clicked {:data       data
-                                :dimensions dimensions
-                                :colIdx     (nth val-indexes index)
-                                :value      value}
-                      :backgroundColor (color-getter value index (nth valueColNames index))})
-                   values)
+  [values-by-key index-values value-formatters val-indexes color-getter breakout-col-indexes]
+  (let [{:keys [values valueColNames row]} (get values-by-key index-values)]
+    (if row
+      (let [data (perf/mapv-indexed (fn [^long index value]
+                                      {:value value
+                                       :colIdx index})
+                                    row)
+            dimensions (perf/mapv (fn [index]
+                                    {:value (nth row index)
+                                     :colIdx index})
+                                  breakout-col-indexes)]
+        (map-indexed (fn [index value]
+                       {:value ((nth value-formatters index) value)
+                        :clicked {:data       data
+                                  :dimensions dimensions
+                                  :colIdx     (nth val-indexes index)
+                                  :value      value}
+                        :backgroundColor (color-getter value index (nth valueColNames index))})
+                     values))
       (format-values values value-formatters))))
 
 (defn- is-subtotal?
@@ -570,14 +573,16 @@
 (defn- create-row-section-getter
   "Returns a memoized function that retrieves and formats values for a specific cell
   position in the pivot table."
-  [values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter]
+  [values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter
+   breakout-col-indexes]
   (fn [col-index row-index]
     (let [col-values (nth col-paths col-index [])
           row-values (nth row-paths row-index [])
           index-values (concat col-values row-values)
           result (if (is-subtotal? row-values col-values row-indexes col-indexes)
                    (handle-subtotal-cell subtotal-values row-values col-values row-indexes col-indexes value-formatters)
-                   (get-normal-cell-values values-by-key index-values value-formatters val-indexes color-getter))]
+                   (get-normal-cell-values values-by-key index-values value-formatters val-indexes color-getter
+                                           breakout-col-indexes))]
       ;; Convert to JavaScript object if in ClojureScript context
       #?(:cljs (perf/clj->js result)
          :clj result))))
@@ -662,7 +667,7 @@
          color-getter #?(:cljs (make-color-getter (clj->js primary-rows))
                          :clj (make-color-getter))
          columns (vec columns)
-         {:keys [row-tree col-tree values-by-key]}
+         {:keys [row-tree col-tree values-by-key breakout-col-indexes]}
          (build-pivot-trees primary-rows columns row-indexes col-indexes val-indexes settings col-settings)
 
          {:keys [row-paths formatted-row-tree-with-totals]}
@@ -677,4 +682,5 @@
       :rowIndex row-paths
       :leftHeaderItems (tree-to-array formatted-row-tree-with-totals)
       :topHeaderItems (tree-to-array formatted-col-tree)
-      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter)})))
+      :getRowSection (create-row-section-getter values-by-key subtotal-values value-formatters col-indexes row-indexes val-indexes col-paths row-paths color-getter
+                                                breakout-col-indexes)})))
