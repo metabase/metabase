@@ -1,0 +1,16 @@
+diff --git a/src/metabase/lib/schema/expression/conditional.cljc b/src/metabase/lib/schema/expression/conditional.cljc
+index 43b399c5e03..e84696a5120 100644
+--- a/src/metabase/lib/schema/expression/conditional.cljc
++++ b/src/metabase/lib/schema/expression/conditional.cljc
+@@ -28,11 +28,6 @@
+     (nil? x)
+     y
+ 
+-    ;; if the type of either x or y is unknown, then the overall type of this has to be unknown as well.
+-    (or (= x ::expression/type.unknown)
+-        (= y ::expression/type.unknown))
+-    ::expression/type.unknown
+-
+     ;; if both types are keywords return their most-specific ancestor.
+     (and (keyword? x)
+          (keyword? y))

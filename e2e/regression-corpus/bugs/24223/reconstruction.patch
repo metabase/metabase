@@ -1,0 +1,13 @@
+diff --git a/src/metabase/parameters/shared.cljc b/src/metabase/parameters/shared.cljc
+index 2d435e00a9d..5ec417f0b2f 100644
+--- a/src/metabase/parameters/shared.cljc
++++ b/src/metabase/parameters/shared.cljc
+@@ -209,7 +209,7 @@
+     * nil value => nil
+     * missing value key => default"
+   [parameter]
+-  (get parameter :value (:default parameter)))
++  (or (:value parameter) (:default parameter)))
+ 
+ (defn value-string
+   "Returns the value(s) of a dashboard filter, formatted appropriately."

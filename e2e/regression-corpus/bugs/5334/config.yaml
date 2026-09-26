@@ -1,0 +1,38 @@
+issue: 5334
+issue_url: https://github.com/metabase/metabase/issues/5334
+fix_commits: ["4cc540400eb72498ef785fce1e64283a69f68807"]
+fix_pr: 75938
+fix_subject: "Fix pie chart Other slice drill-through (#75938)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/visualizations-tabular/drillthroughs/chart_drill.cy.spec.js
+      line: 698
+      kind: it
+      title: "should only show the 'See these records' option for the 'Other' pie slice (metabase#5334)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit:
+    status: kill
+    killed_by:
+      - metabase.lib.drill-thru.underlying-records-test/chart-other-slice-click-test
+    clean_baseline: pass
+  fe_unit:
+    status: kill
+    killed_by:
+      - frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts
+      - frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.unit.spec.ts
+    clean_baseline: pass
+  notes: "Isolation-confirmed KILL on both legs (pie-chart Other-slice drill-through). Discounted load-flakes that also failed under the 13.9k-test findRelatedTests load but pass in isolation / fail on clean: ImageUploadWidget, question.unit.spec, FormDateInput, SmartScalar/compute."

@@ -1,0 +1,24 @@
+id: reg-67903
+origin:
+  kind: regression
+  issue: 67903
+  fix_commit: c902d22458b36c4fc5962087018dbd3db7d724da
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue #67903 should not show preview table headers on top of other elements (metabase#67903)"
+bug:
+  statement: "On narrower screens the notebook preview table's header shows through the SQL editor panel that should cover it."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: querying
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue #67903 should not show preview table headers on top of other elements (metabase#67903)"
+  expected_failure: "cy.findByTestId(\"table-header\").should(\"not.be.visible\") fails; the preview header paints over the SQL panel"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; CSS-module fix (contain: strict on the preview); MATRIX.md leaves it open as CSS-adjacent, with only a weak className-presence hook at unit level, so classed with the CSS-untestable entries; July's failure_shape is inferred from the fix diff and the e2e leg was never run; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

@@ -1,0 +1,25 @@
+id: reg-51717
+origin:
+  kind: regression
+  issue: 51717
+  fix_commit: 62a8a7b32e000dc6625df261e82db119609f1097
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 51717 should open question info sidebar when variables sidebar is already open (metabase#51717)"
+    - "frontend/src/metabase/query_builder/reducers.unit.spec.ts::query_builder uiControls reducer (metabase#51717) should close the native variables (template tags) sidebar when opening the question info sidebar"
+bug:
+  statement: "In the native editor, opening the question info sidebar while the Variables sidebar is open leaves Variables on top, so the info sidebar can't be used."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: query_builder
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/reducers.unit.spec.ts::query_builder uiControls reducer (metabase#51717) should close the native variables (template tags) sidebar when opening the question info sidebar"
+  expected_failure: "expect(nextState.isShowingTemplateTagsEditor).toBe(false); Expected: false, Received: true"
+notes: "mutation.patch also carries an unrelated OPEN_TIMELINES hunk (focusedTimelineEventIds) from the agent worktree's divergent base, which never existed on master; July skipped the CI e2e run because the patch didn't apply to master (E2E-ONLY.md caveats), so base_commit is unrecorded; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"

@@ -1,0 +1,25 @@
+id: reg-46675
+origin:
+  kind: regression
+  issue: 46675
+  fix_commit: 6deb7b700c862cdd336f715581014deecf68236c
+  fix_tests:
+    - "e2e/test/scenarios/joins/joins-reproductions.cy.spec.js::issue 46675 should reset the draft join state when the source table changes (metabase#46675)"
+    - "frontend/src/metabase/querying/notebook/components/JoinStep/JoinStep.unit.spec.tsx::Notebook Editor > Join Step should reset the draft join condition state when the rhs table is changed"
+bug:
+  statement: "Changing a table in a draft join keeps the previously picked join columns, producing an invalid query."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: notebook/JoinStep
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/notebook/components/JoinStep/JoinStep.unit.spec.tsx::Notebook Editor > Join Step should reset the draft join condition state when the rhs table is changed"
+  expected_failure: "within(lhsColumn).findByText(\"Pick a column…\") throws: Unable to find an element with the text: Pick a column…; stale \"ID\" still shown"
+notes: "the mutant removes only the JoinConditionDraft reset on a right-hand table change; the fix's JoinComplete and JoinDraft changes for a source-table change are what the e2e exercises and stay intact (see reconstruction-report.md §5); odc Assignment/Initialization because the fix resets the draft's column state"

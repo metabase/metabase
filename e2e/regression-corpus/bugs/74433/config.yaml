@@ -1,0 +1,44 @@
+issue: 74433
+issue_url: https://github.com/metabase/metabase/issues/74433
+fix_commits: ["fd504cf5cac122ca5025bfb56c6d621306265451"]
+fix_pr: 74625
+fix_subject: "Add overflow-wrap to tooltip content globally (#74625)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/onboarding/home/browse.cy.spec.ts
+      line: 437
+      kind: describe
+      title: "issue 74433"
+    - spec: e2e/test/scenarios/onboarding/home/browse.cy.spec.ts
+      line: 449
+      kind: it
+      title: "table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untestable, killed_by: []}
+  notes: CSS-only fix; unit tests categorically cannot catch — needs e2e/visual coverage
+
+failure_shape:
+  observed: false
+  source: fix_diff
+  symptom: >
+    Long unbroken tooltip content does not wrap (overflow-wrap missing), overflowing
+    the tooltip bounds (visual).
+  repro_failure: >
+    CSS-only (mutated tree removes global overflow-wrap on tooltip content). Visual
+    assertion; weak e2e signal — belongs with the CSS-untestable entries.
+  not_setup_crash: null

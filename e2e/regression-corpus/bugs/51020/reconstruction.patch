@@ -1,0 +1,48 @@
+diff --git a/frontend/src/metabase/actions/hooks/use-action-form/use-action-form.ts b/frontend/src/metabase/actions/hooks/use-action-form/use-action-form.ts
+index 84046c87bc9..a018d232647 100644
+--- a/frontend/src/metabase/actions/hooks/use-action-form/use-action-form.ts
++++ b/frontend/src/metabase/actions/hooks/use-action-form/use-action-form.ts
+@@ -12,6 +12,7 @@ import type {
+ import {
+   formatInitialValue,
+   formatSubmitValues,
++  getChangedValues,
+   getOrGenerateFieldSettings,
+ } from "./utils";
+ 
+@@ -59,9 +60,9 @@ function useActionForm({
+       const allValues = { ...cleanedInitialValues, ...values };
+       const formatted = formatSubmitValues(allValues, fieldSettings);
+ 
+-      return formatted;
++      return getChangedValues(formatted, initialValues);
+     },
+-    [cleanedInitialValues, fieldSettings],
++    [initialValues, cleanedInitialValues, fieldSettings],
+   );
+ 
+   return {
+diff --git a/frontend/src/metabase/actions/hooks/use-action-form/utils.ts b/frontend/src/metabase/actions/hooks/use-action-form/utils.ts
+index ab5e63f5380..777d1e5db05 100644
+--- a/frontend/src/metabase/actions/hooks/use-action-form/utils.ts
++++ b/frontend/src/metabase/actions/hooks/use-action-form/utils.ts
+@@ -58,6 +58,19 @@ export const formatSubmitValues = (
+   return values;
+ };
+ 
++export const getChangedValues = (
++  values: ParametersForActionExecution,
++  initialValues: Partial<ParametersForActionExecution>,
++) => {
++  const changedValues = Object.entries(values).filter(([key, value]) => {
++    const initialValue = initialValues[key];
++
++    return value !== initialValue;
++  });
++
++  return Object.fromEntries(changedValues);
++};
++
+ const getFieldType = (param: Parameter): "number" | "string" => {
+   return getParameterType(param) === "number" ? "number" : "string";
+ };

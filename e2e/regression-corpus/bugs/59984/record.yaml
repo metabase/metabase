@@ -1,0 +1,26 @@
+id: reg-59984
+origin:
+  kind: regression
+  issue: 59984
+  fix_commit: 0fe24156a36066b50291e34af837dc4d8287654c
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps should display pins when a breakout column sets a base-type (metabase#59984)"
+    - "frontend/src/metabase/visualizations/lib/map.unit.spec.ts::map getTileUrl dashboard should handle an x-ray dashboard"
+    - "frontend/src/metabase/visualizations/lib/map.unit.spec.ts::map getTileUrl adhoc query should percent-encode a base-type field ref into the query string (metabase#59984)"
+bug:
+  statement: "Pin maps on x-ray dashboards don't load because the tile request URL is malformed and the server rejects it with 400."
+  odc: {type: Checking, qualifier: Missing}
+  module: viz/map
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/lib/map.unit.spec.ts::map getTileUrl dashboard should handle an x-ray dashboard"
+  expected_failure: "expect(url).toBe(\"/api/tiles/{z}/{x}/{y}?query=...\"); received /api/tiles//auto/dashboard/table/5/dashcard/20/card/30/{z}/{x}/{y}?..."
+notes: "the fix also stopped base-type field refs from breaking tile URLs (LeafletTilePinMap); the e2e and July's landed witness \"should percent-encode a base-type field ref...\" (HEAD only) cover that half, which the patch doesn't touch; the e2e was culled on this branch and still exists at 8317274709c"

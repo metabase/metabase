@@ -1,0 +1,26 @@
+id: reg-47887
+origin:
+  kind: regression
+  issue: 47887
+  fix_commit: 63a3b4b3f5e18754bd7d7ef902c02a8cac6d3635
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 47887 Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (metabase#47887)"
+    - "metabase.lib.schema.expression.conditional-test/case-type-of-test"
+    - "metabase.lib.expression-test/case-type-of-test-47887"
+bug:
+  statement: "A custom column built with case() that returns a Date in one branch and a DateTime in another only offers empty/not-empty filters, not date filters."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: lib/schema/conditional
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.lib.expression-test/case-type-of-test-47887"
+  expected_failure: "(is (= :type/DateTime (lib/type-of query clause))) fails; the case column isn't typed as a date"
+notes: "Mutant mismatch: July's patch removes the unknown-type propagation clause from best-return-type, and its oracle best-return-type-test checks only that; the issue's case mixes Date and DateTime values, which never reaches that clause; rebuild at the case type inference (today case-coalesce-return-type's HasDate-to-DateTime mapping, after #59331) following 63a3b4b3f5e; the fix itself replaced common-ancestor inference with first-non-nil typing and rewrote case-type-of-test; the e2e exists at the July base and HEAD but not at 8317274709c; case-type-of-test-47887 is a later test naming this issue; lowest_level integration because July's oracle doesn't test this bug, though case-type-of-test-47887 likely would; expected_failure inferred from that test's assertion"

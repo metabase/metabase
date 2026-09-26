@@ -1,0 +1,24 @@
+id: reg-65533
+origin:
+  kind: regression
+  issue: 65533
+  fix_commit: f893c48fde62456d423c752c989e307322f4daf0
+  fix_tests:
+    - "e2e/test/scenarios/embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts::scenarios > embedding > sdk iframe embedding > custom elements api common checks should not define color-scheme meta tag on embeds (metabase#65533)"
+bug:
+  statement: "Embedded Analytics JS embeds show a black background when the viewer's operating system is set to dark mode."
+  odc: {type: Checking, qualifier: Missing}
+  module: server/routes
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts::scenarios > embedding > sdk iframe embedding > custom elements api common checks should not define color-scheme meta tag on embeds (metabase#65533)"
+  expected_failure: "cy.get(\"meta[name='color-scheme']\").should(\"not.exist\") fails inside the embed iframe"
+notes: "no mutant patch: the fix's hasColorSchemeMetaTag gate in template-parameters was superseded by #66662, #66753 and #67544, which moved the colour-scheme decision into a JS-injected userColorScheme key, so there's nothing left to revert; July's oracle override-localization-test was a mislabel unrelated to this bug, see reconstruction-report.md; the fix's only deftest edit (load-entrypoint-template-contains-user-locale) was an arity change and is left out; expected_failure paraphrases the e2e assertion the report quotes"

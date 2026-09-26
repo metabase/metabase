@@ -1,0 +1,26 @@
+issue: 65533
+issue_url: https://github.com/metabase/metabase/issues/65533
+fix_commits: ["f893c48fde62456d423c752c989e307322f4daf0"]
+fix_subject: "fix(embed-js): black background is shown on system dark mode"
+area: server/routes
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_be_oracle__arity_only_cypress
+  repro_reconstructable: false    # true = bug CAN be reintroduced, but no BE unit oracle catches it
+  reason: >
+    The detector's oracle (override-localization-test) was NOT modified by the fix. The fix's only BE test hunk was an ARITY-ONLY change in a different deftest (0 added assertions); the real regression assertion lives in a Cypress spec (custom-elements-api.cy.spec.ts). Fix mechanism (:hasColorSchemeMetaTag) also superseded by later commits. No BE unit oracle exists.
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untestable, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (no_be_oracle__arity_only_cypress). Dead/absent target."

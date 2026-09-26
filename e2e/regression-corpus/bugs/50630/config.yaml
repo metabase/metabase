@@ -1,0 +1,16 @@
+issue: 50630
+status: reconstruction_failed
+failure_category: cypress_only
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    tooltip non-hovered breakout — honest-negative. core fix in CartesianChart/events.ts getTooltipModel; NO jest coverage; shipped graph.unit.spec non-discriminating (deleted the discriminating test)
+validation:
+  oracle:
+    kind: cypress
+    test: e2e scatter.cy.spec.js
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole

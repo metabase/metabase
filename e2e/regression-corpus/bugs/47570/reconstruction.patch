@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug.ts b/frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug.ts
+index 2a563d27f87..981c69ca60d 100644
+--- a/frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug.ts
++++ b/frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-preview-params-by-slug.ts
+@@ -27,9 +27,7 @@ export function getPreviewParamsBySlug({
+         values: parameterValues,
+         defaultRequired: true,
+       });
+-      // metabase#47570
+-      const valueWithDefaultLockedParameterValue = value === null ? [] : value;
+-      return [parameter.slug, valueWithDefaultLockedParameterValue];
++      return [parameter.slug, value];
+     }),
+   );
+ }

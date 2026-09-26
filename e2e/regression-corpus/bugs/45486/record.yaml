@@ -1,0 +1,24 @@
+id: reg-45486
+origin:
+  kind: regression
+  issue: 45486
+  fix_commit: a59d8af558e6e0977fa02863a14611330c3489b0
+  fix_tests:
+    - "e2e/test/scenarios/admin-2/whitelabel.cy.spec.js::formatting > whitelabel font should be able to make multiple font changes (metabase#45486)"
+bug:
+  statement: "Choosing a font in the admin Appearance settings doesn't apply until a second change, which then applies the first choice."
+  odc: {type: Timing/Serialization, qualifier: Incorrect}
+  module: EE/whitelabel
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/admin-2/whitelabel.cy.spec.js::formatting > whitelabel font should be able to make multiple font changes (metabase#45486)"
+  expected_failure: null
+notes: "Mutant mismatch: July's reconstruction.patch makes getFontFormat read the extension off the raw URL, so a font file URL with a query string gets the wrong format, a different behaviour shipped in the same Appearance rewrite; rebuild from #56468's FontWidget rewrite, which replaced the old widget's paired setting writes (onChange then onChangeSetting); fix_commit: July recorded none; GitHub closes the issue with #56468 (a59d8af558e), the commit reconstruction-report.md §5 names; odc inferred from the symptom, the rewrite hides the exact mechanism; the rewrite's FontWidget tests (e.g. \"FontWidget should set a built-in font from a built-in font\") may cover this bug but weren't checked against it, so they're not in fix_tests; the killing test \"FontWidget font files should add a font file with a query param\" guards the other behaviour; module from the fix, the load-bearing files are in metabase-enterprise/whitelabel; fe_be_boundary inferred"

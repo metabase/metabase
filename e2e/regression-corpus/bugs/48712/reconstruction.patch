@@ -1,0 +1,22 @@
+diff --git a/frontend/src/metabase/querying/components/CodeMirrorEditor/completers.tsx b/frontend/src/metabase/querying/components/CodeMirrorEditor/completers.tsx
+index 36d4215032f..ab910b10349 100644
+--- a/frontend/src/metabase/querying/components/CodeMirrorEditor/completers.tsx
++++ b/frontend/src/metabase/querying/components/CodeMirrorEditor/completers.tsx
+@@ -69,8 +69,6 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
+         return null;
+       }
+ 
+-      const suffix = matchAfter(context, /\w+/);
+-
+       const { data } = await listAutocompleteSuggestions({
+         databaseId,
+         [matchStyle]: word.text.trim(),
+@@ -91,7 +89,7 @@ export function useSchemaCompletion({ databaseId }: SchemaCompletionOptions) {
+ 
+       return {
+         from: word.from,
+-        to: suffix?.to,
++        to: undefined,
+         options: deduped.map(([value, meta]) => ({
+           label: value,
+           detail: meta,

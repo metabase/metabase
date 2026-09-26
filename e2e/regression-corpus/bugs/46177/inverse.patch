@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/parameters/components/ParameterValueWidget.tsx b/frontend/src/metabase/parameters/components/ParameterValueWidget.tsx
+index bff48521c9b..884476878b6 100644
+--- a/frontend/src/metabase/parameters/components/ParameterValueWidget.tsx
++++ b/frontend/src/metabase/parameters/components/ParameterValueWidget.tsx
+@@ -91,7 +91,10 @@ export const ParameterValueWidget = ({
+           className={S.widgetStatus}
+           highlighted={fieldHasValueOrFocus}
+           status="reset"
+-          onClick={() => setParameterValueToDefault?.(parameter.id)}
++          onClick={() => {
++            close();
++            setParameterValueToDefault?.(parameter.id);
++          }}
+         />
+       );
+     }

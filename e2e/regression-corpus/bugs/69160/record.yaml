@@ -1,0 +1,24 @@
+id: reg-69160
+origin:
+  kind: regression
+  issue: 69160
+  fix_commit: 0ab5a0f603ecc5aa44ffc4a14d22a2c6451b9c15
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 69160 should be possible to reorder parameters when there are snippets in the query (metabase#69160)"
+bug:
+  statement: "When SQL filter variables come from snippets, dragging one filter widget onto another often snaps back instead of reordering them."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: metabase-lib
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 69160 should be possible to reorder parameters when there are snippets in the query (metabase#69160)"
+  expected_failure: "findAllByRole(\"textbox\").first().should(\"have.attr\", \"placeholder\", \"B\") fails after dragging the first widget; it snaps back to A"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; July's fe_unit kill looks false: the three specs it names (CustomGeoJSONWidget, ReorderableTagsInput, SegmentList premium) don't reach NativeQuery.setParameterIndex, and no unit spec at 8317274709c or HEAD calls it, so these look like load-flake failures like the ones MATRIX.md discounts elsewhere; b51c41c91b0 culled this e2e on this branch on the strength of that kill, so the bug may now be unguarded there; the e2e still exists at 8317274709c; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

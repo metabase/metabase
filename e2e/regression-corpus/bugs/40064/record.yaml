@@ -1,0 +1,24 @@
+id: reg-40064
+origin:
+  kind: regression
+  issue: 40064
+  fix_commit: e5e0c2ccd03428c622ffa3d1bc468dd98201c3cd
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 40064 should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)"
+bug:
+  statement: "A custom column named the same as a column it references (like Tax = [Tax] * 2) can't be edited, because the reference no longer finds the original column."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: metabase-lib
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 40064 should be able to edit a custom column with the same name as one of the columns used in the expression (metabase#40064)"
+  expected_failure: null
+notes: "stratum wiring: the fix threads the edited expression's index from the editor components down to Lib.expressionableColumns in place of a name-based filter, and reverting drops that argument; no mutant patch: July's over-revert (force expressionIndex to undefined in columnsForExpressionMode) flipped no jest spec, so it wasn't saved, see reconstruction-report.md §2-4; the fix's suggest.unit.spec.ts edits were mechanical and that spec no longer exists; module from the fix commit's metabase-lib expression files; July recorded no failure message; fe_be_boundary inferred"

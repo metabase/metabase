@@ -1,0 +1,9 @@
+issue: 69722
+fix_commit: f3f72f8cb3c16a5176a0a22e0d6cf250fa1561b8
+e2e_repro: e2e/test/scenarios/models/reproductions-2.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorInner.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditorAvailableHeight.unit.spec.tsx

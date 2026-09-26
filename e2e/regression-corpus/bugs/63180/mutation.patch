@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/components/expressions/Editor/Editor.tsx b/frontend/src/metabase/querying/components/expressions/Editor/Editor.tsx
+index 5ece8b6538f..e8f05dcfe01 100644
+--- a/frontend/src/metabase/querying/components/expressions/Editor/Editor.tsx
++++ b/frontend/src/metabase/querying/components/expressions/Editor/Editor.tsx
+@@ -353,7 +353,7 @@ function useExpression({
+   useMount(() => {
+     // format the source when the component mounts
+     formatExpression({
+-      initial: clause === initialClause,
++      initial: true,
+     });
+   });
+ 

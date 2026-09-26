@@ -1,0 +1,7 @@
+id: reg-42360
+origin:
+  kind: regression
+  issue: 42360
+  alias_of: 42656
+  fix_commit: 4fd9d7ae21e381ab997e11ebe2c3c3b9dca4baaf
+notes: "fix_commit: GitHub closes the issue with #42962 (4fd9d7ae21e), which un-skipped its e2e; July mapped the Metrics v2 commit fb4b8ca2a60 (#38457), which only added the e2e as it.skip; a different bug from 42656 (custom columns in metric queries give wrong results), so the alias is wrong and it needs its own record and mutant before use; its e2e repro is left out of reg-42656's fix_tests"

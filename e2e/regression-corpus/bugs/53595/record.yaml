@@ -1,0 +1,25 @@
+id: reg-53595
+origin:
+  kind: regression
+  issue: 53595
+  fix_commit: db12bcbd4f58744b621c240079f50d2caef30b52
+  fix_tests:
+    - "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.ts::issue 53595 all options are visibile while filtering the list of entity types (metabase#53595)"
+    - "frontend/src/metabase/metadata/components/SemanticTypePicker/SemanticTypePicker.unit.spec.tsx::SemanticTypePicker filters the semantic types list as the user types (metabase#53595)"
+bug:
+  statement: "Typing to filter the semantic type picker crops its dropdown so much that the matching options are barely usable."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: admin/SemanticTypePicker
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.ts::issue 53595 all options are visibile while filtering the list of entity types (metabase#53595)"
+  expected_failure: "expect(H.isScrollableVertically($popover[0])).to.be.false fails after typing \"cu\", or Currency isn't visible"
+notes: "Mutant mismatch: July's patch drops the searchable prop, so the picker can't be filtered at all; the issue is the filtered dropdown being cropped under the old Select, which the fix replaced with the Mantine Select (db12bcbd4f5); a rebuild has to reintroduce the cropping, not remove search; reconstruction.patch also adds July's test \"SemanticTypePicker filters the semantic types list as the user types (metabase#53595)\" to SemanticTypePicker.unit.spec.tsx, so applying it adds the test too; that test isn't landed on any ref (id taken from the patch applied to the July base) and fails with a thrown error (clear() on a read-only input), not an assertion, so it doesn't count for lowest_level; the e2e asserts the popover isn't vertically scrollable, a scroll-geometry check that may need a real browser, but July didn't classify it; expected_failure inferred from the e2e's assertions"

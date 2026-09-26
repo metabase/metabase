@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/query_builder/utils/index.ts b/frontend/src/metabase/query_builder/utils/index.ts
+index be393dd5922..e618239f361 100644
+--- a/frontend/src/metabase/query_builder/utils/index.ts
++++ b/frontend/src/metabase/query_builder/utils/index.ts
+@@ -141,6 +141,7 @@ export const isNavigationAllowed = ({
+     const allowedPathnames = isNewQuestion
+       ? ["/model/query", "/model/columns", "/model/metadata"]
+       : validSlugs.flatMap((slug) => [
++          `/model/${slug}`,
+           `/model/${slug}/query`,
+           `/model/${slug}/columns`,
+           `/model/${slug}/notebook`,
+@@ -155,6 +156,7 @@ export const isNavigationAllowed = ({
+     const allowedPathnames = isNewQuestion
+       ? ["/metric/query"]
+       : validSlugs.flatMap((slug) => [
++          `/metric/${slug}`,
+           `/metric/${slug}/query`,
+           `/metric/${slug}/notebook`,
+         ]);

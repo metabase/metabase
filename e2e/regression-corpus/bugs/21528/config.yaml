@@ -1,0 +1,40 @@
+issue: 21528
+issue_url: https://github.com/metabase/metabase/issues/21528
+fix_commits: ["524ed311740fbf69b53d58ddf8d90a678c7423ce"]
+fix_pr: 33632
+fix_subject: "Fix fetching field values for remapped fields (#33632)"
+area: parameters/chain-filter (was models/params)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the (nil? @remapping) guard the fix added to chain-filter (and mirrored in chain-filter-search), so cached FieldValues short-circuit the Field->Field remapping branch. File relocated models/params/chain_filter.clj -> parameters/chain_filter.clj. Only the chain-filter guard is oracle-discriminating; search guard reverted for faithfulness.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.parameters.chain-filter-test/use-cached-field-values-for-remapped-field-test"
+    clean_baseline: pass
+    reconstructed_result: "1/2 fail (cached ids returned without remapped names)"
+  repro_confirmed: true
+  confidence: very_high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Fetching values for a field that has cached FieldValues AND a Field->Field remapping returns bare unremapped values instead of [value remapped-value] tuples.
+  repro_failure: >
+    expected [[2 'American'] [3 'Artisan'] [4 'Asian']], actual ([2] [3] [4]).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.parameters.chain-filter-test/use-cached-field-values-for-remapped-field-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-3 (medium). Conflict target reconstructed + killed by shipped BE test => e2e repro cullable."

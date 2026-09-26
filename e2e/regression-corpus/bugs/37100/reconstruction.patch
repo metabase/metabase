@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
+index 901ed3dc826..20915e7effc 100644
+--- a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
++++ b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/use-multi-autocomplete/use-multi-autocomplete.ts
+@@ -339,14 +339,7 @@ function getFieldValuesWithoutDuplicates(
+   fieldValues: string[],
+   fieldSelection: FieldSelection,
+ ) {
+-  const usedValues = new Set(getValuesNotInSelection(values, fieldSelection));
+-  return fieldValues.reduce((fieldValues: string[], value) => {
+-    if (!usedValues.has(value)) {
+-      fieldValues.push(value);
+-      usedValues.add(value);
+-    }
+-    return fieldValues;
+-  }, []);
++  return fieldValues;
+ }
+ 
+ function getValuesAfterChange<T>(

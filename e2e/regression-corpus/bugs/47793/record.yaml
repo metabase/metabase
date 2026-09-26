@@ -1,0 +1,26 @@
+id: reg-47793
+origin:
+  kind: regression
+  issue: 47793
+  fix_commit: a0025d0df9f875cc7277d5fc77811f229823ef0a
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 47793 should be able to preview queries for mongodb (metabase#47793)"
+    - "frontend/src/metabase/databases/utils/engine.unit.spec.ts::formatNativeQuery should return formatted JSON"
+    - "metabase.driver.mongo.parameters-test/variable-default-value-substitution-test"
+bug:
+  statement: "Previewing the native query of a MongoDB question shows a blank page."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: databases
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/databases/utils/engine.unit.spec.ts::formatNativeQuery should return formatted JSON"
+  expected_failure: "expect(formatNativeQuery('[\"foo\"]')).toEqual('[\"foo\"]'); Received: '[\\n  \"foo\"\\n]'"
+notes: "Mutant mismatch: July's reconstruction.patch parses and re-serialises JSON-looking query strings instead of returning them unchanged, so the preview shows reformatted text rather than going blank; a faithful rebuild returns nothing for string queries (the pre-fix `typeof query === \"object\"` gate), which the same jest assertion should catch; lowest_level integration: the shipped jest assertion pins the string pass-through and would likely catch a faithful rebuild, but July only ran it against the mismatched mutant; engine.ts moved from metabase/lib to metabase/databases/utils and lost its engine parameter (see reconstruction-report.md §1); variable-default-value-substitution-test is a later backend parity test naming this issue and covers default substitution in Mongo previews, a different part; fe_be_boundary inferred"

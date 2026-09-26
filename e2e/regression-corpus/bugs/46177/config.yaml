@@ -1,0 +1,33 @@
+issue: 46177
+issue_url: https://github.com/metabase/metabase/issues/46177
+fix_commits: ["dba810264c2270f2d9396257ec9a5a358e307553"]
+fix_pr: 54915
+fix_subject: "fix: update filter widget value when we reset value to the default one (#54915)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard-filters/dashboard-filters-reset-clear.cy.spec.ts
+      line: 723
+      kind: describe
+      title: "issue 46177"
+    - spec: e2e/test/scenarios/dashboard-filters/dashboard-filters-reset-clear.cy.spec.ts
+      line: 729
+      kind: it
+      title: "should update value inside popover when resetting value to default (metabase#46177)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: "HOLE — 2884 related unit tests pass with the bug reintroduced (findRelatedTests)."

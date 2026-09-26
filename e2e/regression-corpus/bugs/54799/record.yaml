@@ -1,0 +1,25 @@
+id: reg-54799
+origin:
+  kind: regression
+  issue: 54799
+  fix_commit: 95afcd14b1867de1cabba9e96946dbbea674894f
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 54799 it should be possible to select multiple ranges and run those (metabase#54799)"
+    - "frontend/src/metabase/query_builder/store/selectors.unit.spec.ts::getIsResultDirty native query native editor selection/cursor should correctly get selected text when there are multiple selected ranges"
+bug:
+  statement: "In the native editor, \"Run selected text\" with several selected blocks runs only the last selection."
+  odc: {type: Function/Class/Object, qualifier: Missing}
+  module: qb/native-editor-selection
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/store/selectors.unit.spec.ts::getIsResultDirty native query native editor selection/cursor should correctly get selected text when there are multiple selected ranges"
+  expected_failure: "TypeError: Cannot destructure property 'row' of 'undefined' (a thrown error, not an assertion)"
+notes: "Mutant mismatch: July's reconstruction.patch makes the singular selection selector return the whole range array, which crashes the selected-text and cursor selectors with a TypeError instead of running only the last selection; a rebuild should follow #56420's querying.ts change (run getAllNativeEditorSelectedText rather than the single-range text); lowest_level integration because July's jest oracle only throws on this mutant and doesn't observe the run behaviour (see config.yaml reconstruction_notes); odc Function/Class/Object because the fix changed the selection state from one range to many; selectors.ts and its spec moved to query_builder/store/ in a7815e9354e after the July base"

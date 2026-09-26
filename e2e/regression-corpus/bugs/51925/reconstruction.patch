@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.tsx b/frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.tsx
+index ed1cb1350e6..be1b5ad7b71 100644
+--- a/frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.tsx
++++ b/frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.tsx
+@@ -65,7 +65,7 @@ const ChartSettingLinkUrlInput = ({
+       data-testid={props.id}
+       options={options}
+       onChange={setFocusedValue}
+-      value={isFocused ? focusedValue : valueOrDefault}
++      value={focusedValue}
+       onFocus={handleFocus}
+       onBlur={handleBlur}
+       onOptionSelect={handleSuggestionClick}

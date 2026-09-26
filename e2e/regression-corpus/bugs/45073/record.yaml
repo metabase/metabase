@@ -1,0 +1,26 @@
+id: reg-45073
+origin:
+  kind: regression
+  issue: 45073
+  fix_commit: bc32ba9e15730b009b3b40ca2a33849e332e9517
+  fix_tests:
+    - "e2e/test/scenarios/permissions/admin-permissions.cy.spec.js::scenarios > admin > permissions should show a dismissable modal and banner showing split permission changes (#metabase#45073"
+    - "metabase.permissions.settings-test/show-updated-permission-modal-test"
+    - "metabase.permissions.settings-test/show-updated-permission-banner-test"
+bug:
+  statement: "After the permissions split, the data permissions page looks different to admins with nothing explaining that user access hasn't changed."
+  odc: {type: Function/Class/Object, qualifier: Missing}
+  module: admin
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.permissions.settings-test/show-updated-permission-modal-test"
+  expected_failure: null
+notes: "Mutant mismatch: July's reconstruction.patch removes the new-instance guard, so admins of instances created after the v50 migration also see the explanation modal and banner, the opposite of the reported bug (no explanation at all); a rebuild should suppress the modal and banner for pre-v50 admins, which the setting tests' new-admin? false rows would catch; the fix commit is right (GitHub closes the issue with #45076); the killing rows and July's expected failure (expected false, actual true) are for the guard, so expected_failure is null; module, odc and stratum from the fix's modal/banner work in admin/permissions, July area permissions/settings describes the mutant's file; the fix-added deftests shipped in metabase.api.permissions-test and moved to metabase.permissions.settings-test; July's designated oracle delete-group-membership-test was a detector mistake (see reconstruction-report.md §2); the e2e title has an unbalanced \"(#metabase#45073\" as written in the spec"

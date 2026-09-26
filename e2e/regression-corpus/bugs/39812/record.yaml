@@ -1,0 +1,26 @@
+id: reg-39812
+origin:
+  kind: regression
+  issue: 39812
+  fix_commit: 4f7b562c909d287a045ac775ca4b3098c1be4e26
+  fix_tests:
+    - "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts::scenarios > notebook > data source saved entity as a source (aka the virtual table) moving the model to another collection should immediately be reflected in the data selector (metabase#39812-1)"
+    - "e2e/test/scenarios/question/notebook-data-source.cy.spec.ts::scenarios > notebook > data source saved entity as a source (aka the virtual table) moving the source question should immediately reflect in the data selector for the nested question that depends on it (metabase#39812-2)"
+    - "frontend/src/metabase/redux/entities/tables-reducer.unit.spec.ts::tablesReducer saved questions virtual table sync should sync schema and schema_name into an existing virtual table when the collection changes on UPDATE"
+bug:
+  statement: "After a model or source question moves to another collection, the data selector for questions built on it still highlights the old collection."
+  odc: {type: Timing/Serialization, qualifier: Missing}
+  module: entities
+  lowest_level: unit
+  stratum: state
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/redux/entities/tables-reducer.unit.spec.ts::tablesReducer saved questions virtual table sync should sync schema and schema_name into an existing virtual table when the collection changes on UPDATE"
+  expected_failure: "expect(nextState[virtualTable.id]).toMatchObject({ schema, schema_name }); received schema \"-1337:Everything%20else\" instead of \"-1337:foo\""
+notes: "stratum state: the bug is a cached virtual table whose collection schema isn't updated when the card changes; no mutant patch: July's revert in redux/entities/tables-reducer.ts (reconstruction-report.md §1) was left in its worktree and never saved; the shipped assertion in entities/schemas.unit.spec.js was deleted with the Schema entity (#74085) and is left out; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the revert, see hole-closer-report.md §3; module from the fix commit's entities files; fe_be_boundary inferred"

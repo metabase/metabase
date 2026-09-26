@@ -1,0 +1,21 @@
+issue: 39812
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: true  # bug reintroduces cleanly but no surviving jest spec discriminates (drift/deleted spec); closable with a direct unit test
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: 4f7b562c909d287a045ac775ca4b3098c1be4e26
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole_closed  # was hole; closed this session with a targeted unit test
+# detail: see reconstruction-report.md
+hole_closed:
+  patch_file: hole-closer-test.patch
+  test: frontend/src/metabase/redux/entities/tables-reducer.unit.spec.ts
+  verified: fail_on_reverted_fix__pass_on_clean
+  applied_to_working_tree: true

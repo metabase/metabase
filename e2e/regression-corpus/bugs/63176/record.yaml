@@ -1,0 +1,26 @@
+id: reg-63176
+origin:
+  kind: regression
+  issue: 63176
+  fix_commit: 908eda55b5b6ef4dbdab498b6b57a709c45ad94b
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 63176 should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)"
+    - "metabase.dashboards-rest.api-test/create-dashboard-blank-name-test"
+    - "frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx::CreateDashboardModal surfaces a server validation error when creating with a blank name (metabase#63176)"
+bug:
+  statement: "Creating a dashboard with a blank name looks successful while the server rejects it, and no validation error is shown."
+  odc: {type: Checking, qualifier: Missing}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/CreateDashboard/CreateDashboardModal.unit.spec.tsx::CreateDashboardModal surfaces a server validation error when creating with a blank name (metabase#63176)"
+  expected_failure: "findByText(\"value must be a non-blank string.\") times out; the name input stays aria-invalid=\"false\" with no Failed state"
+notes: "base_commit is the parent of July's CI mutant 316cd9bf826 (run 29129259306); the witness never landed, so its id comes from witness.patch applied to the July base; create-dashboard-blank-name-test is a later backend parity test naming this issue and checks the API rejects the name, not that the modal shows the error; fe_be_boundary inferred false (the frontend swallows an error the API already returns)"

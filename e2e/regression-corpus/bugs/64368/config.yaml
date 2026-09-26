@@ -1,0 +1,38 @@
+issue: 64368
+issue_url: https://github.com/metabase/metabase/issues/64368
+fix_commits: ["75f3c9fc01bf0ebfe77f4247c8d6c495bb4585e1"]
+fix_pr: 67220
+fix_subject: "UXW-1852 Reset filter to default for specific click behavior (#67220)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts
+      line: 138
+      kind: describe
+      title: "issue 64368"
+    - spec: e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts
+      line: 144
+      kind: it
+      title: "should reset to default value when unsetting a required filter with a default through click behavior (metabase#64368)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts
+      - frontend/src/metabase/common/components/DashboardName.unit.spec.tsx
+  notes: null

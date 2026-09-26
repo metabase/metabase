@@ -1,0 +1,25 @@
+id: reg-55690
+origin:
+  kind: regression
+  issue: 55690
+  fix_commit: cf806ce408df6de41c8b96d3542a9ed6ab5d139e
+  fix_tests:
+    - "e2e/test/scenarios/organization/entity-picker.cy.spec.ts::scenarios > organization > entity picker misc entity picker stuff should grow in width as needed, but not shrink (metabase#55690)"
+    - "frontend/src/metabase/common/components/Pickers/EntityPicker/components/test/EntityPickerModal-grow.unit.spec.tsx::EntityPickerModal width (metabase#55690) should grow its min-width to fit content, but never shrink back"
+bug:
+  statement: "The move-to-collection picker keeps a fixed width, so deep collection trees scroll sideways instead of the modal widening."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/components/Pickers/EntityPicker/components/test/EntityPickerModal-grow.unit.spec.tsx::EntityPickerModal width (metabase#55690) should grow its min-width to fit content, but never shrink back"
+  expected_failure: "expect(content.style.minWidth).toBe(\"min(920px, 80vw)\"); Received: \"\""
+notes: "base_commit is the parent of July's CI mutant 06d63304f65 (run 29139240052); the e2e measures rendered widths, but the witness drives the ResizeObserver callback directly and asserts the min-width style, so July classed it unit-catchable; fe_be_boundary inferred"

@@ -1,0 +1,30 @@
+id: reg-44106
+origin:
+  kind: regression
+  issue: 44106
+  fix_commit: f4f71ea7bdb7669bbabc06b6855ce599c8c9a7ba
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/click-behavior.cy.spec.js::scenarios > dashboard > dashboard cards > click behavior should navigate to correct dashboard tab via custom destination click behavior (metabase#34447 metabase#44106)"
+    - "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.common.unit.spec.tsx::PublicOrEmbeddedDashboardPage should select the tab from the url"
+    - "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.common.unit.spec.tsx::PublicOrEmbeddedDashboardPage should work with ?tab={tabid}-${tab-name}"
+    - "frontend/src/metabase/dashboard/utils.unit.spec.ts::Dashboard utils parseTabSlug should return the tab ID from the location object if valid"
+    - "frontend/src/metabase/dashboard/utils.unit.spec.ts::Dashboard utils parseTabSlug should return null if the slug is invalid"
+    - "frontend/src/metabase/dashboard/utils.unit.spec.ts::Dashboard utils createTabSlug should return a lower-cased, hyphenated concatenation of the tabId and name"
+    - "frontend/src/metabase/dashboard/utils.unit.spec.ts::Dashboard utils createTabSlug should return an empty string when tabId or name is invalid"
+bug:
+  statement: "After a click behavior opens another dashboard on its second tab, the browser Back button doesn't return to the original dashboard."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.common.unit.spec.tsx::PublicOrEmbeddedDashboardPage should select the tab from the url"
+  expected_failure: "Tab 2 expected aria-selected=\"true\" for ?tab=2, received \"false\""
+notes: "#44639 closes both this issue and its alias 34447 (click behavior lands on the wrong tab); the patch drops reading ?tab= from the URL when a dashboard loads, which shows 34447's symptom directly, and July's report says it also reproduces this one; the unit oracle checks tab selection only, the e2e's cy.go(\"back\") assertion checks the history symptom; the PublicOrEmbeddedDashboardPage tests shipped in PublicOrEmbeddedDashboardPage.unit.spec.tsx (the fix changed their setup to set window.location) and were later split into tests/*.common.unit.spec.tsx; the parseTabSlug/createTabSlug tests shipped with the fix; fe_be_boundary inferred"

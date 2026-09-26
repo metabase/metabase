@@ -1,0 +1,29 @@
+id: reg-66277
+origin:
+  kind: regression
+  issue: 66277
+  fix_commit: 9f65da5129a1de275a40b9f9251dea78d6e0bbb8
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 58556, issue 66277 should pass hour or minutes to linked questions from click actions (metabase#66277)"
+    - "frontend/src/metabase/value-formatting/date.unit.spec.tsx::formatDateTimeForParameter should format hour"
+    - "frontend/src/metabase/value-formatting/date.unit.spec.tsx::formatDateTimeForParameter should format minute"
+    - "frontend/src/metabase/parameters/utils/click-behavior.unit.spec.ts::metabase-lib/v1/parameters/utils/click-behavior formatSourceForTarget should format hour-granularity dates for variables as a time range (metabase#66277)"
+    - "frontend/src/metabase/parameters/utils/click-behavior.unit.spec.ts::metabase-lib/v1/parameters/utils/click-behavior formatSourceForTarget should format minute-granularity dates for variables as a time range (metabase#66277)"
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 58556, issue 66277 should be possible to add a click action on a time column with hour granularity and have the time be present in the resulting parameter (metabase#58556)"
+bug:
+  statement: "A dashboard click behavior on an hour- or minute-grained date passes only the day to the linked question, dropping the time."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/value-formatting/date.unit.spec.tsx::formatDateTimeForParameter should format hour"
+  expected_failure: "formatDateTimeForParameter should format hour: Expected \"2020-01-01T06:00\", Received \"2020-01-01\""
+notes: "the date spec shipped as metabase/lib/formatting/date.unit.spec.tsx and is at value-formatting/date.unit.spec.tsx at 8317274709c (the report ran it from visualizations/lib/formatting); the patched file has also moved to value-formatting/date.tsx at 8317274709c; the two click-behavior tests are July witnesses landed on this branch (da261afed6f), which also culled the e2e; the describe's other e2e names alias 58556 and is left to that record; fe_be_boundary inferred; fix_tests include the e2e repro of alias 58556"

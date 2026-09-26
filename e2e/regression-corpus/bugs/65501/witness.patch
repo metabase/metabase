@@ -1,0 +1,43 @@
+diff --git a/frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx b/frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx
+index af1863891d7..29727c0f238 100644
+--- a/frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx
++++ b/frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx
+@@ -197,6 +197,38 @@ describe("SearchApp", () => {
+     );
+   });
+ 
++  describe("resetting pagination when filters change (metabase#65501)", () => {
++    it("should reset the page to the first page when a type filter is applied", async () => {
++      const { history } = await setup({ searchText: "Test" });
++
++      // advance to the second page of results
++      await userEvent.click(screen.getByTestId("next-page-btn"));
++      await waitForLoaderToBeRemoved();
++      expect(history.getCurrentLocation().query.page).toEqual("1");
++
++      // change the type filter via the sidebar
++      await userEvent.click(
++        within(screen.getByTestId("type-search-filter")).getByTestId(
++          "sidebar-filter-dropdown-button",
++        ),
++      );
++      await waitForLoaderToBeRemoved();
++
++      const popover = within(screen.getByTestId("popover"));
++      await userEvent.click(
++        popover.getByRole("checkbox", { name: TYPE_FILTER_LABELS.table }),
++      );
++      await userEvent.click(popover.getByRole("button", { name: "Apply" }));
++
++      // applying a filter must send us back to the first page, otherwise the
++      // stale offset can land past the (now smaller) filtered result set and
++      // render the "Didn't find anything" empty state
++      const url = history.getCurrentLocation();
++      expect(url.query.type).toEqual("table");
++      expect(url.query.page).toBeUndefined();
++    });
++  });
++
+   describe("hydrating search filters from URL", () => {
+     // TODO: Add tests for other filters as they come
+ 

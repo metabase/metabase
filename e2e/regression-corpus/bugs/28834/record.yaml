@@ -1,0 +1,26 @@
+id: reg-28834
+origin:
+  kind: regression
+  issue: 28834
+  fix_commit: 26b1a6b6cf2906fe31ddb29737bd6ce8ab5fbde3
+  fix_tests:
+    - "e2e/test/scenarios/sharing/downloads/sharing-download-reproductions.cy.spec.js::metabase#28834 should be able to export unsaved native query results as CSV even after the query has changed"
+    - "e2e/test/scenarios/sharing/downloads/sharing-download-reproductions.cy.spec.js::metabase#28834 should be able to export unsaved native query results as XLSX even after the query has changed"
+    - "frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx::QueryBuilder downloading results should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)"
+bug:
+  statement: "After editing a native query without rerunning it, the results download button disappears even though the current results are still shown."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: qb/ViewFooterDownloadWidget
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx::QueryBuilder downloading results should allow downloading results for a native query using the current result even the query has changed but not rerun (metabase#28834)"
+  expected_failure: "screen.getByTestId(\"question-results-download-button\") throws: Unable to find an element by data-testid"
+notes: "the fix removed the isResultDirty gate from QueryDownloadWidget; the mutant re-adds it where the render decision now lives, ViewFooterDownloadWidget (see reconstruction-report.md §4)"

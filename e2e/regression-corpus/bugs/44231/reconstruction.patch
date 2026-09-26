@@ -1,0 +1,43 @@
+diff --git a/src/metabase/parameters/dashboard.clj b/src/metabase/parameters/dashboard.clj
+index a6ab42f9ae2..cd4860ae4a7 100644
+--- a/src/metabase/parameters/dashboard.clj
++++ b/src/metabase/parameters/dashboard.clj
+@@ -71,14 +71,10 @@
+ 
+ (defn- combine-chained-filter-results
+   [results]
+-  (let [;; merge values with remapped values taking priority
+-        values (->> (mapcat :values results)
+-                    (sort-by count)
+-                    (m/index-by first)
+-                    vals)]
++  (let [values (distinct (mapcat :values results))]
++    ;; results can come back as [[v] ...] *or* as [[orig remapped] ...]. Sort by remapped value if it's there
+     (cond->> values
+       (seq values)
+-      ;; sort by remapped values only if all values are remapped
+       (sort-by (case (count (first values))
+                  2 second
+                  1 first)))))
+diff --git a/src/metabase/parameters/params.clj b/src/metabase/parameters/params.clj
+index 35bfb49aeb2..9c9ee79c90d 100644
+--- a/src/metabase/parameters/params.clj
++++ b/src/metabase/parameters/params.clj
+@@ -103,7 +103,7 @@
+   just the column identifiers, perhaps for use with something like `select-keys`. Clutch!
+ 
+     (t2/select Field:params-columns-only)"
+-  [:model/Field :id :table_id :display_name :base_type :name :semantic_type :has_field_values :fk_target_field_id])
++  [:model/Field :id :table_id :display_name :base_type :name :semantic_type :has_field_values])
+ 
+ (defn- fields->table-id->name-field
+   "Given a sequence of `fields,` return a map of Table ID -> to a `:type/Name` Field in that Table, if one exists. In
+@@ -164,7 +164,7 @@
+   (let [field-ids       (into #{} cat (vals param-id->field-ids))
+         field-id->field (when (seq field-ids)
+                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
+-                                              (t2/hydrate :has_field_values :name_field [:target :name_field]
++                                              (t2/hydrate :has_field_values :name_field
+                                                           [:dimensions :human_readable_field])
+                                               remove-dimensions-nonpublic-columns)))]
+     (->> param-id->field-ids

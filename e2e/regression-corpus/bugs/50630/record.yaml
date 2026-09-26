@@ -1,0 +1,25 @@
+id: reg-50630
+origin:
+  kind: regression
+  issue: 50630
+  fix_commit: 6d83cb2b609501dd32f7cf1f5974b96e71fece9f
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/scatter.cy.spec.js::scenarios > visualizations > scatter should not show non-hovered breakout series in the tooltip (metabase#50630)"
+    - "frontend/src/metabase/visualizations/visualizations/CartesianChart/events.unit.spec.ts::getTooltipModel shows only the hovered breakout series, not the other categories (metabase#50630)"
+bug:
+  statement: "Hovering a point in a scatter or bubble chart with a breakout lists every breakout category in the tooltip instead of just the hovered one."
+  odc: {type: Checking, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizations/visualizations/CartesianChart/events.unit.spec.ts::getTooltipModel shows only the hovered breakout series, not the other categories (metabase#50630)"
+  expected_failure: "expect(tooltipModel?.rows).toHaveLength(1) fails; the tooltip rows include the Gizmo, Gadget and Doohickey series"
+notes: "no mutant patch: July reverted only the graph.ts tooltip settings, which flipped nothing, and found no jest coverage of getTooltipModel in CartesianChart/events.ts, where the real fix lives, see reconstruction-report.md (2)-(4); fix_commit: July recorded none, GitHub closes the issue with #50889 (6d83cb2b609), which touches the files the report names; config.yaml still records an fe_unit hole, but the land-and-cull pass (b6c3f328367) landed the getTooltipModel witness and culled the e2e on this branch; the fix's graph.unit.spec.js edit deleted a test rather than adding one and is left out; expected_failure inferred from the witness's assertions; fe_be_boundary inferred"

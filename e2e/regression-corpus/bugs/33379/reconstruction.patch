@@ -1,0 +1,30 @@
+diff --git a/frontend/src/metabase/visualizations/lib/open-url.ts b/frontend/src/metabase/visualizations/lib/open-url.ts
+index 6a0729dc62a..9b7cc3946b3 100644
+--- a/frontend/src/metabase/visualizations/lib/open-url.ts
++++ b/frontend/src/metabase/visualizations/lib/open-url.ts
+@@ -101,6 +101,7 @@ export async function openUrl(
+     ...options
+   }: OpenUrlOptions = {},
+ ): Promise<void> {
++  const isOriginalUrlAbsolute = url.startsWith("/");
+   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
+ 
+   // In the sdk, allow the host app to override how to open links
+@@ -115,7 +116,7 @@ export async function openUrl(
+   if (shouldOpenInBlankWindow(url, options)) {
+     openInBlankWindow(url);
+   } else if (isSameOrigin(url)) {
+-    if (!isMetabaseUrl(url)) {
++    if (isOriginalUrlAbsolute) {
+       clickLink(url, false);
+     } else if (openInSameOrigin) {
+       const location = getLocation(url);
+@@ -164,7 +165,7 @@ function getLocation(url: string): LocationDescriptor {
+     const { pathname, search, hash } = new URL(url, window.location.origin);
+     const query = querystring.parse(search.substring(1));
+     return {
+-      pathname: getPathnameWithoutSubPath(pathname),
++      pathname,
+       search,
+       query,
+       hash,

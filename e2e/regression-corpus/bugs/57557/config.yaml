@@ -1,0 +1,27 @@
+issue: 57557
+issue_url: https://github.com/metabase/metabase/issues/57557
+fix_commits: ["6e6449b724bbf861e882d25afd5a95d937b87628"]
+fix_subject: "Fix FE permission checks for Edit query definition"
+area: qb/QuestionActions-permissions
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (read composed question.query() instead of the underlying non-composed one). But the bug only manifests for a COMPOSED model question; the unit test uses the raw non-composed model, so buggy and fixed paths compute the same isEditable. The spec's fix-change was setup accommodation (mock/qb state), no behavioral assertion. Real oracle = Cypress. FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "no_unit_oracle__real_oracle_cypress"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-4 NEGATIVE (no_unit_oracle__real_oracle_cypress). Reconstructable but no discriminating FE unit oracle => FE HOLE."

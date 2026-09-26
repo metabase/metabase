@@ -1,0 +1,25 @@
+id: reg-60987
+origin:
+  kind: regression
+  issue: 60987
+  fix_commit: b76a18112acc990a9faca46cfa1e5de08d9680ff
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::Issue 60987 should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)"
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::Issue 46767 search results for parameter target picker should not show empty sections (metabase#46767)"
+bug:
+  statement: "Searching a dashboard filter's \"Column to filter on\" list for something with no matches makes the popover disappear instead of showing an empty state."
+  odc: {type: Function/Class/Object, qualifier: Incorrect}
+  module: dashboard
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::Issue 60987 should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)"
+  expected_failure: "H.popover().findByText(\"Didn't find any results\").should(\"be.visible\") fails after typing \"aa\""
+notes: "Mutant mismatch: reconstruction.patch only changes AccordionList's container role from \"tree\" back to \"grid\", an ARIA artifact of the fix's de-virtualization; the popover still renders its empty state, and the July oracle \"AccordionList should correctly select items when searching\" fails only because it queries that role (the fix changed the query from grid to tree); a rebuild following b76a1811 needs the pre-fix behaviour: the target list in the legacy TippyPopover over a virtualized AccordionList, which hid the popover when a search emptied the list; odc Function/Class/Object because the fix replaced the popover component and dropped list virtualization; module is a judgement between dashboard (DashCardCardParameterMapperButton) and common (AccordionList); expected_failure inferred from the e2e's assertion; fe_be_boundary inferred; fix_tests include the e2e repro of alias 46767"

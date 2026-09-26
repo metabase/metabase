@@ -1,0 +1,40 @@
+issue: 32126
+issue_url: https://github.com/metabase/metabase/issues/32126
+fix_commits: ["8ba0ef1a0f281abf90511d6ce0356de5667e9b8a"]
+fix_pr: 35439
+fix_subject: "Fixing dropdown filter value GET #32126"
+area: parameters/dashboard
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # the RECONSTRUCTION patch applies; the original fix diff does NOT (conflict)
+  file_relocated: true   # true => conflict is a rename/module-move, not a logic change
+  reconstruction_notes: >
+    Fix added the `filter-values-from-field-refs` fallback in `chain-filter` for the (empty? field-ids) case. Reconstruction removes that fallback, restoring the unconditional 400 throw. Code RELOCATED (api/dashboard.clj -> parameters/dashboard.clj via module extraction) — the reason the fix diff no longer applies.
+
+validation:
+  oracle:
+    kind: be_unit            # shipped WITH the fix; cheaper than the e2e repro
+    test: "metabase.dashboards-rest.api-test/param-values-no-field-ids-test"
+    clean_baseline: "pass (4 assertions)"
+    reconstructed_result: "4/4 fail (endpoint 400s 'Parameter has no Fields' instead of returning dropdown values)"
+  repro_confirmed: true
+  reconstructed_by: subagent   # worktree-isolated parameters/dashboard agent; adversarial self-check high
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    GET /api/dashboard/:id/params/:param-key/values returns HTTP 400 for parameters mapped only via nested-query field refs (by name/ref, not id), instead of the dropdown values.
+  repro_failure: >
+    param-values-no-field-ids-test: 4 assertions, 4 failures (400 ExceptionInfo for _USER_SOURCE_ and _CITY_IS_NOT_ params).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.dashboards-rest.api-test/param-values-no-field-ids-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-1. Conflict target (fix does not revert cleanly); bug reconstructed into current code + killed by shipped BE test => e2e repro cullable."

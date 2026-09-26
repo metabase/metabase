@@ -1,0 +1,33 @@
+issue: 59306
+issue_url: https://github.com/metabase/metabase/issues/59306
+fix_commits: ["3f85969803ecade5726507fb163d7f0e267a323c"]
+fix_pr: 60045
+fix_subject: "Add max width on multi-input field (#60045)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2241
+      kind: describe
+      title: "issue 59306"
+    - spec: e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js
+      line: 2282
+      kind: it
+      title: "should not overflow the filter box (metabase#59306)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untestable, killed_by: []}
+  notes: "CSS-only (mutated file MultiAutocomplete.module.css — max-width on multi-input field). No unit hook; keep e2e/visual coverage."

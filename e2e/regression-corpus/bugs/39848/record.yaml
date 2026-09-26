@@ -1,0 +1,27 @@
+id: reg-39848
+origin:
+  kind: regression
+  issue: 39848
+  fix_commit: 82d90d043c6c8eb8c08179713c4637e022097ba1
+  fix_tests:
+    - "e2e/test/scenarios/embedding/interactive-embedding.cy.spec.js::scenarios > embedding > full app dashboards should allow downloading question results when logged in via Google SSO (metabase#39848)"
+    - "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetResponse normal deployment should handle relative URLs"
+    - "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetResponse subpath deployment should handle absolute URLs"
+    - "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetResponse subpath deployment should handle relative URLs"
+bug:
+  statement: "In interactive embedding with Google SSO, downloading question results fails with 401 because the download request omits the anti-CSRF token header."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: query_builder
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/embedding/interactive-embedding.cy.spec.js::scenarios > embedding > full app dashboards should allow downloading question results when logged in via Google SSO (metabase#39848)"
+  expected_failure: "expect(interception.request.headers[\"x-metabase-anti-csrf-token\"]).to.equal(CSRF_TOKEN) fails on the CSV download request"
+notes: "Mutant mismatch: July's patch only restores the pre-fix absolute download URL in getDatasetDownloadUrl; downloads still go through the api client that adds the session and anti-CSRF headers, so it breaks subpath URL handling instead of dropping the headers; rebuild from 82d90d043c6 by sending download requests through a raw fetch; the getDatasetResponse URL tests July used as oracle were changed by the fix to expect relative URLs and catch the patch, not the header bug; stratum wiring and module from the real fix (downloads bypass the api client; the code now lives in frontend/src/metabase/redux/downloads.ts); expected_failure inferred from the e2e's assertion; fe_be_boundary inferred (frontend-only fix)"

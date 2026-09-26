@@ -1,0 +1,37 @@
+issue: 63416
+issue_url: https://github.com/metabase/metabase/issues/63416
+fix_commits: ["92cea5d4f553679d32427e0cb245056551b4642b"]
+fix_pr: 64754
+fix_subject: "Fix download not getting parameters from visualized dashcards (#64754)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js
+      line: 1574
+      kind: describe
+      title: "issue 63416"
+    - spec: e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js
+      line: 1645
+      kind: it
+      title: "should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/metabase/monitor/tools/components/LogLevelsModal/LogLevelsModal.unit.spec.tsx
+  notes: null

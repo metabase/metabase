@@ -1,0 +1,26 @@
+issue: 22473
+issue_url: https://github.com/metabase/metabase/issues/22473
+fix_commits: ["d02fef97bbd2af0fe2a5e41af4077b107fa73a39"]
+fix_subject: "Show all subscriptions on /account/notifications"
+area: pulse/api/pulse
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_be_oracle__vacuous_assertion
+  repro_reconstructable: false
+  reason: >
+    The fix-added assertion is VACUOUS: a pre-existing test fixture bug cascade-deletes the target pulse before the assertion runs, so (nil? (:cards result)) is always true regardless of product code (verified empirically: 28/28 pass with maybe-strip-sensitive-metadata reduced to identity). Oracle cannot discriminate. Not reconstructable within the file/oracle constraints (would require touching pulse/models/pulse.clj or fixing the test itself).
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untestable, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (no_be_oracle__vacuous_assertion). No discriminating BE oracle (test-side defect)."

@@ -1,0 +1,24 @@
+id: reg-74433
+origin:
+  kind: regression
+  issue: 74433
+  fix_commit: fd504cf5cac122ca5025bfb56c6d621306265451
+  fix_tests:
+    - "e2e/test/scenarios/onboarding/home/browse.cy.spec.ts::issue 74433 table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)"
+bug:
+  statement: "A tooltip showing a long name with no spaces, such as a table name in Browse Databases, overflows past the tooltip's box."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: ui
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/onboarding/home/browse.cy.spec.ts::issue 74433 table-name tooltip in Browse Databases should not overflow when the name has no spaces (metabase#74433)"
+  expected_failure: "expect(tooltip.scrollWidth, \"tooltip content fits within its box\").to.be.lte(tooltip.clientWidth) fails"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; CSS-module-only fix that MATRIX.md classes unit-untestable; July's e2e leg was never run; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

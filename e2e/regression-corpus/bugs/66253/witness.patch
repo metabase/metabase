@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/AppThemeProvider.unit.spec.tsx b/frontend/src/metabase/AppThemeProvider.unit.spec.tsx
+new file mode 100644
+index 00000000000..75f100b9bbb
+--- /dev/null
++++ b/frontend/src/metabase/AppThemeProvider.unit.spec.tsx
+@@ -0,0 +1,15 @@
++import { getColorSchemeFromDisplayTheme } from "./AppThemeProvider";
++
++describe("getColorSchemeFromDisplayTheme", () => {
++  it("should default to light when no theme is provided (metabase#66253)", () => {
++    // A static embed without a `theme` hash param passes `undefined`.
++    // It must resolve to "light" rather than null (null would fall back to
++    // user/system color-scheme settings, i.e. dark when the OS prefers dark).
++    expect(getColorSchemeFromDisplayTheme(undefined)).toBe("light");
++  });
++
++  it("should resolve explicit light/dark themes", () => {
++    expect(getColorSchemeFromDisplayTheme("light")).toBe("light");
++    expect(getColorSchemeFromDisplayTheme("dark")).toBe("dark");
++  });
++});

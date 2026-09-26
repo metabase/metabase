@@ -1,0 +1,21 @@
+issue: 45638
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#52368 static-embed font — dispatch font:undefined; expect Roboto got undefined; 1 failed/1
+    Oracle relocation: use-embed-font → use-set-embed-font (refactored)
+    Product: useSetEmbedFont hook
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/public/hooks/use-set-embed-font.unit.spec.tsx
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

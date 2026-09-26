@@ -1,0 +1,17 @@
+diff --git a/frontend/src/metabase/querying/notebook/utils/steps.ts b/frontend/src/metabase/querying/notebook/utils/steps.ts
+index 4baccee6f37..b62196deb15 100644
+--- a/frontend/src/metabase/querying/notebook/utils/steps.ts
++++ b/frontend/src/metabase/querying/notebook/utils/steps.ts
+@@ -314,6 +314,12 @@ function getStageSteps(
+           step.clauseType,
+           step.itemIndex,
+         );
++        if (step.previewQuery) {
++          step.previewQuery = _.range(
++            stageIndex + 1,
++            Lib.stageCount(query),
++          ).reduce((q) => Lib.appendStage(q), step.previewQuery);
++        }
+       }
+ 
+       // add any accumulated actions and reset

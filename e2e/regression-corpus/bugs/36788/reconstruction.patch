@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/visualizations/components/ChartCaption.tsx b/frontend/src/metabase/visualizations/components/ChartCaption.tsx
+index 255a7289750..2a00dae88aa 100644
+--- a/frontend/src/metabase/visualizations/components/ChartCaption.tsx
++++ b/frontend/src/metabase/visualizations/components/ChartCaption.tsx
+@@ -55,6 +55,10 @@ const ChartCaption = ({
+     }
+   }, [card, onChangeCardAndRun]);
+ 
++  if (!title) {
++    return null;
++  }
++
+   return (
+     <ChartCaptionRoot
+       title={title}

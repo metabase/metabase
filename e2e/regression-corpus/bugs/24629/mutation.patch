@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/common/components/TokenField/TokenField.tsx b/frontend/src/metabase/common/components/TokenField/TokenField.tsx
+index 3949d2d5e87..ba464f6cbfd 100644
+--- a/frontend/src/metabase/common/components/TokenField/TokenField.tsx
++++ b/frontend/src/metabase/common/components/TokenField/TokenField.tsx
+@@ -272,12 +272,9 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
+ 
+     const { filteredOptions, selectedOptionValue } = this.state;
+ 
+-    if (keyCode === KEYCODE_ESCAPE) {
+-      event.preventDefault();
+-      this.inputRef.current?.blur();
+-      this.setState({ isFocused: false });
+-    } else if (
++    if (
+       // enter, tab, comma
++      keyCode === KEYCODE_ESCAPE ||
+       keyCode === KEYCODE_TAB ||
+       // We check event.key for comma presses because some keyboard layouts
+       // (e.g. Russian) have a letter on that key and require a modifier to type

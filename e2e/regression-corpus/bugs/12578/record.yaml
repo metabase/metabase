@@ -1,0 +1,25 @@
+id: reg-12578
+origin:
+  kind: regression
+  issue: 12578
+  fix_commit: 6548584ceac3601e264ccdb7e60373fe2a8c9f91
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 12578 should not fetch cards that are still loading when refreshing"
+    - "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers Should accurately describe loading state should change to running when loading cards"
+bug:
+  statement: "Dashboard auto-refresh re-runs cards whose previous queries are still loading, so slow queries pile up on the database."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: dashboard
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers Should accurately describe loading state should change to running when loading cards"
+  expected_failure: "toMatchObject on loadingDashCards: expected loadingIds [1, 2, 3], loadingStatus \"running\"; received loadingIds [], loadingStatus \"complete\""
+notes: "stratum wiring: the mutant makes the loading reducer read the old dashcardIds payload key while the action sends loadingIds, so loading ids stay empty and the refresh thunk no longer skips still-loading cards; the jest test shipped as reducers.unit.spec.js and was relocated (see reconstruction-report.md §2); the fix's thunk-side skip is guarded only by the e2e (report §5); fe_be_boundary inferred"

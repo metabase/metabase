@@ -1,0 +1,26 @@
+id: reg-53682
+origin:
+  kind: regression
+  issue: 53682
+  fix_commit: 2a6318acfd8e4f3bb3b582edd0e8f13d2961ff6d
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 53682 should show an error message when trying to use a multi-arg expression function with not enough arguments (metabase#53682)"
+    - "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose arg count validation should reject multi-arg function calls without options when there is not enough arguments"
+    - "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose arg count validation should reject when there is not enough arguments for %s"
+bug:
+  statement: "A custom expression like contains(\"e2e\") with too few arguments isn't flagged as invalid, and editing the column name then crashes the query builder."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/diagnostics/diagnostics.unit.spec.ts::diagnostics diagnose arg count validation should reject when there is not enough arguments for %s"
+  expected_failure: "expect(err(\"contains(\\\"foo\\\")\")).toBe(\"Function contains expects at least 2 arguments\"); Received: \"Types are incompatible.\""
+notes: "the fix's tests shipped in frontend/test/metabase/lib/expressions/resolver.unit.spec.js and moved with the expression code into diagnostics.unit.spec.ts (see reconstruction-report.md §5); both unit ids are it.each templates: the \"for %s\" id runs for contains, doesNotContain, startsWith and endsWith, and the same template text also names an unrelated week/weekday test in that describe; fe_be_boundary inferred"

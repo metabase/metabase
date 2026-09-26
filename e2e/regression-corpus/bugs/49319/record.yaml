@@ -1,0 +1,24 @@
+id: reg-49319
+origin:
+  kind: regression
+  issue: 49319
+  fix_commit: affd550c24703768aa837a1243cfd1261819d4b6
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 49319 should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)"
+bug:
+  statement: "In dashboard edit mode, giving a newly added filter a default value makes its connected cards error until the dashboard is saved."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 49319 should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)"
+  expected_failure: "H.assertTableRowsCount(179) fails in edit mode; the unsaved filter is applied to the card query"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; the e2e shipped in dashboard-filters-reproductions.cy.spec.js and now lives in dashboard-filters-reproductions-2.cy.spec.js; MATRIX.md: unit hole, the raw fe_exit=1 was a load-flake; July never ran the e2e leg; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

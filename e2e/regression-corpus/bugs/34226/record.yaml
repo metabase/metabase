@@ -1,0 +1,26 @@
+id: reg-34226
+origin:
+  kind: regression
+  issue: 34226
+  fix_commit: 2cdb3c632479be98822179e5d1c04222311e7eca
+  fix_tests:
+    - "e2e/test/scenarios/search/search.cy.spec.js::scenarios > search universal search should not dismiss when the homepage redirects to a dashboard (metabase#34226)"
+    - "e2e/test/scenarios/search/search.cy.spec.js::scenarios > search universal search should not dismiss when a dashboard finishes loading (metabase#35009)"
+    - "frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx::SearchBar dismissing search on navigation should not dismiss the search results when the location is replaced (metabase#35009)"
+bug:
+  statement: "When a custom homepage redirects to a dashboard, search typed before the redirect is dismissed and its results preview stops appearing."
+  odc: {type: Checking, qualifier: Missing}
+  module: nav
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx::SearchBar dismissing search on navigation should not dismiss the search results when the location is replaced (metabase#35009)"
+  expected_failure: "screen.getByTestId(\"search-results-floating-container\") throws after history.replace: the search results are dismissed"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; shares fix #37669 and an identical inverse.patch with 35009 (MATRIX.md marks them duplicates), so fix_tests include 35009's e2e and its jest witness, which the land-and-cull pass (bf3736f0270) landed on this branch and which replaces the location the same way the homepage redirect does; config.yaml still records an fe_unit hole; expected_failure inferred from the witness's assertion; fe_be_boundary inferred"

@@ -1,0 +1,16 @@
+issue: 44637
+status: reconstruction_failed
+failure_category: cypress_only
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#44769 empty-chart crash — honest-negative. getTimeseriesXDomain empty-xValues guard; no jest covers selector; 5 optional-chaining guards non-discriminating; ModelDetailPage spec deleted
+validation:
+  oracle:
+    kind: cypress
+    test: e2e reproductions-3.cy.spec.js
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole

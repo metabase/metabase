@@ -1,0 +1,25 @@
+id: reg-70647
+origin:
+  kind: regression
+  issue: 70647
+  fix_commit: 4d3ae025277283b19749697f188ab22f9388c819
+  fix_tests:
+    - "e2e/test/scenarios/table-editing/table-editing.cy.spec.ts::scenarios > table-editing table editing bugs should allow creating a record in a table with a required date column (metabase#70647)"
+    - "enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputDate.unit.spec.tsx::TableActionInputDate should fire onChange with the restored date when the value changes (metabase#70647)"
+bug:
+  statement: "Adding a row to an editable table with a DATE column is blocked because the picked date is never committed to the form."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: EE/table-editing
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputDate.unit.spec.tsx::TableActionInputDate should fire onChange with the restored date when the value changes (metabase#70647)"
+  expected_failure: "expect(onChange).toHaveBeenLastCalledWith(\"2020-02-15\") fails and expect(onEnter).not.toHaveBeenCalled() fails; the change goes to onEnter"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant routes the date input's change to the onEnter callback instead of onChange/onBlur; the hole-closer test (MATRIX.md, landed on this branch with the e2e culled) resolves only at HEAD; expected_failure from config.yaml hole_closed notes and the test's assertions; fe_be_boundary inferred"

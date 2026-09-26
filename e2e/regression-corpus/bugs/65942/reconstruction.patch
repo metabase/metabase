@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/selectors/user.ts b/frontend/src/metabase/selectors/user.ts
+index 14d523450a7..6c484cc2f73 100644
+--- a/frontend/src/metabase/selectors/user.ts
++++ b/frontend/src/metabase/selectors/user.ts
+@@ -37,7 +37,7 @@ export const canAccessSettings = createSelector(
+ 
+ export const getUserAttributes = createSelector(
+   [getUser],
+-  (user) => user?.attributes || {},
++  (user) => user?.login_attributes || {},
+ );
+ 
+ export const getUserPersonalCollectionId = createSelector(

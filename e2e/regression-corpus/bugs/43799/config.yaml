@@ -1,0 +1,37 @@
+issue: 43799
+issue_url: https://github.com/metabase/metabase/issues/43799
+fix_commits: ["6dff2dfe7ee2d7608510772f917f5195e02de511"]
+fix_subject: "Fix parameter mapping with models (#43848)"
+area: metabase-lib/parameters/targets
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the model/dataset composition (composeQuestionAdhoc) in getParameterColumns, so models derive parameter columns from the raw underlying query. Localized a ~14-file fix to one function.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase-lib/v1/parameters/utils/targets.unit.spec.ts", clean_baseline: pass, reconstructed_result: "7/29 fail (model columns use underlying table 'Orders' not 'Question')"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Parameter mapping on a model derives columns from the model's raw underlying query instead of the composed model, so the wrong table/columns are offered.
+  repro_failure: >
+    getParameterColumns model cases: table 'Orders' vs 'Question' (7 assertions).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase-lib/v1/parameters/utils/targets.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-5 (final). Killed by shipped FE unit (jest) test => e2e repro cullable."

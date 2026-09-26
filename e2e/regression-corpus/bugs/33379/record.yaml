@@ -1,0 +1,28 @@
+id: reg-33379
+origin:
+  kind: regression
+  issue: 33379
+  fix_commit: d4f85c244ca0c48fbc61356b5660c08cce0a0fd6
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/click-behavior.cy.spec.js::scenarios > dashboard > dashboard cards > click behavior interactive embedding allows opening custom URL destination that is not a Metabase instance URL using link (metabase#33379)"
+    - "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect using router when using a relative URL with leading slash: \"%s\""
+    - "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect using router when using a relative URL: \"%s\""
+    - "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect using router when using an absolute URL containing site URL"
+    - "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect with invalid URL"
+bug:
+  statement: "A dashboard card's click behavior link to another dashboard or question reloads the whole page instead of navigating in the app, dropping interactive-embedding customizations."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: viz/open-url
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/lib/action.unit.spec.ts::performAction when site URL is $name should redirect using router when using a relative URL with leading slash: \"%s\""
+  expected_failure: "expect(dispatch).toHaveBeenCalledTimes(1); Received number of calls: 0 (leading-slash URL takes the full-reload path)"
+notes: "the four jest ids are parameterized (describe.each over site URLs, it.each over paths), kept as the template titles list-tests.js prints; the fix's dom.js/action.js logic now lives in visualizations/lib/open-url.ts; the mutant also stops stripping the site subpath (report §3)"

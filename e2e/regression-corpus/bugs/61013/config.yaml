@@ -1,0 +1,38 @@
+issue: 61013
+issue_url: https://github.com/metabase/metabase/issues/61013
+fix_commits: ["13d4abff0bc6655f73e6ba76075935ddaaa459b5"]
+fix_subject: "Fix dashboard loading state for empty dashboard"
+area: dashboard/reducers
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  fe_bucket: all_specs_gone
+  oracle_source: "relocated_spec (reducers.unit.spec.js -> .ts)"
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted the reducer hunk loadingStatus 'complete'->'idle' for cardless dashboards. Oracle spec relocated .js->.ts (test renamed by the fix). NOTE: the DashboardApp/context hunks are Cypress-only; the reducer hunk has a surviving unit oracle.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts", clean_baseline: pass, reconstructed_result: "1/18 fail (loadingStatus never reaches terminal state for empty dashboard)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    An empty (cardless) dashboard's loading state never becomes terminal, so the dashboard stays in a stuck loading state.
+  repro_failure: >
+    'complete when no cards to load': loadingStatus expected 'complete', received 'idle'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/dashboard/reducers.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE reconstruction from all_specs_gone bucket; oracle via relocated_spec (reducers.unit.spec.js -> .ts). Killed by FE unit (jest) => e2e repro cullable."

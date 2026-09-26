@@ -1,0 +1,74 @@
+diff --git a/frontend/src/metabase/common/components/Pickers/EntityPicker/components/EntityPickerModal.tsx b/frontend/src/metabase/common/components/Pickers/EntityPicker/components/EntityPickerModal.tsx
+index 4c8d0838c79..05112894c1b 100644
+--- a/frontend/src/metabase/common/components/Pickers/EntityPicker/components/EntityPickerModal.tsx
++++ b/frontend/src/metabase/common/components/Pickers/EntityPicker/components/EntityPickerModal.tsx
+@@ -3,13 +3,12 @@ import {
+   useDisclosure,
+   useWindowEvent,
+ } from "@mantine/hooks";
+-import { useCallback, useMemo, useRef, useState } from "react";
++import { useCallback, useMemo, useState } from "react";
+ import { t } from "ttag";
+ 
+ import { useModalOpen } from "metabase/common/hooks/use-modal-open";
+ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+ import { ActionIcon, Box, Icon, Modal, TextInput } from "metabase/ui";
+-import resizeObserver from "metabase/utils/resize-observer";
+ import type { RecentContexts } from "metabase-types/api";
+ 
+ import { useLogRecentItem } from "../hooks";
+@@ -68,8 +67,6 @@ export function EntityPickerModal({
+   disableRecentLogging,
+   ...rest
+ }: EntityPickerModalProps) {
+-  const [modalContentMinWidth, setModalContentMinWidth] = useState(920);
+-  const modalContentRef = useRef<HTMLDivElement | null>(null);
+   const [searchQuery, setSearchQuery] = useState<string>(
+     initialSearchQuery || "",
+   );
+@@ -122,33 +119,6 @@ export function EntityPickerModal({
+ 
+   const titleId = useUniqueId("entity-picker-modal-title-");
+ 
+-  const modalContentResizeHandler = useCallback(
+-    (entry: ResizeObserverEntry) => {
+-      const width = entry.contentRect.width;
+-      setModalContentMinWidth((currentWidth) =>
+-        currentWidth < width ? width : currentWidth,
+-      );
+-    },
+-    [],
+-  );
+-
+-  const modalContentCallbackRef = useCallback(
+-    (element: HTMLDivElement | null) => {
+-      if (element) {
+-        resizeObserver.subscribe(element, modalContentResizeHandler);
+-        modalContentRef.current = element;
+-      } else {
+-        if (modalContentRef.current) {
+-          resizeObserver.unsubscribe(
+-            modalContentRef.current,
+-            modalContentResizeHandler,
+-          );
+-        }
+-      }
+-    },
+-    [modalContentResizeHandler],
+-  );
+-
+   return (
+     <Modal.Root
+       opened={open}
+@@ -176,10 +146,7 @@ export function EntityPickerModal({
+       <Modal.Content
+         className={S.modalContent}
+         aria-labelledby={titleId}
+-        miw={`min(${modalContentMinWidth}px, 80vw)`}
+-        w="fit-content"
+-        maw="80vw"
+-        ref={modalContentCallbackRef}
++        w="57.5rem"
+       >
+         <Modal.Header
+           px="1.5rem"

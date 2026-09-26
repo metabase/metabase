@@ -1,0 +1,25 @@
+id: reg-57138
+origin:
+  kind: regression
+  issue: 57138
+  fix_commit: 1a4744e18cc8bf13bdbe4e0c6da928ce57d0c35c
+  fix_tests:
+    - "e2e/test/scenarios/sharing/alert/alert.cy.spec.js::scenarios > alert scenarios > sharing > approved domains (EE) should not display the list of approved domains for non-admins (metabase#57138)"
+    - "frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.unit.spec.tsx::CreateOrEditQuestionAlertModal should hide the allowed email domains from non-admins without settings access (metabase#57138)"
+bug:
+  statement: "When a non-admin enters an email outside the approved domains, the error message lists the approved domains."
+  odc: {type: Checking, qualifier: Missing}
+  module: notifications
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal.unit.spec.tsx::CreateOrEditQuestionAlertModal should hide the allowed email domains from non-admins without settings access (metabase#57138)"
+  expected_failure: "Unable to find an element with the text: You're only allowed to email alerts to allowed domains"
+notes: "base_commit is the parent of July's CI mutant 3c095d80dcd (run 29139251734); July's CI run of the e2e passed on this mutant (vacuous e2e, see evidence/e2e-only-batch-wave4.jsonl); the patch changes both the question alert modal (notifications) and the dashboard subscription sidebar (dashboard), module from the alert modal the e2e and witness exercise; fe_be_boundary inferred"

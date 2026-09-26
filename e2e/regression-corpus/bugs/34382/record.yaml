@@ -1,0 +1,25 @@
+id: reg-34382
+origin:
+  kind: regression
+  issue: 34382
+  fix_commit: 914bce893593e430a1ce6e2dddab340d41d34e5a
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 34382 should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)"
+    - "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers INITIALIZE should return unchanged state if `clearCache: false` passed"
+bug:
+  statement: "With auto-apply filters turned off, returning to a dashboard from one of its questions clears the filter values that were applied."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: state
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers INITIALIZE should return unchanged state if `clearCache: false` passed"
+  expected_failure: "toEqual: draftParameterValues expected {\"60bca071\": [\"Gadget\", \"Doohickey\", \"Gizmo\"]}, received {}"
+notes: "fix_commit: July recorded none; GitHub closes the issue with #34399 (914bce89359), whose reducer change matches the report; stratum state: the mutant always wipes the draft filter values on INITIALIZE instead of keeping them across navigation; the shipped reducers.unit.spec.js became .ts; the fix's sibling test \"should reset state if `clearCache`: false` is not passed\" doesn't fail on this bug; fe_be_boundary inferred"

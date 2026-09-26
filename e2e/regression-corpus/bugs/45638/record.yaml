@@ -1,0 +1,26 @@
+id: reg-45638
+origin:
+  kind: regression
+  issue: 45638
+  fix_commit: abfda359b0634afa3e56176ed3a33414269c543d
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-questions.cy.spec.js::scenarios [EE] > embedding > questions should display according to `#font` hash parameter (metabase#45638)"
+    - "frontend/src/metabase/public/hooks/use-set-embed-font.unit.spec.tsx::useSetEmbedFont sets and updates font"
+    - "frontend/src/metabase/public/containers/PublicOrEmbeddedQuestion/PublicOrEmbeddedQuestion/tests/PublicOrEmbeddedQuestion.common.unit.spec.tsx::PublicOrEmbeddedQuestion should apply the font from the `#font` hash parameter (metabase#45638)"
+bug:
+  statement: "A static embedded question ignores the font chosen in the embed settings, so the preview and embed keep the default font."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: public
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/public/hooks/use-set-embed-font.unit.spec.tsx::useSetEmbedFont sets and updates font"
+  expected_failure: "expect(getEmbedOptionsState().font).toBe(\"Roboto\"); Expected: \"Roboto\", Received: undefined"
+notes: "stratum wiring: the mutant stops passing the hash font to setOptions; the original bug was the embedded question never applying the font, and the mutant moves the fault into the useSetEmbedFont hook that now owns it (see reconstruction-report.md §5); fix_commit: July's config has none; the report and GitHub both give #52368 (abfda359b06); the hook test is the renamed descendant of the fix's \"useEmbedFont sets and updates font\"; the PublicOrEmbeddedQuestion test was landed on this branch, which also culled the e2e; fe_be_boundary inferred"

@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.ts b/frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.ts
+index 64a8cc90cc0..0072ed69ac2 100644
+--- a/frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.ts
++++ b/frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.ts
+@@ -64,7 +64,6 @@ export const getDefaultSdkIframeEmbedSettings = ({
+         withAlerts: false,
+         withTitle: true,
+         isSaveEnabled: false,
+-        initialSqlParameters: {},
+       }),
+     )
+     .with(

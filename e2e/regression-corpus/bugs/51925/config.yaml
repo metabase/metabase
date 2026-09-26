@@ -1,0 +1,37 @@
+issue: 51925
+issue_url: https://github.com/metabase/metabase/issues/51925
+fix_commits: ["b4a28c6a6fe15c3cb07417b80fa562a0d2fc66d2"]
+fix_subject: "Fix setting 'Display as Link' in model metadata"
+area: viz/ChartSettingLinkUrlInput
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted the input value to unconditional internal `focusedValue` state (fix used `isFocused ? focusedValue : valueOrDefault`), so it never re-syncs from props after mount.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "1/8 fail (input keeps stale value on re-render)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Per-column 'Display as Link' URL values don't reset/re-sync when switching columns (stale internal state).
+  repro_failure: >
+    'reset input value when re-rendered with same empty value': toHaveValue('') got 'abc'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/visualizations/components/settings/ChartSettingLinkUrlInput.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-3. Killed by shipped FE unit (jest) test => e2e repro cullable."

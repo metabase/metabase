@@ -1,0 +1,7 @@
+issue: 40999
+fix_commit: 6a3d185b2b2fc5f2b1f30fe5601c9b210eae08f9
+e2e_repro: e2e/test/scenarios/visualizations-charts/maps.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

@@ -1,0 +1,25 @@
+diff --git a/frontend/src/metabase/querying/expressions/diagnostics/expression/check-arg-count.ts b/frontend/src/metabase/querying/expressions/diagnostics/expression/check-arg-count.ts
+index 9f6f0d94ce8..ec3b02309e4 100644
+--- a/frontend/src/metabase/querying/expressions/diagnostics/expression/check-arg-count.ts
++++ b/frontend/src/metabase/querying/expressions/diagnostics/expression/check-arg-count.ts
+@@ -26,19 +26,7 @@ export function checkArgCount({
+     const args = clause.args.filter((arg) => !arg.optional);
+ 
+     if (multiple) {
+-      const argCount = operands.length;
+-      const minArgCount = args.length;
+-
+-      if (argCount < minArgCount) {
+-        error(
+-          node,
+-          ngettext(
+-            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+-            `Function ${displayName} expects at least ${minArgCount} arguments`,
+-            minArgCount,
+-          ),
+-        );
+-      }
++      // bug reintroduced: multi-arg functions skip the minimum-arg-count check
+     } else {
+       const expectedArgsLength = args.length;
+       const maxArgCount = hasOptions

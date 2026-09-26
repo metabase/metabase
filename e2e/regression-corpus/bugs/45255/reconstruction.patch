@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/lib/formatting/value.tsx b/frontend/src/metabase/visualizations/lib/formatting/value.tsx
+index aed206e0f94..2f47d3873ae 100644
+--- a/frontend/src/metabase/visualizations/lib/formatting/value.tsx
++++ b/frontend/src/metabase/visualizations/lib/formatting/value.tsx
+@@ -147,7 +147,7 @@ export function formatValueRaw(
+   }
+ 
+   if (value == null) {
+-    return options.stringifyNull ? NULL_DISPLAY_VALUE : null;
++    return null;
+   } else if (
+     options.view_as !== "image" &&
+     options.click_behavior &&

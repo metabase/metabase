@@ -1,0 +1,13 @@
+diff --git a/src/metabase/warehouse_schema/table.clj b/src/metabase/warehouse_schema/table.clj
+index 5dd76c3a58b..12c1c9dcd2d 100644
+--- a/src/metabase/warehouse_schema/table.clj
++++ b/src/metabase/warehouse_schema/table.clj
+@@ -46,7 +46,7 @@
+   (if include-editable-data-model?
+     (api/write-check table)
+     (api/check-403 (can-access-table-for-query-metadata? table)))
+-  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
++  (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions]
+                                 [:segments :definition_description] [:measures :definition_description] :metrics :collection]
+                          (premium-features/any-transforms-enabled?) (conj :transform))]
+     (-> table

@@ -1,0 +1,27 @@
+issue: 51934
+issue_url: https://github.com/metabase/metabase/issues/51934
+fix_commits: ["b1bcf3240602c41671b2d71745389d746a1ff107"]
+fix_subject: "Set sensible default data picker step when joining"
+area: EE/embedding-data-picker
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (remove the isJoinStep querySourceType special-casing in hydrateActiveStep). But the fix's UNIT-spec edits were deletions + a required-prop accommodation (non-behavioral); no unit test ever passes querySourceType='model'/'question', so the model/question join-default branches (the bug) have zero unit coverage. Empirically: both specs pass identically with/without the fix. Real oracle = Cypress (opened step + source-collection highlight). FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "no_unit_oracle__real_oracle_cypress"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-3 NEGATIVE (no_unit_oracle__real_oracle_cypress)."

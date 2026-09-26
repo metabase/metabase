@@ -1,0 +1,25 @@
+id: reg-57697
+origin:
+  kind: regression
+  issue: 57697
+  fix_commit: e1041fcfa1f520736c3dcdcd85f4de1f89f941af
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-4.cy.spec.js::issue 57697 should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)"
+    - "frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.unit.spec.ts::BreakoutColumnList/util getBreakoutListItem (metabase#57697) should not include the binning strategy in the display name of a binned breakout column"
+bug:
+  statement: "In the Summarize sidebar, a binned breakout column shows its binning twice, e.g. \"Price: Auto binned\" next to the binning picker instead of \"Price\"."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: query_builder
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.unit.spec.ts::BreakoutColumnList/util getBreakoutListItem (metabase#57697) should not include the binning strategy in the display name of a binned breakout column"
+  expected_failure: "expect(item?.displayName).toBe(\"Price\"); Received: \"Price: Auto binned\""
+notes: "base_commit is the parent of July's CI mutant 1945f3daf8f (run 29135042976); the e2e title has a double space before \"(metabase#57697)\", kept as written; the e2e moved from reproductions-3 to reproductions-4 after the fix; witness landed and e2e culled on this branch; fe_be_boundary inferred"

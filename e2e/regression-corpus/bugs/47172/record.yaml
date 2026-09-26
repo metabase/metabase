@@ -1,0 +1,25 @@
+id: reg-47172
+origin:
+  kind: regression
+  issue: 47172
+  fix_commit: b75577b5292889032f2bb3fc77593efb8f4da882
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js::issue 12720, issue 47172 should apply the specific (before|after) filter on a native question with field filter (metabase#47172)"
+    - "metabase.driver.sql.parameters.substitute-test/expand-field-filters-for-datetime-field-test"
+bug:
+  statement: "A native question's date field filter set to before or after a specific date fails with \"Don't know how to parse null nil as a temporal literal\"."
+  odc: {type: Checking, qualifier: Missing}
+  module: driver
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.driver.sql.parameters.substitute-test/expand-field-filters-for-datetime-field-test"
+  expected_failure: "expand-field-filters-for-datetime-field-test errors: Don't know how to parse null nil as a temporal literal"
+notes: "Mutant mismatch: reconstruction.patch removes the fix's open-range boundary adjustment in dates.clj, so before/after filters return rows off by one unit instead of failing; the issue's failure is the missing nil guard for the open bound in substitution.clj's date-time-range snippet, which July skipped because reverting it makes the deftest error rather than fail an assertion (see reconstruction-report.md §5); a rebuild following b75577b5 should drop those nil guards; July's mutant fails 4 assertions like \"expected 2016-07-02T00:00Z, actual 2016-07-01T00:00Z\"; expected_failure is the issue's error text, inferred; lowest_level integration because July has no unit test catching the crash, though the fix's datetime deftest drives open ranges and would error on it; module and odc from the substitution.clj hunk (July area qp/parameters/dates is the mutated file); expand-field-filters-for-date-field-test is only renamed by the fix and doesn't fail; the describe's other test covers #12720"

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx b/frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+index cb8641d8ac7..8b9a4ab918b 100644
+--- a/frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
++++ b/frontend/src/metabase/querying/components/NativeQueryEditor/PreviewQueryButton/PreviewQueryButton.tsx
+@@ -51,7 +51,6 @@ PreviewQueryButton.shouldRender = ({ question }: PreviewQueryButtonOpts) => {
+   const nativeQuestion = question.legacyNativeQuery() as NativeQuery;
+ 
+   const hasVariableTemplateTags = nativeQuestion.hasVariableTemplateTags();
+-  const hasSnippets = nativeQuestion.hasSnippets();
+ 
+-  return question.canRun() && (hasVariableTemplateTags || hasSnippets);
++  return question.canRun() && hasVariableTemplateTags;
+ };

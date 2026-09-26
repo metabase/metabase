@@ -1,0 +1,30 @@
+id: reg-56596
+origin:
+  kind: regression
+  issue: 56596
+  fix_commit: dfc753e0f6ac9980912c1d535a8960e4ac97e427
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue 56596 should not remove backslashes from escaped characters (metabase#56596)"
+    - "frontend/src/metabase/querying/expressions/formatter/formatter.unit.spec.ts::should format escaped regex characters (metabase#56596)"
+    - "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle double-quoted strings"
+    - "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle single-quoted strings"
+    - "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle bracket-quoted strings"
+    - "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should perform faithful round-trip operations with %s-quoted strings"
+    - "metabase.query-processor.string-extracts-test/string-function-escape-literals-test"
+bug:
+  statement: "Saving a custom column strips backslashes from escaped characters in strings, so a regex like \"^\\[Default\\]\\s\" becomes \"^[Default]s\" and stops matching."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle double-quoted strings"
+  expected_failure: "expect(unquoteString(`\"\\\\[\\\\]\"`)).toEqual(`\\\\[\\\\]`); Expected: \"\\\\[\\\\]\", Received: \"[]\""
+notes: "the fix rewrote string.unit.spec.ts, which moved with the expression code to querying/expressions (see reconstruction-report.md §2); the round-trip id is an it.each template that runs for three quote styles; string-function-escape-literals-test is a backend test with a testing block naming this issue; fe_be_boundary inferred"

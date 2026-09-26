@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/parameters/utils/parameter-parsing.ts b/frontend/src/metabase/parameters/utils/parameter-parsing.ts
+index 7f0409c4b76..be3c6d99a90 100644
+--- a/frontend/src/metabase/parameters/utils/parameter-parsing.ts
++++ b/frontend/src/metabase/parameters/utils/parameter-parsing.ts
+@@ -120,7 +120,7 @@ function parseParameterValueForFields(
+ ): ParameterValueOrArray {
+   // unix dates fields are numeric but query params shouldn't be parsed as numbers
+   if (fields.every((f) => f.isNumeric() && !f.isDate())) {
+-    return normalizeNumberParameterValue(type, value);
++    return parseFloat(value as string);
+   }
+ 
+   if (fields.every((f) => f.isBoolean())) {

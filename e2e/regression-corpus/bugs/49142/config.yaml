@@ -1,0 +1,37 @@
+issue: 49142
+issue_url: https://github.com/metabase/metabase/issues/49142
+fix_commits: ["0a455d9a684c831cb43c539fdf7d03d590496be0"]
+fix_subject: "Fix csp directives for embed previews (#49155)"
+area: server/security
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest    # fix ADDED assertions to an existing deftest
+  reconstruction_notes: >
+    Removed 'self' from always-allowed-iframe-hosts (fix originally injected it in parse-hosts-string; behavior migrated to the vector). Picked csp-header-iframe-hosts-tests as oracle because the sibling allowed-iframe-hosts-test references the symbol symmetrically and doesn't discriminate.
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.server.middleware.security-test/csp-header-iframe-hosts-tests", clean_baseline: pass, reconstructed_result: "2/5 fail (frame-src omits 'self')"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    The frame-src CSP directive omits 'self', so embed-preview iframes pointing at our own origin are blocked.
+  repro_failure: >
+    csp-header-iframe-hosts-tests (#49142 assertion): (contains? hosts \"'self'\") fails.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.server.middleware.security-test/csp-header-iframe-hosts-tests"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 (no_added_deftest bucket; modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

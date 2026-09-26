@@ -1,0 +1,25 @@
+id: reg-25533
+origin:
+  kind: regression
+  issue: 25533
+  fix_commit: 9420edfd69ff5e6b8cc70dd7a54bfc9a83c25cae
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js::scenarios > dashboard > filters > text/category should reset filter state when all values are unselected (metabase#25533)"
+    - "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setParameterValue should normalize an emptied value to null (metabase#25533)"
+bug:
+  statement: "Applying a dashboard dropdown filter with no values selected sets it to an empty value instead of clearing it, so it still looks active."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setParameterValue should normalize an emptied value to null (metabase#25533)"
+  expected_failure: "expect(state.dashboard.parameterValues[\"123\"]).toBe(null); Expected: null, Received: []"
+notes: "no mutant patch: July verified an over-revert (drop the empty-to-null normalization in setParameterValue) but didn't save it, see reconstruction-report.md §1; the fix's only jest edit was an import rename (report §4); the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the reverted fix; fe_be_boundary inferred"

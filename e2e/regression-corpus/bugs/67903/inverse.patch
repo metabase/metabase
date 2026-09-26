@@ -1,0 +1,42 @@
+diff --git a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
+index db3d4fbfee8..8029ba4fcc8 100644
+--- a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
++++ b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.jsx
+@@ -12,6 +12,8 @@ import Visualization from "metabase/visualizations/components/Visualization";
+ import * as Lib from "metabase-lib";
+ import Question from "metabase-lib/v1/Question";
+ 
++import S from "./NotebookStepPreview.module.css";
++
+ const PREVIEW_ROWS_LIMIT = 10;
+ 
+ const getPreviewQuestion = (step) => {
+@@ -97,9 +99,16 @@ export const VisualizationPreview = ({ rawSeries, result, error }) => {
+       rawSeries={rawSeries}
+       error={err}
+       queryBuilderMode="notebook"
+-      className={cx(CS.bordered, CS.shadowed, CS.rounded, CS.bgWhite, {
+-        [CS.p2]: err,
+-      })}
++      className={cx(
++        S.PreviewVisualization,
++        CS.bordered,
++        CS.shadowed,
++        CS.rounded,
++        CS.bgWhite,
++        {
++          [CS.p2]: err,
++        },
++      )}
+       style={{
+         height: err ? "auto" : getPreviewHeightForResult(result),
+       }}
+diff --git a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.module.css b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.module.css
+new file mode 100644
+index 00000000000..0d0b7c12ed9
+--- /dev/null
++++ b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.module.css
+@@ -0,0 +1,3 @@
++.PreviewVisualization {
++  contain: strict;
++}

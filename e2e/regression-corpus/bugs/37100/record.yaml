@@ -1,0 +1,29 @@
+id: reg-37100
+origin:
+  kind: regression
+  issue: 37100
+  fix_commit: 8daa10adeb796d6418c6448aaa232564046853b9
+  fix_tests:
+    - "e2e/test/scenarios/joins/joins.cy.spec.js::scenarios > question > joined questions should join a native question (metabase#37100)"
+    - "e2e/test/scenarios/native/native.cy.spec.js::scenarios > question > native shouldn't remove rows containing NULL when using 'Is not' or 'Does not contain' filter (metabase#13332, metabase#37100)"
+    - "metabase.lib.field-test/field-values-search-info-native-test"
+    - "metabase.lib.field-test/field-values-search-info-native-test-2"
+    - "metabase.query-processor.explicit-joins-test/join-against-native-source-card-test"
+    - "metabase.query-processor.filter-test/does-not-contain-keeps-null-rows-test"
+bug:
+  statement: "Filtering a column that comes from a native question treats the column name as a field id, so the filter offers a value search that can't work."
+  odc: {type: Checking, qualifier: Missing}
+  module: lib
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.lib.field-test/field-values-search-info-native-test"
+  expected_failure: "(is (= {:field-id nil :search-field-id nil :search-field nil :has-field-values :none} (lib.field/field-values-search-info ...))) fails; the ids are the column name"
+notes: "Mutant mismatch: July's reconstruction.patch removes de-duplication in the MultiAutocomplete hook, from #37072 (the PR that skipped this issue's e2e tests), and its oracle \"StringFilterValuePicker search values should not be able to create duplicates with free-form input\" tests that; rebuild from #37238, which makes field-values-search-info return nil field ids for native columns; fix_commit: July recorded none and the report names #37072; GitHub closes the issue with #37238 (8daa10adeb7); module, odc and stratum from the real fix; lowest_level integration because July never ran a test for this bug, though the shipped field-values-search-info-native-test asserts the nil ids directly and likely catches it; the native.cy e2e exists at the July base but not at 8317274709c; field-values-search-info-native-test-2 and the explicit-joins and filter-test deftests name this issue in their testing strings (later additions); expected_failure inferred from the deftest's assertion; fe_be_boundary inferred"

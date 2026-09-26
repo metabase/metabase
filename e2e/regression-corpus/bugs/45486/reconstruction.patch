@@ -1,0 +1,36 @@
+diff --git a/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/utils.ts b/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/utils.ts
+index 8dbc0c2b2f0..aea63a4bdbe 100644
+--- a/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/utils.ts
++++ b/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/utils.ts
+@@ -56,21 +56,16 @@ const getFontFile = (src: string, option: FontFileOption): FontFile => {
+ };
+ 
+ const getFontFormat = (src: string): FontFormat => {
+-  try {
+-    const url = new URL(src);
+-    const extension = url.pathname.substring(url.pathname.lastIndexOf("."));
++  const extension = src.substring(src.lastIndexOf("."));
+ 
+-    switch (extension) {
+-      case ".woff":
+-        return "woff";
+-      case ".woff2":
+-        return "woff2";
+-      case ".ttf":
+-        return "truetype";
+-      default:
+-        return "woff2";
+-    }
+-  } catch {
+-    return "woff2";
++  switch (extension) {
++    case ".woff":
++      return "woff";
++    case ".woff2":
++      return "woff2";
++    case ".ttf":
++      return "truetype";
++    default:
++      return "woff2";
+   }
+ };

@@ -1,0 +1,27 @@
+id: reg-57644
+origin:
+  kind: regression
+  issue: 57644
+  fix_commit: 515c93f442f9f24cd2969e9b77f81e07c81b1117
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 57644 with only one database should not open the database picker when opening the native query editor when there is only one database (metabase#57644)"
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 57644 with multiple databases should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)"
+    - "frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx::DataSourceSelectors (metabase#57644) does not auto-open the database picker when there is only one database"
+    - "frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx::DataSourceSelectors (metabase#57644) auto-opens the database picker when there are multiple databases"
+bug:
+  statement: "Opening a new SQL question when only one database exists briefly pops open the database picker."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.unit.spec.tsx::DataSourceSelectors (metabase#57644) does not auto-open the database picker when there is only one database"
+  expected_failure: "expect(queryByText(\"Sample Database\")).not.toBeInTheDocument(); found <div>Sample Database</div> (picker auto-opened)"
+notes: "base_commit is the parent of July's CI mutant 8c6520c8608 (run 29135035590); the multiple-database e2e and jest tests are controls that pass on the mutant; they name this issue so they stay in fix_tests; fe_be_boundary inferred"

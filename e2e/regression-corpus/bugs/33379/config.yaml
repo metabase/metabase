@@ -1,0 +1,37 @@
+issue: 33379
+issue_url: https://github.com/metabase/metabase/issues/33379
+fix_commits: ["d4f85c244ca0c48fbc61356b5660c08cce0a0fd6"]
+fix_subject: "Fix click behavior link to dashboards/questions"
+area: viz/open-url (was lib/dom+action)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted the client-router routing in open-url.ts: leading-slash in-app URLs take the full-page-reload clickLink path instead of router push, and getLocation keeps the subpath. (Relocated dom.js/action.js -> visualizations/lib/open-url.ts.)
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/visualizations/lib/action.unit.spec.ts", clean_baseline: pass, reconstructed_result: "23/44 fail (in-app links hard-reload instead of client-router push)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A click-behavior link to a dashboard/question triggers a full page reload instead of client-side router navigation (and subpath deployments get a doubled path).
+  repro_failure: >
+    leading-slash URLs: dispatch toHaveBeenCalledTimes(1) got 0; subpath: pathname '/metabase/path//auto/...' vs '/auto/...'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/visualizations/lib/action.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-3. Killed by shipped FE unit (jest) test => e2e repro cullable."

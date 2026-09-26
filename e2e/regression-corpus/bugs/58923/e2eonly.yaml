@@ -1,0 +1,7 @@
+issue: 58923
+fix_commit: 61ff81a3abda008b9a897ff408d193746d69b5ae
+e2e_repro: e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: no_witness_layout
+layer: frontend

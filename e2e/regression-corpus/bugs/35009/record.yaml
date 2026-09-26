@@ -1,0 +1,26 @@
+id: reg-35009
+origin:
+  kind: regression
+  issue: 35009
+  fix_commit: 2cdb3c632479be98822179e5d1c04222311e7eca
+  fix_tests:
+    - "e2e/test/scenarios/search/search.cy.spec.js::scenarios > search universal search should not dismiss when a dashboard finishes loading (metabase#35009)"
+    - "e2e/test/scenarios/search/search.cy.spec.js::scenarios > search universal search should not dismiss when the homepage redirects to a dashboard (metabase#34226)"
+    - "frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx::SearchBar dismissing search on navigation should not dismiss the search results when the location is replaced (metabase#35009)"
+bug:
+  statement: "Search results opened while a dashboard is still loading close on their own when the dashboard finishes loading."
+  odc: {type: Checking, qualifier: Missing}
+  module: nav
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/nav/components/search/SearchBar/SearchBar.unit.spec.tsx::SearchBar dismissing search on navigation should not dismiss the search results when the location is replaced (metabase#35009)"
+  expected_failure: "after history.replace(\"/dashboard/1\"), getByTestId(\"search-results-floating-container\") is no longer in the document"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; GitHub #35009 is an unrelated merged PR (\"Add e2e tests for date shortcuts and exclude date filters\"), so the metabase#35009 tag has no issue behind it; statement taken from the e2e repro and the fix subject; same fix commit as 34226 (#37669); config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness and culled the e2e on this branch; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred; fix_tests include 34226's e2e, which shares the fix and the identical inverse.patch"

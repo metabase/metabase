@@ -1,0 +1,40 @@
+issue: 62053
+issue_url: https://github.com/metabase/metabase/issues/62053
+fix_commits: ["dcb4ce2aec5ba2cadd8e5ba3d46e1ec88e672620"]
+fix_pr: 62306
+fix_subject: "Fix duplicated table column viz settings (#62306)"
+area: channel/render
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # RECONSTRUCTION patch applies; original fix diff does NOT (conflict)
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the dedup step in order-data (fed viz-settings straight to order-cols). Drift: an intermediate 'linear-time dedup' refactor swapped index-by+vals -> distinct-by, so the original diff no longer reverse-applies.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.channel.render.body-test/order-data-handles-duplicated-table-columns-test"
+    clean_baseline: pass
+    reconstructed_result: "4/6 fail (duplicate columns/cells in rendered table)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Duplicated table-columns viz-settings entries produce a duplicated column and duplicated cell values in rendered (email/subscription) tables instead of deduping to one.
+  repro_failure: >
+    expected 2 cols, actual 3; row [1 'Alice'] -> (1 1 'Alice').
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.channel.render.body-test/order-data-handles-duplicated-table-columns-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-2. Conflict target reconstructed into current code + killed by shipped BE test => e2e repro cullable."

@@ -1,0 +1,26 @@
+issue: 52333
+issue_url: https://github.com/metabase/metabase/issues/52333
+fix_commits: ["a43bdf804d5599a259a8edab1c32e66315e42499"]
+fix_subject: "pivot table: show subtotals for a single item"
+area: pivot/core
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_be_oracle__neutralizing_setting_fe_oracle
+  repro_reconstructable: true    # true = bug CAN be reintroduced, but no BE unit oracle catches it
+  reason: >
+    Bug reconstructable but BE tests NON-DISCRIMINATING: the fix patched every touched BE test by ADDING :pivot.condense_duplicate_totals true (a behavior-neutralizing setting), not a discriminating assertion. Full revert leaves all 9 BE deftests green (verified). Real discriminating oracle is a FRONTEND JS test (data_grid.unit.spec.js). => BE unit hole; FE/e2e guarded.
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: hole, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (no_be_oracle__neutralizing_setting_fe_oracle). Bug reconstructable but no BE oracle => unit HOLE (e2e/FE guarded)."

@@ -1,0 +1,37 @@
+issue: 58829
+issue_url: https://github.com/metabase/metabase/issues/58829
+fix_commits: ["7029fd4c6d33caf6e2e3e116f3c1fcd54c611dd4"]
+fix_pr: 58826
+fix_subject: "Fix default fields for joined SQL models (#58826)"
+area: query-processor/resolve-joins
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: false
+  status: reconstruction_failed        # batch-1 negative result
+  reconstruction_notes: >
+    EXTREME DRIFT. The fix changed `join-field-refs` to use an id-based ref only when the
+    source metadata's `field_ref` is itself id-based. Since then the function was FULLY
+    REWRITTEN (source-metadata/`field_ref` -> `(lib/ref col)` with `force-id-ref?` /
+    `force-field-name-ref?` branches, plus a maintainer comment noting the ref-forcing is
+    "wonky"). The semantic mapping from the historical bug to the current structure is
+    non-obvious and the oracle passes on HEAD via a different code path. The worktree
+    agent STALLED (600s watchdog) doing REPL pipeline archaeology to capture the actual
+    cols fed to join-field-refs. Reconstructing by hand would risk a plausible-but-wrong
+    mutation that trips the oracle without being the real #58829 bug — the trust
+    principle forbids that. Recorded as an honest negative.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: metabase.query-processor.middleware.resolve-joins-test/native-model-field-ref-test
+    clean_baseline: pass                # green-confirmed in Stage-0 Level 2
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-1 FAILURE MODE: rewrite-class drift defeated reconstruction. Candidate for a REPL-equipped retry or drop."

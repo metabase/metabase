@@ -1,0 +1,24 @@
+id: reg-56570
+origin:
+  kind: regression
+  issue: 56570
+  fix_commit: 93831828e44de6e27baf916966f6f9b4d5d7a09c
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 56570 should not push the toolbar off-screen (metabase#56570)"
+bug:
+  statement: "A very long line of SQL in the native query editor pushes the editor's side toolbar off-screen."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: querying
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 56570 should not push the toolbar off-screen (metabase#56570)"
+  expected_failure: "cy.findByTestId(\"native-query-editor-action-buttons\").should(\"be.visible\") fails: the toolbar is pushed out of view"
+notes: "base_commit is the parent of July's CI mutant d40c4e850cb (run 29139237203); irreducible per e2eonly-report.md (CSS flexbox min-width on a CSS-module class, needs real-browser layout); July's CI run of the e2e passed on the mutant, so the e2e also missed it in headless CI; e2eonly-report.md §3 names the sidebar test id, but the e2e at 8317274709c asserts native-query-editor-action-buttons; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

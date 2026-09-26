@@ -1,0 +1,25 @@
+id: reg-57381
+origin:
+  kind: regression
+  issue: 57381
+  fix_commit: e73e604d4c25cada6f907e5198b2e5679a70982c
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/table.cy.spec.js::scenarios > visualizations > table > dashboards context should expand columns to the full width of the dashcard (metabase#57381)"
+    - "frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.unit.spec.ts::maybeExpandColumnWidths proportionally expands non-fixed columns while keeping fixed columns intact"
+bug:
+  statement: "Table cards on dashboards leave blank space on the right because narrow columns aren't widened to fill the card's width."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: data-grid/column-widths
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/data-grid/utils/maybe-expand-column-widths.unit.spec.ts::maybeExpandColumnWidths proportionally expands non-fixed columns while keeping fixed columns intact"
+  expected_failure: "toEqual: expected {colA: 100, colB: 150, colC: 150}, received {colA: 100, colB: 100, colC: 100}"
+notes: "a layout symptom whose width decision lives in a pure function the fix added with its spec, so jest catches it without a browser (see reconstruction-report.md §5)"

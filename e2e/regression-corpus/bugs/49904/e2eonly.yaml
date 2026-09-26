@@ -1,0 +1,7 @@
+issue: 49904
+fix_commit: 43d10c878711c5d7a61f79e6a8c7bd440577dce9
+e2e_repro: e2e/test/scenarios/collections/instance-analytics.cy.spec.js
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

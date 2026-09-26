@@ -1,0 +1,56 @@
+issue: 64473
+issue_url: https://github.com/metabase/metabase/issues/64473
+fix_commits: ["5299dd726aa19b8e0b3dc32a99c1afdf336154f4"]
+fix_pr: 64752
+fix_subject: "Hide view details button in Transform viz (#64752)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/data-studio/transforms/transforms.cy.spec.ts
+      line: 607
+      kind: it
+      title: "not show the 'Show details' buttons in ID columns (metabase#64473)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: HOLE — 2380 related unit tests all pass with bug reintroduced (jest --findRelatedTests)
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  test_file: frontend/src/metabase/querying/editor/components/QueryEditor/QueryEditorVisualization/QueryEditorVisualization.unit.spec.tsx
+  test_title: "should not show the 'View details' object-detail buttons in the transform visualization (metabase#64473)"
+  killed: true          # -R mutate -> FAIL (1 failed); forward restore -> PASS
+  clean_baseline: green
+  notes: >
+    Renders the full QueryEditorVisualization -> TableInteractive pipeline (sample-db
+    metadata; getBoundingClientRect mocked so virtualized rows render) and asserts zero
+    detail-shortcut / row-id-cell buttons. With queryBuilderMode="dataset" (fix)
+    hasObjectDetail=false so the row-id column is suppressed; the mutation drops that
+    prop -> buttons render -> toHaveLength(0) fails. Heavyweight render (~170ms) but
+    self-contained (no fetch mocking).
+
+failure_shape:
+  observed: true          # observed at unit level via the hole_closed test
+  source: observed_unit
+  symptom: >
+    A "Show details" (object-detail) button appears in ID columns of the Transform
+    query-editor visualization, where it should be hidden.
+  repro_failure: >
+    Repro asserts the "Show details" buttons are NOT present in ID columns; on the
+    mutated tree the button renders (queryBuilderMode is no longer forced to
+    "dataset"), so the should-not-exist assertion fails.
+  not_setup_crash: true

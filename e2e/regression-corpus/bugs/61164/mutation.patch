@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/data-grid/hooks/use-virtual-grid.tsx b/frontend/src/metabase/data-grid/hooks/use-virtual-grid.tsx
+index b6c3ab326e0..c6505abf0bf 100644
+--- a/frontend/src/metabase/data-grid/hooks/use-virtual-grid.tsx
++++ b/frontend/src/metabase/data-grid/hooks/use-virtual-grid.tsx
+@@ -33,7 +33,6 @@ export const useVirtualGrid = <TData,>({
+   defaultRowHeight,
+   enableRowVirtualization,
+   getRowHeight,
+-  datasetIndexAttributeName,
+   virtualIndexAttributeName,
+ }: VirtualGridProps<TData>): VirtualGrid => {
+   const centerColumns = table.getCenterLeafColumns();
+@@ -57,7 +56,7 @@ export const useVirtualGrid = <TData,>({
+     overscan: 3,
+     enabled: enableRowVirtualization,
+     measureElement: (element) => {
+-      const indexRaw = element.getAttribute(datasetIndexAttributeName);
++      const indexRaw = element.getAttribute(virtualIndexAttributeName);
+       if (!indexRaw) {
+         return defaultRowHeight;
+       }

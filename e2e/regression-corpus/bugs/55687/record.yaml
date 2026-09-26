@@ -1,0 +1,26 @@
+id: reg-55687
+origin:
+  kind: regression
+  issue: 55687
+  fix_commit: cb2c515dc6c20db0a2127c871ec62a7feb3b9793
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue 55687 should allow passing stringly-typed expressions to is-empty and not-empty (metabase#55687)"
+    - "metabase.legacy-mbql.schema-test/emptyable-filter-test"
+    - "metabase.lib.schema.expression.string-test/is-empty-not-empty-accept-string-expressions-test"
+bug:
+  statement: "A query with an \"is empty\" or \"not empty\" filter on a string expression such as ltrim(...) fails because the filter is rejected as invalid."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: mbql/schema
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.legacy-mbql.schema-test/emptyable-filter-test"
+  expected_failure: "the 6 string/string-expression cases (is-empty/not-empty of \"\", \"A\", [:ltrim \"A\"]) fail Malli validation; the 4 Field cases pass"
+notes: "no reconstruction report for this entry, only config.yaml notes; the e2e shipped in custom-column-reproductions.cy.spec.js and now lives in custom-column-reproductions-2; is-empty-not-empty-accept-string-expressions-test is a later backend parity test naming this issue"

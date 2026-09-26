@@ -1,0 +1,25 @@
+id: reg-62501
+origin:
+  kind: regression
+  issue: 62501
+  fix_commit: d2e66d00812328debae10c1f91fea337b1aa9ad9
+  fix_tests:
+    - "e2e/test/scenarios/sharing/public-dashboard.cy.spec.js::scenarios [EE] > public > dashboard should handle /api/session/properties incorrect response (metabase#62501)"
+    - "frontend/src/metabase/api/utils/lifecycle.unit.spec.ts::handleQueryFulfilled does not call handleSuccess when the response is an HTML string from a redirect (metabase#62501)"
+bug:
+  statement: "A public dashboard opened by a signed-out visitor renders a blank page when the session properties request is redirected to an HTML page."
+  odc: {type: Checking, qualifier: Missing}
+  module: api
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/api/utils/lifecycle.unit.spec.ts::handleQueryFulfilled does not call handleSuccess when the response is an HTML string from a redirect (metabase#62501)"
+  expected_failure: "expect(handleSuccess).not.toHaveBeenCalled(); Received number of calls: 1 (called with the HTML string)"
+notes: "base_commit is the parent of July's CI mutant 82a9be05209 (run 29129268992); the witness never landed: the jest id comes from witness.patch, which adds lifecycle.unit.spec.ts as a new file, so it resolves at no ref yet; July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; the fix's guard in api/session.ts moved into api/utils/lifecycle.ts, so the mutant patches the shared helper (e2eonly-report.md §1); fe_be_boundary inferred false (the frontend mishandles a redirected response; no API shape changes)"

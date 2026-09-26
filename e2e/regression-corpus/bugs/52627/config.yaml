@@ -1,0 +1,29 @@
+issue: 52627
+issue_url: https://github.com/metabase/metabase/issues/52627
+fix_commits: ["d9674eb21524962bd83fa2bfbdccddf7f589ff91"]
+fix_subject: "Remove an empty query stage after a drill"
+area: qb/drill-empty-stage
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  fe_bucket: all_specs_gone
+  repro_reconstructable: true
+  closable_with_new_unit_test: true
+  reason: >
+    Reconstructable (remove ensureFilterStage/dropEmptyStages). But the shipped jest assertion (stageCount===1) is a no-op non-discriminating guard for the simple query it tests; the empty-trailing-stage-after-drill symptom needs the full drill flow (getNewCardUrl + aggregated card + stage-0 param) -> Cypress. Closable with a new integration test. FE unit HOLE (Cypress-guarded; closable).
+
+validation:
+  oracle: {kind: fe_unit, note: "surviving jest specs non-discriminating; real oracle is Cypress; closable with a new unit/integration test"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE all_specs_gone bucket NEGATIVE (cypress). Reconstructable + closable with a new unit test."

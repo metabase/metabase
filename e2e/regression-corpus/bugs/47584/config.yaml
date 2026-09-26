@@ -1,0 +1,40 @@
+issue: 47584
+issue_url: https://github.com/metabase/metabase/issues/47584
+fix_commits: ["16e31051b0987f3e54ea92b2ae76146802265b54"]
+fix_pr: null
+fix_subject: "Revert to non-truncating mbql.u/unique-name-generator in annotate"
+area: lib/field-util (was QP annotate)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # RECONSTRUCTION patch applies; original fix diff does NOT (conflict)
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Fix set annotate-native-cols to the non-truncating name generator. That fn was fully MIGRATED into Lib (annotate-native-cols gone); agent TRACED the migration to lib.field.util/add-deduplicated-names and flipped non-truncating -> truncating unique-name-generator. Migration-class drift, traceable.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.query-processor.api-test/native-query-with-long-column-alias (+ metabase.query-processor.nested-queries-test/card-id-native-source-query-with-long-alias-test)"
+    clean_baseline: pass
+    reconstructed_result: "2 assertion FAILs + 1 runtime ERROR (Column not found on truncated alias, incl the hard-coded _00028d48 hash)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A saved native query with a >60-byte column alias has that alias truncated in result metadata; an outer query wrapping it references the truncated alias while the inner SQL emits the full one -> column can't be resolved.
+  repro_failure: >
+    Query execution: H2 'Column ..._00028d48 not found'; api-test 2 assertions fail + nested-test errors.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.query-processor.api-test/native-query-with-long-column-alias (+ metabase.query-processor.nested-queries-test/card-id-native-source-query-with-long-alias-test)"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-2. Conflict target reconstructed into current code + killed by shipped BE test => e2e repro cullable."

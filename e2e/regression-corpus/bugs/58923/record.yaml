@@ -1,0 +1,24 @@
+id: reg-58923
+origin:
+  kind: regression
+  issue: 58923
+  fix_commit: 61ff81a3abda008b9a897ff408d193746d69b5ae
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 58923 it should not lose padding when switching filter types (metabase#58923)"
+bug:
+  statement: "After switching a string filter's operator to Contains and back to Is, the padding below the value list disappears."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: querying
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 58923 it should not lose padding when switching filter types (metabase#58923)"
+  expected_failure: "footer.getBoundingClientRect().top - input.getBoundingClientRect().bottom > 16 fails; the list sits against the footer"
+notes: "base_commit is the parent of July's CI mutant 4b9b240bdff (run 29135039274); irreducible per E2E-ONLY.md (scroll-container padding, needs real-browser geometry); July's CI run confirmed the e2e catches this mutant; expected_failure paraphrases the e2e's gap assertion from e2eonly-report.md §3; fe_be_boundary inferred"

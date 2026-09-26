@@ -1,0 +1,59 @@
+diff --git a/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts b/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts
+new file mode 100644
+index 00000000000..4c25ecaff7e
+--- /dev/null
++++ b/frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts
+@@ -0,0 +1,53 @@
++import dayjs from "dayjs";
++
++import type { ChartLayout } from "../layout/types";
++import type { TimeSeriesXAxisModel } from "../model/types";
++
++import { getTicksOptions } from "./ticks";
++
++// Minimal chart layout — only the fields consumed by computeTimeseriesTicksInterval
++// are read (outerWidth, padding.left/right, ticksDimensions.getXTickWidth).
++const createChartLayout = (): ChartLayout =>
++  ({
++    outerWidth: 1000,
++    padding: { left: 0, right: 0, top: 0, bottom: 0 },
++    ticksDimensions: { getXTickWidth: () => 30 },
++  }) as unknown as ChartLayout;
++
++// A single-point year domain: a bar chart aggregated by year, filtered to a
++// single year (2025). This is the metabase#63671 repro shape.
++const createSingleYearModel = (): TimeSeriesXAxisModel =>
++  ({
++    axisType: "time",
++    interval: { count: 1, unit: "year" },
++    intervalsCount: 0,
++    range: [
++      dayjs("2025-01-01T00:00:00.000Z"),
++      dayjs("2025-01-01T00:00:00.000Z"),
++    ],
++    toEChartsAxisValue: (value) => (value == null ? null : String(value)),
++    fromEChartsAxisValue: (value) => dayjs(value),
++    formatter: (value) => dayjs(value as string).format("YYYY"),
++  }) as unknown as TimeSeriesXAxisModel;
++
++describe("getTicksOptions — single-year x-axis (metabase#63671)", () => {
++  it("renders the start-of-year tick", () => {
++    const { canRender } = getTicksOptions(
++      createSingleYearModel(),
++      createChartLayout(),
++    );
++
++    expect(canRender(dayjs("2025-01-01T00:00:00.000Z"))).toBe(true);
++  });
++
++  it("rejects intermediate (mid-year) ticks so the year label is not duplicated", () => {
++    const { canRender } = getTicksOptions(
++      createSingleYearModel(),
++      createChartLayout(),
++    );
++
++    // ECharts 6.1.0 emits a mid-year tick inside the padded single-point
++    // domain; it formats as "2025" and duplicates the label unless filtered.
++    expect(canRender(dayjs("2025-07-01T00:00:00.000Z"))).toBe(false);
++  });
++});

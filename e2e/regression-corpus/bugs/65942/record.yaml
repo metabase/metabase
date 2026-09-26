@@ -1,0 +1,27 @@
+id: reg-65942
+origin:
+  kind: regression
+  issue: 65942
+  fix_commit: 99fd1809cbac5f5d3aa570de270ecc472b3d961b
+  fix_tests:
+    - "e2e/test/scenarios/embedding/interactive-embedding.cy.spec.js::scenarios > embedding > full app - jwt sso integration should pass JWT user attributes to click behavior custom destinations (metabase#65942)"
+    - "frontend/src/metabase/current-user/selectors.unit.spec.ts::metabase/current-user getUserAttributes should return user attributes including JWT-sourced attributes"
+    - "frontend/src/metabase/current-user/selectors.unit.spec.ts::metabase/current-user getUserAttributes should return empty object when attributes is null"
+    - "frontend/src/metabase/current-user/selectors.unit.spec.ts::metabase/current-user getUserAttributes should return empty object when no current user"
+bug:
+  statement: "Click behavior custom destinations drop user attributes that come from JWT, so a URL like http://{{attribute}}.com loses the value."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: selectors/user
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/current-user/selectors.unit.spec.ts::metabase/current-user getUserAttributes should return user attributes including JWT-sourced attributes"
+  expected_failure: "expect(getUserAttributes(state)).toEqual({ jwt_attr, manual_attr }); Received {}"
+notes: "stratum wiring: the mutant reads the legacy login_attributes key of the current-user response instead of attributes; July's fe_be_boundary false is kept, though the bug is the frontend reading a response field the backend stopped filling with JWT attributes; the tests shipped in frontend/src/metabase/selectors/user.unit.spec.ts and the selector now lives in current-user/selectors.ts, so the patch's target file is gone at 8317274709c"

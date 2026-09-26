@@ -1,0 +1,25 @@
+id: reg-52430
+origin:
+  kind: regression
+  issue: 52430
+  fix_commit: ced4a5ec3d20b27eabc914184eeb73522dbcf780
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embed-resource-downloads.cy.spec.ts::Static embed dashboards/questions downloads (results and export as pdf) Static embed questions with native question parameters should be able to download a static embedded question as CSV with correct parameters when field filters has multiple values (metabase#52430)"
+    - "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetParams - embed question (token-based) preserves all values when a static embed field filter has multiple values (metabase#52430)"
+bug:
+  statement: "Downloading a static-embedded question whose field filter has several values exports results filtered by only the last value."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: redux
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetParams - embed question (token-based) preserves all values when a static embed field filter has multiple values (metabase#52430)"
+  expected_failure: "expect(JSON.parse(url.get(\"parameters\"))).toEqual({state: [\"CA\",\"NY\",\"TX\"]}); Received {state: \"TX\"}"
+notes: "base_commit is the parent of July's CI mutant 1b51dace250 (run 29139225249); July's CI run of the e2e passed on this mutant, so the shipped e2e is vacuous for it; witness landed and e2e culled on this branch; fe_be_boundary inferred (the frontend builds the download request wrongly; the backend contract is unchanged)"

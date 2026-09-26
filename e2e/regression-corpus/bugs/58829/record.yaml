@@ -1,0 +1,25 @@
+id: reg-58829
+origin:
+  kind: regression
+  issue: 58829
+  fix_commit: 7029fd4c6d33caf6e2e3e116f3c1fcd54c611dd4
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 58829 should be able to use join native models when SQL column names do not match the names of the mapped fields (metabase#58829)"
+    - "metabase.query-processor.middleware.resolve-joins-test/native-model-field-ref-test"
+bug:
+  statement: "Joining a native model whose SQL column names differ from the database fields they're mapped to makes the query fail."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: query-processor/resolve-joins
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "metabase.query-processor.middleware.resolve-joins-test/native-model-field-ref-test"
+  expected_failure: null
+notes: "no mutant patch: join-field-refs was rewritten after the fix and July's reconstruction stalled, so it recorded an honest negative (config.yaml mutation.reconstruction_notes, HANDOFF.md); there is no report file; lowest_level integration: native-model-field-ref-test, which the fix shipped for this bug, likely catches it, but July never ran it against a mutant; the e2e is absent at 8317274709c (removed by 4701e5f8dc5, backend test parity), so its id is from 56879decb0a; the fix's edit to query_processor_test/model_test.clj only updated an expected column name; July never observed a failure, so expected_failure is null"

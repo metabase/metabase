@@ -1,0 +1,25 @@
+id: reg-58957
+origin:
+  kind: regression
+  issue: 58957
+  fix_commit: 106a53e50c39ee4b8a86adb5de879c05cd501d8f
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embed-resource-downloads.cy.spec.ts::Static embed dashboards/questions downloads (results and export as pdf) Static embed questions with native question parameters should be able to download a static embedded question as CSV when a filter expects 1 parameter value e.g. date (metabase#58957, 59074)"
+    - "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetParams - embed question (token-based) encodes a single-occurrence filter value as a scalar, not an array (metabase#58957)"
+bug:
+  statement: "Downloading results from a statically embedded question with a single-value date filter returns a parse error instead of the data."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: redux
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: true
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/redux/downloads.unit.spec.ts::getDatasetParams - embed question (token-based) encodes a single-occurrence filter value as a scalar, not an array (metabase#58957)"
+  expected_failure: "expect(parameters).toEqual({created_at: \"2025-02-11\"}); Received {created_at: [\"2025-02-11\"]}"
+notes: "base_commit is the parent of July's CI mutant 7adfb613346 (run 29135031739); fe_be_boundary inferred: the frontend sends a one-element array where the embed download endpoint expects a scalar date"

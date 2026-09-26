@@ -1,0 +1,7 @@
+issue: 58957
+fix_commit: 106a53e50c39ee4b8a86adb5de879c05cd501d8f
+e2e_repro: e2e/test/scenarios/embedding/embed-resource-downloads.cy.spec.ts
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

@@ -1,0 +1,25 @@
+id: reg-33208
+origin:
+  kind: regression
+  issue: 33208
+  fix_commit: f40805b12cc529c9c0eedcb324a33c7c921ef998
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 33208 should not auto-select chart type when opening a saved native question with parameters that have default values (metabase#33208)"
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 33208 should not auto-select chart type when saving a native question with parameters that have default values"
+bug:
+  statement: "Saving or reopening a native question whose parameters have default values switches its chart type back to a table."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: query_builder
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 33208 should not auto-select chart type when opening a saved native question with parameters that have default values (metabase#33208)"
+  expected_failure: "cy.findByTestId(\"scalar-value\").should(\"be.visible\") fails; the display was reset to table"
+notes: "no mutant patch: July's over-revert (queryCompleted compares against getOriginalQuestion instead of getOriginalQuestionWithParameterValues) tripped none of 381 jest tests and wasn't saved, see reconstruction-report.md §1-4; stratum wiring: the fix wires queryCompleted to a selector that includes parameter values, and the revert rewires it to the old selector; the fix's jest edits only dropped an unused metadata argument (report §4); the second e2e sits in the issue 33208 describe without the tag; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

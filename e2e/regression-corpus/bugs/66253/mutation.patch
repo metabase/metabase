@@ -1,0 +1,19 @@
+diff --git a/frontend/src/metabase/AppThemeProvider.tsx b/frontend/src/metabase/AppThemeProvider.tsx
+index 714388386a9..2b57b0540b2 100644
+--- a/frontend/src/metabase/AppThemeProvider.tsx
++++ b/frontend/src/metabase/AppThemeProvider.tsx
+@@ -38,13 +38,12 @@ interface AppThemeProviderProps {
+   initialColorScheme?: ColorScheme | undefined;
+ }
+ 
+-const getColorSchemeFromDisplayTheme = (
++export const getColorSchemeFromDisplayTheme = (
+   displayTheme: DisplayTheme | string | boolean | string[] | undefined,
+ ): ResolvedColorScheme | null => {
+   switch (displayTheme) {
+     case "light":
+     case "transparent":
+-    case undefined:
+       return "light";
+     case "night":
+     case "dark":

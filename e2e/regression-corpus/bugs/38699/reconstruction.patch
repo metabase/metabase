@@ -1,0 +1,13 @@
+diff --git a/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx b/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+index 6012f75c5c1..307aa85f487 100644
+--- a/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
++++ b/enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+@@ -30,7 +30,7 @@ export const FontWidget = () => {
+ 
+     await updateSetting({
+       key: "application-font",
+-      value: newValue === "custom" ? defaultFont : newValue,
++      value: newValue,
+     });
+ 
+     await updateSetting({

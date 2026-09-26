@@ -1,0 +1,25 @@
+id: reg-60475
+origin:
+  kind: regression
+  issue: 60475
+  fix_commit: cf9868d50980b049749b598e10164b687e20d971
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/bar_chart.cy.spec.js::scenarios > visualizations > bar chart should display all axis labels for 12 months of data (metabase#60475)"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions - monthly ticks (metabase#60475) forces daily tick generation filtered to month starts so no month is skipped"
+bug:
+  statement: "A time-series bar chart of 12 months skips some month labels on the x-axis even when there's room for all of them."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions - monthly ticks (metabase#60475) forces daily tick generation filtered to month starts so no month is skipped"
+  expected_failure: "expect(maxInterval).toBe(86400000); Received: undefined"
+notes: "base_commit is the parent of July's CI mutant 33fc66e6202 (run 29133473688); e2eonly.yaml mutation_files has a truncated path (\"rontend/...\"); fe_be_boundary inferred"

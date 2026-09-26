@@ -1,0 +1,26 @@
+issue: 45252
+issue_url: https://github.com/metabase/metabase/issues/45252
+fix_commits: ["96e60529c971f21fdb32124058627cc49c02d1a8"]
+fix_subject: "Add fallback filter widgets for uncommon (or unknown) types"
+area: lib/filter/operator
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: dead_target__moved_to_frontend
+  repro_reconstructable: false    # true = bug CAN be reintroduced, but no BE unit oracle catches it
+  reason: >
+    DEAD TARGET. Product file lib/filter/operator.cljc was DELETED (filter-widget logic moved to frontend TS, commit e10dfc7cfc7). Oracle filterable-columns-test was rewritten to drop ALL operator assertions. No product code to revert and no fix-added assertion survives.
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untestable, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (dead_target__moved_to_frontend). Dead/absent target."

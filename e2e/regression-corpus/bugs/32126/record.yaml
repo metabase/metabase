@@ -1,0 +1,25 @@
+id: reg-32126
+origin:
+  kind: regression
+  issue: 32126
+  fix_commit: 8ba0ef1a0f281abf90511d6ce0356de5667e9b8a
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-nested.cy.spec.js::scenarios > dashboard > filters > nested questions dashboard filters should work on nested question (metabase#12614, metabase#13186, metabase#18113, metabase#32126)"
+    - "metabase.dashboards-rest.api-test/param-values-no-field-ids-test"
+bug:
+  statement: "Dropdown filters on a dashboard mapped to columns of a question built on a SQL model show no values; the values endpoint rejects them with a 400."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: parameters/dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.dashboards-rest.api-test/param-values-no-field-ids-test"
+  expected_failure: "4 assertions, 4 failures: GET dashboard/:id/params/:param-key/values throws 400 \"Parameter ... does not have any Fields associated with it\""
+notes: "the e2e was removed from master by 4701e5f8dc5 (backend test parity) and exists only at HEAD and the July base, so its id comes from there; it covers four issues; the fix's deftest moved from test/metabase/api/dashboard_test.clj to dashboards_rest/api_test.clj with the module extraction (see reconstruction-report.md)"

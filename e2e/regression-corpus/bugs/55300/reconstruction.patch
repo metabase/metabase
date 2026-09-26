@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/querying/expressions/position.ts b/frontend/src/metabase/querying/expressions/position.ts
+index 6e8ed98623d..4c8f621f64d 100644
+--- a/frontend/src/metabase/querying/expressions/position.ts
++++ b/frontend/src/metabase/querying/expressions/position.ts
+@@ -18,10 +18,6 @@ export function enclosingFunction(doc: string, pos: number) {
+       const argsIndex = value.indexOf("(") ?? value.length;
+       const structure = value.slice(0, argsIndex).trim();
+ 
+-      if (!value.includes("(")) {
+-        break;
+-      }
+-
+       const args =
+         cursor.node.getChildren("ArgList")?.[0]?.getChildren("Arg") ?? [];
+       const argIndex = args.findIndex(

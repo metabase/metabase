@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocomplete.module.css b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocomplete.module.css
+index f9a42019599..42be9645b2c 100644
+--- a/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocomplete.module.css
++++ b/frontend/src/metabase/ui/components/inputs/MultiAutocomplete/MultiAutocomplete.module.css
+@@ -12,6 +12,7 @@
+     min-width: auto;
+     /* stylelint-disable-next-line property-no-unknown */
+     field-sizing: content;
++    max-width: 100%;
+ 
+     &:not(:last-child) {
+       padding-left: 0.5rem;

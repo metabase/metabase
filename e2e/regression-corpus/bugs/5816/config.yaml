@@ -1,0 +1,37 @@
+issue: 5816
+issue_url: https://github.com/metabase/metabase/issues/5816
+fix_commits: ["ac982ba47b8e01c3094f25e9505efeeb79ed60f1"]
+fix_subject: "type/BigInteger support in filters in the QB"
+area: lib/fe-util
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest
+  reconstruction_notes: >
+    Removed the bigint value-clause recognition case in the private expression-arg->number helper (the [:value {:base-type :type/BigInteger} string] -> parse-bigint branch). Navigated a representation change (raw strings -> real bigint values).
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.lib.fe-util-test/number-filter-parts-test", clean_baseline: pass, reconstructed_result: "14 fail (bigint roundtrips in number- and coordinate-filter-parts; 59 numeric pass)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    BigInteger filter values don't round-trip through the QB filter-parts helpers (parse returns nil), so bigint filters can't be edited.
+  repro_failure: >
+    number/coordinate-filter-parts-test: bigint clauses -> actual nil (expected filter-parts map).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.fe-util-test/number-filter-parts-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 wave-2 (no_added_deftest / modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

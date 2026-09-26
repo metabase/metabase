@@ -1,0 +1,24 @@
+id: reg-66210
+origin:
+  kind: regression
+  issue: 66210
+  fix_commit: db48071330ea3f75bc2e5e4004e945ea8effcc3a
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 66210 should not allow you to join on metrics"
+bug:
+  statement: "The join step's data picker offers metrics as join targets."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/components/Pickers/MiniPicker/components/MiniPicker/test/oss.unit.spec.tsx::MiniPicker collections ignores metrics when the model is missing"
+  expected_failure: "expect(screen.queryByText(\"Catherine\")).not.toBeInTheDocument(); the metric is rendered"
+notes: "base_commit is the parent of July's CI mutant b7f088c2f8d (run 29125367144); fix_commit: GitHub closes the issue with #67490 (db48071330e, the data picker modal now honours the caller's models instead of a hardcoded list that included metric); July mapped 96eac2d9dac (#65281, the Data Studio omnibus), which reconstruction-report.md §5 admits never cites this issue; the mutant reaches the same symptom through a different path, letting the MiniPicker show metrics when the caller excludes them, and the pilot CI run of the e2e caught it; odc from #67490, stratum from the mutant (a predicate change); the killing jest test shipped with #65281 before this fix and doesn't name the issue, so it is the hint but not in fix_tests; fe_be_boundary inferred"

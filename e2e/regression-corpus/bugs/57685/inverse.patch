@@ -1,0 +1,89 @@
+diff --git a/frontend/src/metabase/data-grid/constants.ts b/frontend/src/metabase/data-grid/constants.ts
+index cb78e7bfd9c..92462c031ed 100644
+--- a/frontend/src/metabase/data-grid/constants.ts
++++ b/frontend/src/metabase/data-grid/constants.ts
+@@ -11,3 +11,4 @@ export const FOOTER_HEIGHT = 30;
+ export const PINNED_BORDER_SEPARATOR_WIDTH = 3;
+ export const DATASET_INDEX_ATTRIBUTE_NAME = "data-dataset-index";
+ export const VIRTUAL_INDEX_ATTRIBUTE_NAME = "data-index";
++export const FALLBACK_ID_FOR_EMPTY_COLUMN_NAME = "\0_EMPTY_COLUMN_ID";
+diff --git a/frontend/src/metabase/visualizations/components/TableInteractive/TableInteractive.tsx b/frontend/src/metabase/visualizations/components/TableInteractive/TableInteractive.tsx
+index 04d304f97ab..7fc6883d37f 100644
+--- a/frontend/src/metabase/visualizations/components/TableInteractive/TableInteractive.tsx
++++ b/frontend/src/metabase/visualizations/components/TableInteractive/TableInteractive.tsx
+@@ -27,6 +27,7 @@ import {
+ import DashboardS from "metabase/css/dashboard.module.css";
+ import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
+ import {
++  FALLBACK_ID_FOR_EMPTY_COLUMN_NAME,
+   FOOTER_HEIGHT,
+   HEADER_HEIGHT,
+   ROW_HEIGHT,
+@@ -507,6 +508,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
+         sortDirection = getColumnSortDirection(columnIndex);
+       }
+ 
++      if (id === "") {
++        id = `${FALLBACK_ID_FOR_EMPTY_COLUMN_NAME}:${columnIndex}`;
++      }
++
+       const translatedColumnName = tc(columnName);
+ 
+       const options: ColumnOptions<RowValues, RowValue> = {
+diff --git a/src/metabase/lib/util/unique_name_generator.cljc b/src/metabase/lib/util/unique_name_generator.cljc
+index fbb244b8db3..e3c950b258f 100644
+--- a/src/metabase/lib/util/unique_name_generator.cljc
++++ b/src/metabase/lib/util/unique_name_generator.cljc
+@@ -2,7 +2,6 @@
+   (:require
+    #?@(:cljs
+        (["crc-32" :as CRC32]))
+-   [metabase.lib.schema.common :as lib.schema.common]
+    [metabase.util :as u]
+    [metabase.util.malli :as mu]
+    [metabase.util.malli.registry :as mr]))
+@@ -31,7 +30,7 @@
+         (recur (str \0 s))
+         s))))
+ 
+-(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
++(mu/defn truncate-alias :- [:string {:max 60}]
+   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
+   checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
+   minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
+@@ -43,7 +42,7 @@
+   ([s]
+    (truncate-alias s truncate-alias-max-length-bytes))
+ 
+-  ([s         :- ::lib.schema.common/non-blank-string
++  ([s         :- :string
+     max-bytes :- [:int {:min 0}]]
+    (if (<= (u/string-byte-count s) max-bytes)
+      s
+@@ -68,11 +67,11 @@
+    ;; (f str) => unique-str
+    [:=>
+     [:cat :string]
+-    ::lib.schema.common/non-blank-string]
++    :string]
+    ;; (f id str) => unique-str
+    [:=>
+     [:cat :any :string]
+-    ::lib.schema.common/non-blank-string]])
++    :string]])
+ 
+ (mu/defn- untruncated-unique-alias :- :string
+   [original :- :string
+diff --git a/src/metabase/util/honey_sql_2.clj b/src/metabase/util/honey_sql_2.clj
+index fcfecf85b8e..48c5aee1239 100644
+--- a/src/metabase/util/honey_sql_2.clj
++++ b/src/metabase/util/honey_sql_2.clj
+@@ -151,7 +151,7 @@
+   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
+   strings."
+   [identifier-type :- IdentifierType
+-   & components    :- [:* {:min 1} [:maybe [:or :keyword ms/NonBlankString [:fn identifier?]]]]]
++   & components    :- [:* {:min 1} [:maybe [:or :keyword :string [:fn identifier?]]]]]
+   [::identifier
+    identifier-type
+    (vec (for [component components

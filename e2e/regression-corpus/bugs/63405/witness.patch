@@ -1,0 +1,72 @@
+diff --git a/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.unit.spec.tsx b/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.unit.spec.tsx
+new file mode 100644
+index 00000000000..8cf89d91fe1
+--- /dev/null
++++ b/frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.unit.spec.tsx
+@@ -0,0 +1,66 @@
++import fetchMock from "fetch-mock";
++
++import {
++  setupCollectionItemsEndpoint,
++  setupCollectionsEndpoints,
++  setupNativeQuerySnippetEndpoints,
++} from "__support__/server-mocks";
++import {
++  renderWithProviders,
++  screen,
++  waitForLoaderToBeRemoved,
++  within,
++} from "__support__/ui";
++import { createMockCollection } from "metabase-types/api/mocks";
++
++import { SnippetSidebar } from "./SnippetSidebar";
++
++// A top-level snippet folder: it lives directly under the (implicit) snippet
++// root, so its parent_id is null. Regression test for metabase#63405 — you must
++// still be able to go back from here to the snippet root ("Snippets").
++const TOP_LEVEL_FOLDER = createMockCollection({
++  id: 10,
++  name: "Folder A",
++  parent_id: null,
++  can_write: true,
++  namespace: "snippets",
++});
++
++function setup() {
++  setupNativeQuerySnippetEndpoints({ snippets: [] });
++  setupCollectionsEndpoints({ collections: [TOP_LEVEL_FOLDER] });
++  setupCollectionItemsEndpoint({
++    collection: TOP_LEVEL_FOLDER,
++    collectionItems: [],
++  });
++  // useGetCollectionQuery for the folder we are viewing
++  fetchMock.get(`path:/api/collection/${TOP_LEVEL_FOLDER.id}`, TOP_LEVEL_FOLDER);
++
++  renderWithProviders(
++    <SnippetSidebar
++      snippetCollectionId={TOP_LEVEL_FOLDER.id}
++      onClose={jest.fn()}
++      setModalSnippet={jest.fn()}
++      openSnippetModalWithSelectedText={jest.fn()}
++      insertSnippet={jest.fn()}
++      setSnippetCollectionId={jest.fn()}
++    />,
++  );
++}
++
++describe("SnippetSidebar", () => {
++  it("shows a back button in a top-level snippet folder (metabase#63405)", async () => {
++    setup();
++    await waitForLoaderToBeRemoved();
++
++    // We are inside "Folder A", a top-level snippet folder
++    expect(await screen.findByText("Folder A")).toBeInTheDocument();
++
++    // The header must offer a way back to the snippet root, even though this
++    // folder's parent is the (implicit) root (parent_id === null).
++    const header = screen.getByTestId("sidebar-header");
++    expect(
++      within(header).queryByLabelText("chevronleft icon"),
++    ).toBeInTheDocument();
++  });
++});

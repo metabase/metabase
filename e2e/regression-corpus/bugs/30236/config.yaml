@@ -1,0 +1,26 @@
+issue: 30236
+issue_url: https://github.com/metabase/metabase/issues/30236
+fix_commits: ["af138e85153cb8c65a62862612c2014b5edf507c"]
+fix_subject: "Allow official collections inside personal collections"
+area: collections-rest/api
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_be_oracle__fix_deleted_negative_test
+  repro_reconstructable: true
+  reason: >
+    Bug IS reconstructable (agent produced the correct revert: re-add the is-personal-descendant? 403 guard in the relocated collections_rest/api.clj). But the fix's discriminating test change was a DELETION of a negative-assertion (403) block with no positive replacement; positive coverage lives only in a Cypress spec. No surviving BE assertion discriminates => BE unit HOLE.
+
+validation:
+  oracle: {kind: be_unit, note: "no discriminating BE unit oracle survives on HEAD"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: hole, killed_by: []}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 NEGATIVE (no_be_oracle__fix_deleted_negative_test). Reconstructable but no BE oracle => unit HOLE (e2e/Cypress guarded)."

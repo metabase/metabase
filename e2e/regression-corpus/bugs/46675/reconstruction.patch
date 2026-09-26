@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/querying/notebook/components/JoinStep/JoinConditionDraft/JoinConditionDraft.tsx b/frontend/src/metabase/querying/notebook/components/JoinStep/JoinConditionDraft/JoinConditionDraft.tsx
+index 7b8b2e3fed2..6cac8e8e7d9 100644
+--- a/frontend/src/metabase/querying/notebook/components/JoinStep/JoinConditionDraft/JoinConditionDraft.tsx
++++ b/frontend/src/metabase/querying/notebook/components/JoinStep/JoinConditionDraft/JoinConditionDraft.tsx
+@@ -100,13 +100,6 @@ export function JoinConditionDraft({
+     );
+   };
+ 
+-  useLayoutEffect(() => {
+-    setLhsExpression(undefined);
+-    setRhsExpression(undefined);
+-    setIsLhsOpened(true);
+-    setIsRhsOpened(false);
+-  }, [rhsTable]);
+-
+   return (
+     <Flex className={S.JoinConditionRoot}>
+       <Flex align="center" gap="xs" p="sm">

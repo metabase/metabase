@@ -1,0 +1,40 @@
+issue: 35561
+issue_url: https://github.com/metabase/metabase/issues/35561
+fix_commits: ["71f7fe60f16b0537b488eb6f0225ef0e7caf6fc0"]
+fix_pr: null
+fix_subject: "Fix: No drill-thru to filter a table by clicking a null FK"
+area: lib/drill-thru
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # the RECONSTRUCTION patch applies; the original fix diff does NOT (conflict)
+  file_relocated: false   # true => conflict is a rename/module-move, not a logic change
+  reconstruction_notes: >
+    Fix removed the `(not= value :null)` guard from the drill's `when`. Restored that guard. Null FK cells arrive as the `:null` keyword (some? is true), so the guard is what suppresses the drill; the fix's is-null filter-expr branch becomes dead with the guard restored (no residual leak).
+
+validation:
+  oracle:
+    kind: be_unit            # shipped WITH the fix; cheaper than the e2e repro
+    test: "metabase.lib.drill-thru.fk-filter-test/return-fk-filter-for-null-fk-test"
+    clean_baseline: "pass (4 assertions)"
+    reconstructed_result: "2/4 fail (NULL-FK branch: drill returns nil instead of :drill-thru/fk-filter)"
+  repro_confirmed: true
+  reconstructed_by: subagent   # worktree-isolated lib/drill-thru agent; adversarial self-check very_high
+  confidence: very_high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Clicking a NULL foreign-key cell offers no 'Filter by this FK' drill-thru; a table can't be filtered by a null FK.
+  repro_failure: >
+    return-fk-filter-for-null-fk-test NULL branch: expects :drill-thru/fk-filter, actual nil. 2/4 assertions fail.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.drill-thru.fk-filter-test/return-fk-filter-for-null-fk-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-1. Conflict target (fix does not revert cleanly); bug reconstructed into current code + killed by shipped BE test => e2e repro cullable."

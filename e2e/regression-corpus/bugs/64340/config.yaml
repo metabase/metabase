@@ -1,0 +1,37 @@
+issue: 64340
+issue_url: https://github.com/metabase/metabase/issues/64340
+fix_commits: ["734dabb1637492899f656ea255031dea6d075889"]
+fix_subject: "propagate original card title and description to visualizer"
+area: visualizer/initial-state
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added 'card.title': card.name into the settings built by getInitialStateForCardDataSource (both the initial and non-funnel-rebuild sites). Fix moved title propagation to render-time and tightened the spec's toEqual.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts", clean_baseline: pass, reconstructed_result: "7/8 fail (unexpected card.title in settings)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Adding a card to the visualizer bakes the card title into viz settings (should be propagated at render time), so the visualizer state carries a stale/incorrect title setting.
+  repro_failure: >
+    toEqual state.settings has unexpected 'card.title' key (7 cases).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-4. Killed by shipped FE unit (jest) test => e2e repro cullable."

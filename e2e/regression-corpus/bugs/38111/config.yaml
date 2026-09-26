@@ -1,0 +1,40 @@
+issue: 38111
+issue_url: https://github.com/metabase/metabase/issues/38111
+fix_commits: ["03905e7940bf86067e46bee66c34b60f2fade0be"]
+fix_pr: null
+fix_subject: "Bulk filter modal incorrectly suggests that you can filter by values in a JSON column"
+area: types
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # the RECONSTRUCTION patch applies; the original fix diff does NOT (conflict)
+  file_relocated: true   # true => conflict is a rename/module-move, not a logic change
+  reconstruction_notes: >
+    Fix removed `(derive :type/Structured :type/Text)`. Re-added it in the RELOCATED file (types.cljc -> types/core.cljc; that move is why the fix diff no longer reverse-applies). Reconnects :type/JSON -> :type/Text so string? wrongly returns true for JSON.
+
+validation:
+  oracle:
+    kind: be_unit            # shipped WITH the fix; cheaper than the e2e repro
+    test: "metabase.lib.types.isa-test/string?-test"
+    clean_baseline: "pass (2 assertions)"
+    reconstructed_result: "1/2 fail (JSON column classified as string)"
+  repro_confirmed: true
+  reconstructed_by: subagent   # worktree-isolated types agent; adversarial self-check high
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A JSON column (effective type :type/JSON) is misclassified as a string, so the bulk filter modal offers invalid string-value filtering on JSON columns.
+  repro_failure: >
+    string?-test: (false? (string? {:effective-type :type/JSON ...})) -> actual true. 1/2 assertions fail.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.types.isa-test/string?-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-1. Conflict target (fix does not revert cleanly); bug reconstructed into current code + killed by shipped BE test => e2e repro cullable."

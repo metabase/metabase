@@ -1,0 +1,27 @@
+id: reg-54364
+origin:
+  kind: regression
+  issue: 54364
+  fix_commit: ed9ed5b85f0b3b021a0bfeff3e690e6cb82a3f41
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-number.cy.spec.js::scenarios > dashboard > filters > number should allow between filters without min or max (metabase#54364)"
+    - "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts::number parameters %s should deserialize $value"
+    - "frontend/src/metabase/parameters/components/widgets/NumberInputWidget/NumberInputWidget.unit.spec.tsx::NumberInputWidget arity of 2 should allow to submit a value without min"
+    - "frontend/src/metabase/parameters/components/widgets/NumberInputWidget/NumberInputWidget.unit.spec.tsx::NumberInputWidget arity of 2 should allow to submit a value without max"
+bug:
+  statement: "A number \"Between\" dashboard filter with only a lower or only an upper bound makes its connected cards fail to display."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying/parameters/parsing
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/parameters/utils/parsing.unit.spec.ts::number parameters %s should deserialize $value"
+  expected_failure: "deserializeNumberParameterValue(\"number/between\", [10, null]): Expected [10, null], Received [10]"
+notes: "fix_tests: the parsing id is a describe.each/it.each template shared by three blocks; the failing cases run under \"number/between\" (e.g. \"number parameters number/between should deserialize [10, null]\"); GitHub also lists #54848 (backend single-bound between) as closing the issue, the mutant follows the frontend half in #62614; the fix's NumberInputWidget tests weren't run on the mutant"

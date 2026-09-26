@@ -1,0 +1,26 @@
+id: reg-63671
+origin:
+  kind: regression
+  issue: 63671
+  fix_commit: e50317d86dd288204780ad646f211bb0152efcd0
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 63671 should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions — single-year x-axis (metabase#63671) rejects intermediate (mid-year) ticks so the year label is not duplicated"
+    - "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions — single-year x-axis (metabase#63671) renders the start-of-year tick"
+bug:
+  statement: "A bar chart with a single year on the x-axis shows that year's label twice."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions — single-year x-axis (metabase#63671) rejects intermediate (mid-year) ticks so the year label is not duplicated"
+  expected_failure: "expect(canRender(2025-07-01)).toBe(false); Expected: false, Received: true"
+notes: "base_commit is the parent of July's CI mutant ca5a18bf095 (run 29135053525); the fix changed getPadding (intervalsCount === 1 to <= 1); since the ECharts 6.1.0 upgrade (6bf214f2c23) a start-of-year tick guard citing this issue is what prevents the duplicate, so the mutant removes that guard instead (e2eonly-report.md §1); odc from the original fix; the start-of-year jest test is a control that passes on the mutant; fe_be_boundary inferred"

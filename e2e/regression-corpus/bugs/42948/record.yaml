@@ -1,0 +1,25 @@
+id: reg-42948
+origin:
+  kind: regression
+  issue: 42948
+  fix_commit: 8770ea27f03f84f58d2e35e5baec0ee472f1d1f0
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/smartscalar-trend.cy.spec.js::scenarios > visualizations > trend chart (SmartScalar) should gracefully handle errors (metabase#42948)"
+    - "frontend/src/metabase/visualizations/visualizations/SmartScalar/tests/SmartScalar.unit.spec.tsx::SmartScalar should not error when latest value is null (metabase#42948)"
+bug:
+  statement: "A trend chart whose latest data point is null shows an error instead of using the most recent row that has a value."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/visualizations/SmartScalar/tests/SmartScalar.unit.spec.tsx::SmartScalar should not error when latest value is null (metabase#42948)"
+  expected_failure: "expect(screen.queryByLabelText(\"warning icon\")).not.toBeInTheDocument(); found <svg aria-label=\"warning icon\">"
+notes: "fix_commit: July's config has none; reconstruction-report.md §5 and GitHub both give #43090 (8770ea27f03); the mutant reverts only the latest-row selection in compute.ts, not the fix's graceful error rendering; the jest test moved from SmartScalar.unit.spec.js to tests/SmartScalar.unit.spec.tsx; fe_be_boundary inferred"

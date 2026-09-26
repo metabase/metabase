@@ -1,0 +1,26 @@
+id: reg-41483
+origin:
+  kind: regression
+  issue: 41483
+  fix_commit: 198ebcf5d1dbaa827f4d173a322fbeef5a791206
+  fix_tests:
+    - "e2e/test/scenarios/sharing/public-dashboard.cy.spec.js::scenarios > public > dashboard should render when a filter passed with value starting from '0' (metabase#41483)"
+    - "frontend/src/metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardPage/tests/PublicOrEmbeddedDashboardPage.common.unit.spec.tsx::PublicOrEmbeddedDashboardPage should render when a filter passed with value starting from '0' (metabase#41483)"
+    - "frontend/src/metabase/utils/browser.unit.spec.ts::browser parseHashOptions should parse $name"
+bug:
+  statement: "An embedded or public dashboard crashes when a filter value in its URL has a leading zero, such as 01."
+  odc: {type: Checking, qualifier: Missing}
+  module: lib
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/utils/browser.unit.spec.ts::browser parseHashOptions should parse $name"
+  expected_failure: "SyntaxError: Unexpected number in JSON at position 1, thrown by JSON.parse(\"01\") in parseHashOptions"
+notes: "no mutant patch: July's revert (JSON.parse instead of safeJsonParse in utils/browser.ts) tripped no jest spec and wasn't saved, see reconstruction-report.md §1-4; the jest test the fix shipped (relocated to PublicOrEmbeddedDashboardPage.common.unit.spec.tsx) no longer reaches the parser because URL params now come from the router's location.query (report §3); the hole-closer is a row of the parseHashOptions it.each table, so its id keeps the $name template; the row's jest full name is \"browser parseHashOptions should parse leading-zero numeric strings without throwing (metabase#41483)\"; module from the fix's lib/browser.js, now utils/browser.ts; fe_be_boundary inferred"

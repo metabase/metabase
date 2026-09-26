@@ -1,0 +1,33 @@
+issue: 61457
+issue_url: https://github.com/metabase/metabase/issues/61457
+fix_commits: ["5ef76f85924f2744d061818474a2564c49fb5acb"]
+fix_pr: 62006
+fix_subject: "fix visualizer cards don't have dashcard description setting (#62006)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/dashboard/visualizer/basics.cy.spec.ts
+      line: 361
+      kind: it
+      title: "should allow adding description to a visualizer dashcard (metabase#61457)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit:
+    status: kill
+    clean_baseline: pass
+    killed_by:
+      - frontend/src/embedding-sdk-bundle/components/public/dashboard/EditableDashboard/enterprise.unit.spec.tsx
+  notes: null

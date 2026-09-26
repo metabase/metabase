@@ -1,0 +1,7 @@
+issue: 61164
+fix_commit: f7b82d5c543ff7a12fce320fd778ac0615f1c64c
+e2e_repro: e2e/test/scenarios/visualizations-tabular/table.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: no_witness_layout
+layer: frontend

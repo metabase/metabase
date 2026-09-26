@@ -1,0 +1,25 @@
+id: reg-52627
+origin:
+  kind: regression
+  issue: 52627
+  fix_commit: d9674eb21524962bd83fa2bfbdccddf7f589ff91
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 52627 should remove an empty query stage after a dashboard drill-thru (metabase#52627)"
+    - "frontend/src/metabase/querying/parameters/utils/query.unit.spec.ts::convertParametersToMbql should convert a question with parameters into a new question with filters"
+bug:
+  statement: "After drilling through a dashboard chart, Summarize shows only the already-summarized columns because the new question gains an empty extra stage."
+  odc: {type: Algorithm/Method, qualifier: Extraneous}
+  module: qb/drill-empty-stage
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 52627 should remove an empty query stage after a dashboard drill-thru (metabase#52627)"
+  expected_failure: "H.rightSidebar().findByText(\"Average of Total\").should(\"be.visible\") fails after Summarize"
+notes: "no mutant patch: July's full and half reverts (getNewCardUrl adds a filter stage above the aggregation; convertParametersToMbql stops dropping empty stages) left the jest oracle green and weren't saved, see reconstruction-report.md §1-2; the fix's jest change was one stageCount assertion added to an existing Question test, now convertParametersToMbql in query.unit.spec.ts, which can't discriminate because its query has no aggregation (report §3); expected_failure inferred from the e2e's assertion"

@@ -1,0 +1,24 @@
+id: reg-63416
+origin:
+  kind: regression
+  issue: 63416
+  fix_commit: 92cea5d4f553679d32427e0cb245056551b4642b
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 63416 should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)"
+bug:
+  statement: "Downloading results from a visualizer dashboard card ignores the dashboard's filter values and returns the saved question's unfiltered results."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: dashboard
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 63416 should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)"
+  expected_failure: "H.downloadAndAssert fails: the POST .../query/csv request lacks parameters [{type: \"string/=\", value: [\"Doohickey\"]}]"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant drops json_query from the series DashCardVisualization builds for visualizer cards, so the download request loses the dashboard's parameters; July records a jest kill by frontend/src/metabase/monitor/tools/components/LogLevelsModal/LogLevelsModal.unit.spec.tsx, an unrelated admin modal (MATRIX.md even labels this row \"Log levels modal\"), only batch baseline-confirmed, so it's treated as a load flake and not counted; the metabase-types change only widens a Pick; the e2e is culled on this branch but present at 8317274709c; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

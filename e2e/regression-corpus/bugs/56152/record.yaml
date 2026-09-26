@@ -1,0 +1,25 @@
+id: reg-56152
+origin:
+  kind: regression
+  issue: 56152
+  fix_commit: 4187e57c4a7870182807a38beee959878af70866
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue 56152 Should show the help text popover when typing a multi-line expression (metabase#56152)"
+    - "frontend/src/metabase/querying/expressions/position.unit.spec.ts::enclosingFunction should handle multiline input"
+bug:
+  statement: "When a custom expression spans several lines, the function help text popover doesn't appear inside the function's parentheses."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/position.unit.spec.ts::enclosingFunction should handle multiline input"
+  expected_failure: "expect(received).toEqual({ name: \"datetime-diff\", from: 0, to: 56, arg: null }); Received: null"
+notes: "the jest test shipped in frontend/src/metabase-lib/v1/expressions/position.unit.spec.ts and moved with the expressions module (see reconstruction-report.md §2); fe_be_boundary inferred"

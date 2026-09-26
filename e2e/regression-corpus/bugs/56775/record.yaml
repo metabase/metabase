@@ -1,0 +1,25 @@
+id: reg-56775
+origin:
+  kind: regression
+  issue: 56775
+  fix_commit: c4cb9263f6478e82d0efae63ca80bb67b4b2e478
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 56775 should render the correct query after using the back button in a model (metabase#56775)"
+    - "frontend/src/metabase/query_builder/actions/url.unit.spec.ts::QB Actions > updateUrl (navigation producer contract) carries the unwrapped model card (not the composed ad-hoc card) for an ad-hoc model (metabase#56775)"
+bug:
+  statement: "After using the browser back button on a model, \"Edit query definition\" shows the model reading from itself instead of its real source query."
+  odc: {type: Checking, qualifier: Missing}
+  module: query_builder
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/actions/url.unit.spec.ts::QB Actions > updateUrl (navigation producer contract) carries the unwrapped model card (not the composed ad-hoc card) for an ad-hoc model (metabase#56775)"
+  expected_failure: "expect(newState.card.dataset_query).toEqual(modelCard.dataset_query); received the composed query with stages [{source-card: 1}]"
+notes: "base_commit is the parent of July's CI mutant ea78b1ed4c4 (run 29139228724); left out \"issue 55486 should render the correct query after using the back button in a model (metabase#56775)\", which reuses this title under issue 55486's describe and tests editor-tab back/forward, a different bug; the fix's logic moved from navigation.ts to url.ts (e2eonly-report.md §1); witness landed and both e2e blocks culled on this branch; fe_be_boundary inferred"

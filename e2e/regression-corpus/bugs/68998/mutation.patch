@@ -1,0 +1,19 @@
+diff --git a/src/metabase/parameters/params.clj b/src/metabase/parameters/params.clj
+index 35bfb49aeb2..5f6bbaa55ac 100644
+--- a/src/metabase/parameters/params.clj
++++ b/src/metabase/parameters/params.clj
+@@ -306,12 +306,8 @@
+ (defn- find-card-for-mapping
+   "Find the card that a parameter mapping refers to. Looks up the card by `:card_id` from both
+   the primary card and series cards on the dashcard, falling back to the primary card."
+-  [dashcard mapping]
+-  (let [card (if-let [card-id (:card_id mapping)]
+-               (or (m/find-first #(= (:id %) card-id)
+-                                 (cons (:card dashcard) (:series dashcard)))
+-                   (:card dashcard))
+-               (:card dashcard))]
++  [dashcard _mapping]
++  (let [card (:card dashcard)]
+     (cond-> card
+       (string? (:type card))          (update :type keyword)
+       (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))

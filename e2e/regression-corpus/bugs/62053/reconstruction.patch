@@ -1,0 +1,17 @@
+diff --git a/src/metabase/channel/render/body.clj b/src/metabase/channel/render/body.clj
+index f25fac11753..025cebf1b60 100644
+--- a/src/metabase/channel/render/body.clj
++++ b/src/metabase/channel/render/body.clj
+@@ -197,11 +197,7 @@
+ 
+ (defn- order-data [data viz-settings]
+   (if (some? (::mb.viz/table-columns viz-settings))
+-    (let [;; Deduplicate table-columns by name to handle duplicated viz settings
+-          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
+-                                           (m/distinct-by ::mb.viz/table-column-name))
+-          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+-          [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
++    (let [[ordered-cols output-order] (qp.streaming/order-cols (:cols data) viz-settings)
+           ;; table-columns from viz-settings only includes remapped columns, not the source columns
+           santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
+           keep-filtered-idx           (fn [row] (if output-order

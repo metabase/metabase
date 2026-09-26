@@ -1,0 +1,7 @@
+issue: 63671
+fix_commit: e50317d86dd288204780ad646f211bb0152efcd0
+e2e_repro: e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

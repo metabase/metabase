@@ -1,0 +1,27 @@
+id: reg-53604
+origin:
+  kind: regression
+  issue: 53604
+  fix_commit: 5ec56ea755d3052857d21e80eedbb313e95db5de
+  fix_tests:
+    - "e2e/test/scenarios/models/reproductions-3.cy.spec.ts::issue 53604 - nested native question with multiple breakouts on same column Underlying records drill-through should work on nested native question (metabase#53604)"
+    - "e2e/test/scenarios/models/reproductions-3.cy.spec.ts::issue 53604 - nested native question with multiple breakouts on same column Underlying records drill-through should work on nested native model (metabase#53604)"
+    - "metabase.lib.drill-thru.underlying-records-test/native-query-with-multiple-breakouts-on-same-column-test"
+    - "metabase.lib.drill-thru.underlying-records-test/native-card-multiple-breakouts-same-column-drill-test"
+bug:
+  statement: "\"See these records\" fails on a question built on a native model that groups by the same date column more than once."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: lib
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.lib.drill-thru.underlying-records-test/native-query-with-multiple-breakouts-on-same-column-test"
+  expected_failure: "expected [:between ... [:field {:temporal-unit :month} \"CREATED_AT\"] \"2023-07-01\" \"2023-07-31\"]; diff: (not= :between :=)"
+notes: "base_commit is the parent of July's CI mutant 49db66b0de0 (run 29139264445); the e2e repros aren't at 8317274709c (master removed them in 4701e5f8dc5 for backend parity), so their ids come from 56879decb0a; the fix changed three places, and e2eonly-report.md §1 shows only the temporal-unit fallback still matters, so the mutant gives exact-timestamp filters rather than the original missing-column SQL error; July's oracle native-query-with-multiple-breakouts-on-same-column-test reproduces this issue's scenario but was added later by #63360 without naming the issue; e2eonly.yaml says no_witness_backend meaning no jest witness, yet the report's deftest catches it and the land-and-cull pass (d3835864f16) also landed native-card-multiple-breakouts-same-column-drill-test, whose commit message says the parity commit covered only sibling #54108; fe_be_boundary inferred"

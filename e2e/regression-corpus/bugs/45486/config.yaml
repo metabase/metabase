@@ -1,0 +1,21 @@
+issue: 45486
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#56468 FontWidget getFontFormat — read extension off raw src not url.pathname; query-param test fails woff2 vs truetype; 1 failed/9
+    Oracle relocation: localized to co-shipped FontWidget/utils.ts
+    Product: FontWidget getFontFormat (URL query strip)
+validation:
+  oracle:
+    kind: fe_unit
+    test: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.unit.spec.tsx
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

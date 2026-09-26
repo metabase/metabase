@@ -1,0 +1,36 @@
+id: reg-31628
+origin:
+  kind: regression
+  issue: 31628
+  fix_commit: 78ffada604f0e391493362a4f0fbe507fb015ea0
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: scalar ${width}x${height} - ${sidebar} - ${name} should render descendants of a 'scalar' without overflowing it (metabase#31628)"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: scalar 1x2 card should follow truncation rules"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: scalar 2x2 card should follow truncation rules"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: scalar 5x3 card should follow truncation rules"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar ${width}x${height} - ${sidebar} - ${name} should render descendants of a 'smartscalar' without overflowing it (metabase#31628)"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar 2x2 card should follow truncation rules"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar 2x2 card should show previous value as a percentage without decimal places (without truncation, 1000x600)"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar 2x2 card should truncate previous value (840x600)"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar 7x3 card should follow truncation rules"
+    - "e2e/test/scenarios/dashboard-cards/dashboard-card-reproductions.cy.spec.js::issue 31628 display: smartscalar 7x4 card should follow truncation rules"
+    - "frontend/src/metabase/visualizations/components/ScalarValue/utils.unit.spec.ts::findSize returns the max size if when text height is smaller than the target height"
+    - "frontend/src/metabase/visualizations/components/ScalarValue/utils.unit.spec.ts::findSize returns the first size with which text height is smaller than the target height"
+    - "frontend/src/metabase/visualizations/components/ScalarValue/utils.unit.spec.ts::findSize returns the min size if text cannot fit into the target height"
+bug:
+  statement: "On short dashboard cards, number and trend values keep a font too tall for the card and overflow it."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/components/ScalarValue/utils.unit.spec.ts::findSize returns the min size if text cannot fit into the target height"
+  expected_failure: "findSize: expected \"2rem\", received \"5rem\" (text height overflow ignored)"
+notes: "the findSize tests and ScalarValue/utils.ts exist at the July base but not at 8317274709c, where scalar sizing moved to sizing.ts with tier tests, so these ids come from 56879decb0a and the patch's target file is gone at master; two e2e ids (\"should show previous value as a percentage...\" and \"should truncate previous value...\") also exist only at the July base; fix_tests: the two e2e ids containing ${width}x${height} - ${sidebar} - ${name} are parameterized titles kept as the source writes them; fe_be_boundary inferred"

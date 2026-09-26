@@ -1,0 +1,26 @@
+id: reg-69904
+origin:
+  kind: regression
+  issue: 69904
+  fix_commit: 96dbeb455a37edc3be1846a0517da372b39b09eb
+  fix_tests:
+    - "e2e/test/scenarios/data-studio/transforms/reproductions.cy.spec.ts::issue 69904 should not crash the app when opening table created by a deleted transform (metabase#69904)"
+    - "metabase-enterprise.data-studio.api.table-test/table-metadata-survives-deleted-transform-test"
+    - "frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.unit.spec.tsx::TableAttributesEditSingle should not crash and show a placeholder when a transform-sourced table has no transform (metabase#69904)"
+bug:
+  statement: "Opening a table whose creating transform was deleted crashes the Data Studio table view."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: data-studio
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: true
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/data-studio/data-model/components/TableSection/components/TableAttributesEditSingle.unit.spec.tsx::TableAttributesEditSingle should not crash and show a placeholder when a transform-sourced table has no transform (metabase#69904)"
+  expected_failure: "TypeError: Cannot read properties of null (reading 'id') at Urls.transform(transform.id)"
+notes: "base_commit is the parent of July's CI mutant 323fad79c3d (run 29135046546); the witness fails with the bug's own render crash rather than an assertion; the crash is the user-visible bug, so it counts toward unit here, but the kills rules would record it as errored; table-metadata-survives-deleted-transform-test is a later backend parity test naming this issue and checks the API's null transform, not the crash; fe_be_boundary inferred: the API returns transform: null where the frontend type and guard expected it absent (the fix also changed metabase-types/api/table.ts)"

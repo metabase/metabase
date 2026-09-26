@@ -1,0 +1,25 @@
+id: reg-55322
+origin:
+  kind: regression
+  issue: 55322
+  fix_commit: c5d7b545eef623967c9d7bef39af8c00d77d350c
+  fix_tests:
+    - "e2e/test/scenarios/admin/datamodel/segments.cy.spec.ts::scenarios > admin > datamodel > segments with segment should not crash when editing field in segment field detail page (metabase#55322)"
+    - "frontend/src/metabase/reference/segments/SegmentFieldDetail.unit.spec.tsx::SegmentFieldDetail (metabase#55322) renders the edit header without crashing while editing"
+bug:
+  statement: "Clicking Edit on a segment field's page in the data reference crashes the app with an error screen."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: reference
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/reference/segments/SegmentFieldDetail.unit.spec.tsx::SegmentFieldDetail (metabase#55322) renders the edit header without crashing while editing"
+  expected_failure: "expect(() => setup()).not.toThrow(); threw \"Too many re-renders. React limits the number of renders to prevent an infinite loop.\""
+notes: "base_commit is the parent of July's CI mutant 89c8eb44e96 (run 29139243187); stratum wiring: the mutant passes the result of calling handleReset as the reinitializeForm prop instead of a function; the bug is itself a render crash, so the witness's not.toThrow assertion is the discriminating check; witness landed and e2e culled on this branch; fe_be_boundary inferred"

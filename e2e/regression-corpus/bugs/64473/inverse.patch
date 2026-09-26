@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/querying/editor/components/QueryEditor/QueryEditorVisualization/QueryEditorVisualization.tsx b/frontend/src/metabase/querying/editor/components/QueryEditor/QueryEditorVisualization/QueryEditorVisualization.tsx
+index 750abbae82b..90a5e629eae 100644
+--- a/frontend/src/metabase/querying/editor/components/QueryEditor/QueryEditorVisualization/QueryEditorVisualization.tsx
++++ b/frontend/src/metabase/querying/editor/components/QueryEditor/QueryEditorVisualization/QueryEditorVisualization.tsx
+@@ -37,6 +37,7 @@ export function QueryEditorVisualization({
+         isRunnable={isRunnable}
+         isRunning={isRunning}
+         isDirty
++        queryBuilderMode="dataset"
+         isResultDirty={isResultDirty}
+         isNativeEditorOpen={isNative}
+         isDirtyStateShownForError={!isNative}

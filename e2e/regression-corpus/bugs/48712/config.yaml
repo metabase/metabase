@@ -1,0 +1,22 @@
+issue: 48712
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#51632 complete-inside-word — to:undefined not suffix?.to; to:14 vs undefined; 1 failed/36. spot-validated main tree
+    Oracle relocation: metabase-lib/native → CodeMirrorEditor/completers
+    Product: useSchemaCompletion completers.tsx
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/querying/components/CodeMirrorEditor/completers.unit.spec.tsx
+    reconstructed_result: fail_on_mutant__pass_on_clean
+    spot_validated_main_tree: true
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

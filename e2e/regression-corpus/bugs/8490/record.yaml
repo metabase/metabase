@@ -1,0 +1,25 @@
+id: reg-8490
+origin:
+  kind: regression
+  issue: 8490
+  fix_commit: 57d786df8b8cc59f6060fe2f2425ddcf6287acbd
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 8490 static embeddings should respect `#locale` hash parameter (metabase#8490, metabase#50182)"
+    - "metabase.request.session-test/as-admin-test"
+bug:
+  statement: "Static embeds opened with a #locale hash still show backend-generated labels, such as aggregation column names, in English."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: request/session
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.request.session-test/as-admin-test"
+  expected_failure: "as-admin-test \"as-admin preserves any locale settings\": expected \"fr\", actual nil; expected \"French\", actual \"English\""
+notes: "the issue is a feature request and #49441 spans frontend and backend; July's mutant reverts only the backend part (as-admin keeps the caller's locale), which the e2e checks through the translated \"Count\" label; as-admin-test moved from metabase.server.middleware.session-test and the fix added its locale assertions (see reconstruction-report.md §2); left out \"issue 8490 static embeddings with `#locale` should show translate the loading message (metabase#50182)\", which sits in this issue's describe but tests #50182's loading message (added by #50841)"

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/common/components/SaveQuestionForm/util.ts b/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
+index 16ce538c5f6..5537d6901ba 100644
+--- a/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
++++ b/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
+@@ -111,7 +111,7 @@ const getName = (question: Question, originalQuestion: Question | null) => {
+   }
+ 
+   // Ad-hoc query
+-  return question.displayName() || question.generateQueryDescription() || "";
++  return question.generateQueryDescription() || "";
+ };
+ 
+ export const getInitialValues = (

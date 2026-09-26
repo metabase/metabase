@@ -1,0 +1,7 @@
+issue: 67767
+fix_commit: ba0ddc9a32d1c9c47f58e87d4255717d1afec3a4
+e2e_repro: e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts
+population: e2e_only
+witness_outcome: witness_e2e_vacuous
+mutation_files: ["frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.tsx"]
+layer: frontend

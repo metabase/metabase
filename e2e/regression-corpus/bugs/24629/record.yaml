@@ -1,0 +1,25 @@
+id: reg-24629
+origin:
+  kind: regression
+  issue: 24629
+  fix_commit: 2c106817a414b3f6025523847c4cffe2f30a8342
+  fix_tests:
+    - "e2e/test/scenarios/sharing/subscriptions.cy.spec.js::scenarios > dashboard > subscriptions with email set up with no existing subscriptions should not add a recipient when Escape is pressed (metabase#24629)"
+    - "frontend/src/metabase/common/components/TokenField/TokenField.unit.spec.tsx::TokenField should not add a recipient when Escape is pressed (metabase#24629)"
+bug:
+  statement: "Pressing Escape in a token input such as the subscription recipient picker adds the highlighted option instead of dismissing the suggestions."
+  odc: {type: Checking, qualifier: Missing}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/components/TokenField/TokenField.unit.spec.tsx::TokenField should not add a recipient when Escape is pressed (metabase#24629)"
+  expected_failure: "expect(values()).not.toHaveTextContent(\"bar\"); received \"bar\" (Escape committed the selected option)"
+notes: "base_commit is the parent of July's CI mutant 53db1a83b3a (run 29139231565); the witness is July-written (witness.patch, landed on this branch); fe_be_boundary inferred"

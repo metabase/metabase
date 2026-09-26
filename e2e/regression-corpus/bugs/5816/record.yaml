@@ -1,0 +1,38 @@
+id: reg-5816
+origin:
+  kind: regression
+  issue: 5816
+  fix_commit: ac982ba47b8e01c3094f25e9505efeeb79ed60f1
+  fix_tests:
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + mbql query"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) dashboards + mbql query + id parameters"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) dashboards + mbql query + number parameters"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + native query + variables"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) dashboards + native query + variables"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + native query + field filters"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + expression editor"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + object detail"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + drills"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) query builder + export"
+    - "e2e/test/scenarios/filters/filter-bigint.cy.spec.ts::scenarios > filters > bigint (metabase#5816) dashboards + click behavior"
+    - "frontend/src/metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberFilterPicker.unit.spec.tsx::NumberFilterPicker new filter with one value should add a filter with a big integer value"
+    - "metabase.lib.fe-util-test/number-filter-parts-test"
+    - "metabase.lib.fe-util-test/coordinate-filter-parts-test"
+    - "metabase.query-processor.middleware.parameters.mbql-test/bigint-number-operators-test"
+bug:
+  statement: "A query builder filter on a very large integer value can't be reopened or edited, because the exact value isn't recognised."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: lib/fe-util
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.lib.fe-util-test/number-filter-parts-test"
+  expected_failure: "number/coordinate-filter-parts-test: bigint clauses -> actual nil (expected filter-parts map)"
+notes: "fix_commit: GitHub lists #10387 (3656bef0bad, 2019, a display fix) as closing the issue, but the issue stayed open until 2025-02-27; July's #53326 is part of the 2025 BigInteger work that closed it, so kept; the issue is broad (big integers lose precision across the UI) and this fix and mutant cover filter values only; the fix's e2e (issue 5816 in filters-reproductions) now lives in filter-bigint.cy.spec.ts, added by #53705; the fix's NumberFilterInput and parseNumber jest tests no longer exist at 8317274709c; bigint-number-operators-test is a later backend parity test naming this issue; reconstruction-report.md §4 notes bigints are now real values, not strings"

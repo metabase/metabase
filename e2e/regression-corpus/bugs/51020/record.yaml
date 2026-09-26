@@ -1,0 +1,25 @@
+id: reg-51020
+origin:
+  kind: regression
+  issue: 51020
+  fix_commit: 08771ef685a2d07d1387ab22f03d202af9f0501c
+  fix_tests:
+    - "e2e/test/scenarios/actions/actions-reproductions.cy.spec.js::issue 51020 when primary key is called 'id' should pass primary key attribute to execute action endpoint when primary key is called 'id' and it's populated with click behavior or URL (metabase#51020)"
+    - "e2e/test/scenarios/actions/actions-reproductions.cy.spec.js::issue 51020 when primary key is not called 'id' should pass primary key attribute to execute action endpoint when primary key isn't called 'id' and it's populated with click behavior or URL (metabase#51020)"
+bug:
+  statement: "Running a dashboard action whose primary key is filled from a filter set by click behavior fails, because the prefilled id isn't sent."
+  odc: {type: Algorithm/Method, qualifier: Extraneous}
+  module: actions/use-action-form
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/actions/hooks/use-action-form/use-action-form.unit.spec.ts::useActionForm getCleanValues should return initial values if no values passed"
+  expected_failure: "expect(getCleanValues()).toEqual({ param1: \"some value\" }); received {}"
+notes: "July's oracle tests predate the fix (it deleted the prefetch-filtering test and fixed a typo in another), so they aren't fix_tests: killed by useActionForm getCleanValues \"should return initial values if no values passed\" and \"should filter out hidden fields\"; the patch applies the changed-values filter unconditionally, where the pre-fix code gated it on a prefetchesInitialValues prop the fix removed (see reconstruction-report.md §4)"

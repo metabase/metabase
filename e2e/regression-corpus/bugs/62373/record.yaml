@@ -1,0 +1,24 @@
+id: reg-62373
+origin:
+  kind: regression
+  issue: 62373
+  fix_commit: 8ac41c5b9164f795b3d20582442ee50d3e08d770
+  fix_tests:
+    - "e2e/test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts::scenarios > content translation > static embeds > dashboards values translation should translate guest embeds dashboard values on visualizer cards (metabase#62373)"
+bug:
+  statement: "On a statically embedded dashboard with content translation, visualizer cards show untranslated values while other cards with the same data are translated."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: dashboard
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts::scenarios > content translation > static embeds > dashboards values translation should translate guest embeds dashboard values on visualizer cards (metabase#62373)"
+  expected_failure: "cy.findAllByText(\"Le gadget\").should(\"exist\") fails inside the visualizer dashcard (getDashboardCard(1))"
+notes: "Mutant mismatch: July's patch drops untranslatedRows from translateFieldValuesInSeries, so translated pie charts lose their saved slice settings; the issue and its e2e are about visualizer cards not being translated, which the fix handled in DashCardVisualization by translating the series the visualizer builds; rebuild by translating the raw series before the visualizer merge, following 8ac41c5b916; stratum wiring and module from that fix (the translation hook is applied to the wrong series); July contradicts itself: reconstruction-report.md says reconstruction_failed against the named oracle tests/utils.unit.spec.ts, while config.yaml records a kill by the sibling utils.unit.spec.ts, whose asserting tests (\"translateFieldValuesInSeries should translate field values in regular series data\", \"...should handle empty rows\") came later in #64023 and aren't fix_tests; lowest_level integration since no unit test is known for the visualizer-card half; expected_failure inferred from the e2e's assertion; the fix's only jest edit was scaffolding"

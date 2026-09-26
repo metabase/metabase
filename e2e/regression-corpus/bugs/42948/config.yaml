@@ -1,0 +1,21 @@
+issue: 42948
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR SmartScalar null-latest — latestRowIndex=rows.length-1 + throw on null; warning icon renders; 1 failed/18
+    Oracle relocation: .unit.spec.js→tests/.tsx
+    Product: SmartScalar compute getCurrentMetricData
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/visualizations/visualizations/SmartScalar/tests/SmartScalar.unit.spec.tsx
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

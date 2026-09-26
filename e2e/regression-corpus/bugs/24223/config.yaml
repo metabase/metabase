@@ -1,0 +1,40 @@
+issue: 24223
+issue_url: https://github.com/metabase/metabase/issues/24223
+fix_commits: ["599d0c26bc5d7b38f61c0fa204f68eafc8a7bf21"]
+fix_pr: 33359
+fix_subject: "Allow removing filter defaults on Subscriptions (EE)"
+area: parameters/shared (was pulse/parameters)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # RECONSTRUCTION patch applies; original fix diff does NOT (conflict)
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted param-val-or-default from (get p :value (:default p)) to (or (:value p) (:default p)), conflating explicit nil with missing. Whole file relocated pulse/parameters.clj -> parameters/shared.cljc; single consolidated fn so one revert covers all 3 historical call sites.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.parameters.shared-test/param-val-or-default-test"
+    clean_baseline: pass
+    reconstructed_result: "1/2 fail (explicit :value nil falls back to :default)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A dashboard-subscription filter cleared to an explicit nil value falls back to its default instead of staying blank; users can't remove a filter default.
+  repro_failure: >
+    (nil? (param-val-or-default {:default 'x' :value nil})) -> actual 'x'.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.parameters.shared-test/param-val-or-default-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-2. Conflict target reconstructed into current code + killed by shipped BE test => e2e repro cullable."

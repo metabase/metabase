@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/common/components/SaveQuestionForm/util.ts b/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
+index 16ce538c5f6..b595b413ec2 100644
+--- a/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
++++ b/frontend/src/metabase/common/components/SaveQuestionForm/util.ts
+@@ -105,11 +105,6 @@ export async function submitQuestion(options: SubmitQuestionOptions) {
+ }
+ 
+ const getName = (question: Question, originalQuestion: Question | null) => {
+-  if (originalQuestion) {
+-    // Saved question
+-    return t`${originalQuestion.displayName()} - Modified`;
+-  }
+-
+   // Ad-hoc query
+   return question.displayName() || question.generateQueryDescription() || "";
+ };

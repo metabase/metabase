@@ -1,0 +1,21 @@
+issue: 54271
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: true  # jest descendant exists but non-discriminating (drift/flake-fix); closable with a real assertion
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: f3ff38b8daf9cfe819d862fee992012f1cf25366
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole_closed  # was hole; closed this session with a targeted unit test
+# detail: see reconstruction-report.md
+hole_closed:
+  patch_file: hole-closer-test.patch
+  test: frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts
+  verified: fail_on_reverted_fix__pass_on_clean
+  applied_to_working_tree: true

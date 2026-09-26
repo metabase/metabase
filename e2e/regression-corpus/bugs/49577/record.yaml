@@ -1,0 +1,24 @@
+id: reg-49577
+origin:
+  kind: regression
+  issue: 49577
+  fix_commit: 9bd17d26f7bf7ef0c03d64a23fd0ebc24c43afae
+  fix_tests:
+    - "e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js::issue 49577 should not show the values initially when using a single select search box (metabase#49577)"
+bug:
+  statement: "A single-value \"Search box\" filter shows its full list of values before the user types anything."
+  odc: {type: Checking, qualifier: Missing}
+  module: components
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/native-filters/native-filters-reproductions.cy.spec.js::issue 49577 should not show the values initially when using a single select search box (metabase#49577)"
+  expected_failure: null
+notes: "49577 is the fix PR's number, not an issue: GitHub shows a merged PR (a follow-up to #49323) and the e2e tag uses the PR number; no mutant patch: dead target, #51183 deliberately rolled back the fix and deleted its jest test, and the surviving SingleSelectListField spec now asserts the pre-fix behaviour, see reconstruction-report.md §3-5; the e2e still exists at 8317274709c even though the report says current product behaviour matches the pre-fix state; July recorded no failure message; fe_be_boundary inferred"

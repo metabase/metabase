@@ -1,0 +1,25 @@
+id: reg-49642
+origin:
+  kind: regression
+  issue: 49642
+  fix_commit: 79858b9fa28477607a0098acf7f7e84331a4d03a
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js::issue 49642 should allow searching for more values when the filter contains more than 1000 values (metabase#49642)"
+    - "frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx::SingleSelectListField reports the search term and clears the current selection when typing in the search box"
+bug:
+  statement: "A single-select filter list over a field with more than 1000 values only searches the values already loaded, so later values can't be found."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: parameters
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/SingleSelectListField.unit.spec.tsx::SingleSelectListField reports the search term and clears the current selection when typing in the search box"
+  expected_failure: "expect(onSearchChange).toHaveBeenCalledWith(\"AK\"); Number of calls: 0"
+notes: "stratum wiring: the fix has the list report typed search text through a new onSearchChange prop so its parent can search the server; no mutant patch: July's over-revert of SingleSelectListField flipped none of the shipped jest tests and wasn't saved, see reconstruction-report.md §4; the fix's jest edits (setup refactor, title renames, waitFor flake fixes) had no behavioural assertion and are left out; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the revert, see hole-closer-report.md §3; module from the component's current parameters location (the fix commit had it under components/); fe_be_boundary inferred"

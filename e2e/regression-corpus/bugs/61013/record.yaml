@@ -1,0 +1,26 @@
+id: reg-61013
+origin:
+  kind: regression
+  issue: 61013
+  fix_commit: 13d4abff0bc6655f73e6ba76075935ddaaa459b5
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 61013 should only add one card and save correctly to the dashboard when the dashboard is empty but has multiple tabs (metabase#61013)"
+    - "e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js::issue 61013 should not wait for cards to load before switching to edit mode"
+    - "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers Should accurately describe loading state should be complete when the dashboard doesn't have cards to load"
+bug:
+  statement: "Adding a question to an empty multi-tab dashboard from the query builder adds the card twice and leaves the dashboard unsaveable."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: dashboard/reducers
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/reducers.unit.spec.ts::dashboard reducers Should accurately describe loading state should be complete when the dashboard doesn't have cards to load"
+  expected_failure: "expect(received).toEqual(expected): loadingStatus expected \"complete\", received \"idle\""
+notes: "the patch reverts only the reducer hunk (an empty dashboard's loading never completes); the fix's DashboardApp/context changes, which only the e2e covers, stay in place, so whether the double-add itself comes back is unverified (see reconstruction-report.md §4-5); the jest test shipped in reducers.unit.spec.js, renamed by the fix from \"should stay idle with no cards to load\""

@@ -1,0 +1,40 @@
+issue: 47184
+issue_url: https://github.com/metabase/metabase/issues/47184
+fix_commits: ["6694870932830ff36964edd8b2c4555b81ddeda8"]
+fix_pr: 47167
+fix_subject: "[Epic] Show columns from all stages in the dashboard filters (#47167)"
+area: app-db/custom-migrations (was db/)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    10-file EPIC; the hinted lib/stage.cljc oracle tests had drifted onto MBQL5 and no longer localize. Agent PIVOTED to a still-undrifted oracle (the migration helper) and dropped `(inc i)` in last-stage-number so every query looks single-stage -> migration records stage 0. File relocated db/custom_migrations.clj -> app_db/custom_migrations.clj.
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.app-db.custom-migrations-test/set-stage-number-in-parameter-mappings-test"
+    clean_baseline: pass
+    reconstructed_result: "1/2 fail (dimension parameter_mappings get :stage-number 0 instead of 2)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    The AddStageNumberToParameterMappingTargets migration computes the wrong (pre-feature) stage number for multi-stage questions, so dashboard filters can't target columns from later stages.
+  repro_failure: >
+    post-migration dimension targets expected {:stage-number 2}, actual {:stage-number 0}.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.app-db.custom-migrations-test/set-stage-number-in-parameter-mappings-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-4 (large/epic). Conflict target localized + killed by shipped BE test => e2e repro cullable."

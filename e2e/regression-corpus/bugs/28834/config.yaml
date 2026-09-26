@@ -1,0 +1,37 @@
+issue: 28834
+issue_url: https://github.com/metabase/metabase/issues/28834
+fix_commits: ["26b1a6b6cf2906fe31ddb29737bd6ce8ab5fbde3"]
+fix_subject: "Allow downloading native query results even when dirty"
+area: qb/ViewFooterDownloadWidget
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added the !isResultDirty gate at the relocated download decision point (ViewFooterDownloadWidget), so the download button is suppressed after editing a native query without rerunning. Fix moved the decision from QueryDownloadWidget.shouldRender.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "1 fail (download button absent when result dirty)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    After editing a native query without rerunning, the results download button disappears so you can't download the current results.
+  repro_failure: >
+    'download ... query changed but not rerun (#28834)': question-results-download-button not found.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/query_builder/containers/QueryBuilder.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-4. Killed by shipped FE unit (jest) test => e2e repro cullable."

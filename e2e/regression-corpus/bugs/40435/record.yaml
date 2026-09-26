@@ -1,0 +1,24 @@
+id: reg-40435
+origin:
+  kind: regression
+  issue: 40435
+  fix_commit: f41cd82f5b750b02ef5324428eef3e0862e85c20
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 40435 should make new query columns visible by default (metabase#40435)"
+bug:
+  statement: "Columns added to a saved question's query after its table columns were customized stay hidden instead of showing by default."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: viz/TableColumnPanel
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 40435 should make new query columns visible by default (metabase#40435)"
+  expected_failure: "cy.findByRole(\"columnheader\", { name: \"Product ID\" }).should(\"be.visible\") fails"
+notes: "no mutant patch: the faithful revert of getColumnItems passed all 6 TableColumnPanel tests and wasn't saved, see reconstruction-report.md §2-3; the fix deleted the only discriminating jest test, which asserted the buggy behaviour, and added none; July is inconsistent about the class: the report heading says dead-target, its §4 says the product code survives, config calls it no_unit_oracle__fix_deleted_discriminating_test; expected_failure inferred from the e2e's assertion"

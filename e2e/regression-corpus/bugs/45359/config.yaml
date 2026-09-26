@@ -1,0 +1,33 @@
+issue: 45359
+issue_url: https://github.com/metabase/metabase/issues/45359
+fix_commits: ["e52eaee0ba36c654e8dbed2d4082d300360560cd"]
+fix_pr: 45274
+fix_subject: "Repro #45359 - Incorrect font in e2e tests in CI  (#45274)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/question-reproductions/reproductions-4.cy.spec.js
+      line: 576
+      kind: describe
+      title: "issue 45359"
+    - spec: e2e/test/scenarios/question-reproductions/reproductions-4.cy.spec.js
+      line: 586
+      kind: it
+      title: "loads app fonts correctly (metabase#45359)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: untestable, killed_by: []}
+  notes: "No importing unit tests (mutated file FormFileInput.stores.tsx). Subject is e2e test-infra ('Incorrect font in e2e tests in CI') — VERIFY this is a real product regression before trusting; may be e2e-only / low-value."

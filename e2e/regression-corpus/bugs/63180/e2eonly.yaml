@@ -1,0 +1,7 @@
+issue: 63180
+fix_commit: 2365a169e49a2c88248ea907ec6f8ba98ba4cd65
+e2e_repro: e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

@@ -1,0 +1,40 @@
+issue: 61010
+issue_url: https://github.com/metabase/metabase/issues/61010
+fix_commits: ["4927b35f0feecd817cc17e6ca8488e81c2926eb4"]
+fix_pr: null
+fix_subject: "Stop offering expressions and aggregation being edited as columns"
+area: lib/aggregation+expression
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # RECONSTRUCTION patch applies; original fix diff does NOT (conflict)
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the position-exclusion (keep-indexed) in aggregable-columns and the edited-expression filter in expressionable-columns. Oracle covers only the aggregation half; expression half reverted for faithfulness (agent flagged this; aggregation-only edit alone fails the oracle).
+
+validation:
+  oracle:
+    kind: be_unit
+    test: "metabase.lib.aggregation-test/aggregable-columns-e2e-test"
+    clean_baseline: pass
+    reconstructed_result: "4/8 fail (editing an aggregation offers it back as an input column)"
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    When editing an existing aggregation/expression, the column being edited is offered back as a selectable input column, enabling a self-referential/cyclic definition.
+  repro_failure: >
+    expected ('a' 'b' 'c'), actual ('count' 'a' 'b' 'c') at the (doseq [pos ...]) block.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.aggregation-test/aggregable-columns-e2e-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-2. Conflict target reconstructed into current code + killed by shipped BE test => e2e repro cullable."

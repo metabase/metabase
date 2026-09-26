@@ -1,0 +1,7 @@
+issue: 57644
+fix_commit: 515c93f442f9f24cd2969e9b77f81e07c81b1117
+e2e_repro: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

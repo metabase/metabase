@@ -1,0 +1,14 @@
+diff --git a/src/metabase/request/session.clj b/src/metabase/request/session.clj
+index 06875441874..763836f3528 100644
+--- a/src/metabase/request/session.clj
++++ b/src/metabase/request/session.clj
+@@ -77,8 +77,7 @@
+    (merge
+     (with-current-user-fetch-user-for-id *current-user-id*)
+     {:is-superuser? true
+-     :permissions-set #{"/"}
+-     :user-locale i18n/*user-locale*})
++     :permissions-set #{"/"}})
+    thunk))
+ 
+ (defmacro as-admin

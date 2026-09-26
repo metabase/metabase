@@ -1,0 +1,24 @@
+id: reg-61164
+origin:
+  kind: regression
+  issue: 61164
+  fix_commit: f7b82d5c543ff7a12fce320fd778ac0615f1c64c
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/table.cy.spec.js::scenarios > visualizations > table > dashboards context should update row heights correctly when sorting with text wrapping enabled (metabase#61164)"
+bug:
+  statement: "After sorting a dashboard table with wrapped text, row heights stay from the old order, so text overflows into neighbouring rows."
+  odc: {type: Timing/Serialization, qualifier: Missing}
+  module: data-grid
+  lowest_level: browser-measurement
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/visualizations-tabular/table.cy.spec.js::scenarios > visualizations > table > dashboards context should update row heights correctly when sorting with text wrapping enabled (metabase#61164)"
+  expected_failure: "rects[i].top === rects[i-1].bottom fails after sorting; rows overlap"
+notes: "base_commit is the parent of July's CI mutant 1c4710a1b9d (run 29135065628); stratum wiring: the mutant reads row heights by the virtual index attribute instead of the dataset index prop; the fix (sorting added to the re-measure callback's dependencies) was superseded by #70384 (7a7585be68c), so the mutant reverts that successor mechanism (e2eonly-report.md §2); irreducible per E2E-ONLY.md (virtualizer row geometry) and July's CI run confirmed the e2e catches it; expected_failure paraphrases the e2e's assertion from e2eonly-report.md §3; fe_be_boundary inferred"

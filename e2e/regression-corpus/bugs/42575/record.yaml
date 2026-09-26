@@ -1,0 +1,7 @@
+id: reg-42575
+origin:
+  kind: regression
+  issue: 42575
+  alias_of: 42656
+  fix_commit: 8f9b9c3a132df7283463b5682b6dccd154163907
+notes: "fix_commit: GitHub closes the issue with #42970 (8f9b9c3a132), which un-skipped its e2e; July mapped the Metrics v2 commit fb4b8ca2a60 (#38457); a different bug from 42656 (compatible timeseries metrics can't be combined on a dashcard), so the alias is wrong and it needs its own record and mutant before use; its e2e repro is left out of reg-42656's fix_tests"

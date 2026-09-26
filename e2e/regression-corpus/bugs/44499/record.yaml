@@ -1,0 +1,26 @@
+id: reg-44499
+origin:
+  kind: regression
+  issue: 44499
+  fix_commit: 4120da5c4e1b692b48bafba68e53d4060c401f51
+  fix_tests:
+    - "e2e/test/scenarios/organization/bookmarks-collection.cy.spec.js::scenarios > organization > bookmarks > collection should update bookmarks list when restoring a collection containing bookmarked items (metabase#44499)"
+    - "frontend/src/metabase/api/collection.unit.spec.ts::collectionApi bookmark cache invalidation (metabase#44499) refetches the bookmarks list after archiving a collection"
+    - "metabase.bookmarks.api-test/bookmark-hidden-when-parent-collection-trashed-test"
+bug:
+  statement: "Archiving or restoring a collection with bookmarked items leaves the sidebar's bookmark list stale until the page is refreshed."
+  odc: {type: Timing/Serialization, qualifier: Missing}
+  module: api
+  lowest_level: unit
+  stratum: state
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/api/collection.unit.spec.ts::collectionApi bookmark cache invalidation (metabase#44499) refetches the bookmarks list after archiving a collection"
+  expected_failure: "waitFor(() => expect(await countBookmarkRequests()).toBe(2)) times out; the bookmarks list isn't refetched after archiving"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum state: the mutant drops the bookmark list tag invalidation on collection archive/restore; config.yaml still records an fe_unit hole, but the land-and-cull pass (bf3736f0270) landed the jest witness on this branch; bookmark-hidden-when-parent-collection-trashed-test is a later backend parity test naming this issue and checks the API result, not the sidebar cache; expected_failure inferred from the test's assertion, July recorded none; fe_be_boundary inferred"

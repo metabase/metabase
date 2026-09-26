@@ -1,0 +1,26 @@
+id: reg-30235
+origin:
+  kind: regression
+  issue: 30235
+  fix_commit: 5c1b2af3b14495a6199b23dda52667a15a701e8b
+  fix_tests:
+    - "e2e/test/scenarios/collections/collections-reproductions.cy.spec.ts::issue 30235 should allow to turn to official collection after moving it from personal to root parent collection (metabase#30235)"
+    - "metabase.collections-rest.api-test/update-collection-test"
+    - "metabase.collections-rest.api-test/set-authority-level-after-move-out-of-personal-collection-test"
+bug:
+  statement: "After moving a collection out of a personal collection, the option to make it official stays missing until the page is reloaded."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: collections-rest/api
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.collections-rest.api-test/update-collection-test"
+  expected_failure: "update-collection-test: partial= fails, PUT response missing :effective_ancestors and :effective_location"
+notes: "stratum wiring: the mutant drops :effective_ancestors/:effective_location from the PUT /api/collection/:id response that the frontend reads; July's fe_be_boundary false is kept, though the bug is a backend response the frontend depends on (the fix subject says so); update-collection-test shipped as metabase.api.collection-test and moved with the namespace; set-authority-level-after-move-out-of-personal-collection-test is a later deftest naming this issue and doesn't fail on this mutant (see reconstruction-report.md §4)"

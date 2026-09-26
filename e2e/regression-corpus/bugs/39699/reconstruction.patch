@@ -1,0 +1,21 @@
+diff --git a/enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.jsx b/enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.jsx
+index 18ce9502f02..1eaf552426b 100644
+--- a/enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.jsx
++++ b/enterprise/frontend/src/embedding/data-picker/DataSelector/DataSelector.jsx
+@@ -292,15 +292,7 @@ export class UnconnectedDataSelector extends Component {
+   };
+ 
+   getCardType() {
+-    const { selectedDataBucketId, savedEntityType } = this.state;
+-    if (
+-      selectedDataBucketId === DATA_BUCKET.MODELS ||
+-      savedEntityType === "model"
+-    ) {
+-      return "model";
+-    } else {
+-      return "question";
+-    }
++    return "question";
+   }
+ 
+   hasModels = () => {

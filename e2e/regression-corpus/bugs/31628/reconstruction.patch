@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/visualizations/components/ScalarValue/utils.ts b/frontend/src/metabase/visualizations/components/ScalarValue/utils.ts
+index 6a1b55fbec6..c040b477dfc 100644
+--- a/frontend/src/metabase/visualizations/components/ScalarValue/utils.ts
++++ b/frontend/src/metabase/visualizations/components/ScalarValue/utils.ts
+@@ -31,10 +31,7 @@ export const findSize = ({
+     weight: fontWeight,
+   });
+ 
+-  while (
+-    (metrics.width > targetWidth || metrics.height > targetHeight) &&
+-    size > min
+-  ) {
++  while (metrics.width > targetWidth && size > min) {
+     size = Math.max(size - step, min);
+ 
+     metrics = measureText(text, {

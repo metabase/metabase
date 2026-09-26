@@ -1,0 +1,24 @@
+id: reg-34954
+origin:
+  kind: regression
+  issue: 34954
+  fix_commit: d149840374c9e020ccb206271f4a14da8a371f45
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js::scenarios > embedding > dashboard parameters should render error without crashing when embed query returns error (metabase#34954)"
+bug:
+  statement: "A public or static embedded dashboard crashes entirely when one of its cards fails to load, instead of showing an error on that card."
+  odc: {type: Checking, qualifier: Missing}
+  module: dashboard
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js::scenarios > embedding > dashboard parameters should render error without crashing when embed query returns error (metabase#34954)"
+  expected_failure: "cy.findByText(\"There was a problem displaying this chart.\") not found because the embedded dashboard page crashes"
+notes: "no mutant patch: July's revert of the \"data\" in queryResult guard in hasRows (dashboard/utils.ts) flipped no jest spec (114 of 114 pass), so it wasn't saved, see reconstruction-report.md (2)-(3); fix_commit: July recorded none, the report and GitHub both name #35851 (d149840374c); the fix's only jest edit was a mock-helper rename in PublicQuestion.unit.spec.tsx and is left out; expected_failure inferred from the e2e's assertion and the report; fe_be_boundary inferred"

@@ -1,0 +1,7 @@
+issue: 56716
+fix_commit: 436c0804fa0e6bc9eaa9ccf1a9f34a38a1278537
+e2e_repro: e2e/test/scenarios/dashboard/dashboard-reproductions.cy.spec.js
+population: e2e_only
+wave: 4
+witness_outcome: witness_authored
+layer: frontend

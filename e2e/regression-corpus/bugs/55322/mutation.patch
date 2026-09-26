@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/reference/segments/SegmentFieldDetail.tsx b/frontend/src/metabase/reference/segments/SegmentFieldDetail.tsx
+index a4a739e1afd..c8b6a150026 100644
+--- a/frontend/src/metabase/reference/segments/SegmentFieldDetail.tsx
++++ b/frontend/src/metabase/reference/segments/SegmentFieldDetail.tsx
+@@ -153,7 +153,7 @@ const SegmentFieldDetail = (props: SegmentFieldDetailProps) => {
+           hasRevisionHistory={false}
+           onSubmit={handleSubmit}
+           endEditing={endEditing}
+-          reinitializeForm={() => handleReset(undefined)}
++          reinitializeForm={handleReset(undefined)}
+           submitting={isSubmitting}
+           revisionMessageFormField={getFormField("revision_message")}
+         />

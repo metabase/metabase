@@ -1,0 +1,26 @@
+id: reg-53527
+origin:
+  kind: regression
+  issue: 53527
+  fix_commit: 1316be26cd14e8febd1d74b13b5767ac60b3f50c
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 53527 should properly unescape quotes in the expression editor (metabase#53527)"
+    - "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle double-quoted strings"
+    - "metabase.query-processor.string-extracts-test/string-function-escape-literals-test"
+bug:
+  statement: "In the custom expression editor, escaped quotes in a string literal keep their backslash, so the expression uses the wrong text."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle double-quoted strings"
+  expected_failure: "expect(unquoteString(`\"\\\\\"\"`)).toEqual(`\"`); Expected: \", Received: \\"
+notes: "the fix's recursive-parser.unit.spec.ts was deleted in #54415; its assertion survives in unquoteString should handle double-quoted strings (string.unit.spec.ts:92), per reconstruction-report.md §3 and §5; string-function-escape-literals-test is a later backend parity test naming this issue (#77062); fe_be_boundary inferred"

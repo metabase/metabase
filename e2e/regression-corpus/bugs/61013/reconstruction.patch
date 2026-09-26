@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/dashboard/reducers-typed.ts b/frontend/src/metabase/dashboard/reducers-typed.ts
+index 14c7930dd83..97b2b19a236 100644
+--- a/frontend/src/metabase/dashboard/reducers-typed.ts
++++ b/frontend/src/metabase/dashboard/reducers-typed.ts
+@@ -369,7 +369,7 @@ export const loadingDashCards = createReducer(
+         return {
+           ...state,
+           loadingIds,
+-          loadingStatus: loadingIds.length > 0 ? "running" : "complete",
++          loadingStatus: loadingIds.length > 0 ? "running" : "idle",
+           startTime: loadingIds.length > 0 ? currentTime : null,
+         };
+       })

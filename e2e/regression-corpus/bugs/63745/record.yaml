@@ -1,0 +1,26 @@
+id: reg-63745
+origin:
+  kind: regression
+  issue: 63745
+  fix_commit: 102025c69c8fc9127dc74edfaddeec0b6765a42d
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/visualizations-tabular-reproductions.cy.spec.js::issue 63745 should display correct data when toggling columns (metabase#63745)"
+    - "frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailPanel.unit.spec.tsx::ObjectDetailPanel column desync (metabase#63745) renders headers from the latest passedData after a column toggle"
+    - "frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailPanel.unit.spec.tsx::ObjectDetailPanel keeps detail values aligned with their columns when the columns change (metabase#63745)"
+bug:
+  statement: "After reordering or toggling fields in a Detail visualization, field names and their values become mismatched."
+  odc: {type: Interface/O-O Messages, qualifier: Incorrect}
+  module: viz/ObjectDetail
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailPanel.unit.spec.tsx::ObjectDetailPanel column desync (metabase#63745) renders headers from the latest passedData after a column toggle"
+  expected_failure: "expect(screen.getByText(\"Vendor\")).toBeInTheDocument(); Unable to find an element with the text: Vendor"
+notes: "no mutant patch: passing the stale local data.cols instead of passedData.cols in ObjectDetailPanel reproduces the bug, but the fix's jest specs render leaf components with explicit props, so July saved no patch, see config.yaml mutation.reason and reconstruction-report.md; stratum wiring: the revert wires the columns prop to stale local state instead of the fresh prop; both unit tests are July-written and landed on this branch (hole-closer, then a witness in f19ae1317f4); FINDINGS.md lists 63745 as e2e load-bearing, which the closed hole contradicts"

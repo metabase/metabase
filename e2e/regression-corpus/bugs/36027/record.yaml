@@ -1,0 +1,25 @@
+id: reg-36027
+origin:
+  kind: regression
+  issue: 36027
+  fix_commit: 6cca5fb3440f36aa34a462b6b0990312176a4ab8
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-4.cy.spec.js::issue 36027 should use default metrics/dimensions if they're missing after removing some query clauses (metabase#36027)"
+    - "frontend/src/metabase/visualizations/lib/settings/visualization.unit.spec.ts::visualization_settings getComputedSettingsForSeries graph.dimensions and graph.metrics (metabase#36027) should recalculate defaults when stored dimensions and metrics are empty"
+bug:
+  statement: "After removing join and summarize steps from a saved chart question, the chart stays broken because its now-empty axis settings aren't recalculated."
+  odc: {type: Checking, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizations/lib/settings/visualization.unit.spec.ts::visualization_settings getComputedSettingsForSeries graph.dimensions and graph.metrics (metabase#36027) should recalculate defaults when stored dimensions and metrics are empty"
+  expected_failure: "expect(settings[\"graph.dimensions\"]).toEqual([\"col1\"]); Expected: [\"col1\"], Received: []"
+notes: "no mutant patch: July's revert of the empty-settings guard in graph.ts isValid (reconstruction-report.md §1) was left in its worktree and never saved; the shipped jest test in AddSeriesModal.unit.spec.tsx was deleted with the component (#48527) and is left out; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the reverted fix, see hole-closer-report.md §3; fe_be_boundary inferred"

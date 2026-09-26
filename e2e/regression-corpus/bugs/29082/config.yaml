@@ -1,0 +1,16 @@
+issue: 29082
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: partial  # FE-presentation half closable; deeper logic is CLJC/cypress
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: decc8b7d5733944e5e11e8822e88f9b6ccdd9a4c
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole
+# detail: see reconstruction-report.md

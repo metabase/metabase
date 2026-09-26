@@ -1,0 +1,27 @@
+id: reg-73448
+origin:
+  kind: regression
+  issue: 73448
+  fix_commit: 258dbb310b409e2e79e642ae410ab51b5afd8300
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts::issue 73448 updates a dashboard filter from a bar chart dimension click behavior (#73448)"
+    - "frontend/src/metabase/dashboard/click-behavior/dashboard-click-drill.unit.spec.ts::getClickBehavior falls back to the click behavior configured on a clicked dimension (#73448)"
+    - "frontend/src/metabase/dashboard/click-behavior/dashboard-click-drill.unit.spec.ts::DashboardClickAction creates a click-behavior action for a chart click with a dimension-scoped behavior (#73448)"
+    - "frontend/src/metabase/visualizations/visualizations/CartesianChart/events.unit.spec.ts::getEventDimensions includes the x-axis breakout when clicking a bar with only metric data (#73448)"
+bug:
+  statement: "Clicking a bar in a dashboard bar chart set to \"Update a dashboard filter\" opens the drill-through menu instead of updating the filter."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: viz/click-actions
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/click-behavior/dashboard-click-drill.unit.spec.ts::getClickBehavior falls back to the click behavior configured on a clicked dimension (#73448)"
+  expected_failure: "expect(clickBehavior).toBe(dimensionClickBehavior) fails; DashboardClickAction expect(actions).toHaveLength(1) got 0"
+notes: "the fix's spec dashboard/utils/dashboard-click-drill.unit.spec.js moved to dashboard/click-behavior/dashboard-click-drill.unit.spec.ts after July, so the ids are the master path; the mutant reverts only the dimension fallback in getClickBehavior, leaving the fix's events.ts change that adds the x-axis dimension to bar clicks (see reconstruction-report.md §5); the events.unit.spec.ts test covers that other half and doesn't fail on this mutant"

@@ -1,0 +1,21 @@
+issue: 34382
+fix_commits: []  # see reconstruction-report.md
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  file_relocated: true
+  oracle_source: relocated
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    (draftParameterValues INITIALIZE) — reverted INITIALIZE handler to always-clear (ignore clearCache); jest 1 failed/17 passed
+    Oracle relocation: .unit.spec.js→.ts
+    Product: dashboard draftParameterValues reducer
+validation:
+  oracle:
+    kind: fe_unit
+    test: frontend/src/metabase/dashboard/reducers.unit.spec.ts
+    reconstructed_result: fail_on_mutant__pass_on_clean
+coverage:
+  fe_unit: kill
+failure_shape: assertion_failure

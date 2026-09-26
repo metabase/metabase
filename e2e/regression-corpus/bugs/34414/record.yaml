@@ -1,0 +1,24 @@
+id: reg-34414
+origin:
+  kind: regression
+  issue: 34414
+  fix_commit: ad9742cd413494583b02b35a94fa6e5b49f0cb52
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 34414 populate field values after re-adding filter on virtual table field (metabase#34414)"
+bug:
+  statement: "After re-adding a filter on a field of a question used as a data source, the filter's value list stays empty until the page is refreshed several times."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: entities
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 34414 populate field values after re-adding filter on virtual table field (metabase#34414)"
+  expected_failure: null
+notes: "no mutant patch: dead target, because the Fields entity that cached field values by bare field id was deleted (#74338) and the FieldValuesWidget call site and its jest spec were removed (#56739), see reconstruction-report.md §2 and §4; the shipped jest spec FieldValuesWidget.unit.spec.tsx no longer exists and is left out; July recorded no failure message; fe_be_boundary inferred"

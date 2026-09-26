@@ -1,0 +1,25 @@
+id: reg-40051
+origin:
+  kind: regression
+  issue: 40051
+  fix_commit: d12c549a1f29aedc48aefb478c60aa55d7d1e150
+  fix_tests:
+    - "e2e/test/scenarios/question/document-title.cy.spec.js::question loading changes document title should verify document title changes while loading a slow question (metabase#40051)"
+    - "frontend/src/metabase/query_builder/actions/querying.unit.spec.ts::loadStartUIControls (metabase#40051) sets the document title to the loading message string, not the factory"
+bug:
+  statement: "While a slow question loads, the browser tab title shows JavaScript source code instead of the loading message."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: qb/document-title
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/query_builder/actions/querying.unit.spec.ts::loadStartUIControls (metabase#40051) sets the document title to the loading message string, not the factory"
+  expected_failure: "expect(getDocumentTitle(store.getState())).toBe(\"Doing science...\") fails; the title holds the message factory function"
+notes: "no mutant patch: July reproduced the bug (assign the loading-message factory to the title without calling it, in querying.ts) but no jest spec flipped and nothing was saved, see reconstruction-report.md §3; config.yaml still records an fe_unit hole, but the land-and-cull pass (f19ae1317f4) landed the jest witness and culled the e2e on this branch; the fix's jest edits were symbol renames with unchanged assertions (report §2); expected_failure inferred from the witness's assertion"

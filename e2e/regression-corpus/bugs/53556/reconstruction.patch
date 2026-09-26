@@ -1,0 +1,10 @@
+diff --git a/src/metabase/lib/card.cljc b/src/metabase/lib/card.cljc
+index 08f1557a623..f9d997ddd5e 100644
+--- a/src/metabase/lib/card.cljc
++++ b/src/metabase/lib/card.cljc
+@@ -333,4 +333,4 @@
+ (mu/defn source-card-is-model? :- :boolean
+   "Is the query's source-card a model?"
+   [query :- ::lib.schema/query]
+-  (= (source-card-type query) :model))
++  (= (source-card-type query) :never-a-model))

@@ -1,0 +1,9 @@
+issue: 70757
+fix_commit: 8de615a69d6ee6508261acaf41fce019a308eaa9
+e2e_repro: e2e/test/scenarios/embedding/sdk-iframe-embedding/sdk-csv-downloads.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.tsx"]
+layer: frontend
+witness_test: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/DownloadWidget/DownloadWidget.unit.spec.tsx

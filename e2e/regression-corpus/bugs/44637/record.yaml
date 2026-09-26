@@ -1,0 +1,24 @@
+id: reg-44637
+origin:
+  kind: regression
+  issue: 44637
+  fix_commit: e0381e9bc912f343c31bfb40314990015152a634
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 44637 should not crash when rendering a line/bar chart with empty results (metabase#44637)"
+bug:
+  statement: "Opening a line or bar chart whose query returns no rows crashes or spins forever instead of showing the empty-results message."
+  odc: {type: Checking, qualifier: Missing}
+  module: query_builder
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 44637 should not crash when rendering a line/bar chart with empty results (metabase#44637)"
+  expected_failure: "H.queryBuilderMain().findByText(\"No results\").should(\"exist\") fails; \"Something's gone wrong\" shows instead"
+notes: "fix_commit: July recorded none; GitHub closes the issue with #44769 (e0381e9bc91), which the report names too; no mutant patch: no jest spec reaches getTimeseriesXDomain's empty-xValues guard, so July applied no revert, see reconstruction-report.md; the fix's other edits were optional-chaining hardening that no test discriminates; expected_failure inferred from the e2e's assertions; fe_be_boundary inferred"

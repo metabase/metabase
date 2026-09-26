@@ -1,0 +1,26 @@
+diff --git a/src/metabase/query_processor/parameters/dates.clj b/src/metabase/query_processor/parameters/dates.clj
+index 48628d3e2e2..3fd285c5915 100644
+--- a/src/metabase/query_processor/parameters/dates.clj
++++ b/src/metabase/query_processor/parameters/dates.clj
+@@ -542,13 +542,6 @@
+     {:start date-str
+      :end   date-str}))
+ 
+-(defn- maybe-adjust-open-range
+-  [{:keys [start end] :as range} unit-fn]
+-  (assert (some some? [start end]))
+-  (cond (and start end) range
+-        start           (update range :start t/+ (unit-fn 1))
+-        end             (update range :end   t/- (unit-fn 1))))
+-
+ (mu/defn date-str->datetime-range :- ::date-string-range
+   "Generate range from `date-range-str`.
+ 
+@@ -574,7 +567,6 @@
+     (-> (update-vals range-raw date-str-conversion)
+         (m/update-existing :end exclusive-datetime-range-end (or ({:second t/seconds, :hour t/hours} unit)
+                                                                  (date-str->unit-fn (:end range-raw))))
+-        (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
+         format-date-range)))
+ 
+ (mu/defn date-string->filter :- ::lib.schema.expression/boolean

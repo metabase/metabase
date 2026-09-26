@@ -1,0 +1,36 @@
+issue: 54603
+issue_url: https://github.com/metabase/metabase/issues/54603
+fix_commits: ["2c58286958e2c84fefbd00b0886e82cf51079eb0"]
+fix_subject: "Check for active subscriptions when removing parameter"
+area: dashboard/ParameterSidebar
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted handleRemove to call performRemove() immediately, bypassing the fix's affected-subscriptions check + confirm modal.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "3/10 fail (metabase#54603 block: removes without confirmation; warning dialog never renders)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Removing a dashboard filter used by active subscriptions removes it silently with no warning dialog.
+  repro_failure: >
+    'warns before removing...': removeParameter called (expected not called); findByRole('dialog') not found.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/dashboard/components/ParameterSidebar/ParameterSidebar.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-2. Killed by shipped FE unit (jest) test => e2e repro cullable."

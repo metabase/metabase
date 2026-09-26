@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTableInner.tsx b/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTableInner.tsx
+index b8d2264751a..97acc8a33a0 100644
+--- a/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTableInner.tsx
++++ b/frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTableInner.tsx
+@@ -125,7 +125,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
+         const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
+           columnIndex
+         ];
+-        return tc(getTitleForColumn(column, settings));
++        return getTitleForColumn(column, settings);
+       },
+       [data, settings, tc],
+     );

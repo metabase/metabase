@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/dashboard/actions/parameters.tsx b/frontend/src/metabase/dashboard/actions/parameters.tsx
+index 63e36840fb9..7367ecbe0e0 100644
+--- a/frontend/src/metabase/dashboard/actions/parameters.tsx
++++ b/frontend/src/metabase/dashboard/actions/parameters.tsx
+@@ -1041,14 +1041,11 @@ export const setOrUnsetParameterValues =
+   (parameterIdValuePairs: any[][]) =>
+   (dispatch: Dispatch, getState: GetState) => {
+     const parameterValues = getParameterValues(getState());
+-    const areAllSet = parameterIdValuePairs.every(([id, value]) =>
+-      _.isEqual(value, parameterValues[id]),
+-    );
+     parameterIdValuePairs
+       .map(([id, value]) => {
+         let valueToSet = value;
+ 
+-        if (areAllSet) {
++        if (_.isEqual(value, parameterValues[id])) {
+           // unsetting value from parameter custom click behavior (Update a dashboard filter)
+           const parameter = getParameters(getState()).find(
+             ({ id: itemId }) => id === itemId,

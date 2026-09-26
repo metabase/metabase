@@ -1,0 +1,25 @@
+id: reg-67767
+origin:
+  kind: regression
+  issue: 67767
+  fix_commit: ba0ddc9a32d1c9c47f58e87d4255717d1afec3a4
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue #67767 only show preview query at full width on small screens (metabase#67767)"
+    - "frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx::NotebookContainer native preview layout (metabase#67767) shows the resizable (not full-width) native preview at a medium viewport (900px)"
+bug:
+  statement: "On medium-width windows the notebook's SQL preview panel takes the full width and hides the notebook instead of staying a resizable sidebar."
+  odc: {type: Assignment/Initialization, qualifier: Incorrect}
+  module: query_builder
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/components/view/View/NotebookContainer/NotebookContainer.unit.spec.tsx::NotebookContainer native preview layout (metabase#67767) shows the resizable (not full-width) native preview at a medium viewport (900px)"
+  expected_failure: "screen.getByTestId(\"notebook-native-preview-resize-handle\") throws: Unable to find an element; the full-width branch renders at 900px"
+notes: "base_commit is the parent of July's CI mutant 04b7de87d00 (run 29129223433); the shipped e2e is vacuous for this bug: it runs at a 630px viewport where the old 1280px and fixed 640px breakpoints both go full width, and July's CI run passed on the mutant (e2eonly-report.md §2); the witness never landed (a different NotebookContainer.unit.spec.tsx exists on this branch), so its id comes from witness.patch; fe_be_boundary inferred"

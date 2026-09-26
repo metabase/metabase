@@ -1,0 +1,24 @@
+id: reg-48712
+origin:
+  kind: regression
+  issue: 48712
+  fix_commit: cc928b793b388629753ccbe517462ee87e60c6d4
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 48712 should not reset the suggestions when the query is edited (metabase#48712)"
+bug:
+  statement: "In the native query editor, the highlighted autocomplete suggestion resets when the server's suggestions finish loading."
+  odc: {type: Timing/Serialization, qualifier: Incorrect}
+  module: query_builder
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 48712 should not reset the suggestions when the query is edited (metabase#48712)"
+  expected_failure: "H.NativeEditor.completion(\"PROCEDURE\").should(\"have.attr\", \"aria-selected\") fails after the completions finish loading"
+notes: "Mutant mismatch: July's reconstruction.patch stops the schema completer extending its range past the cursor (completing from inside a word), a different behaviour bundled in the same editor rewrite; this issue was fixed by replacing the ACE editor with CodeMirror (#51632), so a faithful rebuild needs a selection reset on async completion load in the CodeMirror completer; fix_commit: July recorded none; GitHub closes the issue with #51632 (cc928b793b3), the PR reconstruction-report.md names; the killing test \"useSchemaCompletion should complete even when inside a word\" guards the other behaviour and isn't in fix_tests; module from the fix (mostly query_builder); expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

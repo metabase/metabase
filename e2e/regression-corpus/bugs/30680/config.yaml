@@ -1,0 +1,37 @@
+issue: 30680
+issue_url: https://github.com/metabase/metabase/issues/30680
+fix_commits: ["f7377e8b1dfc7eb9d80881d42b7999232169a871"]
+fix_subject: "Native editor buttons incorrectly rendered in metadata mode"
+area: qb/DatasetQueryEditor
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added the arePropsEqual memo comparator on DatasetQueryEditor (returns true when both prev/next height===0, skipping re-render), so the stale isActive render persists. Relocated .jsx->.tsx, renamed to DatasetQueryEditorInner.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/query_builder/components/DatasetEditor/DatasetQueryEditor.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "1/4 fail (editor not re-rendered on isActive change at height 0)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Native editor action buttons remain visible/stale in metadata mode because the editor memo skips re-rendering when covered (height 0).
+  repro_failure: >
+    're-renders when height is 0 and isActive changes': action-buttons still present.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/query_builder/components/DatasetEditor/DatasetQueryEditor.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-4. Killed by shipped FE unit (jest) test => e2e repro cullable."

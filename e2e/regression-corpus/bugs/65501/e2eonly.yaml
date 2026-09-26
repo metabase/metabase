@@ -1,0 +1,8 @@
+issue: 65501
+fix_commit: 76cf73dde5d1f32cfd451cd514a2a5b40f05613a
+e2e_repro: e2e/test/scenarios/search/search-pagination.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/search/containers/SearchApp.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx

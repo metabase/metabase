@@ -1,0 +1,16 @@
+diff --git a/src/metabase/lib/card.cljc b/src/metabase/lib/card.cljc
+index 08f1557a623..ae5ce4d84e6 100644
+--- a/src/metabase/lib/card.cljc
++++ b/src/metabase/lib/card.cljc
+@@ -214,9 +214,8 @@
+   can be merged on top.
+ 
+   Returns `:id` for native models only."
+-  [native-model? :- :boolean]
+-  (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
+-    native-model? (conj :id)))
++  [_native-model? :- :boolean]
++  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name])
+ 
+ ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility
+ ;;; with [[metabase.lib.field.resolution/previous-stage-metadata]] as well

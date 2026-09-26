@@ -1,0 +1,37 @@
+issue: 65942
+issue_url: https://github.com/metabase/metabase/issues/65942
+fix_commits: ["99fd1809cbac5f5d3aa570de270ecc472b3d961b"]
+fix_subject: "Get user attributes from attributes map (#66274)"
+area: selectors/user
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted getUserAttributes selector from the fix's user?.attributes back to the legacy login_attributes.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/selectors/user.unit.spec.ts", clean_baseline: pass, reconstructed_result: "1 fail (JWT-sourced attributes dropped)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    User attributes stored in the attributes map (incl. JWT-sourced) are silently dropped because the selector reads the legacy login_attributes field.
+  repro_failure: >
+    'should return user attributes including JWT-sourced': toEqual expected {jwt_attr,manual_attr}, received {}.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/selectors/user.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-1. Killed by shipped FE unit (jest) test => e2e repro cullable."

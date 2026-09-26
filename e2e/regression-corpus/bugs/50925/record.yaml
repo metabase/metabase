@@ -1,0 +1,26 @@
+id: reg-50925
+origin:
+  kind: regression
+  issue: 50925
+  fix_commit: 31be930b9c601f5dcc7afda602a02f7bcf046fb1
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 50925 should not remove existing characters when applying autocomplete suggestion (metabase#50925)"
+    - "frontend/src/metabase/querying/expressions/pratt/lexifier.unit.spec.ts::lexify bracket identifiers tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)"
+    - "frontend/src/metabase/querying/expressions/pratt/lexifier.unit.spec.ts::lexify bracket identifiers tokenizes incomplete bracket identifier followed by whitespace (metabase#50925)"
+bug:
+  statement: "Accepting an autocomplete suggestion inside a custom column formula deletes the opening bracket of the next column reference."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/pratt/lexifier.unit.spec.ts::lexify bracket identifiers tokenizes incomplete bracket identifier followed by bracket identifier (metabase#50925)"
+  expected_failure: "lexify(\"[Pr[Price]\") expected FIELD tokens \"[Pr\" and \"[Price]\"; received one FIELD token \"[Pr[Price]\""
+notes: "the tests shipped in frontend/src/metabase-lib/v1/expressions/tokenizer.unit.spec.ts and moved into pratt/lexifier.unit.spec.ts when the tokenizer became a Lezer grammar (see reconstruction-report.md §2); also fails \"handles brackets that aren't properly closed (multiple open brackets)\", not written for this bug; fe_be_boundary inferred"

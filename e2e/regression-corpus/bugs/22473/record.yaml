@@ -1,0 +1,27 @@
+id: reg-22473
+origin:
+  kind: regression
+  issue: 22473
+  fix_commit: d02fef97bbd2af0fe2a5e41af4077b107fa73a39
+  fix_tests:
+    - "e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.js::issue 22473 nocollection user should be able to view and unsubscribe themselves from a subscription"
+    - "metabase.pulse.api.pulse-test/list-test"
+    - "metabase.pulse.api.pulse-test/get-pulse-test"
+    - "metabase.pulse.api.pulse-test/unsubscribe-without-collection-perms-test"
+bug:
+  statement: "Users without collection access see an empty Notifications page in their account settings, so they can't unsubscribe from subscriptions they receive."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: pulse/api/pulse
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/permissions/permissions-reproductions.cy.spec.js::issue 22473 nocollection user should be able to view and unsubscribe themselves from a subscription"
+  expected_failure: "cy.findByText(\"Orders in a dashboard\").should(\"exist\") fails on the account notifications page"
+notes: "no mutant patch: the fix-added assertions in list-test and get-pulse-test are vacuous (a fixture cascade-deletes the pulse before they run), so July had no oracle and restored the tree, see reconstruction-report.md §3; the fix also deleted the model test's negative can-read? assertion; unsubscribe-without-collection-perms-test is a later backend parity test naming this issue that looks like it would catch the bug, but it was never run against a mutant; fe_be_boundary kept as July's false although the fix renames the list request param on both sides (can_read to creator_or_recipient); expected_failure inferred from the e2e's assertion"

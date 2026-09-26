@@ -1,0 +1,24 @@
+id: reg-63026
+origin:
+  kind: regression
+  issue: 63026
+  fix_commit: b263bd0bc0678bfd500a90efc8b8cfb1f25209c7
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue 63026 should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)"
+bug:
+  statement: "Chart tooltips have no maximum width, so a long label stretches the tooltip across the screen."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: visualizations
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts::issue 63026 should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)"
+  expected_failure: "expect(width).to.be.lte(550) fails for the pie chart tooltip"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; CSS-module-only fix that MATRIX.md classes unit-untestable; July's e2e leg was never run; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

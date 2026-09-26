@@ -1,0 +1,7 @@
+issue: 63405
+fix_commit: b336da1517ee69fb6091ff7c354c2db8f88279b7
+e2e_repro: e2e/test/scenarios/native/snippets.cy.spec.js
+population: e2e_only
+witness_outcome: witness
+mutation_files: ["frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx"]
+layer: frontend

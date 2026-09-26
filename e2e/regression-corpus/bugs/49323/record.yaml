@@ -1,0 +1,25 @@
+id: reg-49323
+origin:
+  kind: regression
+  issue: 49323
+  fix_commit: 896c516d9848e0a52d01291e52d379d7e095e770
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js::scenarios > dashboard > filters > text/category should use the list value picker for single-value category filters (metabase#49323)"
+    - "e2e/test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js::scenarios > dashboard > filters > text/category should use the list value picker for multi-value category filters (metabase#49323)"
+bug:
+  statement: "A dashboard category filter set to \"Search box\" with a single value shows a free-text search input instead of the list value picker."
+  odc: {type: Checking, qualifier: Missing}
+  module: components
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "e2e/test/scenarios/dashboard-filters/dashboard-filters-text-category.cy.spec.js::scenarios > dashboard > filters > text/category should use the list value picker for single-value category filters (metabase#49323)"
+  expected_failure: "cy.findByRole(\"combobox\").should(\"not.exist\") fails inside the filter popover"
+notes: "49323 is the fix PR's number, not an issue: GitHub shows a merged PR that closes #49279, and the e2e tags use the PR number; no mutant patch: dead target, the fix was deliberately rolled back by #51183 (\"Partial rollback of FieldValuesWidget to v50\") and its jest spec deleted by #56739, so the fixed behaviour no longer ships, see reconstruction-report.md §4-5; the e2e tests still exist at 8317274709c; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

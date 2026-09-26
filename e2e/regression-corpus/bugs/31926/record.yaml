@@ -1,0 +1,25 @@
+id: reg-31926
+origin:
+  kind: regression
+  issue: 31926
+  fix_commit: 44bc8c72f2896a2d7b620f9842be50484625ac4a
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.js::issue 31926 display the relevant error message in save question modal (metabase#21597)"
+    - "metabase.lib.native-test/remove-template-tags-when-changing-database"
+bug:
+  statement: "Switching a native query to a different database keeps its field filters pointing at the old database's fields."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: lib/native
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.lib.native-test/remove-template-tags-when-changing-database"
+  expected_failure: "(is (empty? ... (filter :dimension))) fails; mytag retains :dimension [:field {...} 1]"
+notes: "the e2e under describe \"issue 31926\" keeps the #21597 title it had before the fix repurposed it (it now asserts run and save are disabled after the database change), so it counts for this issue; the mutant adds a code comment referencing #31926, harmless; the fix's :dimension-optional schema change is left in place (see reconstruction-report.md §4)"

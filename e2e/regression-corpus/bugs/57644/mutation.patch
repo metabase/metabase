@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.tsx b/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.tsx
+index 1f6ba29e39f..1dd1de51143 100644
+--- a/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.tsx
++++ b/frontend/src/metabase/querying/components/NativeQueryEditor/DataSourceSelectors/DataSourceSelectors.tsx
+@@ -180,7 +180,7 @@ const DatabaseSelector = ({
+       databases={databases}
+       selectedDatabaseId={database?.id}
+       setDatabaseFn={setDatabaseId}
+-      isInitiallyOpen={database == null && databases.length > 1}
++      isInitiallyOpen={database == null}
+       readOnly={readOnly}
+       databaseIsDisabled={databaseIsDisabled}
+       databaseDisabledTooltip={databaseDisabledTooltip}

@@ -1,0 +1,7 @@
+id: reg-46767
+origin:
+  kind: regression
+  issue: 46767
+  alias_of: 60987
+  fix_commit: b76a18112acc990a9faca46cfa1e5de08d9680ff
+notes: "same fix commit as 60987 (#60990), which GitHub also names as this issue's fix; the mutant, statement and hint live in reg-60987, whose fix_tests include this issue's e2e repro"

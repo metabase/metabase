@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/metadata/utils/field.ts b/frontend/src/metabase/metadata/utils/field.ts
+index a3bc166379e..7fec468131c 100644
+--- a/frontend/src/metabase/metadata/utils/field.ts
++++ b/frontend/src/metabase/metadata/utils/field.ts
+@@ -57,10 +57,6 @@ export function getRawTableFieldId(field: Field): FieldId {
+ export function getFieldCurrency(
+   fieldSettings?: FieldFormattingSettings,
+ ): string {
+-  if (fieldSettings?.currency) {
+-    return fieldSettings.currency;
+-  }
+-
+   const globalSettings: FieldFormattingSettings = getGlobalSettingsForColumn();
+   if (globalSettings.currency) {
+     return globalSettings.currency;

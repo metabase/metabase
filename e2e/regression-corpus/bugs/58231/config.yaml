@@ -1,0 +1,38 @@
+issue: 58231
+issue_url: https://github.com/metabase/metabase/issues/58231
+fix_commits: ["ff8a240aac0eab9fc0f0c4ea57ced69d129385ed"]
+fix_subject: "Dashboard action warning text (#62511)"
+area: dashboard/DashCardParameterMapper
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  fe_bucket: all_specs_gone
+  oracle_source: "relocated_spec (.jsx -> .tsx)"
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reverted 3 product hunks so the action-parameter/virtual-card warning renders always-inline instead of a tooltip on small cards (getting cut off). Oracle spec migrated .jsx->.tsx (discriminating 'not cut off warning text' tests survive verbatim).
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.unit.spec.tsx", clean_baseline: pass, reconstructed_result: "2/22 fail (warning inline instead of tooltip on small cards)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    On small dashcards, action-parameter warning text is rendered inline and visually cut off instead of moved into a hover tooltip on the info icon.
+  repro_failure: >
+    'should not cut off warning text': tooltip not rendered / wrong content for small card (2 tests).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardCardParameterMapper.unit.spec.tsx"], clean_baseline: pass}
+  notes: "FE reconstruction from all_specs_gone bucket; oracle via relocated_spec (.jsx -> .tsx). Killed by FE unit (jest) => e2e repro cullable."

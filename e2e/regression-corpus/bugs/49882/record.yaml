@@ -1,0 +1,28 @@
+id: reg-49882
+origin:
+  kind: regression
+  issue: 49882
+  fix_commit: 12f85cbb79446794c4de9ef62675ebae318e4d11
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 49882 should not eat up subsequent characters when applying a suggestion (metabase#49882-1)"
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 49882 does not clear expression input when expression is invalid (metabase#49882-2, metabase#15892)"
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 49882 should allow moving cursor between wrapped lines with arrow up and arrow down keys (metabase#49882-3)"
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-1.cy.spec.js::issue 49882 should update currently selected suggestion when suggestions list is updated (metabase#49882-4)"
+    - "frontend/src/metabase/querying/expressions/pratt/lexifier.unit.spec.ts::lexify bracket identifiers takes operators into account when dealing with incomplete bracket identifier tokens"
+bug:
+  statement: "In the custom expression editor, applying an autocomplete suggestion to an unclosed column reference eats the characters that follow it, such as a comma."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/pratt/lexifier.unit.spec.ts::lexify bracket identifiers takes operators into account when dealing with incomplete bracket identifier tokens"
+  expected_failure: "toEqual mismatch for case([Total] > 200, [To, \"Nothing\"): expected FIELD \"[To\" then COMMA, received one FIELD token \"[To,\""
+notes: "the issue bundles four editor bugs; the mutant reintroduces only the first (an unclosed bracket identifier swallowing the comma); the (metabase#49882-3) e2e was skipped and deleted from master in #81011, so its id comes from HEAD and the July base; the jest test is the fix's tokenizer.unit.spec.ts test, carried by name into pratt/lexifier.unit.spec.ts when the tokenizer was rewritten (see reconstruction-report.md §5); fe_be_boundary inferred"

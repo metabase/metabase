@@ -1,0 +1,20 @@
+diff --git a/frontend/src/metabase/databases/utils/engine.ts b/frontend/src/metabase/databases/utils/engine.ts
+index e68d7effdb8..8e46b7e9a65 100644
+--- a/frontend/src/metabase/databases/utils/engine.ts
++++ b/frontend/src/metabase/databases/utils/engine.ts
+@@ -69,7 +69,14 @@ function formatJsonQuery(query: JSONQuery) {
+ }
+ 
+ export function formatNativeQuery(query: string | JSONQuery): string {
+-  return typeof query === "string" ? query : formatJsonQuery(query);
++  if (typeof query === "object") {
++    return formatJsonQuery(query);
++  }
++  try {
++    return formatJsonQuery(JSON.parse(query));
++  } catch {
++    return query;
++  }
+ }
+ 
+ export function isDeprecatedEngine(

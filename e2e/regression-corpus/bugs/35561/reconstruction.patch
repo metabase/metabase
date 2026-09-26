@@ -1,0 +1,12 @@
+diff --git a/src/metabase/lib/drill_thru/fk_filter.cljc b/src/metabase/lib/drill_thru/fk_filter.cljc
+index 5266f3fe879..c3fd7c522ae 100644
+--- a/src/metabase/lib/drill_thru/fk_filter.cljc
++++ b/src/metabase/lib/drill_thru/fk_filter.cljc
+@@ -47,6 +47,7 @@
+    {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
+   (when (and column
+              (some? value)
++             (not= value :null)         ; If the FK is null, don't show this option.
+              (lib.drill-thru.common/mbql-stage? query stage-number)
+              (not (lib.types.isa/primary-key? column))
+              (lib.types.isa/foreign-key? column))

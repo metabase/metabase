@@ -1,0 +1,30 @@
+id: reg-32037
+origin:
+  kind: regression
+  issue: 32037
+  fix_commit: 9a8dc1450116ea7a53cf6441437b5e1296859ea2
+  fix_tests:
+    - "e2e/test/scenarios/metrics/reproductions/metrics-reproductions.cy.spec.ts::issue 32037 should show unsaved changes modal and allow to discard changes when editing a metric (metabase#32037)"
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 32037 should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)"
+    - "e2e/test/scenarios/models/reproductions-2.cy.spec.ts::issue 32037 should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)"
+    - "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts::isNavigationAllowed when editing structured model disallows all other navigation to `$pathname`"
+    - "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts::isNavigationAllowed when editing native-query model disallows all other navigation to `$pathname`"
+    - "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts::isNavigationAllowed when editing structured metric disallows all other navigation to `$pathname`"
+    - "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts::isNavigationAllowed when editing structured metric disallows leaving for the metric view page while editing (metabase#32037) to `$pathname`"
+bug:
+  statement: "While editing a model or metric with unsaved changes, going to its view page or back in the browser leaves without warning and loses the edits."
+  odc: {type: Checking, qualifier: Extraneous}
+  module: qb/isNavigationAllowed
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts::isNavigationAllowed when editing structured model disallows all other navigation to `$pathname`"
+  expected_failure: "expect(received).toBe(expected) // Expected: false, Received: true for the /model/3 and /model/4 view pages"
+notes: "fix_tests: the isNavigationAllowed ids are it.each titles kept with `$pathname` as the source writes them; the fix split the spec's model/metric locations into view and edit pages, so these blocks carry its assertions; the last id is July's landed witness at HEAD (not on master); the metric e2e was culled on this branch and still exists at 8317274709c"

@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/dashboard/actions/parameters.tsx b/frontend/src/metabase/dashboard/actions/parameters.tsx
+index 63e36840fb9..451eb66a267 100644
+--- a/frontend/src/metabase/dashboard/actions/parameters.tsx
++++ b/frontend/src/metabase/dashboard/actions/parameters.tsx
+@@ -1041,8 +1041,8 @@ export const setOrUnsetParameterValues =
+   (parameterIdValuePairs: any[][]) =>
+   (dispatch: Dispatch, getState: GetState) => {
+     const parameterValues = getParameterValues(getState());
+-    const areAllSet = parameterIdValuePairs.every(([id, value]) =>
+-      _.isEqual(value, parameterValues[id]),
++    const areAllSet = parameterIdValuePairs.every(
++      ([id, value]) => value === parameterValues[id],
+     );
+     parameterIdValuePairs
+       .map(([id, value]) => {

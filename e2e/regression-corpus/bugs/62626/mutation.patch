@@ -1,0 +1,15 @@
+diff --git a/frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx b/frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+index 41741ac7ec0..70117dd1361 100644
+--- a/frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
++++ b/frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
+@@ -97,9 +97,7 @@ export const RemappingPicker = ({
+     data: fieldValues,
+     error: fieldValuesError,
+     isLoading: isLoadingFieldValues,
+-  } = useGetFieldValuesQuery(id, {
+-    skip: value !== "custom" && !isChoosingDisplayValue,
+-  });
++  } = useGetFieldValuesQuery(id);
+   const options = useMemo(() => {
+     return getOptions(field, fieldValues?.values, fkTargetTable);
+   }, [field, fieldValues, fkTargetTable]);

@@ -1,0 +1,37 @@
+issue: 32037
+issue_url: https://github.com/metabase/metabase/issues/32037
+fix_commits: ["9a8dc1450116ea7a53cf6441437b5e1296859ea2"]
+fix_subject: "Prevent browser close/go back while editing model/metric"
+area: qb/isNavigationAllowed
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Re-added the model/metric VIEW-page pathnames (/model/:slug, /metric/:slug) to allowedPathnames in isNavigationAllowed, so navigating to the view page during an unsaved edit is wrongly allowed.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/query_builder/utils/utils.unit.spec.ts", clean_baseline: pass, reconstructed_result: "6/431 fail (view-page navigation allowed while editing)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    While editing a model/metric with unsaved changes, navigating to its view page (or browser back/close) is allowed, losing the edits.
+  repro_failure: >
+    isNavigationAllowed(view page) expected false, received true (6 model/metric cases).
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/query_builder/utils/utils.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-4. Killed by shipped FE unit (jest) test => e2e repro cullable."

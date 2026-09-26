@@ -1,0 +1,25 @@
+id: reg-63180
+origin:
+  kind: regression
+  issue: 63180
+  fix_commit: 2365a169e49a2c88248ea907ec6f8ba98ba4cd65
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue 63180 should not be possible to close the custom expression editor when creating a new expression from a combine or extract shortcut (metabase#63180)"
+    - "frontend/src/metabase/querying/components/expressions/Editor/Editor.witness.unit.spec.tsx::Editor (metabase#63180 witness) treats a shortcut-generated clause (clause !== initialClause) as unsaved changes, guarding outside clicks"
+bug:
+  statement: "Clicking outside a custom expression created with the Combine or Extract shortcut closes the editor and discards it without warning."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/components/expressions/Editor/Editor.witness.unit.spec.tsx::Editor (metabase#63180 witness) treats a shortcut-generated clause (clause !== initialClause) as unsaved changes, guarding outside clicks"
+  expected_failure: "findByText(\"Keep editing your custom expression?\") fails; the confirmation never renders"
+notes: "base_commit is the parent of July's CI mutant 2137d681d52 (run 29135056633); July contradicts itself: E2E-ONLY.md lists 63180 among e2es that missed their bug, but evidence/e2e-only-batch-wave3.jsonl records the e2e run failing on the mutant (caught); fe_be_boundary inferred"

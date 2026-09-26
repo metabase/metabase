@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase-lib/v1/parameters/utils/targets.ts b/frontend/src/metabase-lib/v1/parameters/utils/targets.ts
+index cddb2893013..c06c489ee03 100644
+--- a/frontend/src/metabase-lib/v1/parameters/utils/targets.ts
++++ b/frontend/src/metabase-lib/v1/parameters/utils/targets.ts
+@@ -192,12 +192,7 @@ export function getParameterColumns(
+   parameter?: Parameter,
+   opts?: GetParameterColumnsOpts,
+ ) {
+-  // treat the dataset/model question like it is already composed so that we can apply
+-  // dataset/model-specific metadata to the underlying dimension options
+-  const query =
+-    question.type() !== "question"
+-      ? question.composeQuestionAdhoc().query()
+-      : question.query();
++  const query = question.query();
+ 
+   // Pivot tables cannot work when there is an extra stage added on top of breakouts and aggregations
+   const nextQuery =

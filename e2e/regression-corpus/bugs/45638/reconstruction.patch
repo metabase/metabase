@@ -1,0 +1,18 @@
+diff --git a/frontend/src/metabase/public/hooks/use-set-embed-font.ts b/frontend/src/metabase/public/hooks/use-set-embed-font.ts
+index cad240dd9a1..a57615e6397 100644
+--- a/frontend/src/metabase/public/hooks/use-set-embed-font.ts
++++ b/frontend/src/metabase/public/hooks/use-set-embed-font.ts
+@@ -10,11 +10,11 @@ export const useSetEmbedFont = ({ location }: { location: Location }) => {
+   const dispatch = useDispatch();
+ 
+   useEffect(() => {
+-    const { font } = parseHashOptions(location.hash) as EmbeddingHashOptions;
++    parseHashOptions(location.hash) as EmbeddingHashOptions;
+ 
+     dispatch(
+       setOptions({
+-        font: font ?? undefined,
++        font: undefined,
+       }),
+     );
+   }, [location.hash, dispatch]);

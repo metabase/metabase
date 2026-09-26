@@ -1,0 +1,24 @@
+id: reg-56905
+origin:
+  kind: regression
+  issue: 56905
+  fix_commit: 453eab244c748ed099a20cda0e2209b3c324268b
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 56905 It should be possible to run the native query when a parameter value input is focused (metabase#56905)"
+bug:
+  statement: "Cmd+Enter doesn't run a native query while a parameter value input is focused."
+  odc: {type: Interface/O-O Messages, qualifier: Missing}
+  module: query_builder
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 56905 It should be possible to run the native query when a parameter value input is focused (metabase#56905)"
+  expected_failure: "findByText(\"foobar\") inside query-visualization-root fails after cy.realPress([metaKey, \"Enter\"]): the query didn't run"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; stratum wiring: the mutant drops the empty tags-to-ignore argument from the mod+Enter useHotkeys registration, so the hotkey is ignored inside inputs; GitHub records no closing PR, July's fix commit kept; July's e2e leg was never run; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

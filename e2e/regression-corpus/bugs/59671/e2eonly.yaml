@@ -1,0 +1,9 @@
+issue: 59671
+fix_commit: 9e7943aeb5b092bb6b09dbe04be9694c54a15b07
+e2e_repro: e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/visualizations/CartesianChart/use-models-and-option.witness.unit.spec.tsx

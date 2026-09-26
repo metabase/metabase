@@ -1,0 +1,26 @@
+id: reg-41635
+origin:
+  kind: regression
+  issue: 41635
+  fix_commit: 2455537bc1392a9919b520f1a2d0f4b5a600f194
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::dashboard preview dashboard linked filters values in embed preview don't behave like embedding (metabase#41635)"
+    - "metabase.embedding-rest.api.preview-embed-test/params-with-static-list-test"
+    - "metabase.embedding-rest.api.preview-embed-test/preview-locked-linked-chain-filter-values-test"
+bug:
+  statement: "In the static embedding preview, a dashboard filter linked to a locked filter lists values differently from the real embed."
+  odc: {type: Function/Class/Object, qualifier: Missing}
+  module: embedding-rest/api/preview-embed
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.embedding-rest.api.preview-embed-test/params-with-static-list-test"
+  expected_failure: "expected a status code of 200, got 404. Response body: \"API endpoint does not exist.\""
+notes: "stratum wiring: the mutant deletes the preview-embed dashboard param values route, which the frontend half of the fix still calls; so the mutant's symptom is a 404 (no filter values in preview) rather than the pre-fix unconstrained values, the same broken feature seen differently; July's fe_be_boundary false is doubtful, since the fix added a backend route and pointed the frontend at it; preview-locked-linked-chain-filter-values-test is a later backend parity test naming this issue and also fails on the mutant (see reconstruction-report.md §4)"

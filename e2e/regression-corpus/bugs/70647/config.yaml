@@ -1,0 +1,55 @@
+issue: 70647
+issue_url: https://github.com/metabase/metabase/issues/70647
+fix_commits: ["4d3ae025277283b19749697f188ab22f9388c819"]
+fix_pr: 74574
+fix_subject: "Fix adding rows to editable tables with a date column (#74574)"
+area: null
+fe_be_boundary: null
+
+mutation:
+  kind: patch
+  patch_file: inverse.patch
+  notes: null
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  breaks_compile: null
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/table-editing/table-editing.cy.spec.ts
+      line: 630
+      kind: it
+      title: "should allow creating a record in a table with a required date column (metabase#70647)"
+  green_baseline: untested
+  repro_confirmed: null
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: miss, killed_by: []}
+  notes: HOLE — 2314 related unit tests all pass with bug reintroduced (jest --findRelatedTests)
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  test_file: enterprise/frontend/src/metabase-enterprise/table-editing/inputs/TableActionInputDate.unit.spec.tsx
+  test_title: "should fire onChange with the restored date when the value changes (metabase#70647)"
+  killed: true          # -R mutate -> FAIL (1 failed); forward restore -> PASS
+  clean_baseline: green
+  notes: >
+    Renders TableActionInputDate with an onChange spy, changes the DateInput value,
+    asserts onChange fires with the restored "YYYY-MM-DD" value and onEnter is NOT
+    called. On the mutated tree handleChange calls onEnter instead of onChange/onBlur
+    -> both assertions fail. onChange is type-valid only on the fixed tree (the
+    mutation's props Omit "onChange"), so the test type-checks on clean.
+
+failure_shape:
+  observed: true          # observed at unit level via the hole_closed test
+  source: observed_unit
+  symptom: >
+    Adding a row to an editable table that has a (required) date column fails — the
+    entered date is not committed when the value changes, so record creation fails.
+  repro_failure: >
+    Repro creates a record with a date column; on the mutated tree handleChange
+    calls onEnter instead of onChange/onBlur, so the date value is never submitted
+    and the create step fails.
+  not_setup_crash: true

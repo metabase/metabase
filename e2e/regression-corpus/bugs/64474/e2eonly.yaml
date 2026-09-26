@@ -1,0 +1,9 @@
+issue: 64474
+fix_commit: d1cb9336da6fa43a0e7cfd7db302d5cbc49f3f24
+e2e_repro: e2e/test/scenarios/data-studio/transforms/transforms.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/querying/editor/hooks/use-query-results/use-query-results-cancel.unit.spec.ts

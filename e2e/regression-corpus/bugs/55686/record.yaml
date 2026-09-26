@@ -1,0 +1,25 @@
+id: reg-55686
+origin:
+  kind: regression
+  issue: 55686
+  fix_commit: 396fa05998ededf60662ad4625f4510f3eee4824
+  fix_tests:
+    - "e2e/test/scenarios/custom-column/custom-column-reproductions-2.cy.spec.js::issue #55686 should show suggestions for functions even when the current token is an operator (metabase#55686)"
+    - "frontend/src/metabase/querying/expressions/suggestions/functions.unit.spec.ts::suggestFunctions should complete functions whose name starts with the an operator name as a prefix (metabase#55686)"
+bug:
+  statement: "Typing an operator word such as \"not\" in the custom expression editor hides function suggestions like notEmpty and notIn."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/expressions/suggestions/functions.unit.spec.ts::suggestFunctions should complete functions whose name starts with the an operator name as a prefix (metabase#55686)"
+  expected_failure: "expect(results?.options.map(...)).toEqual([\"notEmpty\", \"notIn\", \"notNull\", ...]); received undefined"
+notes: "base_commit is the parent of July's CI mutant 92b17dab4de (run 29125325968); the jest oracle shipped as frontend/src/metabase-lib/v1/expressions/complete/functions.unit.spec.ts and moved with the module (see reconstruction-report.md §2); fe_be_boundary inferred"

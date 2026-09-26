@@ -1,0 +1,28 @@
+id: reg-64340
+origin:
+  kind: regression
+  issue: 64340
+  fix_commit: 734dabb1637492899f656ea255031dea6d075889
+  fix_tests:
+    - "e2e/test/scenarios/dashboard/visualizer/basics.cy.spec.ts::scenarios > dashboard > visualizer > basics should allow drilling into the underlying question by clicking on the title (metabase#64340)"
+    - "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts::getInitialStateForCardDataSource should ignore superfluous columns (VIZ-1035)"
+    - "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts::getInitialStateForCardDataSource should ignore superfluous columns when the original card is a combo chart"
+    - "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts::getInitialStateForCardDataSource should compute default viz settings when card's viz type isn't supported by the visualizer"
+    - "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts::getInitialStateForCardDataSource should return scalar funnel initial state if the original card is a %s"
+bug:
+  statement: "After a dashboard card is edited in the visualizer, renaming or re-describing the original question no longer updates the card's title and description."
+  odc: {type: Assignment/Initialization, qualifier: Extraneous}
+  module: visualizer/initial-state
+  lowest_level: unit
+  stratum: state
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizer/utils/get-initial-state-for-card-data-source.unit.spec.ts::getInitialStateForCardDataSource should ignore superfluous columns (VIZ-1035)"
+  expected_failure: "expect(state.settings).toEqual(...) fails on an unexpected \"card.title\" key"
+notes: "64340 is the fix PR's own number, GitHub has no separate issue; stratum state: the mutant copies the card title into the visualizer's saved settings, a snapshot that goes stale when the source question changes; the mutant restores only card.title, not card.description, since no current assertion covers the description (see reconstruction-report.md §4); the four jest tests are the ones whose expected settings the fix changed; the scalar funnel id is an it.each template; fe_be_boundary inferred"

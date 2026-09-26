@@ -1,0 +1,37 @@
+issue: 68285
+issue_url: https://github.com/metabase/metabase/issues/68285
+fix_commits: ["dd00b33545e410310626804ac49fe34c13ee7f0b"]
+fix_subject: "Fix tracking event never set to default in embed (#68407)"
+area: embedding/iframe-sdk-setup
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Removed the fix-added initialSqlParameters:{} from the chart branch of getDefaultSdkIframeEmbedSettings.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.unit.spec.ts", clean_baseline: pass, reconstructed_result: "1 fail (chart experience: toMatchObject missing initialSqlParameters)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    The default SDK iframe embed settings for the chart experience omit initialSqlParameters (never defaulted to {}).
+  repro_failure: >
+    'chart experience returns correct properties': toMatchObject diff missing initialSqlParameters:{}.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-1. Killed by shipped FE unit (jest) test => e2e repro cullable."

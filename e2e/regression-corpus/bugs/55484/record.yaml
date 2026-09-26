@@ -1,0 +1,24 @@
+id: reg-55484
+origin:
+  kind: regression
+  issue: 55484
+  fix_commit: 7405037f1274f3eb0837ddda5fa56dd375b8d0fc
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-tabular/drillthroughs/chart_drill.cy.spec.js::scenarios > visualizations > drillthroughs > chart drill should clear the graph.dimensions setting when drilling through on a chart with \"graph.dimensions\" set (metabase#55484)"
+bug:
+  statement: "After drilling from a line chart to its underlying records, switching the result back to a line or bar chart throws an error."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: querying
+  lowest_level: integration
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/visualizations-tabular/drillthroughs/chart_drill.cy.spec.js::scenarios > visualizations > drillthroughs > chart drill should clear the graph.dimensions setting when drilling through on a chart with \"graph.dimensions\" set (metabase#55484)"
+  expected_failure: "cy.findByText(\"Cannot read properties of undefined (reading 'name')\").should(\"not.exist\") fails after switching to a line chart"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; July records an fe_unit hole and never ran the e2e leg; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

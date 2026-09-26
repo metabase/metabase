@@ -1,0 +1,75 @@
+diff --git a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.unit.spec.tsx b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.unit.spec.tsx
+index 4c45674a87c..94de8c699bb 100644
+--- a/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.unit.spec.tsx
++++ b/frontend/src/metabase/querying/notebook/components/NotebookStep/NotebookStepPreview/NotebookStepPreview.unit.spec.tsx
+@@ -1,7 +1,19 @@
+-import { renderWithProviders, screen } from "__support__/ui";
++import {
++  act,
++  mockGetBoundingClientRect,
++  renderWithProviders,
++  screen,
++} from "__support__/ui";
++import registerVisualizations from "metabase/visualizations/register";
++import {
++  createMockColumn,
++  createMockSingleSeries,
++} from "metabase-types/api/mocks";
+ 
+ import { VisualizationPreview } from "./NotebookStepPreview";
+ 
++registerVisualizations();
++
+ describe("VisualizationPreview", () => {
+   it("should render an error message when an error occurs (metabase#40724)", () => {
+     renderWithProviders(
+@@ -37,4 +49,49 @@ describe("VisualizationPreview", () => {
+     );
+     expect(screen.getByText(message)).toBeInTheDocument();
+   });
++
++  it("should not render the object-detail / row-id column in the preview (metabase#63070)", () => {
++    mockGetBoundingClientRect();
++    jest.useFakeTimers();
++
++    const rawSeries = [
++      createMockSingleSeries(
++        { display: "table" },
++        {
++          data: {
++            rows: [
++              ["1", "Widget"],
++              ["2", "Gadget"],
++            ],
++            cols: [
++              createMockColumn({
++                base_type: "type/Integer",
++                name: "ID",
++                display_name: "ID",
++              }),
++              createMockColumn({
++                base_type: "type/Text",
++                name: "Name",
++                display_name: "Name",
++              }),
++            ],
++          },
++        },
++      ),
++    ];
++
++    renderWithProviders(
++      <VisualizationPreview rawSeries={rawSeries} result={null} error={null} />,
++    );
++
++    act(() => {
++      jest.runAllTimers();
++    });
++
++    // In the notebook step preview the object-detail expand column must not be
++    // rendered; the fix passes queryBuilderMode="notebook" to <Visualization />.
++    expect(screen.queryAllByTestId("row-id-cell")).toHaveLength(0);
++
++    jest.useRealTimers();
++  });
+ });

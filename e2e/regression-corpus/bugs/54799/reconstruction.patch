@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/query_builder/selectors.ts b/frontend/src/metabase/query_builder/selectors.ts
+index 3ef2e70734f..0d40e1be73f 100644
+--- a/frontend/src/metabase/query_builder/selectors.ts
++++ b/frontend/src/metabase/query_builder/selectors.ts
+@@ -771,7 +771,7 @@ export const getIsNativeEditorOpen = createSelector(
+ 
+ export const getNativeEditorSelectedRange = createSelector(
+   [getUiControls],
+-  (uiControls) => uiControls?.nativeEditorSelectedRange?.[0],
++  (uiControls) => uiControls?.nativeEditorSelectedRange,
+ );
+ 
+ const getNativeEditorSelectedRanges = createSelector(

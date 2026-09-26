@@ -1,0 +1,23 @@
+diff --git a/frontend/src/metabase/visualizations/visualizations/Table/Table.tsx b/frontend/src/metabase/visualizations/visualizations/Table/Table.tsx
+index 0f0bdbe6477..91160a8feae 100644
+--- a/frontend/src/metabase/visualizations/visualizations/Table/Table.tsx
++++ b/frontend/src/metabase/visualizations/visualizations/Table/Table.tsx
+@@ -190,17 +190,10 @@ export class Table extends Component<TableProps, TableState> {
+         settings: ComputedVisualizationSettings,
+       ) => data && data.cols.length !== 3 && !settings["table.pivot"],
+       getDefault: ([{ card, data }]: Series) => {
+-        let native: boolean;
+-        try {
+-          native = isNative(card);
+-        } catch (error) {
+-          // isNative throws when used in the visualizer
+-          native = false;
+-        }
+         if (
+           !data ||
+           data.cols.length !== 3 ||
+-          native ||
++          isNative(card) ||
+           data.cols.filter(isMetric).length !== 1 ||
+           data.cols.filter(isDimension).length !== 2
+         ) {

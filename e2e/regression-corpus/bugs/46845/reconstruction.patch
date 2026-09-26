@@ -1,0 +1,19 @@
+diff --git a/src/metabase/query_processor/middleware/add_implicit_joins.clj b/src/metabase/query_processor/middleware/add_implicit_joins.clj
+index 1e881f24121..b5c78ed4fa8 100644
+--- a/src/metabase/query_processor/middleware/add_implicit_joins.clj
++++ b/src/metabase/query_processor/middleware/add_implicit_joins.clj
+@@ -107,12 +107,11 @@
+   problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
+   join for all of them."
+   [metadata-providerable                                            :- ::lib.schema.metadata/metadata-providerable
+-   {:keys [source-field source-field-name source-field-join-alias]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
++   {:keys [source-field source-field-name]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
+   (let [fk-field (lib.metadata/field metadata-providerable source-field)]
+     (m/assoc-some {:fk-field-id source-field}
+                   :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
+-                                   source-field-name)
+-                  :fk-join-alias source-field-join-alias)))
++                                   source-field-name))))
+ 
+ (defn- rename-join [{join-alias :alias, :as join} new-alias]
+   (-> join

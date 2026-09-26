@@ -1,0 +1,25 @@
+id: reg-24018
+origin:
+  kind: regression
+  issue: 24018
+  fix_commit: 70c8d96c7c4cbc5adcc50b2b986ab49bfa7bae81
+  fix_tests:
+    - "e2e/test/scenarios/collections/trash.cy.spec.js::scenarios > collections > trash should hide read-only archived items in trash (metabase#24018)"
+    - "metabase.search.api-test/archived-search-results-with-no-write-perms-test"
+bug:
+  statement: "Users with read-only access see archived items in the trash and are offered restore and delete actions that fail with permission errors."
+  odc: {type: Checking, qualifier: Missing}
+  module: search/impl
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.search.api-test/archived-search-results-with-no-write-perms-test"
+  expected_failure: "expected [\"card test card is returned\"], actual (\"card test card\" \"card test card is returned\")"
+notes: "GitHub lists #33600 and #33601 (refactors) alongside #33602 as closing PRs; #33602 is the behavioural fix; the deftest moved from metabase.api.search-test with the search code (see reconstruction-report.md §2)"

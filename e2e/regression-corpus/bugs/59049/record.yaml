@@ -1,0 +1,25 @@
+id: reg-59049
+origin:
+  kind: regression
+  issue: 59049
+  fix_commit: 15e73ac7cf0d1891a68aa39861022646c7625af9
+  fix_tests:
+    - "e2e/test/scenarios/dashboard-cards/click-behavior-reproductions.cy.spec.ts::issue 59049 should not reset parameter values in click behaviors when they are partially equal to the new values (metabase#59049)"
+    - "frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts::setOrUnsetParameterValues (metabase#59049) should not reset a parameter that already matches when only partially equal"
+bug:
+  statement: "When a click behavior updates several dashboard filters and some already hold the clicked values, those filters get cleared."
+  odc: {type: Checking, qualifier: Incorrect}
+  module: dashboard
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/dashboard/actions/set-or-unset-parameter-values.unit.spec.ts::setOrUnsetParameterValues (metabase#59049) should not reset a parameter that already matches when only partially equal"
+  expected_failure: "expect(byId[\"1\"]).toBe(\"Gadget\"); Expected: \"Gadget\", Received: null"
+notes: "base_commit is the parent of July's CI mutant 888a17642f2 (run 29129274064); the witness never landed on this branch, so its id comes from witness.patch; fe_be_boundary inferred"

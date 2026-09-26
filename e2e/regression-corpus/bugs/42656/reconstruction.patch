@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/dashboard/components/QuestionPicker/QuestionList.tsx b/frontend/src/metabase/dashboard/components/QuestionPicker/QuestionList.tsx
+index 82d102f4949..64236e13416 100644
+--- a/frontend/src/metabase/dashboard/components/QuestionPicker/QuestionList.tsx
++++ b/frontend/src/metabase/dashboard/components/QuestionPicker/QuestionList.tsx
+@@ -89,7 +89,7 @@ export function QuestionList({
+           }),
+           models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
+             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+-            : ["card", "dataset", "metric"],
++            : ["card", "dataset"],
+           offset: queryOffset,
+           limit: DEFAULT_SEARCH_LIMIT,
+           context: "entity-picker",

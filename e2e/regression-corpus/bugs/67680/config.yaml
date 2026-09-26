@@ -1,0 +1,40 @@
+issue: 67680
+issue_url: https://github.com/metabase/metabase/issues/67680
+fix_commits: ["42312e5fc258eb6c2c688b27fd6a28f246722c0b"]
+fix_pr: 67680
+fix_subject: "Allow to overwrite id only for native models"
+area: lib/card
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true      # the RECONSTRUCTION patch applies; the original fix diff does NOT (conflict)
+  file_relocated: false   # true => conflict is a rename/module-move, not a logic change
+  reconstruction_notes: >
+    Fix converted `model-preserved-keys` from a static vector containing :id into a native-model?-gated fn. Reconstruction makes :id unconditional again (exact pre-fix vector), neutering the gate. Kept arity/schema so callers compile. Fix's other 2 files (result_metadata.cljc, fetch_source_query.clj) are inert flag-plumbing once the gate is removed.
+
+validation:
+  oracle:
+    kind: be_unit            # shipped WITH the fix; cheaper than the e2e repro
+    test: "metabase.lib.metadata.result-metadata-test/model-metadata-id-preservation-test (+ metabase.lib.card-test/source-model-card-test)"
+    clean_baseline: "pass (2 tests, 5 assertions)"
+    reconstructed_result: "1 fail: model-metadata-id-preservation-test MBQL subtest (stale ORDERS.ID 44600 vs query-analyzed VENUES.ID 44400); native subtest still passes (correct)"
+  repro_confirmed: true
+  reconstructed_by: subagent   # worktree-isolated lib/card agent; adversarial self-check very_high
+  confidence: very_high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    For a model whose stored result_metadata has stale :id values, an MBQL query over it surfaces columns whose :id points at the old field/table instead of the query-analyzed id; field refs/drills/FKs resolve wrong.
+  repro_failure: >
+    model-metadata-id-preservation-test 'MBQL: stale :id ignored': expected 44400, actual 44600.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.lib.metadata.result-metadata-test/model-metadata-id-preservation-test (+ metabase.lib.card-test/source-model-card-test)"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-1. Conflict target (fix does not revert cleanly); bug reconstructed into current code + killed by shipped BE test => e2e repro cullable."

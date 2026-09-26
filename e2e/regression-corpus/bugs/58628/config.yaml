@@ -1,0 +1,40 @@
+issue: 58628
+issue_url: https://github.com/metabase/metabase/issues/58628
+fix_commits: ["509225c8d217de98ba9e95b23623c959f58ad98e"]
+fix_subject: "Show the unauthorized page for no-access notebook"
+area: qb/initializeQB
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  repro_reconstructable: true
+  reason: >
+    Reconstructable (remove the notebook redirect-to-/unauthorized guard in initializeQB.ts). But the fix's UNIT-spec edit was mechanical mock plumbing (0 assertions); the real /unauthorized redirect assertions live in Cypress specs. Both notebook unit tests run with hasDataPermissions:true so the guard never fires => removing it is invisible. FE unit HOLE.
+
+validation:
+  oracle: {kind: fe_unit, note: "shipped jest spec change was mechanical (mock/arity/scoping); real assertion is a Cypress e2e spec"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE semantic-reconstruction batch-2 NEGATIVE: reconstructable but no discriminating FE unit oracle => FE unit HOLE (Cypress-guarded)."
+
+hole_closed:
+  status: closed
+  by: targeted_unit_test
+  approach: "thunk-level (off-happy-path state: hasDataPermissions=false)"
+  test: "metabase.query-builder.actions.core.initializeQB.unit.spec (notebook mode without data access (metabase#58628))"
+  test_patch: hole-closer-test.patch
+  report_file: hole-closer-report.md
+  verified: "passes on clean HEAD; FAILS as a clean assertion when the fix is reverted (agent-verified both directions)"
+  notes: >
+    Demonstrates FE-TEST-GUIDANCE: this Cypress-guarded hole was a test-authoring gap, not
+    a fundamental jsdom limit. Closed with a cheap jest test at the right level =>
+    regression now unit-guarded and the e2e repro becomes cullable.

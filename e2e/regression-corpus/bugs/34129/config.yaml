@@ -1,0 +1,37 @@
+issue: 34129
+issue_url: https://github.com/metabase/metabase/issues/34129
+fix_commits: ["77620a0e23ea25137f431a6c7ee1ba7241ff9277"]
+fix_subject: "Handle mismatching date parameters in dashboards"
+area: parameters/date-formatting
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: false
+  reconstructed_by: worktree_subagent
+  reconstruction_notes: >
+    Reintroduced a type-mismatch guard returning null in date value formatting, so a date parameter can't format a value that came from a mismatching parameter type.
+
+validation:
+  oracle: {kind: fe_unit, test: "frontend/src/metabase/parameters/utils/formatting.unit.spec.ts", clean_baseline: pass, reconstructed_result: "16/56 fail (mismatching-type date values not formatted)"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    A dashboard date parameter fails to format a value that originated from a different date-parameter type (returns null).
+  repro_failure: >
+    mismatching-type cases (thisday->Today, past1days->Yesterday, ranges): toEqual expected label, received null.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: kill, killed_by: ["frontend/src/metabase/parameters/utils/formatting.unit.spec.ts"], clean_baseline: pass}
+  notes: "FE semantic-reconstruction batch-3. Killed by shipped FE unit (jest) test => e2e repro cullable."

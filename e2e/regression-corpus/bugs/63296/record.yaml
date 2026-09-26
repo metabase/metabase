@@ -1,0 +1,25 @@
+id: reg-63296
+origin:
+  kind: regression
+  issue: 63296
+  fix_commit: df7ba1246833a2685c8b0fb97e0bd4cfbaee7ce8
+  fix_tests:
+    - "e2e/test/scenarios/admin/i18n/content-translation/dashboards.cy.spec.ts::scenarios > content translation > static embeds > dashboards pivot table renamed column (metabase#63296) should assign the proper colors to a pie"
+    - "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx::Visualizations > PivotTable > content translation (metabase#63296) translates the custom column title in the pivot row header"
+bug:
+  statement: "Renamed pivot table column titles aren't translated in embedded dashboards that use a content translation dictionary."
+  odc: {type: Algorithm/Method, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/visualizations/PivotTable/PivotTable.content-translation.unit.spec.tsx::Visualizations > PivotTable > content translation (metabase#63296) translates the custom column title in the pivot row header"
+  expected_failure: "screen.getByText(\"le-champ-traduit\") fails: Unable to find an element with the text; the header renders \"field-123\""
+notes: "base_commit is the parent of July's CI mutant 0143e6ab126 (run 29133454815); stratum wiring: the mutant removes the content-translation call for pivot column titles while the translator stays wired in; the e2e's it title (\"should assign the proper colors to a pie\") doesn't match what it tests but it is the only test in the 63296 describe; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch; fe_be_boundary inferred"

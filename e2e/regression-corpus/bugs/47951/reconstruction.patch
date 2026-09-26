@@ -1,0 +1,17 @@
+diff --git a/frontend/src/metabase-lib/v1/metadata/Field.ts b/frontend/src/metabase-lib/v1/metadata/Field.ts
+index af1311cf230..3d7e66a3468 100644
+--- a/frontend/src/metabase-lib/v1/metadata/Field.ts
++++ b/frontend/src/metabase-lib/v1/metadata/Field.ts
+@@ -235,10 +235,8 @@ class Field {
+   // REMAPPINGS
+ 
+   static remappedField(fields: Field[]): Field | null {
+-    const remappedFields = fields.map((field) => field.remappedField());
+-    const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
+-    if (remappedFields[0] != null && remappedFieldIds.size === 1) {
+-      return remappedFields[0];
++    if (fields.length === 1) {
++      return fields[0].remappedField();
+     }
+     return null;
+   }

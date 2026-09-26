@@ -1,0 +1,21 @@
+diff --git a/frontend/src/metabase/querying/components/expressions/Editor/Listbox/Listbox.module.css b/frontend/src/metabase/querying/components/expressions/Editor/Listbox/Listbox.module.css
+index cc458c0cec8..e651f2590d2 100644
+--- a/frontend/src/metabase/querying/components/expressions/Editor/Listbox/Listbox.module.css
++++ b/frontend/src/metabase/querying/components/expressions/Editor/Listbox/Listbox.module.css
+@@ -25,15 +25,11 @@
+     margin-right: 8px;
+     height: 14px;
+     width: 14px;
+-    flex-shrink: 0;
+   }
+ }
+ 
+ .label {
+-  white-space: pre-wrap;
+-  overflow: hidden;
+-  text-overflow: ellipsis;
+-  overflow-wrap: break-word;
++  white-space: pre;
+ }
+ 
+ .highlight {

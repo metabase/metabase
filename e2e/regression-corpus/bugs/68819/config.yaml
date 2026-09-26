@@ -1,0 +1,29 @@
+issue: 68819
+issue_url: https://github.com/metabase/metabase/issues/68819
+fix_commits: ["c3715127e2c48ea8779027ac65e85ec20bad360f"]
+fix_subject: "stacked bar chart crashes with multiple same-type aggregations"
+area: viz/cartesian-defaults
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  layer: frontend
+  patch_file: null
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  status: reconstruction_failed
+  failure_category: no_unit_oracle__real_oracle_cypress
+  fe_bucket: partial
+  repro_reconstructable: true
+  closable_with_new_unit_test: true
+  reason: >
+    Reconstructable (revert the getSingleSeriesDimensionsAndMetrics guard). But the surviving jest specs are non-discriminating supplements; the crash config (2 aggregations + 2 breakouts) shipped ONLY as a Cypress repro. Closable with a NEW unit test constructing that rawSeries and asserting getDefaultColumns returns real names not [null]. FE unit HOLE (Cypress-guarded; closable).
+
+validation:
+  oracle: {kind: fe_unit, note: "surviving jest specs non-discriminating; real oracle is Cypress; closable with a new unit/integration test"}
+  repro_confirmed: false
+
+coverage:
+  be_unit: {status: untested, killed_by: []}
+  fe_unit: {status: hole, killed_by: []}
+  notes: "FE partial bucket NEGATIVE (cypress). Reconstructable + closable with a new unit test."

@@ -1,0 +1,16 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.ts b/frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.ts
+index e7931a325bb..5174423e9f8 100644
+--- a/frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.ts
++++ b/frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList/util.ts
+@@ -12,10 +12,7 @@ export function getBreakoutListItem(
+     return;
+   }
+ 
+-  const columnWithoutBucketing = Lib.withBinning(
+-    Lib.withTemporalBucket(column, null),
+-    null,
+-  );
++  const columnWithoutBucketing = Lib.withTemporalBucket(column, null);
+   const columnInfo = Lib.displayInfo(query, stageIndex, columnWithoutBucketing);
+   return { ...columnInfo, column, breakout };
+ }

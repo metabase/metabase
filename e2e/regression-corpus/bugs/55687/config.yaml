@@ -1,0 +1,47 @@
+issue: 55687
+issue_url: https://github.com/metabase/metabase/issues/55687
+fix_commits: ["cb2c515dc6c20db0a2127c871ec62a7feb3b9793"]
+fix_pr: 56855
+fix_subject: "Allow passing strings to isEmpty and notEmpty (#56855)"
+area: mbql/schema
+fe_be_boundary: false
+
+mutation:
+  kind: semantic          # fix does NOT revert cleanly (schema.cljc drifted); reconstructed by hand
+  patch_file: reconstruction.patch
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true   # the RECONSTRUCTION patch applies; the original fix diff does NOT (conflict)
+  reconstruction_notes: >
+    Fix added `::Emptyable [:or StringExpressionArg FieldOrExpressionRef]` and switched the
+    is-empty/not-empty defclauses to accept it. Current code carries the fix but drifted
+    (registry `mr/def ::Emptyable`, `[:ref ...]` forms), so the fix diff no longer
+    reverse-applies. Semantic reconstruction: point both defclauses back at
+    `[:ref ::FieldOrExpressionRef]` (Field-only), reintroducing the string-rejection bug.
+
+validation:
+  repro_tests:
+    - spec: e2e/test/scenarios/custom-column/custom-column-reproductions.cy.spec.js
+      kind: it
+      title: "issue 55687"
+  oracle:
+    kind: be_unit         # cheaper than the e2e repro; shipped WITH the fix
+    test: metabase.legacy-mbql.schema-test/emptyable-filter-test
+  green_baseline: pass     # 10/10 assertions pass at HEAD
+  repro_confirmed: true    # reconstructed-bug tree fails the string cases (is-empty/not-empty of "", "A", [:ltrim ...])
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    is-empty / not-empty filters reject string and string-expression arguments (only
+    Field/expression-refs accepted), so a filter like [:is-empty ""] is invalid.
+  repro_failure: >
+    emptyable-filter-test: the 6 string/string-expression `are` cases (is-empty/not-empty
+    of "", "A", [:ltrim "A"]) fail Malli validation (mr/explain returns a humanized error);
+    the 4 Field cases still pass. Deterministic schema rejection, not a crash.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.legacy-mbql.schema-test/emptyable-filter-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction POC target 1/3. Bug is unit-covered by the shipped test => its e2e repro is cullable."

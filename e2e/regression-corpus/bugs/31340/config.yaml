@@ -1,0 +1,16 @@
+issue: 31340
+status: reconstruction_failed
+failure_category: cypress_only
+hole_closable: partial  # CSS/layout — only a structural proxy is testable in jsdom; real overflow needs cypress
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: all_specs_gone
+fix_commit: fa02c752984f4bbf8ff17292d4dd5359ba20c897
+validation:
+  oracle:
+    kind: cypress
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole
+# detail: see reconstruction-report.md

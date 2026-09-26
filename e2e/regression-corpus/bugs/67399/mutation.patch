@@ -1,0 +1,55 @@
+diff --git a/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotQuestion.tsx b/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotQuestion.tsx
+index 9e313b499ce..071b29a8c2f 100644
+--- a/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotQuestion.tsx
++++ b/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotQuestion.tsx
+@@ -7,7 +7,7 @@ import {
+   SdkError,
+   withPublicComponentWrapper,
+ } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+-import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
++import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+ import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
+ import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
+ import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
+@@ -105,13 +105,13 @@ const MetabotQuestionInner = ({
+     );
+   }
+ 
+-  // avoids initial flickering
+-  if (!derivedLayout || containerWidth == null) {
+-    return null;
+-  }
+-
+   return (
+-    <ResizeWrapper h={height} w={width} className={className} style={style}>
++    <FlexibleSizeComponent
++      height={height}
++      width={width}
++      className={className}
++      style={style}
++    >
+       <div
+         ref={containerRef}
+         className={S.container}
+@@ -132,7 +132,7 @@ const MetabotQuestionInner = ({
+           </Stack>
+         </div>
+       </div>
+-    </ResizeWrapper>
++    </FlexibleSizeComponent>
+   );
+ };
+ 
+diff --git a/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.tsx b/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.tsx
+index 1cb1f757ed0..96590bfc722 100644
+--- a/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.tsx
++++ b/enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.tsx
+@@ -50,7 +50,7 @@ export function MetabotChatInput() {
+         ref={metabot.promptInputRef as LegacyRef<HTMLTextAreaElement>}
+         autoFocus
+         value={metabot.prompt}
+-        readOnly={metabot.isDoingScience}
++        disabled={metabot.isDoingScience}
+         placeholder={placeholder}
+         onChange={(e) => metabot.setPrompt(e.target.value)}
+         classNames={{ input: S.chatInput }}

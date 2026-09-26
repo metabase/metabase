@@ -1,0 +1,25 @@
+id: reg-49142
+origin:
+  kind: regression
+  issue: 49142
+  fix_commit: 0a455d9a684c831cb43c539fdf7d03d590496be0
+  fix_tests:
+    - "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 49142 embedding preview should be always working"
+    - "metabase.server.middleware.security-test/csp-header-iframe-hosts-tests"
+bug:
+  statement: "The static embed preview in the sharing modal doesn't render unless the instance's own host is added to the allowed iframe domains."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: server/security
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.server.middleware.security-test/csp-header-iframe-hosts-tests"
+  expected_failure: "Includes 'self' so embed previews work (#49142): expected (contains? hosts \"'self'\"), actual (not (contains? #{...} \"'self'\"))"
+notes: "the e2e was skipped and then deleted on master by #81011 (15ef5d5b973), so its id is from 56879decb0a; allowed-iframe-hosts-test doesn't fail because it reads the same constant on both sides (see reconstruction-report.md §4)"

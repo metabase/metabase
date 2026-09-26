@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/querying/expressions/help-text.ts b/frontend/src/metabase/querying/expressions/help-text.ts
+index a87fd519a81..85408909ce2 100644
+--- a/frontend/src/metabase/querying/expressions/help-text.ts
++++ b/frontend/src/metabase/querying/expressions/help-text.ts
+@@ -53,7 +53,7 @@ function getExample(
+ ): Lib.ExpressionParts {
+   return {
+     operator: name as Lib.ExpressionOperator,
+-    options: {},
++    options: name === "offset" ? (undefined as unknown as Lib.ExpressionOptions) : {},
+     args: args.flatMap((arg) => arg.example).filter(isNotNull),
+   };
+ }

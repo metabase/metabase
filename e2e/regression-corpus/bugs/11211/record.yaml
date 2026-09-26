@@ -1,0 +1,25 @@
+id: reg-11211
+origin:
+  kind: regression
+  issue: 11211
+  fix_commit: 07e2560596412e6da655fc1cde9604996e06e115
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/maps.cy.spec.js::scenarios > visualizations > maps should preserve zoom and pan after resize (metabase#11211)"
+    - "frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx::LeafletMap zoom preservation on component update should preserve the user's current zoom on a pure resize (metabase#11211)"
+bug:
+  statement: "A pin map snaps back to its saved zoom and center whenever its container resizes, such as when a pin tooltip appears, losing the user's zoom and pan."
+  odc: {type: Checking, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 6188ef843f96682cd85598d2c27ccf043365ac5f
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/visualizations/components/LeafletMap.unit.spec.tsx::LeafletMap zoom preservation on component update should preserve the user's current zoom on a pure resize (metabase#11211)"
+  expected_failure: "expect(setViewSpy).toHaveBeenCalledWith(expect.anything(), 10); Expected: Anything, 10 / Received: [40, -100], 4"
+notes: "base_commit is the parent of July's CI mutant 45a869f303b (run 29139246002); the witness is July-written (witness.patch, landed on this branch) and the e2e is culled on this branch; fe_be_boundary inferred"

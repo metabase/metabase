@@ -1,0 +1,26 @@
+id: reg-54271
+origin:
+  kind: regression
+  issue: 54271
+  fix_commit: f3ff38b8daf9cfe819d862fee992012f1cf25366
+  fix_tests:
+    - "e2e/test/scenarios/visualizations-charts/visualizations-charts-reproductions.cy.spec.js::issue 54271 should not crash the app when rendering a line chart with broken viz settings and table metadata (metabase#54271)"
+    - "frontend/src/metabase/viz-core/lib/renderer_utils.unit.spec.ts::getXValues should exclude values that cannot be parsed according to the column type"
+    - "frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts::getXValues should exclude values that cannot be parsed according to the column type"
+bug:
+  statement: "A line chart whose x-axis column is wrongly typed as a date crashes the question instead of skipping values it can't parse."
+  odc: {type: Checking, qualifier: Missing}
+  module: visualizations
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: null
+  method: reconstructed
+  status: retired
+  retired_reason: "no mutant patch in July corpus"
+hint:
+  test: "frontend/src/metabase/visualizations/lib/renderer_utils.unit.spec.ts::getXValues should exclude values that cannot be parsed according to the column type"
+  expected_failure: "expect(xValues).toHaveLength(2); Received length: 3, [null, \"2019-01-02T00:00:00.000Z\", \"2019-01-03T00:00:00.000Z\"]"
+notes: "54271 is the fix PR's number, not an issue: GitHub shows a merged PR and the e2e tag uses the PR number; no mutant patch: July's revert (drop the value != null guard in getXValues) passed all 19 jest tests because the .ts migration's Dayjs filter hides the leaked null, and wasn't saved, see reconstruction-report.md §1-4; the hole-closer added raw-array assertions to the test the fix shipped, which lives at visualizations/lib on this branch and at viz-core/lib (without the new assertions) at 8317274709c, so fix_tests lists both paths for the same test; expected_failure from hole-closer-report.md §3; fe_be_boundary inferred"

@@ -1,0 +1,16 @@
+issue: 34954
+status: reconstruction_failed
+failure_category: cypress_only
+mutation:
+  kind: semantic
+  layer: frontend
+  fe_bucket: partial_or_all_specs_gone
+  reconstruction_notes: |
+    PR#35851 embed card-fail crash — honest-negative. hasRows data-key guard; shipped jest edit was mock-helper rename only; utils.unit.spec 114→114 no flip
+validation:
+  oracle:
+    kind: cypress
+    test: e2e embedding-dashboard.cy.spec.js
+    reconstructed_result: no_unit_oracle__real_oracle_cypress
+coverage:
+  fe_unit: hole

@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/common/components/AccordionList/AccordionList.tsx b/frontend/src/metabase/common/components/AccordionList/AccordionList.tsx
+index 91ac9377d57..c683a2f5eb1 100644
+--- a/frontend/src/metabase/common/components/AccordionList/AccordionList.tsx
++++ b/frontend/src/metabase/common/components/AccordionList/AccordionList.tsx
+@@ -462,7 +462,7 @@ export class AccordionList<
+           [S.hasSearch]: hasSearch,
+         })}
+         ref={this.listRootRef}
+-        role="tree"
++        role="grid"
+         onKeyDown={this.handleKeyDown}
+         tabIndex={-1}
+         style={{

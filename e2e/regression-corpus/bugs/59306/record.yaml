@@ -1,0 +1,24 @@
+id: reg-59306
+origin:
+  kind: regression
+  issue: 59306
+  fix_commit: 3f85969803ecade5726507fb163d7f0e267a323c
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 59306 should not overflow the filter box (metabase#59306)"
+bug:
+  statement: "Typing a long value into a dashboard text filter makes the input grow past the edge of the filter popover."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: ui
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue 59306 should not overflow the filter box (metabase#59306)"
+  expected_failure: "cy.findByPlaceholderText(\"Enter some text\").invoke(\"outerWidth\").should(\"be.lt\", 400) fails after typing a long value"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; CSS-module-only fix that MATRIX.md classes unit-untestable (keep e2e); July's e2e leg was never run; expected_failure inferred from the e2e's assertion; fe_be_boundary inferred"

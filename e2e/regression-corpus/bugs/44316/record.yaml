@@ -1,0 +1,25 @@
+id: reg-44316
+origin:
+  kind: regression
+  issue: 44316
+  fix_commit: 413efacef5336ffd840c9c06c98b2e293c9c1532
+  fix_tests:
+    - "e2e/test/scenarios/collections/collections.cy.spec.js::scenarios > collection defaults Collection related issues reproductions should handle moving a question when you don't have access to entire collection path (metabase#44316"
+    - "frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.unit.spec.tsx::useGetPathFromValue collection item paths should use effective_location for collection path"
+bug:
+  statement: "A user who can access a nested collection but not its parents gets permission errors when picking that collection, e.g. to move a question."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: common
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: b8673198cd4c3aa9f70782f41526dd009f27b933
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.unit.spec.tsx::useGetPathFromValue collection item paths should use effective_location for collection path"
+  expected_failure: "expect(path).toHaveLength(3); Received length: 4 (the inaccessible middle collection is included)"
+notes: "base_commit is the parent of July's CI mutant 09ac5e506f1 (run 29125403624); the e2e title really ends without a closing parenthesis; the fix's CollectionPicker/DashboardPicker spec edits were fixture changes and those specs are gone, so the jest id is the later hook spec that carries the same effective_location assertion (see reconstruction-report.md §2); fe_be_boundary inferred"

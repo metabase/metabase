@@ -1,0 +1,9 @@
+issue: 51717
+fix_commit: 62a8a7b32e000dc6625df261e82db119609f1097
+e2e_repro: e2e/test/scenarios/native/native-reproductions.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/query_builder/reducers.ts"]
+layer: frontend
+witness_test: frontend/src/metabase/query_builder/reducers.unit.spec.ts

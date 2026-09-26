@@ -1,0 +1,25 @@
+id: reg-65501
+origin:
+  kind: regression
+  issue: 65501
+  fix_commit: 76cf73dde5d1f32cfd451cd514a2a5b40f05613a
+  fix_tests:
+    - "e2e/test/scenarios/search/search-pagination.cy.spec.js::scenarios > search multiple pages of results should reset the page when filters change (metabase#65501)"
+    - "frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx::SearchApp filtering search results with the sidebar should reset back to the first page when filters change (metabase#65501)"
+bug:
+  statement: "Changing a search filter while on a later results page keeps the old page, so the filtered results can show as empty."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: search
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/search/containers/SearchApp.unit.spec.tsx::SearchApp filtering search results with the sidebar should reset back to the first page when filters change (metabase#65501)"
+  expected_failure: "expect(url.query.page).toBeUndefined(); Received: \"1\""
+notes: "base_commit is the parent of July's CI mutant ba70f5e1d87 (run 29129238506); the landed test was re-authored in the land-and-cull pass (bf3736f0270) under a different name from witness.patch's; fe_be_boundary inferred"

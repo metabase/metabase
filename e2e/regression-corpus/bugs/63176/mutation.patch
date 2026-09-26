@@ -1,0 +1,13 @@
+diff --git a/frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx b/frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+index f492edafd5c..23bbe680d14 100644
+--- a/frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
++++ b/frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+@@ -82,7 +82,7 @@ export function CreateDashboardForm({
+ 
+   const handleCreate = useCallback(
+     async (values: CreateDashboardProperties) => {
+-      const dashboard = await handleCreateDashboard(values).unwrap();
++      const { data: dashboard } = await handleCreateDashboard(values);
+       if (dashboard) {
+         onCreate?.(dashboard);
+       }

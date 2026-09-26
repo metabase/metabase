@@ -1,0 +1,7 @@
+issue: 55631
+fix_commit: 6e3aca9d5aa9587e99585f4ebef254290fcf76c0
+e2e_repro: e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts
+population: e2e_only
+wave: 3
+witness_outcome: witness_authored
+layer: frontend

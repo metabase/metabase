@@ -1,0 +1,25 @@
+diff --git a/frontend/src/metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget.tsx b/frontend/src/metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget.tsx
+index c07df6b3f1d..0659dede0ea 100644
+--- a/frontend/src/metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget.tsx
++++ b/frontend/src/metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget.tsx
+@@ -4,6 +4,7 @@ import CS from "metabase/css/core/index.css";
+ import { QuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover";
+ import {
+   getFirstQueryResult,
++  getIsResultDirty,
+   getQuestion,
+   getVisualizationSettings,
+ } from "metabase/query_builder/selectors";
+@@ -13,10 +14,12 @@ export const ViewFooterDownloadWidget = () => {
+   const question = useSelector(getQuestion);
+   const result = useSelector(getFirstQueryResult);
+   const visualizationSettings = useSelector(getVisualizationSettings);
++  const isResultDirty = useSelector(getIsResultDirty);
+ 
+   return (
+     question &&
+     result &&
++    !isResultDirty &&
+     QuestionDownloadPopover.shouldRender({ result }) && (
+       <QuestionDownloadPopover
+         className={cx(CS.hide, CS.smShow)}

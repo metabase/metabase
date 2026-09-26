@@ -1,0 +1,24 @@
+id: reg-55619
+origin:
+  kind: regression
+  issue: 55619
+  fix_commit: 3075c57bf4d1c2db8cc2d3c42d345fa7b4c79b59
+  fix_tests:
+    - "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.ts::issue 55619 should allow you to change the currency where you can set a semantic type (metabase#55619)"
+bug:
+  statement: "The data reference and model metadata editors offer no currency picker for currency columns, so a column's currency can't be viewed or changed there."
+  odc: {type: Function/Class/Object, qualifier: Missing}
+  module: metadata
+  lowest_level: integration
+  stratum: wiring
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.ts::issue 55619 should allow you to change the currency where you can set a semantic type (metabase#55619)"
+  expected_failure: "cy.findByDisplayValue(\"Canadian Dollar\") not found in the data reference field list edit mode"
+notes: "Mutant mismatch: July's reconstruction.patch drops the field-settings branch of getFieldCurrency, which predates the fix (the fix only changed its parameter from field to field.settings), so the mutant breaks existing currency resolution rather than removing the picker; a rebuild should follow #63032's product change, rendering CurrencyPicker in SemanticTypeAndTargetPicker, the model metadata sidebar and the data reference field views (with isTypeCurrency); the field.unit.spec.ts assertions the fix touched were call-signature updates, so they aren't in fix_tests; stratum wiring and module metadata judged from the real fix, which wires an existing picker into three screens (SemanticTypeAndTargetPicker picked as the load-bearing file); lowest_level integration because no unit test observes the missing picker (reconstruction-report.md notes the picker gate has only Cypress coverage); expected_failure inferred from the e2e's first assertion; fe_be_boundary inferred"

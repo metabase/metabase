@@ -1,0 +1,9 @@
+issue: 69038
+fix_commit: 8e68044b267cacf176f09a72cb08a6152d017b57
+e2e_repro: e2e/test/scenarios/dashboard/visualizer/basics.cy.spec.ts
+population: e2e_only
+wave: 2
+witness_outcome: witness_authored
+mutation_files: ["rontend/src/metabase/visualizations/visualizations/Table/Table.tsx"]
+layer: frontend
+witness_test: frontend/src/metabase/visualizations/visualizations/Table/Table.unit.spec.tsx

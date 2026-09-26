@@ -1,0 +1,12 @@
+diff --git a/frontend/src/metabase/common/components/CodeMirror/CodeMirror.module.css b/frontend/src/metabase/common/components/CodeMirror/CodeMirror.module.css
+index fe4a225a2e3..ece4a9cc57b 100644
+--- a/frontend/src/metabase/common/components/CodeMirror/CodeMirror.module.css
++++ b/frontend/src/metabase/common/components/CodeMirror/CodeMirror.module.css
+@@ -145,7 +145,6 @@
+           display: grid;
+           gap: 0 1rem;
+           grid-template-columns: 1fr;
+-          grid-auto-rows: max-content;
+ 
+           &:has(.cm-completionDetail) {
+             grid-template-columns: max-content 1fr;

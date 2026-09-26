@@ -1,0 +1,25 @@
+id: reg-67399
+origin:
+  kind: regression
+  issue: 67399
+  fix_commit: 084e3ea6dfec204e13516bf27597d44694d28243
+  fix_tests:
+    - "e2e/test/scenarios/embedding/sdk-iframe-embedding/custom-elements-api.cy.spec.ts::scenarios > embedding > sdk iframe embedding > custom elements api <metabase-metabot> should handle scrolling gracefully (metabase#67399)"
+    - "enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.unit.spec.tsx::MetabotChatInput keeps the input read-only (not disabled) while the agent is processing, so it stays focusable and does not scroll out of the viewport (metabase#67399)"
+bug:
+  statement: "In embedded Metabot, a long prompt grows the chat past its container, so the input scrolls out of view instead of the chat scrolling on its own."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: embedding-sdk-ee
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "enterprise/frontend/src/embedding-sdk-ee/metabot/MetabotChatInput.unit.spec.tsx::MetabotChatInput keeps the input read-only (not disabled) while the agent is processing, so it stays focusable and does not scroll out of the viewport (metabase#67399)"
+  expected_failure: "expect(input).toHaveAttribute(\"readonly\") fails; the input is disabled instead"
+notes: "base_commit is the parent of July's CI mutant b5693d3491d (run 29135062799); July contradiction: E2E-ONLY.md lists this as irreducible (ResizeObserver sizing) and e2eonly.yaml says no_witness_layout, but the land-and-cull pass (da261afed6f) landed a jest test and culled the e2e on this branch; that test only covers the fix's readOnly-versus-disabled half, which e2eonly-report.md §2 calls a focus sub-fix, while the load-bearing ResizeWrapper sizing still needs a real browser, so unit here rests on the partial test; July's CI run of the e2e passed on the mutant, so the e2e also missed it in headless CI; the mutant reverts both halves; module from enterprise/frontend/src/embedding-sdk-ee; expected_failure inferred from the landed test's assertion; fe_be_boundary inferred"

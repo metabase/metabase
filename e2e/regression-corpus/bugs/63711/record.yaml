@@ -1,0 +1,24 @@
+id: reg-63711
+origin:
+  kind: regression
+  issue: 63711
+  fix_commit: 33070f6e0685bfd3acaf63ea9ac15d97b4e57534
+  fix_tests:
+    - "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 63711 Completions should be visible when there are a lot of options (metabase#63711)"
+bug:
+  statement: "When the native editor's autocomplete has many options, rows get squashed and clipped instead of the list scrolling."
+  odc: {type: Assignment/Initialization, qualifier: Missing}
+  module: common
+  lowest_level: browser-measurement
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: ba83271710dffe4162a49724635399cc72cbedcc
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 63711 Completions should be visible when there are a lot of options (metabase#63711)"
+  expected_failure: "cy.wrap(element.scrollHeight).should(\"be.gt\", element.clientHeight) fails: the completion list doesn't overflow"
+notes: "base_commit is the parent of July's CI mutant a3878a7607e (run 29129248309); irreducible per E2E-ONLY.md (CSS grid-auto-rows, needs real-browser geometry); July's CI run of this e2e passed on the mutant, so the e2e also missed it in headless CI; left out \"issue 66745 should not break visualization on native query column rename (metabase#63711) - ${vizType}\", which carries this tag under issue 66745's describe and tests something else; expected_failure taken from the e2e's assertions described in e2eonly-report.md §3; fe_be_boundary inferred"

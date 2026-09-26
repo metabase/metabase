@@ -1,0 +1,74 @@
+diff --git a/frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx b/frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx
+index 9b768b790e2..b6af03443f3 100644
+--- a/frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx
++++ b/frontend/src/metabase/data-grid/hooks/use-cell-selection.tsx
+@@ -509,7 +509,7 @@ const extractCellValue = (
+  * @param useRawValues - Whether to use raw values instead of formatted ones
+  * @returns Tab-separated values with newlines between rows
+  */
+-const getCellValues = (
++export const getCellValues = (
+   gridRef: RefObject<HTMLDivElement>,
+   table: Table<unknown>,
+   cells: CellId[],
+@@ -533,18 +533,13 @@ const getCellValues = (
+     })
+     .filter(Boolean) as string[];
+ 
+-  // Get rows in their current sorted/visual order
+-  const sortedRows = table.getRowModel().rows;
+-  const sortedSelectedRows = sortedRows.filter(
+-    (row) => rowGroups[row.id] !== undefined,
+-  );
+-
+   if (columnIds.length !== headerRow.length) {
+     // Couldn't retrieve all headers: copy the data only
+-    return sortedSelectedRows
+-      .map((row) => {
++    return Object.keys(rowGroups)
++      .map((rowId) => {
+         try {
+-          const selectedCells = rowGroups[row.id];
++          const row = table.getRow(rowId);
++          const selectedCells = rowGroups[rowId]!;
+           const cellValues = extractRowCellValues(
+             row,
+             selectedCells,
+@@ -552,7 +547,7 @@ const getCellValues = (
+           );
+           return cellValues.join("\t");
+         } catch (error) {
+-          console.warn(`Error processing row ${row.id}:`, error);
++          console.warn(`Error processing row ${rowId}:`, error);
+           return "";
+         }
+       })
+@@ -560,15 +555,16 @@ const getCellValues = (
+       .join("\n");
+   }
+ 
+-  const dataRows = sortedSelectedRows
+-    .map((row) => {
++  const dataRows = Object.keys(rowGroups)
++    .map((rowId) => {
+       try {
++        const row = table.getRow(rowId);
+         const cellByColumnId = row._getAllCellsByColumnId();
+         return columnIds
+           .map((columnId) => {
+             if (
+               cellByColumnId[columnId] &&
+-              rowGroups[row.id].some((cellId) => cellId.columnId === columnId)
++              rowGroups[rowId].some((cellId) => cellId.columnId === columnId)
+             ) {
+               return extractCellValue(
+                 row.index,
+@@ -581,7 +577,7 @@ const getCellValues = (
+           })
+           .join("\t");
+       } catch (error) {
+-        console.warn(`Error processing row ${row.id}:`, error);
++        console.warn(`Error processing row ${rowId}:`, error);
+         return "";
+       }
+     })

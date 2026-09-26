@@ -1,0 +1,28 @@
+id: reg-39102
+origin:
+  kind: regression
+  issue: 39102
+  fix_commit: 12e062ed1252b77ab9255fc8a7dbd01d7165b206
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 39102 should be able to preview a multi-stage query (metabase#39102)"
+    - "frontend/src/metabase/querying/notebook/utils/steps.unit.spec.ts::filtered and summarized query with post-aggregation filter previewQuery shouldn't include filter, summarize, or post-aggregation filter for data step"
+    - "frontend/src/metabase/querying/notebook/utils/steps.unit.spec.ts::filtered and summarized query with post-aggregation filter previewQuery shouldn't include summarize or post-aggregation filter for filter step"
+    - "frontend/src/metabase/querying/notebook/utils/steps.unit.spec.ts::filtered and summarized query with post-aggregation filter previewQuery shouldn't include filters from the next stages for summarizeStep"
+    - "frontend/src/metabase/querying/notebook/utils/steps.unit.spec.ts::filtered and summarized query with post-aggregation filter previewQuery shouldn't include aggregations for post-aggregation filter step"
+bug:
+  statement: "Previewing an intermediate stage of a multi-stage notebook query runs the later stages too, so the preview results are wrong."
+  odc: {type: Algorithm/Method, qualifier: Incorrect}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: unknown
+  patch: reconstruction.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/notebook/utils/steps.unit.spec.ts::filtered and summarized query with post-aggregation filter previewQuery shouldn't include filters from the next stages for summarizeStep"
+  expected_failure: "expect(Lib.stageCount(previewQuery)).toBe(1); Received: 3"
+notes: "the fix's spec moved from query_builder/components/notebook/lib/steps.unit.spec.ts to querying/notebook/utils/; the stage truncation now lives in the cljs Lib.previewQuery, so the mutant re-appends the later stages in steps.ts because jest runs prebuilt cljs (see reconstruction-report.md §1); fe_be_boundary inferred"

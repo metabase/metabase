@@ -1,0 +1,25 @@
+id: reg-64293
+origin:
+  kind: regression
+  issue: 64293
+  fix_commit: 070963f9f9f7057279bfb4d2ccc6aec080adf52d
+  fix_tests:
+    - "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 64293 should be possible to run a query for a empty required parameter without a default value (metabase#64293)"
+    - "frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.dirty-overlay.unit.spec.tsx::QueryVisualization dirty-state overlay (metabase#64293) shows a runnable overlay for a missing-required-parameter error"
+bug:
+  statement: "A native question whose required parameter starts empty can't be run after the parameter is filled in, because the run overlay stays hidden."
+  odc: {type: Checking, qualifier: Missing}
+  module: querying
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 544a0c2ba81856fa77b92843e274c2cd23b23377
+  patch: mutation.patch
+  method: reconstructed
+  status: pending
+  retired_reason: null
+hint:
+  test: "frontend/src/metabase/querying/components/QueryVisualization/QueryVisualization.dirty-overlay.unit.spec.tsx::QueryVisualization dirty-state overlay (metabase#64293) shows a runnable overlay for a missing-required-parameter error"
+  expected_failure: "expect(runQuestionQuery).toHaveBeenCalledTimes(1); Received number of calls: 0"
+notes: "base_commit is the parent of July's CI mutant e4c75064986 (run 29133477908); the frontend ignores a missing-required-parameter error type the backend already returns, so fe_be_boundary is inferred false; e2eonly.yaml mutation_files has a typo (\"rontend/...\"); witness landed and e2e culled on this branch"

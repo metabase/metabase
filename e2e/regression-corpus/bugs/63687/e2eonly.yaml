@@ -1,0 +1,7 @@
+issue: 63687
+fix_commit: c56432c2f7b2bbd98bb0e664c488bcc7641f9cdf
+e2e_repro: e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js
+population: e2e_only
+wave: 3
+witness_outcome: no_witness_backend
+layer: backend

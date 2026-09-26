@@ -1,0 +1,26 @@
+id: reg-66670
+origin:
+  kind: regression
+  issue: 66670
+  fix_commit: bbddb39150dbcaecb748220f5e307ad4fee2e224
+  fix_tests:
+    - "e2e/test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js::issue #66670 should handle dashboard filter with permanently deleted question value source (metabase#66670)"
+    - "metabase.revisions.impl.dashboard-test/revert-dashboard-with-deleted-parameter-card-source-test"
+    - "metabase.revisions.impl.dashboard-test/revert-dashboard-with-archived-parameter-card-source-test"
+bug:
+  statement: "After reverting a dashboard to a revision whose filter takes values from a since-deleted question, saving the dashboard fails with a server error."
+  odc: {type: Relationship, qualifier: Missing}
+  module: dashboards/revisions
+  lowest_level: unit
+  stratum: logic
+  fe_be_boundary: false
+mutant:
+  base_commit: 56879decb0aac2ad61b5bc5737ebd4afc56e5f81
+  patch: inverse.patch
+  method: inverse
+  status: pending
+  retired_reason: null
+hint:
+  test: "metabase.revisions.impl.dashboard-test/revert-dashboard-with-deleted-parameter-card-source-test"
+  expected_failure: "(is (nil? (:values_source_type deleted-source-param)) \"values_source_type should be removed\") fails"
+notes: "inverse.patch is the fix diff as shipped; apply it with `git apply -R` to reintroduce the bug; both deftests shipped with the fix and July's revisions-module run recorded 2 failures and 1 error on the mutant; July's e2e leg ran and failed as expected (POST /api/dashboard/:id returns 500 instead of 200); the e2e is culled on this branch but present at 8317274709c; expected_failure inferred from the deftest's assertion, July recorded only the e2e failure"

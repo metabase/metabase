@@ -1,0 +1,37 @@
+issue: 45063
+issue_url: https://github.com/metabase/metabase/issues/45063
+fix_commits: ["53955c281ed8b0e7bf4eed0c69bb864a0093032f"]
+fix_subject: "Fix type/PK -> type/Name and type/FK fields"
+area: warehouse-schema/table (was api/table)
+fe_be_boundary: false
+
+mutation:
+  kind: semantic
+  patch_file: reconstruction.patch
+  report_file: reconstruction-report.md
+  base_sha: "56879decb0aac2ad61b5bc5737ebd4afc56e5f81"
+  applies_cleanly: true
+  file_relocated: true
+  reconstructed_by: worktree_subagent
+  oracle_source: modified_deftest
+  reconstruction_notes: >
+    Dropped the fix-added :name_field hydration key from the table query_metadata hydration spec (in the relocated fetch-query-metadata*).
+
+validation:
+  oracle: {kind: be_unit, test: "metabase.warehouse-schema-rest.api.table-test/sensitive-fields-included-test", clean_baseline: pass, reconstructed_result: "1 fail each (sensitive-fields-included + not-included): response missing :name_field"}
+  repro_confirmed: true
+  confidence: high
+
+failure_shape:
+  observed: true
+  source: observed_unit
+  symptom: >
+    Table query-metadata field responses omit :name_field (the type/Name field for a PK/FK), which the FE needs for display.
+  repro_failure: >
+    sensitive-fields-included-test: response :fields missing the fix-added :name_field keys.
+  not_setup_crash: true
+
+coverage:
+  be_unit: {status: kill, killed_by: ["metabase.warehouse-schema-rest.api.table-test/sensitive-fields-included-test"], clean_baseline: pass}
+  fe_unit: {status: untested, killed_by: []}
+  notes: "Semantic-reconstruction batch-5 wave-2 (no_added_deftest / modified-deftest oracle). Killed by shipped BE test => e2e repro cullable."

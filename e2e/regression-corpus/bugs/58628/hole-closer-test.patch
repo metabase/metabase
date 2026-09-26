@@ -1,0 +1,37 @@
+diff --git a/frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts b/frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts
+index 17e5967a61e..6fedf7bf95d 100644
+--- a/frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts
++++ b/frontend/src/metabase/query_builder/actions/core/initializeQB.unit.spec.ts
+@@ -1,5 +1,6 @@
+ import fetchMock from "fetch-mock";
+ import type { LocationDescriptorObject } from "history";
++import { replace } from "react-router-redux";
+ 
+ import { createMockEntitiesState } from "__support__/store";
+ import { databaseApi, snippetApi } from "metabase/api";
+@@ -1014,4 +1015,25 @@ describe("QB Actions > initializeQB", () => {
+       );
+     });
+   });
++
++  describe("notebook mode without data access (metabase#58628)", () => {
++    it("redirects to the unauthorized page and bails when the user cannot create queries", async () => {
++      const { card } = TEST_CASE.SAVED_STRUCTURED_QUESTION;
++      const baseUrl = Urls.card(card);
++      const location = getLocationForCard(card, {
++        pathname: `${baseUrl}/notebook`,
++      });
++
++      const { dispatch, result } = await setup({
++        card,
++        location,
++        hasDataPermissions: false,
++      });
++
++      // Guard fires: redirect to /unauthorized ...
++      expect(dispatch).toHaveBeenCalledWith(replace(Urls.unauthorized()));
++      // ... and init bails without ever dispatching INITIALIZE_QB.
++      expect(result).toBeNull();
++    });
++  });
+ });
