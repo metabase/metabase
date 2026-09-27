@@ -1,17 +1,15 @@
 # Embedding SDK: bundle, package, types and docs.
 #
-# FIXME: five tasks below declare the whole of resources/embedding-sdk as their
-# output: build-embedding-sdk-node, build-release-embedding-sdk-bundle,
-# build-release-embedding-sdk-package, embedding-sdk-generate-package and
-# embedding-sdk-generate-package-support-files. Each one writes a different
-# subset, so their cache entries overlap and a hit on one can restore a snapshot
-# taken before another had written. build-embedding-sdk-package runs all five in
-# order, which is exactly where that bites.
+# Output paths below come from reading the configs and generators, not guesswork:
+#   rspack.embedding-sdk-package.config.js  BUILD_PATH + "/dist"
+#   rspack.embedding-sdk-node.config.js     resources/embedding-sdk/dist
+#   rspack.embedding-sdk-bundle.config.js   resources/frontend_client/app/embedding-sdk
+#   generate-sdk-package-files.js           resources/embedding-sdk/{package.json,LICENSE.txt,README.md,CHANGELOG.md}
+#   generate-package-support-files.ts        resources/embedding-sdk/dist
 #
-# Each task should declare only the paths it writes. Nothing here is verified
-# against what the rspack configs and generator scripts actually emit, unlike
-# build-cljs and build-js.
-
+# Three of them still share resources/embedding-sdk/dist, each contributing
+# different files. Narrowing further needs the filenames each one emits, which
+# bin/audit-task-io.sh can establish on a machine willing to run the SDK build.
 tasks:
   build-embedding-sdk-node:
     script: |-
@@ -22,7 +20,7 @@ tasks:
       - "@group(sdk)"
       - "@group(rspack)"
     outputs:
-      - resources/embedding-sdk/**
+      - resources/embedding-sdk/dist/**
 
   build-embedding-sdk-node-watch:
     script: |-
@@ -57,7 +55,7 @@ tasks:
       - "@group(sdk)"
       - "@group(rspack)"
     outputs:
-      - resources/embedding-sdk/**
+      - resources/frontend_client/app/embedding-sdk/**
 
   build-release-embedding-sdk-package:
     script: |-
@@ -69,7 +67,7 @@ tasks:
       - "@group(sdk)"
       - "@group(rspack)"
     outputs:
-      - resources/embedding-sdk/**
+      - resources/embedding-sdk/dist/**
 
   embedding-eajs-docs-generate:
     script: |-
@@ -135,7 +133,10 @@ tasks:
     inputs:
       - bin/embedding-sdk/**
     outputs:
-      - resources/embedding-sdk/**
+      - resources/embedding-sdk/package.json
+      - resources/embedding-sdk/LICENSE.txt
+      - resources/embedding-sdk/README.md
+      - resources/embedding-sdk/CHANGELOG.md
 
   embedding-sdk-generate-package-support-files:
     script: |-
@@ -144,7 +145,7 @@ tasks:
     inputs:
       - enterprise/frontend/src/embedding-sdk-package/bin/**
     outputs:
-      - resources/embedding-sdk/**
+      - resources/embedding-sdk/dist/**
 
   embedding-sdk-publish:
     script: |-
