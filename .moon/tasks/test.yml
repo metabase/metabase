@@ -8,6 +8,11 @@ tasks:
       cache: false
 
   embedding-sdk-test-unit:
+    # Not cached. A stale hit on a test task is a false pass, which is the worst
+    # failure this config can produce, and the input sets are not yet verified:
+    # jest.base.conf.js maps docs/* to the real docs directory, so a docs change
+    # can affect a test while sitting outside every declared input. Revisit once
+    # bin/audit-task-reads.sh has actually run and proven them.
     script: |-
       jest --ignoreProjects ci-scripts \
            --maxWorkers=4 \
@@ -17,6 +22,8 @@ tasks:
     inputs:
       - "@group(sdk)"
       - "@group(jest)"
+    options:
+      cache: false
 
   generate-cypress-html-report:
     script: |-
@@ -38,20 +45,34 @@ tasks:
       runDepsInParallel: false
 
   test-ci-scripts:
+    # Not cached. A stale hit on a test task is a false pass, which is the worst
+    # failure this config can produce, and the input sets are not yet verified:
+    # jest.base.conf.js maps docs/* to the real docs directory, so a docs change
+    # can affect a test while sitting outside every declared input. Revisit once
+    # bin/audit-task-reads.sh has actually run and proven them.
     script: |-
       jest --selectProjects ci-scripts --maxWorkers=4
     inputs:
       - bin/**
       - release/**
       - "@group(jest)"
+    options:
+      cache: false
 
   test-cljs:
+    # Not cached. A stale hit on a test task is a false pass, which is the worst
+    # failure this config can produce, and the input sets are not yet verified:
+    # jest.base.conf.js maps docs/* to the real docs directory, so a docs change
+    # can affect a test while sitting outside every declared input. Revisit once
+    # bin/audit-task-reads.sh has actually run and proven them.
     script: |-
       shadow-cljs compile test \
       && node target/node-tests.js
     inputs:
       - "@group(cljs)"
       - test/**
+    options:
+      cache: false
 
   test-cypress:
     script: |-
@@ -90,6 +111,11 @@ tasks:
       cache: false
 
   test-timezones-unit:
+    # Not cached. A stale hit on a test task is a false pass, which is the worst
+    # failure this config can produce, and the input sets are not yet verified:
+    # jest.base.conf.js maps docs/* to the real docs directory, so a docs change
+    # can affect a test while sitting outside every declared input. Revisit once
+    # bin/audit-task-reads.sh has actually run and proven them.
     script: |-
       jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js
     deps:
@@ -97,8 +123,15 @@ tasks:
     inputs:
       - "@group(frontend)"
       - jest.tz.unit.conf.js
+    options:
+      cache: false
 
   test-unit:
+    # Not cached. A stale hit on a test task is a false pass, which is the worst
+    # failure this config can produce, and the input sets are not yet verified:
+    # jest.base.conf.js maps docs/* to the real docs directory, so a docs change
+    # can affect a test while sitting outside every declared input. Revisit once
+    # bin/audit-task-reads.sh has actually run and proven them.
     script: |-
       jest --ignoreProjects ci-scripts --maxWorkers=4
     deps:
@@ -106,6 +139,8 @@ tasks:
     inputs:
       - "@group(frontend)"
       - "@group(jest)"
+    options:
+      cache: false
 
   test-unit-watch:
     script: |-

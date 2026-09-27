@@ -27,7 +27,7 @@ concurrency:
 jobs:
   audit:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
       - name: Prepare front-end environment
@@ -47,8 +47,9 @@ jobs:
       # Reads are the dangerous direction: an undeclared input is not in the
       # cache key, so editing it leaves a stale hit in place.
       #
-      # This covers all 31 cached tasks, which includes the test suites, and each
-      # runs with a forced cache miss. If the job outgrows its timeout, narrow it
-      # by passing task names rather than reintroducing a hardcoded default.
+      # This covers every cached task, each with a forced cache miss. The test
+      # suites are deliberately uncached, so they are out of scope here. If the
+      # job outgrows its timeout, narrow it by passing task names rather than
+      # reintroducing a hardcoded default.
       - name: Audit declared inputs
         run: bin/audit-task-reads.sh
