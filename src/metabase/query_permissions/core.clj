@@ -15,6 +15,7 @@
   check-card-result-metadata-data-perms
   check-data-perms
   check-result-metadata-data-perms
+  check-goal-reference-permissions
   check-run-permissions-for-query
   has-perm-for-query?
   perms-exception
