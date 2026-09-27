@@ -31,8 +31,11 @@ function setup(opts: SetupOpts = {}) {
 }
 
 describe("StrategyEditorForDatabases", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setup();
+    // Let the initial data load settle, so a request does not resolve mid-test
+    // and rerender outside act().
+    await screen.findByLabelText(/Edit default policy/);
   });
 
   it("lets user override root strategy on enterprise instance", async () => {
@@ -248,31 +251,6 @@ describe("StrategyEditorForDatabases", () => {
     ).toBeInTheDocument();
   });
 
-  it("can abbreviate a 'Schedule' strategy", () => {
-    const strategy: ScheduleStrategy = {
-      type: "schedule",
-      schedule: "0 0 * * * ?",
-      refresh_automatically: false,
-    };
-    const result = getShortStrategyLabel(strategy);
-    expect(result).toBe("Scheduled: hourly");
-  });
-
-  it.each([
-    [CacheDurationUnit.Hours, "Duration: 5h"],
-    [CacheDurationUnit.Minutes, "Duration: 5m"],
-    [CacheDurationUnit.Seconds, "Duration: 5s"],
-    [CacheDurationUnit.Days, "Duration: 5d"],
-  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
-    const strategy: DurationStrategy = {
-      type: "duration",
-      duration: 5,
-      unit,
-      refresh_automatically: false,
-    };
-    expect(getShortStrategyLabel(strategy)).toBe(expected);
-  });
-
   it("does not silently save default values when saving right after switching strategies", async () => {
     // Database 4 inherits the default policy
     await userEvent.click(
@@ -361,6 +339,33 @@ describe("StrategyEditorForDatabases", () => {
         "Edit default policy (currently: Duration: 1m)",
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("can abbreviate a 'Schedule' strategy", () => {
+    const strategy: ScheduleStrategy = {
+      type: "schedule",
+      schedule: "0 0 * * * ?",
+      refresh_automatically: false,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Scheduled: hourly");
+  });
+
+  it.each([
+    [CacheDurationUnit.Hours, "Duration: 5h"],
+    [CacheDurationUnit.Minutes, "Duration: 5m"],
+    [CacheDurationUnit.Seconds, "Duration: 5s"],
+    [CacheDurationUnit.Days, "Duration: 5d"],
+  ])("can abbreviate a 'Duration' strategy with unit %s", (unit, expected) => {
+    const strategy: DurationStrategy = {
+      type: "duration",
+      duration: 5,
+      unit,
+      refresh_automatically: false,
+    };
+    expect(getShortStrategyLabel(strategy)).toBe(expected);
   });
 });
 
