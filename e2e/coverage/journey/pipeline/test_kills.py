@@ -148,7 +148,7 @@ EXPECTED = {
     BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2"),
 }
 COMPARED = ("verdict", "reason", "unique_kills", "unconfirmed_unique_kills", "cover_kept_for", "kills", "misses", "errored",
-            "qualifying_mutants", "qualifying_without_location", "depends_on")
+            "qualifying_mutants", "qualifying_without_location", "qualifying_basis", "depends_on")
 SHARED_KILLS_HEADING = "\nKills that no remaining test has\n"
 
 UNCONFIRMED_KILLS = {
@@ -794,6 +794,52 @@ class ReachIsPerFunction(unittest.TestCase):
             os.unlink(kills_file)
         self.assertEqual(by_index["qualifying_mutants"], {"wiring": 1})
         self.assertEqual(by_file["qualifying_mutants"], {"logic": 1, "wiring": 1})
+
+
+REPRO_61741 = ("e2e/test/scenarios/embedding/embedding-dashboard.cy.spec.js::scenarios > embedding > dashboard appearance "
+               "should use transparent pivot table cells in static embedding's dark mode (metabase#61741)")
+IFRAME = ("e2e/test/scenarios/embedding/sdk-iframe-embedding/sdk-iframe-embedding.cy.spec.ts::scenarios > embedding > "
+          "modular embedding table visualization should span the full width of the container (metabase#69831)")
+L_BOOT = fn_location("frontend/src/metabase/AppThemeProvider.tsx", "getColorSchemeFromDisplayTheme", 41, 39)
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class BaselineReach(unittest.TestCase):
+    def test_every_candidate_that_loaded_the_app_reaches_boot_code_with_basis_baseline(self):
+        kills_file = write_json({
+            "boot": mutant("logic", [REMAINING], [REPRO_61741, IFRAME, UNIQUE, REMAINING], L_BOOT),
+            "boot-and-hook": mutant("wiring", [REMAINING], [UNIQUE, REMAINING]) | {"locations": [L_BOOT, L_UNIQUE]},
+        })
+        try:
+            result = kills.evaluate(INDEX, kills_file, [REPRO_61741, IFRAME, UNIQUE], 1, [])
+        finally:
+            os.unlink(kills_file)
+        rows = result["candidates"]
+        self.assertEqual({c: (rows[c]["reason"], rows[c]["qualifying_mutants"], rows[c]["qualifying_basis"]) for c in rows}, {
+            REPRO_61741: (NEEDS_BASELINE, {"logic": 1}, {"baseline": ["boot"]}),
+            IFRAME: ("0 qualifying mutants, fewer than 1", {}, {}),
+            UNIQUE: (NEEDS_BASELINE, {"logic": 1, "wiring": 1},
+                     {"baseline": ["boot", "boot-and-hook"], "subtraction": ["boot-and-hook"]}),
+        })
+        self.assertEqual([r["baseline_keys"] for r in result["mutants"]["boot-and-hook"]["locations"]], [1, 0])
+
+    def test_the_lookup_marks_each_test_with_the_basis_of_its_reach(self):
+        def lookup(location):
+            done = subprocess.run(
+                ["node", os.path.join(HERE, "..", "lookup", "lookup.mjs"), "--index", INDEX, "--json", json.dumps(location)],
+                stdout=subprocess.PIPE, text=True, check=True,
+            )
+            return json.loads(done.stdout)
+
+        boot = lookup(L_BOOT)
+        self.assertEqual((boot["basis"][REPRO_61741], IFRAME in boot["reach"]), ("baseline", False))
+        self.assertEqual(set(boot["basis"].values()), {"baseline"})
+        self.assertEqual(boot["by_basis"]["subtraction"]["reach"], [])
+        self.assertEqual(boot["by_basis"]["baseline"]["reach"], boot["reach"])
+        # This index records no pages, so no load has a known kind.
+        self.assertEqual(set(boot["by_basis"]["baseline"]["load"].values()), {"unknown"})
+        measured = lookup(L_UNIQUE)
+        self.assertEqual((set(measured["basis"].values()), "by_basis" in measured), ({"subtraction"}, False))
 
 
 CHAIN = [BOOKMARKS, BOOKMARK_COLLECTION, BOOKMARK_MODEL]

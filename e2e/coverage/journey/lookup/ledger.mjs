@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { parseArgs } from "./args.mjs";
-import { loadIndex, query, resolveLocation } from "./lib.mjs";
+import { keysReachedBy, loadIndex, query, resolveLocation } from "./lib.mjs";
 import {
   fnmapIndexFor,
   gitShow,
@@ -478,12 +478,46 @@ export function buildLedger({
   const changed = new Set(base.changed_between);
   const mixed = (file) => base.status === "mixed" || changed.has(file);
   const out = [];
+  const passed = (r) => index.tests[testIndex.get(r.id)].state === "passed";
+  const pairs = (rs) =>
+    rs.map((r) => [
+      testIndex.get(r.id),
+      r.assertsAfter,
+      ...(r.load ? [r.load] : []),
+    ]);
+  const byLoad = (rs) =>
+    rs.reduce((acc, r) => ({ ...acc, [r.load]: (acc[r.load] ?? 0) + 1 }), {});
   for (const row of rows.values()) {
-    const { reach } = query(index, [...row.keys], { includeNotPassing: true });
-    const passed = (r) => index.tests[testIndex.get(r.id)].state === "passed";
-    const asserting = reach.filter((r) => passed(r) && r.assertsAfter > 0);
-    const other = reach.filter((r) => !(passed(r) && r.assertsAfter > 0));
-    const remaining = reach.filter((r) => passed(r) && !candidateSet.has(r.id));
+    const { reach, byBasis } = query(index, [...row.keys], {
+      includeNotPassing: true,
+    });
+    const split = {};
+    const counts = {};
+    for (const [basis, name] of [
+      ["subtraction", "measured"],
+      ["baseline", "baseline"],
+    ]) {
+      const rs = byBasis[basis].reach;
+      const asserting = rs.filter((r) => passed(r) && r.assertsAfter > 0);
+      const remaining = rs.filter((r) => passed(r) && !candidateSet.has(r.id));
+      split[`reach_and_assert_${name}`] = pairs(asserting);
+      split[`reach_other_${name}`] = pairs(
+        rs.filter((r) => !(passed(r) && r.assertsAfter > 0)),
+      );
+      counts[`reach_${name}`] = rs.filter(passed).length;
+      counts[`reach_and_assert_${name}`] = asserting.length;
+      counts[`remaining_reach_${name}`] = remaining.length;
+      counts[`remaining_reach_and_assert_${name}`] = remaining.filter(
+        (r) => r.assertsAfter > 0,
+      ).length;
+      if (basis === "baseline") {
+        counts.reach_baseline_by_load = byLoad(rs.filter(passed));
+        counts.reach_and_assert_baseline_by_load = byLoad(asserting);
+        counts.remaining_reach_and_assert_baseline_by_load = byLoad(
+          remaining.filter((r) => r.assertsAfter > 0),
+        );
+      }
+    }
     const rowMutants = row.mutants.map((mid) => {
       const m = mutants[mid];
       return {
@@ -509,19 +543,11 @@ export function buildLedger({
       ...(mixed(row.location.file) ? { base: "mixed" } : {}),
       inputs: row.inputs,
       reach_counts_issues: [...row.issues],
-      reach_and_assert: asserting.map((r) => [
-        testIndex.get(r.id),
-        r.assertsAfter,
-      ]),
-      reach_other: other.map((r) => [testIndex.get(r.id), r.assertsAfter]),
+      ...split,
       counts: {
-        reach: reach.filter(passed).length,
-        reach_and_assert: asserting.length,
+        ...counts,
         not_passing: reach.length - reach.filter(passed).length,
         candidates_reaching: reach.filter((r) => candidateSet.has(r.id)).length,
-        remaining_reach: remaining.length,
-        remaining_reach_and_assert: remaining.filter((r) => r.assertsAfter > 0)
-          .length,
       },
       mutants: rowMutants,
       status:
@@ -542,6 +568,7 @@ export function buildLedger({
     base,
     layers: LAYERS,
     tests: index.tests.map((t) => ({ id: t.id, state: t.state })),
+    candidate_keys: Object.fromEntries(keysReachedBy(index, candidates)),
     rows: out,
     mutants,
     unlocated_mutants: unlocated,
@@ -624,8 +651,11 @@ const CSV_COLUMNS = [
   "errored",
   "e2e_status",
   "candidates_reaching",
-  "e2e_reach",
-  "e2e_reach_and_assert",
+  "e2e_reach_measured",
+  "e2e_reach_and_assert_measured",
+  "e2e_reach_baseline",
+  "e2e_reach_and_assert_baseline",
+  "e2e_reach_and_assert_baseline_by_load",
   "reach_source",
   "cheapest_killing_layer",
   "witness_only",
@@ -637,8 +667,11 @@ const CSV_COLUMNS = [
   "base",
   "stratum_coarse",
   "routed_to",
-  "e2e_reach_total",
-  "e2e_reach_and_assert_total",
+  "e2e_reach_measured_total",
+  "e2e_reach_and_assert_measured_total",
+  "e2e_reach_baseline_total",
+  "e2e_reach_and_assert_baseline_total",
+  "e2e_reach_and_assert_baseline_by_load_total",
   "contract",
   "cheapest_layer_source",
 ];
@@ -652,6 +685,11 @@ const layerCounts = (counts) =>
   LAYERS.concat("unknown")
     .filter((layer) => counts[layer])
     .map((layer) => `${layer}=${counts[layer]}`)
+    .join(";");
+
+const loadCounts = (counts) =>
+  Object.entries(counts)
+    .map(([load, n]) => `${load}=${n}`)
     .join(";");
 
 function locationText(location) {
@@ -671,10 +709,22 @@ export function toCsv(ledger) {
       location_id: row.id,
       location: locationText(row.location),
       candidates_reaching: row.counts.candidates_reaching,
-      e2e_reach: row.counts.remaining_reach,
-      e2e_reach_and_assert: row.counts.remaining_reach_and_assert,
-      e2e_reach_total: row.counts.reach,
-      e2e_reach_and_assert_total: row.counts.reach_and_assert,
+      e2e_reach_measured: row.counts.remaining_reach_measured,
+      e2e_reach_and_assert_measured:
+        row.counts.remaining_reach_and_assert_measured,
+      e2e_reach_baseline: row.counts.remaining_reach_baseline,
+      e2e_reach_and_assert_baseline:
+        row.counts.remaining_reach_and_assert_baseline,
+      e2e_reach_measured_total: row.counts.reach_measured,
+      e2e_reach_and_assert_measured_total: row.counts.reach_and_assert_measured,
+      e2e_reach_baseline_total: row.counts.reach_baseline,
+      e2e_reach_and_assert_baseline_total: row.counts.reach_and_assert_baseline,
+      e2e_reach_and_assert_baseline_by_load: loadCounts(
+        row.counts.remaining_reach_and_assert_baseline_by_load,
+      ),
+      e2e_reach_and_assert_baseline_by_load_total: loadCounts(
+        row.counts.reach_and_assert_baseline_by_load,
+      ),
       reach_source: "index",
       resolved: row.resolved ? "yes" : "no",
       location_notes: (row.notes ?? []).join(" | "),
@@ -733,6 +783,14 @@ export function summarize(ledger, derived, inputs) {
   rows.forEach((r) => (statuses[r.status] = (statuses[r.status] ?? 0) + 1));
   const fromReachCounts = rows.filter((r) => r.reach_counts_issues.length);
   const unresolved = rows.filter((r) => !r.resolved);
+  const baselineRows = rows.filter((r) => r.counts.reach_baseline > 0);
+  const sumLoads = (rs) =>
+    rs.reduce((acc, r) => {
+      for (const [load, n] of Object.entries(r.counts.reach_baseline_by_load)) {
+        acc[load] = (acc[load] ?? 0) + n;
+      }
+      return acc;
+    }, {});
   const cheapest = {};
   Object.values(mutants).forEach(
     (m) => (cheapest[m.cheapest_layer] = (cheapest[m.cheapest_layer] ?? 0) + 1),
@@ -763,7 +821,10 @@ export function summarize(ledger, derived, inputs) {
     "",
     "A location is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`.",
     "Every input location is resolved through the lookup library, and mutants and reach-counts locations that resolve to the same function or form share a row.",
-    "Reach counts only tests that passed in the capture. In the CSV, `e2e_reach` and `e2e_reach_and_assert` leave out the candidates, and the `_total` columns keep them.",
+    "Reach counts only tests that passed in the capture, and splits by basis. The `_measured` counts are reach after baseline subtraction, basis `subtraction`.",
+    "The `_baseline` counts are reach through code that subtraction removes from every test, basis `baseline`: every test that loaded the app, or made an app request for backend code, counts as reaching it.",
+    "A test that reaches a row both ways counts under both. In the CSV, `e2e_reach_*` and `e2e_reach_and_assert_*` leave out the candidates, and the `_total` columns keep them.",
+    "Baseline reach is split by the kind of top-window page the test loaded, `app`, `embed`, `public`, `other`, or `unknown` when the index records no pages. Reach from a load other than `app` is the least certain.",
     "",
     "## Rows",
     "",
@@ -771,6 +832,11 @@ export function summarize(ledger, derived, inputs) {
     `- Status: ${Object.entries(statuses)
       .map(([s, n]) => `${s} ${n}`)
       .join(", ")}.`,
+    `- ${baselineRows.length} rows have reach with basis baseline, ${count(baselineRows, (r) => r.counts.reach_measured > 0)} of them measured reach too, and ${count(baselineRows, (r) => r.mutants.length)} of them hold a mutant. Their baseline reach by load: ${
+      Object.entries(sumLoads(baselineRows))
+        .map(([load, n]) => `${load} ${n}`)
+        .join(", ") || "none"
+    }.`,
     `- ${unresolved.length} rows resolve to no code, so no test reaches them:`,
     ...unresolved.map(
       (r) => `  - \`${r.id}\`: ${(r.notes ?? ["no notes"]).join(" | ")}`,

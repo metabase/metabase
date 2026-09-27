@@ -43,6 +43,7 @@ export function loadIndex(dir) {
     backendBaseline: new Set(baseline.backend),
     frontendBaselineShards: baseline.frontendShards,
     baselineShardCount: baseline.shards,
+    baselineKeys: new Set(baseline.keys ?? everyTestBaselineKeys(baseline)),
     classes: optional("classes.json"),
     lines: optional("lines.json"),
     cljsOrigins: optional("cljs-origins.json"),
@@ -59,6 +60,17 @@ export function loadIndex(dir) {
     index.backendKeysByNs.set(prefix, list);
   }
   return index;
+}
+
+// The backend baseline is the union of every shard's, so subtraction removes each of its classes from every test.
+// A frontend function is removed from every test only when every shard's baseline fired it.
+export function everyTestBaselineKeys(baseline) {
+  return [
+    ...Object.entries(baseline.frontendShards)
+      .filter(([, shards]) => shards === baseline.shards)
+      .map(([fn]) => `fe:${fn}`),
+    ...baseline.backend.map((name) => `be:${name}`),
+  ];
 }
 
 /**
@@ -447,17 +459,35 @@ function namespaceClasses(index, prefix) {
 }
 
 export function resolveLocation(index, loc, ctx) {
+  let result;
   if (loc.file && isJsFile(loc.file)) {
-    return resolveFrontend(index, loc, ctx);
+    result = resolveFrontend(index, loc, ctx);
+  } else if (loc.ns || (loc.file && isCljFile(loc.file))) {
+    result = resolveBackend(index, loc, ctx);
+  } else {
+    return {
+      kind: "unknown",
+      keys: [],
+      notes: [`unsupported location ${JSON.stringify(loc)}`],
+    };
   }
-  if (loc.ns || (loc.file && isCljFile(loc.file))) {
-    return resolveBackend(index, loc, ctx);
+  const baseline = result.keys.filter((key) => index.baselineKeys.has(key));
+  if (baseline.length > 0) {
+    result.baselineKeys = baseline.length;
+    result.notes.push(
+      `${baseline.length} of its ${result.keys.length} keys are subtracted from every test, so every test that ${baselineReachers(baseline)} reaches them, with basis baseline`,
+    );
   }
-  return {
-    kind: "unknown",
-    keys: [],
-    notes: [`unsupported location ${JSON.stringify(loc)}`],
-  };
+  return result;
+}
+
+function baselineReachers(keys) {
+  const frontend = keys.some((key) => key.startsWith("fe:"));
+  const backend = keys.some((key) => key.startsWith("be:"));
+  return [
+    ...(frontend ? ["loaded the app"] : []),
+    ...(backend ? ["made an app request"] : []),
+  ].join(" or ");
 }
 
 export function describeResolved(r) {
@@ -475,18 +505,64 @@ export function describeResolved(r) {
   return "";
 }
 
+// Paths the server answers with something other than the app's index.html.
+const PAGE_KINDS = [
+  [/^\/embed(\/|$)/, "embed"],
+  [/^\/public(\/|$)/, "public"],
+  [/^\/(api|app|oauth|\.well-known)(\/|$)/, "other"],
+];
+const LOAD_KINDS = ["app", "embed", "public", "other"];
+
 /**
- * Tests that reach any of the keys.
- * For each test, `assertsAfter` counts the passing assertions from the first step cut holding one of the keys,
- * or is null when no step cut held them.
+ * The kind of the top-window pages a test loaded: `app` when any of them is an app page, else `embed`, `public` or `other`.
+ * It's `unknown` when the index records no pages, or the test loaded none of its own.
+ */
+export function loadKind(pages) {
+  const kinds = new Set(
+    (pages ?? []).map(
+      (page) => PAGE_KINDS.find(([re]) => re.test(page))?.[1] ?? "app",
+    ),
+  );
+  return LOAD_KINDS.find((kind) => kinds.has(kind)) ?? "unknown";
+}
+
+const sortRows = (rows) =>
+  rows.sort(
+    (a, b) =>
+      (b.assertsAfter ?? -1) - (a.assertsAfter ?? -1) ||
+      a.id.localeCompare(b.id),
+  );
+
+const withAsserts = (reach) => ({
+  reach,
+  reachAndAssert: reach.filter((row) => (row.assertsAfter ?? 0) > 0),
+});
+
+/**
+ * Tests that reach any of the keys, each with the `basis` of its reach.
+ * Basis `subtraction` is measured reach after baseline subtraction,
+ * and `assertsAfter` counts the passing assertions from the first step cut holding one of the keys, or is null when no step cut held them.
+ * Basis `baseline` is reach inferred from appActivity() for keys that subtraction removes from every test:
+ * every test that loaded the app reaches a frontend one, and every test that made an app request reaches a backend one.
+ * Each baseline row has the `load` of its test, from appActivity().
+ * A test that reaches the keys both ways keeps its measured row in `reach`, and `byBasis` lists it under both bases.
  */
 export function query(
   index,
   keys,
   { exclude = new Set(), includeNotPassing = false } = {},
 ) {
-  const best = new Map();
+  const measured = new Map();
+  let baselineFrontend = false;
+  let baselineBackend = false;
   for (const key of keys) {
+    if (index.baselineKeys.has(key)) {
+      if (key.startsWith("fe:")) {
+        baselineFrontend = true;
+      } else {
+        baselineBackend = true;
+      }
+    }
     const id = index.keyIds.get(key);
     if (id === undefined) {
       continue;
@@ -496,24 +572,58 @@ export function query(
     for (let i = start; i < end; i += 2) {
       const testIndex = index.postings[i];
       const after = index.postings[i + 1] - 1;
-      const previous = best.get(testIndex);
+      const previous = measured.get(testIndex);
       if (previous === undefined || after > previous) {
-        best.set(testIndex, after);
+        measured.set(testIndex, after);
       }
     }
   }
+  const inferred = new Map();
+  if (baselineFrontend || baselineBackend) {
+    appActivity(index).forEach((activity, testIndex) => {
+      const after = Math.max(
+        baselineFrontend && activity.loadedApp ? activity.loadAsserts : -1,
+        baselineBackend && activity.madeRequest ? activity.requestAsserts : -1,
+      );
+      if (after >= 0) {
+        inferred.set(testIndex, after);
+      }
+    });
+  }
+
+  const activities = inferred.size > 0 ? appActivity(index) : null;
+  const byBasis = {};
+  const rows = new Map();
+  for (const [basis, afters] of [
+    ["subtraction", measured],
+    ["baseline", inferred],
+  ]) {
+    const reach = [];
+    for (const [testIndex, after] of afters) {
+      const test = index.tests[testIndex];
+      if (exclude.has(test.id)) {
+        continue;
+      }
+      const row = {
+        id: test.id,
+        assertsAfter: after >= 0 ? after : null,
+        run: test.run,
+        basis,
+        ...(basis === "baseline" ? { load: activities[testIndex].load } : {}),
+      };
+      if (!rows.has(testIndex)) {
+        rows.set(testIndex, row);
+      }
+      if (test.state === "passed" || includeNotPassing) {
+        reach.push(row);
+      }
+    }
+    byBasis[basis] = withAsserts(sortRows(reach));
+  }
   const reach = [];
   const notPassing = [];
-  for (const [testIndex, after] of best) {
+  for (const [testIndex, row] of rows) {
     const test = index.tests[testIndex];
-    if (exclude.has(test.id)) {
-      continue;
-    }
-    const row = {
-      id: test.id,
-      assertsAfter: after >= 0 ? after : null,
-      run: test.run,
-    };
     if (test.state !== "passed") {
       notPassing.push({ ...row, state: test.state });
       if (!includeNotPassing) {
@@ -522,16 +632,77 @@ export function query(
     }
     reach.push(row);
   }
-  reach.sort(
-    (a, b) =>
-      (b.assertsAfter ?? -1) - (a.assertsAfter ?? -1) ||
-      a.id.localeCompare(b.id),
-  );
   return {
-    reach,
-    reachAndAssert: reach.filter((row) => (row.assertsAfter ?? 0) > 0),
+    ...withAsserts(sortRows(reach)),
     notPassing,
+    byBasis,
+    baselineKeys: new Set(keys.filter((key) => index.baselineKeys.has(key)))
+      .size,
   };
+}
+
+/**
+ * Per test, whether it loaded the app in the top window and whether it made an app request,
+ * with `loadAsserts` and `requestAsserts`, the passing assertions from the first step cut after each.
+ * For an index whose tests.json lacks them, a test loaded the app when it reached a frontend function after subtraction,
+ * and made an app request when it reached a backend class or loaded the app, whose boot fetches the session properties.
+ * Its assertions then count from the first step cut holding a frontend key it reached, or any key for `requestAsserts`,
+ * which comes at or after the first page load, and all of them count when no cut holds one.
+ * `load` is the kind of the top-window pages the test loaded, from loadKind().
+ */
+export function appActivity(index) {
+  if (!index.appActivity) {
+    const { fe, be } = keyCounts(index);
+    const firstFrontend = new Int32Array(index.tests.length).fill(-1);
+    const firstAny = new Int32Array(index.tests.length).fill(-1);
+    index.keys.forEach((key, id) => {
+      const frontend = key.startsWith("fe:");
+      const start = index.offsets[id];
+      for (let i = start; i < start + index.lengths[id]; i += 2) {
+        const testIndex = index.postings[i];
+        const after = index.postings[i + 1] - 1;
+        firstAny[testIndex] = Math.max(firstAny[testIndex], after);
+        if (frontend) {
+          firstFrontend[testIndex] = Math.max(firstFrontend[testIndex], after);
+        }
+      }
+    });
+    index.appActivity = index.tests.map((test, testIndex) => {
+      const loadedApp = test.loadedApp ?? fe[testIndex] > 0;
+      const madeRequest = test.madeRequest ?? (be[testIndex] > 0 || loadedApp);
+      const placed = (recorded, first) =>
+        recorded ?? (first[testIndex] >= 0 ? first[testIndex] : test.asserts);
+      return {
+        loadedApp,
+        madeRequest,
+        load: loadKind(test.pages),
+        loadAsserts: loadedApp ? placed(test.loadAsserts, firstFrontend) : null,
+        requestAsserts: madeRequest
+          ? placed(test.requestAsserts, firstAny)
+          : null,
+      };
+    });
+  }
+  return index.appActivity;
+}
+
+/** For each of the tests in the index, the ids of the keys it reached after baseline subtraction. */
+export function keysReachedBy(index, testIds) {
+  const testIndexOf = new Map(index.tests.map((test, i) => [test.id, i]));
+  const wanted = new Map(
+    testIds
+      .filter((id) => testIndexOf.has(id))
+      .map((id) => [testIndexOf.get(id), []]),
+  );
+  index.keys.forEach((_, keyId) => {
+    const start = index.offsets[keyId];
+    for (let i = start; i < start + index.lengths[keyId]; i += 2) {
+      wanted.get(index.postings[i])?.push(keyId);
+    }
+  });
+  return new Map(
+    [...wanted].map(([testIndex, keys]) => [index.tests[testIndex].id, keys]),
+  );
 }
 
 /** Frontend functions and backend classes each test reached after baseline subtraction. */

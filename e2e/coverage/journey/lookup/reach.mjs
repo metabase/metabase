@@ -1,5 +1,5 @@
 // Reads {"tests": [test id, ...], "locations": {"<name>": [location, ...]}} on stdin and writes JSON:
-// which of those tests reach each named group of locations, and the keys each of those tests reached.
+// which of those tests reach each named group of locations, by basis, and the keys each of those tests reached.
 //   node reach.mjs --index <index dir> [--repo <path>] [--sha <commit>] < request.json
 import fs from "node:fs";
 import path from "node:path";
@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "./args.mjs";
 import {
   describeResolved,
+  keysReachedBy,
   loadIndex,
   parseLocation,
   query,
@@ -32,19 +33,6 @@ const ctx = {
   sha: args.sha ?? index.meta.sha,
 };
 
-const testIndexOf = new Map(index.tests.map((test, i) => [test.id, i]));
-const wanted = new Map(
-  (request.tests ?? [])
-    .filter((id) => testIndexOf.has(id))
-    .map((id) => [testIndexOf.get(id), []]),
-);
-index.keys.forEach((_, keyId) => {
-  const start = index.offsets[keyId];
-  for (let i = start; i < start + index.lengths[keyId]; i += 2) {
-    wanted.get(index.postings[i])?.push(keyId);
-  }
-});
-
 function resolve(location) {
   try {
     const loc =
@@ -55,17 +43,20 @@ function resolve(location) {
   }
 }
 
+const stateOf = new Map(index.tests.map((test) => [test.id, test.state]));
 const tests = {};
-for (const [testIndex, keys] of wanted) {
-  const test = index.tests[testIndex];
-  tests[test.id] = { state: test.state, keys };
+for (const [id, keys] of keysReachedBy(index, request.tests ?? [])) {
+  tests[id] = { state: stateOf.get(id), keys };
 }
 const ids = new Set(Object.keys(tests));
+
+const requested = (rows) =>
+  rows.filter((row) => ids.has(row.id)).map((row) => row.id);
 
 const locations = {};
 for (const [name, group] of Object.entries(request.locations ?? {})) {
   const resolved = group.map(resolve);
-  const { reach } = query(
+  const { reach, byBasis } = query(
     index,
     resolved.flatMap((r) => r.keys),
     { includeNotPassing: true },
@@ -76,10 +67,17 @@ for (const [name, group] of Object.entries(request.locations ?? {})) {
       kind: r.kind,
       file: r.file ?? null,
       keys: r.keys.length,
+      baseline_keys: r.baselineKeys ?? 0,
       resolved: describeResolved(r),
       notes: r.notes ?? [],
     })),
-    reach: reach.filter((row) => ids.has(row.id)).map((row) => row.id),
+    reach: requested(reach),
+    reach_by_basis: Object.fromEntries(
+      Object.entries(byBasis).map(([basis, view]) => [
+        basis,
+        requested(view.reach),
+      ]),
+    ),
   };
 }
 

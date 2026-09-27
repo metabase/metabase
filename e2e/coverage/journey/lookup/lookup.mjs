@@ -87,17 +87,47 @@ const results = args.union
     ]
   : resolved.map((r) => ({ locations: [r], ...query(index, r.keys, options) }));
 
+const idsOf = (rows) => rows.map((r) => r.id);
+const countLoads = (rows) =>
+  Object.entries(
+    rows.reduce((acc, r) => ({ ...acc, [r.load]: (acc[r.load] ?? 0) + 1 }), {}),
+  )
+    .map(([load, n]) => `${load} ${n}`)
+    .join(", ");
+const assertsAfterOf = (rows) =>
+  Object.fromEntries(rows.map((r) => [r.id, r.assertsAfter]));
+
 if (args.json) {
   for (const result of results) {
     console.log(
       JSON.stringify({
         locations: result.locations,
-        reach: result.reach.map((r) => r.id),
-        reach_and_assert: result.reachAndAssert.map((r) => r.id),
-        asserts_after: Object.fromEntries(
-          result.reach.map((r) => [r.id, r.assertsAfter]),
-        ),
+        reach: idsOf(result.reach),
+        reach_and_assert: idsOf(result.reachAndAssert),
+        asserts_after: assertsAfterOf(result.reach),
         not_passing: result.notPassing,
+        basis: Object.fromEntries(result.reach.map((r) => [r.id, r.basis])),
+        ...(result.baselineKeys > 0
+          ? {
+              by_basis: Object.fromEntries(
+                Object.entries(result.byBasis).map(([basis, view]) => [
+                  basis,
+                  {
+                    reach: idsOf(view.reach),
+                    reach_and_assert: idsOf(view.reachAndAssert),
+                    asserts_after: assertsAfterOf(view.reach),
+                    ...(basis === "baseline"
+                      ? {
+                          load: Object.fromEntries(
+                            view.reach.map((r) => [r.id, r.load]),
+                          ),
+                        }
+                      : {}),
+                  },
+                ]),
+              ),
+            }
+          : {}),
       }),
     );
   }
@@ -116,9 +146,27 @@ if (args.json) {
           ? `, not passing (left out): ${result.notPassing.length}`
           : ""),
     );
-    for (const row of result.reach) {
+    const inferred = new Map(
+      result.byBasis.baseline.reach.map((r) => [r.id, r]),
+    );
+    if (result.baselineKeys > 0) {
+      const { subtraction, baseline } = result.byBasis;
       console.log(
-        `  ${String(row.assertsAfter ?? "-").padStart(4)}  ${row.id}`,
+        `  basis subtraction: reach ${subtraction.reach.length}, reach and assert ${subtraction.reachAndAssert.length}; ` +
+          `basis baseline: reach ${baseline.reach.length}, reach and assert ${baseline.reachAndAssert.length}, ` +
+          `by load: ${countLoads(baseline.reach) || "none"}`,
+      );
+    }
+    for (const row of result.reach) {
+      const also = inferred.get(row.id);
+      const mark =
+        row.basis === "baseline"
+          ? `  (baseline, ${row.load} load)`
+          : also
+            ? `  (also baseline, ${also.assertsAfter}, ${also.load} load)`
+            : "";
+      console.log(
+        `  ${String(row.assertsAfter ?? "-").padStart(4)}  ${row.id}${mark}`,
       );
     }
   }

@@ -11,6 +11,17 @@ import { readCandidates } from "./ledger.mjs";
 
 const TEST_LAYERS = ["jest", "deftest", "e2e"];
 
+// An older ledger holds its measured reach in `reach_and_assert` and `reach_other`.
+const REACH_FIELDS = {
+  subtraction: [
+    "reach_and_assert_measured",
+    "reach_other_measured",
+    "reach_and_assert",
+    "reach_other",
+  ],
+  baseline: ["reach_and_assert_baseline", "reach_other_baseline"],
+};
+
 const testIds = (groups) => TEST_LAYERS.flatMap((layer) => groups[layer] ?? []);
 
 /**
@@ -137,21 +148,28 @@ export function verdictsFromLedger(
     state: state.has(id) ? state.get(id) : null,
   }));
   const rowReach = new Map(
-    ledger.rows.map((row) => [
-      row.id,
-      [...row.reach_and_assert, ...row.reach_other]
-        .map(([t]) => position.get(ledger.tests[t].id))
-        .filter((i) => i !== undefined),
-    ]),
+    ledger.rows.map((row) => {
+      const bases = new Map();
+      for (const [basis, fields] of Object.entries(REACH_FIELDS)) {
+        for (const [t] of fields.flatMap((f) => row[f] ?? [])) {
+          const i = position.get(ledger.tests[t].id);
+          if (i !== undefined) {
+            bases.set(i, (bases.get(i) ?? new Set()).add(basis));
+          }
+        }
+      }
+      return [row.id, bases];
+    }),
   );
-  const rowsReachedBy = candidates.map(() => new Set());
-  for (const [rowId, reach] of rowReach) {
-    reach.forEach((i) => rowsReachedBy[i].add(rowId));
-  }
 
   const mutants = {};
   for (const [mid, m] of Object.entries(ledger.mutants)) {
-    const reachedBy = new Set(m.rows.flatMap((id) => rowReach.get(id)));
+    const reachedBy = new Map();
+    for (const rowId of m.rows) {
+      rowReach.get(rowId).forEach((bases, i) => {
+        reachedBy.set(i, new Set([...(reachedBy.get(i) ?? []), ...bases]));
+      });
+    }
     mutants[mid] = mutantView(m, position, reachedBy);
   }
 
@@ -172,8 +190,13 @@ export function verdictsFromLedger(
       }
     });
   }
-  // The secondary items are the rows each candidate reaches.
-  const coverKeeps = new Set(killsFirstCover(primary, rowsReachedBy));
+  // The secondary items are the index keys each candidate reached.
+  const coverKeeps = new Set(
+    killsFirstCover(
+      primary,
+      candidates.map((t) => new Set(ledger.candidate_keys?.[t.id] ?? [])),
+    ),
+  );
 
   const results = {};
   const uniqueAlsoCheckerKilled = {};
@@ -221,6 +244,14 @@ export function verdictsFromLedger(
         (!m.located || m.reached_by.has(t.i))
       );
     });
+    const qualifyingBasis = {};
+    for (const mid of qualifying) {
+      for (const basis of mutants[mid].located
+        ? mutants[mid].reached_by.get(t.i)
+        : []) {
+        (qualifyingBasis[basis] ??= []).push(mid);
+      }
+    }
     const strata = {};
     qualifying.forEach((mid) => {
       const s = mutants[mid].stratum;
@@ -244,6 +275,12 @@ export function verdictsFromLedger(
       errored: sorted(by.errored[t.i]),
       qualifying_mutants: strata,
       qualifying_without_location: withoutLocation,
+      qualifying_basis: Object.fromEntries(
+        Object.entries(qualifyingBasis).map(([basis, mids]) => [
+          basis,
+          sorted(mids),
+        ]),
+      ),
     };
     const missing = requiredStrata.filter((s) => !strata[s]);
     let verdict;
@@ -295,6 +332,9 @@ export function verdictsFromLedger(
   );
   return {
     results,
+    withoutKeys: candidates
+      .filter((t) => t.state != null && !ledger.candidate_keys?.[t.id])
+      .map((t) => t.id),
     states: Object.fromEntries(candidates.map((t) => [t.id, t.state])),
     coverKept: sorted([...coverKeeps].map((i) => candidates[i].id)),
     candidatesReaching,
@@ -348,6 +388,11 @@ function main() {
   );
 
   const differences = [];
+  if (got.withoutKeys.length) {
+    differences.push(
+      `${got.withoutKeys.length} candidates in the index have no reached keys in the ledger, so the kills-first cover can't break ties as kills.py does. Pass the same --candidates to ledger.mjs`,
+    );
+  }
   const expectedIds = Object.keys(expected.candidates);
   const missing = expectedIds.filter((id) => !(id in got.results));
   const extra = Object.keys(got.results).filter(

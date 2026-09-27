@@ -164,6 +164,31 @@ A test **reaches** a location when its chosen attempt ran any of those functions
 
 Each test contributes one attempt: the last passing attempt of the main run, else a passing attempt of a rerun, else its last attempt. Tests with no passing attempt are left out of the results and listed separately.
 
+### Basis
+
+Every reach result has a `basis`:
+
+- **`subtraction`:** measured reach, as above.
+- **`baseline`:** inferred reach, through code that subtraction removes from every test. That's a frontend function that fired in every shard's baseline, and every backend baseline class, because the backend baseline is the union of the shards'. Every test that loaded the app in the top window reaches such a frontend function, and every test that made an app request reaches such a backend class. `assertsAfter` counts from the first step cut after the app loaded, or after the first app request for a backend class.
+
+A frontend function that fired in only some shards' baselines is subtracted from those shards' tests only, so its reach stays measured.
+
+How a test counts as having loaded the app depends on the index:
+
+- **Built with the per-test fields in [Index files](#index-files):** it loaded the app when its top window fired any frontend function, and made an app request when its backend dump holds any class, both before subtraction. Its assertions count from the first step cut holding such a function or class.
+- **Built without them:** it loaded the app when it reached a frontend function after subtraction, and made an app request when it also reached a backend class, or loaded the app, whose boot fetches the session properties. Its assertions count from the first step cut holding a frontend function it reached after subtraction, or any key it reached for a backend class. That cut comes at or after the first page load, so the count can be low. In the index of run 36089233978, it's all of the test's assertions for 4,781 of the 4,896 passing tests that loaded the app, and 219 assertions short across the other 115.
+
+A test whose step cuts hold none of those counts all its assertions.
+
+Baseline reach is an inference, and it's loose in both directions:
+
+- The baseline spec signs in as an admin and opens the home page, so its code includes the navigation bar and the home page. A test that only opens a public or embedded page still counts as reaching them.
+- A test with no frontend coverage, like one that runs the app inside an iframe, never reaches baseline frontend code. For those tests the answer is unknown, not "doesn't reach".
+
+A test that reaches a location both ways, through a measured key and a baseline key, keeps its measured row in `reach` and `reach_and_assert`, and is listed under both bases.
+
+Each baseline reach also has a `load`, the kind of top-window page the test loaded: `app` when any of them is an app page, else `embed` (`/embed/...`), `public` (`/public/...`) or `other` (`/api/...`, `/app/...` and other paths the server answers without the app). It's `unknown` when the index records no pages, as the index of run 36089233978 doesn't, or when the test loaded no page of its own. Baseline code mixes the app shell, which only app pages run, with code every entry point runs, like the theme providers and the settings, and the baseline can't tell them apart. So reach from a load other than `app` is the least certain. A consumer such as the D7 rule can count only `load: "app"`, or only measured reach.
+
 ### Options
 
 | Option                  | Meaning                                                                    |
@@ -173,8 +198,10 @@ Each test contributes one attempt: the last passing attempt of the main run, els
 | `--sha <commit>`        | read source at this commit instead of the captured one                     |
 | `--exclude <file>`      | test ids to leave out, one per line                                        |
 | `--union`               | one result for all locations together, instead of one per location        |
-| `--json`                | one JSON line per result: `reach`, `reach_and_assert`, `asserts_after`, `not_passing` and the resolved `locations` |
+| `--json`                | one JSON line per result: `reach`, `reach_and_assert`, `asserts_after`, `not_passing`, the resolved `locations` and each test's `basis`. When the location resolves to a baseline key, it adds `by_basis`, the `reach`, `reach_and_assert` and `asserts_after` of each basis, and each baseline reach's `load` |
 | `--include-not-passing` | count tests with no passing attempt                                        |
+
+The text output ends the line of a test reached with basis `baseline` with `(baseline, <load> load)`, and that of a measured test also reached that way with `(also baseline, <assertsAfter>, <load> load)`. For a location with a baseline key, it adds a line with the counts of each basis, and the baseline reach by load.
 
 ### Verdicts from a kills file
 
@@ -206,16 +233,17 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 
 - **Candidates:** only the tests given with `--candidates` get a verdict. Every other id in the kills file is a remaining test, including e2e tests that aren't candidates. A candidate that isn't in the index is still a candidate, and it's unmeasured unless it has a unique kill, confirmed or not.
 - **Reach:** a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`, in any form from [Locations](#locations). A candidate reaches the mutant when it ran a function or class the location resolves to, so reach is per function where the pipeline's is per file. A `file` with nothing else means the whole file, as in the pipeline. No candidate reaches a location that resolves to nothing.
+- **Basis:** reach of either [basis](#basis) counts, and each candidate's `qualifying_basis` lists its located qualifying mutants under the basis of its reach, so a verdict that rests on inferred reach shows it. The pipeline's reach is always `subtraction`.
 - **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
 - **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
 
 It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
 
 - `joint_check`: `ok`, or the mutants that fail it, below
-- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, the number of `kills` and `misses`, and the mutants it `errored` on. A delete, accepted or unmeasured candidate also has `depends_on`, below, and an unmeasured or accepted candidate has an `acceptance`, below
+- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, and the mutants it `errored` on. A delete, accepted or unmeasured candidate also has `depends_on`, below, and an unmeasured or accepted candidate has an `acceptance`, below
 - `accepted`: the accepted verdicts on their own, below
 - `summary`: verdicts, reasons, and candidates per stratum
-- `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to, and how many candidates reach it
+- `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to with its number of `baseline_keys`, and how many candidates reach it
 - `kills_cover`: the candidates the cover keeps
 - `kills`: counts by stratum and by reach, and the kills file's e2e ids that aren't in the index
 - `candidates_not_in_index`
@@ -312,6 +340,8 @@ node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> -
 
 `ledger.mjs` joins the index and a [kills file](#kills-file) into one row per code location. A row is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`. Mutant locations and `--locations` resolve as in [Locations](#locations), and the ones that resolve to the same function or form share a row. Each row holds the tests that reach it and assert afterwards, the mutants planted there, their confirmed killers per layer, and each mutant's `cheapest_layer`: the first of `tsc`, `contract`, `jest`, `deftest` and `e2e` with a confirmed kill, or `none`. Reach counts only tests that passed in the capture.
 
+Reach is split by [basis](#basis): the `_measured` fields and columns hold reach with basis `subtraction`, and the `_baseline` ones reach with basis `baseline`. A test that reaches a row both ways is in both. Each baseline pair has the test's [load](#basis) as a third element, and the counts and the CSV split the baseline reach by load. The demand list and the e2e floor come from the kills alone, so the basis never changes them.
+
 | Option                      | Meaning                                                                                                   |
 | --------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `--index <dir>`             | the index, or `JOURNEY_LOOKUP_INDEX`                                                                       |
@@ -319,7 +349,7 @@ node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> -
 | `--kills-base <commit>`     | required. The commit the kills file's mutants were planted on, which the kills file doesn't record         |
 | `--out <dir>`               | where the outputs go                                                                                       |
 | `--locations <file>`        | `reach-counts.jsonl`. Each line's `locations` get rows, which record the line's `issue`                   |
-| `--candidates <file or id>` | the tests proposed for deletion, in any form `kills.py` takes. Repeat it for more. The CSV's `e2e_reach` and `e2e_reach_and_assert` leave them out |
+| `--candidates <file or id>` | the tests proposed for deletion, in any form `kills.py` takes. Repeat it for more. The CSV's `e2e_reach_*` and `e2e_reach_and_assert_*` columns leave them out |
 | `--mutants-dir <dir>`       | per-mutant `<mutant id>.json` files, whose `description` goes into the CSV, and `unit-results.json`, where a mutant's `typecheck` of `fails` is a kill at the `tsc` layer |
 | `--allow-mixed`             | join even when the bases differ, below                                                                     |
 | `--repo <path>`             | the git repo for source reads and commits, default the one this folder is in                               |
@@ -330,9 +360,9 @@ node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> -
 
 It writes three files to `--out`:
 
-- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, `e2e_status` and `cheapest_layer_source`, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
-- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach` and `e2e_reach_and_assert` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file.
-- `summary.md`, also printed: the counts, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
+- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs in `reach_and_assert_measured`, `reach_other_measured`, `reach_and_assert_baseline` and `reach_other_baseline`, their counts, the index keys each candidate reached, for the kills-first cover's tie-break, and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, `e2e_status` and `cheapest_layer_source`, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
+- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach_measured`, `e2e_reach_and_assert_measured`, `e2e_reach_baseline`, `e2e_reach_and_assert_baseline` and `e2e_reach_and_assert_baseline_by_load` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file.
+- `summary.md`, also printed: the counts, including the rows with baseline reach, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
 
 The **demand list** is the mutants with `cheapest_layer: none`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. Both read the same `cheapest_layer`, so a mutant with `kill_confirmed` true is never on the demand list, even when its `killed_by` is empty. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
 
@@ -343,7 +373,7 @@ node e2e/coverage/journey/lookup/ledger-verdicts.mjs --ledger <ledger.json> --ve
     [--min-mutants <k>] [--require-strata <s,...>] [--strata coarse]
 ```
 
-It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
+It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `qualifying_basis`, the candidates the kills-first cover keeps, and how many candidates reach each mutant. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
 
 ### Building an index
 
@@ -364,11 +394,11 @@ The other two steps are optional. Without `lines.json`, backend matching is by v
 | File                | Content                                                                                                       |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `meta.json`         | runs, captured sha and its `appBase`, counts                                                                   |
-| `tests.json`        | per test: id, spec, title, run, shard, attempt, state, passing assertion count                                  |
+| `tests.json`        | per test: id, spec, title, run, shard, attempt, state, passing assertion count, and optionally `loadedApp` and `madeRequest`, with `loadAsserts` and `requestAsserts`, the passing assertions from the first step cut after each, or null when no cut holds one, and `pages`, the paths of its top-window page loads. See [Basis](#basis) |
 | `keys.json`         | the keys (`fe:<file>#<fnIndex>` or `be:<class>`) with offsets into `postings.bin`                              |
 | `postings.bin`      | per key, `uint32` pairs: test index, and 1 + assertions after the first cut holding the key (0 when no cut held it) |
 | `fnmap.json`        | Istanbul function names and positions per file                                                                 |
-| `baseline.json`     | the subtracted backend classes, and per frontend function the number of shards whose baseline fired it        |
+| `baseline.json`     | the subtracted backend classes, per frontend function the number of shards whose baseline fired it, and optionally `keys`, the keys subtraction removes from every test |
 | `lines.json`        | per backend class: source file name, first and last line                                                       |
 | `cljs-origins.json` | per browser cljs function: source path and line                                                                |
 
@@ -376,6 +406,6 @@ The other two steps are optional. Without `lines.json`, backend matching is by v
 
 - **Granularity:** reach is per function or class, not per line or branch. A test that calls a function without taking the changed branch still counts.
 - **Iframes:** frontend counters come from the top window only. Tests that run the app inside an iframe (interactive embedding, the SDK iframe) have no frontend coverage and never show frontend reach.
-- **Baseline:** a function in every shard's baseline is subtracted from every test, so it shows no reach at all. The output notes this.
+- **Baseline:** code in every test's baseline has no measured reach, only reach inferred for every test that loaded the app or made an app request, with basis `baseline`. See [Basis](#basis).
 - **Background jobs:** backend code from background jobs lands in whichever test was running.
 - **Assertions:** an assertion counts whether or not it checks anything the location affects.

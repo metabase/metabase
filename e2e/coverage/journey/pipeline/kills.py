@@ -88,6 +88,8 @@ As a command, it takes the candidates' reached code from a reach index instead o
 
 There a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`,
 in any form lookup.mjs takes, and a candidate reaches the mutant when it ran a function or class the location resolves to.
+That reach has basis subtraction when the index measured it, and basis baseline when it is inferred for code in every test's baseline.
+Both count, and each candidate's `qualifying_basis` lists its located qualifying mutants under the basis of its reach.
 When the joint check fails, it exits with code 1, and with `--joint-check-report-only` it only reports the failure.
 The pipeline takes no location prior, so it never gives accepted.
 """
@@ -263,9 +265,18 @@ def cover_kills(tests, mutants, secondary, costs):
     return kills_first_cover(primary, secondary, costs)
 
 
+def reach_bases(reached):
+    if not reached:
+        return []
+    if reached is True:
+        return ["subtraction"]
+    return list(reached)
+
+
 def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, accept=None):
     """`reach(t)` gives a function that says whether test t reached a located mutant, file_reach(run) by default.
 
+    Its value is a list of the reach's bases, or True for reach after baseline subtraction.
     With `accept`, from read_acceptance(), every unmeasured candidate gets an `acceptance` and can become accepted.
     """
     tests = run.tests
@@ -307,12 +318,19 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         errored = sorted(errored_by_test[t.id])
         # A mutant without a location counts as reached by every test that ran against it,
         # which holds when the producer runs each test against the mutants its coverage reaches.
-        qualifying = [
-            mid for mid in ran_by_test[t.id]
-            if mid not in errored_by_test[t.id]
-            and ((mutants[mid]["ran"] - {t.id}) or mutants[mid]["ran_others"])
-            and (not mutants[mid]["located"] or reached(mutants[mid]))
-        ]
+        qualifying = []
+        qualifying_basis = collections.defaultdict(list)
+        for mid in ran_by_test[t.id]:
+            m = mutants[mid]
+            if mid in errored_by_test[t.id] or not ((m["ran"] - {t.id}) or m["ran_others"]):
+                continue
+            if m["located"]:
+                bases = reach_bases(reached(m))
+                if not bases:
+                    continue
+                for basis in bases:
+                    qualifying_basis[basis].append(mid)
+            qualifying.append(mid)
         strata = collections.Counter(mutants[mid]["stratum"] for mid in qualifying)
         detail = {
             "unique_kills": by_stratum_ids(unique),
@@ -324,6 +342,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             "qualifying_mutants": dict(strata),
             "qualifying_without_location": dict(collections.Counter(
                 mutants[mid]["stratum"] for mid in qualifying if not mutants[mid]["located"])),
+            "qualifying_basis": {basis: sorted(mids) for basis, mids in sorted(qualifying_basis.items())},
         }
         ran_known = all(mutants[mid]["ran_known"] for mid in mine)
         located = [mid for mid in qualifying if mutants[mid]["located"]]
@@ -673,6 +692,10 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
         m["located"] = resolved is not None
         m["files"] = {r["file"] for r in resolved["resolved"] if r["file"]} if resolved else set()
         m["reached_by"] = {position[cid] for cid in resolved["reach"]} if resolved else set()
+        m["reach_bases"] = {}
+        for basis, cids in (resolved or {}).get("reach_by_basis", {}).items():
+            for cid in cids:
+                m["reach_bases"].setdefault(position[cid], []).append(basis)
         if not resolved:
             how = "no location, so every candidate that ran it counts as reaching it"
         elif any(r["keys"] for r in resolved["resolved"]):
@@ -691,7 +714,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     secondary = [set(in_index[c.key]["keys"]) if c.key in in_index else set() for c in candidates]
     kept, universe = cover_kills(candidates, kills["mutants"], secondary, [1] * len(candidates))
     results = verdicts(run, kills, set(kept), min_mutants, required_strata,
-                       reach=lambda t: lambda m: t.id in m["reached_by"], accept=accept)
+                       reach=lambda t: lambda m: m["reach_bases"].get(t.id), accept=accept)
 
     with open(os.path.join(index_dir, "tests.json")) as f:
         index_ids = {t["id"] for t in json.load(f)}

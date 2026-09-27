@@ -9,6 +9,7 @@ import * as reader from "../../journey-capture.mjs";
 import { mergedSpans } from "../pipeline/steps.mjs";
 
 import { parseArgs } from "./args.mjs";
+import { everyTestBaselineKeys } from "./lib.mjs";
 import { repoRoot } from "./source.mjs";
 
 const args = parseArgs(process.argv.slice(2), {
@@ -176,11 +177,39 @@ function summarizeAttempt(shard, raw, net) {
     packed[2 * i] = id;
     packed[2 * i + 1] = reached.get(id) + 1;
   });
+  // With baseline code counted, the first cut holding a frontend function is the first after the app loaded,
+  // and the first holding a backend class is the first after an app request.
+  const loadCut = cuts.findIndex((cut) =>
+    (cut.f ?? []).some((count, i) => i % 3 === 2 && count > 0),
+  );
+  const requestCut = cuts.findIndex((cut) => cut.backend?.classes?.length);
   return {
     state: raw.state,
     attempt: raw.attempt,
     asserts: seqs.length,
     steps: cuts.length > 0,
+    loadedApp: Object.values(raw.f ?? {}).some((counts) =>
+      Object.values(counts).some((count) => count > 0),
+    ),
+    loadAsserts: loadCut === -1 ? null : assertsFrom(cuts[loadCut]),
+    madeRequest: (raw.backend?.test?.classes?.length ?? 0) > 0,
+    ...(raw.events
+      ? {
+          pages: [
+            ...new Set(
+              raw.events
+                .filter(
+                  (event) => event.kind === "nav" && event.how === "document",
+                )
+                .map((event) => event.path),
+            ),
+          ].sort(),
+        }
+      : {}),
+    requestAsserts:
+      requestCut === -1
+        ? null
+        : assertsFrom(cuts[requestCut - merged[requestCut]]),
     packed,
   };
 }
@@ -316,13 +345,14 @@ if (!appBase) {
 }
 
 fs.writeFileSync(path.join(args.out, "fnmap.json"), JSON.stringify(fnmap));
+const baseline = {
+  shards: shardCount,
+  backend: [...backendBaseline].sort(),
+  frontendShards: Object.fromEntries(frontendBaselineShards),
+};
 fs.writeFileSync(
   path.join(args.out, "baseline.json"),
-  JSON.stringify({
-    shards: shardCount,
-    backend: [...backendBaseline].sort(),
-    frontendShards: Object.fromEntries(frontendBaselineShards),
-  }),
+  JSON.stringify({ ...baseline, keys: everyTestBaselineKeys(baseline) }),
 );
 fs.writeFileSync(
   path.join(args.out, "meta.json"),
