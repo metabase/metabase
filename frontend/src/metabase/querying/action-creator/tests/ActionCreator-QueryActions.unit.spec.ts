@@ -182,7 +182,7 @@ describe("ActionCreator > Query Actions", () => {
         screen.queryByRole("button", { name: "Update" }),
       ).not.toBeInTheDocument();
 
-      screen.getByLabelText("Action settings").click();
+      await userEvent.click(screen.getByLabelText("Action settings"));
 
       expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
@@ -202,7 +202,7 @@ describe("ActionCreator > Query Actions", () => {
         screen.queryByRole("button", { name: "Update" }),
       ).not.toBeInTheDocument();
 
-      screen.getByLabelText("Action settings").click();
+      await userEvent.click(screen.getByLabelText("Action settings"));
 
       expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
