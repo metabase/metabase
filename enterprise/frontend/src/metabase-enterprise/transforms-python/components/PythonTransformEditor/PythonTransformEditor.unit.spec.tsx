@@ -102,8 +102,10 @@ describe("PythonTransformEditor", () => {
   });
 
   describe("view mode (not editing)", () => {
-    it("should not render the data picker sidebar when not in edit mode", () => {
+    it("should not render the data picker sidebar when not in edit mode", async () => {
       setup({ isEditMode: false });
+      // The editor loads lazily, so assert absence only once it has rendered.
+      await screen.findByTestId("python-transform-top-bar");
       expect(
         screen.queryByTestId("python-data-picker"),
       ).not.toBeInTheDocument();
