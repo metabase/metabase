@@ -16,9 +16,11 @@
 # 146 MB per hash in the CAS. Worth revisiting.
 .shadow-cljs/
 
-# eslint's own cache. Declaring this one is probably worth it: a cold eslint run
-# is 234.8s against 7.3s warm, so restoring it from the shared CAS would be the
-# single largest win available here.
+# eslint's own cache. Declaring it as an output was considered and rejected.
+# A cache hit skips eslint entirely, so the declaration buys nothing there, and
+# moon does not restore outputs before a miss, so a cold worktree still runs
+# cold. It would only help a miss that follows a hit in the same worktree, which
+# is not worth the CAS churn from a file that changes on every run.
 .eslintcache
 
 # stylelint's cache, same shape as eslint's but the run is 8.2s not 235s.
