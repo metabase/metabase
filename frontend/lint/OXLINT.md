@@ -16,9 +16,13 @@ bun run lint-oxlint-fix
 bun run test-oxlint
 ```
 
-`oxlint.config.mts` is the entry point. Production commands use one process with
-four native threads. The pure command excludes formatting, type checking and
-CLJS compilation. Generated CLJS is still needed for filesystem resolution.
+`oxlint.config.mts` is the entry point. Production commands use one process, with
+oxlint choosing the thread count from the available CPU cores. The pure command
+excludes formatting, type checking and CLJS compilation. Generated CLJS is still
+needed for filesystem resolution.
+
+To investigate slow rules, run `bun run lint-oxlint-pure --debug timings`. Oxlint
+reports timings for native rules and the retained JavaScript plugin rules.
 
 ## Accepted rule differences
 

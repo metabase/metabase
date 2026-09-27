@@ -1,5 +1,5 @@
 const lintFix =
-  "oxlint --threads 4 --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
+  "oxlint --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
 
 module.exports = {
   "+(frontend|enterprise)/**/*.styled.tsx": [

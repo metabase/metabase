@@ -351,8 +351,6 @@ test("should apply the configured rules and suppressions", async (t) => {
     process.execPath,
     [
       binary,
-      "--threads",
-      "4",
       "--disable-nested-config",
       "--report-unused-disable-directives",
       "--format",
