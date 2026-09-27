@@ -375,7 +375,7 @@
 
         ;; Format all tool checks
         tool-checks [(format-tool-status :git (:git tools))
-                     (format-tool-status :node (:node tools) :required-version "22")
+                     (format-tool-status :node (:node tools) :required-version "24")
                      (format-tool-status :bun (:bun tools))
                      (format-tool-status :java (:java tools) :required-version "21" :vendor-hint true)
                      (format-tool-status :clojure (:clojure tools))
