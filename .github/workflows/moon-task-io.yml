@@ -45,7 +45,6 @@ jobs:
             deps \
             build-cljs \
             build-release-cljs \
-            generate-expression-parser \
             build-js \
             build-release-js \
             build-release-static-viz \
@@ -63,7 +62,6 @@ jobs:
           bin/audit-task-reads.sh \
             build-cljs \
             build-release-cljs \
-            generate-expression-parser \
             type-check \
             lint-eslint \
             lint-css \
