@@ -1,25 +1,14 @@
 import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
-import { Ellipsified, Icon, Loader } from "metabase/ui";
+import { Box, Ellipsified, Flex, Icon, Loader, rem } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
-import {
-  StatusBody,
-  StatusCardBody,
-  StatusCardDescription,
-  StatusCardIcon,
-  StatusCardIconContainer,
-  StatusCardRoot,
-  StatusCardTitle,
-  StatusHeader,
-  StatusRoot,
-  StatusTitle,
-  StatusToggle,
-} from "./StatusLarge.styled";
+import S from "./StatusLarge.module.css";
 
 type Status = {
   title: string;
@@ -51,23 +40,44 @@ const StatusLarge = ({
   onDismiss,
 }: StatusLargeProps) => {
   return (
-    <StatusRoot role="status">
-      <StatusHeader>
-        <StatusTitle>
+    <Box
+      className={S.root}
+      role="status"
+      w={rem(256)}
+      mt="lg"
+      bg="background_page-primary"
+    >
+      <Flex align="center" py={rem(10)} px="lg" bg="core-brand">
+        <Box
+          flex="1 1 auto"
+          w="100%"
+          c="background_page-secondary"
+          fz="md"
+          fw="bold"
+          lh={rem(16)}
+        >
           <Ellipsified>{status.title}</Ellipsified>
-        </StatusTitle>
+        </Box>
         {onCollapse && (
-          <StatusToggle onClick={onCollapse} aria-label={t`Collapse`}>
+          <IconButtonWrapper
+            className={S.toggle}
+            onClick={onCollapse}
+            aria-label={t`Collapse`}
+          >
             <Icon name="chevrondown" />
-          </StatusToggle>
+          </IconButtonWrapper>
         )}
         {onDismiss && (
-          <StatusToggle onClick={onDismiss} aria-label={t`Dismiss`}>
+          <IconButtonWrapper
+            className={S.toggle}
+            onClick={onDismiss}
+            aria-label={t`Dismiss`}
+          >
             <Icon name="close" />
-          </StatusToggle>
+          </IconButtonWrapper>
         )}
-      </StatusHeader>
-      <StatusBody>
+      </Flex>
+      <Box bg="background_page-primary">
         {status.items.map((item) => (
           <StatusCard
             item={item}
@@ -75,8 +85,8 @@ const StatusLarge = ({
             key={item.id ?? String(item.title)}
           />
         ))}
-      </StatusBody>
-    </StatusRoot>
+      </Box>
+    </Box>
   );
 };
 
@@ -106,17 +116,40 @@ const StatusCard = ({
 
   return (
     <LinkWrapper item={item} key={id}>
-      <StatusCardRoot hasBody={!!description}>
-        <StatusCardIcon>
+      <Flex align={description ? "flex-start" : "center"} m="md">
+        <Flex
+          className={S.round}
+          flex="0 0 auto"
+          align="center"
+          justify="center"
+          w={rem(32)}
+          h={rem(32)}
+          c="core-brand"
+          bg="background_surface-brand-subtle"
+        >
           {/* Unjustified type cast. FIXME */}
           <Icon name={icon as unknown as IconName} />
-        </StatusCardIcon>
-        <StatusCardBody>
-          <StatusCardTitle>
+        </Flex>
+        <Box className={S.clipped} flex="1 1 auto" mx="md">
+          <Box
+            className={S.clipped}
+            c="text-primary"
+            fz="md"
+            fw="bold"
+            lh={rem(16)}
+          >
             <Ellipsified>{title}</Ellipsified>
-          </StatusCardTitle>
-          <StatusCardDescription>{description}</StatusCardDescription>
-        </StatusCardBody>
+          </Box>
+          <Box
+            c="background_page-tertiary-inverse"
+            fz="xs"
+            fw="bold"
+            lh={rem(13)}
+            mt="xxs"
+          >
+            {description}
+          </Box>
+        </Box>
         {isInProgress && <Loader size="md" color="core-brand" />}
         {isCompleted && (
           <StatusCardIconContainer>
@@ -128,10 +161,32 @@ const StatusCard = ({
             <Icon name="warning" size={12} />
           </StatusCardIconContainer>
         )}
-      </StatusCardRoot>
+      </Flex>
     </LinkWrapper>
   );
 };
+
+interface StatusCardIconContainerProps {
+  isError?: boolean;
+}
+
+const StatusCardIconContainer = ({
+  isError,
+  children,
+}: PropsWithChildren<StatusCardIconContainerProps>) => (
+  <Flex
+    className={S.round}
+    flex="0 0 auto"
+    align="center"
+    justify="center"
+    w={rem(24)}
+    h={rem(24)}
+    c="text-primary-inverse"
+    bg={isError ? "feedback-negative" : "feedback-positive"}
+  >
+    {children}
+  </Flex>
+);
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StatusLarge;

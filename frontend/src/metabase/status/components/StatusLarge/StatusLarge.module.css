@@ -1,0 +1,19 @@
+.root {
+  border-radius: var(--mantine-radius-xs);
+  box-shadow: 0 1px 12px var(--mb-color-shadow-default);
+  overflow: hidden;
+  border: 1px solid var(--mb-color-border-neutral);
+}
+
+.toggle {
+  flex: 0 0 auto;
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.clipped {
+  overflow: hidden;
+}
+
+.round {
+  border-radius: var(--mantine-radius-lg);
+}

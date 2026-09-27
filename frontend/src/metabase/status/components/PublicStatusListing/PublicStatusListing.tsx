@@ -1,15 +1,16 @@
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
+import { Box } from "metabase/ui";
 
 import { DownloadsStatus } from "../DownloadsStatus";
 
-import { PublicStatusListingRoot } from "./PublicStatusListing.styled";
+import S from "./PublicStatusListing.module.css";
 
 export const PublicStatusListing = () => {
   useCheckActiveDownloadsBeforeUnload();
 
   return (
-    <PublicStatusListingRoot data-testid="status-root-container">
+    <Box className={S.root} pos="fixed" data-testid="status-root-container">
       <DownloadsStatus />
-    </PublicStatusListingRoot>
+    </Box>
   );
 };

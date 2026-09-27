@@ -1,0 +1,5 @@
+.root {
+  right: var(--mantine-spacing-xl);
+  bottom: var(--mantine-spacing-xl);
+  z-index: 2;
+}

@@ -11,12 +11,13 @@ import {
 import { useSelector } from "metabase/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
+import { Box } from "metabase/ui";
 
 import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
 
-import { StatusListingRoot } from "./StatusListing.styled";
+import S from "./StatusListing.module.css";
 
 export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -33,14 +34,14 @@ export const StatusListing = () => {
 
   return (
     <>
-      <StatusListingRoot data-testid="status-root-container">
+      <Box className={S.root} pos="fixed" data-testid="status-root-container">
         {isAdmin && <DatabaseStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
         <PLUGIN_AUDIT.AnalyticsExportStatus />
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
-      </StatusListingRoot>
+      </Box>
       {progressModal}
     </>
   );
