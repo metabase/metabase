@@ -13,7 +13,11 @@ import {
   loadActionCreator,
 } from "metabase/querying/action-creator";
 import { useDispatch } from "metabase/redux";
-import { Modal, PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS } from "metabase/ui";
+import {
+  Box,
+  Modal,
+  PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
+} from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -26,7 +30,7 @@ import type {
 } from "metabase-types/api";
 
 import ActionButtonView from "./ActionButtonView";
-import { FormTitle, FormWrapper } from "./ActionForm.styled";
+import S from "./ActionVizForm.module.css";
 import { shouldShowConfirmation } from "./utils";
 
 export interface ActionFormProps {
@@ -189,8 +193,10 @@ function ActionVizForm({
   }
 
   return (
-    <FormWrapper>
-      <FormTitle>{title}</FormTitle>
+    <Box className={S.formWrapper} p="xl" bg="background_page-primary">
+      <Box component="h4" mb="xl">
+        {title}
+      </Box>
       <ActionParametersInputForm
         action={action}
         mappedParameters={mappedParameters}
@@ -198,7 +204,7 @@ function ActionVizForm({
         onSubmit={onSubmit}
         onSubmitSuccess={handleSubmitSuccess}
       />
-    </FormWrapper>
+    </Box>
   );
 }
 

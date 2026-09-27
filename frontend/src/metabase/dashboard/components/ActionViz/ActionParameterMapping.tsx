@@ -5,7 +5,7 @@ import { sortActionParams } from "metabase/actions/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { setParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
-import { Select } from "metabase/ui";
+import { Box, Flex, Select } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
@@ -17,11 +17,7 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-import {
-  ParameterFormBadge,
-  ParameterFormLabel,
-  ParameterFormSection,
-} from "./ActionParameterMapping.styled";
+import S from "./ActionParameterMapping.module.css";
 import {
   getParameterDefaultValue,
   isParameterHidden,
@@ -137,13 +133,28 @@ export const ActionParameterMappingItem = ({
   };
 
   return (
-    <ParameterFormSection
-      data-testid={`parameter-form-section-${actionParameter.id}`}
-    >
-      <ParameterFormLabel error={showError}>
+    <Box mt="lg" data-testid={`parameter-form-section-${actionParameter.id}`}>
+      <Flex
+        component="label"
+        c={showError ? "feedback-negative" : "text-secondary"}
+        fz="sm"
+        fw="bold"
+        gap="sm"
+        align="center"
+        mb="sm"
+      >
         <span>{`${name}${showError ? t`: required` : ""}`}</span>
-        {isHidden && <ParameterFormBadge>{t`Hidden`}</ParameterFormBadge>}
-      </ParameterFormLabel>
+        {isHidden && (
+          <Box
+            component="span"
+            className={S.parameterFormBadge}
+            c="text-primary"
+            bg="background_page-tertiary"
+            px="sm"
+            py="xxs"
+          >{t`Hidden`}</Box>
+        )}
+      </Flex>
       <Select
         data-testid="parameter-mapping-select"
         value={value}
@@ -162,7 +173,7 @@ export const ActionParameterMappingItem = ({
           })),
         ]}
       />
-    </ParameterFormSection>
+    </Box>
   );
 };
 

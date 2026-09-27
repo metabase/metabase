@@ -1,25 +1,18 @@
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import { setActionForDashcard } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/redux";
-import { Button } from "metabase/ui";
+import { Box, Button, Flex } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
   WritebackAction,
 } from "metabase-types/api";
 
-import {
-  ActionSettingsHeader,
-  ActionSettingsLeft,
-  ActionSettingsRight,
-  ActionSettingsWrapper,
-  ModalActions,
-  ParameterMapperContainer,
-} from "./ActionDashcardSettings.styled";
+import S from "./ActionDashcardSettings.module.css";
 import {
   ActionParameterMappingForm,
   getTargetKey,
@@ -76,19 +69,30 @@ export function ActionDashcardSettings({
     });
 
   return (
-    <ActionSettingsWrapper data-testid="action-dashcard-settings">
-      <ActionSettingsLeft>
+    <Flex
+      className={S.wrapper}
+      h="80vh"
+      miw="50rem"
+      data-testid="action-dashcard-settings"
+    >
+      <Box className={S.left} w="20rem" pl="xxl" py="xxl">
         <h4 className={CS.pb2}>{t`Action Library`}</h4>
         <ConnectedActionPicker currentAction={action} onClick={setAction} />
-      </ActionSettingsLeft>
-      <ActionSettingsRight>
+      </Box>
+      <Flex
+        className={S.right}
+        direction="column"
+        flex={1}
+        maw="30rem"
+        pt="xxl"
+      >
         {action ? (
           <>
             {hasParameters && (
               <>
-                <ActionSettingsHeader>
+                <Box component="h2" fz="1.25rem" pb="sm" px="xxl">
                   {t`Where should the values for '${action.name}' come from?`}
-                </ActionSettingsHeader>
+                </Box>
                 <ExplainerText />
               </>
             )}
@@ -106,15 +110,34 @@ export function ActionDashcardSettings({
             <EmptyActionState />
           </ParameterMapperContainer>
         )}
-        <ModalActions>
+        <Flex
+          className={S.modalActions}
+          flex="0 0 auto"
+          justify="flex-end"
+          gap="lg"
+          p="lg"
+        >
           <Button variant="filled" onClick={onClose} disabled={isFormInvalid}>
             {t`Done`}
           </Button>
-        </ModalActions>
-      </ActionSettingsRight>
-    </ActionSettingsWrapper>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 }
+
+const ParameterMapperContainer = ({ children }: { children: ReactNode }) => (
+  <Flex
+    className={S.parameterMapperContainer}
+    direction="column"
+    flex={1}
+    pt="sm"
+    pb="xxl"
+    px="xxl"
+  >
+    {children}
+  </Flex>
+);
 
 const EmptyActionState = () => (
   <EmptyState className={CS.p3} message={t`Select an action to get started`} />

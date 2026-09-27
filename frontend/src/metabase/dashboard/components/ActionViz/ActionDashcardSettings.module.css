@@ -1,0 +1,49 @@
+.wrapper {
+  overflow: hidden;
+}
+
+/* fade out the top and bottom of the column to make scrolling nicer */
+.left {
+  overflow-y: auto;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    width: 19rem;
+    height: 2rem;
+    pointer-events: none;
+  }
+
+  &::before {
+    top: 0;
+    background-image: linear-gradient(
+      to top,
+      transparent,
+      var(--mb-color-background_page-primary) 90%
+    );
+  }
+
+  &::after {
+    bottom: 0;
+    background-image: linear-gradient(
+      to bottom,
+      transparent,
+      var(--mb-color-background_page-primary) 90%
+    );
+  }
+}
+
+.right {
+  border-left: 1px solid var(--mb-color-border-neutral);
+}
+
+.parameterMapperContainer {
+  overflow-y: auto;
+}
+
+.modalActions {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
