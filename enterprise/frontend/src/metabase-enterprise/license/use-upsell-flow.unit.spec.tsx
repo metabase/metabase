@@ -7,7 +7,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import * as domUtils from "metabase/utils/dom";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -135,18 +135,20 @@ describe("useUpsellFlow", () => {
 
       jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
 
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          origin: "https://test-store.metabase.com",
-          data: {
-            type: "license-token-created",
-            source: "metabase-store",
-            payload: {
-              licenseToken: "token-abc-123",
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            origin: "https://test-store.metabase.com",
+            data: {
+              type: "license-token-created",
+              source: "metabase-store",
+              payload: {
+                licenseToken: "token-abc-123",
+              },
             },
-          },
-        }),
-      );
+          }),
+        );
+      });
 
       await waitFor(async () => {
         const requests = await findRequests("PUT");
@@ -184,19 +186,21 @@ describe("useUpsellFlow", () => {
       await userEvent.click(
         screen.getByRole("button", { name: "Trigger Upsell Flow" }),
       );
-      window.dispatchEvent(
-        new MessageEvent("message", {
-          source: window,
-          origin: "https://test-store.metabase.com",
-          data: {
-            type: "license-token-created",
-            source: "metabase-store",
-            payload: {
-              licenseToken: "token-abc-123",
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            source: window,
+            origin: "https://test-store.metabase.com",
+            data: {
+              type: "license-token-created",
+              source: "metabase-store",
+              payload: {
+                licenseToken: "token-abc-123",
+              },
             },
-          },
-        }),
-      );
+          }),
+        );
+      });
 
       await waitFor(() => {
         expect(mockPostMessage).toHaveBeenCalledWith(
