@@ -35,10 +35,9 @@ if (isWithinIframe() && !IFRAMED_IN_SELF) {
 }
 
 init(mainReducers, getRoutes, (store) => {
-  // `LoadCurrentUser` gates the authenticated app on this request, but it only
-  // issues it from an effect, so it waits for the first commit. Starting it here
-  // puts it on the wire alongside the settings request instead of a round trip
-  // behind it. The effect's `initiate()` joins this one rather than repeating it.
+  // `LoadCurrentUser` sends this request from an effect, after the route has
+  // mounted. Sending it here puts it next to the settings request. The effect
+  // joins it, reuses its result, or repeats it if it failed.
   store.dispatch(loadCurrentUser());
 
   // received a 401 response
