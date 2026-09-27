@@ -111,7 +111,7 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
-          node-version: "${{ needs.setup.outputs.node_version || '22' }}"
+          node-version: "${{ needs.setup.outputs.node_version || '24' }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
