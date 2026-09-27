@@ -2,10 +2,14 @@
 
 The verdict tests need the reach index of run 36089233978 and its rerun, and skip without it.
 Their test ids and locations come from the stranded culls' reach counts.
+The real-data test also needs the corpus kills file, the reach counts and the location prior,
+from the `local/` folder of this checkout or JOURNEY_LOCAL_DIR, and skips without them.
 
-  JOURNEY_LOOKUP_INDEX=<index dir> python3 e2e/coverage/journey/pipeline/test_kills.py
+  JOURNEY_LOOKUP_INDEX=<index dir> [JOURNEY_LOCAL_DIR=<local dir>] python3 e2e/coverage/journey/pipeline/test_kills.py
 """
 
+import contextlib
+import io
 import json
 import os
 import subprocess
@@ -13,11 +17,17 @@ import sys
 import tempfile
 import types
 import unittest
+from unittest import mock
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 import kills  # noqa: E402
 
 INDEX = os.environ.get("JOURNEY_LOOKUP_INDEX")
+LOCAL = os.environ.get("JOURNEY_LOCAL_DIR") or os.path.join(HERE, "..", "..", "..", "..", "local")
+REAL_KILLS = os.path.join(LOCAL, "regression-corpus", "overnight", "kills.json")
+REAL_CANDIDATES = os.path.join(LOCAL, "regression-corpus", "reach-counts.jsonl")
+REAL_PRIOR = os.path.join(LOCAL, "test-coverage-verifier", "data", "location-prior.json")
 MIN_MUTANTS = 2
 STRATA = ["logic", "wiring"]
 
@@ -138,7 +148,8 @@ EXPECTED = {
     BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2"),
 }
 COMPARED = ("verdict", "reason", "unique_kills", "unconfirmed_unique_kills", "cover_kept_for", "kills", "misses", "errored",
-            "qualifying_mutants", "qualifying_without_location")
+            "qualifying_mutants", "qualifying_without_location", "depends_on")
+SHARED_KILLS_HEADING = "\nKills that no remaining test has\n"
 
 UNCONFIRMED_KILLS = {
     "reg-69160": mutant("logic", [], [REPRO_69160, REMAINING, JEST], L_69160, unconfirmed_by=[REPRO_69160]),
@@ -345,6 +356,20 @@ class Verdicts(unittest.TestCase):
         kept = next(t for t in (TWIN_MYSQL, TWIN_POSTGRES) if self.rows[t]["verdict"] == "keep")
         self.assertEqual((self.rows[kept]["cover_kept_for"], self.rows[deleted]["cover_kept_for"]), ({"wiring": ["twin"]}, {}))
 
+    def test_the_deleted_twin_depends_on_the_kept_twin(self):
+        kept = next(t for t in (TWIN_MYSQL, TWIN_POSTGRES) if self.rows[t]["verdict"] == "keep")
+        deleted = next(t for t in (TWIN_MYSQL, TWIN_POSTGRES) if self.rows[t]["verdict"] == "delete")
+        self.assertEqual({cid: r["depends_on"] for cid, r in self.rows.items() if r.get("depends_on")}, {
+            deleted: {"wiring": {"twin": [kept]}},
+            MISSING: {"wiring": {"missing-pair": [PAIRED]}},
+        })
+        self.assertEqual({cid for cid, r in self.rows.items() if "depends_on" not in r}, {UNIQUE, PAIRED, kept})
+        self.assertEqual(self.result["joint_check"], "ok")
+        text = kills.report(self.result)
+        self.assertTrue(text.startswith("Joint check: ok\n"))
+        self.assertIn(f"{SHARED_KILLS_HEADING}  {deleted}\n      delete, safe only while {kept} stay, for wiring twin\n"
+                      f"  {MISSING}\n      unmeasured, safe only while {PAIRED} stay, for wiring missing-pair\n", text)
+
     def test_details(self):
         self.assertEqual(self.rows[UNIQUE]["unique_kills"], {"logic": ["unique"]})
         self.assertEqual(self.rows[ERRORED]["errored"], ["errored"])
@@ -508,9 +533,9 @@ class Accepted(unittest.TestCase):
             os.unlink(path)
 
     @classmethod
-    def evaluate(cls, kills_file=None, **options):
+    def evaluate(cls, kills_file=None, candidate_ids=ACCEPT_CANDIDATES, **options):
         options = {"prior_path": cls.prior_file, "ci_history_path": cls.ci_history_file, "cap": 2} | options
-        return kills.evaluate(INDEX, kills_file or cls.kills_file, ACCEPT_CANDIDATES, ACCEPT_MIN_MUTANTS, [], **options)
+        return kills.evaluate(INDEX, kills_file or cls.kills_file, candidate_ids, ACCEPT_MIN_MUTANTS, [], **options)
 
     @classmethod
     def evaluate_entries(cls, entries, **options):
@@ -602,18 +627,35 @@ class Accepted(unittest.TestCase):
             with self.subTest(tag):
                 self.assertIn(UNIT, self.accepted(self.evaluate_entries(ACCEPT_KILLS | {"boot": boot})))
 
-    def test_a_sampled_mutant_no_remaining_test_kills_blocks_accepted(self):
+    def test_a_sampled_mutant_no_remaining_test_or_kept_candidate_kills_blocks_accepted(self):
         survivors = {
-            "killed by nothing": mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE),
-            "killed only unconfirmed": mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]),
-            "killed only by another candidate": mutant("logic", [TWIN_MYSQL], [UNIQUE, TWIN_MYSQL, REMAINING], L_UNIQUE),
+            "killed by nothing": (mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE), ACCEPT_CANDIDATES),
+            "killed only unconfirmed": (
+                mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]), ACCEPT_CANDIDATES),
+            "killed only by candidates that aren't kept": (
+                mutant("logic", [FAILED, MISSING], [UNIQUE, FAILED, MISSING, REMAINING], L_UNIQUE), ACCEPT_CANDIDATES + [MISSING]),
         }
-        for name, survivor in survivors.items():
+        for name, (survivor, candidate_ids) in survivors.items():
             with self.subTest(name):
-                row = self.evaluate_entries(ACCEPT_KILLS | {"survivor": survivor})["candidates"][UNIQUE]
+                result = self.evaluate_entries(ACCEPT_KILLS | {"survivor": survivor}, candidate_ids=candidate_ids)
+                row = result["candidates"][UNIQUE]
                 a = row["acceptance"]
                 self.assertEqual((row["verdict"], a["outcome"], a["survivors"], a["sampled"]),
                                  ("unmeasured", "survivor in sample", ["survivor"], 6))
+                self.assertEqual(result["joint_check"], "ok")
+        rows = result["candidates"]
+        self.assertEqual({c: (rows[c]["verdict"], rows[c]["depends_on"]) for c in (FAILED, MISSING)},
+                         {c: ("unmeasured", {"logic": {"survivor": []}}) for c in (FAILED, MISSING)})
+        self.assertIn(f"  {FAILED}\n      unmeasured, no remaining test or kept candidate kills logic survivor\n", kills.report(result))
+
+    def test_a_sampled_mutant_only_a_kept_candidate_kills_is_no_survivor(self):
+        kept_kill = mutant("logic", [TWIN_MYSQL], [UNIQUE, TWIN_MYSQL, REMAINING], L_UNIQUE)
+        result = self.evaluate_entries(ACCEPT_KILLS | {"kept-kill": kept_kill})
+        rows = result["candidates"]
+        self.assertEqual((rows[TWIN_MYSQL]["verdict"], rows[TWIN_MYSQL]["unique_kills"]), ("keep", {"logic": ["kept-kill"]}))
+        a = rows[UNIQUE]["acceptance"]
+        self.assertEqual((rows[UNIQUE]["verdict"], a["outcome"], a["survivors"], a["sampled"]), ("accepted", "accepted", [], 6))
+        self.assertEqual((rows[UNIQUE]["depends_on"], result["joint_check"]), ({}, "ok"))
 
     def test_static_importers_are_recorded_and_never_gate(self):
         caller, barrel, app, unscored = (
@@ -752,6 +794,133 @@ class ReachIsPerFunction(unittest.TestCase):
             os.unlink(kills_file)
         self.assertEqual(by_index["qualifying_mutants"], {"wiring": 1})
         self.assertEqual(by_file["qualifying_mutants"], {"logic": 1, "wiring": 1})
+
+
+CHAIN = [BOOKMARKS, BOOKMARK_COLLECTION, BOOKMARK_MODEL]
+CHAIN_KILLS = {
+    "first-pair": mutant("logic", CHAIN[:2], CHAIN[:2] + [REMAINING]),
+    "second-pair": mutant("wiring", CHAIN[1:], CHAIN[1:] + [REMAINING]),
+}
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class JointDeletion(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.kills_file = write_json(CHAIN_KILLS)
+        cls.result = kills.evaluate(INDEX, cls.kills_file, CHAIN, 1, [])
+        cls.rows = cls.result["candidates"]
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.kills_file)
+
+    @staticmethod
+    def middle_verdict(verdict):
+        """kills.verdicts with the verdict of the chain's middle candidate replaced."""
+        real = kills.verdicts
+
+        def replaced(*args, **kwargs):
+            rows = real(*args, **kwargs)
+            rows[CHAIN[1]]["verdict"] = verdict
+            return rows
+
+        return mock.patch.object(kills, "verdicts", replaced)
+
+    def command(self, *options):
+        """The exit code, stdout and JSON of the command over the chain, with the middle candidate's verdict replaced by delete."""
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "verdicts.json")
+            argv = [kills.__file__, "--index", INDEX, "--kills", self.kills_file, *sum((["--candidates", c] for c in CHAIN), []),
+                    "--min-mutants", "1", "--require-strata", "", "--out", out, *options]
+            stdout = io.StringIO()
+            with self.middle_verdict("delete"), mock.patch.object(sys, "argv", argv), \
+                    contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    kills.main()
+                    code = 0
+                except SystemExit as e:
+                    code = e.code
+            with open(out) as f:
+                written = json.load(f)
+        return code, stdout.getvalue(), written
+
+    def test_a_chain_of_three_candidates_depends_on_the_one_in_the_middle(self):
+        first, middle, last = CHAIN
+        self.assertEqual({c: (r["verdict"], r["reason"], r.get("depends_on")) for c, r in self.rows.items()}, {
+            first: ("delete", "no unique kill", {"logic": {"first-pair": [middle]}}),
+            middle: ("keep", COVER_KEEPS, None),
+            last: ("delete", "no unique kill", {"wiring": {"second-pair": [middle]}}),
+        })
+        self.assertEqual(self.result["joint_check"], "ok")
+        pipeline = pipeline_verdicts(self.kills_file, CHAIN, 1, [])
+        for cid in CHAIN:
+            with self.subTest(cid):
+                self.assertEqual({f: pipeline[cid].get(f) for f in COMPARED}, {f: self.rows[cid].get(f) for f in COMPARED})
+        text = kills.report(self.result)
+        self.assertIn(f"  {first}\n      delete, safe only while {middle} stay, for logic first-pair\n", text)
+        self.assertIn(f"  {last}\n      delete, safe only while {middle} stay, for wiring second-pair\n", text)
+
+    def test_the_joint_check_finds_a_mutant_that_only_deleted_or_unmeasured_candidates_kill(self):
+        first, middle, last = CHAIN
+        expected = {
+            "delete": {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}},
+            "accepted": {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}},
+            "unmeasured": {"logic": {"first-pair": [first]}, "wiring": {"second-pair": [last]}},
+        }
+        for verdict, failures in expected.items():
+            with self.subTest(verdict):
+                with self.middle_verdict(verdict):
+                    result = kills.evaluate(INDEX, self.kills_file, CHAIN, 1, [])
+                self.assertEqual(result["joint_check"], failures)
+                self.assertTrue(kills.report(result).startswith(
+                    "Joint check: failed, 2 mutants killed by delete or accepted candidates and by no remaining test or kept candidate\n"
+                    f"  logic first-pair\n      {failures['logic']['first-pair'][0]}\n"))
+
+    def test_the_command_exits_with_code_1_on_a_failed_joint_check_unless_it_only_reports(self):
+        code, text, written = self.command()
+        self.assertEqual(code, "the joint check failed, which is a bug in the verdict rules: see the top of the report")
+        self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
+        self.assertEqual(set(written["joint_check"]), {"logic", "wiring"})
+        code, text, written = self.command("--joint-check-report-only")
+        self.assertEqual((code, set(written["joint_check"])), (0, {"logic", "wiring"}))
+        self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
+
+
+@unittest.skipUnless(INDEX and all(os.path.isfile(p) for p in (REAL_KILLS, REAL_CANDIDATES, REAL_PRIOR)),
+                     "needs JOURNEY_LOOKUP_INDEX and the corpus files under JOURNEY_LOCAL_DIR")
+class RealData(unittest.TestCase):
+    def test_the_stranded_culls_pass_the_joint_check(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "verdicts.json")
+            subprocess.run(
+                [sys.executable, kills.__file__, "--index", INDEX, "--kills", REAL_KILLS, "--candidates", REAL_CANDIDATES,
+                 "--prior", REAL_PRIOR, "--out", out],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True,
+            )
+            with open(out) as f:
+                written = json.load(f)
+        with open(REAL_KILLS) as f:
+            killers = {mid: set(entry.get("killed_by") or []) for mid, entry in json.load(f).items()}
+        rows = written["candidates"]
+        stays = {cid for cid, r in rows.items() if r["verdict"] in kills.KEPT}
+
+        def stays_killed(mid):
+            return any(t not in rows or t in stays for t in killers[mid])
+
+        self.assertEqual(written["joint_check"], "ok")
+        deleted = {cid for cid, r in rows.items() if r["verdict"] in kills.DELETED}
+        self.assertEqual([mid for mid, ks in killers.items() if ks & deleted and not stays_killed(mid)], [])
+        for cid, row in rows.items():
+            with self.subTest(cid):
+                self.assertEqual("depends_on" in row, cid not in stays)
+                for mids in (row.get("depends_on") or {}).values():
+                    for mid, kept in mids.items():
+                        self.assertIn(cid, killers[mid])
+                        self.assertLessEqual(killers[mid], set(rows))
+                        self.assertEqual(kept, sorted(killers[mid] & stays))
+                survivors = (row.get("acceptance") or {}).get("survivors") or []
+                self.assertEqual([mid for mid in survivors if stays_killed(mid)], [])
 
 
 if __name__ == "__main__":

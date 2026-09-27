@@ -362,6 +362,8 @@ function main() {
     const { state, ...want } = expected.candidates[id];
     // `acceptance` comes from the location prior, which the ledger doesn't take.
     delete want.acceptance;
+    // `depends_on` comes from the verdicts of the other candidates, which are compared on their own rows.
+    delete want.depends_on;
     const have = got.results[id];
     if (state !== got.states[id]) {
       differences.push(

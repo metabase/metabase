@@ -40,6 +40,11 @@ and both the candidate and at least one other test ran against it without errori
 A candidate passes the baseline check with a confirmed kill among its qualifying mutants or a run against a baseline mutant,
 because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
 
+A kept candidate is one whose verdict is keep or provisional-keep, and it stays in the suite like a remaining test.
+A delete, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills,
+with the kept candidates that kill it, which include the one the cover keeps for it.
+The joint check fails on any mutant a delete or accepted candidate killed that no remaining test or kept candidate kills.
+
 An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
 when it has all four of these fields:
   prior    the highest `score` the location prior gives the files of its qualifying mutants' locations,
@@ -48,7 +53,8 @@ when it has all four of these fields:
   bound    3/n, the rule of three: remaining tests killed all n, so their miss rate there is below 3/n at 95% confidence.
            It is missing while n is 3 or less, where 3/n bounds nothing
   module   the location prior's module for each of the files of its qualifying mutants' locations
-It also needs a confirmed kill by a remaining test on every one of the n, the baseline check, and a prior of at most `max_prior`.
+It also needs a confirmed kill by a remaining test or a kept candidate on every one of the n, the baseline check,
+and a prior of at most `max_prior`.
 Each module takes at most `cap` accepted candidates, lowest prior first, then lowest bound.
 A candidate over several modules counts against each of them.
 
@@ -78,9 +84,11 @@ As a command, it takes the candidates' reached code from a reach index instead o
   python3 kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
                    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>]
                    [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
+                   [--joint-check-report-only]
 
 There a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`,
 in any form lookup.mjs takes, and a candidate reaches the mutant when it ran a function or class the location resolves to.
+When the joint check fails, it exits with code 1, and with `--joint-check-report-only` it only reports the failure.
 The pipeline takes no location prior, so it never gives accepted.
 """
 
@@ -95,6 +103,8 @@ import sys
 import types
 
 VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured", "accepted")
+KEPT = ("keep", "provisional-keep")
+DELETED = ("delete", "accepted")
 MIN_MUTANTS = 5
 REQUIRED_STRATA = "logic,wiring"
 # Two, so one wrong prior takes at most two tests out of a module before an escape there brings them back.
@@ -321,7 +331,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             "sampled": len(qualifying) if ran_known else None,
             "files": set().union(*(mutants[mid]["files"] for mid in located)),
             "fileless": sum(1 for mid in located if not mutants[mid]["files"]),
-            "survivors": sorted(mid for mid in qualifying if not mutants[mid]["killed_by_others"]),
+            "qualifying": qualifying,
             "killed": any(mid in killed_by_test[t.id] for mid in qualifying),
             "ran_baseline": any(mutants[mid]["coarse"] == "baseline" for mid in ran_by_test[t.id] - errored_by_test[t.id]),
         }
@@ -350,9 +360,42 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         else:
             verdict, reason = "delete", "no unique kill"
         out[t.key] = {"verdict": verdict, "reason": reason, **detail}
+    kept = {t.id for t in tests if out[t.key]["verdict"] in KEPT}
+    for ev in evidence.values():
+        ev["survivors"] = sorted(mid for mid in ev["qualifying"] if not stays_killed(mutants[mid], kept))
     if accept is not None:
         accept_unmeasured(tests, out, evidence, accept)
+    key_of = {t.id: t.key for t in tests}
+    for t in tests:
+        if out[t.key]["verdict"] in KEPT:
+            continue
+        depends_on = collections.defaultdict(dict)
+        for mid in sorted(killed_by_test[t.id]):
+            m = mutants[mid]
+            if not m["killed_by_others"]:
+                depends_on[m["stratum"]][mid] = sorted(key_of[i] for i in m["killed_by"] & kept)
+        out[t.key]["depends_on"] = dict(depends_on)
     return out
+
+
+def stays_killed(m, kept):
+    """Whether a remaining test or one of the `kept` candidates has a confirmed kill of the mutant."""
+    return bool(m["killed_by_others"] or m["killed_by"] & kept)
+
+
+def joint_check(tests, mutants, rows):
+    """By stratum, each mutant that delete or accepted candidates killed and no remaining test or kept candidate kills,
+    with those candidates, or "ok" when there is none.
+    """
+    verdict = {t.id: rows[t.key]["verdict"] for t in tests}
+    kept = {i for i, v in verdict.items() if v in KEPT}
+    key_of = {t.id: t.key for t in tests}
+    failures = collections.defaultdict(dict)
+    for mid, m in sorted(mutants.items()):
+        deleted = sorted(key_of[i] for i in m["killed_by"] if verdict[i] in DELETED)
+        if deleted and not stays_killed(m, kept):
+            failures[m["stratum"]][mid] = deleted
+    return dict(failures) or "ok"
 
 
 def passes_baseline_check(evidence):
@@ -654,6 +697,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
         index_ids = {t["id"] for t in json.load(f)}
     by_reach = collections.Counter(m["reach"] for m in mutants.values())
     return {
+        "joint_check": joint_check(candidates, kills["mutants"], results),
         "index": {"dir": index_dir, "sha": reach["sha"], "runs": reach["runs"]},
         "kills": {
             "file": kills_path,
@@ -714,9 +758,33 @@ def accepted_report(a):
     return lines
 
 
+def joint_check_report(joint):
+    if joint == "ok":
+        return ["Joint check: ok"]
+    failures = sum(len(mids) for mids in joint.values())
+    lines = [f"Joint check: failed, {failures} mutants killed by delete or accepted candidates and by no remaining test or kept candidate"]
+    for stratum, mids in sorted(joint.items(), key=lambda x: str(x[0])):
+        for mid, cids in mids.items():
+            lines += [f"  {stratum or 'no stratum'} {mid}", *(f"      {cid}" for cid in cids)]
+    return lines
+
+
+def depends_on_lines(depends_on):
+    kept_kills = {s: [mid for mid, cids in mids.items() if cids] for s, mids in depends_on.items()}
+    lost_kills = {s: [mid for mid, cids in mids.items() if not cids] for s, mids in depends_on.items()}
+    stay = sorted({cid for mids in depends_on.values() for cids in mids.values() for cid in cids})
+    lines = []
+    if stay:
+        lines.append(f"safe only while {', '.join(stay)} stay, for {ids_by_stratum({s: m for s, m in kept_kills.items() if m})}")
+    if any(lost_kills.values()):
+        lines.append(f"no remaining test or kept candidate kills {ids_by_stratum({s: m for s, m in lost_kills.items() if m})}")
+    return lines
+
+
 def report(result):
     k, s = result["kills"], result["summary"]
     lines = [
+        *joint_check_report(result["joint_check"]),
         f"Verdicts from {k['file']} over the reach index at {result['index']['sha'][:11]} (runs {', '.join(result['index']['runs'])})",
         f"{k['mutants']} mutants: {by_stratum(k['strata'])}",
         *(f"  {n} with {how}" for how, n in sorted(k["reach"].items())),
@@ -749,6 +817,11 @@ def report(result):
             lines += [f"  {cid}", f"      {why}"]
             if r["cover_kept_for"]:
                 lines.append(f"      kept by the cover for {ids_by_stratum(r['cover_kept_for'])}")
+    dependent = sorted(cid for cid, r in rows.items() if r.get("depends_on"))
+    if dependent:
+        lines += ["", "Kills that no remaining test has"]
+    for cid in dependent:
+        lines += [f"  {cid}", *(f"      {rows[cid]['verdict']}, {line}" for line in depends_on_lines(rows[cid]["depends_on"]))]
     lines += accepted_report(result["accepted"])
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
@@ -783,6 +856,8 @@ def main():
     parser.add_argument("--out", help="write the full result here as JSON")
     parser.add_argument("--repo", help="the git repo for source reads, default the one lookup/ is in")
     parser.add_argument("--sha", help="read source at this commit instead of the captured one")
+    parser.add_argument("--joint-check-report-only", action="store_true",
+                        help="report a failed joint check without exiting with code 1")
     args = parser.parse_args()
     if not args.index:
         parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
@@ -794,6 +869,8 @@ def main():
             json.dump(result, f, indent=1)
         print(f"wrote {args.out}", file=sys.stderr)
     print(report(result))
+    if result["joint_check"] != "ok" and not args.joint_check_report_only:
+        sys.exit("the joint check failed, which is a bug in the verdict rules: see the top of the report")
 
 
 if __name__ == "__main__":
