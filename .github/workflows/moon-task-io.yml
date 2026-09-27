@@ -36,7 +36,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Install moon
         uses: jdx/mise-action@v3
-      - name: Audit the tasks that declare outputs
+      - name: Install strace
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq strace
+
+      - name: Audit declared outputs
         run: |
           bin/audit-task-io.sh \
             deps \
@@ -52,3 +55,16 @@ jobs:
             build-embedding-sdk-node \
             build-release-embedding-sdk-bundle \
             build-release-embedding-sdk-package
+
+      # Reads are the dangerous direction: an undeclared input is not in the
+      # cache key, so editing it leaves a stale hit in place.
+      - name: Audit declared inputs
+        run: |
+          bin/audit-task-reads.sh \
+            build-cljs \
+            build-release-cljs \
+            generate-expression-parser \
+            type-check \
+            lint-eslint \
+            lint-css \
+            build-js
