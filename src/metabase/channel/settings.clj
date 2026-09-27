@@ -301,6 +301,25 @@
   :visibility :settings-manager
   :audit      :getter)
 
+(defsetting email-smtp-connection-timeout-ms
+  (deferred-tru "Maximum time in milliseconds to wait for a connection to the SMTP server to be established when sending
+                an email. Defaults to 30000 (30 seconds); set to 0 to wait indefinitely.")
+  :export?    true
+  :type       :integer
+  :default    30000
+  :visibility :settings-manager
+  :audit      :getter)
+
+(defsetting email-smtp-timeout-ms
+  (deferred-tru "Maximum time in milliseconds to wait for a response from the SMTP server once connected, for example the
+                server greeting or the reply to a command, when sending an email. Defaults to 120000 (2 minutes); set
+                to 0 to wait indefinitely.")
+  :export?    true
+  :type       :integer
+  :default    120000
+  :visibility :settings-manager
+  :audit      :getter)
+
 (defsetting email-configured?
   "Check if email is enabled and that the mandatory settings are configured."
   :type       :boolean

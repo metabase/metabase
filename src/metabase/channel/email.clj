@@ -74,12 +74,23 @@
     (or (nil? max-per-message) (<= max-per-message 0)) [recipients]
     :else                                              (partition-all max-per-message recipients)))
 
+(defn- smtp-timeout-args
+  "SMTP socket timeouts from settings, as postal/JavaMail args. Without these, an SMTP server that accepts the TCP
+  connection but never responds (e.g. never sends its greeting) blocks the sending thread forever. Since the notification
+  thread pool is bounded, a handful of such connections stops all subscriptions and alerts until Metabase is restarted."
+  []
+  (into {} (for [[k v] {:connectiontimeout (channel.settings/email-smtp-connection-timeout-ms)
+                        :timeout           (channel.settings/email-smtp-timeout-ms)}
+                 :when v]
+             [k (str v)])))
+
 (defn- add-mail-args
-  "Adds any additionally needed mail properties needed for sending mail to the given map of args."
+  "Adds any additionally needed mail properties needed for sending mail to the given map of args. Timeouts already
+  present in `args` take precedence over the ones from settings."
   [args]
   (let [trust (System/getProperty "mail.smtps.ssl.trust")
         debug-enabled? (= "true" (System/getProperty "mail.debug"))]
-    (cond-> args
+    (cond-> (merge (smtp-timeout-args) args)
       trust (assoc :ssl.trust trust)
       debug-enabled? (assoc :debug true))))
 
