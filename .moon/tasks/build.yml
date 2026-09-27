@@ -10,10 +10,15 @@ tasks:
       cache: false
 
   build-custom-viz-fixtures:
+    # Not cached. Writes .tgz fixtures into e2e/support/assets and declares no
+    # outputs, so a hit would skip regenerating them without moon restoring them
+    # either. Cacheable once its outputs are enumerated.
     script: |-
       node enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs
     inputs:
       - enterprise/frontend/src/custom-viz/**
+    options:
+      cache: false
 
   build-js:
     script: |-
