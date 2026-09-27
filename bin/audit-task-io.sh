@@ -5,7 +5,10 @@
 # task writing files it never declared. An undeclared write means the cache does
 # not carry that file, so a cache hit silently leaves it stale or missing.
 #
-# Usage: bin/audit-task-io.sh <task> [<task> ...]
+# Usage: bin/audit-task-io.sh [<task> ...]
+#
+# With no arguments it audits every cached task that declares outputs, read from
+# moon via bin/moon-audit/list-tasks.py rather than a hardcoded list.
 #
 # `moon run --force` re-runs a task's whole dependency chain, so writes made by a
 # dependency would otherwise be blamed on the task under test. Anything a
@@ -53,8 +56,14 @@ collect_declared() {
   done < <(declared_for "${task##*:}")
 }
 
+TASKS=("$@")
+if [ ${#TASKS[@]} -eq 0 ]; then
+  mapfile -t TASKS < <(python3 bin/moon-audit/list-tasks.py with-outputs "$PROJECT")
+  echo "auditing ${#TASKS[@]} tasks that declare outputs"
+fi
+
 status=0
-for TASK in "$@"; do
+for TASK in "${TASKS[@]}"; do
   : > "$TMP/declared"; : > "$TMP/seen"
   collect_declared "$TASK" "$TMP/seen"
   sort -u "$TMP/declared" -o "$TMP/declared"

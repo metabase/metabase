@@ -6,7 +6,10 @@
 # success against old content. Both input bugs found while writing this config
 # were of that kind.
 #
-# Usage: bin/audit-task-reads.sh <task> [<task> ...]
+# Usage: bin/audit-task-reads.sh [<task> ...]
+#
+# With no arguments it audits every cached task, read from moon via
+# bin/moon-audit/list-tasks.py rather than a hardcoded list.
 #
 # Requires strace, so this runs on Linux and in CI, not on macOS. An atime based
 # fallback was tried and removed: on APFS the access times never moved for files
@@ -37,8 +40,14 @@ interesting() {
   | { if [ -f "$ALLOW" ]; then grep -vFf <(grep -vE '^\s*(#|$)' "$ALLOW"); else cat; fi; }
 }
 
+TASKS=("$@")
+if [ ${#TASKS[@]} -eq 0 ]; then
+  mapfile -t TASKS < <(python3 bin/moon-audit/list-tasks.py cached "$PROJECT")
+  echo "auditing ${#TASKS[@]} cached tasks"
+fi
+
 status=0
-for TASK in "$@"; do
+for TASK in "${TASKS[@]}"; do
   "$MOON" task "$PROJECT:$TASK" --json 2>/dev/null \
     | python3 bin/moon-audit/expand-inputs.py | sort -u > "$TMP/declared"
 
