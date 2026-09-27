@@ -11,6 +11,7 @@ import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
 import { navigate } from "metabase/router";
 import { getRoutes } from "metabase/routes";
+import { getSetting } from "metabase/settings";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // Let embedded children detect that their parent is a Metabase instance.
@@ -38,7 +39,12 @@ init(mainReducers, getRoutes, (store) => {
   // `LoadCurrentUser` sends this request from an effect, after the route has
   // mounted. Sending it here puts it next to the settings request. The effect
   // joins it, reuses its result, or repeats it if it failed.
-  store.dispatch(loadCurrentUser());
+  //
+  // `/setup` is outside that gate and does a forced refetch, which RTK drops
+  // while a request is pending. An instance with no user has no session to load.
+  if (getSetting(store.getState(), "has-user-setup")) {
+    store.dispatch(loadCurrentUser());
+  }
 
   // received a 401 response
   api.on(401, (url) => {
