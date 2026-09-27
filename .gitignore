@@ -195,6 +195,7 @@ CLAUDE.local.md
 .claude/agent-memory/
 
 .eslintcache
+.stylelintcache
 
 /logs
 /.clojure-mcp
@@ -217,3 +218,6 @@ dependency-graph.json
 
 # mage modules-tree --html output
 /modules.html
+
+# moon local task cache
+.moon/cache

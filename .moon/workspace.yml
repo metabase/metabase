@@ -1,0 +1,18 @@
+# Single project: the repo root. moon works in a non-monorepo, the "project"
+# is just the whole tree.
+projects:
+  metabase: '.'
+
+# Without this, a bare `moon run <task>` fails with project_graph::no_default_project
+# and every target has to be written as `metabase:<task>`.
+defaultProject: 'metabase'
+
+# Share the task cache across git worktrees, the way node_modules is shared.
+# Without this each worktree starts cold; hashes are content-based so entries
+# from a different branch simply do not match.
+experiments:
+  # Required by unstable_sharedWorktreeCache below.
+  casOutputsCache: true
+
+cache:
+  unstable_sharedWorktreeCache: true

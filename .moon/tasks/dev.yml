@@ -1,0 +1,167 @@
+# Local development: servers, watchers and storybook.
+
+tasks:
+  build-hot:
+    command: noop
+    deps:
+      - build-hot-js
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-hot-be:
+    command: noop
+    deps:
+      - build-hot-cljs
+      - build-hot-js
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-hot-js:
+    script: |-
+      NODE_OPTIONS=--max-old-space-size=8192 \
+      WEBPACK_BUNDLE=hot \
+      rspack serve
+    deps:
+      - clean-dev-js
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-static-viz-watch:
+    script: |-
+      rspack --config rspack.static-viz.config.js --watch
+    deps:
+      - build-cljs
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-watch:
+    command: noop
+    deps:
+      - build-watch-cljs
+      - build-watch-js
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  build-watch-js:
+    script: |-
+      NODE_OPTIONS=--max-old-space-size=8192 \
+      rspack serve --watch
+    deps:
+      - build-cljs
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  cloud-backend:
+    script: |-
+      clojure -M:dev:socket:dev-start:drivers:drivers-dev:ee:ee-dev
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  cloud-dev:
+    command: noop
+    deps:
+      - build-hot-js
+      - cloud-backend
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev:
+    command: noop
+    deps:
+      - dev-backend
+      - build-hot-js
+      - build-static-viz-watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev-backend:
+    script: |-
+      clojure -M:run:dev:dev-start --hot
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev-backend-ee:
+    script: |-
+      clojure -M:run:ee:dev:dev-start --hot
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev-ee:
+    command: noop
+    deps:
+      - dev-backend-ee
+      - build-hot-js
+      - build-static-viz-watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev-ee-hot-be:
+    command: noop
+    deps:
+      - dev-backend-ee
+      - build-hot-js
+      - build-hot-cljs
+      - build-static-viz-watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  dev-hot-be:
+    command: noop
+    deps:
+      - dev-backend
+      - build-hot-js
+      - build-hot-cljs
+      - build-static-viz-watch
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
+
+  email-dev:
+    script: |-
+      bun dev/email-preview/serve.ts
+    options:
+      persistent: true
+      cache: false
+      runInCI: false
+      outputStyle: stream
