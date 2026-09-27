@@ -510,17 +510,25 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
 
     // Test a few global shortcuts
     cy.realPress("c").realPress("f");
-    cy.findByRole("dialog", { name: /collection/i }).should("exist");
+    cy.findByRole("dialog", { name: /collection/i }).should("be.visible");
     cy.realPress("Escape");
+    // Wait for the modal to fully unmount before firing the next shortcut.
+    // Keyboard shortcuts are disabled while a modal is open (see ADM 658 below),
+    // so pressing them while the modal is still closing silently swallows them.
+    cy.findByRole("dialog", { name: /collection/i }).should("not.exist");
     H.expectUnstructuredSnowplowEvent({
       event: "keyboard_shortcut_performed",
       event_detail: "create-new-collection",
     });
     H.openCommandPalette();
     H.commandPaletteInput().should("be.visible").type("new dashboard");
-    H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
-    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
+    H.commandPalette()
+      .findByRole("option", { name: "New dashboard" })
+      .should("be.visible")
+      .click();
+    cy.findByRole("dialog", { name: /dashboard/i }).should("be.visible");
     cy.realPress("Escape");
+    cy.findByRole("dialog", { name: /dashboard/i }).should("not.exist");
 
     // Using a command palette action registered as a shortcut should only
     // emit snowplow events when using keyboard shortcuts, not command palette
@@ -533,8 +541,9 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     );
 
     cy.realPress("c").realPress("d");
-    cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
+    cy.findByRole("dialog", { name: /dashboard/i }).should("be.visible");
     cy.realPress("Escape");
+    cy.findByRole("dialog", { name: /dashboard/i }).should("not.exist");
     H.expectUnstructuredSnowplowEvent(
       {
         event: "keyboard_shortcut_performed",
@@ -628,6 +637,13 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.location("pathname").should("contain", "/admin/settings");
     cy.realPress("5");
     cy.location("pathname").should("contain", "/admin/datamodel");
+    // The data model page redirects to its default database/schema; wait for that
+    // redirect to settle before firing the next shortcut, otherwise the in-flight
+    // navigation overrides the "/admin/tools" navigation triggered below.
+    cy.location("pathname").should(
+      "match",
+      /\/admin\/datamodel\/database\/\d+\/schema\//,
+    );
     cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/help");
   });
