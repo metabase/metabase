@@ -1,6 +1,41 @@
+import { format } from "util";
+
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import fetchMock from "fetch-mock";
+
+const REACT_KEY_WARNING_PATTERNS = [
+  /Each child in a list should have a unique "key" prop/,
+  /Encountered two children with the same key/,
+];
+
+const reactKeyWarnings = [];
+const originalConsoleError = console.error;
+
+// Throwing here would land inside React's render, where an error boundary can
+// swallow it, so the warnings are collected and reported after the test.
+console.error = (...args) => {
+  originalConsoleError(...args);
+
+  const [template] = args;
+  const isReactKeyWarning =
+    typeof template === "string" &&
+    REACT_KEY_WARNING_PATTERNS.some((pattern) => pattern.test(template));
+
+  if (isReactKeyWarning) {
+    reactKeyWarnings.push(format(...args));
+  }
+};
+
+afterEach(() => {
+  const warnings = reactKeyWarnings.splice(0);
+
+  if (warnings.length > 0) {
+    throw new Error(
+      `Test completed with React key warnings:\n${warnings.join("\n")}`,
+    );
+  }
+});
 
 // jsdom has no layout, so popover positioning computes nothing useful while
 // costing getComputedStyle calls and an extra re-render per position update.
