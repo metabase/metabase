@@ -2,12 +2,23 @@
 
 tasks:
   generate-expression-parser:
+    # lezer-generator emits unformatted code, so the committed files only match
+    # after eslint --fix (import ordering) and oxfmt --write. Without both, every
+    # run of this task dirties the tree against what is checked in.
     script: |-
       lezer-generator --typeScript \
                       frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer \
-                      -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
+                      -o frontend/src/metabase/querying/expressions/tokenizer/lezer.ts \
+      && eslint --no-warn-ignored --fix \
+                frontend/src/metabase/querying/expressions/tokenizer/lezer.ts \
+                frontend/src/metabase/querying/expressions/tokenizer/lezer.terms.ts \
+      && oxfmt --write \
+               frontend/src/metabase/querying/expressions/tokenizer/lezer.ts \
+               frontend/src/metabase/querying/expressions/tokenizer/lezer.terms.ts
     inputs:
       - frontend/src/metabase/querying/expressions/tokenizer/grammar.lezer
+      - eslint.config.mjs
+      - .oxfmtrc.json
     outputs:
       - frontend/src/metabase/querying/expressions/tokenizer/lezer.ts
       - frontend/src/metabase/querying/expressions/tokenizer/lezer.terms.ts
