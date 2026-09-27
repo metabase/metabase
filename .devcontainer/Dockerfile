@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/vscode/devcontainers/java:25
 
 # Set up nodesource, install node, bun, fontconfig for static viz, rlwrap for dev ergonomics
 
-RUN ( curl -fsSL https://deb.nodesource.com/setup_22.x | bash ) \
+RUN ( curl -fsSL https://deb.nodesource.com/setup_24.x | bash ) \
   && export DEBIAN_FRONTEND=noninteractive \
   && apt-get update && apt-get -y install --no-install-recommends nodejs rlwrap fontconfig \
   && npm install -g bun

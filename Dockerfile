@@ -2,7 +2,7 @@
 # STAGE 1: builder
 ###################
 
-FROM node:22-bullseye AS builder
+FROM node:24-bullseye AS builder
 
 ARG MB_EDITION=oss
 ARG VERSION
