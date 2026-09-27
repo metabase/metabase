@@ -3402,7 +3402,8 @@
            task
            transforms
            transforms-base
-           util}
+           util
+           visualization-settings}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
