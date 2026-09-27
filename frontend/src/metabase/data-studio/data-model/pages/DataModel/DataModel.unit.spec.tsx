@@ -19,6 +19,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  settlePendingUpdates,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
@@ -344,6 +345,8 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
+
+      await settlePendingUpdates();
     });
 
     it("should allow to search for a table", async () => {

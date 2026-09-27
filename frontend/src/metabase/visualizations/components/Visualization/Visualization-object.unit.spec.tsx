@@ -2,7 +2,11 @@ import {
   setupActionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+} from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -57,12 +61,14 @@ function setup({
 }
 
 describe("visualization - object", () => {
-  it("render fields with 'visibility_type' set as 'details-only'", () => {
+  it("render fields with 'visibility_type' set as 'details-only'", async () => {
     const rows = [["John", "John Smith Jr"]];
 
     setup({ rows, longNameVisibility: "details-only" });
 
     expect(screen.getByText("Long name")).toBeInTheDocument();
     expect(screen.getByText("John Smith Jr")).toBeInTheDocument();
+
+    await settlePendingUpdates();
   });
 });
