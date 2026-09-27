@@ -81,8 +81,7 @@ module.exports = {
   },
 
   create(context) {
-    const sourceCode = context.sourceCode || context.getSourceCode();
-    const filename = context.filename || context.getFilename();
+    const { sourceCode, filename } = context;
     const options = context.options[0] || {};
     const baseApis = options.baseApis || DEFAULT_BASE_APIS;
 
