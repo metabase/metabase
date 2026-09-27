@@ -1,14 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useRef } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotLongChatNotice } from "metabase/metabot/components/MetabotChat/MetabotLongChatNotice";
+import { useFollowUpPrompts } from "metabase/metabot/hooks/use-follow-up-prompts";
 import { useSetting } from "metabase/settings";
-import { Box, Button, Flex, Paper, Stack, Text } from "metabase/ui";
+import { Box, Flex, Paper, Text } from "metabase/ui";
 
 import { useGetSuggestedMetabotPromptsQuery } from "../../api";
 import { useMetabotConversation, useUserMetabotPermissions } from "../../hooks";
@@ -19,6 +20,11 @@ import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotContextUsageRing } from "./MetabotContextUsageRing";
+import {
+  MetabotPromptSuggestions,
+  type MetabotPromptSuggestionsRef,
+} from "./MetabotPromptSuggestions";
+import { MetabotConversationTimer } from "./MetabotResponseTimer";
 import { useScrollManager } from "./hooks";
 
 const defaultConfig: MetabotChatConfig = {
@@ -62,6 +68,11 @@ export const MetabotChat = ({
     useSetting("llm-metabot-supports-reasoning?") ?? true;
 
   const hasMessages = metabot.messages.length > 0;
+  const suggestionsRef = useRef<MetabotPromptSuggestionsRef>(null);
+  const followUpPrompts = useFollowUpPrompts(
+    conversationId,
+    isConfigured && !metabot.isContextWindowFull,
+  );
 
   const { scrollContainerRef, fillerRef } = useScrollManager(
     hasMessages,
@@ -74,11 +85,31 @@ export const MetabotChat = ({
       limit: 3,
       sample: true,
     },
-    { skip: !isConfigured },
+    { skip: !isConfigured || hasMessages },
   );
-  const suggestedPrompts = useMemo(() => {
-    return suggestedPromptsReq.currentData?.prompts ?? [];
-  }, [suggestedPromptsReq.currentData?.prompts]);
+  const suggestedPrompts = hasMessages
+    ? followUpPrompts
+    : (suggestedPromptsReq.currentData?.prompts.map(({ prompt }) => prompt) ??
+      []);
+  const showSuggestions =
+    isConfigured &&
+    !metabot.isDoingScience &&
+    !metabot.isContextWindowFull &&
+    metabot.prompt === "";
+  const singlePrompt =
+    hasMessages && showSuggestions && suggestedPrompts.length === 1
+      ? suggestedPrompts[0]
+      : undefined;
+  const showSuggestionList =
+    showSuggestions && suggestedPrompts.length > 0 && !singlePrompt;
+  const promptSuggestions = showSuggestionList ? (
+    <MetabotPromptSuggestions
+      ref={suggestionsRef}
+      prompts={suggestedPrompts}
+      onSubmit={(prompt) => metabot.submitInput(prompt, { focusInput: true })}
+      onFocusInput={() => metabot.promptInputRef?.current?.focus()}
+    />
+  ) : null;
 
   const untitledLabel = metabot.forkedFromConversationId
     ? t`Forked conversation`
@@ -92,16 +123,19 @@ export const MetabotChat = ({
       {shouldShowHeader && (
         <Box className={Styles.header} data-testid="metabot-chat-header">
           {title && (
-            <Text
-              className={Styles.headerTitle}
-              c={metabot.title ? "text-primary" : "text-secondary"}
-              fw={metabot.title ? "bold" : "normal"}
-              truncate
-              title={title}
-              data-testid="metabot-conversation-title"
-            >
-              {title}
-            </Text>
+            <Box className={Styles.headerTitleGroup}>
+              <Text
+                className={Styles.headerTitle}
+                c={metabot.title ? "text-primary" : "text-secondary"}
+                fw={metabot.title ? "bold" : "normal"}
+                truncate
+                title={title}
+                data-testid="metabot-conversation-title"
+              >
+                {title}
+              </Text>
+              <MetabotConversationTimer messages={metabot.messages} />
+            </Box>
           )}
           {headerActions && (
             <Box className={Styles.headerActions}>{headerActions}</Box>
@@ -144,26 +178,7 @@ export const MetabotChat = ({
                   </Text>
                 )}
               </Flex>
-              {isConfigured && (
-                <Stack
-                  gap="sm"
-                  className={Styles.promptSuggestionsContainer}
-                  data-testid="metabot-prompt-suggestions"
-                >
-                  <>
-                    {suggestedPrompts.map(({ prompt }, index) => (
-                      <Box key={index}>
-                        <Button
-                          onClick={() => metabot.submitInput(prompt)}
-                          className={Styles.promptSuggestionButton}
-                        >
-                          {prompt}
-                        </Button>
-                      </Box>
-                    ))}
-                  </>
-                </Stack>
-              )}
+              {promptSuggestions}
             </>
           )}
 
@@ -196,6 +211,7 @@ export const MetabotChat = ({
 
       {isConfigured && (
         <Box className={Styles.footerContainer}>
+          {hasMessages && promptSuggestions}
           <Box className={Styles.textInputContainer}>
             {metabot.longChatNotice && onNewConversation && (
               <MetabotLongChatNotice
@@ -216,8 +232,16 @@ export const MetabotChat = ({
                   autoFocus
                   isResponding={metabot.isDoingScience}
                   placeholder={t`How can I help? Type @ to mention items.`}
+                  suggestedPrompt={singlePrompt}
+                  onNavigateSuggestions={
+                    showSuggestionList
+                      ? (direction) => suggestionsRef.current?.focus(direction)
+                      : undefined
+                  }
                   onChange={metabot.setPrompt}
-                  onSubmit={() => metabot.submitInput(metabot.prompt)}
+                  onSubmit={(prompt = metabot.prompt) =>
+                    metabot.submitInput(prompt)
+                  }
                   onStop={metabot.cancelRequest}
                   suggestionConfig={{
                     suggestionModels: config.suggestionModels,

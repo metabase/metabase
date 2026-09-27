@@ -6,10 +6,11 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { getUserCanWriteToCollections } from "metabase/current-user";
 import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getJevCreateHotkeyLabel } from "metabase/querying/jev-create";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/settings";
-import { Box, Icon, Menu } from "metabase/ui";
+import { Box, Icon, Menu, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionId } from "metabase-types/api";
 
@@ -54,6 +55,23 @@ export const NewItemMenuView = ({
           collectionId={collectionId}
           hasNlqAccess={hasNlqAccess}
         />,
+      );
+    }
+
+    if (hasDataAccess || canWriteToCollections) {
+      items.push(
+        <Menu.Item
+          key="jev-create"
+          onClick={() => dispatch(setOpenModal("jev-create"))}
+          leftSection={<Icon name="sparkles" />}
+          rightSection={
+            <Text size="xs" c="text-secondary">
+              {getJevCreateHotkeyLabel()}
+            </Text>
+          }
+        >
+          {t`New with Jev`}
+        </Menu.Item>,
       );
     }
 

@@ -60,6 +60,9 @@ export interface NotebookDataPickerProps {
   shouldDisableDatabase?: (item: QueryEditorDatabasePickerItem) => boolean;
   columnPicker: React.ReactNode;
   shouldShowLibrary?: boolean;
+  suggestions?: (
+    onSelect: (tableId: TableId) => Promise<void>,
+  ) => React.ReactNode;
 }
 
 export function NotebookDataPicker({
@@ -79,6 +82,7 @@ export function NotebookDataPicker({
   shouldDisableDatabase,
   shouldShowLibrary,
   columnPicker,
+  suggestions,
 }: NotebookDataPickerProps) {
   const store = useStore();
   const dispatch = useDispatch();
@@ -150,6 +154,7 @@ export function NotebookDataPicker({
         shouldDisableItem={shouldDisableItem}
         shouldDisableDatabase={shouldDisableDatabase}
         shouldShowLibrary={shouldShowLibrary}
+        suggestions={suggestions?.(handleChange)}
       />
     );
   }
@@ -171,6 +176,7 @@ type ModernDataPickerProps = {
   shouldDisableItem?: (item: OmniPickerItem) => boolean;
   shouldDisableDatabase?: (database: QueryEditorDatabasePickerItem) => boolean;
   shouldShowLibrary?: boolean;
+  suggestions?: React.ReactNode;
 };
 
 function ModernDataPicker({
@@ -188,6 +194,7 @@ function ModernDataPicker({
   shouldDisableItem,
   shouldDisableDatabase,
   shouldShowLibrary,
+  suggestions,
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
   const getItemTooltip = context.dataPickerOptions?.getItemTooltip;
@@ -218,12 +225,12 @@ function ModernDataPicker({
       return Boolean(
         // @ts-expect-error - Please fix 🥺
         shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
-        // Unjustified type cast. FIXME
-        shouldDisableItem?.(item as OmniPickerItem) ||
-        (isObjectWithModel(item) &&
-          item.model === "database" &&
           // Unjustified type cast. FIXME
-          shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
+          shouldDisableItem?.(item as OmniPickerItem) ||
+          (isObjectWithModel(item) &&
+            item.model === "database" &&
+            // Unjustified type cast. FIXME
+            shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
   }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
@@ -241,6 +248,9 @@ function ModernDataPicker({
   return (
     <>
       <MiniPicker
+        dropdownHeader={
+          !dataSourceSearchQuery && isOpened && !isBrowsing ? suggestions : null
+        }
         value={tableValue}
         opened={isOpened && !isBrowsing}
         onClose={() => setIsOpened(false)}
@@ -280,9 +290,9 @@ function ModernDataPicker({
           shouldDisableItem={(i) => {
             return Boolean(
               shouldDisableItem?.(i) ||
-              ("model" in i &&
-                i.model === "database" &&
-                shouldDisableDatabase?.(i)),
+                ("model" in i &&
+                  i.model === "database" &&
+                  shouldDisableDatabase?.(i)),
             );
           }}
           options={getItemTooltip ? { getItemTooltip } : undefined}

@@ -116,10 +116,29 @@ export type PythonTransformSource = {
   "source-incremental-strategy"?: SourceIncrementalStrategy;
 };
 
+export type JevClassifyKind = "choice" | "noul";
+
+export type JevClassifyOutputMode = "new-column" | "fill-empty" | "overwrite";
+
+/** One Jev classify step of a query transform, see `metabase.jev.apps.classify`. */
+export type JevClassifyStep = {
+  input: string | string[];
+  question: string;
+  kind?: JevClassifyKind;
+  /** Answer key -> description; `choice` steps only. */
+  answers?: Record<string, string>;
+  output: {
+    mode: JevClassifyOutputMode;
+    name: string;
+  };
+  "min-confidence"?: number | null;
+};
+
 export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
   "source-incremental-strategy"?: SourceIncrementalStrategy;
+  "jev-classify"?: JevClassifyStep[] | null;
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;

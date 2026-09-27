@@ -336,6 +336,23 @@
                      ;; not required: a server started without --api-key takes no key, and a base URL on its own
                      ;; is a complete configuration
                      :help     (deferred-tru "Only needed if you started your server with --api-key.")}]}
+   {:type          "typesafe"
+    :label         (deferred-tru "TypeSafe")
+    :kind          :system-one
+    :default-model nil
+    :fields        [{:key         :api-key
+                     :label       (deferred-tru "API key")
+                     :type        :password
+                     :required?   true
+                     :placeholder (deferred-tru "Enter your TypeSafe API key")
+                     :docs-url    "https://docs.typesafe.ai/introduction/quickstart"}
+                    {:key       :base-url
+                     :normalize strip-trailing-slashes
+                     :validate  llm.provider.settings/llm-url-problem
+                     :label     (deferred-tru "API base URL")
+                     :type      :text
+                     :advanced? true
+                     :default   "https://api.typesafe.ai"}]}
    {:type          "metabase"
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
@@ -384,6 +401,20 @@
   "Every registered provider type."
   []
   (mapv (comp provider-type :type) provider-type-registry))
+
+(defn provider-kind
+  "The class of model `type-name` serves: `:chat` for the conversational models Metabot runs on, or `:system-one`
+  for models that answer batches of typed questions (choice, score, noul) about a state instead of generating
+  text. System One connections share credentials handling with chat connections but can never be selected as a
+  chat model."
+  [type-name]
+  (when-let [entry (provider-type type-name)]
+    (:kind entry :chat)))
+
+(defn system-one-type?
+  "Whether `type-name` serves System One models. See [[provider-kind]]."
+  [type-name]
+  (= :system-one (provider-kind type-name)))
 
 (defn managed-type?
   "Whether `type-name` is the Metabase-managed provider, which authenticates with the instance token through the LLM
@@ -623,7 +654,10 @@
                  ;; the base URL is the credential here, unlike Azure's: a server started without --api-key takes
                  ;; no key, so the URL alone brings a usable connection into existence
                  :settings {:base-url {:setting :llm-vllm-api-base-url :credential? true}
-                            :api-key  {:setting :llm-vllm-api-key}}}})
+                            :api-key  {:setting :llm-vllm-api-key}}}
+   "typesafe"   {:type     "typesafe"
+                 :settings {:api-key  {:setting :llm-typesafe-api-key :credential? true}
+                            :base-url {:setting :llm-typesafe-api-base-url}}}})
 
 (defn connection-env-vars
   "The environment variables that configure a connection of `type-name`, as `{config-field \"MB_LLM_...\"}`.

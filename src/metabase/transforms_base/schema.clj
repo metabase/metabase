@@ -66,7 +66,9 @@
              [:body                        {:optional true} :string]
              [:source-tables               {:optional true} [:sequential :metabase.transforms-base.util/source-table-entry]]
              [:source-database             {:optional true} :int]
-             [:source-incremental-strategy {:optional true} [:maybe ::source-incremental-strategy]]]]
+             [:source-incremental-strategy {:optional true} [:maybe ::source-incremental-strategy]]
+             ;; Jev classify steps, validated by `metabase.jev.apps.classify`.
+             [:jev-classify                {:optional true} [:maybe [:sequential [:map {:closed false, ::mr/deliberately-open true}]]]]]]
    [:target {:optional true} [:maybe ::transform-target]]
    [:name {:optional true} :string]
    [:description {:optional true} [:maybe :string]]

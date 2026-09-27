@@ -9,6 +9,8 @@ import type {
   ListMetabotConversationsResponse,
   MetabotConversationTitleResponse,
   MetabotFeedback,
+  MetabotFollowUpPromptsRequest,
+  MetabotFollowUpPromptsResponse,
   MetabotGenerateContentRequest,
   MetabotGenerateContentResponse,
   MetabotId,
@@ -36,6 +38,17 @@ export type MetabotConversationDetail = {
 
 export const metabotApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getMetabotFollowUpPrompts: builder.query<
+      MetabotFollowUpPromptsResponse,
+      MetabotFollowUpPromptsRequest
+    >({
+      query: ({ conversation_id, message_id }) => ({
+        method: "POST",
+        url: `/api/metabot/conversations/${conversation_id}/follow-up-prompts`,
+        body: { message_id },
+      }),
+      extraOptions: { retry: false },
+    }),
     listMetabots: builder.query<{ items: MetabotInfo[] }, void>({
       query: () => ({
         method: "GET",
@@ -196,6 +209,7 @@ export const metabotApi = Api.injectEndpoints({
 });
 
 export const {
+  useGetMetabotFollowUpPromptsQuery,
   useGetMetabotConversationQuery,
   useForkMetabotConversationMutation,
   useListMetabotConversationsQuery,

@@ -186,6 +186,10 @@
            " serves the deployments you create, not a fixed catalog, so there's no list to pick from — Metabase "
            "works out the model from " (field-labels fields model-fields) " instead.")
 
+      (llm.provider/system-one-type? type)
+      (str provider-label " serves System One models, which answer typed questions for Metabase rather than chat, "
+           "so its models aren't picked in the model settings.")
+
       (contains? dynamic-catalog-types type)
       (str "Metabase lists whichever models your " provider-label " server is serving, so what you can "
            "pick depends on how you started it.")

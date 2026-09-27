@@ -15,7 +15,7 @@ import {
   serializeDateParameterValue,
 } from "metabase/querying/parameters/utils/parsing";
 import { useSetting } from "metabase/settings";
-import { Flex, Icon, Popover, Select } from "metabase/ui";
+import { Flex, Icon, Popover, Select, Switch } from "metabase/ui";
 
 // width needed to show Previous 12 months option w/ clipping
 const FILTER_WIDTH = 205;
@@ -211,6 +211,8 @@ type ConversationFiltersProps = {
   groupOptions: { value: string; label: string }[];
   tenantOptions: { value: string; label: string }[];
   hasTenants: boolean;
+  issues?: boolean;
+  onIssuesChange?: (val: boolean) => void;
 };
 
 export function ConversationFilters({
@@ -227,6 +229,8 @@ export function ConversationFilters({
   groupOptions,
   tenantOptions,
   hasTenants,
+  issues,
+  onIssuesChange,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
@@ -263,6 +267,14 @@ export function ConversationFilters({
         data-testid="conversation-filters-user-select"
       />
       <ConversationDateFilter value={date} onChange={onDateChange} />
+      {onIssuesChange && (
+        <Switch
+          label={t`Only conversations with issues`}
+          checked={issues ?? false}
+          onChange={(event) => onIssuesChange(event.currentTarget.checked)}
+          data-testid="conversation-filters-issues-switch"
+        />
+      )}
     </Flex>
   );
 }

@@ -9,18 +9,18 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import * as Urls from "metabase/urls";
-import type { Transform, TransformId } from "metabase-types/api";
+import type { Transform } from "metabase-types/api";
 
 type TransformTabsProps = {
   transform: Transform;
 };
 
 export const TransformTabs = ({ transform }: TransformTabsProps) => {
-  const tabs = getTabs(transform.id);
+  const tabs = getTabs(transform);
   return <PillTabNavigation tabs={tabs} />;
 };
 
-function getTabs(id: TransformId): PillTab[] {
+function getTabs({ id, source }: Transform): PillTab[] {
   const inspectUrl = Urls.transformInspect(id);
   const tabs: PillTab[] = [
     {
@@ -35,11 +35,19 @@ function getTabs(id: TransformId): PillTab[] {
       label: t`Settings`,
       to: Urls.transformSettings(id),
     },
-    {
-      label: t`Indexes`,
-      to: Urls.transformIndexes(id),
-    },
   ];
+
+  if (source.type === "query") {
+    tabs.push({
+      label: t`Classify`,
+      to: Urls.transformClassify(id),
+    });
+  }
+
+  tabs.push({
+    label: t`Indexes`,
+    to: Urls.transformIndexes(id),
+  });
 
   if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
     tabs.push({

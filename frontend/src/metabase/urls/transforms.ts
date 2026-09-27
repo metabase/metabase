@@ -76,6 +76,10 @@ export function transformSettings(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
 }
 
+export function transformClassify(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/classify`;
+}
+
 export function transformIndexes(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/indexes`;
 }

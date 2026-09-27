@@ -1,5 +1,7 @@
 (ns metabase.metabot.self.openai
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
@@ -7,6 +9,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -328,6 +331,51 @@
   [model]
   (not (model-supports-temperature? model)))
 
+(def ^:private fast-mode-models
+  ;; Only models verified in https://developers.openai.com/api/docs/pricing.
+  #{"gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna"})
+
+(defn- direct-endpoint?
+  [{:keys [base-url]}]
+  (= "https://api.openai.com" (some-> base-url (str/replace #"/+$" ""))))
+
+(defn supports-fast-mode?
+  "Whether this model and connection support direct OpenAI fast serving. Account eligibility is checked by OpenAI."
+  [model credentials ai-proxy?]
+  (and (not ai-proxy?)
+       (direct-endpoint? credentials)
+       (contains? fast-mode-models model)))
+
+(def ^:private fast-mode-cooldown-ms (* 5 60 1000))
+
+(def ^:private fast-mode-cooldowns (atom {}))
+
+(defn- fast-mode-cooldown-key
+  [model {:keys [base-url api-key]}]
+  [base-url model (some-> api-key buddy-hash/sha256 codecs/bytes->hex)])
+
+(defn- fast-mode-rejection?
+  [res]
+  (let [{:keys [param message]} (get-in res [:body :error])]
+    (or (= param "service_tier")
+        (boolean (re-find #"(?i)\bservice[_ ]tier\b|\b(?:fast|priority) (?:mode|processing|tier)\b"
+                          (str message))))))
+
+(defn- start-fast-mode-cooldown!
+  [cooldown-key]
+  (let [now (System/currentTimeMillis)]
+    (swap! fast-mode-cooldowns
+           #(assoc (into {} (filter (fn [[_ until]] (> until now))) %)
+                   cooldown-key (+ now fast-mode-cooldown-ms)))))
+
+(defn- log-service-tier-xf
+  [model requested-tier]
+  (map (fn [event]
+         (when (contains? #{"response.completed" "response.incomplete"} (:type event))
+           (when-let [served-tier (get-in event [:response :service_tier])]
+             (log/debug "OpenAI serving tier" {:model model :requested-tier requested-tier :served-tier served-tier})))
+         event)))
+
 (mu/defn openai-request-body
   "Build the OpenAI Responses API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens reasoning?]
@@ -367,11 +415,16 @@
   Opts map takes `:credentials` (`{:api-key ... :base-url ...}`) from the connection serving this request, and
   throws when they are missing.
   `:ai-proxy?` is not supported for OpenAI and throws when true."
-  [{:keys [model credentials ai-proxy?] :as opts
+  [{:keys [model credentials ai-proxy? fast?] :as opts
     :or   {model "gpt-5.4"}} :- core/LLMRequestOpts]
   (when ai-proxy?
     (throw (ai-proxy-unsupported-ex)))
-  (let [req (openai-request-body opts)]
+  (let [cooldown-key (fast-mode-cooldown-key model credentials)
+        fast?        (and fast? (supports-fast-mode? model credentials ai-proxy?)
+                          (<= (get @fast-mode-cooldowns cooldown-key 0) (System/currentTimeMillis)))
+        ;; Azure and Bedrock reuse the body builder; serving tiers belong to this transport only.
+        req          (cond-> (openai-request-body opts)
+                       (direct-endpoint? credentials) (assoc :service_tier (if fast? "fast" "default")))]
     (try
       (let [api-key  (not-empty (:api-key credentials))
             auth     (core/resolve-auth "openai" "OpenAI"
@@ -388,14 +441,25 @@
         ;; The SSE body is consumed lazily, after this `try` has exited — wrap
         ;; the reducible so mid-stream IO/timeout failures get the same
         ;; provider-friendly translation as request-time errors.
-        (-> (core/sse-reducible (:body response))
+        (-> (eduction (log-service-tier-xf model (:service_tier req))
+                      (core/sse-reducible (:body response)))
             (debug/capture-stream {:provider "openai"
                                    :model    model
                                    :url      "/v1/responses"
                                    :request  req})
             (core/reducible-with-api-errors "openai" openai-error-msg)))
       (catch Exception e
-        (core/rethrow-api-error! "openai" openai-error-msg e)))))
+        (let [status (:status (ex-data e))
+              res    (when (and fast? (contains? #{400 403} status))
+                       (core/decode-error-body e))]
+          (if (and res (fast-mode-rejection? res))
+            (do
+              (start-fast-mode-cooldown! cooldown-key)
+              (log/warn "OpenAI rejected fast serving; retrying at standard speed"
+                        {:model model :status status :reason :service-tier-rejected})
+              (openai-raw (assoc opts :fast? false)))
+            (core/rethrow-api-error! "openai" openai-error-msg
+                                     (if res (ex-info (str (ex-message e)) res e) e))))))))
 
 (defn openai
   "Call OpenAI API, return AISDK stream."

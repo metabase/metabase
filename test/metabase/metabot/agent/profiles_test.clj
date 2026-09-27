@@ -8,6 +8,24 @@
    [metabase.metabot.tools :as tools]
    [metabase.test :as mt]))
 
+(deftest jev-profile-flags-test
+  (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
+    (doseq [profile-id [:internal :nlq]]
+      (is (true? (:routing? (profiles/get-profile profile-id))))
+      (is (true? (:prefetch-data-sources? (profiles/get-profile profile-id)))))
+    (let [baseline (profiles/get-profile :nlq-old)]
+      (is (nil? (:routing? baseline)))
+      (is (nil? (:prefetch-data-sources? baseline)))
+      (is (nil? (:fast? baseline)))
+      (is (true? (:fast? (profiles/get-profile :nlq))) "the nlq profile asks for fast mode even when served its fallback")
+      (is (= "natural-language-querying-fallback.selmer" (:prompt-template baseline)))
+      (is (= (remove #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq))) (:tools baseline)))))
+  (testing "nlq-old never offers explore_table, with or without the library index"
+    (doseq [available? [true false]]
+      (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly available?)]
+        (is (not-any? #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq-old))))
+        (is (some #{#'tools/explore-table-tool} (:tools (profiles/get-profile :nlq))))))))
+
 (deftest get-profile-test
   (letfn [(tool-names [profile]
             (set (map #(:tool-name (meta %)) (:tools profile))))]

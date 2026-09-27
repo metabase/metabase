@@ -14,6 +14,8 @@ type MetabotChatEditorProps = Pick<
   MetabotPromptInputProps,
   | "value"
   | "placeholder"
+  | "suggestedPrompt"
+  | "onNavigateSuggestions"
   | "autoFocus"
   | "onChange"
   | "onSubmit"
@@ -25,11 +27,18 @@ export const MetabotChatEditor = forwardRef<
   MetabotPromptInputRef | null,
   MetabotChatEditorProps
 >(({ isResponding = false, ...props }, ref) => {
+  const canUseSuggestions = !isResponding && props.value === "";
   return (
     <Box className={S.editorContainer}>
       <Box className={S.contentWrapper}>
         <MetabotPromptInput
           {...props}
+          suggestedPrompt={
+            canUseSuggestions ? props.suggestedPrompt : undefined
+          }
+          onNavigateSuggestions={
+            canUseSuggestions ? props.onNavigateSuggestions : undefined
+          }
           ref={ref}
           disabled={isResponding}
           data-testid="metabot-chat-input"
@@ -41,7 +50,7 @@ export const MetabotChatEditor = forwardRef<
           isResponding && S.buttonResponding,
           props.value.length === 0 && !isResponding && S.buttonHidden,
         )}
-        onClick={isResponding ? props.onStop : props.onSubmit}
+        onClick={isResponding ? props.onStop : () => props.onSubmit?.()}
         data-testid={
           isResponding ? "metabot-stop-response" : "metabot-send-message"
         }

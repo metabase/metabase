@@ -18,6 +18,7 @@
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.entity-retrieval :as tools.entity-retrieval]
    [metabase.metabot.tools.explorations :as tools.explorations]
+   [metabase.metabot.tools.explore-table :as tools.explore-table]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.save-entity :as tools.save-entity]
@@ -59,6 +60,8 @@
   remove-from-research-plan-tool
   set-exploration-name-tool
   select-exploration-timelines-tool]
+ [tools.explore-table
+  explore-table-tool]
  [tools.metadata
   list-available-data-sources-tool
   list-available-fields-tool
@@ -120,7 +123,7 @@
     "create_sql_query" "edit_sql_query" "replace_sql_query" "construct_notebook_query"
     "document_schema_collect" "document_construct_sql_chart" "document_construct_model_chart"
     "create_alert" "create_dashboard_subscription" "static_viz"
-    "read_resource"})
+    "read_resource" "explore_table"})
 
 (defn- wrap-with-scope-check
   "Wrap a tool function with a scope check. Returns a function that checks

@@ -189,7 +189,9 @@
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "google"))
                        "| Model "))
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "vllm"))
-                       "whichever models your vLLM server is serving")))
+                       "whichever models your vLLM server is serving"))
+    (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "typesafe"))
+                       "TypeSafe serves System One models")))
   (testing "Azure explains that the model comes from the deployment instead, naming the fields by their labels"
     ;; answer first: the block sits under a "Supported models:" label, so it leads with what you get rather than
     ;; with the catalog it hasn't got

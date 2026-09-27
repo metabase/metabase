@@ -1,6 +1,7 @@
 export const SEARCH_TOOL_NAME = "search";
 export const SAVE_ENTITY_TOOL_NAME = "save_entity";
 export const RESOURCE_TOOL_NAME = "read_resource";
+export const EXPLORE_TABLE_TOOL_NAME = "explore_table";
 
 export const REASONING_EXACT_THRESHOLD_MS = 5000;
 export const PREVIEW_MIN_MS = 600;

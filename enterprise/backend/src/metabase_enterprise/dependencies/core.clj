@@ -14,10 +14,12 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
 
 (mr/def ::entity-type
   [:enum :card :transform :snippet :table])
@@ -156,8 +158,29 @@
                        (merge errors)))
                  {} by-db))))))
 
+(defenterprise cards-reading-tables
+  "Up to `limit` cards whose recorded dependencies include any of `table-ids`, most shared tables first, as
+  `{card-id #{table-id ...}}` with each card's full set of table dependencies."
+  :feature :dependencies
+  [table-ids limit]
+  (when (seq table-ids)
+    (let [card-ids (t2/select-fn-vec :from_entity_id
+                                     [:model/Dependency :from_entity_id [:%count.* :shared]]
+                                     {:where    [:and
+                                                 [:= :from_entity_type "card"]
+                                                 [:= :to_entity_type "table"]
+                                                 [:in :to_entity_id table-ids]]
+                                      :group-by [:from_entity_id]
+                                      :order-by [[:shared :desc] [:from_entity_id :desc]]
+                                      :limit    limit})]
+      (when (seq card-ids)
+        (u/group-by :from_entity_id :to_entity_id conj #{}
+                    (t2/select [:model/Dependency :from_entity_id :to_entity_id]
+                               :from_entity_type "card"
+                               :to_entity_type   "table"
+                               :from_entity_id   [:in card-ids]))))))
+
 (comment
-  (require '[metabase.premium-features.core])
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
   (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)
@@ -174,7 +197,7 @@
   (dependencies.db/card 124)
   (deps.graph/transitive-dependents {:transform [{:id 1}]})
   (deps.graph/transitive-dependents {:table [{:id 155}]})
-  (metabase.premium-features.core/token-features)
+  (premium-features/token-features)
 
   (let [card (dependencies.db/card 121)
         mp   (lib-be/application-database-metadata-provider (:database_id card))]

@@ -241,6 +241,7 @@ function UsageStats({ metric }: UsageStatsProps) {
             user,
             group,
             tenant,
+            issues: false,
             ...filterOverrides,
           }),
         ),

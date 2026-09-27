@@ -172,11 +172,15 @@
     (when (str/blank? model)
       (throw (ex-info (tru "Model name is required. Expected format: connection/model, e.g. \"anthropic/claude-haiku-4-5\"")
                       {:status-code 400 :value value})))
-    (case (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))
-      "azure"    (validate-azure-model! value model)
-      "google"   (validate-google-model! value model)
-      "metabase" (validate-managed-model! model)
-      nil)))
+    (let [type (:type (llm.provider/connection (llm.provider/model-ref->connection-key value)))]
+      (when (llm.provider/system-one-type? type)
+        (throw (ex-info (tru "{0} names a System One provider, which cannot serve Metabot." (pr-str value))
+                        {:status-code 400 :value value})))
+      (case type
+        "azure"    (validate-azure-model! value model)
+        "google"   (validate-google-model! value model)
+        "metabase" (validate-managed-model! model)
+        nil))))
 
 (defsetting llm-metabot-provider
   (deferred-tru "The AI provider connection and model for Metabot. Format: connection-key/model-name, e.g. `anthropic/claude-haiku-4-5`, `openai/gpt-5.4`, `openrouter/anthropic/claude-haiku-4.5`. The connection key names an entry in the `llm-providers` setting and defaults to the provider type.")
@@ -260,7 +264,7 @@
   :doc        false)
 
 (defsetting llm-fast-mode
-  (deferred-tru "Run Metabot in the provider''s fast mode when the selected model supports it. Fast mode responds faster at a higher price per token; on Anthropic it requires an account enrolled in the fast-mode research preview and is not available with a Priority Tier commitment.")
+  (deferred-tru "Request faster serving of the same model for Metabot, AI explorations, and SQL generation across this instance, at a higher price per token. Provider account restrictions apply; requests may fall back to standard speed. On Anthropic, preview access is required and Priority Tier commitments are not supported. When off, direct OpenAI requests explicitly use standard processing.")
   :type       :boolean
   :default    false
   :visibility :settings-manager

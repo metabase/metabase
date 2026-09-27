@@ -46,7 +46,9 @@ export const knownDataPartTypes = [
   "data-adhoc_viz",
   "data-static_viz",
   "data-search_results",
+  "data-explore_ideas",
   "data-tool_title",
+  "data-jev",
   "data-conversation-title",
   "data-research_plan_update",
 ] as const satisfies readonly KnownDataPart["type"][];
@@ -68,6 +70,19 @@ export type SearchResultsData = {
   tool_call_id: string;
   total_count: number;
   results: SearchResultItem[];
+};
+
+export type ExploreIdeaStatus = "considering" | "kept" | "dropped";
+
+export type ExploreIdea = {
+  prompt: string;
+  status: ExploreIdeaStatus;
+  reason?: string;
+};
+
+export type ExploreIdeasData = {
+  tool_call_id: string;
+  ideas: ExploreIdea[];
 };
 
 export type AdhocVizValue = {
@@ -129,7 +144,22 @@ export type ResearchPlanUpdateData = AddResearchGroupsResponse & {
   tool_call_id?: string;
 };
 
+export type JevSignal = {
+  phase: string;
+  status: string;
+  action: string;
+  instruction: string;
+  intent?: { choice: string; confidence: number };
+  feedback?: { choice: string; confidence: number };
+  tone?: { choice: string; confidence: number };
+  progress?: { choice: string; confidence: number };
+  usage?: { input_tokens?: number; output_tokens?: number } | null;
+  elapsed_ms: number;
+  failed_steps?: number;
+};
+
 export type KnownDataPart =
+  | { type: "data-jev"; data: JevSignal }
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
   | { type: "data-todo_list"; data: MetabotTodoItem[] }
@@ -140,6 +170,7 @@ export type KnownDataPart =
   | { type: "data-adhoc_viz"; data: AdhocVizValue }
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }
+  | { type: "data-explore_ideas"; data: ExploreIdeasData }
   | { type: "data-tool_title"; data: ToolTitleData }
   | { type: "data-conversation-title"; data: string }
   | { type: "data-research_plan_update"; data: ResearchPlanUpdateData };

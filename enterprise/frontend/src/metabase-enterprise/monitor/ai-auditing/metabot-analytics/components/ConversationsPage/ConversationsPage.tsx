@@ -20,7 +20,7 @@ import { PAGE_SIZE, urlStateConfig } from "./utils";
 export function ConversationsPage() {
   const location = useLocation();
   const [
-    { page, sort_column, sort_direction, date, user, group, tenant },
+    { page, sort_column, sort_direction, date, user, group, tenant, issues },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
@@ -51,6 +51,7 @@ export function ConversationsPage() {
       group_id: groupId,
       tenant_id: tenantId,
       date: date ?? undefined,
+      has_issues: issues || undefined,
     },
     { refetchOnMountOrArgChange: true },
   );
@@ -80,6 +81,8 @@ export function ConversationsPage() {
           groupOptions={groupOptions}
           tenantOptions={tenantOptions}
           hasTenants={hasTenants}
+          issues={issues}
+          onIssuesChange={(val) => patchUrlState({ issues: val, page: 0 })}
         />
 
         <ConversationsTable

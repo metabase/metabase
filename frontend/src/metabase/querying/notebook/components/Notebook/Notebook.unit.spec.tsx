@@ -9,6 +9,10 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  setupJevJoinSuggestionsEndpoint,
+  setupJevTableShapesEndpoint,
+} from "__support__/server-mocks/jev";
+import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -119,6 +123,8 @@ function setup({
   hasRecents = true,
 }: SetupOpts) {
   setupDatabasesEndpoints([MOCK_DATABASE]);
+  setupJevTableShapesEndpoint();
+  setupJevJoinSuggestionsEndpoint();
   setupRecentViewsAndSelectionsEndpoints(
     hasRecents
       ? [

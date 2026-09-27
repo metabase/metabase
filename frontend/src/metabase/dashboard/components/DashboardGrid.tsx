@@ -17,6 +17,12 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
+import type { CardShape } from "metabase/dashboard/components/DashboardFocus/classify-kind";
+import {
+  getFocusState,
+  reflowLayoutByScore,
+  subscribeFocus,
+} from "metabase/dashboard/components/DashboardFocus/focus-store";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { connect } from "metabase/redux";
@@ -204,6 +210,9 @@ class DashboardGridInner extends Component<
     };
   }
 
+  // Re-render (and thus re-flow the layout) when the focus state changes, so cards slide by relevance.
+  _unsubscribeFocus?: () => void;
+
   componentDidMount() {
     // In order to skip the initial cards animation we must let the grid layout calculate
     // the initial card positions. The timer is necessary to enable animation only
@@ -211,12 +220,14 @@ class DashboardGridInner extends Component<
     this._pauseAnimationTimer = setTimeout(() => {
       this.setState({ isAnimationPaused: false });
     }, 0);
+    this._unsubscribeFocus = subscribeFocus(() => this.forceUpdate());
   }
 
   componentWillUnmount() {
     if (this._pauseAnimationTimer !== null) {
       clearTimeout(this._pauseAnimationTimer);
     }
+    this._unsubscribeFocus?.();
   }
 
   componentDidUpdate(prevProps: DashboardGridInnerProps) {
@@ -607,6 +618,7 @@ class DashboardGridInner extends Component<
       <Box
         key={String(dc.id)}
         data-testid="dashcard-container"
+        data-dashcard-id={dc.id}
         className={cx(
           DashboardS.DashCard,
           EmbedFrameS.DashCard,
@@ -628,10 +640,48 @@ class DashboardGridInner extends Component<
     );
   };
 
+  /**
+   * Structural facts for a dashcard, read off its rendered result — the input the focus layout engine
+   * uses to classify what a card IS (callout / trend / table …). Returns undefined when the card hasn't
+   * loaded, in which case the engine falls back to a neutral kind.
+   */
+  getCardShape = (dashcardId: number): CardShape | undefined => {
+    const dashcard = this.getVisibleCards().find((dc) => dc.id === dashcardId);
+    if (!dashcard) {
+      return undefined;
+    }
+    const dataset =
+      dashcard.card_id != null
+        ? this.props.dashcardData?.[dashcardId]?.[dashcard.card_id]
+        : undefined;
+    return {
+      display: dashcard.card?.display,
+      rowCount: dataset?.row_count ?? dataset?.data?.rows?.length,
+      colCount: dataset?.data?.cols?.length,
+    };
+  };
+
   renderGrid() {
     const { width } = this.props;
     const { layouts, visualizerModalStatus } = this.state;
     const rowHeight = this.getRowHeight();
+
+    // When a focus is active (a question was asked), re-flow the layout by relevance so the most
+    // relevant cards rise to the top and the rest sink — animated by react-grid-layout. View-only:
+    // the saved dashboard is untouched, and onLayoutChange is skipped while focusing (see below).
+    const focus = getFocusState();
+    const displayLayouts =
+      focus.active && !this.isEditingLayout
+        ? {
+            desktop: reflowLayoutByScore(
+              layouts.desktop ?? [],
+              focus.scores,
+              focus.focused,
+              this.getCardShape,
+            ),
+            mobile: layouts.mobile ?? [],
+          }
+        : layouts;
 
     return (
       <GridLayout<DashboardCard>
@@ -643,7 +693,7 @@ class DashboardGridInner extends Component<
           // panel during dragging
           [DashCardS.DashboardCardRootDragging]: this.state.isDragging,
         })}
-        layouts={layouts}
+        layouts={displayLayouts}
         breakpoints={GRID_BREAKPOINTS}
         cols={GRID_COLUMNS}
         width={width}

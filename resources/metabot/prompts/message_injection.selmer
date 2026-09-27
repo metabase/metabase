@@ -16,5 +16,9 @@ Here is some information about the user:
 
 {{ recent_views|safe }}
 {% endif %}
+{% if relevant_data_sources %}
+
+{{ relevant_data_sources|safe }}
+{% endif %}
 
 </context>

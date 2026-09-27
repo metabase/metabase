@@ -183,6 +183,7 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
         />
 
         <EntityTypeInput
+          table={table}
           value={table.entity_type ?? "entity/GenericTable"}
           onChange={handleEntityTypeChange}
           classNames={{ input: S.input, label: S.label }}

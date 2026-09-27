@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.follow-up-prompts :as follow-up-prompts]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -28,6 +29,22 @@
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
              (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+
+(deftest follow-up-prompts-test
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+    (let [url (str "metabot/conversations/" conversation-id "/follow-up-prompts")
+          message-id (str (random-uuid))
+          calls (atom [])]
+      (mt/with-dynamic-fn-redefs [follow-up-prompts/generate (fn [conversation message]
+                                                               (swap! calls conj [conversation message])
+                                                               ["Show the trend"])]
+        (is (= {:prompts ["Show the trend"]}
+               (mt/user-http-request :rasta :post 200 url {:message_id message-id})))
+        (is (= [[conversation-id message-id]] @calls))
+        (mt/user-http-request :lucky :post 403 url {:message_id message-id})
+        (mt/client :post 401 url {:message_id message-id})
+        (mt/user-http-request :rasta :post 400 url {:message_id "invalid"})
+        (is (= 1 (count @calls)))))))
 
 (deftest list-conversations-authentication-test
   (testing "GET /api/metabot/conversations requires auth"

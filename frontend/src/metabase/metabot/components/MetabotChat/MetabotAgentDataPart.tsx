@@ -56,6 +56,50 @@ export const AgentDataPart = ({
   conversationId,
 }: AgentDataPartProps) =>
   match(dataPart)
+    .with({ part: { type: "data-jev" } }, ({ part: { data } }) => (
+      <Box p="sm" bg="background-secondary" style={{ borderRadius: 8 }}>
+        <Text fw="bold" size="sm">
+          {t`JEV experiment`} · {data.phase} · {data.action}
+        </Text>
+        <Flex gap="xs" wrap="wrap" my="xs">
+          {(["intent", "feedback", "tone", "progress"] as const).map((key) => {
+            const answer = data[key];
+            return answer ? (
+              <Badge key={key} variant="outline">
+                {key}: {answer.choice.replaceAll("_", " ")} ·{" "}
+                {Math.round(answer.confidence * 100)}%
+              </Badge>
+            ) : null;
+          })}
+        </Flex>
+        <Text size="xs" c="text-secondary">
+          {data.status} · {t`${Math.round(data.elapsed_ms)} ms`} ·{" "}
+          {data.usage
+            ? (data.usage.input_tokens ?? 0) + (data.usage.output_tokens ?? 0)
+            : t`unreported`}{" "}
+          {t`tokens`}
+        </Text>
+        {data.phase === "reasoning" ? (
+          <Text size="sm">
+            {data.action === "flag"
+              ? t`Possible indecisive spiral: Metabot is repeatedly revisiting a decision. Diagnostic only; generation continues.`
+              : t`Reasoning check only; generation continues without additional steering.`}
+          </Text>
+        ) : (
+          <details>
+            <summary>
+              {data.action === "stop"
+                ? t`Why execution stopped`
+                : t`Instruction added to the LLM`}
+            </summary>
+            <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              {data.instruction ||
+                t`No steering instruction: signals were absent, uncertain, or unavailable.`}
+            </Text>
+          </details>
+        )}
+      </Box>
+    ))
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
       <AgentTodoListMessage todos={part.data} />
     ))

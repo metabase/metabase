@@ -24,6 +24,11 @@ import {
   setupTimelinesEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import {
+  setupJevTableShapesEndpoint,
+  setupJevVizSuggestEndpoint,
+} from "__support__/server-mocks/jev";
+import { setupJevSaveCheckEndpoint } from "__support__/server-mocks/jev-saving";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
@@ -261,6 +266,9 @@ export const setup = async ({
   );
   setupRecentViewsEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupJevSaveCheckEndpoint();
+  setupJevTableShapesEndpoint();
+  setupJevVizSuggestEndpoint();
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",

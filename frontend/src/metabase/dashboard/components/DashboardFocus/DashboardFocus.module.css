@@ -1,0 +1,23 @@
+.panel {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  background-color: var(--mb-color-background);
+}
+
+/*
+ * Applied to dashcard containers (by data-dashcard-id) when a focus intent is active. A focused card
+ * gets a subtle brand ring; the rest dim so the eye lands on what answers the question. Toggled from
+ * JS rather than React props so the whole feature stays a self-contained panel — no dashboard-tree
+ * rewiring for a prototype.
+ */
+:global(.jev-focus-dimmed) {
+  opacity: 0.35;
+  transition: opacity 0.2s ease;
+}
+
+:global(.jev-focus-highlighted) {
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: 2px;
+  border-radius: var(--default-border-radius);
+  transition: outline-color 0.2s ease;
+}

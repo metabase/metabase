@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -56,6 +56,106 @@ const setup = (props = {}) => {
 const getEditor = () => screen.getByRole("textbox");
 
 describe("MetabotPromptInput", () => {
+  it("submits the suggested prompt once on Tab without inserting a draft", () => {
+    const onSubmit = jest.fn<void, [prompt?: string], void>();
+    setup({ suggestedPrompt: "Show the trend", onSubmit });
+
+    fireEvent.keyDown(getEditor(), { key: "Tab" });
+    fireEvent.keyDown(getEditor(), { key: "Tab" });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith("Show the trend");
+    expect(getEditor()).toHaveTextContent(/^$/);
+  });
+
+  it.each([{ value: "A draft" }, { value: " " }, { disabled: true }])(
+    "does not accept suggestions when the input is unavailable: %j",
+    (props) => {
+      const onSubmit = jest.fn<void, [prompt?: string], void>();
+      setup({ suggestedPrompt: "Show the trend", onSubmit, ...props });
+      fireEvent.keyDown(getEditor(), { key: "Tab" });
+      expect(onSubmit).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    { shiftKey: true },
+    { ctrlKey: true },
+    { altKey: true },
+    { metaKey: true },
+    { isComposing: true },
+    { repeat: true },
+  ])(
+    "does not submit with modified, composing, or repeated Tab: %j",
+    (modifiers) => {
+      const onSubmit = jest.fn<void, [prompt?: string], void>();
+      setup({ suggestedPrompt: "Show the trend", onSubmit });
+      fireEvent.keyDown(getEditor(), { key: "Tab", ...modifiers });
+      expect(onSubmit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("navigates suggestions only from an empty input", async () => {
+    const onNavigateSuggestions = jest.fn<
+      void,
+      [direction: "up" | "down"],
+      void
+    >();
+    setup({ onNavigateSuggestions });
+    fireEvent.keyDown(getEditor(), { key: "ArrowUp" });
+    fireEvent.keyDown(getEditor(), { key: "ArrowDown" });
+    expect(onNavigateSuggestions.mock.calls).toEqual([["up"], ["down"]]);
+    await userEvent.type(getEditor(), "A draft");
+    fireEvent.keyDown(getEditor(), { key: "ArrowUp" });
+    expect(onNavigateSuggestions).toHaveBeenCalledTimes(2);
+  });
+
+  it("updates the placeholder without replacing the editor or losing a draft", async () => {
+    const ref = createRef<MetabotPromptInputRef>();
+    const { rerender } = setup({ ref });
+    const editor = ref.current;
+    await userEvent.type(getEditor(), "My draft");
+    rerender(
+      <MetabotPromptInput
+        {...defaultProps}
+        ref={ref}
+        placeholder="A new placeholder"
+      />,
+    );
+    expect(ref.current).toBe(editor);
+    expect(ref.current?.getValue?.()).toBe("My draft");
+    expect(getEditor()).toHaveFocus();
+  });
+
+  it("clears an externally submitted draft without echoing it back through onChange", async () => {
+    const onChange = jest.fn<void, [value: string], void>();
+    const { rerender } = setup({ value: "Show sales", onChange });
+    rerender(
+      <MetabotPromptInput {...defaultProps} value="" onChange={onChange} />,
+    );
+    await waitFor(() => expect(getEditor()).toHaveTextContent(/^$/));
+    expect(onChange).not.toHaveBeenCalled();
+    rerender(
+      <MetabotPromptInput
+        {...defaultProps}
+        value="Show sales"
+        onChange={onChange}
+      />,
+    );
+    expect(getEditor()).toHaveTextContent("Show sales");
+    rerender(
+      <MetabotPromptInput {...defaultProps} value="" onChange={onChange} />,
+    );
+    expect(getEditor()).toHaveTextContent(/^$/);
+  });
+
+  it("does not accept a suggestion over typed whitespace", async () => {
+    const onSubmit = jest.fn<void, [prompt?: string], void>();
+    setup({ suggestedPrompt: "Show the trend", onSubmit });
+    await userEvent.type(getEditor(), " ");
+    fireEvent.keyDown(getEditor(), { key: "Tab" });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("should not call onSubmit when mention popover is open", async () => {
     const onSubmit = jest.fn();
     setup({ onSubmit });

@@ -45,7 +45,9 @@
      [:query [:or
               ::orphaned-query
               ::lib-be.schema/maybe-legacy-query]]
-     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]
+     [:source-incremental-strategy {:optional true} ::source-incremental-strategy]
+     ;; Jev classify steps, validated by `metabase.jev.apps.classify`.
+     [:jev-classify {:optional true} [:maybe [:sequential [:map {:closed false, ::mr/deliberately-open true}]]]]]]
    [:python
     [:map {:closed true}
      [:source-database {:optional true} :int]

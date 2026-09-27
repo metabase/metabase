@@ -5,9 +5,10 @@ import { t } from "ttag";
 import { TOOL_MESSAGES } from "metabase/metabot/constants";
 import { Collapse, Icon, Text, UnstyledButton } from "metabase/ui";
 
+import { ExploreIdeasList, exploreIdeasCount } from "./ExploreIdeas";
 import S from "./MetabotChainOfThought.module.css";
 import { SearchResultsList } from "./SearchResults";
-import { SEARCH_TOOL_NAME } from "./constants";
+import { EXPLORE_TABLE_TOOL_NAME, SEARCH_TOOL_NAME } from "./constants";
 import {
   type ToolChainStep,
   activeToolLabel,
@@ -29,6 +30,16 @@ const toolLabelContent = (step: ToolChainStep, done: boolean) => {
             {searchResultCount(step.searchResults)}
           </span>
         )}
+      </>
+    );
+  }
+  if (step.name === EXPLORE_TABLE_TOOL_NAME && step.exploreIdeas?.length) {
+    return (
+      <>
+        {done ? doneToolLabel(step.name) : activeToolLabel(step.name)}
+        <span className={S.resultCount}>
+          {exploreIdeasCount(step.exploreIdeas)}
+        </span>
       </>
     );
   }
@@ -81,14 +92,17 @@ export const ToolStep = ({
   animate: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const hasResults = !!step.searchResults?.results.length;
+  const ideas = step.exploreIdeas ?? [];
+  const hasResults = !!step.searchResults?.results.length || ideas.length > 0;
+  // The ideas are the interesting part while the step runs, so show them without a click.
+  const expanded = open || (ideas.length > 0 && !done);
 
   return (
     <div className={S.toolStep}>
       <UnstyledButton
         className={cx(S.toolRow, !hasResults && S.toolRowStatic)}
         component={hasResults ? "button" : "div"}
-        aria-expanded={hasResults ? open : undefined}
+        aria-expanded={hasResults ? expanded : undefined}
         onClick={hasResults ? () => setOpen((prev) => !prev) : undefined}
       >
         <ToolStepLabel step={step} done={done} />
@@ -96,13 +110,16 @@ export const ToolStep = ({
           <Icon
             name="chevronright"
             size={10}
-            className={cx(S.chevron, open && S.chevronOpen)}
+            className={cx(S.chevron, expanded && S.chevronOpen)}
           />
         )}
       </UnstyledButton>
       {hasResults && (
-        <Collapse in={open}>
+        <Collapse in={expanded}>
           <SearchResultsList step={step} animate={animate} />
+          {ideas.length > 0 && (
+            <ExploreIdeasList ideas={ideas} done={done} animate={animate} />
+          )}
         </Collapse>
       )}
     </div>

@@ -9,6 +9,7 @@ import {
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
+import { setupJevSaveCheckEndpoint } from "__support__/server-mocks/jev-saving";
 import {
   act,
   renderWithProviders,
@@ -71,6 +72,7 @@ function setupSaveModalEndpoints() {
     false,
   );
   setupDatabasesEndpoints([]);
+  setupJevSaveCheckEndpoint();
 }
 
 function setup(

@@ -75,6 +75,7 @@
     :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotConversationReview         metabase.jev.models.metabot-conversation-review
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
     :model/MetabotMessage                    metabase.metabot.models.metabot-message
     :model/MetabotSourceFeedback             metabase.metabot.models.metabot-source-feedback

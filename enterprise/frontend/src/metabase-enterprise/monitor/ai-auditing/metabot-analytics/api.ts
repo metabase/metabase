@@ -1,8 +1,9 @@
 import { EnterpriseApi } from "metabase-enterprise/api/api";
-import { invalidateTags, tag } from "metabase-enterprise/api/tags";
+import { idTag, invalidateTags, tag } from "metabase-enterprise/api/tags";
 
 import type {
   ConversationDetail,
+  ConversationReview,
   ConversationsRequest,
   ConversationsResponse,
   DataComplexityScoresResponse,
@@ -25,6 +26,15 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/metabot-analytics/conversations/${id}`,
       }),
+      providesTags: (_, __, id) => [idTag("metabot-conversation", id)],
+    }),
+    scoreMetabotConversation: builder.mutation<ConversationReview, string>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/jev/conversations/${id}/score`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [idTag("metabot-conversation", id)]),
     }),
     getDataComplexityScores: builder.query<DataComplexityScoresResponse, void>({
       query: () => ({
@@ -52,6 +62,7 @@ export const {
   useListMetabotAnalyticsConversationsQuery,
   useLazyListMetabotAnalyticsConversationsQuery,
   useGetMetabotAnalyticsConversationQuery,
+  useScoreMetabotConversationMutation,
   useGetDataComplexityScoresQuery,
   useRefreshDataComplexityScoresMutation,
 } = metabotAnalyticsApi;

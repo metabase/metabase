@@ -21,6 +21,7 @@ export * from "./frontend-errors";
 export * from "./glossary";
 export * from "./group-table-access-policy";
 export * from "./index-manager";
+export * from "./jev";
 export * from "./llm";
 export * from "./measure";
 export * from "./metric";

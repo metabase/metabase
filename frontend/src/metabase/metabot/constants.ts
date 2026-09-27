@@ -132,6 +132,10 @@ export const TOOL_MESSAGES = {
     active: () => t`Creating a query`,
     done: () => t`Created a query`,
   },
+  explore_table: {
+    active: () => t`Exploring the table`,
+    done: () => t`Explored the table`,
+  },
   get_field_values: {
     active: () => t`Retrieving table metadata`,
     done: () => t`Retrieved table metadata`,

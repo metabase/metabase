@@ -27,6 +27,8 @@ import {
   useQuestionVisualizationState,
 } from "../../../chart-type-selector";
 
+import { useJevVizSuggestions } from "./use-jev-viz-suggestions";
+
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
   "question"
@@ -97,6 +99,9 @@ export const ChartTypeSidebar = ({
       onUpdateQuestion,
     });
 
+  const { scores: recommendationScores, recommendedTypes } =
+    useJevVizSuggestions(result);
+
   const handleSelectVisualization = (display: VisualizationDisplay) => {
     updateQuestionVisualization(display);
   };
@@ -122,6 +127,8 @@ export const ChartTypeSidebar = ({
         sensibleVisualizations={sensibleVisualizations}
         nonSensibleVisualizations={nonSensibleVisualizations}
         onOpenSettings={onOpenVizSettings}
+        recommendationScores={recommendationScores}
+        recommendedTypes={recommendedTypes}
         gap={0}
         w="100%"
         p="xl"

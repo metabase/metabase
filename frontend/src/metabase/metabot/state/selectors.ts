@@ -95,6 +95,9 @@ export const getMetabotConversation = createSelector(
 export const getHasConversation = (state: State, conversationId: string) =>
   Boolean(getMetabotState(state).conversations[conversationId]);
 
+export const getCompletedResponseId = (state: State, conversationId: string) =>
+  getMetabotState(state).conversations[conversationId]?.completedResponseId;
+
 export const getMetabotVisible = createSelector(
   getMetabotAgent,
   (agent) => agent.visible,

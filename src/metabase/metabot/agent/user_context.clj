@@ -351,6 +351,7 @@
   - :current_user_info - Formatted current user info and glossary
   - :viewing_context - Formatted viewing context
   - :recent_views - Formatted recent views
+  - :relevant_data_sources - Data sources prefetched for the turn, when there are any
 
   This is the user-message injection context only. Per-profile, feature-specific system-prompt
   content is contributed separately, via a profile's `:system-prompt-context` hook (see
@@ -360,4 +361,5 @@
    :first_day_of_week (get context :first_day_of_week "Sunday")
    :current_user_info (format-current-user-info context)
    :viewing_context (format-viewing-context context)
-   :recent_views (format-recent-views context)})
+   :recent_views (format-recent-views context)
+   :relevant_data_sources (:relevant_data_sources context)})

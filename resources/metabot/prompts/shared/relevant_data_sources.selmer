@@ -1,0 +1,11 @@
+{% if prefetch_data_sources %}
+# Data sources found for you
+
+Before a turn, Metabase may search for the user's latest message and add the data
+sources that look most relevant, already read with their fields, inside
+`<relevant_data_sources>` in the context block of that message. For the concepts
+they cover, that search and read are already done: skip `search` and don't read
+them again, and build from them directly. Use `search` only for concepts they
+don't cover or when they turn out not to fit the request, and `read_resource`
+only for detail they don't include, such as a field's sample values.
+{% endif %}

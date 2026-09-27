@@ -204,4 +204,74 @@ describe("command palette", () => {
     });
     expect(await screen.findByText("Products")).toBeInTheDocument();
   });
+  describe("Jev reranking", () => {
+    const revenue = createMockSearchResult({
+      model: "metric",
+      id: 9,
+      name: "Revenue",
+    });
+    const perQuarter = createMockSearchResult({
+      model: "card",
+      id: 15,
+      name: "Revenue per quarter",
+    });
+    const byState = createMockSearchResult({
+      model: "card",
+      id: 2,
+      name: "Revenue by state",
+    });
+    const QUERY = "revenue last quarter";
+
+    const getResultNames = () =>
+      screen
+        .getAllByRole("option")
+        .map((option) => option.textContent ?? "")
+        .filter((text) => text.startsWith("Revenue"));
+
+    it("reorders keyword results and pins Jev's best match", async () => {
+      fetchMock.post("path:/api/jev/search/rerank", {
+        status: "ok",
+        elapsed_ms: 190,
+        usage: null,
+        ranked: [
+          { model: "card", id: 15, score: 2.96 },
+          { model: "metric", id: 9, score: 2.0 },
+          { model: "card", id: 2, score: 1.5 },
+        ],
+        best: { model: "card", id: 15, confidence: 0.93 },
+      });
+      setup({ searchResults: [revenue, byState, perQuarter] });
+
+      await userEvent.keyboard("[ControlLeft>]k");
+      const input = await screen.findByPlaceholderText(/search for anything/i);
+      await userEvent.type(input, QUERY);
+
+      expect(await screen.findByText("Best match")).toBeInTheDocument();
+      expect(screen.getByText("Jev · 190ms")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(getResultNames()[0]).toMatch(/^Revenue per quarter/),
+      );
+    });
+
+    it("leaves keyword results untouched when Jev is unavailable", async () => {
+      fetchMock.post("path:/api/jev/search/rerank", 500);
+      setup({ searchResults: [revenue, byState, perQuarter] });
+
+      await userEvent.keyboard("[ControlLeft>]k");
+      const input = await screen.findByPlaceholderText(/search for anything/i);
+      await userEvent.type(input, QUERY);
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.called("path:/api/jev/search/rerank"),
+        ).toBe(true),
+      );
+      // the mocked keyword search matches the whole query, which finds nothing here
+      expect(
+        await screen.findByText(`No results for “${QUERY}”`),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Best match")).not.toBeInTheDocument();
+      expect(getResultNames()).toEqual([]);
+    });
+  });
 });

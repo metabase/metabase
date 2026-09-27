@@ -421,7 +421,7 @@ const CardPill = ({ id, messageId }: { id: number; messageId?: string }) => {
 };
 
 const SourceDataSection = ({ children }: { children: React.ReactNode }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <Flex

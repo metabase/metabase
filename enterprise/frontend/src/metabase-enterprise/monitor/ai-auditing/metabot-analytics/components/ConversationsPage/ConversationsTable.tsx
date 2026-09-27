@@ -36,9 +36,10 @@ import {
   type ConversationSortColumn,
   type ConversationSummary,
 } from "../../types";
+import { ConversationIssues } from "../ConversationIssues";
 
 const SKELETON_COLUMN_WIDTHS = [
-  0.14, 0.14, 0.11, 0.12, 0.08, 0.09, 0.1, 0.08, 0.08, 0.06,
+  0.13, 0.12, 0.09, 0.14, 0.1, 0.07, 0.08, 0.08, 0.07, 0.07, 0.05,
 ];
 
 const DEFAULT_SORTING: SortingOptions<ConversationSortColumn> = {
@@ -204,6 +205,22 @@ function getColumns(): TreeTableColumnDef<ConversationRow>[] {
         ) : (
           EMPTY_CELL_PLACEHOLDER
         ),
+    },
+    {
+      id: "issues",
+      header: t`Issues`,
+      width: "auto",
+      minWidth: 140,
+      maxAutoWidth: 320,
+      enableSorting: false,
+      accessorFn: (convo) => convo.review_issues.join(","),
+      cell: ({ row }) => (
+        <ConversationIssues
+          label={row.original.review_label}
+          issues={row.original.review_issues}
+          needsReview={row.original.review_pending}
+        />
+      ),
     },
     {
       id: "created_at",

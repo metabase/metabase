@@ -171,10 +171,12 @@
                                   ;; load, nudging the model into pointless `load_skill` calls.
                                   :skill_catalog            (not-empty catalog)
                                   :skill_always_on          (mapv :body always-on)
+                                  :tools_routed             (boolean (:routed? profile))
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
                                   :has_query_tools          (or has-sql? has-nlq?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  :has_explore_table        (contains? tools "explore_table")
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search
@@ -198,7 +200,7 @@
   (let [;; Injection is performed only when the hardcoded keys are present in in context to avoid
         ;; insertion e.g. insertion of blank xml tags.
         injection (when (some #(string? (not-empty (get context %)))
-                              [:viewing_context :current_time :current_user_info :recent_views])
+                              [:viewing_context :current_time :current_user_info :recent_views :relevant_data_sources])
                     (selmer/render (get-cached-message-injection-template)
                                    context))]
     (str injection str*)))

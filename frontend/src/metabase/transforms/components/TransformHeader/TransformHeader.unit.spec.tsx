@@ -3,8 +3,10 @@ import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { Transform } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockPythonTransformSource,
   createMockTransform,
 } from "metabase-types/api/mocks";
 
@@ -13,11 +15,14 @@ import { TransformHeader } from "./TransformHeader";
 type SetupOpts = {
   hasMenu?: boolean;
   isEditMode?: boolean;
+  transform?: Transform;
 };
 
-function setup({ hasMenu = true, isEditMode = false }: SetupOpts = {}) {
-  const transform = createMockTransform({ id: 1, name: "Test Transform" });
-
+function setup({
+  hasMenu = true,
+  isEditMode = false,
+  transform = createMockTransform({ id: 1, name: "Test Transform" }),
+}: SetupOpts = {}) {
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root" })],
   });
@@ -75,6 +80,28 @@ describe("TransformHeader", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: "Settings" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("classify tab", () => {
+    it("should render the Classify tab for query transforms", () => {
+      setup();
+
+      expect(
+        screen.getByRole("link", { name: "Classify" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not render the Classify tab for python transforms", () => {
+      setup({
+        transform: createMockTransform({
+          source: createMockPythonTransformSource({}),
+        }),
+      });
+
+      expect(
+        screen.queryByRole("link", { name: "Classify" }),
       ).not.toBeInTheDocument();
     });
   });

@@ -59,10 +59,10 @@
   (testing "every provider type is listed with the credential fields a connection needs"
     (let [types (mt/user-http-request :crowberto :get 200 "llm/provider-types")]
       (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-               "vllm" "metabase"}
+               "vllm" "typesafe" "metabase"}
              (set (map :type types))))
       (is (= ["anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "google" "azure" "bedrock"
-              "vllm"]
+              "vllm" "typesafe"]
              (remove #{"metabase"} (map :type types)))
           "the bring-your-own-key providers keep their registry order")
       (is (=? {:type          "anthropic"
@@ -284,6 +284,20 @@
           (mt/user-http-request :crowberto :post 200 "llm/providers"
                                 {:type "openai" :config {:api-key "sk-valid"}})
           (is (= "anthropic/claude-opus-4-8" (metabot.settings/llm-metabot-provider))))))))
+
+(deftest create-system-one-connection-leaves-the-metabot-model-alone-test
+  (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "{\"models\":[]}"})]
+    (mt/with-temporary-setting-values [llm-providers []]
+      (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+        (doseq [model [nil "jev-latest"]]
+          (testing (str "requested model: " (pr-str model))
+            (mt/with-temporary-setting-values [llm-providers []]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    (cond-> {:type "typesafe" :config {:api-key "ts-valid"}}
+                                      model (assoc :model model)))
+              (is (= metabot.settings/default-llm-metabot-provider (metabot.settings/llm-metabot-provider)))
+              (is (= [] (:models (m/find-first #(= "typesafe" (:key %))
+                                               (mt/user-http-request :crowberto :get 200 "llm/models"))))))))))))
 
 (deftest create-vllm-connection-adopts-the-model-its-probe-exercised-test
   (testing (str "A vLLM server serves whatever the operator loaded, so there is no default model to select: "

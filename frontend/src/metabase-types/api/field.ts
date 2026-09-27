@@ -140,6 +140,7 @@ export interface UpdateFieldRequest {
   fk_target_field_id?: FieldId | null;
   points_of_interest?: string;
   semantic_type?: string | null;
+  data_sensitivity?: string | null;
   coercion_strategy?: string | null;
   visibility_type?: FieldVisibilityType;
   has_field_values?: FieldValuesType;

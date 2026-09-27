@@ -10,6 +10,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
+import { JevCreatePaletteApp } from "metabase/querying/jev-create";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import {
@@ -58,6 +59,7 @@ async function setup({
         <>
           <NewItemMenu trigger={<button>New</button>} />
           <NewModals />
+          <JevCreatePaletteApp />
         </>
       }
     />,
@@ -112,6 +114,12 @@ describe("NewItemMenu", () => {
     await userEvent.keyboard("{ArrowDown}");
 
     expect(
+      await screen.findByRole("menuitem", { name: /New with Jev/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
       await screen.findByRole("menuitem", { name: /Question/ }),
     ).toHaveFocus();
 
@@ -126,6 +134,17 @@ describe("NewItemMenu", () => {
 
     expect(
       await screen.findByRole("dialog", { name: /New dashboard/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the New with Jev palette", async () => {
+    await setup();
+    await userEvent.click(await screen.findByText("New with Jev"));
+    expect(
+      await screen.findByRole("dialog", { name: "New with Jev" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Describe what to create" }),
     ).toBeInTheDocument();
   });
 

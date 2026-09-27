@@ -385,7 +385,7 @@
   general-search fallback keeps the external profile-id :nlq, so this is reached via :nlq; :nlq-fallback is listed for
   a direct request.)  The slackbot and document-generate-content profiles historically did not include recent views,
   so we preserve that behavior."
-  #{:nlq :nlq-fallback :slackbot :document-generate-content})
+  #{:nlq :nlq-old :nlq-fallback :slackbot :document-generate-content})
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.

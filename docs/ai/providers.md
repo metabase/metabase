@@ -173,10 +173,11 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID            |
-| ----------------- | ------------------- |
-| DeepSeek V4 Flash | `deepseek-v4-flash` |
-| DeepSeek V4 Pro   | `deepseek-v4-pro`   |
+| Model               | Model ID            |
+| ------------------- | ------------------- |
+| DeepSeek V4.1 Flash | `deepseek-flash`    |
+| DeepSeek V4 Flash   | `deepseek-v4-flash` |
+| DeepSeek V4 Pro     | `deepseek-v4-pro`   |
 
 Credentials:
 
@@ -252,8 +253,8 @@ Supported models:
 
 Credentials:
 
-- **Access key ID**. Only together with **Secret access key**. Leave the keys blank to authenticate with the AWS default credentials chain (IRSA, EKS Pod Identity, or instance profile). On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
-- **Secret access key**. Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
+- **Access key ID** (required). Only together with **Secret access key**. On Metabase Cloud, Bedrock always authenticates with your own AWS keys. [Where do I find this?](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html) You can also set it with the environment variable `MB_LLM_BEDROCK_ACCESS_KEY_ID`.
+- **Secret access key** (required). Only together with **Access key ID**. Required on Metabase Cloud. You can also set it with the environment variable `MB_LLM_BEDROCK_SECRET_ACCESS_KEY`.
 - **Region**. Pick one from the dropdown in **Admin > AI**. Defaults to `us-east-1`. You can also set it with the environment variable `MB_LLM_BEDROCK_REGION`.
 - **Session token** (advanced). Only together with **Access key ID** and **Secret access key**. Only needed for temporary credentials. You can also set it with the environment variable `MB_LLM_BEDROCK_SESSION_TOKEN`.
 
@@ -301,6 +302,19 @@ Credentials:
 
 - **API base URL** (required). Your server's OpenAI-compatible API. It should end in /v1. Metabase must be able to reach it: self-hosted, a server on your private network or on this machine needs MB_LLM_ALLOWED_NETWORKS. You can also set it with the environment variable `MB_LLM_VLLM_API_BASE_URL`.
 - **API key**. Only needed if you started your server with --api-key. You can also set it with the environment variable `MB_LLM_VLLM_API_KEY`.
+
+## TypeSafe
+
+- Provider key: `typesafe`
+
+Supported models:
+
+TypeSafe serves System One models, which answer typed questions for Metabase rather than chat, so its models aren't picked in the model settings.
+
+Credentials:
+
+- **API key** (required). [Where do I find this?](https://docs.typesafe.ai/introduction/quickstart) You can also set it with the environment variable `MB_LLM_TYPESAFE_API_KEY`.
+- **API base URL** (advanced). Defaults to `https://api.typesafe.ai`. You can also set it with the environment variable `MB_LLM_TYPESAFE_API_BASE_URL`.
 
 ## Metabase AI service
 

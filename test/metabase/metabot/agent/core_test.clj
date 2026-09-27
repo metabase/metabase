@@ -8,6 +8,8 @@
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.jev.client :as jev]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
@@ -15,6 +17,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -284,7 +287,7 @@
                        :state      {}
                        :profile-id :sql
                        :context    {}}))
-            (is (= {:tool-choice "required"} @captured)))))
+            (is (= {:tool-choice "required" :fast? false} @captured)))))
       (testing "runs agent loop with tool execution"
         (let [call-count (atom 0)]
           (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
@@ -1123,6 +1126,33 @@
       (is (=? {chart-configs-key chart-config}
               chart-configs)))))
 
+(deftest routed-agent-retains-skills-test
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (mt/with-dynamic-fn-redefs [jev/key-present? (constantly true)
+                                jev/ask (constantly {:ok true
+                                                     :answers {:intent-update-visualization {:type "noul" :noul 0.9}}})]
+      (let [{:keys [profile tools memory-atom]}
+            (#'agent/init-agent {:profile-id :internal
+                                 :messages   [{:role :user :content "Make this a pie chart"}]
+                                 :context    {}
+                                 :state      {:skills ["read-resource"]}})]
+        (is (true? (:routed? profile)))
+        (is (= #{:edit-chart :read-resource} (set (:always-on-skills profile))))
+        (is (= ["edit-chart" "read-resource"] (:skills (memory/get-state @memory-atom))))
+        (is (contains? tools "edit_chart"))
+        (is (not (contains? tools "search")))))))
+
+(deftest unrouted-agent-on-jev-error-test
+  (binding [scope/*current-user-scope* api-scope/unrestricted]
+    (mt/with-dynamic-fn-redefs [jev/key-present? (constantly true)
+                                jev/ask (constantly {:ok false :error "unavailable"})]
+      (let [{:keys [profile tools]} (#'agent/init-agent {:profile-id :internal
+                                                         :messages [{:role :user :content "Show orders"}]
+                                                         :context {}})]
+        (is (nil? (:routed? profile)))
+        (is (contains? tools "search"))
+        (is (contains? tools "construct_notebook_query"))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Profile permission checks
 ;;; ──────────────────────────────────────────────────────────────────
@@ -1165,3 +1195,19 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest ^:parallel accumulate-usage-xf-tool-model-test
+  (testing "usage a tool's own LLM call reports is counted under that call's model, not the agent's"
+    (let [usage-atom (atom {})
+          parts      (into [] (#'agent/accumulate-usage-xf usage-atom "openai/agent-model")
+                           [{:type :usage :usage {:promptTokens 10 :completionTokens 1}}
+                            {:type :usage :usage {:promptTokens 5 :completionTokens 2} :tool-model "openai/mini-model"}
+                            {:type :usage :usage {:promptTokens 20 :completionTokens 3}}])]
+      (is (= [["openai/agent-model" {:promptTokens 10 :completionTokens 1}]
+              ["openai/mini-model" {:promptTokens 5 :completionTokens 2}]
+              ["openai/agent-model" {:promptTokens 30 :completionTokens 4}]]
+             (map (juxt :model :usage) parts)))
+      (is (not-any? :tool-model parts))
+      (is (= {"openai/agent-model" {:prompt 30 :completion 4}
+              "openai/mini-model"  {:prompt 5 :completion 2}}
+             (metabot.persistence/extract-usage parts))))))

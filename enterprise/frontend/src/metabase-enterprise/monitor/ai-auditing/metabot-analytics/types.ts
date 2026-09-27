@@ -14,6 +14,24 @@ export type MetabotUserInfo = {
   tenant_id: number | null;
 };
 
+export const CONVERSATION_REVIEW_LABELS = ["ok", "friction", "failed"] as const;
+export type ConversationReviewLabel =
+  (typeof CONVERSATION_REVIEW_LABELS)[number];
+
+export const CONVERSATION_ISSUES = [
+  "system-failure",
+  "unfulfilled",
+  "degraded-delivery",
+  "overall-refusal",
+  "did-not-follow-request",
+  "took-incorrect-actions",
+  "incomplete-response",
+  "high-frustration",
+  "impossible-request",
+  "vague-request",
+] as const;
+export type ConversationIssue = (typeof CONVERSATION_ISSUES)[number];
+
 export type ConversationSummary = {
   conversation_id: string;
   created_at: string;
@@ -35,6 +53,9 @@ export type ConversationSummary = {
   sanitized_user_agent: string | null;
   forked_from_conversation_id: string | null;
   user: MetabotUserInfo | null;
+  review_label: ConversationReviewLabel | null;
+  review_issues: ConversationIssue[];
+  review_pending: boolean;
 };
 
 export const CONVERSATION_SORT_COLUMNS = [
@@ -57,6 +78,7 @@ export type ConversationsRequest = {
   group_id?: number;
   tenant_id?: number;
   date?: string;
+  has_issues?: boolean;
   sort_by?: ConversationSortColumn;
   sort_dir?: "asc" | "desc";
 };
@@ -109,6 +131,34 @@ export type ConversationDetail = {
   forked_from_conversation_id: string | null;
   fork_boundary_message_id: string | null;
   feedback: ConversationFeedback[];
+  review: ConversationReview | null;
+};
+
+export type ChoiceAnswer = { choice: string; confidence: number };
+export type ScoreAnswer = { score: number; confidence: number };
+
+export type ConversationReviewTurn = {
+  index: number;
+  reaction?: ChoiceAnswer;
+  tone?: ScoreAnswer;
+};
+
+export type ConversationReviewAnswers = {
+  turns?: ConversationReviewTurn[];
+  conversation?: {
+    outcome?: ChoiceAnswer;
+    ending?: ChoiceAnswer;
+    frustration?: ScoreAnswer;
+  };
+};
+
+export type ConversationReview = {
+  label: ConversationReviewLabel;
+  issues: ConversationIssue[];
+  review: boolean;
+  answers: ConversationReviewAnswers | null;
+  version: string;
+  updated_at: string;
 };
 
 export const DATA_COMPLEXITY_CATALOG_IDS = [

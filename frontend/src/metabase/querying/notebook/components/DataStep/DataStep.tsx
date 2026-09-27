@@ -16,6 +16,7 @@ import { NotebookDataPicker } from "../NotebookDataPicker";
 import { DataPickerTarget } from "../NotebookDataPicker/DataPickerTarget";
 
 import S from "./DataStep.module.css";
+import { TableUsageChips } from "./TableUsageChips";
 
 export const DataStep = ({
   query,
@@ -42,6 +43,8 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
   const isEmbed = isEmbedding();
+  const numericTableId = typeof tableId === "number" ? tableId : null;
+  const showUsageChips = Boolean(table) && !isOpened && !readOnly && !isEmbed;
 
   const handleTableChange = async (
     table: Lib.TableMetadata | Lib.CardMetadata,
@@ -57,6 +60,7 @@ export const DataStep = ({
   };
 
   return (
+    <>
     <NotebookCell color={color}>
       {isOpened || !table || isEmbed ? (
         <NotebookDataPicker
@@ -114,6 +118,15 @@ export const DataStep = ({
         </NotebookCellItem>
       )}
     </NotebookCell>
+    {showUsageChips && (
+      <TableUsageChips
+        query={query}
+        stageIndex={stageIndex}
+        tableId={numericTableId}
+        updateQuery={updateQuery}
+      />
+    )}
+    </>
   );
 };
 

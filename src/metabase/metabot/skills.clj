@@ -250,7 +250,8 @@
   another (e.g. the SQL skills are always-on for `:sql` but on-demand for `:internal`).
 
   Profiles with `:skills? false` opt out entirely: empty catalog and always-on, and an empty loadable
-  set (so `load_skill` is not injected and cannot resolve guessed ids)."
+  set (so `load_skill` is not injected and cannot resolve guessed ids). A `:routed?` profile has its
+  skills chosen for it, so everything visible outside its always-on set is left out."
   [profile active-tool-names capabilities]
   (if (false? (:skills? profile))
     (do
@@ -266,7 +267,7 @@
           ;; advertised in the catalog nor loadable on demand — only the on-demand skills are.
           ;; Recording only the loadable ids also stops `load_skill` from re-fetching an always-on
           ;; skill (a wasted iteration the model would otherwise spend).
-          loadable      (remove always-on? visible)]
+          loadable      (if (:routed? profile) [] (remove always-on? visible))]
       (record-loadable-skill-ids! loadable)
       {:always-on (filter always-on? visible)
        :catalog   (mapv (fn [s]

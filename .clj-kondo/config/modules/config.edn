@@ -901,6 +901,7 @@
   {:team "Querying Platform"
    :api  #{metabase.driver
            metabase.driver.common
+           metabase.driver.common.table-rows-sample
            metabase.driver.connection
            metabase.driver.ddl.interface
            metabase.driver.impl
@@ -1131,6 +1132,40 @@
   {:team "UX West"
    :api  #{metabase.interestingness.chart.types metabase.interestingness.core}
    :uses #{lib.be util}}
+
+  jev
+  {:team "Metabot"
+   :api #{metabase.jev.api
+          metabase.jev.apps.intent
+          metabase.jev.client
+          metabase.jev.diagnostics
+          metabase.jev.init}
+   :uses #{api
+           app-db
+           collections
+           driver
+           events
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           models
+           parameters
+           premium-features
+           query-processor
+           settings
+           task
+           transforms
+           transforms.base
+           util}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/DashboardTab
+                    :model/Database
+                    :model/Field
+                    :model/Table}}
 
   lib
   {:team "Querying Platform"
@@ -1451,6 +1486,7 @@
               events
               explorations
               interestingness
+              jev
               lib
               lib.agent-lib
               lib.be
@@ -2216,6 +2252,7 @@
            driver
            events
            formatter
+           jev
            lib
            lib.be
            lib.legacy-mbql

@@ -150,6 +150,18 @@
   color: var(--mb-color-brand);
 }
 
+.ideaRow {
+  cursor: default;
+}
+
+.ideaRow:hover {
+  color: var(--mb-color-text-secondary);
+}
+
+.ideaDropped .resultName {
+  color: var(--mb-color-text-tertiary);
+}
+
 .resultIcon {
   flex-shrink: 0;
   color: inherit;

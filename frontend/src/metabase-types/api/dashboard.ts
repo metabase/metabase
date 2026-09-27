@@ -101,6 +101,13 @@ export interface Dashboard {
   /* For x-ray dashboards */
   transient_name?: string;
   related?: RelatedDashboardXRays;
+  exploration_candidates?: (RelatedDashboardXRayItem & { kind: string })[];
+  exploration_context?: {
+    subject: string | null;
+    description: string | null;
+    filters: string;
+    analyses: string[];
+  };
   more?: string | null;
 }
 

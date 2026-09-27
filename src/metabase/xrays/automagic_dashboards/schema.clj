@@ -394,6 +394,16 @@
    [:dashcards          {:optional true} [:maybe [:sequential ::dashcard]]]
    [:filters            {:optional true} [:maybe [:sequential ::item]]]
    [:related            {:optional true} ::related]
+   [:exploration_candidates {:optional true} [:sequential [:map {:closed true}
+                                                          [:url :string]
+                                                          [:title ::string-or-18n-string]
+                                                          [:description {:optional true} [:maybe ::string-or-18n-string]]
+                                                          [:kind :string]]]]
+   [:exploration_context {:optional true} [:map {:closed true}
+                                           [:subject [:maybe ::string-or-18n-string]]
+                                           [:description [:maybe ::string-or-18n-string]]
+                                           [:filters :string]
+                                           [:analyses [:sequential ::string-or-18n-string]]]]
    [:more               {:optional true} [:maybe :string]]
    [:transient_filters  {:optional true} [:maybe [:sequential ::filter-clause]]]
    [:param_fields       {:optional true} [:maybe [:map-of :string [:sequential ::item]]]]

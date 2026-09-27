@@ -41,9 +41,10 @@
       false)))
 
 (defn supports-fast-mode?
-  "Whether a model reference names a model we can serve in Anthropic fast mode."
+  "Whether a model reference names a connection and model we can request fast serving from."
   [model-ref]
-  (let [{:keys [type model ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
+  (let [{:keys [type model credentials ai-proxy?]} (llm.provider/resolve-model-ref model-ref)]
     (case type
       "anthropic" (claude/fast-mode-model? model ai-proxy?)
+      "openai"    (openai/supports-fast-mode? model credentials ai-proxy?)
       false)))

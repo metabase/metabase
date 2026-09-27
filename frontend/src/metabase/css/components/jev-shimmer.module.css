@@ -1,0 +1,43 @@
+.label {
+  --jev-shimmer-base: var(--mb-color-brand);
+  --jev-shimmer-highlight: color-mix(
+    in srgb,
+    var(--mb-color-brand) 45%,
+    var(--mb-color-background-primary)
+  );
+
+  color: transparent;
+  background-image: linear-gradient(
+    100deg,
+    var(--jev-shimmer-base) 0%,
+    var(--jev-shimmer-base) 35%,
+    var(--jev-shimmer-highlight) 50%,
+    var(--jev-shimmer-base) 65%,
+    var(--jev-shimmer-base) 100%
+  );
+  background-size: 250% 100%;
+  background-clip: text;
+  animation: jev-shimmer 3.5s ease-in-out infinite;
+}
+
+.icon {
+  color: var(--mb-color-brand);
+}
+
+@keyframes jev-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  60%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label {
+    animation: none;
+    background-position: 50% 0;
+  }
+}

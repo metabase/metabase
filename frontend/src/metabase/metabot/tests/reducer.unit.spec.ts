@@ -84,6 +84,64 @@ describe("metabot reducer", () => {
       });
     });
 
+    it("resets a cleared profile override to the owning agent's default", () => {
+      const store = createTestStore();
+      const conversationId = conversationIdForAgent(store, "ask");
+
+      store.dispatch(
+        metabotActions.setProfileOverride({ conversationId, profile: "sql" }),
+      );
+      store.dispatch(
+        metabotActions.setProfileOverride({
+          conversationId,
+          profile: undefined,
+        }),
+      );
+
+      expect(convoForAgent(store, "ask").profileOverride).toBe(
+        METABOT_PROFILE_OVERRIDES.NLQ,
+      );
+    });
+
+    it("records when each agent response starts and ends", () => {
+      const store = createTestStore();
+      const conversationId = testConversationId("omnibot");
+
+      store.dispatch({
+        type: sendAgentRequest.pending.type,
+        meta: { arg: { conversation_id: conversationId }, startedAtMs: 1_000 },
+      });
+      store.dispatch(
+        metabotActions.endAgentResponse({ conversationId, nowMs: 4_000 }),
+      );
+      store.dispatch(
+        metabotActions.endAgentResponse({ conversationId, nowMs: 9_000 }),
+      );
+
+      expect(convoForAgent(store, "omnibot").messages.at(-1)).toMatchObject({
+        role: "agent",
+        responseStartedAtMs: 1_000,
+        responseEndedAtMs: 4_000,
+      });
+    });
+
+    it("keeps the time of the first chart a response delivered", () => {
+      const store = createTestStore();
+      const conversationId = testConversationId("omnibot");
+
+      startRequestlessAgentTurn(store, conversationId);
+      store.dispatch(
+        metabotActions.agentChartReceived({ conversationId, nowMs: 2_000 }),
+      );
+      store.dispatch(
+        metabotActions.agentChartReceived({ conversationId, nowMs: 5_000 }),
+      );
+
+      expect(
+        convoForAgent(store, "omnibot").messages.at(-1)?.firstChartAtMs,
+      ).toBe(2_000);
+    });
+
     it("evicts a conversation an agent walked away from without using", () => {
       const store = createTestStore();
       const abandoned = conversationIdForAgent(store, "omnibot");

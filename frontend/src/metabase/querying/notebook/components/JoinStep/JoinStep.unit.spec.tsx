@@ -9,6 +9,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { setupJevJoinSuggestionsEndpoint } from "__support__/server-mocks/jev";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -192,6 +193,7 @@ function setup({
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
   setupDatabasesEndpoints(DATABASES);
+  setupJevJoinSuggestionsEndpoint();
   setupSearchEndpoints(searchItems);
   setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
   setupCollectionByIdEndpoint({

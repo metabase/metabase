@@ -1,0 +1,84 @@
+## Adds metabot_conversation_review: the automatic quality judgment of a Metabot conversation.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-23T00:00:00
+      author: sloansparger
+      comment: Add metabot_conversation_review
+      changes:
+        - createTable:
+            tableName: metabot_conversation_review
+            remarks: Automatic quality judgment of a Metabot conversation (Jev + static checks)
+            columns:
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  remarks: The reviewed conversation
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabot_conversation
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_conversation_review_conversation_id
+                    deleteCascade: true
+              - column:
+                  name: label
+                  type: varchar(16)
+                  remarks: Headline verdict - ok, friction, or failed
+                  constraints:
+                    nullable: false
+              - column:
+                  name: review
+                  type: ${boolean.type}
+                  remarks: True when the deciding judgment was not confident enough to act on alone
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: issues
+                  type: ${text.type}
+                  remarks: JSON array of issue slugs
+                  constraints:
+                    nullable: false
+              - column:
+                  name: answers
+                  type: ${text.type}
+                  remarks: JSON of the raw judgments and static flags the label was derived from
+                  constraints:
+                    nullable: true
+              - column:
+                  name: version
+                  type: varchar(32)
+                  remarks: Question-set version that produced the row; a different current version marks it stale
+                  constraints:
+                    nullable: false
+              - column:
+                  name: last_message_id
+                  type: int
+                  remarks: Highest metabot_message.id seen when scored; a higher one marks the row stale
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v65.2026-09-23T00:00:01
+      author: sloansparger
+      comment: Index metabot_conversation_review.label
+      changes:
+        - createIndex:
+            tableName: metabot_conversation_review
+            indexName: idx_metabot_conversation_review_label
+            columns:
+              - column:
+                  name: label

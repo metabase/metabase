@@ -3,6 +3,7 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
+import type { ExploreIdea } from "metabase/api/ai-streaming/schemas";
 import {
   METABOT_PROFILE_OVERRIDES,
   getToolMessage,
@@ -237,6 +238,17 @@ export const setChainToolSearchResults = (
   }
 };
 
+export const setChainToolExploreIdeas = (
+  convo: WritableDraft<MetabotConversationState>,
+  toolCallId: string,
+  ideas: ExploreIdea[],
+) => {
+  const found = findChainToolStep(convo, toolCallId);
+  if (found) {
+    found.step.exploreIdeas = ideas;
+  }
+};
+
 export const setChainToolTitle = (
   convo: WritableDraft<MetabotConversationState>,
   toolCallId: string,
@@ -323,6 +335,18 @@ export const createConversation = (
     ...overrides?.experimental,
   },
 });
+
+export const getAgentDefaultProfileOverride = (
+  state: WritableDraft<MetabotState>,
+  conversationId: string,
+): MetabotConversationState["profileOverride"] => {
+  const agentId = fixedMetabotAgentIds.find(
+    (id) => state.agents[id]?.conversationId === conversationId,
+  );
+  return agentId
+    ? conversationDefaultsByAgentId[agentId]?.profileOverride
+    : undefined;
+};
 
 export const createConversationForAgent = (
   agentId: MetabotAgentId,
