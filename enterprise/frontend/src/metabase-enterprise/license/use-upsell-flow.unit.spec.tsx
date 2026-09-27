@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import {
   findRequests,
   setupTokenActivationEndpoint,
@@ -107,7 +108,9 @@ describe("useUpsellFlow", () => {
         },
       });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
+      );
 
       const encodedUrl = `return_url=${encodeURIComponent(window.location.href)}`;
       const userDetailsPart =
@@ -126,7 +129,9 @@ describe("useUpsellFlow", () => {
         location: "branding-upsell-admin-screen",
       });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
+      );
 
       jest.spyOn(domUtils, "reload").mockImplementation(() => undefined);
 
@@ -176,7 +181,9 @@ describe("useUpsellFlow", () => {
     it("should display error and send message to store when token is invalid", async () => {
       const { mockPostMessage } = setupContainer({ tokenActivation: false });
 
-      screen.getByRole("button", { name: "Trigger Upsell Flow" }).click();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Trigger Upsell Flow" }),
+      );
       window.dispatchEvent(
         new MessageEvent("message", {
           source: window,

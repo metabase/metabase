@@ -494,7 +494,7 @@ describe("ObjectDetailPanel", () => {
 
     const action = await findActionInActionMenu(implicitDeleteAction);
     expect(action).toBeInTheDocument();
-    action?.click();
+    await userEvent.click(checkNotNull(action));
 
     const modal = await screen.findByTestId("delete-object-modal");
     expect(modal).toBeInTheDocument();
