@@ -41,15 +41,6 @@ interface AppThemeProviderProps {
 const getColorSchemeFromDisplayTheme = (
   displayTheme: DisplayTheme | string | boolean | string[] | undefined,
 ): ResolvedColorScheme | null => {
-  switch (displayTheme) {
-    case "light":
-    case "transparent":
-    case undefined:
-      return "light";
-    case "night":
-    case "dark":
-      return "dark";
-  }
   return null;
 };
 
