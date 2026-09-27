@@ -9,6 +9,12 @@ tasks:
     inputs:
       - "@group(frontend)"
       - .storybook/**
+      # .storybook/main.ts requires ../rspack.main.config.js and points
+      # tsconfigPath at ../tsconfig.json, and lists resources/frontend_client
+      # among its staticDirs.
+      - "@group(rspack)"
+      - "@group(tsconfig)"
+      - "@group(frontendClient)"
     outputs:
       - storybook-static/**
 
