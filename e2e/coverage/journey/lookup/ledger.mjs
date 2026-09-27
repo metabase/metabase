@@ -112,7 +112,23 @@ function e2eStatus(entry, killed, unconfirmed, ran, errored) {
   return entry.e2e_runs?.length ? "dispatched, no test ran" : "not run";
 }
 
-function mutantFacts(raw, sidecar) {
+/** `killed_at_layer` when `kill_confirmed` is true, none when it's false, and null in an older kills file without `kill_confirmed`. */
+function recordedLayer(mid, entry) {
+  if (typeof entry.kill_confirmed !== "boolean") {
+    return null;
+  }
+  if (!entry.kill_confirmed) {
+    return "none";
+  }
+  if (!LAYERS.includes(entry.killed_at_layer)) {
+    throw new Error(
+      `${mid}: kill_confirmed is true, but killed_at_layer ${JSON.stringify(entry.killed_at_layer)} is none of ${LAYERS.join(", ")}`,
+    );
+  }
+  return entry.killed_at_layer;
+}
+
+function mutantFacts(mid, raw, sidecar) {
   const entry = Array.isArray(raw) ? { killed_by: raw } : raw;
   const killed = byLayer(entry.killed_by);
   const unconfirmed = byLayer(entry.unconfirmed_by);
@@ -122,6 +138,16 @@ function mutantFacts(raw, sidecar) {
   if (typecheck === "fails") {
     killed.tsc = ["tsc"];
   }
+  const contract = entry.layer_results?.contract;
+  if (contract?.result === "killed") {
+    killed.contract = contract.killed_by?.length
+      ? contract.killed_by
+      : ["contract"];
+  }
+  const recomputed = firstLayer(killed);
+  const recorded = recordedLayer(mid, entry);
+  const contractResult =
+    contract?.result ?? (entry.layers_run ? "not run" : null);
   const testKillers = TEST_LAYERS.flatMap((layer) => killed[layer] ?? []);
   const witnesses = new Set(entry.witness_tests ?? []);
   let witnessOnly = null;
@@ -150,10 +176,15 @@ function mutantFacts(raw, sidecar) {
     misses: [...new Set(entry.ran ?? [])].filter((id) => !failed.has(id))
       .length,
     e2e_status: e2eStatus(entry, killed, unconfirmed, ran, errored),
-    cheapest_layer: firstLayer(killed),
+    cheapest_layer: recorded ?? recomputed,
+    cheapest_layer_source: recorded == null ? "recomputed" : "killed_at_layer",
+    ...(recorded != null && recorded !== recomputed
+      ? { recomputed_layer: recomputed }
+      : {}),
     unconfirmed_layer: firstLayer(unconfirmed),
     witness_only: witnessOnly,
     ...(entry.routed_to ? { routed_to: entry.routed_to } : {}),
+    ...(contractResult ? { contract: contractResult } : {}),
   };
 }
 
@@ -179,6 +210,22 @@ function recordedLayerDifferences(kills, mutants) {
     }
   }
   return { compared, differ };
+}
+
+function killedAtLayerDifferences(mutants) {
+  const fromFile = Object.entries(mutants).filter(
+    ([, m]) => m.cheapest_layer_source === "killed_at_layer",
+  );
+  return {
+    compared: fromFile.length,
+    differ: fromFile
+      .filter(([, m]) => m.recomputed_layer != null)
+      .map(([mid, m]) => ({
+        mutant: mid,
+        killed_at_layer: m.cheapest_layer,
+        recomputed: m.recomputed_layer,
+      })),
+  };
 }
 
 function git(repo, args) {
@@ -411,7 +458,7 @@ export function buildLedger({
   const mutants = {};
   const unlocated = [];
   for (const [mid, raw] of Object.entries(kills)) {
-    const facts = mutantFacts(raw, sidecars[mid]);
+    const facts = mutantFacts(mid, raw, sidecars[mid]);
     mutants[mid] = facts;
     if (facts.locations.length === 0) {
       unlocated.push(mid);
@@ -499,6 +546,7 @@ export function buildLedger({
     mutants,
     unlocated_mutants: unlocated,
     recorded_cheapest_layer: recordedLayerDifferences(kills, mutants),
+    killed_at_layer: killedAtLayerDifferences(mutants),
     reach_counts_lines_without_locations: reachCounts
       .filter((line) => !line.locations?.length)
       .map((line) => ({
@@ -591,6 +639,8 @@ const CSV_COLUMNS = [
   "routed_to",
   "e2e_reach_total",
   "e2e_reach_and_assert_total",
+  "contract",
+  "cheapest_layer_source",
 ];
 
 function csvCell(value) {
@@ -656,6 +706,8 @@ export function toCsv(ledger) {
               m.unconfirmed_layer === "none" ? "" : m.unconfirmed_layer,
             stratum_coarse: m.stratum_coarse,
             routed_to: m.routed_to,
+            contract: m.contract,
+            cheapest_layer_source: m.cheapest_layer_source,
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -686,6 +738,7 @@ export function summarize(ledger, derived, inputs) {
     (m) => (cheapest[m.cheapest_layer] = (cheapest[m.cheapest_layer] ?? 0) + 1),
   );
   const recorded = ledger.recorded_cheapest_layer;
+  const atLayer = ledger.killed_at_layer;
   const rowsById = new Map(rows.map((r) => [r.id, r]));
   const routed = {};
   Object.values(derived.demand)
@@ -737,6 +790,8 @@ export function summarize(ledger, derived, inputs) {
     `- Unconfirmed killers: ${count(Object.values(mutants), (m) => Object.keys(m.unconfirmed_by).length)} mutants, kept out of the cheapest layer.`,
     ...(unknownIds ? [`- ${unknownIds} test ids have no known layer.`] : []),
     `- The kills file records its own cheapest layer for ${recorded.compared} mutants, and it differs from the one derived here on ${recorded.differ.length}${recorded.differ.length ? `: ${recorded.differ.map((d) => d.mutant).join(", ")}` : ""}.`,
+    `- The kills file's \`kill_confirmed\` and \`killed_at_layer\` give the cheapest layer for ${atLayer.compared} mutants. The other ${Object.keys(mutants).length - atLayer.compared} have no \`kill_confirmed\`, so their cheapest layer is recomputed from \`killed_by\`, \`typecheck\` and any failed contract checks.`,
+    `- \`killed_at_layer\` disagrees with the recomputed layer on ${atLayer.differ.length} mutants, and \`killed_at_layer\` is used${atLayer.differ.length ? `: ${atLayer.differ.map((d) => `${d.mutant} (${d.killed_at_layer}, recomputed ${d.recomputed})`).join(", ")}` : ""}.`,
     "",
     "## Demand list",
     "",

@@ -308,13 +308,15 @@ node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> -
 
 **Base check:** the two inputs share a base when `--kills-base` is the captured commit, `meta.json`'s `sha`, or the app commit the capture branch sits on, `meta.json`'s `appBase`. In the second case, rows in files the capture branch changes are marked mixed. Any other base, or a commit missing from the repo, makes the join mixed, and `ledger.mjs` refuses it with exit code 2. `--allow-mixed` joins anyway and marks every row mixed. Without `--kills-base`, it exits with code 1.
 
+**Cheapest layer:** when a mutant's entry has `kill_confirmed`, its `cheapest_layer` is its `killed_at_layer` if `kill_confirmed` is true, and `none` if it's false. A contract kill has no test id, so `killed_at_layer` is the only place the kills file records it. An entry without `kill_confirmed`, from an older kills file, gets its cheapest layer recomputed: the first layer with a confirmed killer, where `killed_by` gives the test layers, a `typecheck` of `fails` is a `tsc` kill, and the failed checks in `layer_results.contract` are `contract` killers. The recomputation runs for every mutant. Where it disagrees with the kills file's layer, the kills file's layer is used, the mutant keeps the recomputed one as `recomputed_layer`, and the summary lists it. Each mutant's `cheapest_layer_source` is `killed_at_layer` or `recomputed`. A `kill_confirmed` of true with a `killed_at_layer` that isn't one of the five layers stops the ledger with an error.
+
 It writes three files to `--out`:
 
-- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers and `e2e_status`, the base check, the inputs, the demand list and the e2e floor.
-- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach` and `e2e_reach_and_assert` leave out the candidates, and the `_total` columns keep them.
-- `summary.md`, also printed: the counts, where the kills file's own `cheapest_layer` differs from the derived one, the demand list and the e2e floor.
+- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, `e2e_status` and `cheapest_layer_source`, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
+- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach` and `e2e_reach_and_assert` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file.
+- `summary.md`, also printed: the counts, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
 
-The **demand list** is the mutants with `cheapest_layer: none`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
+The **demand list** is the mutants with `cheapest_layer: none`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. Both read the same `cheapest_layer`, so a mutant with `kill_confirmed` true is never on the demand list, even when its `killed_by` is empty. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
 
 `ledger-verdicts.mjs` checks the ledger against `kills.py`:
 

@@ -419,7 +419,7 @@ function main() {
   );
   const checker = Object.entries(got.uniqueAlsoCheckerKilled);
   console.log(
-    `Unique kills of mutants the type checker also kills: ${checker.length ? checker.map(([id, mids]) => `${id} ${mids.join(", ")}`).join("; ") : "none"}`,
+    `Unique kills of mutants the type checker or the contract checker also kills: ${checker.length ? checker.map(([id, mids]) => `${id} ${mids.join(", ")}`).join("; ") : "none"}`,
   );
   if (differences.length) {
     console.log(`\n${differences.length} differences:`);
