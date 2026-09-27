@@ -42,18 +42,17 @@
   (str/replace (str n) #"(\d)(?=(\d{3})+$)" "$1,"))
 
 (defn flatten-prose
-  "Collapse a run of whitespace in `s` into single spaces. Prose written as one line arrives ready to use, but prose
-  read off a Clojure docstring carries the newlines and indentation it was written with, which would break out of a
-  bullet or a table cell. Nil when nothing is left, so a blank description contributes nothing rather than an empty
-  line."
+  "Collapse a run of whitespace in `s` into single spaces. Prose written as one line arrives ready to use, but a
+  schema description written as a multi-line string literal carries the newlines and indentation it was written
+  with, which would break out of a bullet or a table cell. Nil when nothing is left, so a blank description
+  contributes nothing rather than an empty line."
   [s]
   (some-> s str str/trim not-empty (str/replace #"\s+" " ")))
 
 (defn escape-liquid
   "`s` with every span the docs site's Liquid pass would swallow — `{{ … }}` and `{% … %}`, or a lone opener —
-  wrapped in `{% raw %}…{% endraw %}`. Tool prose describes Metabase's own template syntax (`{{tag}}`,
-  `{% card … %}`) in exactly Liquid's spelling; unescaped, the site rejects the unknown tags and renders the
-  known-looking ones as blank. Balanced spans are tried first, then a bare opener, so an unclosed `{{` can't
+  wrapped in `{% raw %}…{% endraw %}`. Argument prose describes Metabase's own template syntax (`{{tag}}`) in
+  exactly Liquid's spelling; unescaped, the site rejects unknown tags and renders the known-looking ones as blank. Balanced spans are tried first, then a bare opener, so an unclosed `{{` can't
   still break the page."
   [s]
   (str/replace (str s) #"\{\{.*?\}\}|\{%.*?%\}|\{\{|\{%" "{% raw %}$0{% endraw %}"))
