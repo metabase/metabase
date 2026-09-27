@@ -2,14 +2,14 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getSortedTimelines } from "metabase/common/utils/timelines";
-import { Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import ModalFooter from "../ModalFooter";
 import ModalHeader from "../ModalHeader";
 import TimelinePicker from "../TimelinePicker";
 
-import { ModalBody, ModalRoot } from "./MoveEventModal.styled";
+import S from "./MoveEventModal.module.css";
 
 export interface MoveEventModalProps {
   event: TimelineEvent;
@@ -46,22 +46,29 @@ const MoveEventModal = ({
   }, [event, newTimeline, oldTimeline, onSubmit, onSubmitSuccess]);
 
   return (
-    <ModalRoot>
+    <Flex direction="column" mih={573} mah="90vh">
       <ModalHeader title={t`Move ${event.name}`} onClose={onClose} />
-      <ModalBody>
+      <Flex
+        className={S.body}
+        direction="column"
+        flex="1 1 auto"
+        my="lg"
+        py="lg"
+        px="xxl"
+      >
         <TimelinePicker
           value={newTimeline}
           options={sortedTimelines}
           onChange={setNewTimeline}
         />
-      </ModalBody>
+      </Flex>
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button variant="filled" disabled={!isEnabled} onClick={handleSubmit}>
           {t`Move`}
         </Button>
       </ModalFooter>
-    </ModalRoot>
+    </Flex>
   );
 };
 

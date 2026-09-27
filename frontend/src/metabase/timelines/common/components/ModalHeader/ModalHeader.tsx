@@ -1,14 +1,11 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { c } from "ttag";
 
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Box, Ellipsified, Flex, Group, Icon } from "metabase/ui";
 
-import {
-  HeaderBackIcon,
-  HeaderCloseButton,
-  HeaderLink,
-  HeaderMenu,
-} from "./ModalHeader.styled";
+import S from "./ModalHeader.module.css";
 
 export interface ModalHeaderProps {
   title?: ReactNode;
@@ -31,8 +28,14 @@ const ModalHeader = ({
   return (
     <Box p="xxl" pb={0}>
       <Flex align="center">
-        <HeaderLink onClick={onGoBack}>
-          {onGoBack && <HeaderBackIcon name="chevronleft" />}
+        <Flex
+          className={cx(S.headerLink, { [S.clickable]: onGoBack != null })}
+          align="center"
+          miw={0}
+          mr="auto"
+          onClick={onGoBack}
+        >
+          {onGoBack && <Icon name="chevronleft" mr="sm" />}
           <Ellipsified
             tooltipProps={{ w: "auto" }}
             fz="1.25rem"
@@ -41,12 +44,12 @@ const ModalHeader = ({
           >
             {title}
           </Ellipsified>
-        </HeaderLink>
-        {children && <HeaderMenu>{children}</HeaderMenu>}
+        </Flex>
+        {children && <Box mr="lg">{children}</Box>}
         {onClose && (
-          <HeaderCloseButton onClick={onClose}>
+          <IconButtonWrapper className={S.closeButton} onClick={onClose}>
             <Icon name="close" />
-          </HeaderCloseButton>
+          </IconButtonWrapper>
         )}
       </Flex>
       {pathOptions?.showPath && (

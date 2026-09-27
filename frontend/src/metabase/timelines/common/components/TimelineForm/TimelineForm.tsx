@@ -11,14 +11,13 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { TimelineData } from "metabase-types/api";
 
 import FormArchiveButton from "../FormArchiveButton";
 
 import { IconField } from "./IconField";
-import { TimelineFormFooter } from "./TimelineForm.styled";
 
 const TIMELINE_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
@@ -65,7 +64,7 @@ const TimelineForm = ({
             nullable
           />
           <IconField name="icon" title={t`Default icon`} options={icons} />
-          <TimelineFormFooter>
+          <Flex align="center" justify="flex-end" gap="sm">
             <FormErrorMessage />
             {!isNew && (
               <FormArchiveButton onClick={onArchive}>
@@ -80,7 +79,7 @@ const TimelineForm = ({
               disabled={!dirty}
               variant="filled"
             />
-          </TimelineFormFooter>
+          </Flex>
         </Form>
       )}
     </FormProvider>
