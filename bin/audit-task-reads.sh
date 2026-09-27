@@ -29,9 +29,12 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 # node_modules and target are excluded: moon does not declare them and a build
-# legitimately reads all over both.
+# legitimately reads all over both. Everything else comes from the shared
+# allowlist, which is where tool caches are recorded with a reason.
+ALLOW=.moon/audit-allowlist.txt
 interesting() {
-  grep -vE '^(node_modules/|\.git/|\.moon/cache/|target/)' | grep -vE '^(/|\.\.)' | sort -u
+  grep -vE '^(node_modules/|\.git/|\.moon/cache/|target/)' | grep -vE '^(/|\.\.)' | sort -u \
+  | { if [ -f "$ALLOW" ]; then grep -vFf <(grep -vE '^\s*(#|$)' "$ALLOW"); else cat; fi; }
 }
 
 status=0
