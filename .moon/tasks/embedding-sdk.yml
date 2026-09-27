@@ -112,20 +112,10 @@ tasks:
       - bin/embedding-sdk/**
       - docs/**
 
-  embedding-sdk-dts-fixup:
-    # Not cached. This rewrites the .d.ts files under resources/embedding-sdk/dist
-    # in place, so the dist tree is both its real input and its real output, and
-    # neither is declared. A hit would skip the fixup on freshly generated types.
-    # Declaring dist on a step that mutates what another task produced would also
-    # collide with embedding-sdk-dts-generate.
-    script: |-
-      node ./bin/embedding-sdk/fixup-types-after-compilation.js
-    inputs:
-      - bin/embedding-sdk/**
-    options:
-      cache: false
-
   embedding-sdk-dts-generate:
+    # The fixup runs here rather than as its own task: it rewrites the .d.ts files
+    # tsc just emitted, so splitting it out gives a task whose real input and
+    # output are both another task's dist tree.
     script: |-
       ./node_modules/typescript7/bin/tsc --project tsconfig.sdk.json || true \
       && node ./bin/embedding-sdk/fixup-types-after-compilation.js

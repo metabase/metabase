@@ -456,7 +456,6 @@
     "embedding-sdk:generate-package-support-files": "moon run embedding-sdk-generate-package-support-files",
     "embedding-sdk:test-unit": "moon run embedding-sdk-test-unit",
     "embedding-sdk:dts:generate": "moon run embedding-sdk-dts-generate",
-    "embedding-sdk:dts:fixup": "moon run embedding-sdk-dts-fixup",
     "embedding-sdk:docs:generate:pure": "typedoc --options ./.typedoc/typedoc.html.config.js && typedoc --options ./.typedoc/typedoc.markdown.config.js",
     "embedding-sdk:docs:generate": "moon run embedding-sdk-docs-generate",
     "embedding-eajs:docs:generate": "moon run embedding-eajs-docs-generate",
