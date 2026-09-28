@@ -1742,6 +1742,7 @@
 
   native-query-snippets
   {:team "Graphy"
+   :proof-gated true
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
            api-scope
@@ -1752,6 +1753,7 @@
            models
            permissions
            premium-features
+           proof
            remote-sync
            users
            util}
@@ -1966,7 +1968,7 @@
 
   proof
   {:team "UX West"
-   :api  #{}
+   :api  #{metabase.proof.core}
    :uses #{api
            util}}
 

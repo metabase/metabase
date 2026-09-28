@@ -1,12 +1,14 @@
 (ns metabase.native-query-snippets.db
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`).
+
+  The module is proof-gated, so the mutating functions take a proof from [[metabase.proof.core]] as their only
+  argument."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
-   [metabase.native-query-snippets.schema :as native-query-snippets.schema]
+   [metabase.proof.core :as proof]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -31,16 +33,28 @@
    entity-id :- :string]
   (t2/exists? :model/NativeQuerySnippet :name snippet-name :entity_id [:!= entity-id]))
 
-(mu/defn insert-snippet!
-  "Insert the NativeQuerySnippet `row` and return the inserted instance."
-  [row :- ::native-query-snippets.schema/native-query-snippet.update]
-  (t2/insert-returning-instance! :model/NativeQuerySnippet row))
+(def ^:private editable-columns
+  "The columns a snippet's editors write."
+  #{:name :content :description :collection_id :archived})
 
-(mu/defn update-snippet!
-  "Apply `changes` to the NativeQuerySnippet with `id`."
-  [id :- ::lib.schema.id/native-query-snippet
-   changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
-  (t2/update! :model/NativeQuerySnippet id changes))
+(defn insert-snippet!
+  "Insert the NativeQuerySnippet row that `proof` covers (its editable columns and the creator) and return the inserted
+  instance."
+  [proof]
+  (let [{:keys [changes]} (proof/verify proof {:model        :model/NativeQuerySnippet
+                                               :operation    :create
+                                               :subject-kind :none
+                                               :columns      (conj editable-columns :creator_id)})]
+    (t2/insert-returning-instance! :model/NativeQuerySnippet changes)))
+
+(defn update-snippet!
+  "Apply the change set that `proof` covers, over the editable columns, to the NativeQuerySnippet it names."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/NativeQuerySnippet
+                                                       :operation    :update
+                                                       :subject-kind :id
+                                                       :columns      editable-columns})]
+    (t2/update! :model/NativeQuerySnippet subject changes)))
 
 (mu/defn snippet-id-by-name
   "The id of the NativeQuerySnippet named `snippet-name`, or nil."

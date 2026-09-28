@@ -218,3 +218,41 @@
               (is (true? (can-see-snippet?)))
               (perms/revoke-collection-permissions! (perms-group/all-users) (assoc collection/root-collection :namespace "snippets"))
               (is (true? (can-see-snippet?))))))))))
+
+(deftest proof-gated-writes-test
+  (testing "Snippet writes go through a proof issued by the permission check, so only the checked change is written"
+    (mt/with-premium-features #{:snippet-collections}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+        (mt/with-temp [:model/Collection         writable          {:name "Writable", :namespace "snippets"}
+                       :model/Collection         read-only         {:name "Read-only", :namespace "snippets"}
+                       :model/NativeQuerySnippet {snippet-id :id} {:collection_id (:id writable)
+                                                                   :name          "gated"
+                                                                   :content       "1"
+                                                                   :description   "original"}]
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id)
+                                               :perms/create-queries :query-builder-and-native)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) writable)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) read-only)
+          (let [row    #(dissoc (t2/select-one :model/NativeQuerySnippet :id snippet-id) :updated_at)
+                before (row)
+                url    (str "native-query-snippet/" snippet-id)]
+            (testing "\nPUT moving the snippet to a collection the user cannot write is a 403; the row is unchanged"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :put 403 url {:collection_id (:id read-only)
+                                                                :description   "smuggled"})))
+              (is (= before (row))))
+            (testing "\nPUT with an allowed change persists exactly that change"
+              (mt/user-http-request :rasta :put 200 url {:description "edited"})
+              (is (= (assoc before :description "edited") (row))))
+            (testing "\nPOST into a collection the user cannot write is a 403 and inserts nothing"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "native-query-snippet"
+                                           {:name "gated 2", :content "2", :collection_id (:id read-only)})))
+              (is (false? (t2/exists? :model/NativeQuerySnippet :name "gated 2"))))
+            (testing "\nPOST into a collection the user can write creates the snippet there"
+              (mt/with-model-cleanup [:model/NativeQuerySnippet]
+                (is (=? {:collection_id (:id writable)}
+                        (mt/user-http-request :rasta :post 200 "native-query-snippet"
+                                              {:name          "gated 2"
+                                               :content       "2"
+                                               :collection_id (:id writable)})))))))))))
