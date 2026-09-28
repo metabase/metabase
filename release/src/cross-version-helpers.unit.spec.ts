@@ -83,12 +83,22 @@ describe("cross-version-helpers", () => {
 
     describe("getHeadDockerImage", () => {
       const originalDigest = process.env.HEAD_DIGEST;
+      const originalEventName = process.env.GITHUB_EVENT_NAME;
+
+      beforeEach(() => {
+        delete process.env.GITHUB_EVENT_NAME;
+      });
 
       afterEach(() => {
         if (originalDigest === undefined) {
           delete process.env.HEAD_DIGEST;
         } else {
           process.env.HEAD_DIGEST = originalDigest;
+        }
+        if (originalEventName === undefined) {
+          delete process.env.GITHUB_EVENT_NAME;
+        } else {
+          process.env.GITHUB_EVENT_NAME = originalEventName;
         }
       });
 
@@ -117,6 +127,22 @@ describe("cross-version-helpers", () => {
         process.env.HEAD_DIGEST = "abc123";
         expect(getHeadDockerImage()).toBe(
           "metabase/metabase-enterprise-head@sha256:abc123",
+        );
+      });
+
+      it("uses metabase-dev when running from a pull request", () => {
+        process.env.GITHUB_EVENT_NAME = "pull_request";
+        process.env.HEAD_DIGEST = "sha256:abc123";
+        expect(getHeadDockerImage()).toBe(
+          "metabase/metabase-dev@sha256:abc123",
+        );
+      });
+
+      it("uses the enterprise head latest tag on a pull request without a digest", () => {
+        process.env.GITHUB_EVENT_NAME = "pull_request";
+        delete process.env.HEAD_DIGEST;
+        expect(getHeadDockerImage()).toBe(
+          "metabase/metabase-enterprise-head:latest",
         );
       });
     });
