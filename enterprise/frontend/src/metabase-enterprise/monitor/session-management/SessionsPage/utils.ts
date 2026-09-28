@@ -10,27 +10,27 @@ import {
   parseSortDirection,
 } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
-import type {
-  SessionEndReason,
-  SessionListParams,
-  SessionProvider,
+import {
+  SESSION_END_REASONS,
+  SESSION_PROVIDERS,
+  type SessionEndReason,
+  type SessionListParams,
+  type SessionProvider,
 } from "metabase-types/api";
 
 import {
   DEFAULT_SORT_COLUMN,
   DEFAULT_SORT_DIRECTION,
   DEFAULT_TAB,
-  END_REASON_VALUES,
-  PROVIDER_VALUES,
   SORT_COLUMN_VALUES,
   TAB_STATUS,
-  TAB_VALUES,
-  TIME_PRESET_VALUES,
 } from "./constants";
-import type {
-  SessionsTab,
-  SessionsTimePreset,
-  SessionsUrlState,
+import {
+  SESSIONS_TABS,
+  SESSIONS_TIME_PRESETS,
+  type SessionsTab,
+  type SessionsTimePreset,
+  type SessionsUrlState,
 } from "./types";
 
 const parseQuery = (param: QueryParam): string => {
@@ -39,7 +39,7 @@ const parseQuery = (param: QueryParam): string => {
 };
 
 const isProvider = (value: string): value is SessionProvider =>
-  PROVIDER_VALUES.some((provider) => provider === value);
+  SESSION_PROVIDERS.some((provider) => provider === value);
 
 // An unrecognised provider in the URL is dropped rather than sent on: the endpoint's enum would reject the whole
 // request, taking the rest of the filters down with it.
@@ -47,7 +47,7 @@ const parseProviders = (param: QueryParam): SessionProvider[] =>
   getAllParamValues(param).filter(isProvider);
 
 export const isTab = (value: string): value is SessionsTab =>
-  TAB_VALUES.some((tab) => tab === value);
+  SESSIONS_TABS.some((tab) => tab === value);
 
 const parseTab = (param: QueryParam): SessionsTab => {
   const value = getFirstParamValue(param);
@@ -55,7 +55,7 @@ const parseTab = (param: QueryParam): SessionsTab => {
 };
 
 export const isTimePreset = (value: string): value is SessionsTimePreset =>
-  TIME_PRESET_VALUES.some((preset) => preset === value);
+  SESSIONS_TIME_PRESETS.some((preset) => preset === value);
 
 const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
   const value = getFirstParamValue(param);
@@ -63,7 +63,7 @@ const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
 };
 
 export const isEndReason = (value: string): value is SessionEndReason =>
-  END_REASON_VALUES.some((reason) => reason === value);
+  SESSION_END_REASONS.some((reason) => reason === value);
 
 const parseEndReason = (param: QueryParam): SessionEndReason | null => {
   const value = getFirstParamValue(param);

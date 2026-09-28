@@ -7,16 +7,17 @@ import {
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
 import { Select } from "metabase/ui";
-import type { SessionEndReason, SessionProvider } from "metabase-types/api";
+import {
+  SESSION_END_REASONS,
+  SESSION_PROVIDERS,
+  type SessionEndReason,
+  type SessionProvider,
+} from "metabase-types/api";
 
 import {
-  END_REASON_VALUES,
-  PROVIDER_VALUES,
-  TIME_PRESET_VALUES,
-} from "../SessionsPage/constants";
-import type {
-  SessionsTimePreset,
-  SessionsUrlState,
+  SESSIONS_TIME_PRESETS,
+  type SessionsTimePreset,
+  type SessionsUrlState,
 } from "../SessionsPage/types";
 import { isEndReason, isTimePreset } from "../SessionsPage/utils";
 import {
@@ -106,7 +107,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
       onClear={() => onChange({ ...EMPTY_FILTERS, page: 0 })}
     >
       <FilterSection label={t`Auth method`}>
-        {PROVIDER_VALUES.map((provider) => (
+        {SESSION_PROVIDERS.map((provider) => (
           <FilterPill
             key={provider}
             label={getProviderLabel(provider)}
@@ -120,7 +121,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
         <FilterSection label={t`Last active`}>
           <Select
             w="100%"
-            data={TIME_PRESET_VALUES.map((preset) => ({
+            data={SESSIONS_TIME_PRESETS.map((preset) => ({
               value: preset,
               label: getTimePresetLabel(preset),
             }))}
@@ -137,7 +138,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
         <FilterSection label={t`Ended`}>
           <Select
             w="100%"
-            data={TIME_PRESET_VALUES.map((preset) => ({
+            data={SESSIONS_TIME_PRESETS.map((preset) => ({
               value: preset,
               label: getTimePresetLabel(preset),
             }))}
@@ -154,7 +155,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
         <FilterSection label={t`Reason`}>
           <Select
             w="100%"
-            data={END_REASON_VALUES.map((reason) => ({
+            data={SESSION_END_REASONS.map((reason) => ({
               value: reason,
               label: getEndReasonLabel(reason),
             }))}
