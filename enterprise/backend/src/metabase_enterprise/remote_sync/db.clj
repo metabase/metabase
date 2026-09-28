@@ -1,6 +1,13 @@
 (ns metabase-enterprise.remote-sync.db
   "Application database queries for the remote-sync module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself."
+  additional logic, so no other namespace in the module runs a query itself.
+
+  Values that arrive from outside are bound as SQL parameters, by `[:auto/param v]` for strings and enums and by
+  `long` coercion for ids -- see `docs/developers-guide/value-binding-rubric.md`. The namespace is deliberately NOT
+  opted in to the `:metabase/unsafe-app-db-query` lint: every site the lint still reports here is one the rubric
+  says to leave alone (a Toucan model in a select spec, a possibly-empty `:in` collection, a column expression, and
+  the `[:case]` forms in the `mark-rsos-synced!` changes map, whose strings HoneySQL already binds). Marking any of
+  them throws at compile or changes the query, so the ratchet would report 11 findings that must never be fixed."
   (:require
    [metabase-enterprise.remote-sync.schema :as remote-sync.schema]
    [metabase.collections.schema :as collections.schema]
