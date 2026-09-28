@@ -101,6 +101,10 @@
 (mu/defn card-query-and-metadata
   "The query, result metadata, and schema of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
+  #_[:model/Card {:where [:= :id card-id]}
+     [:dataset_query
+      :result_metadata
+      :card_schema]]
   (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] card-id))
 
 (mu/defn set-card-result-metadata!

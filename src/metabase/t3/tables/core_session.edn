@@ -1,0 +1,12 @@
+{:columns [anti_csrf_token
+           key_hashed
+           auth_identity_id
+           expires_at
+           last_active_at
+           mfa_auth_identity_id]
+ :relationships {:auth_identities {:table :auth_identity
+                                   :cardinality :0-1
+                                   :join-on [:= auth_identity_id id]}
+                 :mfa_sessions {:table :auth_identity
+                                :cardinality :0-1
+                                :join-on [:= mfa_auth_identity_id id]}}}

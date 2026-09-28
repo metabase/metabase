@@ -1,0 +1,30 @@
+^{:as   :user
+  :args [id]
+  :name user-by-id}
+[:core_user {:where [:= :id id]
+             :cardinality :0-1}
+ [:id
+  :email
+  [:auth_identities
+   [:id]]
+
+  [:auth_identity_models
+   {:model        :model/AuthIdentity
+    :relationship :auth_identities}
+   [:id]]]]
+
+^{:as   :user
+  :args [id
+         where-clause]
+  :name user-where}
+[:core_user {:where where-clause
+             :cardinality :0-1}
+ [:id
+  :email
+  [:auth_identities
+   [:id]]
+
+  [:auth_identity_models
+   {:model        :model/AuthIdentity
+    :relationship :auth_identities}
+   [:id]]]]

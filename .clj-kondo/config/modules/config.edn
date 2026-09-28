@@ -2741,6 +2741,11 @@
            metabase.system.init}
    :uses #{appearance settings util}}
 
+  t3
+  {:team "Fun Police"
+   :api  #{metabase.t3.api}
+   :uses #{util}}
+
   task
   {:team "UX West"
    :module-exports #{task.history}
