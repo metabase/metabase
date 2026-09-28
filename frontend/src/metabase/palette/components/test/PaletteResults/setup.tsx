@@ -19,7 +19,7 @@ import {
   createMockAdminState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { RecentItem, Settings } from "metabase-types/api";
+import type { CollectionItem, RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -121,6 +121,7 @@ export interface CommonSetupProps {
   query?: string;
   settings?: Partial<Settings>;
   recents?: RecentItem[];
+  searchItems?: CollectionItem[];
   isEE?: boolean;
   isAdmin?: boolean;
 }
@@ -129,11 +130,12 @@ export const commonSetup = ({
   query,
   settings = {},
   recents = [recents_1, recents_2],
+  searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
 }: CommonSetupProps = {}) => {
   setupDatabasesEndpoints([DATABASE]);
-  setupSearchEndpoints([model_1, model_2, dashboard]);
+  setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
@@ -169,8 +171,8 @@ export const commonSetup = ({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(
-    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
+  return renderWithProviders(
+    <Route path="*" component={() => <TestComponent q={query} isLoggedIn />} />,
     {
       withKBar: true,
       withRouter: true,
