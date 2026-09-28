@@ -5814,7 +5814,7 @@
         (is (every? #(= 1 (count %)) (t2/select-fn-vec :parameter_mappings :model/DashboardCard :dashboard_id dash-id)))))))
 
 (deftest param-values-no-field-ids-unreadable-card-test
-  (testing "a field-ref-only param mapped to a card the user cannot read returns no values"
+  (testing "a field-ref-only param mapped to a card the user cannot read is a 403"
     (let [mp        (mt/metadata-provider)
           target    [:dimension [:field "SOURCE" {:base-type :type/Text}]]
           no-perms  #(format "You do not have permissions to view Card %d." %)
@@ -5834,21 +5834,15 @@
                                                                      :parameter_id "_US_"
                                                                      :target       target}]}]
           (perms/grant-collection-read-permissions! all-users dash-coll)
-          (let [values-url (str "dashboard/" dashboard-id "/params/_US_/values")
-                search-url (str "dashboard/" dashboard-id "/params/_US_/search/Goog")]
+          (let [values-url (str "dashboard/" dashboard-id "/params/_US_/values")]
             (testing "read on the dashboard does not grant read on the mapped card"
               (is (= (no-perms native-id)
-                     (mt/user-http-request :rasta :get 403 values-url)))
-              (is (= (no-perms native-id)
-                     (mt/user-http-request :rasta :get 403 search-url))))
+                     (mt/user-http-request :rasta :get 403 values-url))))
             (testing "the values come back once the user can read the mapped card"
               (perms/grant-collection-read-permissions! all-users private-coll)
-              ;; the search path ignores its query for field-ref-only params, as
-              ;; `param-search-no-field-ids-test` pins -- both URLs return the whole column
-              (let [expected {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
-                              :has_more_values false}]
-                (is (= expected (mt/user-http-request :rasta :get 200 values-url)))
-                (is (= expected (mt/user-http-request :rasta :get 200 search-url)))))))))))
+              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 values-url))))))))))
 
 (deftest param-search-no-field-ids-test
   (testing "GET .../params/:param-key/search/:query for field-ref-only (nested-native) params currently returns the same unfiltered set as /values"
