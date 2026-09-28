@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.transforms-python.core :as transforms-python]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -130,7 +131,8 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
-      (is (= 13 (count types))))))
+      (is (contains? types "Glossary"))
+      (is (= 14 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -164,10 +166,16 @@
   (testing "excluded-model-types when transforms enabled"
     (mt/with-temporary-setting-values [remote-sync-transforms true]
       (let [excluded (spec/excluded-model-types)]
-        ;; NativeQuerySnippet is still excluded because Library isn't remote-synced
+        ;; Library content is still excluded because Library isn't remote-synced
         (is (not (contains? excluded "Transform")))
         (is (not (contains? excluded "TransformTag")))
-        (is (contains? excluded "NativeQuerySnippet"))))))
+        (is (contains? excluded "NativeQuerySnippet"))
+        (is (contains? excluded "Glossary")))))
+  (testing "excluded-model-types when Library is remote-synced"
+    (collections.tu/with-library-synced
+      (let [excluded (spec/excluded-model-types)]
+        (is (not (contains? excluded "NativeQuerySnippet")))
+        (is (not (contains? excluded "Glossary")))))))
 
 (deftest spec-enabled?-test
   (testing "spec-enabled? with always-enabled spec"
@@ -190,7 +198,16 @@
       (let [enabled (spec/enabled-specs)]
         (is (contains? enabled :model/Card))
         (is (contains? enabled :model/Transform))
-        (is (contains? enabled :model/TransformTag))))))
+        (is (contains? enabled :model/TransformTag)))))
+  (testing "enabled-specs includes Library content only when the Library is remote-synced"
+    (collections.tu/with-library-not-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (not (contains? enabled :model/NativeQuerySnippet)))
+        (is (not (contains? enabled :model/Glossary)))))
+    (collections.tu/with-library-synced
+      (let [enabled (spec/enabled-specs)]
+        (is (contains? enabled :model/NativeQuerySnippet))
+        (is (contains? enabled :model/Glossary))))))
 
 ;;; ------------------------------------------------ Event Helper Tests ------------------------------------------------
 
