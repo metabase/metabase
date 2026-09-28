@@ -55,6 +55,10 @@ on:
         description: "Upload the encrypted shard data, the cljs output and the OpenAPI table. Off still scrubs, verifies and encrypts"
         type: boolean
         default: true
+      encryption_check:
+        description: "Skip the tests and only scrub, encrypt and upload a dummy capture"
+        type: boolean
+        default: false
 
 concurrency:
   group: e2e-journey-capture-${{ github.ref }}
@@ -85,6 +89,7 @@ env:
 jobs:
   build-instrumented:
     name: Build instrumented uberjar
+    if: ${{ !inputs.encryption_check }}
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     steps:
@@ -129,6 +134,7 @@ jobs:
 
   setup:
     name: Build shard matrix
+    if: ${{ !inputs.encryption_check }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
@@ -408,5 +414,38 @@ jobs:
           artifact-name: journey-capture-shard-${{ matrix.split_index }}
           upload: ${{ env.UPLOAD }}
           retention-days: ${{ env.RETENTION_DAYS }}
+          recipients: ${{ env.AGE_RECIPIENTS }}
+          secrets: ${{ toJSON(secrets) }}
+
+  encryption-check:
+    name: Encryption check
+    if: inputs.encryption_check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      JOURNEY_CAPTURE_DIR: ${{ github.workspace }}/e2e/journey-capture-raw
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare Node.js
+        uses: actions/setup-node@v6.4.0
+        with:
+          node-version-file: ".nvmrc"
+      - name: Write dummy capture
+        run: |
+          mkdir -p "$JOURNEY_CAPTURE_DIR"
+          cp e2e/journey-capture/README.md "$JOURNEY_CAPTURE_DIR/README.md"
+          cat > "$JOURNEY_CAPTURE_DIR/encryption-check.json" <<'EOF'
+          {
+            "marker": "journey-capture-encryption-check-marker",
+            "token": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+          }
+          EOF
+      - name: Scrub, encrypt and upload dummy capture
+        uses: ./.github/actions/upload-journey-capture
+        with:
+          capture-dir: ${{ env.JOURNEY_CAPTURE_DIR }}
+          artifact-name: journey-capture-encryption-check
+          upload: "true"
+          retention-days: 1
           recipients: ${{ env.AGE_RECIPIENTS }}
           secrets: ${{ toJSON(secrets) }}

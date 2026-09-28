@@ -36,8 +36,9 @@ Inputs:
 | `compare_step_snapshots` | false                    | run the shard's tests a second time with `step_snapshots: none`, into `tests-control/`, to measure what the snapshots cost |
 | `keep_test_exec`         | false                    | also keep a raw `.exec` per test and per step. Large, meant for small runs                                                 |
 | `upload`                 | true                     | upload the encrypted shard data, `journey-capture-cljs` and `journey-capture-openapi`. Off uploads none of them, see below |
+| `encryption_check`       | false                    | run no tests, only the scrub, encryption and upload of a dummy capture. See [Encryption check](#encryption-check)          |
 
-Every artifact is kept for 7 days.
+Every artifact is kept for 7 days, except the encryption check's, which is kept for 1 day.
 
 With `upload: false`, each shard still runs every step up to and including the encryption, then prints `Validation run, nothing uploaded: pass` or `FAIL`, with the scrub's counts, to its log and step summary.
 The instrumented uberjar is the one artifact such a run uploads, because the shards download it. It holds no capture data.
@@ -321,6 +322,38 @@ gh run download <run id> -n journey-capture-shard-<n> -D <download dir>
 mkdir -p <run dir>/journey-capture-shard-<n>
 age -d -i <identity file> <download dir>/journey-capture-shard-<n>.tar.gz.age | tar -xzf - -C <run dir>/journey-capture-shard-<n>
 ```
+
+### Encryption check
+
+A dispatch with `encryption_check: true` runs only the `Encryption check` job, which builds nothing and runs no tests.
+It writes a dummy capture with no test data: a copy of this file, and `encryption-check.json` with the marker `journey-capture-encryption-check-marker` and a fake token of 64 hex digits.
+Then it runs `.github/actions/upload-journey-capture` on that directory with upload on, the same action every shard runs on its capture.
+The run's only artifact is `journey-capture-encryption-check`, kept for 1 day.
+
+```
+gh workflow run e2e-journey-capture.yml --ref <branch> -f encryption_check=true
+```
+
+The job's step summary has the scrub's counts, which include the fake token under `hex-64`. To check the artifact itself:
+
+```
+gh run download <run id> -D <download dir>
+find <download dir> -type f
+head -n 1 <download dir>/journey-capture-encryption-check/journey-capture-encryption-check.tar.gz.age
+grep -r journey-capture-encryption-check-marker <download dir>
+mkdir -p <check dir>
+age -d -i <identity file> <download dir>/journey-capture-encryption-check/journey-capture-encryption-check.tar.gz.age | tar -xzf - -C <check dir>
+cat <check dir>/encryption-check.json
+```
+
+What each command should show:
+
+- `find` lists one file, `journey-capture-encryption-check.tar.gz.age`, so the run uploaded nothing else
+- `head` prints `age-encryption.org/v1`, the header every age file starts with
+- `grep` prints nothing
+- `<check dir>` holds `README.md` and `encryption-check.json`, and `encryption-check.json` has the marker and `"token":"<scrubbed>"`
+
+gzip alone also hides the marker from `grep`, so the `head` check is what shows the file is encrypted and not only compressed.
 
 ### Canary check
 
