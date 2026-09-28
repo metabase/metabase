@@ -23,6 +23,12 @@
        (is (= 1 (settings.db/update-raw-setting-row! :test-setting-1 "v3" nil)))
        (is (= 1 (settings.db/delete-setting! :test-setting-1)))
        (is (not (t2/exists? :setting :key "test-setting-1"))))))
+  (testing "the insert functions store a keyword key by its name"
+    (mt/with-temporary-setting-values [test-setting-1 nil]
+      (is (= "v1" (:value (settings.db/insert-setting! :test-setting-1 "v1"))))
+      (is (= 1 (settings.db/delete-setting! "test-setting-1")))
+      (is (= 1 (settings.db/insert-raw-setting-row! :test-setting-1 "v2" nil)))
+      (is (= "v2" (t2/select-one-fn :value :setting :key "test-setting-1")))))
   (testing "a key that looks like SQL matches nothing rather than being compiled"
     (do-with-test-setting-row!
      "v1"

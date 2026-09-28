@@ -23,7 +23,7 @@
   "Insert a Setting row for `setting-key` holding `value` and return it."
   [setting-key :- [:or :keyword :string]
    value       :- :string]
-  (first (t2/insert-returning-instances! :model/Setting :key setting-key :value value)))
+  (first (t2/insert-returning-instances! :model/Setting :key (name setting-key) :value value)))
 
 (mu/defn update-setting-value!
   "Set the value of the Setting with `setting-key` to `value`, returning the number updated."
@@ -52,7 +52,7 @@
    value          :- [:maybe :string]
    value-with-aad :- [:maybe :string]]
   (t2/insert! (t2/table-name (t2/resolve-model :model/Setting))
-              :key setting-key, :value value, :value_with_aad value-with-aad))
+              :key (name setting-key), :value value, :value_with_aad value-with-aad))
 
 (mu/defn current-timestamp-string
   "The application DB's own current timestamp, as a string."
