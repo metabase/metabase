@@ -228,7 +228,9 @@ export const SessionsPage = () => {
             selectedSessionId={sessionId}
             sorting={sorting}
             emptyLabel={
-              isEndedTab ? t`No ended sessions` : t`No active sessions`
+              isEndedTab
+                ? t`Sessions that have ended will start appearing here as they are timed out, revoked or as users log out`
+                : t`No active sessions`
             }
             onSortingChange={handleSortingChange}
             onRowSelectionChange={setRowSelection}
