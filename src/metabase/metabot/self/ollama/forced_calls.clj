@@ -248,10 +248,11 @@
                      ;; nothing became a call, so nothing may claim one: restating `stop` as
                      ;; `tool_calls` would promise the agent loop a call and hand it none. On `stop`
                      ;; the model answered outside the grammar, and that prose is the only answer
-                     ;; there is, so it goes back on the channel it arrived on rather than being
-                     ;; swallowed. On `length` the buffer is a half-written call and `length` is
-                     ;; already the diagnosis, so it is dropped.
-                     (rf result (cond-> chunk
+                     ;; there is, so the whole buffer goes back on the channel it arrived on rather
+                     ;; than being swallowed. On `length` the buffer is a half-written call and
+                     ;; `length` is already the diagnosis, so it is dropped — stripped first, or a
+                     ;; build that shares the finish chunk would show the fragment that rode in on it.
+                     (rf result (cond-> (strip-content chunk)
                                   (and (= "stop" finish_reason) (seq held))
                                   (assoc-in [:choices 0 :delta :content] held)))))
 

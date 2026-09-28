@@ -202,7 +202,11 @@
         (is (empty? (tool-calls out))
             (str "and no call is minted from the half-written buffer: `:structured`'s name is fixed, so it "
                  "would mint one regardless, and the caller would see `structured-output-invalid` instead "
-                 "of the truncation"))))))
+                 "of the truncation"))
+        (is (empty? (keep #(get-in % [:choices 0 :delta :content]) out))
+            (str "nor does the fragment ride out as text. Prose goes back on the content channel only "
+                 "for a `stop` the grammar failed to shape — on `length` the buffer is a half-written "
+                 "call, and half a JSON object is not an answer to show anyone"))))))
 
 (deftest ^:parallel read-back-passes-on-the-chunks-it-holds-content-from-test
   (testing (str "Ollama opens a stream with content rather than OpenAI's empty chunk "
