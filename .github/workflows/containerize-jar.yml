@@ -58,7 +58,7 @@ jobs:
       tag: ${{ steps.image.outputs.tag }}
       full_image: ${{ steps.image.outputs.full_image }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 1
       # we want the dockerfile from the commit we're building

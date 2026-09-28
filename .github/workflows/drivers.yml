@@ -98,7 +98,7 @@ jobs:
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Fetch base branch
@@ -153,7 +153,7 @@ jobs:
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
     name: Athena
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Athena driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -203,7 +203,7 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -250,7 +250,7 @@ jobs:
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
     name: Clickhouse ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -304,7 +304,7 @@ jobs:
           CLUSTER_SIZE: nano-quickstart
     name: Druid (JDBC)
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Druid JDBC driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -350,7 +350,7 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Databricks driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -390,7 +390,7 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks (Multi-Catalog)
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Databricks driver with multi-catalog
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -409,7 +409,7 @@ jobs:
       CI: 'true'
     name: H2
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -429,7 +429,7 @@ jobs:
       CI: 'true'
     name: H2 (OSS)
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test H2 driver (OSS)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -543,7 +543,7 @@ jobs:
     # "be-tests-mariadb-10-2-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -605,7 +605,7 @@ jobs:
           MONGO_INITDB_ROOT_PASSWORD: metasample123
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -646,7 +646,7 @@ jobs:
       MB_TEST_MONGO_REQUIRES_SSL: true
     name: "${{ matrix.version.name }} (SSL)"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Spin up Mongo docker container
         run: >-
           docker run -d
@@ -697,7 +697,7 @@ jobs:
           - "27017:17017"
     name: MongoDB Sharded Cluster
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test MongoDB driver (Sharded cluster)
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -760,7 +760,7 @@ jobs:
           - "1521:${{ matrix.version.port }}"
     name: ${{ matrix.version.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -848,7 +848,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup python-runner
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
@@ -896,7 +896,7 @@ jobs:
         env:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/await-port
       with:
          port: ${{ env.MB_PRESTO_JDBC_TEST_PORT }}
@@ -1006,7 +1006,7 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1071,7 +1071,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     name: Snowflake ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1107,7 +1107,7 @@ jobs:
           - "10000:10000"
     name: Spark SQL
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Spark driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1128,7 +1128,7 @@ jobs:
       DRIVERS: sqlite
     name: SQLite
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test SQLite driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1180,7 +1180,7 @@ jobs:
           MSSQL_MEMORY_LIMIT_MB: 1024
     name: ${{ matrix.version.name }} ${{ matrix.job.name }}
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
@@ -1219,7 +1219,7 @@ jobs:
   #         - "8080:8080"
   #   name: Starburst
   #   steps:
-  #   - uses: actions/checkout@v6
+  #   - uses: actions/checkout@v7
   #   - name: Make plugins directory
   #     run: mkdir plugins
   #   - name: Test Starburst driver
@@ -1279,7 +1279,7 @@ jobs:
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
     name: Vertica
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Make plugins directory
       run: mkdir plugins
     - name: Test Vertica driver
