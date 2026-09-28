@@ -107,12 +107,12 @@
   "The model-listing response the admin picker consumes, plus what a connect-time probe learned about the
   connection for the connect path to store on it."
   [:map {:closed true}
-   [:models                        [:sequential [:map {:closed true}
-                                                 [:id           :string]
-                                                 [:display_name [:maybe :string]]]]]
-   [:learned-config {:optional true} [:map {:closed true}
-                                      [:model-reasoning {:optional true} :string]
-                                      [:probed-model    {:optional true} :string]]]])
+   [:models                         [:sequential [:map {:closed true}
+                                                  [:id           :string]
+                                                  [:display_name [:maybe :string]]]]]
+   [:connection-info {:optional true} [:map {:closed true}
+                                       [:model-reasoning {:optional true} :string]
+                                       [:probed-model    {:optional true} :string]]]])
 
 (def StreamOpts
   "How an adapter puts one request on the wire; see [[stream!]]."

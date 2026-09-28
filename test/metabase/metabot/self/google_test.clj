@@ -990,8 +990,8 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
       (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens (atom []))]
-        (is (= {:models         []
-                :learned-config {:probed-model "google/gemini-3.5-flash"}}
+        (is (= {:models          []
+                :connection-info {:probed-model "google/gemini-3.5-flash"}}
                (list-models {:model "google/gemini-3.5-flash" :probe? true})))))))
 
 (deftest list-models-anthropic-reports-the-probed-model-test
@@ -1001,12 +1001,12 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
       (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 400 anthropic-validation-error-body)]
-        (is (= {:models         []
-                :learned-config {:probed-model "anthropic/claude-haiku-4-5@20251001"}}
+        (is (= {:models          []
+                :connection-info {:probed-model "anthropic/claude-haiku-4-5@20251001"}}
                (list-models {:model "anthropic/claude-haiku-4-5@20251001" :probe? true})))))))
 
 (deftest list-models-without-probe-keeps-the-model-to-itself-test
-  (testing "a plain listing still validates the credentials but reports no `:learned-config` to the client"
+  (testing "a plain listing still validates the credentials but reports no `:connection-info` to the client"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"

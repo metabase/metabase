@@ -373,7 +373,7 @@
   "List the models the connection's vLLM server is serving. Pass-through: there is nothing to
   whitelist, and `display_name` falls back to the served id.
 
-  `:probe?` additionally runs [[preflight!]], and reports what it determined as `:learned-config`,
+  `:probe?` additionally runs [[preflight!]], and reports what it determined as `:connection-info`,
   for the connect path to store on the connection: whether the model reasons, and the model it
   exercised, which the connect path adopts as the one to run on. Reserved for the connect and edit
   paths — a tool-call probe on every model listing would stall the admin picker behind a full
@@ -390,8 +390,8 @@
      (cond-> {:models (mapv (fn [{:keys [id] :as entry}]
                               {:id id :display_name (or (:name entry) id)})
                             entries)}
-       probed (assoc :learned-config {reasoning-config-key (str (:reasoning? probed))
-                                      :probed-model        (:model probed)})))))
+       probed (assoc :connection-info {reasoning-config-key (str (:reasoning? probed))
+                                       :probed-model        (:model probed)})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 

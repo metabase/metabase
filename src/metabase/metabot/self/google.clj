@@ -524,7 +524,7 @@
   sometimes omits models that are available, hence we can't rely on it. See
   https://github.com/googleapis/python-genai/issues/679
 
-  `:probe?` reports the model the probe verified as `:learned-config` `:probed-model`, for the connect and edit paths
+  `:probe?` reports the model the probe verified as `:connection-info` `:probed-model`, for the connect and edit paths
   to record on the connection and re-verify against later passing it in as the `proposed-model` on future attempts."
   ([] (list-models {}))
   ([{:keys [credentials model proposed-model ai-proxy? probe?]} :- adapter/ListOpts]
@@ -536,7 +536,7 @@
          (catch Exception e
            (rethrow-google-api-error! credentials e)))
        (cond-> {:models []}
-         probe? (assoc :learned-config {:probed-model model})))
+         probe? (assoc :connection-info {:probed-model model})))
      {:models []})))
 
 (mu/defn google-raw
