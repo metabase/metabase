@@ -12,3 +12,12 @@ export type DetailsRowProps = {
   bold?: boolean;
   spanLabel?: boolean;
 };
+
+export type SidebarNavDirection = "previous" | "next";
+
+export type SidebarNavButtonProps = {
+  direction: SidebarNavDirection;
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+};

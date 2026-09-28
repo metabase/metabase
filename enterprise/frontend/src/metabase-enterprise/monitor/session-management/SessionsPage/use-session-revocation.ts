@@ -68,7 +68,6 @@ export function useSessionRevocation({
         title,
         message,
         confirmButtonText: t`Revoke`,
-        confirmButtonProps: { color: "feedback-negative" },
         onConfirm: () => revoke(request),
       });
     },

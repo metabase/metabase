@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
@@ -7,7 +8,6 @@ import * as Urls from "metabase/urls";
 
 import { getSessionUserName } from "../utils";
 
-import S from "./SessionDetailSidebar.module.css";
 import type { SidebarHeaderProps } from "./types";
 
 export const SidebarHeader = ({
@@ -30,26 +30,18 @@ export const SidebarHeader = ({
     <Stack gap="xl">
       <Flex justify="space-between" align="center">
         <Group gap="sm">
-          <ActionIcon
-            aria-label={t`Previous session`}
-            size="lg"
-            variant="default"
-            className={S.navButton}
+          <SidebarNavButton
+            direction="previous"
+            label={t`Previous session`}
             disabled={prevSessionId === undefined}
             onClick={() => prevSessionId && onNavigate(prevSessionId)}
-          >
-            <Icon name="chevronup" />
-          </ActionIcon>
-          <ActionIcon
-            aria-label={t`Next session`}
-            size="lg"
-            variant="default"
-            className={S.navButton}
+          />
+          <SidebarNavButton
+            direction="next"
+            label={t`Next session`}
             disabled={nextSessionId === undefined}
             onClick={() => nextSessionId && onNavigate(nextSessionId)}
-          >
-            <Icon name="chevrondown" />
-          </ActionIcon>
+          />
         </Group>
         <Group gap="sm">
           <ActionIcon
