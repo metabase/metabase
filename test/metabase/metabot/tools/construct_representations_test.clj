@@ -2473,6 +2473,24 @@
           (is (str/includes? (ex-message e) "Orders count by user")
               "and it names the card, not a base table the LLM never mentioned"))))))
 
+(deftest model-with-restricted-fields-names-the-model-test
+  (mt/with-temp [:model/Card {model-eid :entity_id}
+                 {:name "Orders id and total" :type :model
+                  :dataset_query (mt/mbql-query orders {:fields [$id $total]})}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+            e       (is (thrown? clojure.lang.ExceptionInfo
+                                 (construct/execute-representations-query
+                                  (query-data
+                                   {"lib/type" "mbql/query"
+                                    "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                 "source-card" model-eid
+                                                 "breakout"    [["field" {} [db-name "PUBLIC" "ORDERS" "QUANTITY"]]]
+                                                 "aggregation" [["count" {}]]}]}))))]
+        (is (=? {:error :column-not-returned, :source-card-type "model"} (ex-data e)))
+        (is (str/includes? (ex-message e) "which the model \"Orders id and total\" reads from"))
+        (is (not (str/includes? (ex-message e) "saved question")))))))
+
 (deftest source-card-with-restricted-fields-rejects-column-it-does-not-return-test
   (testing (str "The base-table equality short-circuit used to fire before the returned-columns check, so a\n"
                 "reference to a base-table column the card does not project was left as a bare ref -- again\n"
