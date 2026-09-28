@@ -1,0 +1,10 @@
+@media (--breakpoint-min-lg) {
+  .root {
+    transform: translateY(200%);
+    transition: transform 0.4s;
+  }
+
+  .visible {
+    transform: translateY(0);
+  }
+}

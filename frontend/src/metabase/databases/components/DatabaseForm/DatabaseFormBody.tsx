@@ -65,15 +65,24 @@ export const DatabaseFormBody = ({
   );
 
   const px = match(location)
-    .with("setup", () => "sm")
+    .with("setup", () => undefined)
     .with("embedding_setup", () => "xl")
     .with("admin", () => "xl")
     .with("full-page", () => undefined)
     .exhaustive();
-  const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
+  const mah = match(location)
+    .with("setup", () => undefined)
+    .with("full-page", () => "100%")
+    .otherwise(() => "calc(100vh - 20rem)");
 
   return (
-    <Box mah={mah} mb="lg" px={px} flex={1} style={{ overflowY: "auto" }}>
+    <Box
+      mah={mah}
+      mb="lg"
+      px={px}
+      flex={1}
+      style={mah ? { overflowY: "auto" } : undefined}
+    >
       {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField
