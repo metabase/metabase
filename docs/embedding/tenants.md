@@ -98,17 +98,18 @@ In the experiences that expose users to Metabase collections (e.g. when using fu
 
 ## Enable multi-tenant strategy
 
-_Admin settings > People_
+_Embedding hub > Tenancy_
 
 You can create and manage your tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
 
+1. Go to **Embedding hub > Tenancy**.
+2. Under **Enable multi-tenant user strategy**, click **Enable multi-tenancy**.
+
+Once it's on, the **gear** icon in the upper right of the Tenancy page lets you switch strategies. You can also do this from **Admin settings > People**.
+
 ![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
-1. Go to **Admin settings > People**.
-2. Click on the **gear** icon above the list of people.
-3. Choose **Multi-tenant strategy**.
-
-Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get some additional admin settings in the People and Permissions tabs.
+Changing Metabase to multi-tenant strategy enables special [user](#user-types) and [collection](#collection-types) types. You can create new tenants, tenant groups, and collections, and you get additional settings in the Embedding hub's **Tenancy** and **Permissions** pages.
 
 If you have an existing permissions and collection setup that you'd like to translate to use tenants, see [Changing tenant strategy](#changing-tenant-strategy).
 
@@ -116,15 +117,15 @@ Once you enable multi-tenant strategy, keep in mind that switching _from_ multi-
 
 ## Create new tenants in Metabase
 
-_Admin settings > People > Tenant_
+_Embedding hub > Tenancy > Tenants_
 
 ![New tenant user](./images/new-tenant.png)
 
 To create new tenants in Metabase:
 
 1. [Enable multi-tenant strategy](#enable-multi-tenant-strategy), if you haven't yet.
-2. Go to **Admin settings > People** .
-3. Select **Tenants** on the left sidebar and click **New tenant**.
+2. Go to **Embedding hub > Tenancy**.
+3. On the **Tenants** tab, click **New tenant**.
 4. Fill out the information for the tenant:
    - **Tenant name**: Display name for the tenant that will be displayed to _internal_ users. Not exposed to external users. This name can be changed later.
    - **Tenant slug**: Unique identifier of the tenant. It can be used to [match JWT claims](#use-tenant-claim-to-sign-in-users) and for setting up [data permissions](#use-tenant-attributes-for-data-permissions). See [Tenant slug](#special-tenant-slug-attribute) for more information.
@@ -134,29 +135,29 @@ You can avoid manually setting up tenants in Metabase by [provisioning tenants w
 
 ## Create tenant groups
 
-_Admin settings > People > Tenant groups_
+_Embedding hub > Tenancy > Tenant groups_
 
 Tenant groups are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to use those groups. Groups can be used to configure permissions so that, among the tenant's users, some get Basic permissions while others get Premium. See [Tenant concepts](#concepts) for more information.
 
 To create a tenant group:
 
 1. [Enable multi-tenant strategy](#enable-multi-tenant-strategy), if you haven't yet.
-2. Go to **Admin settings > People**.
-3. Select **Tenant groups** on the left sidebar and click **Create a group**.
+2. Go to **Embedding hub > Tenancy**.
+3. On the **Tenant groups** tab, click **Create a group**.
 4. Name your group.
 
 To add people to tenant groups, see [Add people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
 ## Create tenant users in Metabase
 
-_Admin settings > People > Tenant users_
+_Embedding hub > Tenancy > Tenant users_
 
 Tenant users are the end users in tenants. In a B2B SaaS context, these are your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 To add tenant users in Metabase:
 
 1. [Create a tenant](#create-new-tenants-in-metabase).
-2. Go to **Admin settings > People** .
-3. Select **Tenant users** on the left sidebar and click **New tenant user**.
+2. Go to **Embedding hub > Tenancy**.
+3. On the **Tenant users** tab, click **Create tenant user**.
 4. Fill out the user information, including the tenant and tenant groups.
 
    If your tenant has [tenant attributes](#tenant-attributes), they'll be inherited by the user, but you can override the value in "Attributes".
@@ -186,7 +187,7 @@ You can set up [Remote sync](../installation-and-operation/remote-sync.md) for s
 
 ## Tenant attributes
 
-_Admin settings > People > Tenants_
+_Embedding hub > Tenancy > Tenants_
 
 You can create tenant-level [user attributes](#tenant-attributes) which all users of the tenant inherit. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
 
@@ -194,8 +195,8 @@ You can create tenant-level [user attributes](#tenant-attributes) which all user
 
 To create a tenant attribute manually using the Metabase UI:
 
-1. Go to **Admin settings > People**
-2. Select **Tenants** on the left sidebar.
+1. Go to **Embedding hub > Tenancy**.
+2. Select the **Tenants** tab.
 3. Click on **three dots** next to the tenant.
 4. Input the attribute key and value.
 
@@ -251,7 +252,7 @@ If the user has already been assigned to a tenant (for example, through Metabase
 
 By default, Metabase looks for a `@tenant` key in your JWT. To set up a different key:
 
-1. Go to **Admin** > **Settings** > **Authentication** > **JWT** > **User attribute configuration**
+1. Go to **Embedding hub** > **Authentication** > **User attribute configuration**.
 2. Change the **Tenant assignment attribute** key to your preferred identifier.
 
 ### Provisioning tenants and users
@@ -294,7 +295,7 @@ Some common auth error messages and what they mean:
 
 ## Data permissions for tenants
 
-_Admin settings > Permissions_
+_Embedding hub > Permissions_
 
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 
@@ -320,7 +321,7 @@ Please review [Data permissions documentation](../permissions/data.md) for more 
 
 ### Use tenant attributes for data permissions
 
-[Row and column security](../permissions/row-and-column-security.md), [Impersonation](../permissions/impersonation.md), and Database routing require user attributes. You can [specify custom tenant attributes](#tenant-attributes) to configure data permissions based on attribute values. See [Tenant attributes](#tenant-attributes). 
+[Row and column security](../permissions/row-and-column-security.md), [Impersonation](../permissions/impersonation.md), and Database routing require user attributes. You can [specify custom tenant attributes](#tenant-attributes) to configure data permissions based on attribute values. See [Tenant attributes](#tenant-attributes).
 
 ## Collection permissions for tenants
 
@@ -356,9 +357,9 @@ For configuring permissions to _internal_ collections for internal users, see [g
 
 ### Configuring shared collections permissions
 
-_Admin settings > Permissions_
+_Embedding hub > Permissions_
 
-To configure access to shared collections for tenant and internal groups, go to **Admin settings > Permissions > Shared collections**.
+To configure access to shared collections for tenant and internal groups, go to **Embedding hub > Permissions > Shared collections**.
 
 You can configure access for each shared collection and their subcollections for both internal and external users. See general docs on [collection permissions](../permissions/collections.md).
 
@@ -368,20 +369,20 @@ When configuring permissions, remember that in Metabase, all permissions are add
 
 ## Subscription permissions for tenants
 
-_Admin settings > Permissions_
+_Embedding hub > Permissions_
 
 By default, all tenant users will be created with **No** [subscription permissions](../permissions/application.md#subscriptions-and-alerts). If you want your users to be able to create subscriptions (either in full-app embedding, modular embedding, or by logging in directly to Metabase), you'll need to change the Subscription and alerts permissions to "Yes".
 
 ## Deactivate a tenant
 
-_Admin settings > People > Tenants_
+_Embedding hub > Tenancy > Tenants_
 
 **Deactivating a tenant will also deactivate all users who belong to this tenant**.
 
 To deactivate a tenant:
 
-1. Go to **Admin settings > People**.
-2. Select **Tenants** on the left sidebar.
+1. Go to **Embedding hub > Tenancy**.
+2. Select the **Tenants** tab.
 3. Click on **three dots** next to the tenant.
 4. Choose **Deactivate tenant**.
 
