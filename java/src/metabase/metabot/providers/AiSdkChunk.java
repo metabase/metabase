@@ -35,6 +35,15 @@ public sealed interface AiSdkChunk {
 
     /** Vendor data carried verbatim on a part, rendered as `{:<provider> {...fields}}`. */
     record ProviderMetadata(String provider, Map<String, String> fields) {
+        /** From alternating `"field", value` pairs. Nil values are kept, as they would be in a Clojure literal. */
+        public static ProviderMetadata of(String provider, String... kvs) {
+            var fields = new java.util.LinkedHashMap<String, String>();
+            for (int i = 0; i < kvs.length; i += 2) {
+                fields.put(kvs[i], kvs[i + 1]);
+            }
+            return new ProviderMetadata(provider, fields);
+        }
+
         IPersistentMap toClj() {
             IPersistentMap rendered = mapOf();
             for (var field : fields.entrySet()) {

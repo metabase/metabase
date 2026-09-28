@@ -30,10 +30,14 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
             public AiSdkChunk end() { return new TextEnd(id); }
         }
 
-        record Reasoning(String id) implements Open {
+        /** `encryptedContent` is null until the item is done; it is what lets us replay the item next round-trip. */
+        record Reasoning(String id, String encryptedContent) implements Open {
             public AiSdkChunk start() { return new ReasoningStart(id); }
             public AiSdkChunk delta(String d) { return new ReasoningDelta(id, d); }
-            public AiSdkChunk end() { return new ReasoningEnd(id, null); }
+            public AiSdkChunk end() {
+                return new ReasoningEnd(id, encryptedContent == null ? null : ProviderMetadata.of(
+                    "openai", "itemId", id, "encryptedContent", encryptedContent));
+            }
         }
 
         record Tool(String callId, String name) implements Open {
@@ -77,7 +81,7 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                 close(out);
                 open = switch (item) {
                     case Item.Message() -> new Open.Text(newId.get());
-                    case Item.Reasoning(var id, var ignored) -> new Open.Reasoning(id);
+                    case Item.Reasoning(var id, _) -> new Open.Reasoning(id, null);
                     case Item.FunctionCall(var callId, var name) -> new Open.Tool(callId, name);
                     case Item.Unsupported() -> null;
                 };
@@ -89,12 +93,9 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                 // a finished reasoning item carries the encrypted content that lets us replay it next
                 // round-trip; it rides out on the reasoning-end
                 if (item instanceof Item.Reasoning(var id, var content)
-                        && content != null
-                        && open instanceof Open.Reasoning(var openId)
+                        && open instanceof Open.Reasoning(var openId, _)
                         && openId.equals(id)) {
-                    out.add(new ReasoningEnd(id, new ProviderMetadata(
-                        "openai", Map.of("itemId", id, "encryptedContent", content))));
-                    open = null;
+                    open = new Open.Reasoning(openId, content);
                 }
                 close(out);
             }

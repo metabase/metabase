@@ -6,7 +6,6 @@
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [clojure.walk :as walk]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
@@ -30,7 +29,7 @@
 (defn- openai-usage->aisdk-usage
   "Convert an OpenAI Responses API `usage` block into the AISDK `:usage` shape.
 
-  Unlike Anthropic's disjoint input buckets (see [[metabase.metabot.self.claude/claude-usage->aisdk-usage]]), OpenAI
+  Unlike Anthropic's disjoint input buckets (see `metabase.metabot.providers.anthropic.MessagesEvent#parseUsage`), OpenAI
   reports cached tokens as a subset breakdown of the input total:
 
       input_tokens                             — total input, cached portion included
@@ -194,22 +193,8 @@
 
 ;;; --------------------------------------------------- parity ---------------------------------------------------
 
-(defn- normalize
-  "Generated `mb-` ids are random; number them in order of appearance so two runs compare."
-  [chunks]
-  (let [ids (atom {})]
-    (walk/postwalk (fn [x]
-                     (if (and (string? x) (str/starts-with? x "mb-"))
-                       (or (@ids x) ((swap! ids assoc x (str "mb-" (count @ids))) x))
-                       x))
-                   chunks)))
-
-(defn- run [xf events]
-  (normalize (into [] xf events)))
-
 (defn- same? [events]
-  (= (run (legacy-xf) events)
-     (run (openai/openai->aisdk-chunks-xf) events)))
+  (metabot.tu/same-translation? (legacy-xf) (openai/openai->aisdk-chunks-xf) events))
 
 (deftest ^:parallel recorded-fixtures-parity-test
   (doseq [f ["openai-text" "openai-tool-calls" "openai-text-and-tool-calls" "openai-structured-output"]]

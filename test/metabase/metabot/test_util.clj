@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.util.json :as json]
@@ -188,3 +189,23 @@
                                        :display-name "snip"
                                        :snippet-id   Integer/MAX_VALUE}}}
               {:lib/type :mbql.stage/mbql}]})
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Translator parity
+;;; ──────────────────────────────────────────────────────────────────
+
+(defn- normalize-generated-ids
+  "Generated `mb-` ids are random; number them in order of appearance so two runs compare."
+  [chunks]
+  (let [ids (atom {})]
+    (walk/postwalk (fn [x]
+                     (if (and (string? x) (str/starts-with? x "mb-"))
+                       (or (@ids x) ((swap! ids assoc x (str "mb-" (count @ids))) x))
+                       x))
+                   chunks)))
+
+(defn same-translation?
+  "Whether two stream-translator transducers turn `events` into the same chunks, up to generated ids."
+  [xf-a xf-b events]
+  (= (normalize-generated-ids (into [] xf-a events))
+     (normalize-generated-ids (into [] xf-b events))))

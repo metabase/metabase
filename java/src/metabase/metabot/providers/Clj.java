@@ -28,8 +28,17 @@ public final class Clj {
         return get(m, key) instanceof String v ? v : null;
     }
 
+    /** A map's `:type`, or "" without one, so a parser can `switch` on it directly. */
+    public static String type(Map<?, ?> m) {
+        return str(m, "type") instanceof String t ? t : "";
+    }
+
     public static long num(Map<?, ?> m, String key) {
         return get(m, key) instanceof Number v ? v.longValue() : 0L;
+    }
+
+    public static Long optNum(Map<?, ?> m, String key) {
+        return get(m, key) instanceof Number v ? v.longValue() : null;
     }
 
     /**

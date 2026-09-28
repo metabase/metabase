@@ -3,6 +3,7 @@ package metabase.metabot.providers.openai;
 import static metabase.metabot.providers.Clj.map;
 import static metabase.metabot.providers.Clj.num;
 import static metabase.metabot.providers.Clj.str;
+import static metabase.metabot.providers.Clj.type;
 
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
@@ -45,8 +46,7 @@ public sealed interface ResponsesEvent {
     }
 
     static ResponsesEvent parse(Map<?, ?> event) {
-        String type = str(event, "type");
-        return switch (type == null ? "" : type) {
+        return switch (type(event)) {
             case "response.created" -> {
                 Map<?, ?> response = map(event, "response");
                 yield new Created(str(response, "id"), str(response, "model"));
@@ -76,8 +76,7 @@ public sealed interface ResponsesEvent {
     }
 
     private static Item parseItem(Map<?, ?> item) {
-        String type = str(item, "type");
-        return switch (type == null ? "" : type) {
+        return switch (type(item)) {
             case "message" -> new Item.Message();
             case "function_call" -> new Item.FunctionCall(str(item, "call_id"), str(item, "name"));
             case "reasoning" -> new Item.Reasoning(str(item, "id"), str(item, "encrypted_content"));
