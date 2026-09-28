@@ -50,9 +50,27 @@
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
+;; `authenticator` is left out: it names a host only for native Okta (`https://<okta-account>.okta.com`), and otherwise
+;; a flow such as `SNOWFLAKE_JWT`, which is not a name to hand the resolver. See the `connection-parameter-hosts` method
+;; below.
 (defmethod driver/host-carrying-parameters :snowflake
   [_driver]
-  ["proxyHost" "host"])
+  ["proxyHost" "host" "serverURL" "oauthTokenRequestUrl" "oauthAuthorizationUrl"])
+
+;; `oauthRedirectUri` is the local listener the browser is sent back to; `nonProxyHosts` lists hosts to exclude from
+;; the proxy.
+(defmethod driver/non-host-parameters :snowflake
+  [_driver]
+  ["oauthRedirectUri" "nonProxyHosts"])
+
+(defmethod driver/connection-parameter-hosts :snowflake
+  [driver {:keys [additional-options] :as details}]
+  ;; details the driver does not recognize are passed to the client as connection properties, so an `:authenticator`
+  ;; detail counts as much as one in `:additional-options`; both are checked rather than guessing which one wins
+  (into ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+        (filter #(and (string? %) (re-find #"(?i)^\s*https?://" %)))
+        [(get (sql-jdbc.common/additional-options->map additional-options :url) "authenticator")
+         (:authenticator details)]))
 
 (defmethod driver/connection-hosts :snowflake
   [_driver {:keys [account host use-hostname]}]

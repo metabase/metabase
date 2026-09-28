@@ -44,7 +44,8 @@
 
 (defmethod driver/host-carrying-parameters :databricks
   [_driver]
-  ["ProxyHost" "OAuth2ConnAuthAuthorizationEndPoint" "OAuth2ConnAuthTokenEndpoint"])
+  ["ProxyHost" "CFProxyHost" "OAuth2ConnAuthAuthorizeEndpoint" "OAuth2ConnAuthTokenEndpoint"
+   "OAuth2AuthorizationEndPoint" "OAuth2TokenEndpoint" "OAuthDiscoveryURL" "OIDCDiscoveryEndpoint"])
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true

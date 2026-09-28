@@ -24,6 +24,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1947,3 +1948,33 @@
                           (t/zone-offset "+02:00"))              "2026-07-08 01:02:03.123456789 +0200"
       "not temporal"                                             "not temporal"
       42                                                         42)))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client connects to these instead of (or as well as) the account host, so a value naming an internal host has
+  ;; to be refused like the account host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [check! #(driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                   :additional-options %})
+          refusal #(try (check! %) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (testing "an internal host is refused whichever parameter names it"
+        (doseq [opts ["authenticator=OAUTH_CLIENT_CREDENTIALS&oauthTokenRequestUrl=http://localhost:18078/steal"
+                      "oauthAuthorizationUrl=http://localhost/authorize"
+                      "serverURL=https://localhost/"
+                      "authenticator=https://localhost/"
+                      "AUTHENTICATOR=http://localhost:8080/okta"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
+        (doseq [opts [nil
+                      "authenticator=SNOWFLAKE_JWT"
+                      "authenticator=OAUTH_CLIENT_CREDENTIALS"
+                      "authenticator=externalbrowser"]]
+          (is (nil? (check! opts))
+              (str "should be allowed: " opts))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too"
+        (is (=? {:status-code 400}
+                (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                      :authenticator "https://localhost/"
+                                                                      :additional-options "authenticator=SNOWFLAKE_JWT"})
+                     nil
+                     (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))
