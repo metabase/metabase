@@ -2120,10 +2120,9 @@
            ;; type as well as its id, since models and questions are looked up differently.
            :card-type          (if (= :model (:type card)) "model" "question")
            :returned-field-ids (into #{} (keep :id) own)
-           ;; Tables the card itself reads from. lib excludes these from the implicit-join candidates (you do not
-           ;; join a table you are already selecting from), so a reference to one of their columns that the card
-           ;; does not project lands in the zero-candidate arm and would otherwise be told to add a `joins:` entry
-           ;; joining that table to itself.
+           ;; Tables of the columns the card returns. lib excludes these from the implicit-join candidates, so a
+           ;; reference to one of their columns that the card does not project lands in the zero-candidate arm and
+           ;; would otherwise be told to add a `joins:` entry joining that table to itself.
            :read-table-ids     (into #{} (keep :table-id) own)
            :fks-by-target      (->> cols
                                     (filter implicit?)
@@ -2138,7 +2137,7 @@
       ;; Failing closed silently means Pass 3 stops repairing every card stage and the queries come back as
       ;; `__mb_source.<COLUMN>` execution errors with nothing pointing here. This does real work over a whole card
       ;; query, so it is likelier to throw on some card shape than its one-line siblings.
-      (log/debugf e "Could not inspect source card %s for implicit-join repair; skipping the stage" card-id)
+      (log/warnf e "Could not inspect source card %s for implicit-join repair; skipping the stage" card-id)
       nil)))
 
 (defn- try-resolve-field-id
@@ -2207,10 +2206,15 @@
 (defn- column-not-returned-error [fk card-name card-type card-id target-table-id]
   ;; `card-id` and `:source-card-type` ride in the ex-data rather than the message: each surface's recovery hint
   ;; addresses the card in its own vocabulary, and the two card types take different lookups.
-  (ex-info (tru "Field {0} is on {1}, which the saved question {2} reads from but does not return, so it cannot be referenced here. Use a column that question returns, or build the stage on `source-table:` instead of the card."
-                (display-portable fk)
-                (display-target-table fk target-table-id)
-                (pr-str card-name))
+  (ex-info (if (= "model" card-type)
+             (tru "Field {0} is on {1}, which the model {2} reads from but does not return, so it cannot be referenced here. Use a column that model returns. If the stage does not aggregate a metric defined on this model, you can instead build it on `source-table:`."
+                  (display-portable fk)
+                  (display-target-table fk target-table-id)
+                  (pr-str card-name))
+             (tru "Field {0} is on {1}, which the saved question {2} reads from but does not return, so it cannot be referenced here. Use a column that question returns. If the stage does not aggregate a metric defined on this question, you can instead build it on `source-table:`."
+                  (display-portable fk)
+                  (display-target-table fk target-table-id)
+                  (pr-str card-name)))
            {:status-code      400
             :error            :column-not-returned
             :agent-error?     true
@@ -2218,6 +2222,18 @@
             :source-card      card-id
             :source-card-type card-type
             :target-table     target-table-id}))
+
+(defn- unexportable-fk-error [fk source-label target-table-id extra]
+  (ex-info (tru "Field {0} is on table {1}, which is reachable from the source {2} only through a foreign key that could not be resolved, so it cannot be reached implicitly. Add an explicit `joins:` entry and reference the field using the join alias, or use a column the source returns."
+                (display-portable fk)
+                (display-target-table fk target-table-id)
+                (pr-str source-label))
+           (merge {:status-code  400
+                   :error        :unexportable-fk
+                   :agent-error? true
+                   :field        fk
+                   :target-table target-table-id}
+                  extra)))
 
 (defn- ambiguous-fk-error [fk source-label n target-table-id extra]
   ;; Deliberately do NOT enumerate the candidate FK columns: the metadata provider is un-sandboxed and any leaked
@@ -2254,7 +2270,7 @@
           ;; have already established that the card neither returns this column nor reads its table, so the bare
           ;; ref is known-broken and would compile to `__mb_source.<COLUMN>` -- the execution failure this pass
           ;; exists to prevent. Fail loudly with something the agent can act on instead.
-          strict?  (throw (no-fk-path-error fk source-label target-table-id ex-data-extra))
+          strict?  (throw (unexportable-fk-error fk source-label target-table-id ex-data-extra))
           :else    clause))
     (throw (ambiguous-fk-error fk source-label (count candidates) target-table-id ex-data-extra))))
 
@@ -2396,8 +2412,9 @@
 ;;; in Pass 3. So a card-sourced stage with an explicit `joins:` entry and a clause missing its
 ;;; `join-alias` gets Pass 3's `:no-fk-path` error rather than a silent repair, where the identical
 ;;; query on a `source-table:` stage is repaired. That error names `source-field-join-alias` as a
-;;; remedy, so the agent can still recover in one turn. Extending this pass to card stages is
-;;; tracked separately.
+;;; remedy, so the agent can still recover in one turn.
+;;;
+;;; TODO (Mihael 2026-09-28) -- extend this pass to `source-card:` stages.
 ;;;
 ;;; Trigger: a field clause `["field" {opts} <portable-fk>]` whose target table is reachable
 ;;; from **exactly one** explicit join's source table via **exactly one** FK, and which the
