@@ -34,7 +34,11 @@
    "dataSourceName"               "metabase-semantic-search-db"})
 
 (defn- url-decode ^String [^String s]
-  (URLDecoder/decode s StandardCharsets/UTF_8))
+  (try
+    (URLDecoder/decode s StandardCharsets/UTF_8)
+    (catch IllegalArgumentException _
+      ;; the decoder's own message quotes part of the value, which may be a password
+      (throw (ex-info "Malformed %-escape in MB_PGVECTOR_DB_URL" {})))))
 
 (defn- split-query
   "Split a JDBC URL into [base pairs], where pairs is a seq of raw [key value] strings."
@@ -46,18 +50,59 @@
                 :let  [[k v] (str/split pair #"=" 2)]]
             [k (or v "")])]))
 
+(defn- split-userinfo
+  "Split `user:password@` out of a JDBC URL's host part, returning [url credentials].
+  The credentials are a map of the decoded :user and :password, empty when the URL has none."
+  [^String base]
+  ;; The host part runs from `//` to the next `/`.
+  ;; Split it at its last `@`, not the first as libpq does, so an unencoded `@` in the password can't leave
+  ;; part of it on the URL.
+  ;; Any scheme matches, so a misspelt one, which DriverManager quotes, can't carry the credentials either.
+  (if-let [[_ scheme userinfo more] (re-matches #"([^/]*//)([^/]*)@(.*)" base)]
+    ;; decode %-escapes only, as libpq does: a `+` here is a literal plus, not a space as in a query string
+    (let [decode          #(url-decode (str/replace % "+" "%2B"))
+          [user password] (str/split userinfo #":" 2)
+          credentials     (cond-> {:user (decode user)}
+                            password (assoc :password (decode password)))]
+      [(str scheme more) credentials])
+    [base {}]))
+
+(defn- check-no-stray-at!
+  "Throw if an `@` is left in `url` or `pairs` once the credentials are off, without quoting either."
+  [^String url pairs]
+  ;; An `@` left on `url` means a password with an unencoded `/`, or an `@` that pgjdbc requires encoded anyway.
+  ;; An unencoded `?` in a password ends the host part early, before the `/` pgjdbc requires after a host, and
+  ;; moves the `@` into `pairs`.
+  ;; Any other `@` in `pairs` is a plain value that pgjdbc accepts, such as Azure's `user=name@server`.
+  ;; Refuse a stray `@` before an error or the URL can quote the part of the password it may hold.
+  (when (or (str/includes? url "@")
+            (and (re-matches #"[^/]*//[^/]+" url)
+                 (some (fn [[k v]] (str/includes? (str k v) "@")) pairs)))
+    (throw (ex-info (str "MB_PGVECTOR_DB_URL has an unencoded @ outside its credentials. "
+                         "Percent-encode reserved characters, e.g. @ as %40, / as %2F and ? as %3F.")
+                    {}))))
+
 (defn- parse-db-url
-  "Parse a pgvector JDBC URL into {:jdbc-url ... :credentials ...}, taking the credentials off the URL.
+  "Parse a pgvector JDBC URL into {:jdbc-url ... :credentials ...}, taking the credentials off the URL whether
+  they're written as params or before the host, or throw if the URL is malformed.
   Other params stay on the URL as written."
   [^String url]
-  (let [[base pairs] (split-query url)
+  (let [[base pairs]                (split-query url)
+        [base-url host-credentials] (split-userinfo base)
+        _                           (check-no-stray-at! base-url pairs)
         ;; credentials: passed to pgjdbc as connection properties, off the URL, because the URL gets
         ;; printed -- pgjdbc logs it at DEBUG on every connection, and DriverManager quotes it in its
         ;; "No suitable driver" error
-        credential?  (comp #{"user" "password" "sslpassword"} first)
-        conn         (for [[k v] (remove credential? pairs)] (str k "=" v))]
-    {:jdbc-url    (cond-> base (seq conn) (str "?" (str/join "&" conn)))
-     :credentials (into {} (for [[k v] (filter credential? pairs)] [(keyword k) (url-decode v)]))}))
+        credential?                 (comp #{"user" "password" "sslpassword"} first)
+        conn                        (for [[k v] (remove credential? pairs)] (str k "=" v))]
+    ;; also set before the host: Postgres clients disagree on which wins, so refuse to pick one
+    (doseq [[k] pairs
+            :when (contains? host-credentials (keyword k))]
+      (throw (ex-info (format "The pgvector URL sets %s both before the host and as a parameter" k)
+                      {:param k})))
+    {:jdbc-url    (cond-> base-url (seq conn) (str "?" (str/join "&" conn)))
+     :credentials (into host-credentials
+                        (for [[k v] (filter credential? pairs)] [(keyword k) (url-decode v)]))}))
 
 (defn- build-db-config
   "Build the next.jdbc spec for [[db-url]], with the credentials as driver properties rather than on the URL."
