@@ -83,7 +83,7 @@ export const BrowseModels = () => {
         t`Showing ${shown.length} of ${official.length + unofficial.length} models`,
         isOfficial ? t`Official only` : t`Unofficial only`,
       ]}
-      description={t`Cleaned-up, combined tables ready to query. Official models live in the Library or in a collection marked official; the rest are in the Unofficial half of the sidebar.`}
+      description={t`Cleaned-up, combined tables ready to query. Official models live in the Library or in a collection marked official; the rest are in the Playground.`}
       actions={
         <>
           <Button

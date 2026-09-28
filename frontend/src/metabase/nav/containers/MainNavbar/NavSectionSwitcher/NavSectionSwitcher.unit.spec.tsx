@@ -17,27 +17,27 @@ function setup(initialRoute: string) {
 }
 
 describe("NavSectionSwitcher", () => {
-  it("switches to Official without leaving the current page", async () => {
+  it("switches to Library without leaving the current page", async () => {
     const { store, router, locations } = setup("/question/42");
 
-    expect(screen.getByRole("radio", { name: "Unofficial" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Playground" })).toBeChecked();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Official" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Library" }));
 
-    expect(screen.getByRole("radio", { name: "Official" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Library" })).toBeChecked();
     expect(store.getState().app.navSection).toBe("official");
     expect(router?.location.pathname).toBe("/question/42");
     expect(locations).toEqual([]);
   });
 
-  it("switches to Unofficial without leaving the current page", async () => {
+  it("switches to Playground without leaving the current page", async () => {
     const { store, router, locations } = setup("/browse/models");
 
-    expect(screen.getByRole("radio", { name: "Official" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Library" })).toBeChecked();
 
-    await userEvent.click(screen.getByRole("radio", { name: "Unofficial" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Playground" }));
 
-    expect(screen.getByRole("radio", { name: "Unofficial" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Playground" })).toBeChecked();
     expect(store.getState().app.navSection).toBe("unofficial");
     expect(router?.location.pathname).toBe("/browse/models");
     expect(locations).toEqual([]);

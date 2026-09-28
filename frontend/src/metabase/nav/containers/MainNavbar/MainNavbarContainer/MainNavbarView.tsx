@@ -20,7 +20,6 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
-import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import NewItemButton from "metabase/nav/components/NewItemButton";
 import { NavDrawer } from "metabase/nav/containers/MainNavbar/NavDrawer";
 import { NavSectionSwitcher } from "metabase/nav/containers/MainNavbar/NavSectionSwitcher";
@@ -39,7 +38,7 @@ import {
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
 import { useSetting, useUserSetting } from "metabase/settings";
-import { ActionIcon, Box, Group, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -234,10 +233,7 @@ export function MainNavbarView({
           {isUnofficial && (
             <>
               <SidebarSection>
-                <Group gap="xs">
-                  <MetabotAppBarButton />
-                  <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
-                </Group>
+                <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
               </SidebarSection>
 
               <SidebarSection>

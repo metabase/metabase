@@ -6,17 +6,12 @@ import {
   getCollectionIcon,
   isLibraryCollection,
 } from "metabase/common/collections/utils";
-import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
-import {
-  SidebarHeading,
-  SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+import { SidebarSection } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { OfficialNavTreeNode } from "metabase/nav/containers/MainNavbar/OfficialNav/OfficialNavTreeNode";
 import { buildOfficialNavTree } from "metabase/nav/containers/MainNavbar/OfficialNav/official-nav-tree";
 import type { OfficialNavItem } from "metabase/nav/containers/MainNavbar/OfficialNav/use-official-nav-items";
-import { useUserSetting } from "metabase/settings";
 import type { CollectionId, CollectionType } from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
@@ -87,10 +82,6 @@ export function NavbarLibrarySection({
   selectedId,
   onItemSelect,
 }: LibraryCollectionSectionProps) {
-  const [expandLibrary = true, setExpandLibrary] = useUserSetting(
-    "expand-library-in-nav",
-  );
-
   const libraryTree = useMemo(() => {
     const libraryCollection = collections.find(isLibraryCollection);
     if (!libraryCollection) {
@@ -128,26 +119,16 @@ export function NavbarLibrarySection({
   }
 
   return (
-    <SidebarSection>
+    <SidebarSection role="section" aria-label={t`Library`}>
       <ErrorBoundary>
-        <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
-          initialState={expandLibrary ? "expanded" : "collapsed"}
-          iconPosition="right"
-          iconSize={8}
-          role="section"
-          aria-label={t`Library`}
-          onToggle={setExpandLibrary}
-        >
-          <Tree
-            data={libraryTree}
-            selectedId={selectedId}
-            onSelect={onItemSelect}
-            TreeNode={OfficialNavTreeNode}
-            role="tree"
-            aria-label="library-collection-tree"
-          />
-        </CollapseSection>
+        <Tree
+          data={libraryTree}
+          selectedId={selectedId}
+          onSelect={onItemSelect}
+          TreeNode={OfficialNavTreeNode}
+          role="tree"
+          aria-label="library-collection-tree"
+        />
       </ErrorBoundary>
     </SidebarSection>
   );

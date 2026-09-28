@@ -81,7 +81,7 @@ export function BrowseMetrics() {
         t`Showing ${shown.length} of ${official.length + unofficial.length} metrics`,
         isOfficial ? t`Official only` : t`Unofficial only`,
       ]}
-      description={t`The numbers your team has agreed on. Official metrics live in the Library or in a collection marked official; the rest are in the Unofficial half of the sidebar.`}
+      description={t`The numbers your team has agreed on. Official metrics live in the Library or in a collection marked official; the rest are in the Playground.`}
       actions={
         <>
           <Button

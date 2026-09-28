@@ -3,6 +3,7 @@ import {
   getCollectionId,
   getIsCollectionPathVisible,
 } from "metabase/app/selectors";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import { SearchButton } from "metabase/nav/components/search/SearchButton/SearchButton";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
@@ -12,11 +13,12 @@ import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
 import { getPageFrame } from "metabase/selectors/app";
 import { Box, Flex, Group, rem } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 
 /**
- * The page's own header, in place of the old app bar: where you are on the left, and the two
- * app-wide controls — search and the account switcher — on the right. It sits above the scrolling
- * content rather than spanning the window, so the rail owns the full height of the app.
+ * The page's own header, in place of the old app bar: where you are on the left, and the
+ * app-wide controls — search, Metabot and the account switcher — on the right. It sits above the
+ * scrolling content rather than spanning the window, so the rail owns the full height of the app.
  */
 export function AppPageHeader() {
   const location = useLocation();
@@ -41,7 +43,7 @@ export function AppPageHeader() {
       justify="space-between"
       gap="lg"
       px={pageFrame?.gutter ?? "xl"}
-      // Centers the row on the nav rail's Official/Unofficial switcher text: the
+      // Centers the row on the nav rail's Library/Playground switcher text: the
       // rail's 8px top padding + the switcher's 8px padding + half its 38px height
       // puts that text at 35px, and this row's 32px controls need 19px above them.
       pt={rem(19)}
@@ -61,6 +63,7 @@ export function AppPageHeader() {
       </Box>
       <Group gap="md" wrap="nowrap" c="text-primary">
         <SearchButton />
+        {!isWithinIframe() && <MetabotAppBarButton />}
         <AppSwitcher />
       </Group>
     </Flex>
