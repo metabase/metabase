@@ -144,6 +144,11 @@
   and tool call against one budget."
   16384)
 
+(def ^:private min-context-length
+  "Smallest context window [[preflight!]] will accept, matching vLLM's. A product floor, not a
+  measurement: Metabot's tools and system prompt run to several thousand tokens before any history."
+  16384)
+
 (def ^:private default-temperature
   "Sampling temperature when the caller supplies none. Ollama's per-model Modelfile default is
   commonly far too high for tool calling and SQL generation, and no server-side default corrects it."
@@ -317,16 +322,54 @@
     (catch Exception e
       (core/rethrow-api-error! "ollama" ollama-error-msg e))))
 
+(defn- loaded-context-length
+  "The context window Ollama loaded `model` with, from `/api/ps`, or nil when it would not say."
+  [native-auth model]
+  (try
+    (let [res (core/request native-auth (merge {:method  :get
+                                                :url     "/api/ps"
+                                                :as      :json
+                                                :headers {"Content-Type" "application/json"}}
+                                               (control-timeouts)))]
+      (some (fn [{:keys [name context_length] :as entry}]
+              ;; `/api/ps` names a loaded model under both keys, and they agree except where a
+              ;; Modelfile gave it another name
+              (when (and (or (= model (:model entry)) (= model name))
+                         (pos-int? context_length))
+                context_length))
+            (get-in res [:body :models])))
+    (catch Exception e
+      (log/debug e "Ollama did not report a context window" {:model model})
+      nil)))
+
+(defn- check-context-budget!
+  "Fail a connection whose model runs with a window too small to hold Metabot's prompt.
+
+  Nothing in a request can widen it: Ollama's OpenAI-compatible surface has no `num_ctx` field. Nor
+  does exceeding it produce an error — with context shift, on by default, Ollama keeps the first few
+  tokens and the tail and silently discards the middle, which is where the tools and the system prompt
+  are. Metabot would run, with no instructions and no tools it could name.
+
+  The probes cannot show this. They are one-line prompts that fit in any window, so the truncation
+  they would reveal is of the *answer*; this truncates the *question*."
+  [native-auth model]
+  (when-let [window (loaded-context-length native-auth model)]
+    (when (< window min-context-length)
+      (throw (preflight-ex
+              (tru "{0} runs with a {1} token context window, which is too small for Metabot — it needs at least {2}."
+                   (str model) (str window) (str min-context-length)))))))
+
 (defn- preflight!
   "Exercise the agent loop's contract against the model that will actually serve it, returning that
   model's id. The connect path must adopt exactly this model rather than re-deriving it from the
   listing, which agrees only while nothing reorders the catalog.
 
-  No context-window check, unlike vLLM's: Ollama's catalog carries no `max_model_len`, so nothing at
-  connect time can see the window. Too small a window shows up as truncation in the probes above."
-  [auth entries requested-model cloud?]
-  (let [model (:id (probe-target entries requested-model))]
+  The context-window check runs last: it needs the model loaded, which the probes do."
+  [auth credentials entries requested-model]
+  (let [cloud? (conn/cloud? credentials)
+        model  (:id (probe-target entries requested-model))]
     (run-probes! auth model cloud?)
+    (check-context-budget! (conn/native-auth credentials) model)
     model))
 
 (defn- tag-chat-capable
@@ -354,7 +397,7 @@
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! auth catalog (or model proposed) (conn/cloud? credentials)))
+                    (preflight! auth credentials catalog (or model proposed)))
          models   (mapv (fn [{:keys [id] :as entry}]
                           {:id id :display_name (or (:name entry) id)})
                         entries)]

@@ -355,8 +355,10 @@
 (defn- probing-server
   "Stub `http/request` for the preflight path: `GET /models` returns `models`, `POST /api/show` reports
   each model's `:capabilities` from the catalog entry (absent where the entry has none, as an Ollama
-  too old to report them answers), and each `POST /chat/completions` returns whatever
-  `choice-by-probe` holds for the probe it was sent, so the two probes can disagree."
+  too old to report them answers), `GET /api/ps` reports the window each model was loaded with from
+  its `:context-length` (so a catalog entry without one is a server that will not say), and each
+  `POST /chat/completions` returns whatever `choice-by-probe` holds for the probe it was sent, so the
+  two probes can disagree."
   [models choice-by-probe]
   (fn [{:keys [url body]}]
     (cond
@@ -368,6 +370,11 @@
             entry (m/find-first #(= model (:id %)) models)]
         {:status 200 :body (cond-> {:model model}
                              (:capabilities entry) (assoc :capabilities (:capabilities entry)))})
+
+      (re-find #"/api/ps$" (str url))
+      {:status 200 :body {:models (for [{:keys [id context-length]} models
+                                        :when context-length]
+                                    {:model id :name id :context_length context-length})}}
 
       :else
       {:status 200 :body {:choices [(get choice-by-probe (probe-kind (json/decode+kw (str body))))]}})))
@@ -467,11 +474,69 @@
                                                         {})]
                           (ollama/list-models {:credentials credentials})))))))))
 
-(deftest preflight-does-not-gate-on-a-context-window-test
-  (testing "Ollama's catalog carries no `max_model_len`, so unlike vLLM nothing gates on the window
-           at connect time — too small a window surfaces later as truncation"
+(deftest preflight-rejects-a-context-window-too-small-for-metabots-prompt-test
+  (testing (str "Ollama defaults the window to 4096 below 23GiB of VRAM, and a request cannot widen it: "
+                "the OpenAI-compatible surface has no `num_ctx`. Exceeding it is not an error either — "
+                "context shift keeps the first few tokens and the tail and discards the middle, which "
+                "is where the tools and the system prompt are, so Metabot would run with neither.")
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"4096 token context window, which is too small for Metabot — it needs at least 16384"
+         (probe! [{:id "good-model" :context-length 4096}] tool-calling-message))))
+  (testing "a window that clears the floor passes"
+    (is (= "good-model"
+           (get-in (probe! [{:id "good-model" :context-length 16384}] tool-calling-message)
+                   [:learned-config :probed-model])))
+    (testing "and the rejected case above passes every probe, which is why the probes cannot stand in
+             for this check: they are one-line prompts that fit in any window"
+      (is (= "good-model"
+             (get-in (probe! [{:id "good-model"}] tool-calling-message)
+                     [:learned-config :probed-model]))))))
+
+(deftest preflight-does-not-read-the-window-off-the-catalog-test
+  (testing (str "the window comes from `/api/ps`, not from the listing — Ollama's catalog carries no "
+                "`max_model_len`, and a hand-written one must not be mistaken for the loaded window")
     (is (= "good-model"
            (get-in (probe! [{:id "good-model" :max_model_len 4096}] tool-calling-message)
+                   [:learned-config :probed-model])))))
+
+(deftest preflight-passes-when-the-server-will-not-say-what-window-it-loaded-test
+  (testing (str "an Ollama that answers `/api/ps` without the model — already unloaded under "
+                "`OLLAMA_KEEP_ALIVE=0` — or will not answer it at all is no grounds to fail a "
+                "connection whose probes passed")
+    (is (= "good-model"
+           (get-in (probe! [{:id "good-model"}] tool-calling-message)
+                   [:learned-config :probed-model])))
+    (mt/with-dynamic-fn-redefs [http/request (let [server (probing-server [{:id "good-model"}]
+                                                                          {:tools      {:message tool-calling-message
+                                                                                        :finish_reason "tool_calls"}
+                                                                           :structured structured-success})]
+                                               (fn [{:keys [url] :as req}]
+                                                 (if (re-find #"/api/ps$" (str url))
+                                                   (throw (ex-info "ps is not there" {}))
+                                                   (server req))))]
+      (is (= "good-model"
+             (get-in (ollama/list-models {:credentials credentials :probe? true})
+                     [:learned-config :probed-model]))))))
+
+(defn- cloud-probe!
+  [models]
+  (probe-choice! models
+                 {:message tool-calling-message :finish_reason "tool_calls"}
+                 {:message structured-tool-message :finish_reason "tool_calls"}
+                 cloud-credentials))
+
+(deftest preflight-gates-cloud-on-a-context-window-too-test
+  (testing (str "Cloud already runs a model at its largest window, so a window below the floor is the "
+                "model's own limit — which is a model Metabot cannot use, exactly as on a self-hosted "
+                "server that was started with too small a window")
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"4096 token context window, which is too small for Metabot — it needs at least 16384"
+         (cloud-probe! [{:id "small-window-model" :context-length 4096}]))))
+  (testing "a Cloud model whose window clears the floor passes"
+    (is (= "big-window-model"
+           (get-in (cloud-probe! [{:id "big-window-model" :context-length 131072}])
                    [:learned-config :probed-model])))))
 
 (deftest preflight-rejects-a-model-that-cannot-call-tools-test
