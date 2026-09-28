@@ -264,3 +264,23 @@
                   (rollback/rollback-major-version! conn liquibase false "64"))
                 (is (false? (versions/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned")
                 (is (nil? (filename-of conn ct "dev_run_a")))))))))))
+
+(deftest filename-repair-leaves-ambiguous-change-set-identities-alone-test
+  (testing "filename repair does not guess when [author id] occurs in more than one year-directory file"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [liquibase/changelog-file "versionless-duplicate-ids.yaml"]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [ct     (liquibase/changelog-table-name liquibase)
+                  legacy "migrations/000_legacy_migrations.yaml"]
+              (liquibase/with-scope-locked liquibase (.update liquibase ""))
+              (jdbc/execute! {:connection conn}
+                             [(format "UPDATE %s SET filename = ? WHERE id = 'duplicate_versionless_id'" ct) legacy])
+              (mt/with-log-messages-for-level [messages [metabase.app-db.liquibase :warn]]
+                (liquibase/repair-version-less-filenames! conn liquibase ct)
+                (is (some #(re-find #"Cannot safely restore.*multiple files" (:message %)) (messages))))
+              (is (= [legacy legacy]
+                     (mapv :filename
+                           (jdbc/query {:connection conn}
+                                       [(format "SELECT filename FROM %s WHERE id = 'duplicate_versionless_id' ORDER BY orderexecuted" ct)])))
+                  "neither row is incorrectly assigned to the other changeset's file"))))))))

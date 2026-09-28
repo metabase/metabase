@@ -399,7 +399,9 @@
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
-              (versions/repair-legacy-rollback! (.. database getConnection getUnderlyingConnection) database)
+              (versions/repair-legacy-rollback! (.. database getConnection getUnderlyingConnection)
+                                                database
+                                                to-run-migrations)
               (.setChangeExecListener liquibase (versions/recording-exec-listener database))
               (try
                 (.update liquibase contexts)
@@ -497,24 +499,35 @@
   the older binary is safe: its downgrade check runs before consolidation.)
 
   Pre-4.2 numeric ids legitimately live in the legacy file and `vNN.` ids are never mis-consolidated, so only
-  other ids are candidates; a candidate with no `[author id]` changeset in this changelog is left alone."
+  other ids are candidates. A candidate is left alone when this changelog has no matching `[author id]`, or has that
+  identity in several files and therefore cannot identify the original filename safely."
   [^Connection conn ^Liquibase liquibase changelog-table]
   (let [stray (->> (jdbc/query {:connection conn}
                                [(format "SELECT id, author FROM %s WHERE filename IN (?, ?) AND id NOT LIKE 'v%%'" changelog-table)
                                 legacy-migrations-file update001-migrations-file])
                    (remove #(re-matches #"\d+" (:id %))))]
     (when (seq stray)
-      (let [path-of (into {} (for [^ChangeSet cs (.getChangeSets (.getDatabaseChangeLog liquibase))
-                                   :when (year-directory-migration? (.getFilePath cs))]
-                               [[(.getAuthor cs) (.getId cs)] (.getFilePath cs)]))]
+      (let [paths-of (reduce (fn [paths ^ChangeSet cs]
+                               (if (year-directory-migration? (.getFilePath cs))
+                                 (update paths [(.getAuthor cs) (.getId cs)] (fnil conj #{}) (.getFilePath cs))
+                                 paths))
+                             {}
+                             (.getChangeSets (.getDatabaseChangeLog liquibase)))]
         (doseq [{:keys [id author]} stray
-                :let [path (path-of [author id])]
-                :when path]
-          (log/warnf "Restoring the changelog filename of version-less changeset %s to %s (an older Metabase version had consolidated it into the legacy changelog file)"
-                     id path)
-          (jdbc/execute! {:connection conn}
-                         [(format "UPDATE %s SET filename = ? WHERE id = ? AND author = ?" changelog-table)
-                          path id author]))))))
+                :let [paths (paths-of [author id])]]
+          (cond
+            (= 1 (count paths))
+            (let [path (first paths)]
+              (log/warnf "Restoring the changelog filename of version-less changeset %s to %s (an older Metabase version had consolidated it into the legacy changelog file)"
+                         id path)
+              (jdbc/execute! {:connection conn}
+                             [(format "UPDATE %s SET filename = ? WHERE id = ? AND author = ?" changelog-table)
+                              path id author]))
+
+            (< 1 (count paths))
+            (log/warnf (str "Cannot safely restore the changelog filename of version-less changeset %s by author %s: "
+                            "that identity occurs in multiple files (%s)")
+                       id author (str/join ", " (sort paths)))))))))
 
 (mu/defn consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.

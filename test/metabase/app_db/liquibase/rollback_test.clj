@@ -163,6 +163,22 @@
               (is (= ["c65"] (changelog-ids conn ct)))
               (is (= ["x.65.0.0"] (versions-recorded))))))))))
 
+(deftest default-rollback-does-not-skip-a-release-without-migrations-test
+  (testing "v64 migrate down is a no-op when v64 booted on the schema v63 produced"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db (.getDatabase liquibase)
+                ct (liquibase/changelog-table-name liquibase)]
+            (versions/ensure-version-tracking! conn db)
+            (mdb.test-util/fabricate-history! conn ct
+                                              [{:deployment "d62" :ran "x.62.0" :changesets ["c62"]}
+                                               {:deployment "d63" :ran "x.63.0" :booted ["x.64.0"] :changesets ["c63"]}])
+            (with-redefs [config/mb-version-info (tag "v0.64.0")]
+              (rollback/rollback-major-version! conn liquibase false))
+            (is (= ["c62" "c63"] (changelog-ids conn ct))
+                "the default target is v63 at the current deployment, so no schema changes are reversed")))))))
+
 (deftest rollback-force-widens-to-full-history-test
   (testing "force widens the rollback window from the recent history to the full recorded history"
     (mt/test-drivers #{:h2 :mysql :postgres}

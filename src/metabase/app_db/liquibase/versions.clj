@@ -385,6 +385,12 @@
         bool-type (case db-type
                     :mysql "bit(1)"
                     "boolean")
+        ;; Match the type produced by the old UnifyTimeColumnsType custom migration. The version table is created
+        ;; before Liquibase runs: a fresh install still runs that migration over it, while an upgrade on which the
+        ;; migration already ran does not. Creating the final type directly keeps both paths identical.
+        timestamp-type (case db-type
+                         (:postgres :h2) "timestamp with time zone"
+                         :mysql          "timestamp(6)")
         ;; match the storage options every other Metabase table gets on MySQL -- see [[metabase.app-db.liquibase.mysql]]
         suffix    (case db-type
                     :mysql " ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
@@ -394,9 +400,9 @@
                  "deployment_id varchar(10) NOT NULL, "
                  "metabase_version varchar(255) NOT NULL, "
                  "ran_migrations %s NOT NULL, "
-                 "deployed_at timestamp NOT NULL, "
+                 "deployed_at %s NOT NULL, "
                  "CONSTRAINT uq_databasechangelog_version UNIQUE (deployment_id, metabase_version))%s")
-            databasechangelog-versions-table id-column bool-type suffix)))
+            databasechangelog-versions-table id-column bool-type timestamp-type suffix)))
 
 (defn- legacy-major
   "The major of a `vNN.` changeset id (see [[extract-numbers]]), or nil for a version-less id."
@@ -419,6 +425,20 @@
   (->> (query conn [(format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
        (keep (comp legacy-major :id))
        (reduce max 0)))
+
+(defn- highest-real-legacy-major
+  "The highest legacy changeset major, ignoring synthetic version-tracking markers. Used only to detect work that an
+  older binary really rolled back: a marker is unknown to that binary and therefore survives its rollback."
+  [^Connection conn ^Database database]
+  (->> (query conn [(format "SELECT id, filename FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
+       (remove legacy-version-tracking-marker?)
+       (keep (comp legacy-major :id))
+       (reduce max 0)))
+
+(defn- change-set-id [change-set]
+  (if (instance? ChangeSet change-set)
+    (.getId ^ChangeSet change-set)
+    (str change-set)))
 
 (defn- backfill-version
   "The version to record as having run the current deployment of an install that predates version tracking: the
@@ -450,24 +470,39 @@
   "Correct the version rows of the current deployment after a binary that predates version tracking rolled it back with
   its own `migrate down`: that removes the deployment's newest `vNN.` changesets but not its version rows, so its ran
   version still names the major it was rolled back from. When the deployment ran only `vNN.` changesets and its ran
-  major is above the [[highest-legacy-major]] left in the changelog, the ran version becomes that major and the
-  deployment's version rows above it are dropped.
+  major is above the highest real legacy changeset left in the changelog, the ran version becomes that major and the
+  deployment's version rows above it are dropped. `unrun-change-sets` is the changelog work the caller found while
+  holding the migration lock. It distinguishes a stale synthetic marker left by an old rollback from a valid marker
+  on a deployment that simply ran a lower-major backport.
 
-  Deployments this binary's own versions made are left alone -- they carry version-less changesets or the
-  `vNN.legacy-version-tracking` marker of their major -- as is a development build's [[dev-version]]. Only safe while
-  holding the migration lock: until a migrating binary writes its marker, its deployment looks just like a trimmed one."
-  [^Connection conn ^Database database]
+  Deployments this binary's own versions made are left alone when they carry version-less changesets, or when their
+  marker has no matching legacy changeset in the locked unrun set; a development build's [[dev-version]] is also left
+  alone. Only safe while holding the migration lock: until a migrating binary writes its marker, its deployment looks
+  just like a trimmed one."
+  [^Connection conn ^Database database unrun-change-sets]
   (when-let [deployment-id (last-deployment-id conn database)]
-    (let [ran       (ran-version conn deployment-id)
-          ran-major (some-> ran version->major)
-          major     (highest-legacy-major conn database)]
+    (let [ran                 (ran-version conn deployment-id)
+          ran-major           (some-> ran version->major)
+          major               (highest-real-legacy-major conn database)
+          deployment-rows     (query conn [(format "SELECT id, filename FROM %s WHERE deployment_id = ?"
+                                                   (changelog-table database))
+                                           deployment-id])
+          marker-majors       (into #{} (comp (filter legacy-version-tracking-marker?)
+                                              (keep (comp legacy-major :id)))
+                                    deployment-rows)
+          unrun-legacy-majors (into #{} (keep (comp legacy-major change-set-id)) unrun-change-sets)
+          stale-marker?       (some #(and (> % major)
+                                          (some (fn [unrun-major]
+                                                  (<= (inc major) unrun-major %))
+                                                unrun-legacy-majors))
+                                    marker-majors)]
       (when (and ran-major
                  (not (synthetic-dev-major? ran-major))
                  (pos? major)
                  (> ran-major major)
+                 (or (empty? marker-majors) stale-marker?)
                  (not-any? (comp version-less-id? :id)
-                           (query conn [(format "SELECT id FROM %s WHERE deployment_id = ?" (changelog-table database))
-                                        deployment-id])))
+                           deployment-rows))
         (let [version (format "x.%d.0.0" major)]
           (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
                      deployment-id ran major version)
@@ -586,11 +621,14 @@
   (into (sorted-set) (keep version->major) (mapcat :versions deployments)))
 
 (defn previous-recorded-major
-  "The highest major recorded strictly below the current schema major within the [[rollback-window]] -- the default
-  target of `migrate down`. nil when there is no earlier recorded major to roll back to."
+  "The recorded major immediately before the newest recorded release within the [[rollback-window]] -- the default
+  target of `migrate down`. This is deliberately based on ran and boot rows alike: if v64 booted without migrations
+  on a schema last changed by v63, the previous release is v63 (a no-op boundary), not v62. nil when there is no
+  earlier recorded major to roll back to."
   [deployments all?]
-  (when-let [current (schema-major deployments)]
-    (last (take-while #(< % current) (recorded-majors (rollback-window deployments all?))))))
+  (let [majors (recorded-majors (rollback-window deployments all?))]
+    (when (< 1 (count majors))
+      (nth (vec majors) (- (count majors) 2)))))
 
 (defn changesets-from-later-version
   "Returns changeset IDs applied by versions later than `latest-available` up to `latest-applied`, ordered by execution

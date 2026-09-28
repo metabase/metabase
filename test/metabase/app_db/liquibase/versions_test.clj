@@ -9,7 +9,8 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util :as u])
   (:import
    (liquibase Liquibase)
    (liquibase.changelog ChangeSet)
@@ -234,10 +235,10 @@
       (let [lock-held-at-repair (atom [])
             repair              (dynamic-redefs/original-fn #'versions/repair-legacy-rollback!)]
         (mt/with-dynamic-fn-redefs [versions/repair-legacy-rollback!
-                                    (fn [conn database]
+                                    (fn [conn database unrun-change-sets]
                                       (swap! lock-held-at-repair conj
                                              (.hasChangeLogLock (.getLockService (LockServiceFactory/getInstance) database)))
-                                      (repair conn database))]
+                                      (repair conn database unrun-change-sets))]
           (mdb/migrate! (mdb/data-source) :up)
           (is (= [true] @lock-held-at-repair))
           (mdb/migrate! (mdb/data-source) :up)
@@ -272,6 +273,33 @@
           (versions/record-deployment-version! conn "dep1" "x.64.0" true)
           (is (= [["dep1" "x.64.0" true]] (version-rows conn))))))))
 
+(deftest deployed-at-uses-unified-timestamp-type-test
+  (testing "the version table starts with the post-UnifyTimeColumnsType type on both fresh installs and upgrades"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (liquibase/with-liquibase [liquibase conn]
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
+        (let [{:keys [data_type datetime_precision]}
+              (first
+               (case driver/*driver*
+                 :mysql
+                 (jdbc/query {:connection conn}
+                             [(str "SELECT data_type, datetime_precision FROM information_schema.columns "
+                                   "WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'deployed_at'")
+                              versions/databasechangelog-versions-table])
+
+                 (:h2 :postgres)
+                 (jdbc/query {:connection conn}
+                             [(str "SELECT data_type, datetime_precision FROM information_schema.columns "
+                                   "WHERE LOWER(table_name) = ? AND LOWER(column_name) = 'deployed_at'")
+                              versions/databasechangelog-versions-table])))]
+          (case driver/*driver*
+            :h2      (is (= "timestamp with time zone" (some-> data_type u/lower-case-en)))
+            :postgres (is (= "timestamp with time zone" data_type))
+            :mysql   (do
+                       (is (= "timestamp" data_type))
+                       (is (= 6 datetime_precision)))))))))
+
 (deftest repair-corrects-a-deployment-trimmed-by-a-legacy-rollback-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -285,9 +313,14 @@
                                               [{:deployment "d1"
                                                 :ran        "x.64.0.0"
                                                 :booted     ["x.64.2" "x.63.1"]
-                                                :changesets ["v62.00-001" "v63.00-001"]}])
+                                                ;; The old binary does not know this synthetic row, so it survives
+                                                ;; when that binary rolls the real v64 changeset back.
+                                                :changesets ["v62.00-001" "v63.00-001"
+                                                             {:id       "v64.legacy-version-tracking"
+                                                              :author   "version-tracking"
+                                                              :filename "legacy-version-tracking"}]}])
             (versions/ensure-version-tracking! conn db)
-            (versions/repair-legacy-rollback! conn db)
+            (versions/repair-legacy-rollback! conn db ["v64.00-001"])
             (is (= #{["d1" "x.63.0.0" true] ["d1" "x.63.1" false]} (set (version-rows conn)))
                 "the ran row is lowered to the highest remaining major, and newer boot rows are dropped")
             (is (= 63 (versions/current-schema-major conn db)))))))))
@@ -308,7 +341,7 @@
                 (mdb.test-util/fabricate-history! conn changelog-table
                                                   [{:deployment "d1" :ran ran :changesets changesets}])
                 (versions/ensure-version-tracking! conn db)
-                (versions/repair-legacy-rollback! conn db)
+                (versions/repair-legacy-rollback! conn db [])
                 (is (= [["d1" ran true]] (version-rows conn)))))))))))
 
 ;;; ------------------------------------------------- deployment reads ---------------------------------------------
@@ -366,6 +399,12 @@
                                             [{:deployment "d63" :ran "x.63.0" :changesets ["c63"]}])
           (testing "a single deployment has nothing earlier"
             (is (nil? (versions/previous-recorded-major (deployments) false))))
+          (testing "a release that booted without migrations steps back to the schema-bearing release, not past it"
+            (versions/record-deployment-version! conn "d63" "x.64.0" false)
+            (is (= 63 (versions/previous-recorded-major (deployments) false))))
+          (jdbc/execute! {:connection conn}
+                         [(format "DELETE FROM %s WHERE metabase_version = 'x.64.0'"
+                                  versions/databasechangelog-versions-table)])
           ;; the instance then upgraded directly to 65 -- 64 was never a recorded deployment
           (mdb.test-util/fabricate-history! conn changelog-table
                                             [{:deployment "d65" :ran "x.65.0" :changesets ["c65"]}])
