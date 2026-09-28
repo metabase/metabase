@@ -3,7 +3,9 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
+   [metabase-enterprise.transform-testing.metrics :as metrics]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.run-tracking.core :as rt]
@@ -65,6 +67,7 @@
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
                                    :terminal {:status "timeout" :end_time :%now}})]
     (doseq [run reaped]
+      (metrics/emit! analytics/inc! :metabase-transform-test/runs-orphaned)
       (try
         (events/publish-event! :event/transform-test-run-timeout
                                (-> {:object (assoc run :status :timeout)}

@@ -4352,7 +4352,8 @@
   enterprise/transform-testing
   {:team "Graphy"
    :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
-   :uses #{api
+   :uses #{analytics.interface
+           api
            audit-app
            driver
            events

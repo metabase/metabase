@@ -27,15 +27,18 @@
    [metabase-enterprise.transform-testing.expectations.empty]
    [metabase-enterprise.transform-testing.expectations.equals]
    [metabase-enterprise.transform-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.transform-testing.metrics :as metrics]
    [metabase-enterprise.transform-testing.run-tracking :as transform-testing.run-tracking]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -233,8 +236,15 @@
   [transform-id :- ::lib.schema.id/transform
    inputs       :- ::transform-testing.schema/inputs
    expectations :- ::transform-testing.schema/expectations]
-  (validated-plan transform-id inputs expectations)
+  (metrics/validate! #(validated-plan transform-id inputs expectations))
   nil)
+
+(defn- record-run!
+  [driver duration-ms status results]
+  (metrics/emit! analytics/inc! :metabase-transform-test/runs {:driver driver :status status})
+  (metrics/emit! analytics/observe! :metabase-transform-test/run-duration-ms {:driver driver} duration-ms)
+  (doseq [{:keys [type status]} results]
+    (metrics/emit! analytics/inc! :metabase-transform-test/expectations {:driver driver :type type :status status})))
 
 (mu/defn run-transform-test! :- ::transform-testing.schema/run-result
   "Run the transform test `transform-test` against temp tables and report what each expectation found.
@@ -243,29 +253,50 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [{:keys [id transform_id inputs expectations]} :- ::transform-testing.schema/transform-test]
   (let [{:keys [driver database input->table output-table labels replacements compiled]}
-        (validated-plan transform_id inputs expectations)
+        (metrics/validate! #(validated-plan transform_id inputs expectations))
         {run-id :id} (transform-testing.run-tracking/start-run! id api/*current-user-id*)
-        final-status (atom :error)]
+        final-status (atom :error)
+        timer (u/start-timer)
+        metric-status (atom :error)
+        expectation-results (atom [])
+        connection-timer (u/start-timer)
+        connection-recorded? (atom false)
+        record-connection! (fn []
+                             (when (compare-and-set! connection-recorded? false true)
+                               (metrics/emit! analytics/observe! :metabase-transform-test/phase-duration-ms
+                                              {:driver driver :phase :connection} (u/since-ms connection-timer))))]
+    (metrics/emit! analytics/inc! :metabase-transform-test/runs-started {:driver driver})
     (try
       (let [result
             (driver/do-with-test-connection
              driver database
              (fn [conn]
+               (record-connection!)
                (try
-                 (create-inputs! driver conn input->table labels)
-                 (create-output! driver conn output-table compiled labels)
-                 (let [results (check-expectations driver conn
-                                                   {:driver driver
-                                                    :output-table output-table
-                                                    :replacements replacements}
-                                                   expectations labels)]
+                 (metrics/timed-phase! driver :setup #(create-inputs! driver conn input->table labels))
+                 (metrics/timed-phase! driver :transform #(create-output! driver conn output-table compiled labels))
+                 (let [results (metrics/timed-phase!
+                                driver :expectations
+                                #(check-expectations driver conn
+                                                     {:driver driver
+                                                      :output-table output-table
+                                                      :replacements replacements}
+                                                     expectations labels))]
+                   (reset! expectation-results results)
                    {:status       (if (every? #(= :passed (:status %)) results) :passed :failed)
                     :expectations results
                     :tables       labels})
                  (finally
-                   (doseq [table (cons output-table (vals input->table))]
-                     (transform-testing.executor/drop-temp-table! driver conn table))))))]
+                   (metrics/timed-phase!
+                    driver :cleanup
+                    #(doseq [table (cons output-table (vals input->table))]
+                       (transform-testing.executor/drop-temp-table! driver conn table)))))))]
         (reset! final-status (:status result))
+        (reset! metric-status (if (some #(= :error (:status %)) @expectation-results)
+                                :error
+                                (:status result)))
         result)
       (finally
+        (record-connection!)
+        (record-run! driver (u/since-ms timer) @metric-status @expectation-results)
         (transform-testing.run-tracking/finish-run! run-id @final-status)))))

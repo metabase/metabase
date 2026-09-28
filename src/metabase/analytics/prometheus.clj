@@ -346,6 +346,29 @@
    (prometheus/counter :metabase-remote-sync/git-operations-failed
                        {:description "Number of failed git operations"
                         :labels [:operation :remote]})
+   (prometheus/counter :metabase-transform-test/runs
+                       {:description "Transform-test runs that executed against the warehouse, by outcome."
+                        :labels [:driver :status]})            ; status: passed | failed | error
+   (prometheus/counter :metabase-transform-test/refusals
+                       {:description "Transform-test validations rejected before execution, by authoring operation."
+                        :labels [:operation :error-code]})
+   (prometheus/counter :metabase-transform-test/expectations
+                       {:description "Individual transform-test expectations evaluated, by type and outcome."
+                        :labels [:driver :type :status]})      ; type: empty | equals · status: passed | failed | error
+   (prometheus/counter :metabase-transform-test/runs-started
+                       {:description "Transform-test executions started after validation, before connection acquisition."
+                        :labels [:driver]})
+   (prometheus/counter :metabase-transform-test/runs-orphaned
+                       {:description "Transform-test runs marked timeout after losing their owner heartbeat."})
+   (prometheus/histogram :metabase-transform-test/phase-duration-ms
+                         {:description "Transform-test phase duration, including executions that throw, in milliseconds."
+                          :labels [:driver :phase]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-transform-test/run-duration-ms
+                         {:description "Duration in milliseconds of a transform-test run that executed."
+                          :labels [:driver]
+                          ;; 1ms -> 10minutes
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000 60000 120000 300000 600000]})
    ;; Shared: semantic search and entity retrieval each provision their own tables in it, as more may later.
    ;; At most one is available at a time: a dedicated MB_PGVECTOR_DB_URL always wins over the app db.
    (prometheus/gauge :metabase-pgvector/store-available

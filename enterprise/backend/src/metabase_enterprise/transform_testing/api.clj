@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.transform-testing.db :as transform-testing.db]
    [metabase-enterprise.transform-testing.errors :as transform-testing.errors]
+   [metabase-enterprise.transform-testing.metrics :as metrics]
    [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase.api.common :as api]
@@ -18,9 +19,10 @@
   400 — the test is wrong, and its author can fix it.
   422 — the test is fine; the transform or its database prevents a run here.
   501 — the test asks for something not built yet."
-  [thunk]
+  [operation thunk]
   (try
-    (thunk)
+    (binding [metrics/*operation* operation]
+      (thunk))
     (catch clojure.lang.ExceptionInfo e
       (if-let [error-type (:error-type (ex-data e))]
         (throw (ex-info (ex-message e)
@@ -49,7 +51,7 @@
    _query-params
    {:keys [transform_id inputs expectations] :as body} :- ::transform-testing.schema/transform-test.create]
   (api/write-check :model/Transform transform_id)
-  (refusing #(transform-testing.runner/validate-transform-test transform_id inputs expectations))
+  (refusing :create #(transform-testing.runner/validate-transform-test transform_id inputs expectations))
   (transform-testing.db/insert-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::transform-testing.schema/transform-test
@@ -64,7 +66,7 @@
     (when (seq body)
       (when (some #(contains? body %) [:transform_id :inputs :expectations])
         (let [{:keys [transform_id inputs expectations]} (merge transform-test body)]
-          (refusing #(transform-testing.runner/validate-transform-test transform_id inputs expectations))))
+          (refusing :update #(transform-testing.runner/validate-transform-test transform_id inputs expectations))))
       (transform-testing.db/update-transform-test! id body)))
   (transform-testing.db/transform-test id))
 
@@ -83,13 +85,13 @@
   reports what it found — including one that could not be evaluated, which comes back as that
   expectation's own `:error` rather than discarding the answers of the others.
 
-  Any other status means the run was refused and nothing meaningful ran; the body then carries the `:error-code`
-  naming which refusal it was, as [[refusing]] describes."
+  Typed validation and execution errors carry an `:error-code`, as [[refusing]] describes.
+  Execution errors can occur after warehouse work has begun."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (refusing #(-> (transform-testing.db/transform-test id)
-                 api/write-check
-                 transform-testing.runner/run-transform-test!)))
+  (refusing :run #(-> (transform-testing.db/transform-test id)
+                      api/write-check
+                      transform-testing.runner/run-transform-test!)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-test` routes."
