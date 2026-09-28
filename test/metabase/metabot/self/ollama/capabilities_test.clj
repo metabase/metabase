@@ -204,6 +204,57 @@
       (finally
         (ollama.capabilities/clear-cache!)))))
 
+(defn- age-lookups-by!
+  "Backdate every entry by `ms`, so a test can put it either side of a refresh interval. `:at` is a
+  `u/start-timer`, which counts nanoseconds."
+  [ms]
+  (swap! @#'ollama.capabilities/capabilities-cache
+         (fn [c]
+           (reduce (fn [acc [k v]] (cache/miss acc k (update v :at - (* ms 1000000))))
+                   c
+                   (into {} c)))))
+
+(deftest a-server-that-never-answered-is-re-asked-sooner-test
+  (testing (str "serving the last answer needs there to be one. A first lookup that fails records no "
+                "answer at all, so until it is re-asked every model behind that server reads as not "
+                "reasoning and runs on the smaller token budget — the shorter interval is how long "
+                "that lasts.")
+    ;; not written with `with-server!`: the failed entry has to survive into the second stub, and that
+    ;; helper empties the cache on the way in
+    (ollama.capabilities/clear-cache!)
+    (try
+      (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "down" {})))]
+        (is (false? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))
+      (testing "a minute short of the retry interval the failure still stands, and nothing is re-asked"
+        (age-lookups-by! (dec @#'ollama.capabilities/retry-after-ms))
+        (let [seen (atom [])]
+          (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]} seen)]
+            (is (false? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b")))
+            (Thread/sleep 100)
+            (is (empty? @seen)))))
+      (testing "past it, the recovered server is asked and answers"
+        (age-lookups-by! 2)
+        (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]})]
+          (is (true? (tu/poll-until 5000 (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
+      (finally
+        (ollama.capabilities/clear-cache!)))))
+
+(deftest an-ollama-that-answers-without-capabilities-is-not-re-asked-sooner-test
+  (testing (str "a build too old to report `capabilities` will answer the same way for as long as it "
+                "runs, so it keeps the long interval rather than being polled every minute")
+    (with-server! {}
+      (fn [seen]
+        (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b")))
+        (is (= 1 (count @seen)))
+        (age-lookups-by! (inc @#'ollama.capabilities/retry-after-ms))
+        (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b")))
+        (Thread/sleep 100)
+        (is (= 1 (count @seen)) "still the one lookup")
+        (testing "and the long interval does re-ask it"
+          (age-lookups-by! @#'ollama.capabilities/refresh-after-ms)
+          (is (false? (ollama.capabilities/reasoning-model? credentials "qwen3:8b")))
+          (is (tu/poll-until 5000 (= 2 (count @seen)))))))))
+
 (deftest a-cold-read-starts-one-lookup-however-many-ask-test
   (testing "a burst of page loads against a cold cache must not each start their own lookup"
     (with-server! {"gpt-oss:20b" ["completion" "tools" "thinking"]}

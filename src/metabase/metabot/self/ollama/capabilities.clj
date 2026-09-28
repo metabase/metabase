@@ -50,12 +50,15 @@
   #{"completion" "tools"})
 
 (defn- fetch-capabilities
-  "What Ollama says `model` can do, as a set of capability names, or nil when it would not say — an
-  Ollama too old to report `capabilities`, or one that answered `/api/show` with an error.
+  "Ask Ollama what `model` can do: `{:caps #{...}-or-nil, :answered? bool}`.
+
+  `:caps` is nil whenever the server would not say, and `:answered?` separates the two reasons it
+  might not. An Ollama too old to report `capabilities` answers, so asking again will not help; one
+  that errored or timed out did not, and probably will next time — see [[stale?]], which is the only
+  thing the distinction is for.
 
   Never throws: this is metadata that sharpens a decision the adapter can still make without it, so a
-  server that will not answer must not take down the request or the page that asked. nil is cached
-  like any other answer, so a broken endpoint is asked once per TTL rather than once per request."
+  server that will not answer must not take down the request or the page that asked."
   [credentials model]
   (try
     (let [res  (core/request (conn/native-auth credentials)
@@ -67,11 +70,12 @@
                               :socket-timeout     native-api-timeout-ms
                               :connection-timeout (llm/llm-connection-timeout-ms)})
           caps (get-in res [:body :capabilities])]
-      (when (sequential? caps)
-        (into #{} (map str) caps)))
+      {:answered? true
+       :caps      (when (sequential? caps)
+                    (into #{} (map str) caps))})
     (catch Exception e
       (log/debug e "Ollama did not report capabilities" {:model model})
-      nil)))
+      {:answered? false})))
 
 ;;; -------------------------------------------------- The cache --------------------------------------------------
 
@@ -102,22 +106,38 @@
   [credentials model]
   [(hash (select-keys credentials [:hosting :base-url :api-key])) model])
 
+(def ^:private retry-after-ms
+  "How long an entry that holds no answer, from a server that did not give one, is left alone.
+
+  Much shorter than [[refresh-after-ms]] because there is nothing to serve meanwhile: until this
+  elapses, every model behind a server that was briefly unreachable reads as not reasoning and runs on
+  the smaller token budget. Not shorter still, so a server that is properly down is not asked once per
+  read."
+  60000)
+
 (defn- stale?
-  "Whether `entry` is old enough to re-ask for."
-  [{:keys [at]}]
-  (< refresh-after-ms (u/since-ms at)))
+  "Whether `entry` is old enough to re-ask for.
+
+  An entry holding no answer from a server that never gave one is re-asked on [[retry-after-ms]]: it
+  records a failure rather than a fact, and unlike a real answer there is nothing to serve while it
+  stands. An Ollama that answered without `capabilities` is not that case — it will answer the same way
+  for as long as it runs that build — and neither is a failed re-ask over an answer we already hold."
+  [{:keys [caps answered? at]}]
+  (< (if (or caps answered?) refresh-after-ms retry-after-ms)
+     (u/since-ms at)))
 
 (defn- remember!
   "Record what a lookup returned, and return the capability set now believed.
 
   A lookup that came back with nothing keeps whatever was believed before — a server that would not
   answer is not evidence that a model changed — but still stamps `:at`, so a broken endpoint is
-  re-asked on the usual interval rather than once per read."
-  [k caps]
+  re-asked on an interval rather than once per read."
+  [k {:keys [caps answered?]}]
   (-> (swap! capabilities-cache
              (fn [c]
-               (cache/miss c k {:caps (or caps (:caps (cache/lookup c k)))
-                                :at   (u/start-timer)})))
+               (cache/miss c k {:caps      (or caps (:caps (cache/lookup c k)))
+                                :answered? answered?
+                                :at        (u/start-timer)})))
       (cache/lookup k)
       :caps))
 
