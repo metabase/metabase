@@ -2447,8 +2447,9 @@
           (is (= (mt/id :orders :user_id)
                  (:source-field (get-in query [:stages 0 :breakout 0 1])))
               "wired to the FK column the card actually returns")
-          (is (seq (mt/rows (qp/process-query query)))
-              "and the query the LLM gets back executes"))))))
+          (is (= [["Affiliate" 341] ["Facebook" 354] ["Google" 361] ["Organic" 341] ["Twitter" 349]]
+                 (mt/formatted-rows [str int] (qp/process-query query)))
+              "and the query the LLM gets back executes, counting the card's users per source"))))))
 
 (deftest aggregating-source-card-rejects-fk-it-does-not-return-test
   (testing (str "The reported bug. The card aggregates over ORDERS, so ORDERS.PRODUCT_ID is NOT among its returned\n"
@@ -2542,7 +2543,8 @@
                                             "breakout"    [["field" {} [db-name "PUBLIC" "ORDERS" "TOTAL"]]]}]}))
                             (get-in [:structured-output :query]))]
               (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
-              (is (seq (mt/rows (qp/process-query query)))))))))))
+              (is (= 4958 (count (mt/rows (qp/process-query query))))
+                  "one row per distinct TOTAL the card returns"))))))))
 
 (deftest native-source-card-stage-leaves-clauses-alone-test
   (testing (str "When we cannot work out what a card exposes, the pass must fail CLOSED -- leave the clause alone.\n"
