@@ -24,7 +24,3 @@
 .channelAvatar {
   flex-shrink: 0;
 }
-
-.detailsTable {
-  overflow: hidden;
-}

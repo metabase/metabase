@@ -12,6 +12,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { SIDEBAR_WIDTH } from "metabase/monitor/components/DetailSidebar";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
@@ -24,7 +25,7 @@ import type {
   RevokeAdminSessionsRequest,
 } from "metabase-types/api";
 
-import { SIDEBAR_WIDTH, SessionDetailSidebar } from "../SessionDetailSidebar";
+import { SessionDetailSidebar } from "../SessionDetailSidebar";
 import { SessionsFilters } from "../SessionsFilters";
 import { SessionsTable } from "../SessionsTable";
 import { SessionsTabs } from "../SessionsTabs";
