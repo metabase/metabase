@@ -1964,6 +1964,12 @@
                     :model/Database
                     :model/User}}
 
+  proof
+  {:team "UX West"
+   :api  #{}
+   :uses #{api
+           util}}
+
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
