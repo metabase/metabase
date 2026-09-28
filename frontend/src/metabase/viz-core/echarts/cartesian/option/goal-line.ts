@@ -14,6 +14,9 @@ import type { ChartDataset } from "../model/types";
 export const GOAL_LINE_DASH = [2, 2];
 const GOAL_LINE_WIDTH = 1;
 
+export const isGoalLineSeriesId = (seriesId: string | undefined) =>
+  seriesId?.startsWith(GOAL_LINE_SERIES_ID) ?? false;
+
 function getFirstNonNullXValue(dataset: ChartDataset) {
   for (let i = 0; i < dataset.length; i++) {
     const xValue = dataset[i][X_AXIS_DATA_KEY];
