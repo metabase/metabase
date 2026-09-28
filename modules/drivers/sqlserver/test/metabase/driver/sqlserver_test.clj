@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlserver-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlserver-test]}}}}}}
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
@@ -28,7 +29,9 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -1039,6 +1042,39 @@
       (mt/dataset bigint-identity-data
         (is (= :type/BigInteger
                (t2/select-one-fn :base_type :model/Field (mt/id :bigint_identity_test :id))))))))
+
+(def ^:private udt-alias-db-details
+  (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "udt_alias_test"})))
+
+(def ^:private udt-alias-db-ddl
+  ["CREATE TYPE dbo.Key10 FROM varchar(10);"
+   "CREATE TYPE dbo.Importe FROM numeric(19,2);"
+   (str "CREATE TABLE dbo.udt_alias_test ("
+        "  id int NOT NULL PRIMARY KEY,"
+        "  customer dbo.Key10 NOT NULL,"
+        "  amount   dbo.Importe NULL,"
+        "  plain    varchar(10) NULL);")])
+
+(defn- create-udt-alias-db! []
+  (tx/drop-if-exists-and-create-db! :sqlserver "udt_alias_test")
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver @udt-alias-db-details)]
+    (doseq [stmt udt-alias-db-ddl]
+      (jdbc/execute! spec [stmt] {:transaction? false}))))
+
+(deftest user-defined-type-alias-sync-test
+  (testing "UDT aliases (like `CREATE TYPE Key10 FROM varchar(10)`) sync to their underlying base type (#62335)"
+    (mt/test-driver :sqlserver
+      (create-udt-alias-db!)
+      (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
+        (sync/sync-database! database)
+        (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
+              fields   (into {} (map (juxt :name identity))
+                             (t2/select :model/Field :table_id table-id))]
+          (is (=? {:database_type "Key10"   :base_type :type/Text}    (get fields "customer")))
+          (is (=? {:database_type "Importe" :base_type :type/Decimal} (get fields "amount")))
+          (testing "known base types are untouched"
+            (is (=? {:database_type "int"     :base_type :type/Integer} (get fields "id")))
+            (is (=? {:database_type "varchar" :base_type :type/Text}    (get fields "plain")))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"
