@@ -121,7 +121,7 @@
                         {:query query, :type qp.error-type/invalid-query}))))))
 
 (mu/defn- do-with-resolved-database :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (mu/fn
     [query :- ::qp.schema/any-query]
     (let [query       (set/rename-keys query {"database" :database})
@@ -136,7 +136,7 @@
     (= (:lib/type query) :mbql/query) (assoc :lib/metadata (qp.store/metadata-provider))))
 
 (mu/defn- do-with-metadata-provider :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       (qp.store/initialized?)
@@ -160,7 +160,7 @@
           (f (maybe-attach-metadata-provider-to-query query)))))))
 
 (mu/defn- do-with-driver :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       driver/*driver*
@@ -185,7 +185,7 @@
           (f query))))))
 
 (mu/defn- do-with-database-local-settings :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (cond
       (setting/database-local-values)
@@ -245,7 +245,7 @@
                TimeUnit/MILLISECONDS)))
 
 (mu/defn- do-with-canceled-chan :- fn?
-  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
+  [f :- fn?]
   (fn [query]
     (binding [qp.pipeline/*canceled-chan* (or qp.pipeline/*canceled-chan* (a/promise-chan))]
       (let [timeout-task (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)]
@@ -282,7 +282,7 @@
 (mu/defn do-with-qp-setup
   "Impl for [[with-qp-setup]]."
   [query :- ::qp.schema/any-query
-   f     :- [:=> [:cat ::qp.schema/any-query] :any]]
+   f     :- fn?]
   ;; TODO -- think about whether we should pre-compile this middleware
   (when (a.impl.dispatch/in-dispatch-thread?)
     (throw (ex-info "QP calls are not allowed inside core.async dispatch pool threads."

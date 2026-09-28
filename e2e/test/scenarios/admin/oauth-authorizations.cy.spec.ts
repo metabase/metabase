@@ -4,6 +4,7 @@ const { H } = cy;
 
 const PATH = "/admin/metabot/mcp/authorizations";
 const REDIRECT_URI = "https://example.com/callback";
+const SCOPE = "agent:content:read";
 
 /**
  * End-to-end coverage for the OAuth Authorizations admin page.
@@ -110,8 +111,8 @@ function denyClient(client: RegisteredClient) {
 
 /**
  * Drive the consent flow to a decision for a registered client, recording an `approved` or `denied`
- * event stamped with the signed-in user. `scope` is omitted (it's optional, and the DCR client's
- * agent scopes don't include `profile`); the client must be confidential so the public-client PKCE
+ * event stamped with the signed-in user. `/oauth/authorize` requires a scope, and the DCR client's
+ * default scopes include `SCOPE`; the client must be confidential so the public-client PKCE
  * requirement doesn't apply. Mirrors the real browser flow: GET the consent page, lift the CSRF
  * token + params signature from its hidden fields, then POST the decision (Cypress carries the
  * CSRF cookie). Both approve and deny redirect (302).
@@ -121,7 +122,7 @@ function decideClient(client: RegisteredClient, approved: boolean) {
   const authorizeUrl =
     `/oauth/authorize?client_id=${clientId}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-    "&response_type=code&state=test-state";
+    `&response_type=code&scope=${encodeURIComponent(SCOPE)}&state=test-state`;
 
   return cy.request("GET", authorizeUrl).then(({ body }) => {
     cy.request({
@@ -136,6 +137,7 @@ function decideClient(client: RegisteredClient, approved: boolean) {
         client_id: clientId,
         redirect_uri: REDIRECT_URI,
         response_type: "code",
+        scope: SCOPE,
         state: "test-state",
       },
     })

@@ -30,6 +30,8 @@ import type {
 } from "metabase-types/api";
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
 
+export const QUESTION_NAME_MAX_LENGTH = 254;
+
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
   includeOriginalCardId?: boolean;

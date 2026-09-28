@@ -31,3 +31,13 @@ export const getExtraFormFieldProps = (setting?: SettingDefinition) => {
     descriptionProps: SETTINGS_FIELD_DESCRIPTION_PROPS,
   };
 };
+
+// env-locked settings show the readOnly notice instead of a placeholder
+export const getDefaultPlaceholder = (
+  setting?: SettingDefinition,
+): string | undefined => {
+  if (setting?.is_env_setting || typeof setting?.default !== "string") {
+    return undefined;
+  }
+  return setting.default;
+};

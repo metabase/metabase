@@ -185,7 +185,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             listTag("schema"),
             listTag("table"),
-            listTag("embedding-hub-checklist"),
+            listTag("setup-guide-checklist"),
           ]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
@@ -343,7 +343,7 @@ export const cardApi = Api.injectEndpoints({
       }),
       updateCardEnableEmbedding: updateCardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >([listTag("embedding-hub-checklist")]),
+      >([listTag("setup-guide-checklist")]),
       updateCardEmbeddingParams: updateCardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),

@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -15,7 +16,6 @@ import {
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { getMetadata } from "metabase/metadata-store";
 import type { State } from "metabase/redux/store";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -29,6 +29,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
+import { getMetabotState } from "../state";
 import { sendAgentRequest } from "../state/actions";
 
 import {
@@ -150,7 +151,7 @@ describe("query builder code edits from omnibot", () => {
       ),
     } as any);
 
-    const metadata = getMetadata(storeInitialState);
+    const metadata = createMockMetadataFromState(storeInitialState);
     const question = checkNotNull(metadata.question(TEST_NATIVE_CARD.id));
 
     const { store } = renderWithProviders(
@@ -211,9 +212,9 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore
-        .getState()
-        .metabot.conversations[conversationId]?.messages.at(-1),
+      getMetabotState(typedStore.getState()).conversations[
+        conversationId
+      ]?.messages.at(-1),
     ).toMatchObject({
       role: "agent",
       externalId: "msg_test_code_edit",

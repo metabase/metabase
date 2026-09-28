@@ -27,6 +27,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -109,8 +110,12 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :any]]
-   [:created_at {:optional true} [:maybe :any]]])
+   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
+   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
+   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
+   ;; `updated_at` in search results.
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::search-response
   "Search results containing tables, models, metrics, saved questions, dashboards, and
@@ -235,7 +240,9 @@
   table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
   them with the appropriate 4xx status code instead of a 500."
   [body]
-  (-> (metabot-construct/execute-representations-query (:query body))
+  (-> (metabot-construct/execute-representations-query
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution
@@ -855,7 +862,7 @@
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
-    (when (api/column-will-change? :dataset_query card-before-update card-updates)
+    (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
       ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
       ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
@@ -1389,13 +1396,13 @@
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
           (let [existing (api/check-404
@@ -1644,14 +1651,24 @@
     (str/trim (subs auth-header 7))))
 
 (defn- error-response
-  "Create a 401 error response with structured JSON body."
-  [error-type message]
+  "Create a 401 error response with a structured JSON body and `challenge` as its RFC 6750 `WWW-Authenticate` value."
+  [error-type message challenge]
   {:status  401
-   :headers {"Content-Type" "application/json"}
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" challenge}
    :body    {:error   error-type
              :message message}})
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
+
+(def ^:private jwt-not-configured
+  {:error   "jwt_not_configured"
+   :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."})
+
+(defn- jwt-provider-available?
+  "Whether a `:provider/jwt` implementation is registered with [[auth-identity/authenticate]]."
+  []
+  (auth-identity/isa? :provider/jwt :metabase.auth-identity.provider/provider))
 
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
@@ -1663,26 +1680,30 @@
    When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
    [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
-  (let [result (auth-identity/authenticate :provider/jwt {:token token})]
-    (if (:success? result)
-      ;; JWT is valid - look up user from the email extracted by the JWT provider
-      ;; The provider uses jwt-attribute-email setting to extract the email from claims
-      (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (agent-api.db/active-user-by-email email))]
-        (let [scope-entry (-> result :jwt-data (find :scope))]
-          (cond-> {:user user}
-            scope-entry
-            (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
-        ;; Don't reveal whether the user exists or not - use same error as invalid JWT
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."})
-      ;; Authentication failed - map error to agent API format
-      (case (:error result)
-        :jwt-not-enabled {:error   "jwt_not_configured"
-                          :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
-        ;; Default: use generic invalid JWT message (don't leak details)
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."}))))
+  ;; The JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and `authenticate` has no method
+  ;; to dispatch to. Answer the way a disabled provider does rather than let it throw: this is the last stop for a
+  ;; bearer token the OAuth bridge already declined, and it owes that request a 401 challenge, not a 500.
+  (if-not (jwt-provider-available?)
+    jwt-not-configured
+    (let [result (auth-identity/authenticate :provider/jwt {:token token})]
+      (if (:success? result)
+        ;; JWT is valid - look up user from the email extracted by the JWT provider
+        ;; The provider uses jwt-attribute-email setting to extract the email from claims
+        (if-let [user (when-let [email (get-in result [:user-data :email])]
+                        (agent-api.db/active-user-by-email email))]
+          (let [scope-entry (-> result :jwt-data (find :scope))]
+            (cond-> {:user user}
+              scope-entry
+              (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
+          ;; Don't reveal whether the user exists or not - use same error as invalid JWT
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})
+        ;; Authentication failed - map error to agent API format
+        (case (:error result)
+          :jwt-not-enabled jwt-not-configured
+          ;; Default: use generic invalid JWT message (don't leak details)
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})))))
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
@@ -1693,21 +1714,26 @@
 
    - For **session-authenticated** requests (where `:metabase-user-id` is already set by
      upstream middleware), preserves any pre-existing `:token-scopes` value if present,
-     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
+     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access. An OAuth-authenticated
+     request without `:token-scopes` is not defaulted, so scope enforcement rejects it.
    - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
      `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
-     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
+     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs. A request
+     [[metabase.server.middleware.data-app-scope]] already confined is the exception: its
+     narrowing is a server-side decision and a caller-supplied `\"scope\"` claim may not
+     widen it back out.
 
    This ensures downstream scope enforcement never has to special-case nil within the
    agent API."
   [handler]
-  (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
+  (fn [{:keys [headers metabase-user-id token-scopes data-app-scoped?] :as request} respond raise]
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
       metabase-user-id
       (handler (cond-> request
-                 (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
+                 (and (not token-scopes) (not (:authenticated-via-oauth? request)))
+                 (assoc :token-scopes #{::scope/unrestricted}))
                respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
@@ -1715,15 +1741,19 @@
       (let [auth-header  (get headers "authorization")
             bearer-token (extract-bearer-token auth-header)]
         (cond
-          ;; No authorization header and no session
+          ;; No authorization header and no session.
+          ;; RFC 6750 section 3.1: a challenge to a request with no bearer token carries no error code.
           (nil? auth-header)
           (respond (error-response "missing_authorization"
-                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+                                   (str "Authentication required. Use X-Metabase-Session header or "
+                                        "Authorization: Bearer <jwt>.")
+                                   "Bearer"))
 
           ;; Authorization header present but not Bearer format
           (nil? bearer-token)
           (respond (error-response "invalid_authorization_format"
-                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"
+                                   "Bearer"))
 
           ;; Validate JWT
           :else
@@ -1734,11 +1764,13 @@
                   (log/warn "JWT scopes" (:scopes result)
                             "differ from pre-existing token-scopes" token-scopes))
                 (request/with-current-user (:id user)
-                  (handler (assoc request :token-scopes (or (:scopes result)
-                                                            token-scopes
-                                                            #{::scope/unrestricted}))
+                  (handler (assoc request :token-scopes (if data-app-scoped?
+                                                          token-scopes
+                                                          (or (:scopes result)
+                                                              token-scopes
+                                                              #{::scope/unrestricted})))
                            respond raise)))
-              (respond (error-response (:error result) (:message result))))))))))
+              (respond (error-response (:error result) (:message result) "Bearer error=\"invalid_token\"")))))))))
 
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."

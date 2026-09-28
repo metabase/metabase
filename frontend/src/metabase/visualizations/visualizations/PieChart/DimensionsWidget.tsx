@@ -69,22 +69,15 @@ function DimensionPicker({
   );
 }
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const BREAKOUT_TITLE = t`Breakout`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const INNER_RING_TITLE = t`Inner Ring`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const MIDDLE_RING_TITLE = t`Middle Ring`;
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-const OUTER_RING_TITLE = t`Outer Ring`;
-
-const SINGLE_RING_SETTING_TITLES = [BREAKOUT_TITLE];
-const TWO_RING_SETTING_TITLES = [INNER_RING_TITLE, OUTER_RING_TITLE];
-const THREE_RING_SETTING_TITLES = [
-  INNER_RING_TITLE,
-  MIDDLE_RING_TITLE,
-  OUTER_RING_TITLE,
-];
+const getDimensionTitles = (ringCount: number) => {
+  if (ringCount === 1) {
+    return [t`Breakout`];
+  }
+  if (ringCount === 2) {
+    return [t`Inner Ring`, t`Outer Ring`];
+  }
+  return [t`Inner Ring`, t`Middle Ring`, t`Outer Ring`];
+};
 
 export function DimensionsWidget({
   rawSeries,
@@ -98,12 +91,7 @@ export function DimensionsWidget({
   ]);
 
   const actualRingCount = dimensions.filter((d) => d != null).length;
-  const dimensionTitles =
-    actualRingCount === 1
-      ? SINGLE_RING_SETTING_TITLES
-      : actualRingCount === 2
-        ? TWO_RING_SETTING_TITLES
-        : THREE_RING_SETTING_TITLES;
+  const dimensionTitles = getDimensionTitles(actualRingCount);
 
   const updateDimensions = (newDimensions: (string | undefined)[]) => {
     setDimensions(newDimensions);

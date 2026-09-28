@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, rem } from "metabase/ui";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -235,7 +236,7 @@ function SmartScalarComponent(
   );
 }
 
-export const SmartScalar = Object.assign(
+export const SmartScalar = assignLazily(
   SmartScalarComponent,
   SMART_SCALAR_CHART_DEFINITION,
 );

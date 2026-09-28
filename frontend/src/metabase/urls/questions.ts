@@ -11,7 +11,7 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
-import { card as urlForCard } from "./cards";
+import { type CardUrlBuilderParams, card as urlForCard } from "./cards";
 import { appendSlug } from "./utils";
 
 type QuestionUrlBuilderOpts = {
@@ -37,7 +37,10 @@ export function question(
   });
 }
 
-export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
+export function serializedQuestion(
+  card: SavedCard | UnsavedCard,
+  opts: Omit<CardUrlBuilderParams, "forceUnsaved"> = {},
+) {
   return urlForCard(card, { ...opts, forceUnsaved: true });
 }
 

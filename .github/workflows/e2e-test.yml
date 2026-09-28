@@ -79,7 +79,7 @@ jobs:
       CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -102,6 +102,7 @@ jobs:
           postgres: true
           mysql: true
           mongo: true
+          mocksaml: true
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact

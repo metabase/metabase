@@ -69,7 +69,7 @@
   * `source-metadata-col` = (possibly snake_cased) column metadata from Card `:source-metadata`
   * `field-metadata`      = Field metadata (`:metadata/column`) from the metadata provider for the Field with ID"
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   source-metadata-col   :- :map
+   source-metadata-col   :- ::lib.schema.metadata/lib-or-legacy-column
    card-id               :- [:maybe ::lib.schema.id/card]
    field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
@@ -105,26 +105,28 @@
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
               (assoc :fk-target-field-id nil))]
-    (-> col
+    (-> (lib.normalize/normalize ::lib.schema.metadata/column col)
         lib.field.util/update-keys-for-col-from-previous-stage
         (merge (when card-id
                  {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema-rest.api.table/card-result-metadata->virtual-fields]]
-        (u/assoc-default :effective-type (:base-type col))
-        ;; add original display name IF not already present AND we have a value
-        (->> (lib.normalize/normalize ::lib.schema.metadata/column)))))
+        (as-> $col (u/assoc-default $col :effective-type (:base-type $col))))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into Lib ColumnMetadata."
-  ([metadata-providerable cols]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    cols                  :- [:maybe [:or
+                                      [:sequential ::lib.schema.metadata/lib-or-legacy-column]
+                                      [:map {:closed true}
+                                       [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    (->card-metadata-columns metadata-providerable nil cols))
 
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id-or-nil     :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:maybe [:or
                                       [:sequential ::lib.schema.metadata/lib-or-legacy-column]
-                                      [:map
+                                      [:map {:closed true}
                                        [:columns [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
    ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
    ;; contains` :columns` as well.
@@ -229,12 +231,15 @@
   - `:own-model-query?` — when true, aggregation columns are also merged (the model's own aggregation results should
     preserve user-customized names). When false (default), aggregation columns are skipped because the computed name
     (e.g. 'Sum of Price') is better than the model's custom name when the model is used as a source for an outer query."
-  ([result-cols model-cols]
+  ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
+    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (merge-model-metadata result-cols model-cols {}))
   ([result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
     model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
     {:keys [native-model? own-model-query?]
-     :or   {native-model? false, own-model-query? false}}]
+     :or   {native-model? false, own-model-query? false}} :- [:map {:closed true}
+                                                              [:native-model?    {:optional true} :boolean]
+                                                              [:own-model-query? {:optional true} :boolean]]]
    (cond
      (empty? model-cols)
      (not-empty result-cols)
@@ -308,7 +313,7 @@
   [query         :- ::lib.schema/query
    _stage-number :- :int
    card          :- ::lib.schema.metadata/card
-   options       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   options       :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (lib.computed/with-cache-sticky* query
     [::returned-columns (:id card) (lib.metadata.calculation/cacheable-options options)]
     (fn []

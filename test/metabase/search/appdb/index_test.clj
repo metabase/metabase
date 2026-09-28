@@ -823,8 +823,10 @@
                 (is (true? (t2/exists? :model/User))))))
           (testing "upsert"
             (t2/with-transaction [_conn]
+              ;; Include a non-key column so PostgreSQL reaches the missing-table failure instead of rejecting an empty
+              ;; `DO UPDATE SET` clause.
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Currently tracked index does not exist"
                                     (#'search.index/safe-batch-upsert! :active (constantly table-name)
-                                                                       [{:model "card" :model_id "1"}])))
+                                                                       [{:model "card" :model_id "1" :name "x"}])))
               (testing "\nthe enclosing transaction remains usable"
                 (is (true? (t2/exists? :model/User)))))))))))

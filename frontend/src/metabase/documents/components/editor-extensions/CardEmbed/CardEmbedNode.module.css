@@ -26,11 +26,17 @@
   outline: none;
 }
 
-.cardEmbed * {
+.cardEmbed *:not(input, textarea) {
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
+}
+
+/* ProseMirror hides selections while the card is node-selected (.ProseMirror-hideselection) */
+.cardEmbed input::selection {
+  background-color: Highlight;
+  color: HighlightText;
 }
 
 /* Firefox doesn't respect `user-select: none` when inside a contenteditable element. */

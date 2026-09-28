@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -14,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
@@ -85,7 +87,10 @@
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  [attributes :- [:map-of :keyword [:maybe SimpleAttributes]]
+  [attributes :- [:map {:closed true}
+                  [:jwt    {:optional true} [:maybe SimpleAttributes]]
+                  [:tenant {:optional true} [:maybe SimpleAttributes]]
+                  [:user   {:optional true} [:maybe SimpleAttributes]]]
    system :- [:maybe SystemAttributes]]
   (letfn [(value-map [s f vs] (into {}
                                     (for [[k v] vs]
@@ -391,6 +396,7 @@
 
 (api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
+  {:scope api-scope/data-app}
   []
   (-> (api/check-404 @api/*current-user*)
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
@@ -632,14 +638,25 @@
                                                                                     :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
-    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-    (auth-identity/set-password! id password)
-    ;; after a successful password update go ahead and offer the client a new session that they can use
-    (when (= id api/*current-user-id*)
-      (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
-            response                        {:success    true
-                                             :session_id (str session-key)}]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+    ;; We want to propagate MFA info from the old session so that users aren't auto-logged out.
+    ;; This needs to be done before we delete the old session.
+    (let [mfa-auth-identity-id (some-> request
+                                       :metabase-session-key
+                                       session/hash-session-key
+                                       users-rest.db/mfa-auth-identity-id-from-hashed-key
+                                       :mfa_auth_identity_id)]
+      ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
+      (auth-identity/set-password! id password)
+      ;; after a successful password update go ahead and offer the client a new session that they can use
+      (when (= id api/*current-user-id*)
+        (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
+                                               user
+                                               (request/device-info request)
+                                               :provider/password
+                                               mfa-auth-identity-id)
+              response                        {:success    true
+                                               :session_id (str session-key)}]
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |

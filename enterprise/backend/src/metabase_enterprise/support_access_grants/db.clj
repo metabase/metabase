@@ -146,8 +146,20 @@
                         [:confirmed_at  {:optional true} [:maybe ms/TemporalInstant]]
                         [:created_at    {:optional true} ms/TemporalInstant]
                         [:updated_at    {:optional true} ms/TemporalInstant]
-                        [:credentials   {:optional true} [:maybe :map]]
-                        [:metadata      {:optional true} [:maybe :map]]]]
+                        [:credentials   {:optional true}
+                         [:maybe [:map {:closed true}
+                                  [:token_hash     :string]
+                                  [:expires_at     ms/TemporalInstant]
+                                  [:grant_ends_at  ms/TemporalInstant]
+                                  [:consumed_at    [:maybe ms/TemporalInstant]]]]]
+                        [:metadata      {:optional true}
+                         [:maybe [:map {:closed true}
+                                  [:email           ms/Email]
+                                  [:ip_address       {:optional true} [:maybe :string]]
+                                  [:request_context  {:optional true}
+                                   [:map {:closed true}
+                                    [:user_agent {:optional true} [:maybe :string]]
+                                    [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
   (t2/update! :model/AuthIdentity auth-identity-id changes))
 
 (mu/defn expire-auth-identities!

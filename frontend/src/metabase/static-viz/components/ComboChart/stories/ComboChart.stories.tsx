@@ -1081,6 +1081,24 @@ export const CombinedWithInvalidSettings = {
   },
 };
 
+export const StackedNormalizedCustomYAxisRange = {
+  render: Template,
+  args: {
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.stackedChartCustomYAxisRange,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "stackable.stack_type": "normalized",
+        "graph.y_axis.min": 40,
+        "graph.y_axis.max": 60,
+      }),
+    ) as any,
+    renderingContext,
+  },
+};
+
 export const StackedChartCustomYAxisRange = {
   render: Template,
   args: {

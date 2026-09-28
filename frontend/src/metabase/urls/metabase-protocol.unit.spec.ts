@@ -23,6 +23,10 @@ describe("parseMetabaseProtocolLink", () => {
       id: 111,
       model: "model",
     });
+    expect(parseMetabaseProtocolLink("metabase://metric/222")).toEqual({
+      id: 222,
+      model: "metric",
+    });
   });
 
   it("should return undefined for invalid protocol", () => {

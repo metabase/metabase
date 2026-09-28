@@ -99,11 +99,7 @@ export const ChartSettingsWidgetPopover = ({
               >
                 <Tabs.List grow>
                   {sections.current.map((sectionName) => (
-                    <Tabs.Tab
-                      key={sectionName}
-                      value={String(sectionName)}
-                      p="lg"
-                    >
+                    <Tabs.Tab key={sectionName} value={String(sectionName)}>
                       {sectionName}
                     </Tabs.Tab>
                   ))}

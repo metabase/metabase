@@ -93,7 +93,7 @@
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/saml20-clj                       {:mvn/version "4.2.1"
+  metabase/saml20-clj                       {:mvn/version "4.3.0"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
                                                           org.bouncycastle/bcprov-jdk15on
@@ -941,8 +941,10 @@
   {:extra-deps {nrepl/nrepl {:mvn/version "1.5.1"}}
    :main-opts  ["-m" "nrepl.cmdline" "-p" "50605"]}
 
-  ;; - start a Socket REPL on port 50505 that you can connect your editor to:
-  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"0.0.0.0\",:port,50505,:accept,clojure.core.server/repl}"]}
+  ;; - start a Socket REPL on port 50505 that you can connect your editor to. Bound to loopback: it has no
+  ;;   authentication, so exposing it on a network interface is remote code execution. dev/docker-compose.yml
+  ;;   overrides the address for the containerized dev app, where the published port is the boundary.
+  :socket {:jvm-opts ["-Dclojure.server.repl={:address,\"127.0.0.1\",:port,50505,:accept,clojure.core.server/repl}"]}
 
   ;; Liquibase CLI:
   ;;
