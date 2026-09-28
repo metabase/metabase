@@ -3791,10 +3791,12 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/ConnectionImpersonation
                     :model/Database
                     :model/Field
                     :model/Permissions
                     :model/QueryAction
+                    :model/Sandbox
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
