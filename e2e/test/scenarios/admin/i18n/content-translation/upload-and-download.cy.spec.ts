@@ -7,7 +7,6 @@ import {
 
 import {
   germanFieldNames,
-  invalidLocaleXX,
   multipleInvalidLocales,
   nonAsciiFieldNames,
   portugueseFieldNames,
@@ -70,17 +69,11 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
     });
 
     describe("The translation upload form", () => {
-      it("accepts a CSV upload with ASCII characters", () => {
-        uploadTranslationDictionary(germanFieldNames);
-        cy.findByRole("status").findByText("Dictionary uploaded");
-        cy.findByTestId("content-localization-setting").findByText(
-          "Dictionary uploaded",
-        );
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
-      });
-
-      it("accepts a CSV upload with non-ASCII characters", () => {
-        uploadTranslationDictionary(nonAsciiFieldNames);
+      it("accepts a CSV upload with non-ASCII characters and hyphenated locales", () => {
+        uploadTranslationDictionary([
+          ...nonAsciiFieldNames,
+          ...portugueseFieldNames,
+        ]);
         cy.findByTestId("content-localization-setting").findByText(
           "Dictionary uploaded",
         );
@@ -90,13 +83,8 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
             locale,
           );
         });
-      });
 
-      it("accepts a CSV upload with a hyphenated locale", () => {
-        uploadTranslationDictionary(portugueseFieldNames);
-        cy.findByTestId("content-localization-setting").findByText(
-          "Dictionary uploaded",
-        );
+        cy.log("accepts a CSV upload with a hyphenated locale (pt-BR)");
         assertOnlyTheseTranslationsAreStored(portugueseFieldNames, "pt-BR");
       });
 
@@ -142,24 +130,30 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
           .should("exist");
       });
 
-      it("erases previously stored translations when a new CSV is uploaded", () => {
+      it("accepts a CSV upload with ASCII characters, and erases previously stored translations when a new CSV is uploaded", () => {
         uploadTranslationDictionary(germanFieldNames);
+
+        cy.log("accepts a CSV upload with ASCII characters");
+        cy.findByRole("status").findByText("Dictionary uploaded");
+        cy.findByTestId("content-localization-setting").findByText(
+          "Dictionary uploaded",
+        );
         assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
+          cy.log(
+            "erases previously stored translations when a new CSV is uploaded",
+          );
           const oneArabicFieldName = [nonAsciiFieldNames[0]];
           uploadTranslationDictionary(oneArabicFieldName);
           assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
         });
       });
 
-      it("does not erase previously stored translations when an upload fails", () => {
+      it("rejects a CSV upload with invalid locales in multiple rows, without erasing previously stored translations", () => {
         uploadTranslationDictionary(germanFieldNames);
         assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        uploadTranslationDictionary(invalidLocaleXX);
-        assertOnlyTheseTranslationsAreStored(germanFieldNames);
-      });
-
-      it("rejects a CSV upload with invalid locales in multiple rows", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
+
+        cy.log("rejects a CSV upload with invalid locales in multiple rows");
         cy.findAllByRole("alert")
           .contains(/couldn.*t upload the file/)
           .should("exist");
@@ -170,6 +164,11 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
         cy.findAllByRole("alert")
           .contains(/Row 5: Invalid locale: qe/)
           .should("exist");
+
+        cy.log(
+          "does not erase previously stored translations when an upload fails",
+        );
+        assertOnlyTheseTranslationsAreStored(germanFieldNames);
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {

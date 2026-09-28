@@ -25,7 +25,7 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show number of API keys on auth card", () => {
+  it("should show number of API keys on auth card, and list existing API keys", () => {
     cy.visit("/admin/settings/authentication");
 
     cy.wait("@getKeyCount");
@@ -40,8 +40,8 @@ describe("scenarios > admin > settings > API keys", () => {
       .findByTestId("card-badge")
       .findByText("1 API Key");
 
-    H.createApiKey("Test API Key Two", ALL_USERS_GROUP_ID);
-    H.createApiKey("Test API Key Three", ALL_USERS_GROUP_ID);
+    H.createApiKey("Test API Key Two", NOSQL_GROUP_ID);
+    H.createApiKey("Test API Key Three", READONLY_GROUP_ID);
 
     cy.reload();
     cy.wait("@getKeyCount");
@@ -49,13 +49,8 @@ describe("scenarios > admin > settings > API keys", () => {
     cy.findByTestId("api-keys-setting")
       .findByTestId("card-badge")
       .findByText("3 API Keys");
-  });
 
-  it("should list existing API keys", () => {
-    H.createApiKey("Test API Key One", ALL_USERS_GROUP_ID);
-    H.createApiKey("Test API Key Two", NOSQL_GROUP_ID);
-    H.createApiKey("Test API Key Three", READONLY_GROUP_ID);
-
+    cy.log("should list existing API keys");
     visitApiKeySettings();
 
     cy.findByTestId("api-keys-table").within(() => {
