@@ -176,6 +176,8 @@
      metabase.channel.core/send!
      metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
+     metabase.driver/validate-db-details!
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
