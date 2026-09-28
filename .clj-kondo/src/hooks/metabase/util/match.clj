@@ -145,6 +145,7 @@
 
 (def match-many match-one)
 (def replace match-one)
+(def replace-all match-one)
 
 (defn replace-in [context]
   ;; Everything is the same as in match-one, just drop the middle argument.
