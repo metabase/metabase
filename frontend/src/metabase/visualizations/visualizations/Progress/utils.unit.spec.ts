@@ -1,18 +1,28 @@
 import { t } from "ttag";
 
-import type { DatasetColumn, RowValues } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import type {
+  DatasetColumn,
+  GoalForeignColumnRef,
+  RowValues,
+} from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 import {
   type ProgressMetrics,
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
+  getGoalReferences,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
   getValue,
 } from "./utils";
+
+const GOAL_REF: GoalForeignColumnRef = { type: "card", id: 9, column: "goal" };
 
 const mockColumns: DatasetColumn[] = [
   createMockColumn({
@@ -79,39 +89,71 @@ describe("getValue", () => {
 });
 
 describe("getGoalValue", () => {
-  const rows: RowValues[] = [[10, 100.5, "test", 25.0]];
+  const data = createMockDatasetData({
+    cols: mockColumns,
+    rows: [[10, 100.5, "test", 25.0]],
+  });
 
   it("should return the number when goal is numeric", () => {
-    expect(getGoalValue(50, mockColumns, rows)).toBe(50);
-    expect(getGoalValue(0, mockColumns, rows)).toBe(0);
-    expect(getGoalValue(-10, mockColumns, rows)).toBe(-10);
+    expect(getGoalValue(50, data)).toBe(50);
+    expect(getGoalValue(0, data)).toBe(0);
+    expect(getGoalValue(-10, data)).toBe(-10);
   });
 
   it("should return column value when goal is a column name", () => {
-    expect(getGoalValue("count", mockColumns, rows)).toBe(10);
-    expect(getGoalValue("total", mockColumns, rows)).toBe(100.5);
-    expect(getGoalValue("average", mockColumns, rows)).toBe(25.0);
+    expect(getGoalValue("count", data)).toBe(10);
+    expect(getGoalValue("total", data)).toBe(100.5);
+    expect(getGoalValue("average", data)).toBe(25.0);
   });
 
   it("should return 0 for non-existent column names", () => {
-    expect(getGoalValue("nonexistent", mockColumns, rows)).toBe(0);
+    expect(getGoalValue("nonexistent", data)).toBe(0);
   });
 
   it("should handle null column values", () => {
     const rowsWithNull: RowValues[] = [[10, null, "test", 25.0]];
-    expect(getGoalValue("total", mockColumns, rowsWithNull)).toBe(0);
+    expect(getGoalValue("total", { ...data, rows: rowsWithNull })).toBe(0);
   });
 
   it("should handle Infinity in columns", () => {
     const rowsWithInfinity: RowValues[] = [[10, "Infinity", "test", 25.0]];
-    expect(getGoalValue("total", mockColumns, rowsWithInfinity)).toBe(Infinity);
+    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(
+      Infinity,
+    );
   });
 
-  it("should return 0 for invalid goal types", () => {
-    // Intentionally invalid input, cast to exercise the runtime guard.
-    expect(getGoalValue(null as any, mockColumns, rows)).toBe(0);
-    // Intentionally invalid input, cast to exercise the runtime guard.
-    expect(getGoalValue(undefined as any, mockColumns, rows)).toBe(0);
+  it("should return 0 when no goal is set", () => {
+    expect(getGoalValue(null, data)).toBe(0);
+    expect(getGoalValue(undefined, data)).toBe(0);
+  });
+
+  it("should return the value another entity answers", () => {
+    const answeredData = createMockDatasetData({
+      ...data,
+      referenced_entities: {
+        card: {
+          9: {
+            status: "completed",
+            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
+          },
+        },
+      },
+    });
+
+    expect(getGoalValue(GOAL_REF, answeredData)).toBe(250);
+  });
+
+  it("should return 0 for a reference to another entity that is unanswered", () => {
+    expect(getGoalValue(GOAL_REF, data)).toBe(0);
+  });
+});
+
+describe("getGoalReferences", () => {
+  it("should only list a reference to another entity", () => {
+    expect(getGoalReferences(GOAL_REF)).toEqual([GOAL_REF]);
+    expect(getGoalReferences("count")).toEqual([]);
+    expect(getGoalReferences(50)).toEqual([]);
+    expect(getGoalReferences(undefined)).toEqual([]);
   });
 });
 
