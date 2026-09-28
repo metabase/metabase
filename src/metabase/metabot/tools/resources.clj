@@ -391,14 +391,15 @@
   (let [recents (or (-> (activity-feed/get-recents api/*current-user-id* [:views])
                         :recents)
                     [])
-        items   (mapv (fn [{:keys [id name model timestamp]}]
+        items   (mapv (fn [{:keys [id model timestamp] item-name :name}]
+
                         (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
+                                     :card    "question"
+                                     :dataset "model"
+                                     (name (or model "item")))]
                           {:type      type
                            :id        id
-                           :name      name
+                           :name      item-name
                            :timestamp timestamp
                            :uri       (llm-shape/metabase-uri (keyword type) id)}))
                       recents)]

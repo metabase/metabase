@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -94,6 +95,24 @@
           (is (not (contains? models plain-model))))
         (is (= #{verified-model}
                (item-ids (first (read-uris metabot-id :internal (str "metabase://collection/" coll-id "/items"))))))))))
+
+(deftest read-resource-curated-only-recents-test
+  (testing "recent items (which carry keyword models) are filtered like any other list"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/RecentViews]
+        (mt/with-temp [:model/Card {verified-model :id} {:type :model :name "verified recent model"
+                                                         :dataset_query (orders-query)}
+                       :model/Card {plain-question :id} {:type :question :name "plain recent question"
+                                                         :dataset_query (orders-query)}
+                       :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
+                       :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+          (verify-card! verified-model)
+          (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
+            (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
+          (let [items (get-in (first (read-uris metabot-id :internal "metabase://user/recent-items"))
+                              [:content :structured-output :items])]
+            (is (=? [{:type "model" :id verified-model}]
+                    (filterv (comp #{verified-model plain-question raw-table} :id) items)))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"
