@@ -111,7 +111,7 @@ describe("y-axis label settings", () => {
     });
   });
 
-  describe("placeholders on a split chart", () => {
+  describe("values on a split chart", () => {
     const THREE_METRICS = {
       "graph.dimensions": ["month"],
       "graph.metrics": ["revenue", "orders", "quantity"],
@@ -127,8 +127,8 @@ describe("y-axis label settings", () => {
         THREE_METRICS,
       );
 
-      expect(left?.props.placeholder).toBeUndefined();
-      expect(right?.props.placeholder).toBe("Orders");
+      expect(left?.props.value).toBeUndefined();
+      expect(right?.props.value).toBe("Orders");
     });
 
     it("should name the left axis when the right one mixes two series", () => {
@@ -141,8 +141,8 @@ describe("y-axis label settings", () => {
         THREE_METRICS,
       );
 
-      expect(left?.props.placeholder).toBe("Revenue");
-      expect(right?.props.placeholder).toBeUndefined();
+      expect(left?.props.value).toBe("Revenue");
+      expect(right?.props.value).toBeUndefined();
     });
 
     it("should show a typed left label on the right axis until it gets its own", () => {
@@ -155,7 +155,7 @@ describe("y-axis label settings", () => {
         { ...THREE_METRICS, "graph.y_axis.title_text": "Money" },
       );
 
-      expect(right?.props.placeholder).toBe("Money");
+      expect(right?.props.value).toBe("Money");
     });
   });
 });

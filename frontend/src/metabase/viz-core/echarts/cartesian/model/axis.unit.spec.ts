@@ -246,14 +246,14 @@ describe("getYAxesModels", () => {
     expect(checkNotNull(rightAxisModel).label).toBe("Legacy label");
   });
 
-  it("should fall back to the left label when the right one is cleared to blank", () => {
+  it("should hide the right label when it is cleared to blank", () => {
     const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
       "graph.y_axis.title_text": "Orders placed",
       "graph.y_axis.right.title_text": "",
     });
 
     expect(checkNotNull(leftAxisModel).label).toBe("Orders placed");
-    expect(checkNotNull(rightAxisModel).label).toBe("Orders placed");
+    expect(checkNotNull(rightAxisModel).label).toBe("");
   });
 
   it("should label each axis from its own setting when both are stored", () => {

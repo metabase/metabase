@@ -547,12 +547,13 @@ describe("scenarios > visualizations > line chart", () => {
         .blur();
       H.vizSettingsSidebar()
         .findByLabelText("Right axis label")
-        .should("have.attr", "placeholder", "Revenue");
+        .should("have.value", "Revenue");
       H.echartsContainer().findAllByText("Revenue").should("have.length", 2);
 
       cy.log("the right label applies to the right axis only");
       H.vizSettingsSidebar()
         .findByLabelText("Right axis label")
+        .clear()
         .type("Smallest order")
         .blur();
       H.echartsContainer()

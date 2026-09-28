@@ -427,12 +427,12 @@ export const getYAxisLabel = (
     return undefined;
   }
 
-  // A right label that is unset or blank inherits the left one. Unset covers
-  // questions saved before the right axis had its own label; blank covers
-  // clearing the field, which has to return to what its placeholder shows.
+  // An unset right label inherits the left one, so questions saved before the
+  // right axis had its own label keep it. A blank one hides the label, as a
+  // blank left one does.
   const specifiedAxisName = isSplitRightAxis
-    ? settings["graph.y_axis.right.title_text"] ||
-      settings["graph.y_axis.title_text"]
+    ? (settings["graph.y_axis.right.title_text"] ??
+      settings["graph.y_axis.title_text"])
     : settings["graph.y_axis.title_text"];
 
   if (specifiedAxisName != null) {

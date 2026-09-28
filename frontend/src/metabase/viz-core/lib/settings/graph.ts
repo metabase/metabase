@@ -1039,12 +1039,15 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "input",
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    // An empty field shows the label the chart draws without one. With every
-    // series pinned right, the right axis is the only axis and takes this label.
+    // The field shows the label the axis draws. An unset label names the axis
+    // after its one series; that stays out of getDefault because finding each
+    // axis's series takes a pass over the data, which rendering would then pay.
+    // With every series pinned right, the right axis is the only axis and
+    // takes this label.
     getProps: (series, vizSettings) => {
       const { left, right } = getSeriesNamesByYAxis(series, vizSettings);
       return {
-        placeholder: getYAxisLabel(left ?? right ?? [], vizSettings, false),
+        value: getYAxisLabel(left ?? right ?? [], vizSettings, false),
       };
     },
     getDefault: (series, vizSettings) => {
@@ -1074,9 +1077,10 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       vizSettings["graph.y_axis.labels_enabled"] === false ||
       !isYAxisSplit(getSeriesNamesByYAxis(series, vizSettings)),
     // No getDefault: an unset value is what makes the right axis inherit the
-    // left label, so saved questions keep their current rendering.
+    // left label, so saved questions keep their current rendering. The field
+    // shows the label the axis draws, as the left one does.
     getProps: (series, vizSettings) => ({
-      placeholder: getYAxisLabel(
+      value: getYAxisLabel(
         getSeriesNamesByYAxis(series, vizSettings).right ?? [],
         vizSettings,
         true,
