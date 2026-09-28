@@ -31,6 +31,7 @@ module.exports = {
     "^Components/Data display/KeyboardShortcut Overview",
     "^Components/Table",
     "^Components/Inputs/PasswordInput Overview",
+    "^Components/Data display/Accordion Overview",
     "^Components/Inputs/Select Overview",
     "^Components/Inputs/MultiSelect Overview",
     "^Components/Inputs/Combobox Overview",
