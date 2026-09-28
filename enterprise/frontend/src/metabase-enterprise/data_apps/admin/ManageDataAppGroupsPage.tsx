@@ -11,7 +11,7 @@ import { Box, Button, Stack, Text } from "metabase/ui";
 import {
   useAddDataAppGroupsMutation,
   useGetDataAppGroupsQuery,
-  useGetDataAppQuery,
+  useListDataAppsQuery,
   useRemoveDataAppGroupMutation,
 } from "metabase-enterprise/api";
 import type { DataAppGroup } from "metabase-types/api";
@@ -20,20 +20,24 @@ import { DataAppGroupList } from "./components/DataAppGroupList/DataAppGroupList
 
 export const ManageDataAppGroupsPage = () => {
   const { slug = "" } = useParams<{ slug: string }>();
-  const appRequest = useGetDataAppQuery(slug);
+  const appRequest = useListDataAppsQuery();
+  const app = appRequest.data?.find((app) => app.name === slug);
 
   const groupRequest = useGetDataAppGroupsQuery(slug);
 
-  const error = appRequest.error ?? groupRequest.error;
+  const error =
+    appRequest.error ??
+    groupRequest.error ??
+    (appRequest.isSuccess && !app ? t`Data app not found.` : undefined);
   const isLoading = appRequest.isLoading || groupRequest.isLoading;
 
   return (
     <SettingsPageWrapper>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
-        {appRequest.data && groupRequest.data && (
+        {app && groupRequest.data && (
           <DataAppGroups
             appName={slug}
-            appTitle={appRequest.data.display_name}
+            appTitle={app.display_name}
             groups={groupRequest.data}
           />
         )}

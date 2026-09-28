@@ -46,7 +46,7 @@ describe("scenarios > data apps > group access (EMB-2385)", () => {
 
     cy.intercept("POST", `/api/apps/${APP_NAME}/groups`).as("assignGroups");
     cy.findByTestId("data-app-groups-card")
-      .findByRole("button", { name: "Add groups" })
+      .findByRole("button", { name: "Add", exact: true })
       .click();
     cy.wait("@assignGroups")
       .its("request.body")
