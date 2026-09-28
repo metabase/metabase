@@ -21,7 +21,7 @@ jobs:
     env:
       BUNDLE_SIZE_THRESHOLD_PERCENT: 2
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/bundle-size-check
         id: compare
         with:
