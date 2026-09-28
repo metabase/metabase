@@ -641,6 +641,12 @@ function handleExpr(expr, ctx) {
   if (!expr) return;
   expr = strip(expr);
   if (ts.isCallExpression(expr)) return handleChain(expr, ctx);
+  // Chai property assertions, such as `expect(x).to.exist`, are property accesses.
+  if (ts.isPropertyAccessExpression(expr)) {
+    const { root, links } = flatten(expr);
+    if (root === null && links[0].name === "expect")
+      return handleChain(expr, ctx);
+  }
   if (ts.isBinaryExpression(expr)) {
     handleExpr(expr.left, ctx);
     handleExpr(expr.right, ctx);
