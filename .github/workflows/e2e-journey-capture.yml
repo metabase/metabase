@@ -80,8 +80,6 @@ env:
   COMPARE_STEP_SNAPSHOTS: ${{ (github.event_name != 'workflow_dispatch' || inputs.compare_step_snapshots) && 'true' || 'false' }}
   UPLOAD: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload) && 'true' || 'false' }}
   RETENTION_DAYS: 7
-  AGE_VERSION: "v1.3.2"
-  AGE_SHA256: "cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10"
   AGE_RECIPIENTS: e2e/journey-capture/age-recipients.txt
 
 jobs:
@@ -402,62 +400,13 @@ jobs:
         continue-on-error: true
         run: node e2e/coverage/journey-capture.mjs "$JOURNEY_CAPTURE_DIR" --subtract > "$JOURNEY_CAPTURE_DIR/summary.txt"
 
-      # Only this step gets the secrets context, so no other process on the runner sees every secret.
-      - name: Scrub and verify shard capture
-        id: scrub
+      - name: Scrub, encrypt and upload shard capture
         if: always()
-        shell: bash
-        env:
-          JOURNEY_SCRUB_SECRETS: ${{ toJSON(secrets) }}
-        run: |
-          status=0
-          node e2e/coverage/journey-capture-scrub.mjs "$JOURNEY_CAPTURE_DIR" > "$RUNNER_TEMP/journey-capture-scrub.txt" || status=$?
-          {
-            echo '```'
-            if [ "$status" -eq 0 ] && [ -f "$JOURNEY_CAPTURE_DIR/summary.txt" ]; then
-              cat "$JOURNEY_CAPTURE_DIR/summary.txt"
-              echo ""
-            fi
-            cat "$RUNNER_TEMP/journey-capture-scrub.txt"
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-          exit "$status"
-
-      - name: Encrypt shard capture
-        id: encrypt
-        if: always() && steps.scrub.outcome == 'success'
-        shell: bash
-        env:
-          SHARD_INDEX: ${{ matrix.split_index }}
-        run: |
-          if ! grep -Eq '^(age1[0-9a-z]+|ssh-(ed25519|rsa) )' "$AGE_RECIPIENTS"; then
-            echo "::error::$AGE_RECIPIENTS has no age recipient, so the capture can't be encrypted or uploaded"
-            exit 1
-          fi
-          curl -fsSL -o "$RUNNER_TEMP/age.tar.gz" \
-            "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
-          echo "${AGE_SHA256}  $RUNNER_TEMP/age.tar.gz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/age.tar.gz" -C "$RUNNER_TEMP"
-          mkdir -p "$RUNNER_TEMP/journey-capture-encrypted"
-          encrypted="$RUNNER_TEMP/journey-capture-encrypted/journey-capture-shard-${SHARD_INDEX}.tar.gz.age"
-          tar -czf - -C "$JOURNEY_CAPTURE_DIR" . | "$RUNNER_TEMP/age/age" --encrypt -R "$AGE_RECIPIENTS" -o "$encrypted"
-          echo "Encrypted shard capture: $(stat -c %s "$encrypted") bytes" | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload shard capture
-        if: always() && steps.encrypt.outcome == 'success' && env.UPLOAD == 'true'
-        uses: actions/upload-artifact@v7
+        uses: ./.github/actions/upload-journey-capture
         with:
-          name: journey-capture-shard-${{ matrix.split_index }}
-          path: ${{ runner.temp }}/journey-capture-encrypted/
+          capture-dir: ${{ env.JOURNEY_CAPTURE_DIR }}
+          artifact-name: journey-capture-shard-${{ matrix.split_index }}
+          upload: ${{ env.UPLOAD }}
           retention-days: ${{ env.RETENTION_DAYS }}
-          compression-level: 0
-          if-no-files-found: error
-
-      - name: Report validation run
-        if: always() && env.UPLOAD != 'true'
-        env:
-          SCRUB: ${{ steps.scrub.outcome }}
-          ENCRYPT: ${{ steps.encrypt.outcome }}
-        run: |
-          if [ "$SCRUB" = success ] && [ "$ENCRYPT" = success ]; then result=pass; else result=FAIL; fi
-          echo "Validation run, nothing uploaded: $result (scrub and verify: $SCRUB, encryption: $ENCRYPT)" | tee -a "$GITHUB_STEP_SUMMARY"
+          recipients: ${{ env.AGE_RECIPIENTS }}
+          secrets: ${{ toJSON(secrets) }}

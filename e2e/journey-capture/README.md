@@ -284,7 +284,7 @@ On top of that, every shard scrubs, checks and encrypts its data before it uploa
 
 ### Scrub
 
-`e2e/coverage/journey-capture-scrub.mjs` runs in the `Scrub and verify shard capture` step, the only step that gets `toJSON(secrets)`. In every text file it replaces these with `<scrubbed>`:
+Each shard runs `.github/actions/upload-journey-capture` as its `Scrub, encrypt and upload shard capture` step. The action's first step runs `e2e/coverage/journey-capture-scrub.mjs`. It is the only step with `toJSON(secrets)` in its environment. In every text file, the script replaces these with `<scrubbed>`:
 
 - every secret of the workflow that is at least 16 characters long, also trimmed and line by line, in each of these spellings: as it is, JSON-escaped once and twice, URL-encoded, and base64, standard and URL-safe, at each of the three byte alignments. Any 20 characters of any of these spellings are replaced too, which catches a secret cut off by the 300-character clip
 - JWTs: `eyJ` and at least three dot-separated parts
@@ -302,7 +302,7 @@ The same script then reads every file again. It looks for any spelling or 20-cha
 
 ### Encryption
 
-The `Encrypt shard capture` step packs the scrubbed directory as a gzipped tarball and encrypts it with age to every recipient in `e2e/journey-capture/age-recipients.txt`. Only that `.age` file is uploaded. age comes from its GitHub release, pinned in `AGE_VERSION` and checked against `AGE_SHA256`.
+The action's `Encrypt capture` step packs the scrubbed directory as a gzipped tarball and encrypts it with age to every recipient in `e2e/journey-capture/age-recipients.txt`. Only that `.age` file is uploaded. age comes from its GitHub release, pinned in the step's `AGE_VERSION` and checked against `AGE_SHA256`.
 
 While `age-recipients.txt` has no recipient, a run with `upload` on fails in `Build shard matrix`, before any shard runs, and every shard fails at its encryption step.
 

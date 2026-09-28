@@ -1,0 +1,91 @@
+name: Upload journey capture
+description: Scrub secrets from a journey capture directory, encrypt it with age and upload only the encrypted file
+
+inputs:
+  capture-dir:
+    description: The capture directory. The scrub edits it in place
+    required: true
+  artifact-name:
+    description: Name of the artifact, and of the encrypted file in it
+    required: true
+  upload:
+    description: '"true" uploads the encrypted file. Anything else uploads nothing and reports whether the scrub and the encryption passed'
+    required: true
+  retention-days:
+    description: Days to keep the artifact
+    required: true
+  recipients:
+    description: File of age recipients to encrypt to
+    required: true
+  secrets:
+    description: toJSON(secrets). Only the scrub step gets it
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Only this step gets inputs.secrets, so no other process on the runner sees every secret.
+    - name: Scrub and verify capture
+      id: scrub
+      if: always()
+      shell: bash
+      env:
+        JOURNEY_CAPTURE_DIR: ${{ inputs.capture-dir }}
+        JOURNEY_SCRUB_SECRETS: ${{ inputs.secrets }}
+      run: |
+        status=0
+        node e2e/coverage/journey-capture-scrub.mjs "$JOURNEY_CAPTURE_DIR" > "$RUNNER_TEMP/journey-capture-scrub.txt" || status=$?
+        {
+          echo '```'
+          if [ "$status" -eq 0 ] && [ -f "$JOURNEY_CAPTURE_DIR/summary.txt" ]; then
+            cat "$JOURNEY_CAPTURE_DIR/summary.txt"
+            echo ""
+          fi
+          cat "$RUNNER_TEMP/journey-capture-scrub.txt"
+          echo '```'
+        } | tee -a "$GITHUB_STEP_SUMMARY"
+        exit "$status"
+
+    - name: Encrypt capture
+      id: encrypt
+      if: always() && steps.scrub.outcome == 'success'
+      shell: bash
+      env:
+        JOURNEY_CAPTURE_DIR: ${{ inputs.capture-dir }}
+        AGE_RECIPIENTS: ${{ inputs.recipients }}
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        AGE_VERSION: "v1.3.2"
+        AGE_SHA256: "cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10"
+      run: |
+        if ! grep -Eq '^(age1[0-9a-z]+|ssh-(ed25519|rsa) )' "$AGE_RECIPIENTS"; then
+          echo "::error::$AGE_RECIPIENTS has no age recipient, so the capture can't be encrypted or uploaded"
+          exit 1
+        fi
+        curl -fsSL -o "$RUNNER_TEMP/age.tar.gz" \
+          "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+        echo "${AGE_SHA256}  $RUNNER_TEMP/age.tar.gz" | sha256sum -c -
+        tar -xzf "$RUNNER_TEMP/age.tar.gz" -C "$RUNNER_TEMP"
+        mkdir -p "$RUNNER_TEMP/journey-capture-encrypted"
+        encrypted="$RUNNER_TEMP/journey-capture-encrypted/${ARTIFACT_NAME}.tar.gz.age"
+        tar -czf - -C "$JOURNEY_CAPTURE_DIR" . | "$RUNNER_TEMP/age/age" --encrypt -R "$AGE_RECIPIENTS" -o "$encrypted"
+        echo "Encrypted capture: $(stat -c %s "$encrypted") bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload capture
+      if: always() && steps.encrypt.outcome == 'success' && inputs.upload == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/journey-capture-encrypted/
+        retention-days: ${{ inputs.retention-days }}
+        compression-level: 0
+        if-no-files-found: error
+
+    - name: Report validation run
+      if: always() && inputs.upload != 'true'
+      shell: bash
+      env:
+        SCRUB: ${{ steps.scrub.outcome }}
+        ENCRYPT: ${{ steps.encrypt.outcome }}
+      run: |
+        if [ "$SCRUB" = success ] && [ "$ENCRYPT" = success ]; then result=pass; else result=FAIL; fi
+        echo "Validation run, nothing uploaded: $result (scrub and verify: $SCRUB, encryption: $ENCRYPT)" | tee -a "$GITHUB_STEP_SUMMARY"
