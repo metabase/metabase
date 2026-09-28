@@ -289,7 +289,7 @@
 (def ^:private source-extensions
   [".clj" ".cljc" ".cljs"])
 
-;; Concatenated so this file never contains a literal ignore marker.
+;; Concatenated so the scan does not count this definition as an ignore.
 (def ^:private ignore-marker
   (str ":clj-kondo" "/ignore"))
 

@@ -589,7 +589,11 @@
 
  :hooks
  {:analyze-call
-  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {cljs.core/def                                                                                                             hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn                                                                                                            hooks.clojure.core.def/lint-dynamic
+   cljs.core/defn-                                                                                                           hooks.clojure.core.def/lint-dynamic
+   cljs.core/defonce                                                                                                         hooks.clojure.core.def/lint-dynamic
+   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/testing                                                                                                         hooks.clojure.test/testing
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
