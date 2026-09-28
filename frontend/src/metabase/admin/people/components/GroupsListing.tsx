@@ -198,10 +198,14 @@ function EditingGroupRow({
       </td>
       <td />
       <Box component="td" ta="right">
-        <Button variant="subtle" onClick={onCancelClicked}>{t`Cancel`}</Button>
+        <Button
+          variant="subtle"
+          color="neutral"
+          onClick={onCancelClicked}
+        >{t`Cancel`}</Button>
         <Button
           ml="1rem"
-          variant={textIsValid && textHasChanged ? "filled" : "outline"}
+          variant={textIsValid && textHasChanged ? "filled" : "default"}
           disabled={!textIsValid || !textHasChanged}
           onClick={onDoneClicked}
         >
@@ -547,7 +551,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "core-brand" }}
+        confirmButtonProps={{ color: "brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

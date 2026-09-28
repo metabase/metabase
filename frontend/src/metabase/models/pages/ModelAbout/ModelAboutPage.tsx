@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -38,11 +37,7 @@ export function ModelAboutPage() {
   const { isLoading: isLoadingMetadata, error: metadataError } =
     useGetCardQueryMetadataQuery(cardId ?? skipToken);
 
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(
-    () => (card != null ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const question = useQuestionFromCard(card);
 
   useHeaderCollection(card?.collection_id);
 

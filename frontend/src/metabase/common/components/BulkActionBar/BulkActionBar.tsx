@@ -41,7 +41,7 @@ export const BulkActionBarPortal = ({
     <Portal>
       <BulkActionsToast className={cx(className, Animation.popToast)}>
         <ToastCard data-testid="toast-card" {...props}>
-          {message && <Text color="text-primary-inverse">{message}</Text>}
+          {message && <Text c="tooltip-text">{message}</Text>}
           <Flex gap="sm" align="center">
             {children}
           </Flex>

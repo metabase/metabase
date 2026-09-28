@@ -1,5 +1,5 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 
 import { NavbarLibrarySection } from "../NavbarLibrarySection";
 

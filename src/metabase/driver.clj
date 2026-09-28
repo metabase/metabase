@@ -1841,6 +1841,17 @@
   (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
 
+(defmulti humanize-index-error-message
+  "Trim `message`, from an exception an index operation raised ([[fetch-table-indexes]] or the DDL from
+  [[compile-create-index]]), for display to the user. The default returns it unchanged."
+  {:added "0.64.0", :arglists '([driver message])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod humanize-index-error-message :default
+  [_driver message]
+  message)
+
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified
   by schema e.g.

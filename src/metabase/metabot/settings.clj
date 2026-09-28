@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.registry :as registry]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -245,7 +245,7 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
+  :getter     #(registry/streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-metabot-supports-fast-mode?
@@ -256,7 +256,7 @@
   :visibility :settings-manager
   :setter     :none
   :export?    false
-  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
+  :getter     #(registry/supports-fast-mode? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-fast-mode

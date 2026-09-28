@@ -212,8 +212,7 @@ function DeltaText({
 
 /** Read-only view of the metric's query, set up like `MetricQueryPage` minus the save path. */
 function MetricDefinitionPreview({ card }: { card: CardApiType }) {
-  const buildQuestion = useQuestionFromCard();
-  const question = useMemo(() => buildQuestion(card), [buildQuestion, card]);
+  const question = useQuestionFromCard(card);
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (

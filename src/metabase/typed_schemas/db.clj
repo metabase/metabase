@@ -29,7 +29,7 @@
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
-   collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]]
+   collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
   (t2/select :model/Card
              {:where    [:and
                          [:= :type (name card-type)]

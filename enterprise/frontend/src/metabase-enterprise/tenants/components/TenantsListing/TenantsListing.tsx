@@ -80,6 +80,7 @@ export const TenantsListing = ({
           <Flex gap="sm">
             <Button
               variant="filled"
+              size="lg"
               onClick={openNewTenantModal}
             >{t`New tenant`}</Button>
           </Flex>
