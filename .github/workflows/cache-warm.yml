@@ -135,6 +135,7 @@ jobs:
             ":run:ee"                                           # cross-branch-migration-test
             ":dev:ee:migrate"                                   # cross-branch-migration-test
             ":whitespace-linter"                                # whitespace linter
+            ":javac:javac-lint"                                 # lint.yml (Error Prone and NullAway on java/src)
           )
           for combo in "${combos[@]}"; do
             echo "::group::clojure -P -A${combo}"

@@ -5,10 +5,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
-import metabase.metabot.providers.AiSdkChunk.*;
+import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
+import metabase.metabot.providers.AiSdkChunk.Finish;
+import metabase.metabot.providers.AiSdkChunk.FinishReason;
+import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import metabase.metabot.providers.AiSdkChunk.Start;
+import metabase.metabot.providers.AiSdkChunk.Usage;
 import metabase.metabot.providers.ChunkTranslator;
 import metabase.metabot.providers.Part;
-import metabase.metabot.providers.openai.ResponsesEvent.*;
+import metabase.metabot.providers.openai.ResponsesEvent.Created;
+import metabase.metabot.providers.openai.ResponsesEvent.Delta;
+import metabase.metabot.providers.openai.ResponsesEvent.Failed;
+import metabase.metabot.providers.openai.ResponsesEvent.Finished;
+import metabase.metabot.providers.openai.ResponsesEvent.Ignored;
+import metabase.metabot.providers.openai.ResponsesEvent.Item;
+import metabase.metabot.providers.openai.ResponsesEvent.ItemAdded;
+import metabase.metabot.providers.openai.ResponsesEvent.ItemDone;
+import metabase.metabot.providers.openai.ResponsesEvent.StreamError;
+import metabase.metabot.providers.openai.ResponsesEvent.SummaryPartAdded;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Translates one OpenAI Responses API stream into AI SDK v5 chunks.
@@ -29,7 +44,7 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
     private final Supplier<String> failedWithoutMessage;
 
     private final Part.Slot open = new Part.Slot();
-    private String model;
+    private @Nullable String model;
 
     public ResponsesTranslator(Supplier<String> newId, Supplier<String> failedWithoutMessage) {
         this.newId = newId;
@@ -53,7 +68,8 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                 open.close(out);
                 switch (item) {
                     case Item.Message() -> open.start(out, new Part.Text(newId.get()));
-                    case Item.Reasoning(var id, _) -> open.start(out, new Part.Reasoning(id));
+                    // a reasoning item always has an id; should one not, it still gets one, as every other part does
+                    case Item.Reasoning(var id, _) -> open.start(out, new Part.Reasoning(id != null ? id : newId.get()));
                     case Item.FunctionCall(var callId, var name) -> open.start(out, new Part.Tool(callId, name));
                     case Item.Unsupported() -> {}
                 }
@@ -65,26 +81,27 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                         && content != null
                         && open.get() instanceof Part.Reasoning(var openId, _)
                         && openId.equals(id)) {
-                    open.update(new Part.Reasoning(id, ProviderMetadata.of(
-                        "openai", "itemId", id, "encryptedContent", content)));
+                    open.update(new Part.Reasoning(openId, ProviderMetadata.of(
+                        "openai", "itemId", openId, "encryptedContent", content)));
                 }
                 open.close(out);
             }
             case Delta(var delta) -> {
-                if (open.get() != null) {
-                    out.add(open.get().delta(delta));
+                var part = open.get();
+                if (part != null) {
+                    out.add(part.delta(delta));
                 }
             }
-            case SummaryPartAdded(var index) -> {
+            case SummaryPartAdded(long index) -> {
                 if (index > 0 && open.get() instanceof Part.Reasoning reasoning) {
                     out.add(reasoning.delta("\n\n"));
                 }
             }
             case Finished(var responseId, var usage, var incompleteReason) ->
-                out.add(new AiSdkChunk.Usage(responseId, model, usage, Finish.of(STOP_REASONS, incompleteReason)));
-            case Failed(var message, var code) -> out.add(new AiSdkChunk.Error(
+                out.add(new Usage(responseId, model, usage, Finish.ofNullable(STOP_REASONS, incompleteReason)));
+            case Failed(var message, var code) -> out.add(new ErrorChunk(
                 message != null ? message : code != null ? code : failedWithoutMessage.get()));
-            case StreamError(var message) -> out.add(new AiSdkChunk.Error(message));
+            case StreamError(var message) -> out.add(new ErrorChunk(message));
             case Ignored() -> {}
         }
         return out;

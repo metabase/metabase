@@ -5,10 +5,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
-import metabase.metabot.providers.AiSdkChunk.*;
+import metabase.metabot.providers.AiSdkChunk.Finish;
+import metabase.metabot.providers.AiSdkChunk.FinishReason;
+import metabase.metabot.providers.AiSdkChunk.Start;
+import metabase.metabot.providers.AiSdkChunk.Usage;
 import metabase.metabot.providers.ChunkTranslator;
 import metabase.metabot.providers.Part;
 import metabase.metabot.providers.chat.ChatChunk.Content;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Translates one OpenAI-compatible Chat Completions stream into AI SDK v5 chunks. Shared by every adapter whose
@@ -28,9 +32,9 @@ public final class ChatCompletionsTranslator implements ChunkTranslator<ChatChun
     private final boolean forwardReasoning;
 
     private final Part.Slot open = new Part.Slot();
-    private String messageId;
-    private String model;
-    private String stopReason;
+    private @Nullable String messageId;
+    private @Nullable String model;
+    private @Nullable String stopReason;
 
     public ChatCompletionsTranslator(Supplier<String> newId,
                                      Map<String, FinishReason> stopReasons,
@@ -90,7 +94,7 @@ public final class ChatCompletionsTranslator implements ChunkTranslator<ChatChun
         }
         // usage often rides a final chunk of its own, with no choices
         if (chunk.usage() != null) {
-            out.add(new AiSdkChunk.Usage(messageId, model, chunk.usage(), Finish.of(stopReasons, stopReason)));
+            out.add(new Usage(messageId, model, chunk.usage(), Finish.ofNullable(stopReasons, stopReason)));
         }
         return out;
     }

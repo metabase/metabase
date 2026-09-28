@@ -11,10 +11,17 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
-import metabase.metabot.providers.AiSdkChunk.*;
+import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
+import metabase.metabot.providers.AiSdkChunk.Finish;
+import metabase.metabot.providers.AiSdkChunk.FinishReason;
+import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import metabase.metabot.providers.AiSdkChunk.Start;
+import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import metabase.metabot.providers.AiSdkChunk.Usage;
 import metabase.metabot.providers.ChunkTranslator;
 import metabase.metabot.providers.Part;
 import metabase.metabot.providers.google.GenerateContentEvent.GeminiPart;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Translates one Gemini `streamGenerateContent` stream into AI SDK v5 chunks.
@@ -78,10 +85,10 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
     private final Consumer<String> logEarlyStop;
 
     private final Part.Slot open = new Part.Slot();
-    private String messageId;
-    private String model;
-    private TokenUsage usage;
-    private Finish finish;
+    private @Nullable String messageId;
+    private @Nullable String model;
+    private @Nullable TokenUsage usage;
+    private @Nullable Finish finish;
 
     public GenerateContentTranslator(Supplier<String> newId,
                                      Function<Object, String> encodeJson,
@@ -119,17 +126,17 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
             if (finish.reason() != FinishReason.STOP) {
                 logEarlyStop.accept(finish.raw());
                 if (!speaksForItself(finish)) {
-                    out.add(new AiSdkChunk.Error("Gemini stopped early (" + finish.raw() + ")"));
+                    out.add(new ErrorChunk("Gemini stopped early (" + finish.raw() + ")"));
                 }
             }
         }
         if (event.blockReason() != null) {
             open.close(out);
-            out.add(new AiSdkChunk.Error("Prompt blocked by Google: " + event.blockReason()));
+            out.add(new ErrorChunk("Prompt blocked by Google: " + event.blockReason()));
         }
         if (event.errorText() != null) {
             open.close(out);
-            out.add(new AiSdkChunk.Error(event.errorText()));
+            out.add(new ErrorChunk(event.errorText()));
         }
         return out;
     }
@@ -163,7 +170,7 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
             usage = NO_USAGE;
         }
         if (usage != null) {
-            out.add(new AiSdkChunk.Usage(messageId, model, usage, finish));
+            out.add(new Usage(messageId, model, usage, finish));
         }
         return out;
     }

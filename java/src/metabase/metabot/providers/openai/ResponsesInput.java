@@ -12,7 +12,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import metabase.metabot.providers.AiSdkPart;
-import metabase.metabot.providers.AiSdkPart.*;
+import metabase.metabot.providers.AiSdkPart.Message;
+import metabase.metabot.providers.AiSdkPart.Reasoning;
+import metabase.metabot.providers.AiSdkPart.Text;
+import metabase.metabot.providers.AiSdkPart.ToolInput;
+import metabase.metabot.providers.AiSdkPart.ToolOutput;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The conversation history as OpenAI Responses API `input` items.
@@ -22,7 +27,8 @@ public final class ResponsesInput {
     private ResponsesInput() {}
 
     /** `parts` are Clojure AISDK part maps; the items come back as Clojure data, for the request body. */
-    public static IPersistentVector fromClj(Iterable<? extends Map<?, ?>> parts, Function<Object, String> encodeJson) {
+    public static IPersistentVector fromClj(Iterable<? extends Map<?, ?>> parts,
+                                            Function<@Nullable Object, String> encodeJson) {
         ITransientCollection items = PersistentVector.EMPTY.asTransient();
         for (var part : parts) {
             var item = item(AiSdkPart.parse(part), encodeJson);
@@ -34,7 +40,7 @@ public final class ResponsesInput {
     }
 
     /** The input item replaying `part`, or null for a part OpenAI cannot take back. */
-    private static IPersistentMap item(AiSdkPart part, Function<Object, String> encodeJson) {
+    private static @Nullable IPersistentMap item(AiSdkPart part, Function<@Nullable Object, String> encodeJson) {
         return switch (part) {
             case Reasoning reasoning -> reasoningItem(reasoning);
             case Text(var text) ->
@@ -65,9 +71,12 @@ public final class ResponsesInput {
      * With store:false the API keeps nothing server-side, so reasoning rides along as its encrypted content, ahead of
      * the tool calls it preceded. A part without that — a bare summary, another provider's — has nothing to replay.
      */
-    private static IPersistentMap reasoningItem(Reasoning reasoning) {
+    private static @Nullable IPersistentMap reasoningItem(Reasoning reasoning) {
         var openai = reasoning.metadata("openai");
-        String content = openai == null ? null : openai.fields().get("encryptedContent");
+        if (openai == null) {
+            return null;
+        }
+        String content = openai.fields().get("encryptedContent");
         if (content == null) {
             return null;
         }

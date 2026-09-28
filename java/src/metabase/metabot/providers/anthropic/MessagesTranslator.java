@@ -5,10 +5,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
-import metabase.metabot.providers.AiSdkChunk.*;
+import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
+import metabase.metabot.providers.AiSdkChunk.Finish;
+import metabase.metabot.providers.AiSdkChunk.FinishReason;
+import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import metabase.metabot.providers.AiSdkChunk.Start;
+import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import metabase.metabot.providers.AiSdkChunk.Usage;
 import metabase.metabot.providers.ChunkTranslator;
 import metabase.metabot.providers.Part;
-import metabase.metabot.providers.anthropic.MessagesEvent.*;
+import metabase.metabot.providers.anthropic.MessagesEvent.Block;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockDelta;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockStart;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockStop;
+import metabase.metabot.providers.anthropic.MessagesEvent.Delta;
+import metabase.metabot.providers.anthropic.MessagesEvent.Ignored;
+import metabase.metabot.providers.anthropic.MessagesEvent.MessageDelta;
+import metabase.metabot.providers.anthropic.MessagesEvent.MessageStart;
+import metabase.metabot.providers.anthropic.MessagesEvent.StreamError;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Translates one Anthropic Messages API stream into AI SDK v5 chunks.
@@ -31,10 +46,10 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
     private final Supplier<String> newId;
 
     private final Part.Slot open = new Part.Slot();
-    private String messageId;
-    private String model;
-    private TokenUsage lastUsage;
-    private String stopReason;
+    private @Nullable String messageId;
+    private @Nullable String model;
+    private @Nullable TokenUsage lastUsage;
+    private @Nullable String stopReason;
 
     public MessagesTranslator(Supplier<String> newId) {
         this.newId = newId;
@@ -87,7 +102,7 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
                 lastUsage = usage;
                 stopReason = reason;
             }
-            case StreamError(var message) -> out.add(new AiSdkChunk.Error(message));
+            case StreamError(var message) -> out.add(new ErrorChunk(message));
             case Ignored() -> {}
         }
         return out;
@@ -98,13 +113,13 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
         var out = new ArrayList<AiSdkChunk>(2);
         open.close(out);
         if (lastUsage != null) {
-            out.add(new AiSdkChunk.Usage(messageId, model, lastUsage, Finish.of(STOP_REASONS, stopReason)));
+            out.add(new Usage(messageId, model, lastUsage, Finish.ofNullable(STOP_REASONS, stopReason)));
         }
         return out;
     }
 
     /** A signature arrives in pieces, which concatenate into the one a thinking block is replayed with. */
-    private static ProviderMetadata withSignaturePiece(ProviderMetadata metadata, String piece) {
+    private static ProviderMetadata withSignaturePiece(@Nullable ProviderMetadata metadata, @Nullable String piece) {
         String prior = metadata == null ? null : metadata.fields().get("signature");
         String signature = (prior == null ? "" : prior) + (piece == null ? "" : piece);
         return metadata == null

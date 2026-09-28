@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One OpenAI-compatible Chat Completions streaming chunk (`chat.completion.chunk`), reduced to its first choice.
@@ -19,12 +20,12 @@ import metabase.metabot.providers.AiSdkChunk.TokenUsage;
  * @param reasoningMetadata not a wire field: a dialect's own pre-transform in Clojure may mint it, already
  *                          namespaced by provider (today only Mistral's, for a think chunk's signature)
  */
-public record ChatChunk(String id,
-                        String model,
+public record ChatChunk(@Nullable String id,
+                        @Nullable String model,
                         Content content,
-                        ProviderMetadata reasoningMetadata,
-                        String finishReason,
-                        TokenUsage usage) {
+                        @Nullable ProviderMetadata reasoningMetadata,
+                        @Nullable String finishReason,
+                        @Nullable TokenUsage usage) {
 
     /**
      * What a delta carries, by precedence: text, then a tool call, then reasoning. Tool calls outrank reasoning
@@ -34,9 +35,9 @@ public record ChatChunk(String id,
     public sealed interface Content {
         record Text(String text) implements Content {}
         /** The opening delta of a tool call. Parallel calls are told apart by `id`, never by `index`. */
-        record ToolCallStart(String id, String name, String arguments) implements Content {}
+        record ToolCallStart(String id, @Nullable String name, @Nullable String arguments) implements Content {}
         /** A later delta of the open tool call; `arguments` may be absent. */
-        record ToolCallArguments(String arguments) implements Content {}
+        record ToolCallArguments(@Nullable String arguments) implements Content {}
         record Reasoning(String text) implements Content {}
         record None() implements Content {}
     }
@@ -53,7 +54,7 @@ public record ChatChunk(String id,
                              parseUsage(map(chunk, "usage")));
     }
 
-    private static Content parseContent(Map<?, ?> delta) {
+    private static Content parseContent(@Nullable Map<?, ?> delta) {
         String text = str(delta, "content");
         if (text != null && !text.isEmpty()) {
             return new Content.Text(text);
@@ -75,7 +76,7 @@ public record ChatChunk(String id,
      * name; older builds, Z.AI, and other compatible servers still emit the latter, and a self-hosted server's
      * version is the customer's choice.
      */
-    private static String reasoning(Map<?, ?> delta) {
+    private static @Nullable String reasoning(@Nullable Map<?, ?> delta) {
         for (String key : List.of("reasoning", "reasoning_content")) {
             String r = str(delta, key);
             if (r != null && !r.isEmpty()) {
@@ -90,7 +91,7 @@ public record ChatChunk(String id,
      * `cache_write_tokens` is undocumented but reported by OpenRouter (Anthropic models) and newer OpenAI models;
      * providers without it (e.g. Z.AI) omit it.
      */
-    private static TokenUsage parseUsage(Map<?, ?> usage) {
+    private static @Nullable TokenUsage parseUsage(@Nullable Map<?, ?> usage) {
         if (usage == null) {
             return null;
         }

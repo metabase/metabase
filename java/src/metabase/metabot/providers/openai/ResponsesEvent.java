@@ -7,6 +7,7 @@ import static metabase.metabot.providers.Clj.type;
 
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The OpenAI Responses API streaming events the translator acts on
@@ -14,7 +15,7 @@ import metabase.metabot.providers.AiSdkChunk.TokenUsage;
  */
 public sealed interface ResponsesEvent {
 
-    record Created(String responseId, String model) implements ResponsesEvent {}
+    record Created(@Nullable String responseId, @Nullable String model) implements ResponsesEvent {}
 
     record ItemAdded(Item item) implements ResponsesEvent {}
 
@@ -27,20 +28,20 @@ public sealed interface ResponsesEvent {
     record SummaryPartAdded(long summaryIndex) implements ResponsesEvent {}
 
     /** `response.completed` or `response.incomplete`. The latter still has valid partial output. */
-    record Finished(String responseId, TokenUsage usage, String incompleteReason) implements ResponsesEvent {}
+    record Finished(@Nullable String responseId, TokenUsage usage, @Nullable String incompleteReason) implements ResponsesEvent {}
 
     /** `response.failed`: the error lives nested under `response.error`. */
-    record Failed(String message, String code) implements ResponsesEvent {}
+    record Failed(@Nullable String message, @Nullable String code) implements ResponsesEvent {}
 
     /** A top-level `error` event. */
-    record StreamError(String message) implements ResponsesEvent {}
+    record StreamError(@Nullable String message) implements ResponsesEvent {}
 
     record Ignored() implements ResponsesEvent {}
 
     sealed interface Item {
         record Message() implements Item {}
-        record FunctionCall(String callId, String name) implements Item {}
-        record Reasoning(String id, String encryptedContent) implements Item {}
+        record FunctionCall(@Nullable String callId, @Nullable String name) implements Item {}
+        record Reasoning(@Nullable String id, @Nullable String encryptedContent) implements Item {}
         /** Built-in tool calls and the like, which we do not translate. */
         record Unsupported() implements Item {}
     }
@@ -75,7 +76,7 @@ public sealed interface ResponsesEvent {
         };
     }
 
-    private static Item parseItem(Map<?, ?> item) {
+    private static Item parseItem(@Nullable Map<?, ?> item) {
         return switch (type(item)) {
             case "message" -> new Item.Message();
             case "function_call" -> new Item.FunctionCall(str(item, "call_id"), str(item, "name"));
@@ -88,7 +89,7 @@ public sealed interface ResponsesEvent {
      * OpenAI reports cached tokens as a subset of `input_tokens`. `cache_write_tokens` is undocumented but present in
      * live responses, and should always be 0.
      */
-    private static TokenUsage parseUsage(Map<?, ?> usage) {
+    private static TokenUsage parseUsage(@Nullable Map<?, ?> usage) {
         Map<?, ?> inputDetails = map(usage, "input_tokens_details");
         return new TokenUsage(num(usage, "input_tokens"),
                               num(usage, "output_tokens"),

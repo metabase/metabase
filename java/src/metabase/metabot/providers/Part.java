@@ -1,7 +1,17 @@
 package metabase.metabot.providers;
 
 import java.util.List;
-import metabase.metabot.providers.AiSdkChunk.*;
+import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import metabase.metabot.providers.AiSdkChunk.ReasoningDelta;
+import metabase.metabot.providers.AiSdkChunk.ReasoningEnd;
+import metabase.metabot.providers.AiSdkChunk.ReasoningStart;
+import metabase.metabot.providers.AiSdkChunk.TextDelta;
+import metabase.metabot.providers.AiSdkChunk.TextEnd;
+import metabase.metabot.providers.AiSdkChunk.TextStart;
+import metabase.metabot.providers.AiSdkChunk.ToolInputAvailable;
+import metabase.metabot.providers.AiSdkChunk.ToolInputDelta;
+import metabase.metabot.providers.AiSdkChunk.ToolInputStart;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A part of the response while it streams: AI SDK brackets each one in start / delta* / end chunks, and every
@@ -9,36 +19,36 @@ import metabase.metabot.providers.AiSdkChunk.*;
  */
 public sealed interface Part {
     AiSdkChunk start();
-    AiSdkChunk delta(String delta);
+    AiSdkChunk delta(@Nullable String delta);
     AiSdkChunk end();
 
     record Text(String id) implements Part {
-        public AiSdkChunk start() { return new TextStart(id); }
-        public AiSdkChunk delta(String d) { return new TextDelta(id, d); }
-        public AiSdkChunk end() { return new TextEnd(id); }
+        @Override public AiSdkChunk start() { return new TextStart(id); }
+        @Override public AiSdkChunk delta(@Nullable String d) { return new TextDelta(id, d); }
+        @Override public AiSdkChunk end() { return new TextEnd(id); }
     }
 
     /** `metadata` rides the start, where replay reads it from; see {@link ToolInputStart}. */
-    record Tool(String id, String name, ProviderMetadata metadata) implements Part {
-        public Tool(String id, String name) { this(id, name, null); }
-        public AiSdkChunk start() { return new ToolInputStart(id, name, metadata); }
-        public AiSdkChunk delta(String d) { return new ToolInputDelta(id, d); }
-        public AiSdkChunk end() { return new ToolInputAvailable(id, name); }
+    record Tool(@Nullable String id, @Nullable String name, @Nullable ProviderMetadata metadata) implements Part {
+        public Tool(@Nullable String id, @Nullable String name) { this(id, name, null); }
+        @Override public AiSdkChunk start() { return new ToolInputStart(id, name, metadata); }
+        @Override public AiSdkChunk delta(@Nullable String d) { return new ToolInputDelta(id, d); }
+        @Override public AiSdkChunk end() { return new ToolInputAvailable(id, name); }
     }
 
     /** `metadata` is what the provider needs to see again to replay this block, once it has sent any. */
-    record Reasoning(String id, ProviderMetadata metadata) implements Part {
+    record Reasoning(String id, @Nullable ProviderMetadata metadata) implements Part {
         public Reasoning(String id) { this(id, null); }
-        public AiSdkChunk start() { return new ReasoningStart(id); }
-        public AiSdkChunk delta(String d) { return new ReasoningDelta(id, d); }
-        public AiSdkChunk end() { return new ReasoningEnd(id, metadata); }
+        @Override public AiSdkChunk start() { return new ReasoningStart(id); }
+        @Override public AiSdkChunk delta(@Nullable String d) { return new ReasoningDelta(id, d); }
+        @Override public AiSdkChunk end() { return new ReasoningEnd(id, metadata); }
     }
 
     /** The one part a translator has open, if any. */
     final class Slot {
-        private Part open;
+        private @Nullable Part open;
 
-        public Part get() {
+        public @Nullable Part get() {
             return open;
         }
 

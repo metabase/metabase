@@ -5,9 +5,12 @@ import static metabase.metabot.providers.Clj.mapOf;
 
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The AI SDK v5 stream chunks a provider adapter emits (https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol),
@@ -16,46 +19,53 @@ import java.util.stream.Collectors;
  */
 public sealed interface AiSdkChunk {
 
-    record Start(String messageId) implements AiSdkChunk {}
+    record Start(@Nullable String messageId) implements AiSdkChunk {}
 
     record TextStart(String id) implements AiSdkChunk {}
-    record TextDelta(String id, String delta) implements AiSdkChunk {}
+    record TextDelta(String id, @Nullable String delta) implements AiSdkChunk {}
     record TextEnd(String id) implements AiSdkChunk {}
 
     record ReasoningStart(String id) implements AiSdkChunk {}
-    record ReasoningDelta(String id, String delta) implements AiSdkChunk {}
+    record ReasoningDelta(String id, @Nullable String delta) implements AiSdkChunk {}
     /** `metadata` is what the provider needs to see again next round-trip, when it sent any. */
-    record ReasoningEnd(String id, ProviderMetadata metadata) implements AiSdkChunk {}
+    record ReasoningEnd(String id, @Nullable ProviderMetadata metadata) implements AiSdkChunk {}
 
     /** `metadata` is what the provider needs to see again when this call is replayed, when it sent any. */
-    record ToolInputStart(String toolCallId, String toolName, ProviderMetadata metadata) implements AiSdkChunk {}
-    record ToolInputDelta(String toolCallId, String inputTextDelta) implements AiSdkChunk {}
-    record ToolInputAvailable(String toolCallId, String toolName) implements AiSdkChunk {}
+    record ToolInputStart(@Nullable String toolCallId, @Nullable String toolName, @Nullable ProviderMetadata metadata)
+        implements AiSdkChunk {}
+    record ToolInputDelta(@Nullable String toolCallId, @Nullable String inputTextDelta) implements AiSdkChunk {}
+    record ToolInputAvailable(@Nullable String toolCallId, @Nullable String toolName) implements AiSdkChunk {}
 
     /** Non-standard: AI SDK v5 has no usage chunk. `finish` is null for a response that completed normally. */
-    record Usage(String responseId, String model, TokenUsage usage, Finish finish) implements AiSdkChunk {}
+    record Usage(@Nullable String responseId, @Nullable String model, TokenUsage usage, @Nullable Finish finish)
+        implements AiSdkChunk {}
 
-    record Error(String errorText) implements AiSdkChunk {}
+    record ErrorChunk(@Nullable String errorText) implements AiSdkChunk {}
 
-    /** Vendor data carried verbatim on a part, rendered as `{:<provider> {...fields}}`. */
-    record ProviderMetadata(String provider, Map<String, String> fields) {
+    /** Vendor data carried verbatim on a part, rendered as {@code {:provider {:field "value"}}}. */
+    record ProviderMetadata(String provider, Map<String, @Nullable String> fields) {
+        /** An unmodifiable copy, since a record's fields are its value; values may be null, so not {@code Map.copyOf}. */
+        public ProviderMetadata {
+            fields = Collections.unmodifiableMap(new LinkedHashMap<String, @Nullable String>(fields));
+        }
+
         /** From alternating `"field", value` pairs. Nil values are kept, as they would be in a Clojure literal. */
-        public static ProviderMetadata of(String provider, String... kvs) {
-            var fields = new LinkedHashMap<String, String>();
+        public static ProviderMetadata of(String provider, @Nullable String... kvs) {
+            var fields = new LinkedHashMap<String, @Nullable String>();
             for (int i = 0; i < kvs.length; i += 2) {
-                fields.put(kvs[i], kvs[i + 1]);
+                fields.put(Objects.requireNonNull(kvs[i], "field name"), kvs[i + 1]);
             }
             return new ProviderMetadata(provider, fields);
         }
 
         /** A copy with `field` set to `value`. */
-        public ProviderMetadata with(String field, String value) {
-            var updated = new LinkedHashMap<>(fields);
+        public ProviderMetadata with(String field, @Nullable String value) {
+            var updated = new LinkedHashMap<String, @Nullable String>(fields);
             updated.put(field, value);
             return new ProviderMetadata(provider, updated);
         }
 
-        /** From Clojure's `{:<provider> {:<field> "value"}}`, as a dialect's Clojure pre-transform mints it. */
+        /** From Clojure's {@code {:provider {:field "value"}}}, as a dialect's Clojure pre-transform mints it. */
         public static ProviderMetadata fromClj(Map<?, ?> m) {
             if (m.size() != 1) {
                 throw new IllegalArgumentException("provider metadata names exactly one provider: " + m);
@@ -64,9 +74,9 @@ public sealed interface AiSdkChunk {
             return fromClj(entry.getKey(), entry.getValue());
         }
 
-        /** One provider's entry of a Clojure `{:<provider> {:<field> "value"}}`. */
-        public static ProviderMetadata fromClj(Object provider, Object cljFields) {
-            var fields = new LinkedHashMap<String, String>();
+        /** One provider's entry of a Clojure {@code {:provider {:field "value"}}}. */
+        public static ProviderMetadata fromClj(Object provider, @Nullable Object cljFields) {
+            var fields = new LinkedHashMap<String, @Nullable String>();
             if (cljFields instanceof Map<?, ?> m) {
                 for (var field : m.entrySet()) {
                     fields.put(((Keyword) field.getKey()).getName(), (String) field.getValue());
@@ -94,12 +104,14 @@ public sealed interface AiSdkChunk {
     }
 
     record Finish(FinishReason reason, String raw) {
-        /**
-         * A provider stop reason through that provider's `table`; unmapped reasons are {@link FinishReason#OTHER},
-         * and no reason is no finish.
-         */
+        /** A provider stop reason through that provider's `table`; unmapped reasons are {@link FinishReason#OTHER}. */
         public static Finish of(Map<String, FinishReason> table, String raw) {
-            return raw == null ? null : new Finish(table.getOrDefault(raw, FinishReason.OTHER), raw);
+            return new Finish(table.getOrDefault(raw, FinishReason.OTHER), raw);
+        }
+
+        /** {@link #of}, where no reason is no finish. */
+        public static @Nullable Finish ofNullable(Map<String, FinishReason> table, @Nullable String raw) {
+            return raw == null ? null : of(table, raw);
         }
     }
 
@@ -157,11 +169,11 @@ public sealed interface AiSdkChunk {
                 yield finish == null ? m : m.assoc(kw("finish-reason"), finish.reason().wire)
                                             .assoc(kw("raw-finish-reason"), finish.raw());
             }
-            case Error(var text) -> mapOf("type", kw("error"), "errorText", text);
+            case ErrorChunk(var text) -> mapOf("type", kw("error"), "errorText", text);
         };
     }
 
-    private static IPersistentMap withMetadata(IPersistentMap chunk, ProviderMetadata metadata) {
+    private static IPersistentMap withMetadata(IPersistentMap chunk, @Nullable ProviderMetadata metadata) {
         return metadata == null ? chunk : chunk.assoc(kw("providerMetadata"), metadata.toClj());
     }
 }

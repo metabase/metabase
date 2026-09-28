@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One element of the conversation history an adapter replays to its provider: an AI SDK part the agent loop
@@ -25,22 +26,27 @@ public sealed interface AiSdkPart {
     /** A message the user, or the system, wrote; also what an untyped part replays as. */
     record Message(Role role, String content) implements AiSdkPart {}
 
-    record Text(String text) implements AiSdkPart {}
+    record Text(@Nullable String text) implements AiSdkPart {}
 
     /** `metadata` holds what each provider needs to replay the block, keyed by provider; a foreign one has none. */
-    record Reasoning(String id, String text, Map<String, ProviderMetadata> metadata) implements AiSdkPart {
-        public ProviderMetadata metadata(String provider) {
+    record Reasoning(@Nullable String id, @Nullable String text, Map<String, ProviderMetadata> metadata)
+        implements AiSdkPart {
+        public Reasoning {
+            metadata = Map.copyOf(metadata);
+        }
+
+        public @Nullable ProviderMetadata metadata(String provider) {
             return metadata.get(provider);
         }
     }
 
     /** `arguments` are a JSON string, as the provider streamed them, or Clojure data built since. */
-    record ToolInput(String id, String function, Object arguments) implements AiSdkPart {}
+    record ToolInput(@Nullable String id, @Nullable String function, @Nullable Object arguments) implements AiSdkPart {}
 
     /**
      * What a tool returned, as its raw Clojure return value. `error` is set, possibly empty, when the call failed.
      */
-    record ToolOutput(String id, Object result, String error) implements AiSdkPart {}
+    record ToolOutput(@Nullable String id, @Nullable Object result, @Nullable String error) implements AiSdkPart {}
 
     static AiSdkPart parse(Map<?, ?> part) {
         String type = name(part, "type");
@@ -62,7 +68,7 @@ public sealed interface AiSdkPart {
         };
     }
 
-    private static Role parseRole(String role) {
+    private static Role parseRole(@Nullable String role) {
         if (role == null) {
             return Role.USER;
         }
@@ -73,7 +79,7 @@ public sealed interface AiSdkPart {
         }
     }
 
-    private static Map<String, ProviderMetadata> parseMetadata(Map<?, ?> byProvider) {
+    private static Map<String, ProviderMetadata> parseMetadata(@Nullable Map<?, ?> byProvider) {
         var out = new LinkedHashMap<String, ProviderMetadata>();
         if (byProvider != null) {
             for (var entry : byProvider.entrySet()) {

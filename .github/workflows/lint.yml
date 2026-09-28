@@ -18,6 +18,7 @@ jobs:
     outputs:
       codeql: ${{ steps.changes.outputs.codeql }}
       i18n: ${{ steps.changes.outputs.i18n }}
+      java: ${{ steps.changes.outputs.java }}
       openapi: ${{ steps.changes.outputs.openapi }}
       snowplow: ${{ steps.changes.outputs.snowplow }}
       workflows: ${{ steps.changes.outputs.workflows }}
@@ -69,6 +70,11 @@ jobs:
         # filters here cover .github/workflows only, not the actions and scripts it also reads.
         - name: Check cache-warm pre-resolves every alias combination CI uses
           run: .github/scripts/check-preresolve-aliases.sh
+
+        # Error Prone and NullAway on the backend's Java sources; see `mb.javac/lint!`
+        - name: Lint Java sources
+          if: needs.files-changed.outputs.java == 'true'
+          run: clojure -X:javac:javac-lint
 
         # Lint whitespace, always runs
         - name: Run Whitespace Linter

@@ -6,10 +6,15 @@ import clojure.lang.Named;
 import clojure.lang.PersistentArrayMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The whole Clojure-data boundary: reading keyword-keyed maps decoded off the wire, and building the
  * keyword-keyed maps the rest of Metabot consumes. Nothing past the parse/render edges touches these.
+ *
+ * <p>The readers take the map a previous read returned, which may be absent, and return null for a missing key or a
+ * value of another type, as {@code get} and friends would in Clojure.
  */
 public final class Clj {
     private Clj() {}
@@ -18,25 +23,25 @@ public final class Clj {
         return Keyword.intern(name);
     }
 
-    public static Object get(Map<?, ?> m, String key) {
+    public static @Nullable Object get(@Nullable Map<?, ?> m, String key) {
         return m == null ? null : m.get(kw(key));
     }
 
-    public static Map<?, ?> map(Map<?, ?> m, String key) {
+    public static @Nullable Map<?, ?> map(@Nullable Map<?, ?> m, String key) {
         return get(m, key) instanceof Map<?, ?> v ? v : null;
     }
 
     /** The first element of a sequential value, when it is a map. */
-    public static Map<?, ?> firstMap(Map<?, ?> m, String key) {
+    public static @Nullable Map<?, ?> firstMap(@Nullable Map<?, ?> m, String key) {
         return get(m, key) instanceof List<?> l && !l.isEmpty() && l.get(0) instanceof Map<?, ?> head ? head : null;
     }
 
-    public static String str(Map<?, ?> m, String key) {
+    public static @Nullable String str(@Nullable Map<?, ?> m, String key) {
         return get(m, key) instanceof String v ? v : null;
     }
 
     /** The name of a keyword or symbol value, or the string itself; null for anything else. */
-    public static String name(Map<?, ?> m, String key) {
+    public static @Nullable String name(@Nullable Map<?, ?> m, String key) {
         return switch (get(m, key)) {
             case Named n -> n.getName();
             case String s -> s;
@@ -45,21 +50,22 @@ public final class Clj {
     }
 
     /** A map's `:type`, or "" without one, so a parser can `switch` on it directly. */
-    public static String type(Map<?, ?> m) {
-        return str(m, "type") instanceof String t ? t : "";
+    public static String type(@Nullable Map<?, ?> m) {
+        String type = str(m, "type");
+        return type != null ? type : "";
     }
 
     /** Clojure truthiness: anything but nil and false. */
-    public static boolean truthy(Map<?, ?> m, String key) {
+    public static boolean truthy(@Nullable Map<?, ?> m, String key) {
         Object v = get(m, key);
-        return v != null && !Boolean.FALSE.equals(v);
+        return v != null && !(v instanceof Boolean b && !b);
     }
 
-    public static long num(Map<?, ?> m, String key) {
+    public static long num(@Nullable Map<?, ?> m, String key) {
         return get(m, key) instanceof Number v ? v.longValue() : 0L;
     }
 
-    public static Long optNum(Map<?, ?> m, String key) {
+    public static @Nullable Long optNum(@Nullable Map<?, ?> m, String key) {
         return get(m, key) instanceof Number v ? v.longValue() : null;
     }
 
@@ -67,9 +73,9 @@ public final class Clj {
      * Keyword-keyed map from alternating `"key", value` pairs, which must be distinct. Nil values are kept, as a
      * Clojure literal would.
      */
-    public static IPersistentMap mapOf(Object... kvs) {
+    public static IPersistentMap mapOf(@Nullable Object... kvs) {
         for (int i = 0; i < kvs.length; i += 2) {
-            kvs[i] = kw((String) kvs[i]);
+            kvs[i] = kw((String) Objects.requireNonNull(kvs[i], "key"));
         }
         return new PersistentArrayMap(kvs);
     }

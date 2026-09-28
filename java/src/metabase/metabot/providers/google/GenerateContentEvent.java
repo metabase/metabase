@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One `streamGenerateContent` SSE event, a `GenerateContentResponse`, reduced to its first candidate.
@@ -23,20 +24,20 @@ import metabase.metabot.providers.AiSdkChunk.TokenUsage;
  * @param blockReason set when Google blocked the prompt, which ends the stream with no candidates
  * @param errorText   set when the stream carries an error envelope, e.g. for a failure mid-stream
  */
-public record GenerateContentEvent(String responseId,
-                                   String modelVersion,
+public record GenerateContentEvent(@Nullable String responseId,
+                                   @Nullable String modelVersion,
                                    List<GeminiPart> parts,
-                                   String finishReason,
-                                   String blockReason,
-                                   String errorText,
-                                   TokenUsage usage) {
+                                   @Nullable String finishReason,
+                                   @Nullable String blockReason,
+                                   @Nullable String errorText,
+                                   @Nullable TokenUsage usage) {
 
     public sealed interface GeminiPart {
         /**
          * Arrives with complete `args`, which stay Clojure data until they are encoded. `thoughtSignature`, which
          * Gemini 3.x adds, must go back to Google when the call is replayed.
          */
-        record FunctionCall(String name, Object args, String thoughtSignature) implements GeminiPart {}
+        record FunctionCall(@Nullable String name, @Nullable Object args, @Nullable String thoughtSignature) implements GeminiPart {}
         /** A thought summary; `text` may be empty. */
         record Thought(String text) implements GeminiPart {}
         /** `text` may be empty. A `thoughtSignature` here is optional to replay, so it is dropped. */
@@ -56,7 +57,7 @@ public record GenerateContentEvent(String responseId,
                                         parseUsage(map(event, "usageMetadata")));
     }
 
-    private static List<GeminiPart> parseParts(Map<?, ?> content) {
+    private static List<GeminiPart> parseParts(@Nullable Map<?, ?> content) {
         var parts = new ArrayList<GeminiPart>();
         if (get(content, "parts") instanceof List<?> raw) {
             for (Object p : raw) {
@@ -80,7 +81,7 @@ public record GenerateContentEvent(String responseId,
         return truthy(part, "thought") ? new GeminiPart.Thought(text) : new GeminiPart.Text(text);
     }
 
-    private static String errorText(Object error) {
+    private static @Nullable String errorText(@Nullable Object error) {
         if (error == null) {
             return null;
         }
@@ -94,7 +95,7 @@ public record GenerateContentEvent(String responseId,
      * so it is summed in. Thinking output, `thoughtsTokenCount`, is billed as output. Implicit caching has no
      * cache-write count.
      */
-    private static TokenUsage parseUsage(Map<?, ?> usage) {
+    private static @Nullable TokenUsage parseUsage(@Nullable Map<?, ?> usage) {
         if (usage == null) {
             return null;
         }

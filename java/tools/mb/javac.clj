@@ -7,8 +7,10 @@
   and the uberjar and driver builds. It recompiles only when a source changed since the last compile, so the call is
   nearly free, and javac's own diagnostics go to stderr when compilation fails.
 
-  The Java sources may use only the JDK and Clojure: they compile against exactly that, whichever entry point compiles
-  them. `java/classes` has to exist when the JVM starts, or the JVM will not read classes from it, so git keeps the
+  The Java sources may use only the JDK, Clojure, and JSpecify's nullness annotations: they compile against exactly
+  that, whichever entry point compiles them. [[lint!]] holds them to more than javac does.
+
+  `java/classes` has to exist when the JVM starts, or the JVM will not read classes from it, so git keeps the
   directory. A class a running REPL has already loaded stays loaded; restart the REPL after changing it."
   (:require
    [clojure.edn :as edn]
@@ -16,7 +18,9 @@
    [clojure.string :as str])
   (:import
    (java.io File RandomAccessFile)
-   (javax.tools JavaCompiler ToolProvider)))
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)
+   (javax.tools DiagnosticListener JavaCompiler ToolProvider)))
 
 (set! *warn-on-reflection* true)
 
@@ -48,19 +52,25 @@
           :when   (not= ".gitignore" (.getName f))]
     (.delete f)))
 
-(def ^:private clojure-jar
-  (-> clojure.lang.RT .getProtectionDomain .getCodeSource .getLocation .toURI io/file .getPath))
+(defn- jar-of ^String [^Class c]
+  (-> c .getProtectionDomain .getCodeSource .getLocation .toURI io/file .getPath))
 
-(defn- javac! [sources]
+(defn- compile-classpath []
+  (str (jar-of clojure.lang.RT) File/pathSeparator (jar-of (Class/forName "org.jspecify.annotations.NullMarked"))))
+
+(def ^:private javac-options
+  "What every compile holds the sources to: every lint, and well-formed javadoc where there is any."
+  ["--release" "25" "-Xlint:all" "-Xdoclint:all,-missing" "-encoding" "UTF-8"])
+
+(defn- javac!
+  "Compiles `sources` with [[javac-options]] and `options`, returning whether it succeeded. Diagnostics go to `listener`
+  when there is one, and otherwise to stderr as javac prints them."
+  [sources options ^DiagnosticListener listener]
   (let [^JavaCompiler compiler (or (ToolProvider/getSystemJavaCompiler)
                                    (throw (ex-info "Compiling java/src needs a JDK, not a JRE" {})))]
-    (with-open [files (.getStandardFileManager compiler nil nil nil)]
-      (let [options ["--release" "25" "-Xlint:all" "-Werror" "-encoding" "UTF-8"
-                     "-d" (.getPath ^File classes-dir)
-                     "-classpath" clojure-jar]
-            task    (.getTask compiler *err* files nil options nil (.getJavaFileObjectsFromFiles files ^Iterable sources))]
-        (when-not (.call task)
-          (throw (ex-info "Compiling java/src failed; see javac's diagnostics above" {})))))))
+    (with-open [files (.getStandardFileManager compiler listener nil nil)]
+      (.call (.getTask compiler *err* files listener (into javac-options options) nil
+                       (.getJavaFileObjectsFromFiles files ^Iterable sources))))))
 
 (def ^:private in-process-lock
   "The file lock orders JVMs, but not threads within one (the driver builds compile from several at once): a second
@@ -85,6 +95,59 @@
              (println (format "Compiling %d Java source files in java/src ..." (count sources)))
              (.mkdirs ^File classes-dir)
              (clear-classes!)
-             (javac! sources)
+             (when-not (javac! sources ["-Werror" "-d" (.getPath ^File classes-dir) "-classpath" (compile-classpath)] nil)
+               (throw (ex-info "Compiling java/src failed; see javac's diagnostics above" {})))
              (spit stamp-file (pr-str current)))))))
    nil))
+
+;;; ------------------------------------------------------- Lint -------------------------------------------------------
+
+(def ^:private disabled-checks
+  "The Error Prone checks [[lint!]] leaves off; every other one, including those Error Prone disables by default, counts."
+  ["Var"                           ; wants Error Prone's @Var on every reassigned local
+   "ImmutableMemberCollection"     ; wants Guava's immutable types; records copy into unmodifiable collections instead
+   "CanIgnoreReturnValueSuggester" ; wants Error Prone's annotations jar, for one fluent method
+   "AddNullMarkedToClass"          ; packages are @NullMarked, which RequireExplicitNullMarking checks
+   "Java8ApiChecker"               ; flags every API newer than Java 8; the sources target Java 25
+   ;; takes a variable bound by a record pattern for non-null, whatever the component says, so it flags the very checks
+   ;; that keep a @Nullable one from throwing; see [[lint!]]
+   "RedundantNullCheck"])
+
+(def ^:private error-prone-options
+  (str/join " " (concat ["-Xplugin:ErrorProne"
+                         "-XepAllDisabledChecksAsWarnings"
+                         "-XepAllSuggestionsAsWarnings"
+                         "-Xep:NullAway:ERROR"
+                         "-XepOpt:NullAway:OnlyNullMarked=true"
+                         "-XepOpt:NullAway:JSpecifyMode=true"
+                         "-Xep:RequireExplicitNullMarking:ERROR"]
+                        (for [check disabled-checks] (str "-Xep:" check ":OFF")))))
+
+(defn lint!
+  "Compiles `java/src` with Error Prone, which adds hundreds of bug-pattern checks, and NullAway, which checks nullness
+  against the JSpecify annotations: every package is `@NullMarked`, so anything that may be null says `@Nullable`. Any
+  finding fails the lint, once all of them are reported; with `-Werror`, the first would stop Error Prone analyzing the
+  files after it. Writes nothing to `java/classes`.
+
+  NullAway does not look inside record patterns (uber/NullAway#840): a variable bound by `case R(var x)` goes unchecked,
+  whatever `R`'s component says; only the accessor, `r.x()`, is checked. So keep `@Nullable` components off the records
+  that get deconstructed, and null-check what such a pattern binds.
+
+  Run as `clojure -X:javac:javac-lint`: that JVM has Error Prone on its classpath and opens it javac's internals."
+  [_opts]
+  (let [findings (atom 0)
+        listener (reify DiagnosticListener
+                   (report [_ diagnostic]
+                     (swap! findings inc)
+                     (binding [*out* *err*] (println (str diagnostic)))))
+        out      (.toFile (Files/createTempDirectory "javac-lint" (make-array FileAttribute 0)))
+        ok?      (javac! (sources)
+                         ["-XDcompilePolicy=simple" "--should-stop=ifError=FLOW" "-Xmaxwarns" "10000"
+                          "-processorpath" (System/getProperty "java.class.path")
+                          "-classpath" (compile-classpath)
+                          "-d" (.getPath out)
+                          error-prone-options]
+                         listener)]
+    (when (or (not ok?) (pos? @findings))
+      (throw (ex-info (format "java/src has %d lint findings; see above" @findings) {})))
+    (println "java/src: no lint findings")))

@@ -171,6 +171,7 @@
   org.graalvm.polyglot/polyglot             {:mvn/version "25.0.1"}             ; GraalVM platform, required by JS engine
   org.graalvm.polyglot/python               {:mvn/version "25.0.1"
                                              :extension "pom"}
+  org.jspecify/jspecify                     {:mvn/version "1.0.1"}              ; nullness annotations for java/src; see `mb.javac`
   org.jsoup/jsoup                           {:mvn/version "1.23.2"}             ; required by hickory
   org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
@@ -817,8 +818,24 @@
   ;; compile java/src by hand, e.g. `clojure -X:javac :force true`; see `mb.javac`
   :javac
   {:replace-paths ["java/tools"]
-   :replace-deps  {}
+   :replace-deps  {org.jspecify/jspecify {:mvn/version "1.0.1"}}
    :exec-fn       mb.javac/compile!}
+
+  ;; lint java/src with Error Prone and NullAway, on top of :javac: `clojure -X:javac:javac-lint`; see `mb.javac/lint!`
+  :javac-lint
+  {:replace-deps {com.google.errorprone/error_prone_core {:mvn/version "2.50.0"}
+                  com.uber.nullaway/nullaway             {:mvn/version "0.14.2"}}
+   :jvm-opts     ["--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED"
+                  "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED"
+                  "--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED"
+                  "--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED"]
+   :exec-fn      mb.javac/lint!}
 
   :build
   {:extra-paths

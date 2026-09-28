@@ -8,6 +8,7 @@ import static metabase.metabot.providers.Clj.type;
 
 import java.util.Map;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The Anthropic Messages API streaming events the translator acts on
@@ -17,38 +18,38 @@ import metabase.metabot.providers.AiSdkChunk.TokenUsage;
 public sealed interface MessagesEvent {
 
     /** `usage` is null when the event carries none. */
-    record MessageStart(String messageId, String model, TokenUsage usage) implements MessagesEvent {}
+    record MessageStart(@Nullable String messageId, @Nullable String model, @Nullable TokenUsage usage) implements MessagesEvent {}
 
     /** `id` is the block's own id where it has one (tool use); `index` is its position in the message. */
-    record BlockStart(String id, Long index, Block block) implements MessagesEvent {}
+    record BlockStart(@Nullable String id, @Nullable Long index, Block block) implements MessagesEvent {}
 
     record BlockDelta(Delta delta) implements MessagesEvent {}
 
     record BlockStop() implements MessagesEvent {}
 
     /** Usage here is cumulative, including what `message_start` reported. Both fields may be null. */
-    record MessageDelta(TokenUsage usage, String stopReason) implements MessagesEvent {}
+    record MessageDelta(@Nullable TokenUsage usage, @Nullable String stopReason) implements MessagesEvent {}
 
-    record StreamError(String message) implements MessagesEvent {}
+    record StreamError(@Nullable String message) implements MessagesEvent {}
 
     record Ignored() implements MessagesEvent {}
 
     sealed interface Block {
         record Text() implements Block {}
-        record ToolUse(String name) implements Block {}
+        record ToolUse(@Nullable String name) implements Block {}
         record Thinking() implements Block {}
         /** Opaque to us, and streams no deltas; `data` has to be echoed back verbatim. */
-        record RedactedThinking(String data) implements Block {}
+        record RedactedThinking(@Nullable String data) implements Block {}
         /** Server tool use and the like, which we do not translate. */
         record Unsupported() implements Block {}
     }
 
     sealed interface Delta {
-        record Text(String text) implements Delta {}
-        record Thinking(String thinking) implements Delta {}
-        record InputJson(String partialJson) implements Delta {}
+        record Text(@Nullable String text) implements Delta {}
+        record Thinking(@Nullable String thinking) implements Delta {}
+        record InputJson(@Nullable String partialJson) implements Delta {}
         /** Arrives in pieces, which concatenate into the signature a thinking block is replayed with. */
-        record Signature(String signature) implements Delta {}
+        record Signature(@Nullable String signature) implements Delta {}
         record Unsupported() implements Delta {}
     }
 
@@ -71,7 +72,7 @@ public sealed interface MessagesEvent {
         };
     }
 
-    private static Block parseBlock(Map<?, ?> block) {
+    private static Block parseBlock(@Nullable Map<?, ?> block) {
         return switch (type(block)) {
             case "text" -> new Block.Text();
             case "tool_use" -> new Block.ToolUse(str(block, "name"));
@@ -81,7 +82,7 @@ public sealed interface MessagesEvent {
         };
     }
 
-    private static Delta parseDelta(Map<?, ?> delta) {
+    private static Delta parseDelta(@Nullable Map<?, ?> delta) {
         return switch (type(delta)) {
             case "text_delta" -> new Delta.Text(str(delta, "text"));
             case "thinking_delta" -> new Delta.Thinking(str(delta, "thinking"));
@@ -97,7 +98,7 @@ public sealed interface MessagesEvent {
      * `ai_usage_log` see a provider-neutral total, matching OpenAI's `input_tokens` (where the cache counts are a
      * subset of the total). Without prompt caching both cache buckets are 0 and the sum is just `input_tokens`.
      */
-    private static TokenUsage parseUsage(Map<?, ?> usage) {
+    private static @Nullable TokenUsage parseUsage(@Nullable Map<?, ?> usage) {
         if (usage == null) {
             return null;
         }
