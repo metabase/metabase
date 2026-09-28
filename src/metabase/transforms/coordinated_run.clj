@@ -35,8 +35,7 @@
   ([model run-id properties]
    (finish-active-run! model
                        run-id
-                       (merge {:end_time :%now}
-                              properties
+                       (merge properties
                               {:status    :succeeded
                                :is_active nil}))))
 
@@ -45,8 +44,7 @@
   [model run-id properties]
   (finish-active-run! model
                       run-id
-                      (merge {:end_time :%now}
-                             properties
+                      (merge properties
                              {:status    :failed
                               :is_active nil})))
 
@@ -58,7 +56,6 @@
                       run-id
                       {:status    :canceled
                        :is_active nil
-                       :end_time  :%now
                        :message   "Canceled"}))
 
 (defn cancel!
@@ -77,7 +74,7 @@
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active run-ids."
   [model run-ids]
-  (rt/heartbeat-ids! model [:= :is_active true] :last_heartbeat run-ids))
+  (rt/heartbeat-ids! model [:is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
   "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -86,8 +83,8 @@
   [model type-tag stale-minutes]
   (rt/reap-orphaned!
    {:model    model
-    :active   [:= :is_active true]
-    :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
+    :active   [:is_active true]
+    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
     :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: crashed"}
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
@@ -101,7 +98,7 @@
   their coordinator aborts."
   [model active-runs-atom]
   (rt/heartbeat-and-reconcile! {:model      model
-                                :active     [:= :is_active true]
+                                :active     [:is_active true]
                                 :ids        (keys @active-runs-atom)
                                 :heartbeat! #(heartbeat-runs! model %)
                                 :on-gone    (fn [run-id]

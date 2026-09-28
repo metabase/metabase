@@ -13,6 +13,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -348,7 +349,9 @@
   channel ID, a user ID, or a legacy display name (\"#general\"/\"@bob\") resolved via the cached channel/user list.
   Either way the file arrives as one message with `initial-comment` (mrkdwn, optional) as its caption. A channel is
   joined first, since sharing into one requires membership; a user's DM is opened by Slack itself."
-  ([file filename channel-id]
+  ([file       :- NonEmptyByteArray
+    filename   :- ms/NonBlankString
+    channel-id :- ms/NonBlankString]
    (upload-file-to-channel! file filename channel-id nil))
   ([file            :- NonEmptyByteArray
     filename        :- ms/NonBlankString
@@ -362,6 +365,10 @@
          (join-channel! target)
          (complete-upload! file filename {:channel-id target} initial-comment))))))
 
+(mr/def ::slack-block
+  "A Slack Block Kit block or legacy `attachments` entry, whose keys are Slack's (see https://api.slack.com/block-kit)."
+  [:map {:closed false, ::mr/deliberately-open true, :description "Slack Block Kit block"}])
+
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
   message-blocks if provided should be a map containing slack message blocks
@@ -369,9 +376,9 @@
   See: https://app.slack.com/block-kit-builder"
   [message-content :- [:map {:closed true}
                        [:channel                      :string]
-                       [:blocks      {:optional true} [:sequential :map]]
+                       [:blocks      {:optional true} [:sequential ::slack-block]]
                        [:text        {:optional true} :string]
-                       [:attachments {:optional true} [:sequential :map]]]]
+                       [:attachments {:optional true} [:sequential ::slack-block]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (let [base-params    {:username "Metabot"
                         :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}

@@ -17,6 +17,16 @@
 (derive :model/TransformDagRun :metabase/model)
 (derive :model/TransformDagRun :hook/timestamped?)
 
+(def ^:private terminal-statuses
+  #{:succeeded :failed :canceled :timeout})
+
+(t2/define-before-update :model/TransformDagRun
+  [run]
+  (let [changes (t2/changes run)]
+    (cond-> run
+      (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
+      (assoc :end_time (mi/now)))))
+
 (t2/deftransforms :model/TransformDagRun
   {:status    mi/transform-keyword
    :direction mi/transform-keyword})

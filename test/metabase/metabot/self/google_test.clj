@@ -31,15 +31,17 @@
            "\n-----END PRIVATE KEY-----\n"))))
 
 (defn- test-service-account-json
-  "A structurally valid service account key JSON for `project-id`."
-  [project-id]
-  (json/encode {:type           "service_account"
-                :project_id     project-id
-                :private_key_id "test-key-id"
-                :private_key    @test-private-key-pem
-                :client_email   (str "metabot-test@" project-id ".iam.gserviceaccount.com")
-                :client_id      "123456789012345678901"
-                :token_uri      "https://oauth2.googleapis.com/token"}))
+  "A structurally valid service account key JSON for `project-id`; Google's `token_uri` unless given one."
+  ([project-id]
+   (test-service-account-json project-id "https://oauth2.googleapis.com/token"))
+  ([project-id token-uri]
+   (json/encode (cond-> {:type           "service_account"
+                         :project_id     project-id
+                         :private_key_id "test-key-id"
+                         :private_key    @test-private-key-pem
+                         :client_email   (str "metabot-test@" project-id ".iam.gserviceaccount.com")
+                         :client_id      "123456789012345678901"}
+                  token-uri (assoc :token_uri token-uri)))))
 
 ;;; The adapter serves a request from the credentials of the connection behind it. These tests bind the
 ;;; `llm-google-*` settings, which are the environment-configured form of that connection, so the calls below
@@ -133,9 +135,13 @@
                                   self.core/reducible-with-api-errors (fn [r _ _] r)
                                   debug/capture-stream                (fn [r _] r)
                                   http/request                        (fn [req] {:body req})]
-        (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
-                           "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
-                (google-raw {:input [{:role :user :content "hi"}]})))))))
+        (let [req (google-raw {:input [{:role :user :content "hi"}]})]
+          (is (=? {:url (str "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global"
+                             "/publishers/google/models/gemini-3.5-flash:streamGenerateContent?alt=sse")}
+                  req))
+          (testing "and the thinking directive keys off the defaulted model"
+            (is (=? {:generationConfig {:thinkingConfig {:includeThoughts true}}}
+                    (json/decode+kw (:body req))))))))))
 
 (deftest google-raw-request-body-test
   (testing "the request streams its response and carries the streamGenerateContent body as JSON"
@@ -152,7 +158,8 @@
           (is (=? {:as      :stream
                    :headers {"Content-Type" "application/json"}}
                   req))
-          (is (= {:contents [{:role "user" :parts [{:text "hi"}]}]}
+          (is (= {:contents         [{:role "user" :parts [{:text "hi"}]}]
+                  :generationConfig {:thinkingConfig {:includeThoughts true}}}
                  (json/decode+kw (:body req)))))))))
 
 (deftest google-raw-regional-location-host-test
@@ -249,6 +256,36 @@
                  :status-code 400
                  :error-code  :invalid-project-id}
                 (ex-data e)))))))
+
+(deftest service-account-key-token-uri-pinned-test
+  (testing (str "the credential library posts to the key's token_uri to mint an access token, before any "
+                "request the network policy guards, so a key naming anything but Google's OAuth endpoint is refused")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (doseq [token-uri ["http://169.254.169.254/latest/meta-data/"
+                         "https://127.0.0.1/token"
+                         "https://evil.example.com/token"
+                         "http://oauth2.googleapis.com/token"
+                         ;; the whole URI is pinned, not just its origin
+                         "https://accounts.google.com/not-a-token-endpoint"
+                         "https://oauth2.googleapis.com:8443/token"
+                         "https://oauth2.googleapis.com/token?x=1"
+                         "https://oauth2.googleapis.com/token/../../evil"]]
+        (testing token-uri
+          (is (=? {:api-error   true
+                   :status-code 400
+                   :error-code  :invalid-service-account-key}
+                  (try (list-models {:model       "google/gemini-3.5-flash"
+                                     :credentials {:service-account-key (test-service-account-json "p" token-uri)
+                                                   :project-id          "my-project"}})
+                       nil
+                       (catch Exception e (ex-data e)))))))))
+  (testing "Google's current and legacy token endpoints, and the library default when the key names none, parse"
+    (doseq [token-uri ["https://oauth2.googleapis.com/token"
+                       "https://accounts.google.com/o/oauth2/token"
+                       nil]]
+      (testing (pr-str token-uri)
+        (is (instance? ServiceAccountCredentials
+                       (#'google/parse-service-account-credentials (test-service-account-json "p" token-uri))))))))
 
 (deftest google-raw-service-account-json-project-id-rejected-test
   (testing "the project ID carried by a service account key JSON is validated as well"
@@ -627,10 +664,21 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AI proxy is not supported for the Google provider"
+           #"AI proxy is not supported for Google"
            (google-raw {:model     "google/gemini-3.5-flash"
                         :input     [{:role :user :content "hi"}]
-                        :ai-proxy? true}))))))
+                        :ai-proxy? true})))))
+  (testing (str "and still wins once the credentials are present but unusable. Google resolves its credentials "
+                "inside the request span — late enough that the refusal has to be checked first, or a proxied "
+                "request would be told about a project ID belonging to a connection it will never use")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Google"
+           (google-raw {:model       "google/gemini-3.5-flash"
+                        :input       [{:role :user :content "hi"}]
+                        :credentials {:oauth-access-token "token" :project-id "Not A Project ID"}
+                        :ai-proxy?   true}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; End-to-end stream translation.
@@ -745,8 +793,8 @@
     (is (false? (google/reasoning-model? "anthropic/claude-haiku-4-5@20251001")))))
 
 (deftest reasoning-model?-gemini-test
-  (testing "Gemini sends thinking only as :thought parts, which the adapter drops"
-    (is (false? (google/reasoning-model? "google/gemini-3.5-flash")))
+  (testing "catalog Geminis stream thought summaries; off-catalog Geminis stay dark"
+    (is (true?  (google/reasoning-model? "google/gemini-3.5-flash")))
     (is (false? (google/reasoning-model? "google/gemini-3.6-pro")))))
 
 (deftest reasoning-model?-unqualified-test
@@ -942,8 +990,8 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
       (mt/with-dynamic-fn-redefs [http/request (stub-count-tokens (atom []))]
-        (is (= {:models         []
-                :learned-config {:probed-model "google/gemini-3.5-flash"}}
+        (is (= {:models          []
+                :connection-info {:probed-model "google/gemini-3.5-flash"}}
                (list-models {:model "google/gemini-3.5-flash" :probe? true})))))))
 
 (deftest list-models-anthropic-reports-the-probed-model-test
@@ -953,12 +1001,12 @@
                                        llm.settings/llm-google-project-id          "my-project"
                                        llm.settings/llm-google-location            nil]
       (mt/with-dynamic-fn-redefs [http/request (stub-error (atom []) 400 anthropic-validation-error-body)]
-        (is (= {:models         []
-                :learned-config {:probed-model "anthropic/claude-haiku-4-5@20251001"}}
+        (is (= {:models          []
+                :connection-info {:probed-model "anthropic/claude-haiku-4-5@20251001"}}
                (list-models {:model "anthropic/claude-haiku-4-5@20251001" :probe? true})))))))
 
 (deftest list-models-without-probe-keeps-the-model-to-itself-test
-  (testing "a plain listing still validates the credentials but reports no `:learned-config` to the client"
+  (testing "a plain listing still validates the credentials but reports no `:connection-info` to the client"
     (mt/with-temporary-setting-values [llm.settings/llm-google-oauth-access-token  "ya29.pasted-access-token"
                                        llm.settings/llm-google-service-account-key nil
                                        llm.settings/llm-google-project-id          "my-project"
@@ -1034,7 +1082,7 @@
     (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"AI proxy is not supported for the Google provider"
+           #"AI proxy is not supported for Google"
            (list-models {:model "google/gemini-3.5-flash" :ai-proxy? true}))))))
 
 (def ^:private ^String html-404-body

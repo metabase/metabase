@@ -5,6 +5,7 @@ import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
   getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   initSdkTracker,
   trackSdkSimpleEvent,
@@ -73,6 +74,7 @@ export function useInitSdkTracker(
             sdk_version: sdkVersion,
             locale_used: getSdkLocaleUsed(),
             react_version: getHostReactVersion(),
+            client: getSdkClient(),
           },
         }),
       });

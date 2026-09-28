@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
 import type { Card } from "metabase-types/api";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
@@ -32,7 +32,7 @@ function setup(cardOpts: Partial<Card> = {}) {
     }),
   });
   const question = checkNotNull(
-    getMetadata(storeInitialState).question(card.id),
+    createMockMetadataFromState(storeInitialState).question(card.id),
   );
 
   renderWithProviders(<HasResultsAlertPrompt question={question} />, {

@@ -974,3 +974,48 @@
               (mt/with-test-user nil
                 (pulse.send/send-pulse! pulse)))
             (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])))))))))
+
+(deftest simple-pivot-table-is-pivoted-test
+  (testing "a Table card with the \"Pivot table\" toggle on arrives pivoted, as in the browser (#76931)"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:name                   "Orders by category and source"
+                                                :display                :table
+                                                :dataset_query          (mt/mbql-query orders
+                                                                          {:aggregation [[:count]]
+                                                                           :breakout    [$product_id->products.category
+                                                                                         $user_id->people.source]})
+                                                :visualization_settings {:table.pivot        true
+                                                                         :table.pivot_column "SOURCE"
+                                                                         :table.cell_column  "count"}}
+                     :model/Dashboard {dash-id :id} {:name "Simple pivot dashboard"}
+                     :model/DashboardCard {pivoted-dashcard-id :id} {:dashboard_id dash-id
+                                                                     :card_id      card-id}
+                     ;; the dashcard can turn the toggle off again; the email must follow the dashcard
+                     :model/DashboardCard {flat-dashcard-id :id} {:dashboard_id           dash-id
+                                                                  :card_id                card-id
+                                                                  :visualization_settings {:table.pivot false}}
+                     :model/Pulse {pulse-id :id :as pulse} {:name         "Test Pulse"
+                                                            :dashboard_id dash-id}
+                     :model/PulseCard _ {:pulse_id          pulse-id
+                                         :card_id           card-id
+                                         :dashboard_card_id pivoted-dashcard-id
+                                         :position          0}
+                     :model/PulseCard _ {:pulse_id          pulse-id
+                                         :card_id           card-id
+                                         :dashboard_card_id flat-dashcard-id
+                                         :position          1}
+                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                     :user_id          (mt/user->id :rasta)}]
+        (let [[[header & pivoted-rows] flat-rows] (run-pulse-and-return-data-tables! pulse)]
+          (testing "the pivoted dashcard: sources across, categories down, one count per cell"
+            (is (= ["Product → Category" "Affiliate" "Facebook" "Google" "Organic" "Twitter"]
+                   header))
+            (is (= ["Doohickey" "Gadget" "Gizmo" "Widget"]
+                   (map first pivoted-rows)))
+            (is (every? #(= 6 (count %)) pivoted-rows)))
+          (testing "the dashcard with the toggle off: the flat three-column table"
+            (is (= 20 (count flat-rows)))
+            (is (every? #(= 3 (count %)) flat-rows))))))))

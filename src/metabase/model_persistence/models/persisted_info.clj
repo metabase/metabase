@@ -19,6 +19,24 @@
 
 (derive :model/PersistedInfo :metabase/model)
 
+(t2/define-before-insert :model/PersistedInfo
+  [persisted-info]
+  (merge {:refresh_begin (mi/now), :state_change_at (mi/now)} persisted-info))
+
+(t2/define-before-update :model/PersistedInfo
+  [persisted-info]
+  (let [changes (t2/changes persisted-info)
+        state   (some-> (:state changes) name)]
+    (cond-> persisted-info
+      (and state (not (contains? changes :state_change_at)))
+      (assoc :state_change_at (mi/now))
+
+      (and (= state "refreshing") (not (contains? changes :refresh_begin)))
+      (assoc :refresh_begin (mi/now))
+
+      (and (#{"persisted" "error"} state) (not (contains? changes :refresh_end)))
+      (assoc :refresh_end (mi/now)))))
+
 (defn transform-definition-out
   "Parse the value of `:definition` when it comes out of the application Database."
   [definition]
@@ -38,24 +56,16 @@
   {:field-name field-name
    :base-type (or effective_type base_type)})
 
-(def ^:private Metadata
-  "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [:maybe
-   [:sequential
-    [:map
-     [:name      :string]
-     [:base_type ::lib.schema.common/base-type]
-     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
-
 (mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata :- Metadata table-name]
+  [metadata   :- [:maybe ::lib.schema.metadata/card.result-metadata]
+   table-name :- ::lib.schema.common/non-blank-string]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
 (mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query :- :map]
+  [query :- :metabase.lib-be.schema/maybe-legacy-or-empty-query]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*
@@ -152,10 +162,8 @@
      :question_slug   slug
      :table_name      (format "model_%s_%s" card-id slug)
      :active          false
-     :refresh_begin   :%now
      :refresh_end     nil
      :state           default-state
-     :state_change_at :%now
      :creator_id      user-id}))
 
 (defn ready-unpersisted-models!

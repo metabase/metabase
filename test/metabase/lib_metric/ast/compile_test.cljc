@@ -18,7 +18,15 @@
                 :name        "Test Metric"
                 :aggregation {:node/type :aggregation/count}
                 :base-table  {:node/type :ast/table :id 100}
-                :metadata    {:dataset-query {:database 1}}}
+                :metadata    {:lib/type      :metadata/metric
+                              :id            42
+                              :name          "Test Metric"
+                              :type          :metric
+                              :database-id   1
+                              :dataset-query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages   [{:lib/type     :mbql.stage/mbql
+                                                          :source-table 100}]}}}
    :dimensions [{:node/type    :ast/dimension
                  :id           uuid-1
                  :name         "category"
@@ -63,7 +71,11 @@
 ;;; -------------------------------------------------- Database ID Resolution --------------------------------------------------
 
 (deftest ^:parallel compile-missing-database-id-throws-test
-  (let [ast-no-db (assoc-in sample-ast [:source :metadata] {:dataset-query {}})]
+  (let [ast-no-db (assoc-in sample-ast [:source :metadata] {:lib/type   :metadata/measure
+                                                            :id         1
+                                                            :name       "Measure without a definition"
+                                                            :table-id   100
+                                                            :definition nil})]
     (testing "throws when metadata has no database ID"
       (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                             #"Cannot determine database ID"
@@ -120,7 +132,8 @@
     (is (= 10 (nth (nth agg 2) 2)))))
 
 (deftest ^:parallel compile-mbql-aggregation-test
-  (let [raw-clause  [:custom-agg {} [:field {} 10]]
+  (let [raw-clause  [:sum {:lib/uuid "550e8400-e29b-41d4-a716-446655440003"}
+                     [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440004"} 10]]
         ast-with-mbql (assoc-in sample-ast [:source :aggregation]
                                 {:node/type :aggregation/mbql
                                  :clause    raw-clause})
@@ -535,8 +548,11 @@
 (def ^:private sample-join
   {:lib/type    :mbql/join
    :alias       "Products"
-   :conditions  [[:= {} [:field {} 10] [:field {:join-alias "Products"} 20]]]
-   :source-table 200
+   :conditions  [[:=
+                  {:lib/uuid "550e8400-e29b-41d4-a716-446655440005"}
+                  [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440006"} 10]
+                  [:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440007", :join-alias "Products"} 20]]]
+   :stages      [{:lib/type :mbql.stage/mbql, :source-table 200}]
    :fields      :all})
 
 (def ^:private ast-with-joins
@@ -581,7 +597,7 @@
           stage-0-join   (first (:joins (first (:stages result))))]
       (is (= :all (:fields stage-0-join)))))
   (testing "join with explicit :fields is overridden to :all (dimension system advertises all joined columns)"
-    (let [join-with-fields (assoc sample-join :fields [[:field {:join-alias "Products"} 20]])
+    (let [join-with-fields (assoc sample-join :fields [[:field {:lib/uuid "550e8400-e29b-41d4-a716-446655440008", :join-alias "Products"} 20]])
           ast              (assoc-in sample-ast [:source :joins]
                                      [{:node/type :ast/join
                                        :mbql-join join-with-fields}])
@@ -591,7 +607,10 @@
 
 (deftest ^:parallel compile-two-stage-filter-separation-test
   (let [source-filter {:node/type :filter/mbql
-                       :clause    [:= {} [:field {} 30] "active"]}
+                       :clause    [:=
+                                   {:lib/uuid "550e8400-e29b-41d4-a716-446655440009"}
+                                   [:field {:lib/uuid "550e8400-e29b-41d4-a716-44665544000a"} 30]
+                                   "active"]}
         user-filter   {:node/type :filter/comparison
                        :operator  :=
                        :dimension dim-ref-1

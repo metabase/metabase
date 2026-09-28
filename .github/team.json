@@ -55,7 +55,6 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "appleby",
         "retro",
         "sloansparger",
         "tsplude",
@@ -63,7 +62,9 @@
         "crisptrutski",
         "undrfined",
         "andreis",
-        "prascuna"
+        "prascuna",
+        "Krever",
+        "svozniuk"
       ]
     },
     {
@@ -112,7 +113,8 @@
         "metatyb",
         "olehk-mb",
         "annatomka",
-        "brybacki"
+        "brybacki",
+        "BillyBobFry"
       ]
     },
     {

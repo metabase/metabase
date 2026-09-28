@@ -82,7 +82,7 @@
 
 (mu/defn check-parameter-source-card-permissions
   "Read-check the Cards `parameters` draw their values from."
-  [parameters :- [:maybe [:sequential :map]]]
+  [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
   (doseq [card-id (values-source-card-ids parameters)]
     (api/read-check :model/Card card-id)))
 

@@ -2,14 +2,17 @@
   "Application database queries for the agent-api module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.agent-api.schema :as agent-api.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn insert-call-log!
+(mu/defn insert-call-log!
   "Insert the AgentApiCallLog `row`."
-  [row]
+  [row :- ::agent-api.schema/agent-api-call-log.update]
   (t2/insert! :model/AgentApiCallLog row))
 
-(defn delete-call-logs-created-before!
+(mu/defn delete-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
-  [cutoff]
+  [cutoff :- ms/TemporalInstant]
   (t2/delete! :model/AgentApiCallLog {:where [:< :created_at cutoff]}))

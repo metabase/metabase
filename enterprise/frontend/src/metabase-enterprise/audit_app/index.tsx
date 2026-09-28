@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { PLUGIN_METABOT_SLASH_COMMANDS } from "metabase/metabot";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -16,6 +17,8 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { User } from "metabase-types/api";
 
+import { AnalyticsExportStatus } from "./components/AnalyticsExportStatus";
+import { CollectionExportAnalytics } from "./components/CollectionExportAnalytics";
 import { InsightsLink } from "./components/InsightsLink";
 import { InsightsMenuItem } from "./components/InsightsMenuItem";
 import { getUserMenuRoutes } from "./routes";
@@ -46,10 +49,13 @@ export function initializePlugin() {
     PLUGIN_AUDIT.isAuditDb = isAuditDb;
     PLUGIN_AUDIT.InsightsLink = InsightsLink;
     PLUGIN_AUDIT.InsightsMenuItem = InsightsMenuItem;
+    PLUGIN_AUDIT.AnalyticsExportStatus = AnalyticsExportStatus;
+    PLUGIN_AUDIT.CollectionExportAnalytics = CollectionExportAnalytics;
     PLUGIN_AUDIT.isAiAuditingEnabled = true;
     PLUGIN_AUDIT.getAiAuditingRoutes = hasPremiumFeature("ai_controls")
       ? getAiAuditingRoutes
       : getAiAuditingUpsellRoutes;
-    PLUGIN_AUDIT.handleMetabotSlashCommand = handleMetabotSlashCommand;
+    PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand =
+      handleMetabotSlashCommand;
   }
 }

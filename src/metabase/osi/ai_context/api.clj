@@ -4,10 +4,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.app-db.core :as app-db]
    [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.osi.db :as osi.db]
    [metabase.osi.models.osi-ai-context :as osi-ai-context]
+   [metabase.osi.schema :as osi.schema]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -18,23 +18,11 @@
   measures/segments keep their type. A plain question never matches an index doc, so it's rejected."
   #{"table" "metric" "model" "measure" "segment"})
 
-(def ^:private max-item-len
-  "Cap on each synonym/example string — these are short phrases or questions, not prose. They become
-  embedded index docs, so this also keeps a single value under the embedding provider's token limit."
-  1000)
-
-(def ^:private max-list-len
-  "Cap on the synonyms/examples list length — a curated entity needs a handful, not hundreds."
-  50)
-
 (def ^:private AiContext
   "OSI ai_context blob. All fields optional; extra keys tolerated for forward-compat with the OSI spec.
   String and list lengths are capped so a single curated entity can't bloat the index, its embeddings, or
   the agent prompt."
-  [:map {:closed false}
-   [:instructions {:optional true} [:maybe [:string {:max entity-retrieval/max-instructions-len}]]]
-   [:synonyms     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]
-   [:examples     {:optional true} [:sequential {:max max-list-len} [:string {:max max-item-len}]]]])
+  ::osi.schema/osi-ai-context.ai-context)
 
 (def ^:private AiContextInput
   "Accepted write shape for `ai_context` — the OSI `AIContext` oneOf.
@@ -67,7 +55,7 @@
   ;; entity-type is any non-blank string at the route level — a write to a non-writable type gets a clear
   ;; 400 in the handler (an enum here would 404 the route instead), and reads/deletes of an unknown type
   ;; simply find no row and 404.
-  [:map
+  [:map {:closed true}
    [:entity-type     ms/NonBlankString]
    [:entity-local-id ms/PositiveInt]])
 
@@ -103,17 +91,14 @@
   upsert keep two concurrent writers from racing in a duplicate row."
   [{:keys [entity-type entity-local-id]} :- logical-key-route-schema
    _query-params
-   {:keys [ai_context]} :- [:map [:ai_context AiContextInput]]]
+   {:keys [ai_context]} :- [:map {:closed true} [:ai_context AiContextInput]]]
   (api/check-superuser)
   (api/check-400 (contains? writable-entity-types entity-type)
                  "entity_type must be one of: measure, metric, model, segment, table")
   ;; Upsert on the normalized (stored) key so re-posting a relabelled card updates its one row.
   ;; update-or-insert! handles the compound key, the no-op re-PUT, and the concurrent-create race
   ;; (savepoint + single retry) centrally.
-  (app-db/update-or-insert! :model/OsiAiContext
-                            {:entity_type     (entity-retrieval/normalize-entity-type entity-type)
-                             :entity_local_id entity-local-id}
-                            (constantly {:ai_context ai_context}))
+  (osi.db/upsert-ai-context! (entity-retrieval/normalize-entity-type entity-type) entity-local-id ai_context)
   (get-entry entity-type entity-local-id))
 
 (api.macros/defendpoint :post "/reconcile"

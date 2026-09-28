@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
+import { useMetadataProvider } from "metabase/metadata-store";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery } from "metabase-types/api";
 
 type UseSegmentQueryResult = {
@@ -11,18 +11,14 @@ type UseSegmentQueryResult = {
 
 export function useSegmentQuery(
   definition: DatasetQuery | null,
-  metadata: Metadata,
 ): UseSegmentQueryResult {
+  const metadataProvider = useMetadataProvider(definition?.database ?? null);
   const query = useMemo(() => {
     if (!definition?.database) {
       return undefined;
     }
-    const metadataProvider = Lib.metadataProvider(
-      definition.database,
-      metadata,
-    );
     return Lib.fromJsQuery(metadataProvider, definition);
-  }, [metadata, definition]);
+  }, [metadataProvider, definition]);
 
   const filters = useMemo(() => (query ? Lib.filters(query, -1) : []), [query]);
 

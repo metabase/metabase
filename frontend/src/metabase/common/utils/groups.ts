@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { GroupInfo, SpecialGroupType } from "metabase-types/api";
+import type { GroupInfo, Member, SpecialGroupType } from "metabase-types/api";
+
+export const isApiKeyGroupMember = (member: Member) =>
+  member.email.endsWith("@api-key.invalid");
 
 const SPECIAL_GROUP_NAMES: Record<string, () => string> = {
   "All Users": () => t`All Users`,

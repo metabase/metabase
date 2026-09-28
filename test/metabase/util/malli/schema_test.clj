@@ -30,9 +30,15 @@
            {:schema        ms/FieldTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Float "type/Float"]}
-           {:schema        ms/Map
+           {:schema        ms/VisualizationSettings
             :failed-cases  [[] 1 "a"]
             :success-cases [{} {:a :b}]}
+           {:schema        ms/DatabaseDetails
+            :failed-cases  [[] 1 "a"]
+            :success-cases [{} {:a :b}]}
+           {:schema        ms/OpaqueJSONObject
+            :failed-cases  [[] 1 "a" {:a :b}]
+            :success-cases [{} {"a" {:b 1}}]}
            {:schema        ms/Email
             :failed-cases  ["abc.com" 1]
             :success-cases ["ngoc@metabase.com"]}
@@ -42,12 +48,9 @@
            {:schema        ms/TemporalString
             :failed-cases  ["random string"]
             :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}
-           {:schema        ms/JSONString
-            :failed-cases  ["string"]
-            :success-cases ["{\"a\": 1}"]}
            {:schema        ms/EmbeddingParams
-            :failed-cases  [{:key "value"}]
-            :success-cases [{:key "disabled"}]}
+            :failed-cases  [{"key" "value"} {:key "disabled"}]
+            :success-cases [{"key" "disabled"}]}
            {:schema        ms/ValidLocale
             :failed-cases  ["locale"]
             :success-cases ["en" "es"]}

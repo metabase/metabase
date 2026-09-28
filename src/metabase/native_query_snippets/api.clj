@@ -2,6 +2,7 @@
   "Native query snippet (/api/native-query-snippet) endpoints."
   (:require
    [clojure.data :as data]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
@@ -30,8 +31,9 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
+  {:scope api-scope/data-app}
   [_route-params
-   {:keys [archived]} :- [:map
+   {:keys [archived]} :- [:map {:closed true}
                           [:archived {:default false} [:maybe ms/BooleanValue]]]]
   (list-native-query-snippets (boolean archived)))
 
@@ -45,9 +47,12 @@
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+;; Not tagged `data-apps:base`, though the list route above is: a data app needs the list to
+;; resolve snippet names while rendering a native question, whereas fetching one by id is the
+;; Data Studio snippet editor (`useGetSnippetQuery`), which a data app does not render.
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 
@@ -64,7 +69,7 @@
   "Create a new `NativeQuerySnippet`."
   [_route-params
    _query-params
-   {:keys [content description name collection_id]} :- [:map
+   {:keys [content description name collection_id]} :- [:map {:closed true}
                                                         [:content       :string]
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
@@ -102,10 +107,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an existing `NativeQuerySnippet`."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:archived      {:optional true} [:maybe :boolean]]
             [:content       {:optional true} [:maybe :string]]
             [:description   {:optional true} [:maybe :string]]

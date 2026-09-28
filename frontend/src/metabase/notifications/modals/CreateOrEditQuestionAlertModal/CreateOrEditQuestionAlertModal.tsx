@@ -415,7 +415,6 @@ export const CreateOrEditQuestionAlertModal = ({
               },
             }}
             labelPosition="right"
-            size="sm"
             checked={notification.payload?.send_once}
             onChange={(event) => {
               setNotification({
@@ -441,8 +440,8 @@ export const CreateOrEditQuestionAlertModal = ({
         className={CS.borderTop}
       >
         <Button
-          variant="outline"
-          color="core-brand"
+          variant="subtle"
+          color="brand"
           disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
@@ -453,7 +452,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "negative" : "brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

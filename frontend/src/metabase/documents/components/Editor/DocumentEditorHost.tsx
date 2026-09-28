@@ -7,10 +7,7 @@ import {
   EditorHostProvider,
   useEditorHost,
 } from "metabase/rich_text_editing/tiptap/EditorHost";
-import type {
-  ClickActionsMode,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type { HighlightedObject } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 
@@ -51,7 +48,7 @@ import {
   getSelectedTimelineEventIds,
 } from "../../selectors";
 
-import { DocumentMode } from "./DocumentMode";
+import { documentClickActionMode } from "./DocumentMode";
 
 /**
  * {@link EditorHost} plus the visualization contracts CardEmbed needs.
@@ -66,7 +63,7 @@ export type DocumentEditorHost = EditorHost & {
   useVisualizationMode: (opts: {
     childTargetId: string;
     hostData?: Record<string, unknown> | null;
-  }) => ClickActionsMode | QueryClickActionsMode | undefined;
+  }) => ClickActionsMode | undefined;
 };
 
 /**
@@ -109,7 +106,7 @@ export const documentEditorHost: DocumentEditorHost = {
   useCommentUrl: useDocumentCommentUrl,
   useUnresolvedCommentsCount: useUnresolvedDocumentCommentsCount,
   useHighlighted: () => null,
-  useVisualizationMode: () => DocumentMode,
+  useVisualizationMode: () => documentClickActionMode,
   useCardEmbedSlots: () => EMPTY_CARD_EMBED_SLOTS,
   useNodeInViewport,
   useReportPrefetchLoading,

@@ -2,7 +2,6 @@ import {
   type ThunkDispatch,
   type UnknownAction,
   isRejected,
-  nanoid,
 } from "@reduxjs/toolkit";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
@@ -16,7 +15,6 @@ import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-st
 import { listTag } from "metabase/api/tags";
 import { getUser } from "metabase/current-user";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/redux/query-builder";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -33,7 +31,6 @@ import type {
   MetabotChatContext,
   MetabotCodeEditorBufferContext,
   MetabotStateContext,
-  MetabotTransformInfo,
 } from "metabase-types/api";
 
 import { metabotApi } from "../api";
@@ -42,7 +39,7 @@ import {
   type MetabotProfileId,
   isHistoryEnabledProfile,
 } from "../constants";
-import { normalizeFetchedChatMessages } from "../utils/normalize-fetched-chat-messages";
+import { PLUGIN_METABOT_SLASH_COMMANDS } from "../plugins";
 
 import { metabot } from "./reducer";
 import {
@@ -54,8 +51,10 @@ import {
   getIsConversationProcessing,
   getIsPollingForTitle,
   getMessageIdToRewind,
+  getMessages,
   getMetabotConversationId,
-  getUserPromptForMessageId,
+  getPromptText,
+  getUserPromptMessage,
 } from "./selectors";
 import type {
   MetabotAgentDataPartMessage,
@@ -73,7 +72,6 @@ export const {
   addDeveloperMessage,
   addUserMessage,
   setIsProcessing,
-  setMessageExternalIds,
   setConversationSnapshot,
   setConversationTitle,
   setNavigateToPath,
@@ -87,10 +85,6 @@ export const {
   toolCallSearchResults,
   setMetabotReqIdOverride,
   setDebugMode,
-  addSuggestedTransform,
-  activateSuggestedTransform,
-  deactivateSuggestedTransform,
-  updateSuggestedTransformId,
   createAgent,
   destroyAgent,
   attachAgentToConversation,
@@ -285,7 +279,7 @@ export const executeSlashCommand = createAsyncThunk<
         );
       })
       .otherwise(() => {
-        const handled = PLUGIN_AUDIT.handleMetabotSlashCommand({
+        const handled = PLUGIN_METABOT_SLASH_COMMANDS.handleSlashCommand({
           command,
           conversationId,
           dispatch,
@@ -328,7 +322,6 @@ export const submitInput = createAsyncThunk<
     metabot_id?: string;
     profile?: MetabotProfileId;
     retryMessageId?: string;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -340,7 +333,6 @@ export const submitInput = createAsyncThunk<
       message: rawPrompt,
       profile,
       retryMessageId,
-      isTransformsPage,
       isFullPageMetabot,
       ...data
     } = payload;
@@ -388,7 +380,6 @@ export const submitInput = createAsyncThunk<
         getState(),
         conversationId,
         retryMessageId,
-        isTransformsPage ?? false,
       );
       const messageId = createMessageId();
       const userMessageId = retryMessageId ?? uuid();
@@ -398,6 +389,7 @@ export const submitInput = createAsyncThunk<
       dispatch(
         addUserMessage({
           id: messageId,
+          externalId: userMessageId,
           ..._.omit(data, ["context", "metabot_id"]),
           message: prompt,
           conversationId,
@@ -454,6 +446,7 @@ type SendAgentRequestError =
       type: "error";
       conversation_id: string;
       shouldRetry: boolean;
+      serverStarted: boolean;
       error: MetabotAgentTurnError;
       display?: MetabotAgentTurnDisplayError;
     }
@@ -495,6 +488,7 @@ export const sendAgentRequest = createAsyncThunk<
     let state: MetabotStateContext | undefined;
     let response: ProcessedChatResponse | undefined;
     let receivedTitle = false;
+    let serverStarted = false;
     const hadTitleBeforeTurn = Boolean(
       getConversationTitle(getState(), conversationId),
     );
@@ -514,10 +508,7 @@ export const sendAgentRequest = createAsyncThunk<
         {
           onDataPart: function handleDataPart(part) {
             const pushDataPart = (
-              message: Omit<
-                MetabotAgentDataPartMessage,
-                "id" | "role" | "externalId"
-              >,
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
             ) => dispatch(addAgentMessage({ ...message, conversationId }));
 
             match(part)
@@ -530,6 +521,9 @@ export const sendAgentRequest = createAsyncThunk<
                 );
               })
               .with({ type: "data-todo_list" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "data-research_plan_update" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-code_edit" }, (part) => {
@@ -547,27 +541,6 @@ export const sendAgentRequest = createAsyncThunk<
                       part.data.buffer_id,
                     ),
                   },
-                });
-              })
-              .with({ type: "data-transform_suggestion" }, (part) => {
-                const suggestionId = nanoid();
-                const suggestedTransform = {
-                  ...part.data,
-                  id: part.data.id || undefined,
-                  active: true,
-                  suggestionId,
-                };
-                dispatch(addSuggestedTransform(suggestedTransform));
-
-                const editorTransform = request.context.user_is_viewing
-                  .filter(
-                    (t): t is MetabotTransformInfo => t.type === "transform",
-                  )
-                  .find((t) => t.id === suggestedTransform.id);
-                pushDataPart({
-                  type: "data_part",
-                  part,
-                  metadata: { editorTransform, suggestionId },
                 });
               })
               .with({ type: "data-generated_entity" }, (part) => {
@@ -619,6 +592,7 @@ export const sendAgentRequest = createAsyncThunk<
                 );
               })
               .with(
+                { type: "data-transform_suggestion" },
                 { type: "data-navigate_to" },
                 { type: "data-adhoc_viz" },
                 { type: "data-static_viz" },
@@ -636,14 +610,8 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .exhaustive();
           },
-          onStart: function handleStart(event) {
-            dispatch(
-              setMessageExternalIds({
-                conversationId,
-                agentMessageId: event.messageId,
-                userMessageId: event.messageMetadata?.userMessageId,
-              }),
-            );
+          onStart: function handleStart() {
+            serverStarted = true;
           },
           onTextPart: function handleTextPart(delta) {
             dispatch(
@@ -734,6 +702,7 @@ export const sendAgentRequest = createAsyncThunk<
           type: "error",
           conversation_id: request.conversation_id,
           shouldRetry: true,
+          serverStarted,
           error: streamedError,
           display: isMatching(
             { type: "ai_usage_limit_reached", message: P.string },
@@ -783,6 +752,7 @@ export const sendAgentRequest = createAsyncThunk<
         type: "error" as const,
         conversation_id: request.conversation_id,
         shouldRetry: true,
+        serverStarted,
         error: handled.error,
         display: handled.display,
       });
@@ -823,12 +793,12 @@ const rewindConversation = createAsyncThunk(
     },
     { dispatch, getState },
   ) => {
-    const promptMessage = getUserPromptForMessageId(
+    const userTurn = getUserPromptMessage(
       getState(),
       conversationId,
       messageId,
     );
-    if (!promptMessage) {
+    if (!userTurn) {
       throw new Error(
         `Unable to find the prompt for message ${messageId} in conversation ${conversationId}`,
       );
@@ -838,7 +808,7 @@ const rewindConversation = createAsyncThunk(
     dispatch(
       metabot.actions.rewindStateToMessageId({
         conversationId,
-        messageId: promptMessage.id,
+        messageId: userTurn.id,
       }),
     );
   },
@@ -852,7 +822,6 @@ export const retryPrompt = createAsyncThunk<
     metabot_id?: string;
     conversationId: string;
     profile?: MetabotProfileId;
-    isTransformsPage?: boolean;
     isFullPageMetabot?: boolean;
   }
 >(
@@ -864,48 +833,67 @@ export const retryPrompt = createAsyncThunk<
       metabot_id,
       conversationId,
       profile,
-      isTransformsPage,
       isFullPageMetabot,
     },
     { getState, dispatch },
   ) => {
     const state = getState();
 
-    const prompt = getUserPromptForMessageId(state, conversationId, messageId);
-    if (!prompt) {
+    const userTurn = getUserPromptMessage(state, conversationId, messageId);
+    if (!userTurn) {
       throw new Error("Agent message was not proceeded by a user message");
     }
+    const promptText = getPromptText(userTurn);
 
     if (getIsConversationProcessing(state, conversationId)) {
       console.error("Metabot is actively serving a request");
-      return { prompt: prompt.message, success: false, shouldRetry: false };
+      return { prompt: promptText, success: false, shouldRetry: false };
     }
 
-    dispatch(rewindConversation({ conversationId, messageId: prompt.id }));
+    // a turn the server never started has no rows to regenerate
+    const failedTurn = getMessages(state, conversationId).at(-1);
+    const retryMessageId =
+      failedTurn?.status.type === "errored" &&
+      failedTurn.status.serverStarted === false
+        ? undefined
+        : userTurn.externalId;
+
+    dispatch(rewindConversation({ conversationId, messageId: userTurn.id }));
     dispatch(cancelInflightConversationRequests(conversationId));
-    dispatch(
-      metabot.actions.rewindStateToMessageId({ conversationId, messageId }),
-    );
 
     return await dispatch(
       submitInput({
         conversationId,
         type: "text",
-        message: prompt.message,
+        message: promptText,
         context,
         metabot_id,
         profile,
-        retryMessageId: prompt.externalId,
-        isTransformsPage,
+        retryMessageId,
         isFullPageMetabot,
       }),
     ).unwrap();
   },
 );
 
+const assertConversationIsNotStreaming = (conversationId: string) => {
+  const isStreaming =
+    findMatchingInflightAiStreamingRequests(
+      "/api/metabot/agent-streaming",
+      conversationId,
+    ).length > 0;
+  if (isStreaming) {
+    throw new Error(
+      `Cannot load conversation ${conversationId} while it is streaming`,
+    );
+  }
+};
+
 export const fetchConversationSnapshot = createAsyncThunk(
   "metabase/metabot/fetchConversationSnapshot",
   async (conversationId: string, { dispatch }) => {
+    assertConversationIsNotStreaming(conversationId);
+
     const { data: detail, error } = await dispatch(
       metabotApi.endpoints.getMetabotConversation.initiate(conversationId, {
         forceRefetch: true,
@@ -930,7 +918,8 @@ export const fetchConversationSnapshot = createAsyncThunk(
         title: detail.title ?? undefined,
         forkedFromConversationId:
           detail.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(detail.messages),
+        contextWindowTokens: detail.context_window_tokens,
+        messages: detail.messages,
         state: detail.state,
         activeToolCalls: [],
       }),
@@ -947,10 +936,12 @@ export const loadConversation = createAsyncThunk(
     }: { agentId: MetabotAgentId; conversationId: string },
     { dispatch },
   ) => {
+    assertConversationIsNotStreaming(conversationId);
+
     // NOTE: deliberately doesn't cancel the inflight streaming-request;
     // as we do not want to record it as an aborted response.
     dispatch(attachAgentToConversation({ agentId, conversationId }));
-    await dispatch(fetchConversationSnapshot(conversationId));
+    await dispatch(fetchConversationSnapshot(conversationId)).unwrap();
   },
 );
 
@@ -986,7 +977,8 @@ export const forkConversation = createAsyncThunk(
         title: conversation.title ?? undefined,
         forkedFromConversationId:
           conversation.forked_from_conversation_id ?? undefined,
-        messages: normalizeFetchedChatMessages(conversation.messages),
+        contextWindowTokens: conversation.context_window_tokens,
+        messages: conversation.messages,
         state: conversation.state,
         activeToolCalls: [],
       }),

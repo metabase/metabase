@@ -1,0 +1,71 @@
+{:schemas
+ {:products {"PUBLIC" {"PRODUCTS" {"ID" "INT" "TITLE" "VARCHAR" "CATEGORY" "VARCHAR" "PRICE" "DECIMAL"}
+                       "ORDERS"   {"ID" "INT" "USER_ID" "INT" "PRODUCT_ID" "INT" "TOTAL" "DECIMAL"}
+                       "USERS"    {"ID" "INT" "NAME" "VARCHAR" "EMAIL" "VARCHAR"}}}}
+
+ :cases
+ [{:name           "columns that exist"
+   :sql            "SELECT id, title FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "a wildcard"
+   :sql            "SELECT * FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "table-qualified columns"
+   :sql            "SELECT products.id, products.title FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "a join whose columns all exist"
+   :sql            "SELECT o.id, p.title FROM orders o JOIN products p ON o.product_id = p.id"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "a subquery"
+   :sql            "SELECT * FROM (SELECT id, title FROM products) AS sub"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "a union"
+   :sql            "SELECT id FROM products UNION SELECT id FROM orders"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}
+
+  {:name           "a column no table has"
+   :sql            "SELECT bad_column FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "error" :type "column_not_resolved" :column "bad_column"}}
+
+  {:name           "a column belonging to another table"
+   :sql            "SELECT email FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "error" :type "column_not_resolved"}}
+
+  {:name           "a qualifier naming no source"
+   :sql            "SELECT p.id FROM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "error"}}
+
+  {:name           "a syntax error"
+   :sql            "SELECT * FORM products"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "error" :type "invalid_expression"}}
+
+  {:name           "a table the schema does not have is left to the layer that knows the database"
+   :sql            "SELECT * FROM nonexistent"
+   :default-schema "PUBLIC"
+   :schema         :products
+   :expected       {:status "ok"}}]}

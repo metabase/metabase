@@ -6,6 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -33,7 +34,7 @@
 
 (mu/defn- walk-clause-field-refs :- :any
   "Walks a clause and applies a function to all `:field` clauses."
-  [clause :- :any
+  [clause :- [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]
    f      :- fn?]
   (lib.walk/walk-clause clause
                         (fn [clause]
@@ -66,8 +67,8 @@
   "Upgrade all field refs in a list of clauses to use name-based field refs when possible."
   [query               :- ::lib.schema/query
    stage-number        :- :int
-   clauses             :- [:sequential :any]
-   {:keys [distinct?]} :- [:map [:distinct? :boolean]]]
+   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
+   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(upgrade-field-ref query stage-number %))))
@@ -231,8 +232,8 @@
   [query               :- ::lib.schema/query
    stage-number        :- :int
    field-id-mapping    :- ::field-id-mapping
-   clauses             :- [:sequential :any]
-   {:keys [distinct?]} :- [:map [:distinct? :boolean]]]
+   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
+   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
   (into []
         (cond-> (map (fn [clause]
                        (walk-clause-field-refs clause #(swap-field-ref query stage-number field-id-mapping %))))

@@ -13,6 +13,7 @@ import type {
 } from "metabase/redux/store/documents";
 import type {
   Card,
+  CardId,
   Document,
   TimelineEvent,
   TimelineEventId,
@@ -116,7 +117,7 @@ const documentsSlice = createSlice({
     updateVizSettings: (
       state,
       action: PayloadAction<{
-        cardId: number;
+        cardId: CardId;
         settings: VisualizationSettings;
       }>,
     ) => {
@@ -128,9 +129,21 @@ const documentsSlice = createSlice({
         };
       }
     },
+    replaceVizSettings: (
+      state,
+      action: PayloadAction<{
+        cardId: CardId;
+        settings: VisualizationSettings;
+      }>,
+    ) => {
+      const { cardId, settings } = action.payload;
+      if (state.draftCards[cardId]) {
+        state.draftCards[cardId].visualization_settings = settings;
+      }
+    },
     updateVisualizationType: (
       state,
-      action: PayloadAction<{ cardId: number; display: VisualizationDisplay }>,
+      action: PayloadAction<{ cardId: CardId; display: VisualizationDisplay }>,
     ) => {
       const { cardId, display } = action.payload;
       if (state.draftCards[cardId]) {
@@ -207,6 +220,7 @@ export const {
   deselectTimelineEvents,
   clearFocusedTimelineEvents,
   updateVizSettings,
+  replaceVizSettings,
   updateVisualizationType,
   closeSidebar,
   setCardEmbeds,

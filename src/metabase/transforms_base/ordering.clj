@@ -98,8 +98,14 @@
     (stored-or-live-deps transform)
     (catch Throwable _ #{})))
 
+(def ^:private TransformIdAndTargetTable
+  "The subset of a Transform row [[output-table-map]] reads: its id and its target Table id, if any."
+  [:map {:closed true}
+   [:id :metabase.lib.schema.id/transform]
+   [:target_table_id {:optional true} [:maybe :metabase.lib.schema.id/table]]])
+
 (mu/defn- output-table-map
-  [transforms]
+  [transforms :- [:sequential TransformIdAndTargetTable]]
   (into {}
         (keep (fn [{:keys [target_table_id id]}]
                 (when target_table_id
@@ -164,7 +170,7 @@
   (logging, metrics, error responses)."
   [start-ids all-transforms]
   (let [id->xf        (u/index-by :id all-transforms)
-        output-tables (output-table-map all-transforms)
+        output-tables (output-table-map (map #(select-keys % [:id :target_table_id]) all-transforms))
         target-refs   (target-ref-map all-transforms)
         all-ids       (into #{} (map :id) all-transforms)]
     (loop [visited   {}
@@ -247,19 +253,22 @@
 "
   [{transform-id :id :as to-check}]
   (let [db-id            (get-in to-check [:source :query :database])
-        ;; Recompute the transform under test live — its source may have just changed, so any stored
-        ;; deps are stale — and pin its source db. Every other transform uses its stored deps.
-        to-check         (-> to-check (assoc :source_database_id db-id) (dissoc :table_dependencies))
-        transforms       (map (fn [{:keys [id] :as transform}]
-                                (if (= id transform-id)
-                                  to-check
-                                  transform))
-                              (transforms-base.db/transforms-for-ordering))
+        ;; Recompute the transform under test live — its source or target may have just changed, so the
+        ;; stored deps and `target_table_id` are stale — and pin its source db. Every other transform
+        ;; uses its stored values.
+        to-check         (-> to-check
+                             (assoc :source_database_id db-id
+                                    :target_table_id    (when-let [db-id (transforms-base.i/target-db-id to-check)]
+                                                          (let [{:keys [schema name]} (:target to-check)]
+                                                            (:id (transforms-base.db/target-table db-id schema name :active true)))))
+                             (dissoc :table_dependencies))
+        transforms       (conj (vec (transforms-base.db/transforms-for-ordering transform-id))
+                               to-check)
         transforms-by-id (into {}
                                (map (juxt :id identity))
                                transforms)
         db-transforms    (filter #(= (:source_database_id %) db-id) transforms)
-        output-tables    (output-table-map db-transforms)
+        output-tables    (output-table-map (map #(select-keys % [:id :target_table_id]) db-transforms))
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
         node->children   #(->> % transforms-by-id safe-table-dependencies

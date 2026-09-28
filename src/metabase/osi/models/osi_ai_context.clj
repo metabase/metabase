@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.osi.db :as osi.db]
+   [metabase.osi.schema]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -171,5 +172,5 @@
   [_model-name ingested local]
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) ingested)
+  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context))
   (osi.db/ai-context (:entity_type local) (:entity_local_id local)))

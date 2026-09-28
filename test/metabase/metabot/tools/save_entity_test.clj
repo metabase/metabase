@@ -169,7 +169,7 @@
 
 (defn- card-embed [card-id]
   {:type "resizeNode"
-   :content [{:type "cardEmbed" :attrs {:id card-id :_id string?}}]})
+   :content [{:type "cardEmbed" :attrs {"id" card-id "_id" string?}}]})
 
 (deftest save-to-document-test
   (mt/with-current-user (mt/user->id :crowberto)

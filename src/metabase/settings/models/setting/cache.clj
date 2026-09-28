@@ -75,7 +75,7 @@
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
   ;; `value_with_aad` compares in SQL. `value_with_aad` is encrypted under the marker's AAD like any other setting's.
-  (let [value          (mdb/current-timestamp-string (mdb/db-type))
+  (let [value          (settings.db/current-timestamp-string)
         value-with-aad (encryption/maybe-encrypt value {:aad (mdb.setting/setting-aad settings-last-updated-key)})]
     ;; attempt to UPDATE the existing row. If no row exists, `t2/update!` will return 0...
     (or (pos? (settings.db/update-raw-setting-row! settings-last-updated-key value value-with-aad))

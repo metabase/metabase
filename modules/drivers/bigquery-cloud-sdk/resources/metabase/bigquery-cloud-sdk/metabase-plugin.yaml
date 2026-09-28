@@ -7,11 +7,17 @@ driver:
   display-name: BigQuery
   lazy-load: true
   connection-properties:
-    - name: project-id
-      display-name: Project ID (override)
-      helper-text: Project ID to be used for authentication. You can omit this field if you are only querying datasets owned by your organization.
+    - name: billing-project-id
+      display-name: Billing project ID
+      helper-text: Google Cloud project where query jobs run and are billed. Defaults to the service account's project.
+      placeholder: my-billing-project
       required: false
-      placeholder: 1w08oDRKPrOqBt06yxY8uiCz2sSvOp3u
+      type: string
+    - name: project-id
+      display-name: Data project ID
+      helper-text: Google Cloud project that owns the datasets you want to query. Defaults to the service account's project.
+      required: false
+      placeholder: my-warehouse-project
     - name: service-account-json
       display-name: Service account JSON file
       helper-text: This JSON file contains the credentials Metabase needs to read and query your dataset.

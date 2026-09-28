@@ -35,6 +35,15 @@
                                    :post 200 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest generate-content-permission-denied-body-test
+  (testing "the 403 body is the plain denial sentence, not a map carrying a stack trace"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot             :yes
+                                                        :permission/metabot-other-tools :no}]
+      (is (= "You do not have permission to use the document-generate-content assistant."
+             (mt/user-http-request :rasta
+                                   :post 403 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
 (deftest generate-content-free-limit-body-test
   (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
     (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
@@ -63,11 +72,11 @@
       (is (== 1 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
                                        {:profile-id "document-generate-content"}))))
       (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
-                                 {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"})))
+                                 {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
       (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens
-                                   {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"})))
+                                   {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
       (is (== 20 (mt/metric-value system :metabase-metabot/llm-output-tokens
-                                  {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"}))))))
+                                  {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"}))))))
 
 (deftest generate-content-tool-call-produces-draft-card-test
   (testing "a document_construct_sql_chart tool call round trip produces a :draft_card (#73690)"

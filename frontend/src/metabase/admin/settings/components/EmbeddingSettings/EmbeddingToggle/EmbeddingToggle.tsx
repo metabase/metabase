@@ -72,7 +72,6 @@ export function EmbeddingToggle({
     <>
       <Switch
         label={isEnabled ? t`Enabled` : t`Disabled`}
-        size="sm"
         labelPosition={labelPosition}
         checked={isEnabled}
         wrapperProps={{

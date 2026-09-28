@@ -304,7 +304,7 @@ const ParameterItem = ({
     <Box className={S.parameterItem} bg="background_page-secondary">
       <Group justify="space-between" align="center" pr="lg">
         <Button
-          c={isCompatible ? "text-primary" : undefined}
+          color={isCompatible ? "neutral" : undefined}
           variant="subtle"
           rightSection={isCompatible && <Icon name="chevrondown" aria-hidden />}
           disabled={!isCompatible}
@@ -314,7 +314,6 @@ const ParameterItem = ({
         </Button>
         {isCompatible && (
           <Switch
-            size="sm"
             role="switch"
             checked={isFiltered}
             onChange={(event) =>

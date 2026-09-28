@@ -190,7 +190,7 @@ export const DeleteDatabaseModal = ({
             )}
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
             <Button
-              color="feedback-negative"
+              color="negative"
               variant="filled"
               type="submit"
               disabled={!canDelete}

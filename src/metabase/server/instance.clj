@@ -104,7 +104,25 @@
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler :- ::api.macros/handler
-           options :- [:maybe :map]]
+           options :- [:maybe [:map {:closed true}
+                               [:port                 {:optional true} :int]
+                               [:host                 {:optional true} :string]
+                               [:max-threads          {:optional true} :int]
+                               [:min-threads          {:optional true} :int]
+                               [:max-queued           {:optional true} :int]
+                               [:max-idle-time        {:optional true} :int]
+                               [:send-server-version? {:optional true} :boolean]
+                               [:request-header-size  {:optional true} :int]
+                               [:daemon?              {:optional true} :boolean]
+                               [:ssl?                 {:optional true} :boolean]
+                               [:ssl-port             {:optional true} :int]
+                               [:keystore             {:optional true} :string]
+                               [:key-password         {:optional true} :string]
+                               [:truststore           {:optional true} :string]
+                               [:trust-password       {:optional true} :string]
+                               [:client-auth          {:optional true} :keyword]
+                               [:sni-host-check?      {:optional true} :boolean]
+                               [:join?                {:optional true} :boolean]]]]
   ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
   ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
   ;; some things like CSV downloads don't currently return channels at this time)

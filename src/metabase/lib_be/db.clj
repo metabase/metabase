@@ -8,14 +8,14 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(defn card-database-ids
+(mu/defn card-database-ids
   "The `:id`, `:database_id`, and `:card_schema` of the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id :card_schema] :id [:in card-ids]))
 
-(defn database
+(mu/defn database
   "The `:metadata/database` with `database-id`, or nil."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :metadata/database database-id))
 
 ;;; ----------------------------------------------- Lib metadata -----------------------------------------------
@@ -102,7 +102,7 @@
     #_else
     nil))
 
-(mu/defn- metadata-where :- [:map {:closed true} [:where {:optional true} vector?]]
+(mu/defn- metadata-where
   "The `:where` map picking out the `metadata-type` rows for `database-id`, narrowed by `metadata-spec`'s `:id`,
   `:name`, `:table-ids`, and `:card-ids` (whichever apply to `metadata-type`), or restricted to active/visible
   rows when none of `:id`/`:name` is given (`:include-sensitive?` controlling whether sensitive columns count
@@ -125,42 +125,50 @@
                           (and metric? table-ids) (conj [:= :source_card_id nil]))]
     (reduce sql.helpers/where {} where-clauses)))
 
-(defn tables
+(mu/defn tables
   "The `:metadata/table` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/table (metadata-where :metadata/table database-id metadata-spec)))
 
-(defn columns
+(mu/defn columns
   "The `:metadata/column` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/column (metadata-where :metadata/column database-id metadata-spec)))
 
-(defn cards
+(mu/defn cards
   "The `:metadata/card` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/card (metadata-where :metadata/card database-id metadata-spec)))
 
-(defn metrics
+(mu/defn metrics
   "The `:metadata/metric` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/metric (metadata-where :metadata/metric database-id metadata-spec)))
 
-(defn segments
+(mu/defn segments
   "The `:metadata/segment` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/segment (metadata-where :metadata/segment database-id metadata-spec)))
 
-(defn measures
+(mu/defn measures
   "The `:metadata/measure` rows for `database-id` picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/measure (metadata-where :metadata/measure database-id metadata-spec)))
 
-(defn native-query-snippets
+(mu/defn native-query-snippets
   "The `:metadata/native-query-snippet` rows picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/native-query-snippet (metadata-where :metadata/native-query-snippet database-id metadata-spec)))
 
-(defn transforms
+(mu/defn transforms
   "The `:metadata/transform` rows picked out by `metadata-spec`."
-  [database-id metadata-spec]
+  [database-id   :- ::lib.schema.id/database
+   metadata-spec :- ::lib.metadata.protocols/metadata-spec]
   (t2/select :metadata/transform (metadata-where :metadata/transform database-id metadata-spec)))

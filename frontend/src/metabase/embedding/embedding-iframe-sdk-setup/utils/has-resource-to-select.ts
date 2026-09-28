@@ -1,4 +1,4 @@
-import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 
 /**
  * Whether the experience needs a specific resource picked by the user

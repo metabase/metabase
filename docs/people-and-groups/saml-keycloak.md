@@ -17,7 +17,7 @@ For more information, check out our guide for [authenticating with SAML](./authe
 
 1. Go to the Keycloak admin console and sign in as an administrator.
 2. Create a user from **Manage** > **Users**. You'll need to populate the fields with an email, first name, and last name.
-3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set password for your user.
+3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set a password for your user.
    - Turn off the **Temporary** toggle.
    - Click **Set Password** to save your changes.
 4. Create a new SSO client from **Manage** > **Clients** > **Create**

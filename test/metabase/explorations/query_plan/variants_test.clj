@@ -310,10 +310,10 @@
                      (request/with-current-user user-id
                        (#'variants/cached-discovery ctx)))
           calls    (atom 0)
-          real     @#'variants/run-top-k-discovery]
-      (with-redefs [variants/run-top-k-discovery (fn [& args]
-                                                   (swap! calls inc)
-                                                   (apply real args))]
+          real     (mt/original-fn #'variants/run-top-k-discovery)]
+      (mt/with-dynamic-fn-redefs [variants/run-top-k-discovery (fn [& args]
+                                                                 (swap! calls inc)
+                                                                 (apply real args))]
         (discover (mt/user->id :rasta))
         (discover (mt/user->id :crowberto))
         (is (= 2 @calls)

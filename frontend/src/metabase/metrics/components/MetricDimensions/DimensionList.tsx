@@ -92,7 +92,6 @@ export function DimensionList({
           <Button
             disabled={isAddDisabled}
             onClick={onAdd}
-            size="sm"
           >{t`Available dimensions`}</Button>
         </Group>
       </Group>

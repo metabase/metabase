@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
+   [metabase-enterprise.transforms-python.schema]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -78,9 +78,7 @@
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path}
-                                       (constantly {:path normalized-path :source source}))]
+    (let [id (transforms-python.db/upsert-python-library-source! normalized-path source)]
       (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

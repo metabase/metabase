@@ -93,7 +93,7 @@
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
+         :display_name (lib/display-name query (dissoc column :table-reference))
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :base_type base-type
@@ -203,11 +203,8 @@
 
   Only cards visible to the current user are returned, excluding those backed by a destination
   (routed) database (see [[destination-db-ids]])."
-  [metabot-id & {:as opts}]
-  (let [cards (metabot.db/cards-where (-> (metabot.db/metabot-metrics-and-models-query metabot-id opts)
-                                          ;; qualified: the official-collections branch joins `collection`,
-                                          ;; which also has `id`
-                                          (update :order-by (fnil conj []) [:report_card.id])))
+  [metabot-id & {:keys [limit]}]
+  (let [cards (metabot.db/metabot-metrics-and-models metabot-id limit)
         destination-ids (destination-db-ids (into #{} (keep :database_id) cards))]
     (if (seq destination-ids)
       (remove #(contains? destination-ids (:database_id %)) cards)

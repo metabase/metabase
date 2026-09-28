@@ -1,5 +1,4 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
@@ -11,7 +10,10 @@ import { getEmbedOptions } from "metabase/embedding/interactive-embedding";
 import { getIsWebApp } from "metabase/embedding/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SdkSharedStoreState } from "metabase/embedding-sdk/types/store";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  getShallowDatabases,
+  selectQuestionFromCardBuilder,
+} from "metabase/metadata-store";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -32,7 +34,6 @@ import { getPathnameWithoutSubPath } from "metabase/utils/dom";
 import { selectIsWithinIframe } from "metabase/utils/iframe";
 import { isNotNull } from "metabase/utils/types";
 import { extendCardWithDashcardSettings } from "metabase/viz-core";
-import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
   getParameterValuesBySlug,
@@ -220,8 +221,13 @@ export const getCurrentDashcards = createSelector(
 );
 
 export const getDashcardHref = createSelector(
-  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
-  (metadata, dashboard, parameterValues, dashcard) => {
+  [
+    selectQuestionFromCardBuilder,
+    getDashboardComplete,
+    getParameterValues,
+    getDashCardById,
+  ],
+  (buildQuestion, dashboard, parameterValues, dashcard) => {
     if (
       !dashboard ||
       !dashcard ||
@@ -237,7 +243,7 @@ export const getDashcardHref = createSelector(
     );
 
     return getNewCardUrl({
-      metadata,
+      buildQuestion,
       dashboard,
       parameterValues,
       dashcard,
@@ -406,19 +412,24 @@ export const getParameterTarget = createSelector(
 );
 
 export const getQuestions = createSelector(
-  [getDashboardComplete, getMetadata],
-  (dashboard, metadata) => {
+  [getDashboardComplete, selectQuestionFromCardBuilder],
+  (dashboard, buildQuestion) => {
     if (!dashboard) {
       return {};
     }
-    return getDashboardQuestions(dashboard.dashcards, metadata);
+    return getDashboardQuestions(dashboard.dashcards, buildQuestion);
   },
 );
 
 export const getParameters = createSelector(
-  [getDashboardComplete, getMetadata, getQuestions, getIsEditing],
-  (dashboard, metadata, questions, isEditing) => {
-    if (!dashboard || !metadata) {
+  [
+    getDashboardComplete,
+    selectQuestionFromCardBuilder,
+    getQuestions,
+    getIsEditing,
+  ],
+  (dashboard, buildQuestion, questions, isEditing) => {
+    if (!dashboard) {
       return [];
     }
 
@@ -426,14 +437,13 @@ export const getParameters = createSelector(
       ? getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         )
       : getSavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
           dashboard.param_fields,
-          metadata,
         );
   },
 );
@@ -490,22 +500,23 @@ export const getMissingRequiredParameters = createSelector(
 );
 
 /**
- * It's a memoized version, it uses LRU cache per card identified by id
+ * Holds one Question per card, so that connected components keep the same
+ * reference between renders. reselect keys weakly on the card and the metadata,
+ * so an entry is released once its card leaves the store or the metadata is
+ * replaced. Keying on the card id instead would hold every Question, and the
+ * metadata snapshot each one carries, for the life of the tab.
  */
-export const getQuestionByCard = createCachedSelector(
+export const getQuestionByCard = createSelector(
   [
     (_state: State, props: { card: Card | VirtualCard }) => props.card,
-    getMetadata,
+    selectQuestionFromCardBuilder,
   ],
-  (card, metadata) => {
-    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
+  (card, buildQuestion) => {
+    return isQuestionCard(card) ? buildQuestion(card) : undefined;
   },
-)((_state, props) => {
-  // Virtual cards don't have an ID and should not return a question so we use "virtual" as a cache key for all of them
-  return props.card.id == null ? "virtual" : props.card.id;
-});
+);
 
-export const getDashcardParameterMappingOptions = createCachedSelector(
+export const getDashcardParameterMappingOptions = createSelector(
   [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
   (question, parameter, card, dashcard, dashcards) => {
     const parameterDashcard =
@@ -520,9 +531,7 @@ export const getDashcardParameterMappingOptions = createCachedSelector(
       parameterDashcard,
     );
   },
-)((state, props) => {
-  return props.card.id ?? props.dashcard.id;
-});
+);
 
 // Embeddings might be published without passing embedding_params to the server,
 // in which case it's an empty object. We should treat such situations with
@@ -686,13 +695,8 @@ export const getParameterMappingsBeforeEditing = createSelector(
 );
 
 export const getHasModelActionsEnabled = createSelector(
-  [getMetadata],
-  (metadata) => {
-    if (!metadata) {
-      return false;
-    }
-
-    const databases = metadata.databasesList();
+  [getShallowDatabases],
+  (databases) => {
     const hasModelActionsEnabled = Object.values(databases).some((database) =>
       // @ts-expect-error Schema types do not match
       hasDatabaseActionsEnabled(database),

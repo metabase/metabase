@@ -73,7 +73,7 @@
                         available just in case)."
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
-   & args]
+   & args      :- [:* :int]]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
@@ -254,9 +254,16 @@
   [db-state]
   (when (#{:encrypted :unencrypted :fresh :pre-sentinel} db-state)
     (when (mdb.db/unmigrated-settings?)
-      (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
-                     "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
-                     ". This is expected once after an upgrade.")))
+      (if (and (encryption/default-encryption-enabled?)
+               (mdb.encryption/legacy-startup-encryption-disabled?))
+        (throw (ex-info (str "Some settings were saved by an older version of Metabase and would be converted to the "
+                             "current storage format, encrypted with MB_ENCRYPTION_SECRET_KEY, but "
+                             "MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set. Unset it to let Metabase convert them on "
+                             "startup.")
+                        {}))
+        (log/warn (str "Some settings were saved by an older version of Metabase and are being converted to the current "
+                       "storage format" (when (encryption/default-encryption-enabled?) ", encrypted with MB_ENCRYPTION_SECRET_KEY")
+                       ". This is expected once after an upgrade."))))
     (mdb.setting/migrate-settings!)))
 
 ;; TODO -- consider renaming to something like `verify-connection-and-migrate!`
@@ -272,14 +279,15 @@
     state afterwards (see [[mdb.encryption/record-encryption-state!]]). Turned off by the `enable-encryption` command
     and by [[metabase.cmd.copy/copy!]],
     which handle the encryption state themselves."
-  ([db-type data-source]
+  ([db-type     :- :keyword
+    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (setup-db! db-type data-source {}))
 
   ([db-type     :- :keyword
     data-source :- (ms/InstanceOfClass javax.sql.DataSource)
     {:keys [auto-migrate? create-sample-content? manage-encryption-state?]
      :or   {auto-migrate? true, create-sample-content? false, manage-encryption-state? true}}
-    :- [:map
+    :- [:map {:closed true}
         [:auto-migrate?          {:optional true} :boolean]
         [:create-sample-content? {:optional true} :boolean]
         [:manage-encryption-state?      {:optional true} :boolean]]]

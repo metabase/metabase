@@ -5,7 +5,6 @@
    3. Mark orphaned tasks (in :started status with no heartbeat) as :unknown"
   (:require
    [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
    [metabase.task-history.db :as task-history.db]
    [metabase.task.core :as task]
@@ -26,7 +25,7 @@
   "Update updated_at for all :started runs belonging to this process."
   []
   (tracing/with-span :tasks "task.heartbeat.update" {}
-    (let [updated (task-history.db/heartbeat-started-task-runs! config/local-process-uuid (mi/now))]
+    (let [updated (task-history.db/heartbeat-started-task-runs! config/local-process-uuid)]
       (when (pos? updated)
         (log/debugf "Sent heartbeat for %d running task runs" updated))
       updated)))
@@ -39,11 +38,10 @@
   []
   (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
                    (rt/reap-rows! {:model    :model/TaskRun
-                                   :active   [:= :status "started"]
-                                   :terminal {:status "abandoned" :ended_at (mi/now)}
-                                   :stale    [:or
-                                              [:< :updated_at (rt/cutoff orphan-threshold-hours :hour)]
-                                              [:< :started_at (rt/cutoff max-run-duration-hours :hour)]]}))]
+                                   :active   [:status "started"]
+                                   :terminal {:status "abandoned" :ended_at :%now}
+                                   :stale    [{:column :updated_at :age orphan-threshold-hours :unit :hour}
+                                              {:column :started_at :age max-run-duration-hours :unit :hour}]}))]
     (into #{} (map :id) orphaned)))
 
 (defn mark-orphaned-tasks!
@@ -51,7 +49,7 @@
   [orphaned-run-ids]
   (when (seq orphaned-run-ids)
     (tracing/with-span :tasks "task.heartbeat.mark-orphaned-tasks" {:heartbeat/orphaned-run-count (count orphaned-run-ids)}
-      (let [orphaned (task-history.db/mark-started-tasks-unknown! orphaned-run-ids (mi/now))]
+      (let [orphaned (task-history.db/mark-started-tasks-unknown! orphaned-run-ids)]
         (when (pos? orphaned)
           (log/infof "Marked %d orphaned tasks as :unknown" orphaned))
         orphaned))))

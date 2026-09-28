@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
@@ -14,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
@@ -85,7 +87,10 @@
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
-  [attributes :- [:map-of :keyword [:maybe SimpleAttributes]]
+  [attributes :- [:map {:closed true}
+                  [:jwt    {:optional true} [:maybe SimpleAttributes]]
+                  [:tenant {:optional true} [:maybe SimpleAttributes]]
+                  [:user   {:optional true} [:maybe SimpleAttributes]]]
    system :- [:maybe SystemAttributes]]
   (letfn [(value-map [s f vs] (into {}
                                     (for [[k v] vs]
@@ -174,7 +179,7 @@
   If the user is a sandboxed user, only return themselves regardless of the query parameters."
   [_route-params
    {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
-   :- [:map
+   :- [:map {:closed true}
        [:status                  {:optional true} [:maybe :string]]
        [:query                   {:optional true} [:maybe :string]]
        [:group_id                {:optional true} [:maybe ms/PositiveInt]]
@@ -200,19 +205,19 @@
                             (= tenancy :all)               :all
                             (= tenancy :external)           :external
                             :else                           nil)
-            clauses (user/filter-clauses {:status                  status
-                                          :query                   query
-                                          :group-ids               (when group_id [group_id])
-                                          :include-deactivated     include_deactivated
-                                          :is-data-analyst?        is_data_analyst
-                                          :can-access-data-studio? can_access_data_studio
-                                          :tenant-filter           tenant-filter
-                                          :sort                    :first-name
-                                          :limit                   (request/limit)
-                                          :offset                  (request/offset)})]
+            filters {:status                  status
+                     :query                   query
+                     :group-ids               (when group_id [group_id])
+                     :include-deactivated     include_deactivated
+                     :is-data-analyst?        is_data_analyst
+                     :can-access-data-studio? can_access_data_studio
+                     :tenant-filter           tenant-filter
+                     :sort                    :first-name
+                     :limit                   (request/limit)
+                     :offset                  (request/offset)}]
         {:data   (cond-> (users-rest.db/users-with-columns
                           (user-visible-columns)
-                          clauses)
+                          filters)
                    ;; For admins also include the IDs of Users' Personal Collections
                    api/*is-superuser?*
                    (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -224,7 +229,7 @@
                    ;; multiple groups
                    group_id
                    distinct)
-         :total  (-> (users-rest.db/distinct-user-count (users/filter-clauses-without-paging clauses))
+         :total  (-> (users-rest.db/distinct-user-count filters)
                      first
                      :count)
          :limit  (request/limit)
@@ -246,18 +251,18 @@
                                         (not api/*is-superuser?*) (:tenant_id @api/*current-user*)
                                         (not (perms/use-tenants)) nil
                                         :else                     :all))
-          (all [] (let [clauses (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
-                                                      :sort          :last-name})]
-                    {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
-                     :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
+          (all [] (let [filters {:tenant-filter (recipient-tenant-filter)
+                                 :sort          :last-name}]
+                    {:data   (users-rest.db/users-with-columns (user-visible-columns) filters)
+                     :total  (users-rest.db/user-count filters)
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
-                                 clauses  (user/filter-clauses {:tenant-filter (recipient-tenant-filter)
-                                                                :user-ids      user-ids
-                                                                :sort          :last-name})]
-                             {:data   (users-rest.db/users-with-columns (user-visible-columns) clauses)
-                              :total  (users-rest.db/user-count (users/filter-clauses-without-paging clauses))
+                                 filters  {:tenant-filter (recipient-tenant-filter)
+                                           :user-ids      user-ids
+                                           :sort          :last-name}]
+                             {:data   (users-rest.db/users-with-columns (user-visible-columns) filters)
+                              :total  (users-rest.db/user-count filters)
                               :limit  (request/limit)
                               :offset (request/offset)}))]
     (cond
@@ -391,6 +396,7 @@
 
 (api.macros/defendpoint :get "/current" :- ::current-user-response
   "Fetch the current `User`."
+  {:scope api-scope/data-app}
   []
   (-> (api/check-404 @api/*current-user*)
       ;; `:type` is selected for the current user so attribute resolution can check it, but isn't part of this
@@ -412,7 +418,7 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager.
   Only personal users can be fetched this way; API-key users and the internal user 404."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (try
     (users/check-self-or-superuser id)
@@ -434,7 +440,7 @@
   "Create a new `User`, return a 400 if the email address is already taken"
   [_route-params
    _query-params
-   body :- [:map
+   body :- [:map {:closed true}
             [:first_name             {:optional true} [:maybe ms/NonBlankString]]
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
@@ -498,11 +504,11 @@
   Self or superusers can update user info and groups.
   Group Managers can only add/remove users from groups they are manager of.
   Only personal users can be updated this way; API-key users 404 (manage them via `/api/api-key` instead)."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
-   :- [:map
+   :- [:map {:closed true}
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
@@ -587,7 +593,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/reactivate"
   "Reactivate user at `:id`"
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
@@ -614,10 +620,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/password"
   "Update a user's password."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [password old_password]} :- [:map
+   {:keys [password old_password]} :- [:map {:closed true}
                                        [:password     ms/ValidPassword]
                                        [:old_password {:optional true} [:maybe :string]]]
    request]
@@ -632,14 +638,25 @@
                                                                                     :password old_password})))
                   "old_password"
                   (tru "Invalid password")))
-    ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
-    (auth-identity/set-password! id password)
-    ;; after a successful password update go ahead and offer the client a new session that they can use
-    (when (= id api/*current-user-id*)
-      (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking! user (request/device-info request) :provider/password)
-            response                        {:success    true
-                                             :session_id (str session-key)}]
-        (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
+    ;; We want to propagate MFA info from the old session so that users aren't auto-logged out.
+    ;; This needs to be done before we delete the old session.
+    (let [mfa-auth-identity-id (some-> request
+                                       :metabase-session-key
+                                       session/hash-session-key
+                                       users-rest.db/mfa-auth-identity-id-from-hashed-key
+                                       :mfa_auth_identity_id)]
+      ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
+      (auth-identity/set-password! id password)
+      ;; after a successful password update go ahead and offer the client a new session that they can use
+      (when (= id api/*current-user-id*)
+        (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
+                                               user
+                                               (request/device-info request)
+                                               :provider/password
+                                               mfa-auth-identity-id)
+              response                        {:success    true
+                                               :session_id (str session-key)}]
+          (request/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                    Password Reset URL -- POST /api/user/:id/password-reset-url                                 |
@@ -648,7 +665,7 @@
 (api.macros/defendpoint :post "/:id/password-reset-url" :- [:map [:password_reset_url :string]]
   "Generate a password reset URL for a user. Admins can share this URL directly with the user.
   The link expires in 48 hours."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
@@ -670,7 +687,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Disable a `User`.  This does not remove the `User` from the DB, but instead disables their account."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
@@ -692,7 +709,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
-  [{:keys [id modal]} :- [:map
+  [{:keys [id modal]} :- [:map {:closed true}
                           [:id ms/PositiveInt]
                           [:modal [:enum "qbnewb" "datasetnewb"]]]]
   (users/check-self-or-superuser id)

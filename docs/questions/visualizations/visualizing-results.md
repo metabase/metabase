@@ -116,7 +116,7 @@ A [sunburst chart](./pie-or-donut-chart.md) is a pie chart with more than one ri
 
 ## Pivot tables
 
-[Pivot tables](./pivot-table.md) allow you swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
+[Pivot tables](./pivot-table.md) allow you to swap rows and columns, group data, and include subtotals in your table. You can group one or more metrics by one or more dimensions.
 
 ![Pivot table options](../images/pivot-table-options.png)
 
@@ -176,7 +176,7 @@ If you have a bar chart like Count of Users by Age, where the x-axis is a number
 
 ## Custom visualizations
 
-On [Pro and Enterprise plans](https://www.metabase.com/pricing/), admins can add [custom visualizations](./custom.md): chart types you build with the Custom Visualizations SDK and upload to Metabase. Once a custom visualization is installed, it shows up in the visualization picker alongside the built-in charts.
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can add [custom visualizations](./custom.md): chart types you build with the Custom Visualizations SDK and upload to Metabase. Once a custom visualization is installed, it shows up in the visualization picker alongside the built-in charts.
 
 ## Styling and formatting data in charts
 
@@ -186,7 +186,7 @@ You can access formatting options for the columns used in a chart. Just open the
 
 Options differ depending on the chart, and can include settings for the chart's data, its display, and its axes.
 
-See also [Formatting defaults](../../data-modeling/formatting.md).
+See also [Formatting defaults](../../data-modeling/metadata/formatting.md).
 
 ## Further reading
 

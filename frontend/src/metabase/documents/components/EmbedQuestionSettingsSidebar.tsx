@@ -24,8 +24,8 @@ import type {
 
 import {
   closeSidebar,
+  replaceVizSettings,
   updateVisualizationType,
-  updateVizSettings,
 } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
@@ -76,18 +76,9 @@ export const EmbedQuestionSettingsSidebar = ({
   const handleSettingsChange = (settings: VisualizationSettings) => {
     if (selectedEmbedIndex !== null) {
       if (!draftCard) {
-        const baseCard = card;
-        const newSettings = {
-          ...baseCard?.visualization_settings,
-          ...settings,
-        };
-        const actualCardId = ensureDraftCard(
-          { visualization_settings: newSettings },
-          true,
-        );
-        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+        ensureDraftCard({ visualization_settings: settings }, true);
       } else {
-        dispatch(updateVizSettings({ cardId, settings }));
+        dispatch(replaceVizSettings({ cardId, settings }));
       }
     }
   };
@@ -142,7 +133,6 @@ export const EmbedQuestionSettingsSidebar = ({
             <Menu position="bottom-start">
               <Menu.Target>
                 <Button
-                  variant="default"
                   disabled={!selectedElem}
                   rightSection={<Icon ml="xxs" size={10} name="chevrondown" />}
                   leftSection={

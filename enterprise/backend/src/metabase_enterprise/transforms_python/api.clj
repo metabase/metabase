@@ -28,7 +28,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
    _query-params]
   (get-python-library-by-path path))
 
@@ -38,7 +38,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
+  [{:keys [path]} :- [:map {:closed true} [:path ms/NonBlankString]]
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
@@ -63,7 +63,7 @@
            per_input_row_limit]
     :or   {output_row_limit    100
            per_input_row_limit 100}}
-   :- [:map
+   :- [:map {:closed true}
        [:code                                 :string]
        [:source_tables                        [:sequential {:min 1} ::transforms-base.u/source-table-entry]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]

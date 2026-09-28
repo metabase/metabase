@@ -31,14 +31,10 @@ export type CreateCustomVisualizationProps<
 
 export type CustomVisualization<TSettings extends BaseVisualizationSettings> = {
   /**
-   * A unique visualization identifier. It's not shown in the UI.
-   */
-  id: string;
-
-  /**
    * Returns visualization name to be shown in the UI.
+   * Defaults to the plugin name from the manifest.
    */
-  getName(): string;
+  getName?(): string;
 
   /**
    * Set to false to disable saving the question as PNG.
@@ -283,10 +279,12 @@ export type BaseWidgetProps<
   TValue,
   TSettings extends BaseVisualizationSettings,
 > = {
+  /**
+   * Form-only id for the widget's control (e.g. a label's `htmlFor`).
+   * The value is arbitrary - don't interpret it.
+   */
   id: string;
   value: TValue | undefined;
   onChange: (value?: TValue | null) => void;
-  onChangeSettings: (
-    settings: Partial<CustomVisualizationSettings<TSettings>>,
-  ) => void;
+  onChangeSettings: (settings: Partial<TSettings>) => void;
 };

@@ -10,7 +10,7 @@
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
-  padding: 0.625rem 0;
+  padding-inline: 0;
   margin-inline-end: 1.25rem;
 
   :hover {

@@ -4,7 +4,8 @@ import _ from "underscore";
 import type { ComboboxItem } from "metabase/ui";
 import { isTransientId } from "metabase/utils/dashboard";
 import { stripId } from "metabase/utils/formatting";
-import type Field from "metabase-lib/v1/metadata/Field";
+import { getSearchField } from "metabase-lib/v1/metadata/utils/remapping";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   canListFieldValues,
   canListParameterValues,
@@ -17,6 +18,11 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isID,
+  isNumeric as isNumericField,
+  isString,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   CardId,
   DashboardId,
@@ -45,7 +51,7 @@ export function shouldList({
   disableSearch,
 }: {
   parameter?: Parameter;
-  fields: Field[];
+  fields: ParameterField[];
   disableSearch?: boolean;
 }) {
   if (disableSearch) {
@@ -58,7 +64,7 @@ export function shouldList({
 }
 
 function getNonSearchableTokenFieldPlaceholder(
-  firstField: Field,
+  firstField: ParameterField,
   parameter?: Parameter,
 ) {
   if (parameter) {
@@ -73,11 +79,11 @@ function getNonSearchableTokenFieldPlaceholder(
     // fallback
     return t`Enter some text`;
   } else if (firstField) {
-    if (firstField.isID()) {
+    if (isID(firstField)) {
       return t`Enter an ID`;
-    } else if (firstField.isString()) {
+    } else if (isString(firstField)) {
       return t`Enter some text`;
-    } else if (firstField.isNumeric()) {
+    } else if (isNumericField(firstField)) {
       return t`Enter a number`;
     }
 
@@ -90,24 +96,24 @@ function getNonSearchableTokenFieldPlaceholder(
 }
 
 export function searchField(
-  field: Field | null,
+  field: ParameterField | null,
   disablePKRemappingForSearch?: boolean,
 ) {
-  return field?.searchField(disablePKRemappingForSearch) ?? null;
+  return field ? getSearchField(field, disablePKRemappingForSearch) : null;
 }
 
 function getSearchableTokenFieldPlaceholder(
   parameter: Parameter | undefined,
-  fields: Field[],
-  firstField: Field,
+  fields: ParameterField[],
+  firstField: ParameterField,
   disablePKRemappingForSearch?: boolean,
 ) {
   let placeholder;
 
   const names = new Set(
-    fields.map((field: Field) =>
+    fields.map((field) =>
       stripId(
-        field?.searchField?.(disablePKRemappingForSearch)?.display_name ?? "",
+        getSearchField(field, disablePKRemappingForSearch)?.display_name ?? "",
       ),
     ),
   );
@@ -123,8 +129,8 @@ function getSearchableTokenFieldPlaceholder(
     placeholder = t`Search by ${name}`;
     if (
       firstField &&
-      firstField.isID() &&
-      firstField !== firstField.searchField(disablePKRemappingForSearch)
+      isID(firstField) &&
+      firstField !== getSearchField(firstField, disablePKRemappingForSearch)
     ) {
       placeholder += t` or enter an ID`;
     }
@@ -139,7 +145,7 @@ export function hasList({
   options,
 }: {
   parameter?: Parameter;
-  fields: Field[];
+  fields: ParameterField[];
   disableSearch: boolean;
   options: FieldValue[];
 }) {
@@ -172,7 +178,7 @@ export function isSearchable({
   valuesMode,
 }: {
   parameter?: Parameter;
-  fields?: Field[];
+  fields?: ParameterField[];
   disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
   valuesMode?: ValuesMode;
@@ -199,7 +205,7 @@ export function getTokenFieldPlaceholder({
   options,
   valuesMode,
 }: {
-  fields: Field[];
+  fields: ParameterField[];
   parameter?: Parameter;
   disableSearch: boolean;
   placeholder?: string;
@@ -249,7 +255,7 @@ export function getValuesMode({
   disablePKRemappingForSearch,
 }: {
   parameter?: Parameter;
-  fields: Field[];
+  fields: ParameterField[];
   disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
 }): ValuesMode {
@@ -272,10 +278,10 @@ export function getValuesMode({
   return "none";
 }
 
-export function isNumeric(parameter: Parameter, fields: Field[]) {
+export function isNumeric(parameter: Parameter, fields: ParameterField[]) {
   return (
     isNumberParameter(parameter) ||
-    (fields.length > 0 && fields.every((field) => field.isNumeric()))
+    (fields.length > 0 && fields.every(isNumericField))
   );
 }
 

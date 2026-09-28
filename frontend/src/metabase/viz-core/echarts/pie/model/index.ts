@@ -9,6 +9,7 @@ import {
   getRowsForStableKeys,
 } from "metabase-types/api";
 
+import { getChartColor } from "../../../lib/color-name";
 import type { ColumnDescriptor } from "../../../lib/graph/columns";
 import { getNumberOr } from "../../../lib/settings/row-values";
 import {
@@ -364,7 +365,7 @@ export function getPieChartModel(
   const sliceTree: SliceTree = new Map();
   let i = 0;
   const [sliceTreeNodes, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, key, name, isOther }) => {
+    .map(({ value, color, color_name, key, name, isOther }) => {
       const visible = isOther
         ? !hiddenSlices.includes(OTHER_SLICE_KEY)
         : !hiddenSlices.includes(key);
@@ -378,7 +379,7 @@ export function getPieChartModel(
         rawValue: value,
         normalizedPercentage,
         color: getColorForRing(
-          color,
+          getChartColor(color, color_name),
           "inner",
           colDescs.middleDimensionDesc != null,
         ),

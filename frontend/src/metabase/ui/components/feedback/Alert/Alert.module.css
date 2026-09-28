@@ -6,7 +6,6 @@
     var(--mantine-spacing-xl) var(--mantine-spacing-xl);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: var(--mantine-shadow-xs);
 }
 
 .wrapper {
@@ -87,6 +86,10 @@
   & .message {
     font-size: var(--mantine-font-size-sm);
   }
+}
+
+.root[data-variant="default"][data-color="default"] {
+  box-shadow: var(--mantine-shadow-xs);
 }
 
 .root[data-variant="default"],

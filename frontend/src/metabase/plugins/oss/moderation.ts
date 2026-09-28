@@ -12,6 +12,8 @@ import type {
   MetabotInfo,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
@@ -40,11 +42,4 @@ const getDefaultPluginModeration = () => ({
     PluginPlaceholder as React.ComponentType<{ metabot: MetabotInfo }>,
 });
 
-export const PLUGIN_MODERATION = getDefaultPluginModeration();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_MODERATION, getDefaultPluginModeration());
-}
+export const PLUGIN_MODERATION = definePluginSlot(getDefaultPluginModeration);

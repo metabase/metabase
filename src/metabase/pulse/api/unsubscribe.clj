@@ -35,7 +35,7 @@
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash pulse-id]} :- [:map
+   {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
                                      [:email    :string]
                                      [:hash     :string]]
@@ -45,7 +45,7 @@
     (api/let-404 [pulse-channel (pulse.db/email-pulse-channel pulse-id)]
       (let [emails (get-in pulse-channel [:details :emails])]
         (if (some #{email} emails)
-          (pulse.db/update-pulse-channel! (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
+          (pulse.db/update-pulse-channel! (:id pulse-channel) (-> pulse-channel (dissoc :id) (update-in [:details :emails] #(remove #{email} %))))
           (throw (ex-info (tru "Email for pulse-id doesn''t exist.")
                           {:type        type
                            :status-code 400}))))
@@ -60,7 +60,7 @@
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [_route-params
    _query-params
-   {:keys [email hash pulse-id]} :- [:map
+   {:keys [email hash pulse-id]} :- [:map {:closed true}
                                      [:pulse-id ms/PositiveInt]
                                      [:email    :string]
                                      [:hash     :string]]
@@ -73,6 +73,6 @@
           (throw (ex-info (tru "Email for pulse-id already exists.")
                           {:type        type
                            :status-code 400}))
-          (pulse.db/update-pulse-channel! (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+          (pulse.db/update-pulse-channel! (:id pulse-channel) (-> pulse-channel (dissoc :id) (update-in [:details :emails] conj email)))))
       (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))

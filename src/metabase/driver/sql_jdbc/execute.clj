@@ -47,7 +47,7 @@
 (def ConnectionOptions
   "Malli schema for the options passed to [[do-with-connection-with-options]]."
   [:maybe
-   [:map
+   [:map {:closed true}
     ;; a string like 'US/Pacific' or something like that.
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
@@ -260,7 +260,7 @@
 
 (def ^:private DbOrIdOrSpec
   [:and
-   [:or :int :map]
+   [:or :int driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    [:fn
     ;; can't wrap a java.sql.Connection here because we're not
     ;; responsible for its lifecycle and that means you can't use
@@ -361,7 +361,7 @@
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or ::lib.schema.id/database :map]
+   db-or-id-or-spec :- [:or ::lib.schema.id/database driver-api/schema.metadata.database :metabase.lib.schema.common/database-details]
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
@@ -398,8 +398,11 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec
-   ^Connection conn                                       :- (driver-api/instance-of-class Connection)
+   db-or-id-or-spec                                       :- [:or
+                                                              ::lib.schema.id/database
+                                                              driver-api/schema.metadata.database
+                                                              :metabase.lib.schema.common/database-details]
+   ^Connection conn                                      :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-let [db (cond
                   ;; id?
@@ -830,6 +833,41 @@
                             :pulse}]
     (boolean (download-contexts context))))
 
+(def ^:private drivers-exempt-from-cancelation
+  "Drivers whose statements [[execute-reducible-query]] never cancels.
+  TODO: vertica is here only to find out whether it flakes because of cancelations. It should be removed afterwards!"
+  #{:vertica})
+
+(defmulti cancelation-poisons-connection?
+  "Whether canceling a Statement leaves this driver's Connection unfit for the next query, so that it must be thrown
+  away rather than returned to the pool.
+
+  Canceling abandons a result set the server is still producing, and the pool cannot clear what that leaves behind:
+  c3p0 resets `autoCommit`/`readOnly`/holdability on check-in, not driver-level wire state. A driver whose cancelation
+  leaves nothing pending on the wire should keep the default of `false`."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod cancelation-poisons-connection? :default
+  [_driver]
+  false)
+
+(defn- cancel-statement!
+  "Cancel `stmt` on the DBMS side. Returns whether a cancelation was actually issued."
+  [driver ^Statement stmt]
+  (try
+    (when-not (.isClosed stmt)
+      (.cancel stmt)
+      true)
+    (catch SQLFeatureNotSupportedException _
+      (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                 (name driver))
+      false)
+    (catch Throwable e
+      (log/infof "Statement cancelation failed: %s" (ex-message e))
+      false)))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -850,37 +888,52 @@
         :stream?   (or (download? (-> outer-query :info :context))
                        (= :table-rows-sample (-> outer-query :info :context)))}
        (fn [^Connection conn]
-         (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
-                     ^ResultSet rs (try
-                                     (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
-                                     (catch Throwable e
-                                       (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                       (cond-> {:driver driver
-                                                                :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                                :params params
-                                                                :type   driver-api/qp.error-type.invalid-query}
-                                                         (driver/query-canceled? driver e)
-                                                         (assoc :query/query-canceled? true))
-                                                       e))))]
-           (let [rsmeta           (.getMetaData rs)
-                 results-metadata {:cols (column-metadata driver rsmeta)}]
-             (try (respond results-metadata (reducible-rows driver rs rsmeta (driver-api/canceled-chan)))
-                  ;; Following cancels the statement on the dbms side.
-                  ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
-                  ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
-                  ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
-                  ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
-                  (finally
-                    ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
-                    ;;       It should be removed afterwards!
-                    (when-not (= :vertica driver)
-                      (try (when-not (.isClosed stmt)
-                             (.cancel stmt))
-                           (catch SQLFeatureNotSupportedException _
-                             (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
-                                        (name driver)))
-                           (catch Throwable e
-                             (log/infof "Statement cancelation failed: %s" (ex-message e))))))))))))))
+         ;; whether a cancelation was issued is only knowable inside the Statement's scope, but the Connection can
+         ;; only be dealt with once the Statement and ResultSet are closed, so it is carried out past both
+         (let [canceled? (volatile! false)]
+           (try
+             (with-open [stmt          (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
+                         ^ResultSet rs (try
+                                         (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
+                                         (catch Throwable e
+                                           (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                           (cond-> {:driver driver
+                                                                    :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                                    :params params
+                                                                    :type   driver-api/qp.error-type.invalid-query}
+                                                             (driver/query-canceled? driver e)
+                                                             (assoc :query/query-canceled? true))
+                                                           e))))]
+               (let [rsmeta           (.getMetaData rs)
+                     results-metadata {:cols (column-metadata driver rsmeta)}
+                     ;; whether the ResultSet ran out of rows is only observable while reducing, but it is needed after
+                     ;; reduction has finished, so the row thunk records it on the way past
+                     exhausted?       (volatile! false)
+                     next-row         (row-thunk driver rs rsmeta)
+                     rows             (driver-api/reducible-rows
+                                       (fn []
+                                         (let [row (next-row)]
+                                           (when-not row
+                                             (vreset! exhausted? true))
+                                           row))
+                                       (driver-api/canceled-chan))]
+                 (try (respond results-metadata rows)
+                      ;; Following cancels the statement on the dbms side.
+                      ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+                      ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statement is still
+                      ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
+                      ;; It also handles situation where query is canceled through [[driver-api/canceled-chan]] (#41448).
+                      ;; An exhausted ResultSet has nothing left to cancel.
+                      (finally
+                        (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
+                          (vreset! canceled? (cancel-statement! driver stmt)))))))
+             ;; `with-open` has closed the ResultSet and Statement by the time this runs, which is required: on
+             ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
+             ;; Discarding is safe here because this Connection was acquired for this query alone -- see
+             ;; [[do-with-resolved-connection]] for the cases where a Connection instead belongs to the caller.
+             (finally
+               (when (and @canceled? (cancelation-poisons-connection? driver))
+                 (sql-jdbc.conn/discard-pooled-connection! conn))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
@@ -946,6 +999,61 @@
     {:rows-affected (if (instance? PreparedStatement stmt)
                       (.executeUpdate ^PreparedStatement stmt)
                       (.executeUpdate stmt sql))}))
+
+(defmethod driver/do-with-test-connection :sql-jdbc
+  [driver database f]
+  (do-with-connection-with-options
+   driver
+   database
+   {:write? true}
+   (fn [^Connection conn]
+     (.setAutoCommit conn false)
+     (try
+       (f conn)
+       (finally
+         ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
+         ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
+         ;; "current transaction is aborted" on Postgres and Redshift.
+         (try
+           (.rollback conn)
+           (catch Throwable e
+             (log/warnf "Failed to roll back the transform test transaction: %s" (ex-message e))))
+         (try
+           (.setAutoCommit conn true)
+           (catch Throwable e
+             (log/warnf "Failed to restore autoCommit after the transform test: %s" (ex-message e)))))))))
+
+(defmethod driver/execute-on-connection! :sql-jdbc
+  [driver conn [sql params]]
+  (create-and-execute-statement! driver conn sql params))
+
+(defmethod driver/query-on-connection :sql-jdbc
+  [driver conn [sql params] {:keys [max-rows]}]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    (when (and max-rows (pos? max-rows))
+      ;; The cap is the statement's only bound. Every statement otherwise carries the streaming fetch size, and
+      ;; Redshift aborts the transaction when a row cap is asked of a cursor; `setMaxRows` bounds the memory a
+      ;; cursor would have bounded anyway.
+      (try
+        (.setFetchSize stmt 0)
+        (catch Throwable e
+          (log/debugf "Error clearing the statement fetch size: %s" (ex-message e))))
+      (.setMaxRows stmt (int max-rows)))
+    (with-open [^ResultSet rs (if (instance? PreparedStatement stmt)
+                                (.executeQuery ^PreparedStatement stmt)
+                                (.executeQuery stmt ^String sql))]
+      (let [md           (.getMetaData rs)
+            column-count (.getColumnCount md)]
+        {:columns (mapv (fn [i]
+                          {:name          (.getColumnLabel md (int i))
+                           :database_type (.getColumnTypeName md (int i))})
+                        (range 1 (inc column-count)))
+         ;; `setMaxRows` reads 0 as unlimited, so the cap is enforced here rather than left to it.
+         :rows    (loop [rows []]
+                    (if (and (or (nil? max-rows) (< (count rows) max-rows))
+                             (.next rs))
+                      (recur (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count)))))
+                      rows))}))))
 
 (defmethod driver/execute-raw-queries! :sql-jdbc
   [driver conn-spec queries]

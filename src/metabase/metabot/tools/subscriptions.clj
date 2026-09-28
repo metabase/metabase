@@ -33,7 +33,10 @@
                 (-> card
                     api/read-check
                     (select-keys [:id :name :collection_id :description :display :parameter_mappings])
-                    (assoc :dashboard_card_id id :dashboard_id dashboard-id)))
+                    (assoc :dashboard_card_id id
+                           :dashboard_id      dashboard-id
+                           :include_csv       false
+                           :include_xls       false)))
         channel-name (some->> slack-channel
                               channel.settings/find-cached-slack-channel-or-username
                               ;; match existing code which stores display names like "#some-channel"
@@ -82,7 +85,7 @@
    [:dashboard_id :int]
    [:email {:optional true} [:maybe :string]]
    [:slack_channel {:optional true} [:maybe :string]]
-   [:schedule [:map
+   [:schedule [:map {:closed true}
                [:frequency [:enum "hourly" "daily" "weekly" "monthly"]]
                [:hour {:optional true} [:maybe :int]]
                [:day_of_week {:optional true} [:maybe :string]]

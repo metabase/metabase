@@ -29,7 +29,6 @@ export const TransformsSyncRow = ({ isReadOnly }: TransformsSyncRowProps) => {
         </Flex>
         <Flex align="center" gap="sm">
           <Switch
-            size="sm"
             checked={isChecked}
             onChange={(e) => handleToggle(e.currentTarget.checked)}
             disabled={isReadOnly}

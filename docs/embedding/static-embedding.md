@@ -69,7 +69,7 @@ Once you've made a question or dashboard [embeddable](#making-a-question-or-dash
 4. Add the code to the server code that builds your website.
 5. Add the frontend code to the code that generates the page where you want the embedded item to appear.
 
-For more examples, see our [reference apps repo](https://github.com/metabase/embedding-reference-apps).
+For more examples, see our [reference apps repo](https://github.com/metabase/static-embedding-reference-apps).
 
 ## Previewing the code for an embed
 
@@ -191,7 +191,6 @@ See [Translating embedded questions and dashboards](./translations.md).
 ## Further reading
 
 - [Parameters for static embeds](./static-embedding-parameters.md).
-- [Reference apps repo](https://github.com/metabase/embedding-reference-apps).
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
+- [Reference apps repo](https://github.com/metabase/static-embedding-reference-apps).
+- [Embedding introduction](./introduction.md).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).

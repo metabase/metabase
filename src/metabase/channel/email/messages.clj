@@ -8,7 +8,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
    [metabase.appearance.core :as appearance]
    [metabase.channel.db :as channel.db]
    [metabase.channel.email :as email]
@@ -28,7 +27,8 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -218,7 +218,15 @@
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
-  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map {:closed true}
+                                                                [:user_id             pos-int?]
+                                                                [:device_description  {:optional true} [:maybe :string]]
+                                                                [:device_id           {:optional true} [:maybe :string]]
+                                                                [:ip_address          {:optional true} [:maybe :string]]
+                                                                [:location            {:optional true} [:maybe :string]]
+                                                                [:session_id          {:optional true} [:maybe :string]]
+                                                                [:timestamp           {:optional true} [:maybe ms/TemporalInstant]]
+                                                                [:timezone            {:optional true} [:maybe :string]]]]
   (let [user-info    (or (channel.db/user-contact-info user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
@@ -249,19 +257,7 @@
   [database-id]
   (let [monitoring (perms/application-perms-path :monitoring)
         user-ids-with-monitoring (when (premium-features/enable-advanced-permissions?)
-                                   (->> {:select   [:pgm.user_id]
-                                         :from     [[:permissions_group_membership :pgm]]
-                                         :join     [[:permissions_group :pg] [:= :pgm.group_id :pg.id]]
-                                         :where    [:and
-                                                    [:exists ^:allow-subquery
-                                                     {:select [1]
-                                                      :from [[:permissions :p]]
-                                                      :where [:and
-                                                              [:= :p.group_id :pg.id]
-                                                              [:= :p.object monitoring]]}]]
-                                         :group-by [:pgm.user_id]}
-                                        app-db/query
-                                        (mapv :user_id)))
+                                   (mapv :user_id (channel.db/user-ids-with-permission monitoring)))
         user-ids (filter
                   #(perms/user-has-permission-for-database? % :perms/manage-database :yes database-id)
                   user-ids-with-monitoring)]

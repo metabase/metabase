@@ -10,7 +10,6 @@
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [stencil.core :as stencil]))
 
 (defn- header->directive
@@ -72,7 +71,7 @@
   ;; on, its value becomes ordinary pages' `frame-ancestors`. It must stay confined to that
   ;; directive: a `;` in the value must not break out and append further CSP directives. The
   ;; worst is `script-src-elem` — the base policy omits it, so an injected one is honored and
-  ;; overrides the nonce/hash `script-src` allowlist the app relies on to block XSS.
+  ;; overrides the hash-based `script-src` allowlist the app relies on to block XSS.
   (mt/with-premium-features #{:embedding}
     (let [csp-directive-names
           (fn [origins]
@@ -135,12 +134,17 @@
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
 
-(defn- headers-for-uri
-  "Run the security-headers middleware for a request to `uri` and return its headers."
-  [uri]
+(defn- headers-for-request
+  "Run the security-headers middleware for `request` and return its headers."
+  [request]
   (let [handler (mw.security/add-security-headers
                  (fn [_request respond _raise] (respond {:status 200 :headers {} :body "ok"})))]
-    (:headers (handler {:uri uri :headers {}} identity identity))))
+    (:headers (handler (merge {:headers {}} request) identity identity))))
+
+(defn- headers-for-uri
+  "Run the security-headers middleware for a signed-in request to `uri` and return its headers."
+  [uri]
+  (headers-for-request {:uri uri :metabase-user-id 1}))
 
 (defn- frame-ancestors-for [uri]
   (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
@@ -174,16 +178,16 @@
 (deftest data-app-form-action-test
   (testing "form-action is ALWAYS set on a data-app iframe document (its absence = admin provisioning)"
     (doseq [hosts [[] ["https://api.example.com"]]]
-      (with-redefs [mw.security/data-app-connect-src-hosts (constantly hosts)]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly hosts)]
         (is (some? (csp-directive-for "/embed/apps/sales" "form-action"))))))
   (testing "with no allowed_hosts, native <form action> submits are blocked (client-side onSubmit still works)"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
       (is (= "form-action 'none'" (csp-directive-for "/embed/apps/sales" "form-action")))
       (is (= "form-action 'none'"
              (csp-directive-for "/embed/apps/sales/sub/route" "form-action")))))
   (testing "form-action mirrors the app's allowed_hosts (like connect-src)"
-    (with-redefs [mw.security/data-app-connect-src-hosts
-                  (constantly ["https://api.example.com" "https://*.trusted.test"])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                (constantly ["https://api.example.com" "https://*.trusted.test"])]
       (is (= "form-action https://api.example.com https://*.trusted.test"
              (csp-directive-for "/embed/apps/sales" "form-action")))))
   (testing "other documents leave form-action unset (falls through to no restriction)"
@@ -210,7 +214,7 @@
     ;; A global iframe host (wikipedia) is configured but must NOT leak into a data
     ;; app's frame-src — the app can only frame what it declares.
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
-      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
         ;; Both the top page and the iframe doc: the top page's `frame-src` gates
         ;; what the iframe below it may navigate to.
         (doseq [uri ["/apps/sales" "/embed/apps/sales"]]
@@ -220,20 +224,48 @@
             (is (not (str/includes? frame-src "wikipedia"))
                 (str uri " must not include the instance-wide iframe hosts")))))))
   (testing "with no allowed_hosts, a data app can only frame 'self'"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
       (is (= "frame-src 'self'" (csp-directive-for "/embed/apps/sales" "frame-src")))))
   (testing "non-data-app documents keep the instance-wide iframe hosts, not app hosts"
     (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org"]
-      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
         (let [frame-src (csp-directive-for "/embed/dashboard/abc" "frame-src")]
           (is (str/includes? frame-src "wikipedia"))
           (is (not (str/includes? frame-src "https://example.com"))))))))
 
+(deftest data-app-hosts-only-for-signed-in-users-test
+  (testing "a signed-out request never sees an app's allowed_hosts in its CSP, and never triggers the lookup"
+    (let [lookups (atom 0)]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (fn [_slug] (swap! lookups inc) ["https://example.com"])]
+        (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+          (let [csp (get (headers-for-request {:uri uri}) "Content-Security-Policy")]
+            (is (not (str/includes? csp "https://example.com")) uri)))
+        (is (= "form-action 'none'"
+               (-> (headers-for-request {:uri "/embed/apps/sales"})
+                   (get "Content-Security-Policy")
+                   (header->directive "form-action"))))
+        (is (zero? @lookups)))))
+  (testing "a signed-out request keeps the data-app policy with an empty allowlist rather than the instance-wide one"
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://widgets.example"]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+        (doseq [uri ["/embed/apps/sales" "/apps/sales"]]
+          (is (= "frame-src 'self'"
+                 (-> (headers-for-request {:uri uri})
+                     (get "Content-Security-Policy")
+                     (header->directive "frame-src")))
+              uri)))))
+  (testing "a signed-in request gets them"
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://example.com"])]
+      (doseq [uri ["/embed/apps/sales" "/apps/sales"]]
+        (is (str/includes? (get (headers-for-request {:uri uri :metabase-user-id 1}) "Content-Security-Policy")
+                           "https://example.com")
+            uri)))))
+
 (deftest data-app-instance-origin-excluded-test
   (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
     (mt/with-temporary-setting-values [site-url "https://mymetabase.example"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["https://mymetabase.example" "https://api.allowed.test"])]
         (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
               frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
               connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
@@ -252,10 +284,10 @@
     ;; place, `form-action https://*.company.com` matches `mb.company.com`, letting a
     ;; hostile bundle native-submit a `<form action="…/api/user">` and provision an admin.
     (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["https://*.company.com"    ; covers mb.company.com -> must be dropped
-                                 "https://*.othercdn.com"   ; unrelated wildcard  -> must survive
-                                 "https://api.allowed.test"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["https://*.company.com"    ; covers mb.company.com -> must be dropped
+                                               "https://*.othercdn.com"   ; unrelated wildcard  -> must survive
+                                               "https://api.allowed.test"])]
         (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
               frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
               connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
@@ -283,9 +315,9 @@
   ;; entry the bundle spells with the default port or different case must be dropped too.
   (testing "the instance origin spelled with its default port is dropped when site-url is portless"
     (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["https://mb.company.com:443"   ; the instance, default port -> must be dropped
-                                 "https://api.allowed.test"])]  ; unrelated external host    -> must survive
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["https://mb.company.com:443"   ; the instance, default port -> must be dropped
+                                               "https://api.allowed.test"])]  ; unrelated external host    -> must survive
         (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
               frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
               connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
@@ -298,9 +330,9 @@
                 (str directive " must keep an external host")))))))
   (testing "the instance origin in a different host case is dropped (DNS/CSP host matching is case-insensitive)"
     (mt/with-temporary-setting-values [site-url "https://MB.Company.COM"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["https://mb.company.com"       ; the instance, lower-cased -> must be dropped
-                                 "https://api.allowed.test"])]  ; unrelated external host    -> must survive
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["https://mb.company.com"       ; the instance, lower-cased -> must be dropped
+                                               "https://api.allowed.test"])]  ; unrelated external host    -> must survive
         (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
               frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
               connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
@@ -320,9 +352,9 @@
   ;; re-opens the admin-provisioning submit the barrier exists to block.
   (testing "an http entry covering an https instance is dropped (CSP http→https upgrade)"
     (mt/with-temporary-setting-values [site-url "https://mb.company.com"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["http://mb.company.com"        ; the instance over http -> must be dropped
-                                 "https://api.allowed.test"])]  ; unrelated external host  -> must survive
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["http://mb.company.com"        ; the instance over http -> must be dropped
+                                               "https://api.allowed.test"])]  ; unrelated external host  -> must survive
         (let [form-action (csp-directive-for "/embed/apps/sales" "form-action")
               frame-src   (csp-directive-for "/embed/apps/sales" "frame-src")
               connect-src (csp-directive-for "/embed/apps/sales" "connect-src")]
@@ -335,57 +367,74 @@
                 (str directive " must keep an external host")))))))
   (testing "the reverse (https entry, http instance) is left in place — the browser has no https→http upgrade"
     (mt/with-temporary-setting-values [site-url "http://mb.company.com"]
-      (with-redefs [mw.security/data-app-connect-src-hosts
-                    (constantly ["https://mb.company.com"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                  (constantly ["https://mb.company.com"])]
         (is (str/includes? (csp-directive-for "/embed/apps/sales" "form-action")
                            "https://mb.company.com")
             "an https entry does not cover an http instance, so it must not be over-dropped")))))
 
 (deftest data-app-connect-src-test
   (testing "a data app's allowed_hosts are added to the iframe document's connect-src"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (str/includes? (csp-directive-for "/embed/apps/sales" "connect-src")
                          "https://api.example.com"))))
   (testing "with no allowed_hosts, the iframe connect-src has no app hosts (same as any doc)"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
       (is (= (csp-directive-for "/embed/apps/sales" "connect-src")
              (csp-directive-for "/embed/dashboard/abc" "connect-src")))))
   (testing "the top-level /data-app page keeps a tight connect-src — hosts go to the iframe doc, not here"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (not (str/includes? (csp-directive-for "/apps/sales" "connect-src")
                               "https://api.example.com")))
       ;; ...but the top page still gets them in frame-src (it gates the iframe's nav).
       (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
                          "https://api.example.com"))))
   (testing "non-data-app documents don't get app hosts in connect-src"
-    (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
+    (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.example.com"])]
       (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "connect-src")
                               "https://api.example.com"))))))
 
 (deftest nonce-test
+  (mt/initialize-if-needed! :web-server)
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
-    (let [nonceJSON (atom nil)
-          render-file (mt/original-fn #'stencil/render-file)]
+    (let [template-nonce (atom nil)
+          render-file    (mt/original-fn #'stencil/render-file)]
       ;; http/get hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
       (with-redefs [stencil/render-file (fn [path variables]
-                                          (reset! nonceJSON (:nonceJSON variables))
+                                          (reset! template-nonce (:nonce variables))
                                           ;; Use index_template.html instead of index.html so the frontend doesn't
                                           ;; have to be built to run the test. The only difference between them
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
-              nonce     (json/decode @nonceJSON)
-              csp       (get-in response [:headers "Content-Security-Policy"])
-              style-src (->> (str/split csp #"; *")
-                             (filter #(str/starts-with? % "style-src "))
-                             first)]
+        (let [response   (http/get (str "http://localhost:" (server.instance/server-port)))
+              nonce      @template-nonce
+              csp        (get-in response [:headers "Content-Security-Policy"])
+              style-src  (header->directive csp "style-src")
+              script-src (header->directive csp "script-src")]
           (testing "The nonce is 10 characters long and alphanumeric"
             (is (re-matches #"^[a-zA-Z0-9]{10}$" nonce)))
           (testing "The same nonce is in the CSP header"
             (is (str/includes? style-src (str "nonce-" nonce))))
-          (testing "The same nonce is in the body of the rendered page"
-            (is (str/includes? (:body response) nonce))))))))
+          (testing "The app document does not get a script-src nonce"
+            (is (not (str/includes? script-src "'nonce-"))))
+          (testing "The nonce reaches the page only as a script attribute, which the browser then blanks"
+            (is (str/includes? (:body response) (format "nonce=\"%s\"" nonce)))
+            (is (not (str/includes? (:body response) "_metabaseNonce")))
+            (is (= 1 (count (re-seq (re-pattern nonce) (:body response))))
+                "the nonce appears exactly once, on the bootstrap script tag")))))))
+
+(deftest script-src-nonce-opt-in-test
+  (testing "script-src only carries a nonce for responses that opt in"
+    (with-redefs [config/is-dev? false]
+      (let [script-src-for  (fn [response-extras]
+                              (-> ((mw.security/add-security-headers
+                                    (fn [_request respond _raise]
+                                      (respond (merge {:status 200 :headers {} :body "ok"} response-extras))))
+                                   {:uri "/" :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for {}) "'nonce-")))
+        (is (str/includes? (script-src-for {mw.security/script-nonce-response-key true}) "'nonce-"))))))
 
 (deftest data-app-inline-style-csp-test
   (testing "Only data-app iframe responses allow inline styles"
@@ -408,7 +457,7 @@
         (is (not (str/includes? app-style-src "'unsafe-inline'")))
         (is (str/includes? data-style-src "'unsafe-inline'"))
         (is (not (str/includes? data-style-src "'nonce-")))
-        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'nonce-")))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
 ;; NOTE: `unsafe-eval` was removed from the data-app iframe document (it now lives
@@ -449,7 +498,7 @@
         (is (str/includes? (csp-directive-for "/embed/apps/sales" "img-src")
                            "https://cdn.example.com"))))
     (testing "and the app's own allowed_hosts (mirroring connect-src/frame-src), plus 'self'"
-      (with-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.myapp.com"])]
+      (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly ["https://api.myapp.com"])]
         (let [img-src (csp-directive-for "/embed/apps/sales" "img-src")]
           (is (str/includes? img-src "https://api.myapp.com"))
           (is (str/includes? img-src "'self'")))))))

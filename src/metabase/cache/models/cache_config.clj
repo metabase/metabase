@@ -3,7 +3,6 @@
   (:require
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
    [metabase.cache.db :as cache.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -23,7 +22,7 @@
 
 (def SortParams
   "Schema for sort parameters."
-  [:map
+  [:map {:closed true}
    [:sort_column    {:default :name} (into [:enum] available-sort-columns)]
    [:sort_direction {:default :asc}  [:enum :asc :desc]]])
 
@@ -54,7 +53,7 @@
      ("dashboard" "question")
      (mi/current-user-has-full-permissions?
       (perms/perms-objects-set-for-parent-collection
-       {:collection_id (target-collection-id instance)}
+       (target-collection-id instance)
        :write))))
   ([_model pk]
    (mi/can-write? (cache.db/cache-config pk))))
@@ -146,7 +145,9 @@
 (mu/defn get-list
   "Get a list of cache configurations for given `models` and a `collection`.
    Supports pagination via `limit` and `offset`, and sorting via `sort-params`."
-  [models collection id
+  [models      :- [:sequential :string]
+   collection  :- [:maybe ms/PositiveInt]
+   id          :- [:maybe ms/IntGreaterThanOrEqualToZero]
    limit       :- [:maybe ms/PositiveInt]
    offset      :- [:maybe ms/IntGreaterThanOrEqualToZero]
    sort-params :- [:maybe SortParams]]
@@ -159,7 +160,9 @@
 
 (mu/defn get-list-total
   "Get the total count of cache configurations for given `models` and a `collection`."
-  [models collection id]
+  [models     :- [:sequential :string]
+   collection :- [:maybe ms/PositiveInt]
+   id         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (:count (cache.db/cache-config-count-row models collection id)))
 
 (defn store!
@@ -168,8 +171,7 @@
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
           current (cache.db/lock-cache-config model model_id)]
-      (u/prog1 (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model_id}
-                                         (constantly data))
+      (u/prog1 (cache.db/upsert-cache-config! model model_id data)
         (audit-caching-change! user-id <> current data)))))
 
 (defn delete!

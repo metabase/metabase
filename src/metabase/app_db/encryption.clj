@@ -7,6 +7,7 @@
    [metabase.app-db.db :as mdb.db]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
@@ -315,11 +316,24 @@
         (string? value)
         (not (encryption/decryptable-string? value opts)))))
 
+(defn legacy-startup-encryption-disabled?
+  "Whether `MB_DISABLE_LEGACY_STARTUP_ENCRYPTION` is set to true. By default startup encrypts, with a warning, any
+  value that a previous version of Metabase stored unencrypted in an encrypted-at-rest column; when disabled, finding
+  such a value is an error and startup refuses to run instead."
+  []
+  (boolean (config/config-bool :mb-disable-legacy-startup-encryption)))
+
 (defn- handle-legacy-unencrypted-values!
   "What happens when legacy values that a previous version of Metabase stored unencrypted are found in `location` (a
-  `table.column`), before they are encrypted: for now a warning."
+  `table.column`), before they are encrypted: a warning, or an error when [[legacy-startup-encryption-disabled?]]."
   [location]
-  (log/warnf "Encrypting legacy values in %s that a previous version of Metabase stored unencrypted." location))
+  (if (legacy-startup-encryption-disabled?)
+    (throw (ex-info (format (str "Found legacy values in %s that a previous version of Metabase stored unencrypted, "
+                                 "and MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set. Unset it to let Metabase encrypt "
+                                 "them on startup.")
+                            location)
+                    {:location location}))
+    (log/warnf "Encrypting legacy values in %s that a previous version of Metabase stored unencrypted." location)))
 
 (defn encrypt-plaintext-columns!
   "Encrypt at rest any plaintext value in the encrypted-at-rest string columns. Runs on every startup, and is the only
@@ -329,7 +343,8 @@
   transforms (e.g. notification seeding re-creates `notification_recipient.details` rows every boot), and
   `load-from-h2` copies a decrypted dump's values verbatim. A value that decrypts with the current key is left
   byte-identical; whether a value is encrypted is decided by [[encryption/decryptable-string?]] (actually decrypting),
-  never by shape. Streams each column, warning once per column before its first row is encrypted. The `^bytes`
+  never by shape. Streams each column, warning once per column before its first row is encrypted -- or refusing to
+  encrypt at all when [[legacy-startup-encryption-disabled?]]. The `^bytes`
   columns are not scanned: every shipped version writes those encrypted, so they cannot regress this way. No-op when
   MB_ENCRYPTION_SECRET_KEY is not set."
   []

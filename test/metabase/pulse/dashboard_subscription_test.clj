@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hiccup.core :refer [html]]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
@@ -327,6 +328,9 @@
 
     :fixture
     (fn [_ thunk]
+      ;; `with-redefs`: wrap-function returns a reify implementing only fixed `invoke` arities. The
+      ;; dynamic proxy invokes through `apply`, which needs `applyTo` and throws AbstractMethodError.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [body/attached-results-text (pulse.test-util/wrap-function @#'body/attached-results-text)]
         (thunk)))
 
@@ -582,7 +586,7 @@
 
     :fixture
     (fn [_ thunk]
-      (with-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [shared.params/value-string (fn [& _] (throw (ex-info "boom" {})))]
         (thunk)))
 
     :assert
@@ -1216,6 +1220,42 @@
   [{:keys [name field_ref]} enabled?]
   {:name name :field_ref field_ref :enabled enabled?})
 
+(deftest simple-pivot-table-test
+  (testing "a Table card with the \"Pivot table\" toggle on is pivoted in email and Slack alike (#76931)"
+    (tests!
+     {:pulse   {:skip_if_empty false}
+      :display :table
+      :card    {:dataset_query          (mt/mbql-query orders
+                                          {:aggregation [[:count]]
+                                           :breakout    [$product_id->products.category
+                                                         $user_id->people.source]})
+                :visualization_settings {:table.pivot        true
+                                         :table.pivot_column "SOURCE"
+                                         :table.cell_column  "count"}}
+      ;; Slack rasterizes the rendered hiccup; wrap the rasterizer to see what it was given
+      :fixture (fn [_ thunk]
+                 (with-redefs [channel.render/png-from-render-info
+                               (pulse.test-util/wrap-function @#'channel.render/png-from-render-info)]
+                   (thunk)))
+      :assert
+      {:email
+       (fn [_ [email]]
+         (is (= (rasta-dashsub-message {:message [{">Facebook</th>" true
+                                                   ">Product → Category</th>" true}
+                                                  pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-single-email email
+                                                     #">Facebook</th>"
+                                                     #">Product → Category</th>"))))
+       :slack
+       (fn [_ _]
+         (let [[[rendered-info]] (pulse.test-util/input @#'channel.render/png-from-render-info)
+               h                 (html (:content rendered-info))]
+           (testing "the hiccup handed to the rasterizer is the pivoted grid"
+             (is (str/includes? h ">Facebook</th>"))
+             (is (str/includes? h ">Product → Category</th>"))
+             ;; header row + Doohickey, Gadget, Gizmo, Widget
+             (is (= 5 (count (re-seq #"<tr" h)))))))}})))
+
 (deftest dashboard-subscription-attachments-test
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
@@ -1238,7 +1278,7 @@
                            :model/PulseChannel  {pc-id :id} {:pulse_id pulse-id}
                            :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                            :pulse_channel_id pc-id}]
-              (with-redefs [email.result-attachment/result-attachment result-attachment!]
+              (mt/with-dynamic-fn-redefs [email.result-attachment/result-attachment result-attachment!]
                 (pulse.send/send-pulse! pulse)
                 (is (= 1
                        (-> @mt/inbox

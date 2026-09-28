@@ -38,17 +38,26 @@ import (manual "Pull changes", auto-import, or startup).
 
 ```
 .
-├── data_app.yaml           ← manifest: name, bundle path, allowed_hosts
-├── package.json            ← @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
-├── vite.config.ts          ← one-liner: `export default dataAppConfig()`
+├── data_app.yaml           - manifest: version, name, bundle path, allowed_hosts
+├── package.json            - @metabase/embedding-sdk-react + react/react-dom + Vite toolchain
+├── vite.config.ts          - one-liner: `export default dataAppConfig()`
 ├── tsconfig.json
+├── queries/                ← every query, as `defineQuery(...)` exports (see its README)
+│   └── README.md
+├── actions/                ← every action, as `defineAction(...)` exports (see its README)
+│   └── README.md
 ├── src/
-│   ├── index.tsx           ← entry — default-exports a factory returning { component, providerProps }
-│   ├── App.tsx             ← edit this; pure content, no <MetabaseProvider> wrap
-│   └── theme.ts            ← the SDK theme, passed via providerProps
+│   ├── index.tsx           - entry — default-exports a factory returning { component, providerProps }
+│   ├── App.tsx             - edit this; pure content, no <MetabaseProvider> wrap
+│   └── theme.ts            - the SDK theme, passed via providerProps
 ├── .env.local.example
 └── .gitignore
 ```
+
+`queries/` and `actions/` are not optional: the query hooks accept only a
+`defineQuery(...)` export and `useAction` only a `defineAction(...)` export, and
+`npm run build` synchronizes exactly those two directories to Metabase. Read
+their READMEs before the first hook call.
 
 The build, dev server, Near-Membrane sandbox, and bundle contract all live in
 the SDK behind `dataAppConfig()` — there's no `index.html` or separate dev entry

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as app-db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -119,10 +118,7 @@
   (let [final-results (encryption/maybe-encrypt-for-stream results)
         timestamp     (t/offset-date-time)]
     (try
-      (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
-                                (constantly {:updated_at         timestamp
-                                             :results            final-results
-                                             :refresh_started_at nil}))
+      (query-processor.db/upsert-cache-entry! query-hash timestamp final-results)
       (catch Throwable e
         (log/errorf "Error saving query results to cache: %s" (ex-message e))))
     nil))

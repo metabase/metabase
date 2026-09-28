@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
@@ -20,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -61,26 +63,19 @@
       (let [card                  (model-persistence.db/card (:card_id persisted-info))
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
-            _                     (model-persistence.db/update-persisted-info! (u/the-id persisted-info)
-                                                                               {:definition      definition,
-                                                                                :query_hash      (persisted-info/query-hash (:dataset_query card))
-                                                                                :active          false,
-                                                                                :refresh_begin   :%now,
-                                                                                :refresh_end     nil,
-                                                                                :state           "refreshing"
-                                                                                :state_change_at :%now})
+            _                     (model-persistence.db/begin-persisted-info-refresh! (u/the-id persisted-info)
+                                                                                      definition
+                                                                                      (persisted-info/query-hash (:dataset_query card)))
             {:keys [state error]} (try
                                     (refresh! refresher database definition card)
                                     (catch Exception e
                                       (log/infof "Error refreshing persisting model with card-id %s: %s"
                                                  (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
-        (model-persistence.db/update-persisted-info! (u/the-id persisted-info)
-                                                     {:active          (= state :success),
-                                                      :refresh_end     :%now,
-                                                      :state           (if (= state :success) "persisted" "error")
-                                                      :state_change_at :%now
-                                                      :error           (when (= state :error) error)})
+        (model-persistence.db/end-persisted-info-refresh! (u/the-id persisted-info)
+                                                          (= state :success)
+                                                          (if (= state :success) "persisted" "error")
+                                                          (when (= state :error) error))
         (if (= :success state)
           (update stats :success inc)
           (-> stats
@@ -92,10 +87,20 @@
   [results]
   (some-> results :error-details seq))
 
+(def ^:private TaskDetails
+  [:map {:closed true}
+   [:success       :int]
+   [:error         :int]
+   [:trigger       [:maybe (ms/InstanceOfClass org.quartz.Trigger)]]
+   [:error-details {:optional true} [:sequential [:map {:closed true}
+                                                  [:persisted-info-id ms/PositiveInt]
+                                                  [:error {:optional true} [:maybe :string]]]]]])
+
 (mu/defn- publish-refresh-error-event!
   "Fire off an event that will eventually send an email to the admin if there are any errors in the persisted model
   refresh task."
-  [db-id task-details]
+  [db-id        :- [:maybe ::lib.schema.id/database]
+   task-details :- TaskDetails]
   (try
     (let [error-details       (error-details task-details)
           error-details-by-id (m/index-by :persisted-info-id error-details)

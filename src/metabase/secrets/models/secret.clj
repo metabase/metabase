@@ -348,7 +348,9 @@
    Fetches the stored secret and fills in `-path` `-options` `-value` for each secret property.
    Operates on `:details`, `:write_data_details`, and `:admin_details`."
   [database]
-  (let [driver  (driver.u/database->driver database)
+  (let [driver  (if-let [engine (:engine database)]
+                  (keyword engine)
+                  (driver.u/database->driver (:id database)))
         hydrate (fn [details]
                   (reduce-over-details-secret-values driver details hydrate-redacted-secret))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
@@ -373,7 +375,7 @@
   "Ensures that all possible secret property values are removed from `:details`, `:write_data_details`, and
    `:admin_details`. This is a transformation on `:model/Database` `results-transform`."
   [database]
-  (let [clean #(clean-secret-properties-from-details % (driver.u/database->driver database))]
+  (let [clean #(clean-secret-properties-from-details % (keyword (:engine database)))]
     ;; Very low-level operation here, so not using driver.conn/* utils:
     (-> database
         (m/update-existing :details clean)
@@ -387,7 +389,7 @@
   (if-let [details (get database details-key)]
     (let [original-details (get (t2/original database) details-key)
           updated-details  (reduce-over-details-secret-values
-                            (driver.u/database->driver database)
+                            (keyword (:engine database))
                             details
                             (fn [db-details conn-prop-nm conn-prop]
                               (let [kws             (->possible-secret-property-names conn-prop-nm)
@@ -405,7 +407,8 @@
                                                         (:value secret))]
                                       (assoc cleared-details id-kw id))
                                     (do
-                                      (secrets.db/delete-secret! secret-id)
+                                      (when secret-id
+                                        (secrets.db/delete-secret! secret-id))
                                       (dissoc cleared-details id-kw)))
                                   ;; Don't throw out a secret even if the client didn't send it back
                                   (m/assoc-some cleared-details id-kw secret-id)))))]

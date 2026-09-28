@@ -6,7 +6,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
-   [metabase.search.db :as search.db]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
@@ -132,7 +131,7 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (search.db/personal-collection-root-id current-user-id))]]
+     [:like :collection.location (format "/%d/%%" (:id (collection/user->existing-personal-collection current-user-id)))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause

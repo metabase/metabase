@@ -5,12 +5,10 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -21,7 +19,10 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization])
+  (:import
+   (clojure.lang ITransientSet)))
 
 (set! *warn-on-reflection* true)
 
@@ -90,6 +91,28 @@
    [:name   ::lib.schema.common/non-blank-string]
    [:schema [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def ^:private TableMetadata
+  "The table map `create-table!`/`create-or-reactivate-table!`/`cruft-dependent-cols` accept: a
+  `DatabaseMetadataTable`-ish shape (`:schema` optional, unlike [[i/DatabaseMetadataTable]], since callers can build
+  one with just a `:name`), plus the extra keys `create-table!` reads off it before insertion."
+  [:map {:closed true}
+   [:name                                     ::lib.schema.common/non-blank-string]
+   [:schema                   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:is_writable              {:optional true} [:maybe :boolean]]
+   [:estimated_row_count      {:optional true} [:maybe :int]]
+   [:database_require_filter {:optional true} [:maybe :boolean]]
+   [:description             {:optional true} [:maybe :string]]
+   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:display_name            {:optional true} [:maybe :string]]
+   [:initial_sync_status     {:optional true} [:maybe :string]]
+   [:field_order             {:optional true} [:maybe :keyword]]
+   [:data_source             {:optional true} [:maybe :keyword]]
+   [:data_authority          {:optional true} [:maybe :keyword]]])
+
+(def ^:private TableMetadataOrInstance
+  "Either a [[TableMetadata]] fresh from the driver or a Table row."
+  [:or TableMetadata :metabase.warehouse-schema.schema/table])
+
 (mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
@@ -99,7 +122,7 @@
                             {:details (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
-  [{table-name :name :as table} :- :map
+  [{table-name :name :as table} :- TableMetadataOrInstance
    database                     :- i/DatabaseInstance
    sync-stage                   :- [:enum ::reactivate ::create ::update]]
   (let [is-crufty? (if (and (= sync-stage ::update)
@@ -130,7 +153,7 @@
   "Creates a new table in the database, ready to be synced.
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
-   table    :- :map]
+   table    :- TableMetadata]
   (sync.db/insert-table!
    (merge (cruft-dependent-cols table database ::create)
           {:active                  true
@@ -139,7 +162,7 @@
            :description             (:description table)
            :database_require_filter (:database_require_filter table)
            :display_name            (or (:display_name table)
-                                        (humanization/name->human-readable-name (:name table)))
+                                        (warehouse-schema.humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
           (when (:field_order table)
@@ -168,7 +191,7 @@
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
   [database :- i/DatabaseInstance
-   {schema :schema table-name :name :as table} :- :map]
+   {schema :schema table-name :name :as table} :- TableMetadata]
   (if-let [existing (sync.db/inactive-table-by-schema-and-name (u/the-id database) schema table-name)]
     (reactivate-table! database existing)
     (create-table! database table)))
@@ -194,7 +217,7 @@
 (mu/defn- table-name-or-schema-too-long? :- :boolean
   "Whether `table`'s name or schema is too long to store in the application DB (see `table-name-max-length` /
   `table-schema-max-length`)."
-  [{table-name :name, table-schema :schema} :- :map]
+  [{table-name :name, table-schema :schema} :- i/DatabaseMetadataTable]
   (boolean
    (or (< table-name-max-length (count table-name))
        (< table-schema-max-length (count (or table-schema ""))))))
@@ -302,14 +325,14 @@
 (mu/defn- ignore-table? :- :boolean
   "Tables we never create `:model/Table` rows for: the special `_metabase_metadata` table (its
   contents are applied to other Tables/Fields instead) and temporary transform output tables."
-  [table :- :map]
+  [table :- i/DatabaseMetadataTable]
   (boolean
    (or (metabase-metadata/is-metabase-metadata-table? table)
        (sync-util/is-temp-transform-table? table))))
 
 (mu/defn- table-name+schema :- TableNameAndSchema
   "The `{:name :schema}` identity a Table is keyed on during sync."
-  [table :- :map]
+  [table :- TableMetadataOrInstance]
   (select-keys table [:name :schema]))
 
 (mu/defn- existing-tables-by-name+schema :- :map
@@ -317,7 +340,7 @@
   indexed by `{:name :schema}`. Queries by name only -- not schema -- since `:schema` can be `nil`
   and `IN (NULL, ...)` wouldn't match; the exact `(name, schema)` match falls out of the index key."
   [database :- i/DatabaseInstance
-   tables]
+   tables   :- [:set TableMetadataOrInstance]]
   (let [names (into [] (comp (map :name) (distinct)) tables)]
     (if (seq names)
       (m/index-by table-name+schema
@@ -330,7 +353,7 @@
   "Returns a map of `{old-schema new-schema}` for the app-DB schemas the driver re-qualifies. Streams
   the distinct schemas straight from the DB (selecting only `:schema`) so we never materialize every
   table just to read their schemas."
-  [driver
+  [driver   :- :keyword
    database :- i/DatabaseInstance]
   (transduce
    (comp (map :schema) (distinct))
@@ -365,10 +388,8 @@
         ;; it doesn't matter much, the source of time truth is `archived_at`,
         ;; we're just using this as a cheap namespace
         suffix (str "__mbarchiv__" (.toEpochSecond (t/offset-date-time)))
-        threshold-expr (apply
-                        (requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
-                        (mdb/db-type) :%now archive-tables-threshold)
-        tables-to-archive (sync.db/tables-to-archive (u/the-id database) threshold-expr)
+        [amount unit] archive-tables-threshold
+        tables-to-archive (sync.db/tables-to-archive (u/the-id database) amount unit)
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
@@ -384,7 +405,7 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(sync.db/archive-inactive-table! (:id table) (mi/now) new-name)]
+                  [(sync.db/archive-inactive-table! (:id table) new-name)]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)
@@ -400,7 +421,7 @@
    [:created           :int]                                  ; running count of created/reactivated tables
    [:updated           :int]                                  ; running count of metadata-updated tables
    [:complete?         :boolean]                              ; false once any batch fails -- then we don't retire
-   [:seen              :any]                                  ; transient set of reconciled `:model/Table` ids
+   [:seen              (ms/InstanceOfClass ITransientSet)]     ; transient set of reconciled `:model/Table` ids
    [:metabase-metadata [:vector i/DatabaseMetadataTable]]])   ; captured `_metabase_metadata` table
 
 (mu/defn- sync-table-batch! :- SyncContext
