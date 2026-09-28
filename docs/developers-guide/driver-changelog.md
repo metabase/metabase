@@ -4,7 +4,27 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.65.0
+
+- `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
+  with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
+  in the docstring of this method.
+
 ## Metabase 0.64.0
+
+- `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:
+  `[driver database]`. The schema an unqualified table reference resolves to is a property of the connection for a
+  driver that opens a database where others have a default schema — ClickHouse now answers with the database its
+  connection opened, where before it inherited `"public"` from `:sql`. `database` may be nil when the caller has none
+  in hand, and such a driver answers nil for it.
+
+- New feature `:transforms/testing` -- whether the driver can run transform test suites against temp tables. Drivers
+  with this feature implement the new multimethods `metabase.driver/temp-table-name` `[driver]`,
+  `metabase.driver/compile-create-temp-table` `[driver {:keys [table query]}]`,
+  `metabase.driver/compile-drop-temp-table` `[driver table]`,
+  `metabase.driver/do-with-test-connection` `[driver database f]`,
+  `metabase.driver/execute-on-connection!` `[driver conn query]` and
+  `metabase.driver/query-on-connection` `[driver conn query {:keys [max-rows]}]`.
 
 - `metabase.driver.sql-jdbc.execute/cancelation-poisons-connection?` `[driver]` -- whether canceling a `Statement`
   leaves the `Connection` unfit for the next query, so that it must be discarded rather than returned to the
@@ -69,6 +89,10 @@ title: Driver interface changelog
 
   - `metabase.driver/compile-create-index` `[driver schema table structured]` -- compiles a `:standalone` index into
     the DDL statement(s) that create it.
+
+  - `metabase.driver/humanize-index-error-message` `[driver message]` -- trims the message of an exception raised by
+    `fetch-table-indexes` or by index DDL before it is shown to the user. Defaults to returning it unchanged;
+    ClickHouse drops the `(version ...) (queryId=...)` tail its server appends.
 
   - `metabase.driver.sql-jdbc.sync.interface/db-tables` is now a multimethod for retrieving JDBC metadata
     tables. SQL JDBC drivers can override this method to customize which database objects are discovered during sync.

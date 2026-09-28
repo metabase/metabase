@@ -108,7 +108,7 @@ export default function ActionCreatorView({
           />
           <EditorContainer>{children}</EditorContainer>
           <ModalActions>
-            <Button onClick={onCloseModal} variant="subtle">
+            <Button onClick={onCloseModal} variant="subtle" color="neutral">
               {t`Cancel`}
             </Button>
             {isEditable && (

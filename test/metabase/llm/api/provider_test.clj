@@ -293,10 +293,10 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                   (fn [_provider o]
                                     (reset! opts o)
-                                    {:models         [{:id "vllm-test" :display_name "vllm-test"}
-                                                      {:id "other" :display_name "other"}]
-                                     :learned-config {:model-reasoning "true"
-                                                      :probed-model    "vllm-test"}})]
+                                    {:models          [{:id "vllm-test" :display_name "vllm-test"}
+                                                       {:id "other" :display_name "other"}]
+                                     :connection-info {:model-reasoning "true"
+                                                       :probed-model    "vllm-test"}})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
             (is (=? {:key    "vllm"
@@ -341,6 +341,18 @@
                                                 :config {:base-url "http://vllm.internal:8000/v1"}}))))
         (is (= [] (llm.provider/connections)))))))
 
+(deftest create-rejects-a-malformed-model-catalog-test
+  (testing (str "a 2xx whose body is not a model list means the base URL reached something that is not the API. "
+                "Failing closed is only useful if the admin sees why, so it comes back as the adapter's message "
+                "on the form — not as the 500 an untagged error would produce, which `MB_HIDE_STACKTRACES=true` "
+                "would collapse to \"Something went wrong\".")
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body {:object "list"}})]
+      (mt/with-temporary-setting-values [llm-providers []]
+        (is (= "Anthropic returned an unexpected model list response"
+               (:message (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                               {:type "anthropic" :config {:api-key "sk-ant-nope"}}))))
+        (is (= [] (llm.provider/connections)))))))
+
 (deftest models-listing-does-not-probe-test
   (testing "listing models is a page load; only a write may spend a generation on the operator's server"
     (let [opts (atom nil)]
@@ -361,9 +373,9 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                   (fn [_provider o]
                                     (reset! opts o)
-                                    {:models         [{:id "served-a" :display_name "served-a"}]
-                                     :learned-config {:model-reasoning "false"
-                                                      :probed-model    "served-b"}})]
+                                    {:models          [{:id "served-a" :display_name "served-a"}]
+                                     :connection-info {:model-reasoning "false"
+                                                       :probed-model    "served-b"}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
                                                                       {:base-url        "http://old.internal:8000/v1"
                                                                        :model-reasoning "true"})]]
@@ -387,9 +399,9 @@
                                     (when model
                                       (throw (ex-info "The vLLM server is not serving Qwen/Qwen3-8B. It is serving: Qwen/Qwen3-32B."
                                                       {:api-error true :status-code 400})))
-                                    {:models         [{:id "Qwen/Qwen3-32B" :display_name "Qwen/Qwen3-32B"}]
-                                     :learned-config {:model-reasoning "false"
-                                                      :probed-model    "Qwen/Qwen3-32B"}})]
+                                    {:models          [{:id "Qwen/Qwen3-32B" :display_name "Qwen/Qwen3-32B"}]
+                                     :connection-info {:model-reasoning "false"
+                                                       :probed-model    "Qwen/Qwen3-32B"}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
                                                                       {:base-url        "http://old.internal:8000/v1"
                                                                        :model-reasoning "false"
@@ -413,8 +425,8 @@
       (mt/with-dynamic-fn-redefs [metabot.self/list-models
                                   (fn [_provider o]
                                     (reset! opts o)
-                                    {:models         [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}]
-                                     :learned-config {:probed-model (:model o)}})]
+                                    {:models          [{:id "google/gemini-3.5-flash" :display_name "Gemini 3.5 Flash"}]
+                                     :connection-info {:probed-model (:model o)}})]
         (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
                                                                       {:oauth-access-token "ya29.token"
                                                                        :project-id         "my-project"
@@ -1270,8 +1282,8 @@
 (deftest create-records-the-model-the-probe-verified-test
   (testing "connecting Google against a partner model records it, so the listing that follows probes it too"
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
-                                                           {:models         []
-                                                            :learned-config {:probed-model model}})]
+                                                           {:models          []
+                                                            :connection-info {:probed-model model}})]
       (mt/with-temporary-setting-values [llm-providers []]
         (mt/user-http-request :crowberto :post 200 "llm/providers"
                               {:type   "google"

@@ -161,6 +161,7 @@
   #{"card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
+    "exploration"
     "metric"
     "collection"
     "dashboard"
@@ -1131,7 +1132,7 @@
 (defn- valid-collection-models
   "Return every item model that can appear in `collection-namespace`."
   [collection-namespace]
-  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
                    (premium-features/has-feature? :library) (conj :table))
         :let     [toucan-model       (model-name->toucan-model model-kw)
@@ -1144,7 +1145,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                                       ;; Tables in collections are an EE feature (library)
                                       (premium-features/has-feature? :library) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty

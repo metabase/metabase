@@ -528,6 +528,30 @@
              (thunk)
              (is (empty? @queue) "unconsumed mock LLM responses"))))))))
 
+(deftest agent-streaming-rejects-unknown-profile-test
+  (testing "agent-streaming rejects an unregistered profile before starting a turn"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [title-calls     (atom 0)
+              llm-calls       (atom 0)
+              conversation-id (str (random-uuid))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (swap! llm-calls inc) (mut/mock-llm-response []))
+                                      conversation-title/ensure-title! (fn [& _] (swap! title-calls inc) {:status :ready :title "x"})]
+            (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+              (is (=? {:message #"Unknown profile"}
+                      (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                                            {:message         "hello"
+                                             :context         {}
+                                             :conversation_id conversation-id
+                                             :state           {}
+                                             :profile_id      "no_such_profile"})))
+              (testing "nothing was persisted and no LLM call was made"
+                (is (nil? (t2/select-one :model/MetabotConversation :id conversation-id)))
+                (is (empty? (t2/select :model/MetabotMessage :conversation_id conversation-id)))
+                (is (zero? @title-calls))
+                (is (zero? @llm-calls))))))))))
+
 (deftest agent-streaming-rejects-stale-parent-message-id-test
   (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
     (with-mock-streaming-provider!

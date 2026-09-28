@@ -33,10 +33,6 @@
  [metabase.sso.ldap.settings
   ldap-enabled])
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap.default-implementation/UserInfo LDAPUserInfo)
 
-;; the re-exported var carries the docstring; kondo can't see through import-def
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.sso.ldap.default-implementation/search ldap-search)

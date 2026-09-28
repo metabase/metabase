@@ -506,12 +506,12 @@ export function SettingsOIDCForm() {
                 {isExisting && (
                   <>
                     <Flex gap="lg" wrap="wrap">
-                      <Button variant="outline" onClick={handleToggleEnabled}>
+                      <Button onClick={handleToggleEnabled}>
                         {isEnabled ? t`Disable` : t`Enable`}
                       </Button>
                       <Button
                         variant="filled"
-                        color="feedback-negative"
+                        color="negative"
                         onClick={deleteModal.open}
                       >
                         {t`Delete configuration`}
@@ -528,7 +528,6 @@ export function SettingsOIDCForm() {
                 )}
                 <Flex gap="lg" wrap="wrap" ml={isExisting ? undefined : "auto"}>
                   <Button
-                    variant="outline"
                     loading={isChecking}
                     disabled={!values["issuer-uri"] || !values["client-id"]}
                     onClick={() => handleCheckConnection(values)}

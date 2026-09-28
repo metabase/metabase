@@ -48,9 +48,8 @@
    [:include-metric-library? {:optional true}
     [:boolean {:description "Whether to include the root metrics library."}]]
    [:include-models? {:optional true}
-    [:boolean {:description (str "Whether to include readable models with actions when no "
-                                 "database scope is given. A `:database` scope always includes "
-                                 "that database's models, regardless of this option.")}]]])
+    [:boolean {:description (str "Include models with actions. Database scope filters models; "
+                                 "library scope does not. Without a scope, returns models only.")}]]])
 
 (def Items
   "Fetched schema entities, ready for pure assembly by [[create-schema]].
@@ -92,15 +91,6 @@
     {:tables  (source/tables source nil table-ids)
      :metrics metrics}))
 
-(defn- models-for-scope
-  "Returns `{:models [...] :errors [...]}` scoped to `database-ids`, or all readable
-  models when requested without a database scope."
-  [source database-ids include-models?]
-  (cond
-    database-ids    (source/models source database-ids)
-    include-models? (source/models source nil)
-    :else           {:models [] :errors []}))
-
 (defn fetch-items
   "Fetches the schema entities selected by [[SemanticSchemaOptions]].
 
@@ -129,7 +119,10 @@
                                                           :include-metric-library? include-metric-library?})
            database-ids            (source/database-ids source database)
            {model-schemas :models
-            model-errors  :errors} (models-for-scope source database-ids include-models?)]
+            model-errors  :errors} (if include-models?
+                                     ;; database-ids scopes the models; nil reads all of them
+                                     (source/models source database-ids)
+                                     {:models [] :errors []})]
        (if (or library-scope
                (and include-models? (nil? database-ids)))
          (let [{:keys [tables metrics]} (when library-scope

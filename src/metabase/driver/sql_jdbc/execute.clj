@@ -1000,6 +1000,61 @@
                       (.executeUpdate ^PreparedStatement stmt)
                       (.executeUpdate stmt sql))}))
 
+(defmethod driver/do-with-test-connection :sql-jdbc
+  [driver database f]
+  (do-with-connection-with-options
+   driver
+   database
+   {:write? true}
+   (fn [^Connection conn]
+     (.setAutoCommit conn false)
+     (try
+       (f conn)
+       (finally
+         ;; Neither may throw past the body's own exception, and the connection goes back to the pool either way:
+         ;; leaving it inside a transaction hands the next borrower a session that answers every statement with
+         ;; "current transaction is aborted" on Postgres and Redshift.
+         (try
+           (.rollback conn)
+           (catch Throwable e
+             (log/warnf "Failed to roll back the transform test transaction: %s" (ex-message e))))
+         (try
+           (.setAutoCommit conn true)
+           (catch Throwable e
+             (log/warnf "Failed to restore autoCommit after the transform test: %s" (ex-message e)))))))))
+
+(defmethod driver/execute-on-connection! :sql-jdbc
+  [driver conn [sql params]]
+  (create-and-execute-statement! driver conn sql params))
+
+(defmethod driver/query-on-connection :sql-jdbc
+  [driver conn [sql params] {:keys [max-rows]}]
+  (with-open [stmt (statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))]
+    (when (and max-rows (pos? max-rows))
+      ;; The cap is the statement's only bound. Every statement otherwise carries the streaming fetch size, and
+      ;; Redshift aborts the transaction when a row cap is asked of a cursor; `setMaxRows` bounds the memory a
+      ;; cursor would have bounded anyway.
+      (try
+        (.setFetchSize stmt 0)
+        (catch Throwable e
+          (log/debugf "Error clearing the statement fetch size: %s" (ex-message e))))
+      (.setMaxRows stmt (int max-rows)))
+    (with-open [^ResultSet rs (if (instance? PreparedStatement stmt)
+                                (.executeQuery ^PreparedStatement stmt)
+                                (.executeQuery stmt ^String sql))]
+      (let [md           (.getMetaData rs)
+            column-count (.getColumnCount md)]
+        {:columns (mapv (fn [i]
+                          {:name          (.getColumnLabel md (int i))
+                           :database_type (.getColumnTypeName md (int i))})
+                        (range 1 (inc column-count)))
+         ;; `setMaxRows` reads 0 as unlimited, so the cap is enforced here rather than left to it.
+         :rows    (loop [rows []]
+                    (if (and (or (nil? max-rows) (< (count rows) max-rows))
+                             (.next rs))
+                      (recur (conj rows (mapv #(.getObject rs (int %)) (range 1 (inc column-count)))))
+                      rows))}))))
+
 (defmethod driver/execute-raw-queries! :sql-jdbc
   [driver conn-spec queries]
   (try
