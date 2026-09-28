@@ -67,14 +67,16 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       cy.findByDisplayValue(NEW_COMPANY_NAME);
     });
 
-    it("should not show the old name in the admin panel (metabase#17043)", () => {
+    it("should not show the old name in the admin panel (metabase#17043) and should show the new name in the main app", () => {
+      cy.log(
+        "should not show the old name in the admin panel (metabase#17043)",
+      );
       cy.visit("/admin/settings/general");
       cy.findByTestId("site-name-setting")
         .findByText(`The name used for this instance of ${NEW_COMPANY_NAME}.`)
         .should("be.visible");
-    });
 
-    it("should show the new name in the main app", () => {
+      cy.log("should show the new name in the main app");
       cy.visit("/");
       H.getProfileLink().click();
       H.popover().findByText("Help").click();
@@ -99,38 +101,25 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         );
       });
 
-      it("changes should reflect on admin's dashboard", () => {
+      it("changes should reflect on admin's dashboard, on user's dashboard, and while signed out", () => {
+        cy.log("changes should reflect on admin's dashboard");
         cy.visit("/");
         checkLogo();
-      });
 
-      it("changes should reflect while signed out", () => {
-        cy.signOut();
-        cy.visit("/");
-        checkLogo();
-      });
-
-      it("changes should reflect on user's dashboard", () => {
+        cy.log("changes should reflect on user's dashboard");
         cy.signInAsNormalUser();
+        cy.visit("/");
+        checkLogo();
+
+        cy.log("changes should reflect while signed out");
+        cy.signOut();
         cy.visit("/");
         checkLogo();
       });
     });
 
     describe("favicon", () => {
-      it("should work for people that set favicon URL before we change the input to file input", () => {
-        const faviconUrl =
-          "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
-        H.updateSetting("application-favicon-url", faviconUrl);
-        checkFavicon(faviconUrl);
-        cy.signInAsNormalUser();
-        cy.visit("/");
-        cy.get('head link[rel="icon"]')
-          .get('[href="https://cdn.ecosia.org/assets/images/ico/favicon.ico"]')
-          .should("have.length", 1);
-      });
-
-      it("should show up in user's HTML", () => {
+      it("should show up in user's HTML, including a favicon URL set before we changed the input to a file input", () => {
         cy.visit("/admin/settings/whitelabel");
         cy.log("Add favicon");
 
@@ -156,6 +145,20 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
             .get(`[href="${faviconUrl}"]`)
             .should("have.length", 1);
         });
+
+        cy.log(
+          "should work for people that set favicon URL before we change the input to file input",
+        );
+        const legacyFaviconUrl =
+          "https://cdn.ecosia.org/assets/images/ico/favicon.ico";
+        cy.signInAsAdmin();
+        H.updateSetting("application-favicon-url", legacyFaviconUrl);
+        checkFavicon(legacyFaviconUrl);
+        cy.signInAsNormalUser();
+        cy.visit("/");
+        cy.get('head link[rel="icon"]')
+          .get(`[href="${legacyFaviconUrl}"]`)
+          .should("have.length", 1);
       });
     });
 
@@ -307,7 +310,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       });
 
       describe("landing page illustration", () => {
-        it("should allow display the selected illustration on the landing page", () => {
+        it("should allow display the selected illustration on the landing page and toggle metabot visibility", () => {
           cy.visit("/admin/settings/whitelabel/conceal-metabase");
 
           cy.findByTestId("landing-page-illustration-setting")
@@ -350,6 +353,21 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.visit("/");
           cy.findByTestId("landing-page-illustration").should("not.exist");
+
+          // The Metabot greeting (show-metabot) renders independently of the landing page illustration
+          cy.log("should toggle metabot visibility");
+          cy.findAllByRole("img", { name: "Metabot" }).should("have.length", 2);
+
+          cy.visit("/admin/settings/whitelabel/conceal-metabase");
+          cy.findByRole("main")
+            .findByText("Display welcome message on the homepage")
+            .click();
+
+          H.undoToast().findByText("Changes saved").should("be.visible");
+
+          cy.visit("/");
+          cy.findByRole("link", { name: /home/ }).should("exist");
+          cy.findByRole("img", { name: "Metabot" }).should("not.exist");
         });
       });
 
@@ -534,42 +552,14 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
   });
 
-  describe("metabot", () => {
-    it("should toggle metabot visibility", () => {
-      cy.visit("/");
-      cy.findAllByRole("img", { name: "Metabot" }).should("have.length", 2);
-
-      cy.visit("/admin/settings/whitelabel/conceal-metabase");
-      cy.findByRole("main")
-        .findByText("Display welcome message on the homepage")
-        .click();
-
-      H.undoToast().findByText("Changes saved").should("be.visible");
-
-      cy.visit("/");
-      cy.findByRole("link", { name: /home/ }).should("exist");
-      cy.findByRole("img", { name: "Metabot" }).should("not.exist");
-    });
-  });
-
   describe("font", () => {
     beforeEach(() => {
       cy.log("Change Application Font");
       cy.signInAsAdmin();
     });
 
-    it("should apply correct font", () => {
-      setApplicationFontTo("Open Sans");
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.get("body").should(
-        "have.css",
-        "font-family",
-        '"Open Sans", Lato, sans-serif',
-      );
-    });
-
-    it("should be able to make multiple font changes (metabase#45486)", () => {
+    it("should be able to make multiple font changes (metabase#45486) and apply the correct font for other users", () => {
+      cy.log("should be able to make multiple font changes (metabase#45486)");
       cy.intercept("PUT", "/api/setting/application-font").as("saveFont");
       const fontsWithExpectedFallback = [
         ["Lora", "serif"],
@@ -589,6 +579,16 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           `${newFont}, ${fallback}`,
         );
       });
+
+      cy.log("should apply correct font");
+      setApplicationFontTo("Open Sans");
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.get("body").should(
+        "have.css",
+        "font-family",
+        '"Open Sans", Lato, sans-serif',
+      );
     });
   });
 
@@ -600,7 +600,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       );
     });
 
-    it("should allow customising the help link", () => {
+    it("should allow customising the help link, validate the url, and link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
       cy.log("Hide Help link");
 
       cy.signInAsAdmin();
@@ -627,8 +627,33 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("Go to a custom destination...")
         .click();
 
+      getHelpLinkCustomDestinationInput().should("have.focus");
+
+      cy.log("it should validate the url");
       getHelpLinkCustomDestinationInput()
-        .should("have.focus")
+        .clear()
+        .type("ftp://something")
+        .blur();
+      H.main()
+        .findByText(/This needs to be/i)
+        .should("exist");
+
+      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
+      // Wait on each custom-destination PUT so the wait below matches the final save
+      cy.wait("@putHelpLinkUrl");
+
+      H.main()
+        .findByText("Please make sure this is a valid URL")
+        .should("exist");
+
+      getHelpLinkCustomDestinationInput().type("example").blur();
+      cy.wait("@putHelpLinkUrl");
+
+      H.main()
+        .findByText("Please make sure this is a valid URL")
+        .should("not.exist");
+
+      getHelpLinkCustomDestinationInput()
         .clear()
         .type("https://example.org/custom-destination")
         .blur();
@@ -679,9 +704,11 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       helpLink()
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
-    });
 
-    it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
+      cy.log(
+        "should link to metabase help when the whitelabel feature is disabled (eg OSS)",
+      );
+      cy.signInAsAdmin();
       H.deleteToken();
 
       cy.signInAsNormalUser();
@@ -691,35 +718,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       helpLink()
         .should("have.attr", "href")
         .and("include", "https://www.metabase.com/help?");
-    });
-
-    it("it should validate the url", () => {
-      cy.signInAsAdmin();
-      cy.visit("/admin/settings/whitelabel/conceal-metabase");
-
-      cy.findByTestId("help-link-setting")
-        .findByText("Go to a custom destination...")
-        .click();
-
-      getHelpLinkCustomDestinationInput()
-        .clear()
-        .type("ftp://something")
-        .blur();
-      H.main()
-        .findByText(/This needs to be/i)
-        .should("exist");
-
-      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
-
-      H.main()
-        .findByText("Please make sure this is a valid URL")
-        .should("exist");
-
-      getHelpLinkCustomDestinationInput().type("example").blur();
-
-      H.main()
-        .findByText("Please make sure this is a valid URL")
-        .should("not.exist");
     });
   });
 

@@ -38,40 +38,16 @@ describe("scenarios > admin > settings", () => {
     },
   );
 
-  it("should surface an error when validation for any field fails (metabase#4506)", () => {
+  it("should save a setting, surface a validation error (metabase#4506), and check for working https before enabling a redirect", () => {
     const BASE_URL = Cypress.config().baseUrl;
     const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
 
+    cy.intercept("PUT", "**/admin-email").as("saveSettings");
     cy.intercept("PUT", "/api/setting/site-url").as("url");
 
     cy.visit("/admin/settings/general");
 
-    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
-    cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
-      .click()
-      .type("foo", { delay: 100 })
-      .blur();
-
-    cy.wait("@url").should(({ response }) => {
-      expect(response.statusCode).to.eq(500);
-      // Switching to regex match for assertions - the test was flaky because of the "typing" issue
-      // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
-      // We only care that the `cause` is starting with "Invalid site URL"
-      expect(response.body.cause).to.match(/^Invalid site URL/);
-    });
-
-    // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
-    //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
-    cy.log("Making sure we display an error message in UI");
-    // Same reasoning for regex as above
-    H.undoToast().contains(/^Invalid site URL/);
-  });
-
-  it("should save a setting", () => {
-    cy.intercept("PUT", "**/admin-email").as("saveSettings");
-
-    cy.visit("/admin/settings/general");
-
+    cy.log("should save a setting");
     // aliases don't last past refreshes, so create a function to grab the input
     // rather than aliasing it with .as()
     const emailInput = () =>
@@ -94,14 +70,39 @@ describe("scenarios > admin > settings", () => {
       .blur();
     cy.wait("@saveSettings");
 
+    // The visit also clears the "Changes saved" toast, so the error toast below is the only one
     cy.visit("/admin/settings/general");
     // after we refreshed, the field should still be "other.email"
     emailInput().should("have.value", "other.email@metabase.test");
-  });
 
-  it("should check for working https before enabling a redirect", () => {
-    cy.visit("/admin/settings/general");
+    cy.log(
+      "should surface an error when validation for any field fails (metabase#4506)",
+    );
+    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
+    cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
+      .click()
+      .type("foo", { delay: 100 })
+      .blur();
 
+    cy.wait("@url").should(({ response }) => {
+      expect(response.statusCode).to.eq(500);
+      // Switching to regex match for assertions - the test was flaky because of the "typing" issue
+      // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
+      // We only care that the `cause` is starting with "Invalid site URL"
+      expect(response.body.cause).to.match(/^Invalid site URL/);
+    });
+
+    // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
+    //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
+    cy.log("Making sure we display an error message in UI");
+    // Same reasoning for regex as above
+    H.undoToast().contains(/^Invalid site URL/);
+
+    // The site URL input keeps the rejected text after a failed save, so reload
+    // before switching the protocol; otherwise the invalid URL would be sent again
+    cy.reload();
+
+    cy.log("should check for working https before enabling a redirect");
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     cy.findByTestId("admin-layout-content").within(() => {
@@ -155,18 +156,6 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("$39.72");
       cy.findByText("$117.03");
     });
-  });
-
-  it("should search for and select a new timezone", () => {
-    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
-    cy.visit("/admin/settings/localization");
-    cy.findByRole("textbox", { name: /timezone/i })
-      .as("timezoneSelect")
-      .clear()
-      .type("Centr");
-    H.selectDropdown().findByText("US/Central").click();
-    cy.wait("@reportTimezone");
-    cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
@@ -381,35 +370,38 @@ describe("scenarios > admin > settings > email settings", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should show an error if test email fails", () => {
-      // Reuse Email setup without relying on the previous test
-      cy.request("PUT", "/api/setting", {
-        "email-from-address": "admin@metabase.test",
-        "email-from-name": "Metabase Admin",
-        "email-reply-to": ["reply-to@metabase.test"],
-        "email-smtp-host": "localhost",
-        "email-smtp-password": null,
-        "email-smtp-port": "1234",
-        "email-smtp-security": "none",
-        "email-smtp-username": null,
-      });
-      cy.visit("/admin/settings/email");
-
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.button("Send test email").click();
-        cy.findByText(
-          "Couldn't connect to host, port: localhost, 1234; timeout -1",
-        );
-      });
-    });
-
     it(
-      "should send a test email for a valid SMTP configuration",
+      "should show an error if test email fails and send a test email for a valid SMTP configuration",
       { tags: "@external" },
       () => {
-        H.setupSMTP();
+        cy.log("should show an error if test email fails");
+        // Reuse Email setup without relying on the previous test
+        cy.request("PUT", "/api/setting", {
+          "email-from-address": "admin@metabase.test",
+          "email-from-name": "Metabase Admin",
+          "email-reply-to": ["reply-to@metabase.test"],
+          "email-smtp-host": "localhost",
+          "email-smtp-password": null,
+          "email-smtp-port": "1234",
+          "email-smtp-security": "none",
+          "email-smtp-username": null,
+        });
         cy.visit("/admin/settings/email");
-        cy.button("Send test email").click();
+
+        cy.findByTestId("admin-layout-content").within(() => {
+          cy.button("Send test email").click();
+          cy.findByText(
+            "Couldn't connect to host, port: localhost, 1234; timeout -1",
+          );
+        });
+
+        cy.log("should send a test email for a valid SMTP configuration");
+        H.setupSMTP();
+        // The visit also clears the error toast above, so "Email sent!" is the only toast
+        cy.visit("/admin/settings/email");
+        cy.findByTestId("admin-layout-content")
+          .button("Send test email")
+          .click();
         H.undoToast().findByText("Email sent!").should("be.visible");
         cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
           ({ body }) => {
@@ -688,7 +680,8 @@ describe("scenarios > admin > localization", () => {
     });
   });
 
-  it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
+  it("should use currency settings for number columns with style set to currency (metabase#10787) and search for and select a new timezone", () => {
+    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -698,6 +691,19 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
 
+    // Runs after the currency toast assertion because saving the timezone shows another toast
+    cy.log("should search for and select a new timezone");
+    cy.findByRole("textbox", { name: /timezone/i })
+      .as("timezoneSelect")
+      .clear()
+      .type("Centr");
+    H.selectDropdown().findByText("US/Central").click();
+    cy.wait("@reportTimezone");
+    cy.get("@timezoneSelect").should("have.value", "US/Central");
+
+    cy.log(
+      "should use currency settings for number columns with style set to currency (metabase#10787)",
+    );
     H.visitQuestionAdhoc({
       display: "scalar",
       dataset_query: {
