@@ -1,9 +1,13 @@
 (ns metabase-enterprise.semantic-search.db-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource])
   (:import
-   (com.mchange.v2.c3p0 PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 PoolBackedDataSource PooledDataSource WrapperConnectionPoolDataSource)
+   (java.sql DriverManager SQLException)
+   (java.util.logging Handler Level LogRecord Logger)
+   (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -52,3 +56,74 @@
              (semantic.db.datasource/test-connection!)))
         (finally
           (reset! semantic.db.datasource/data-source orig-data-source))))))
+
+(deftest pool-hides-credentials-test
+  (testing "the pool's string form, which c3p0 puts in its exception messages, leaves out the URL credentials"
+    ;; db-url is a value, not a fn, so with-dynamic-fn-redefs can't bind it
+    (with-redefs [semantic.db.datasource/db-url      "jdbc:postgresql://pgvector.invalid/mb?user=mb&password=hunter2"
+                  semantic.db.datasource/data-source (atom nil)]
+      (let [pool ^PooledDataSource (semantic.db.datasource/init-db!)]
+        (.close pool)
+        (let [e (is (thrown-with-msg? SQLException #"has been closed" (.getConnection pool)))]
+          (is (not (str/includes? (str (ex-message e)) "hunter2")))
+          (is (not (str/includes? (str pool) "hunter2"))))))))
+
+(defn- connect-through-pool!
+  "Open a connection through the data source the pool wraps, on this thread, then close the pool."
+  []
+  (let [pool ^PoolBackedDataSource (semantic.db.datasource/init-db!)]
+    (try
+      (.getConnection ^DataSource (.getNestedDataSource ^WrapperConnectionPoolDataSource
+                                   (.getConnectionPoolDataSource pool)))
+      (finally
+        (.close pool)))))
+
+(deftest unrecognized-url-hides-credentials-test
+  (testing "the error for a URL no driver accepts, which quotes the URL, leaves out the credentials"
+    ;; The driver rejects the `jdbc:postgres:` spelling, so DriverManager reports it with the URL.
+    ;; Then next.jdbc retries with the right spelling, and only a failed retry lets that error through.
+    (with-redefs [semantic.db.datasource/db-url      "jdbc:postgres://pgvector.invalid/mb?user=mb&password=hunter2"
+                  semantic.db.datasource/data-source (atom nil)]
+      (let [e (is (thrown-with-msg? SQLException #"No suitable driver" (connect-through-pool!)))]
+        (is (not (str/includes? (str (ex-message e)) "hunter2")))))))
+
+(deftest pgjdbc-debug-log-hides-credentials-test
+  (testing "the URL the driver logs at DEBUG leaves out the credentials"
+    (let [^Logger logger (Logger/getLogger "org.postgresql.Driver")
+          level          (.getLevel logger)
+          logged         (atom [])
+          handler        (proxy [Handler] []
+                           (publish [^LogRecord record]
+                             (swap! logged conj [(.getMessage record) (vec (.getParameters record))]))
+                           (flush [])
+                           (close []))]
+      ;; the driver's first connection in a JVM logs its configuration instead of the URL, so make one first
+      (try (DriverManager/getConnection "jdbc:postgresql://pgvector.invalid/mb") (catch SQLException _))
+      (.setLevel logger Level/FINE)
+      (.addHandler logger handler)
+      (try
+        ;; the .invalid domain never resolves, and the driver logs the URL before it tries to connect
+        (with-redefs [semantic.db.datasource/db-url      "jdbc:postgresql://pgvector.invalid/mb?user=mb&password=hunter2"
+                      semantic.db.datasource/data-source (atom nil)]
+          (is (thrown? SQLException (connect-through-pool!))))
+        (finally
+          (.removeHandler logger handler)
+          (.setLevel logger level)))
+      (is (=? [["Connecting with URL: {0}" ["jdbc:postgresql://pgvector.invalid/mb"]]]
+              (filter #(str/starts-with? (first %) "Connecting with URL") @logged))))))
+
+(def ^:private parse-db-url #'semantic.db.datasource/parse-db-url)
+
+(def ^:private base-url "jdbc:postgresql://localhost:5432/mb_semantic_search")
+
+(deftest parse-db-url-credentials-test
+  (testing "credentials move off the URL, decoded, to be passed as connection properties"
+    (is (= {:jdbc-url    (str base-url "?tcpKeepAlive=true")
+            :credentials {:user        "postgres"
+                          :password    "p&ss=word"
+                          :sslpassword "k3y@pass"}}
+           (parse-db-url (str base-url "?user=postgres&password=p%26ss%3Dword&tcpKeepAlive=true"
+                              "&sslpassword=k3y%40pass")))))
+  (testing "other params stay on the URL as written"
+    (is (= {:jdbc-url (str base-url "?sslmode=require&options=-c%20foo=bar"), :credentials {}}
+           (parse-db-url (str base-url "?sslmode=require&options=-c%20foo=bar"))))))
