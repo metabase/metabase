@@ -541,7 +541,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
       cy.visit("/admin/settings/whitelabel/conceal-metabase");
       cy.findByRole("main")
-        .findByText("Display welcome message on the homepage")
+        .findByText("Display Metabot on the homepage")
         .click();
 
       H.undoToast().findByText("Changes saved").should("be.visible");

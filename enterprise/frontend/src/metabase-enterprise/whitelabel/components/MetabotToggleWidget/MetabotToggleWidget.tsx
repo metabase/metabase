@@ -16,7 +16,7 @@ export const MetabotToggleWidget = () => {
       <SettingHeader id="show-metabot" title={t`Metabot greeting`} />
 
       <ImageToggle
-        label={t`Display welcome message on the homepage`}
+        label={t`Display Metabot on the homepage`}
         value={!!value}
         onChange={() => {
           updateSetting({
