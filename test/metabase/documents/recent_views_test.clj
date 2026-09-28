@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views.model]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -82,6 +83,18 @@
           (is (nil? (:collection_id doc)))
           (is (nil? (:collection_name doc)))
           (is (nil? (:collection_authority_level doc))))))))
+
+(deftest select-documents-for-recents-personal-collection-test
+  (testing "returns the owner-qualified name for a document in a personal collection"
+    ;; The command palette shows the collection a recent document lives in, and for a personal
+    ;; collection that name is the owner-qualified one written at creation time, not a blank row.
+    (let [coll-id (:id (collection/user->personal-collection (mt/user->id :rasta)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Personal Document"
+                                                   :collection_id coll-id
+                                                   :archived false}]
+        (let [doc (first (#'recent-views.model/document-recents [doc-id]))]
+          (is (= coll-id (:collection_id doc)))
+          (is (= "Rasta Toucan's Personal Collection" (:collection_name doc))))))))
 
 (deftest select-documents-for-recents-archived-collections-test
   (testing "excludes documents from archived collections via left join"
