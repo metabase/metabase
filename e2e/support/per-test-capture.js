@@ -43,6 +43,14 @@
  * suite-level before() traffic lands on the suite's first test.
  */
 
+import {
+  addBranchHits,
+  flattenBranchHits,
+  proxyBodyFields,
+  requestBodyArg,
+  requestBodyFields,
+} from "./journey-capture-encoding";
+
 const isInstrumented = Cypress.expose("coverage") === true;
 
 // Journey-capture runs also record one ordered event stream per test:
@@ -54,6 +62,10 @@ const backendCoverage =
 const MAX_EVENTS_PER_TEST = 5000;
 const MAX_CUTS_PER_TEST = 2000;
 const MAX_TEXT = 300;
+const MAX_CHAIN_COMMANDS = 8;
+// Chrome fails keepalive requests once 256 are in flight for a page,
+// and a burst of assertion cuts can send more than that.
+const STEP_DUMP_INTERVAL_MS = 250;
 // Longer than the deadline the config process puts on backend dumps, so a slow dump never fails the hook.
 const JOURNEY_TASK_TIMEOUT = 120000;
 
@@ -93,7 +105,11 @@ let steps = [];
 let stepsClosed = false;
 let stepFiles = new Map();
 let endedAssertLogs = new Set();
+let assertCallSites = new Map();
 let commandSeqs = new WeakMap();
+// The attributes of the attempt's commands, by chainerId, in the order they were enqueued.
+let chainCommands = new Map();
+let lastDumpRequestAt = -Infinity;
 let captureStats = newCaptureStats();
 // Fetch and XHR requests of the app window that have started and not finished.
 let inFlight = 0;
@@ -119,7 +135,8 @@ function trackCoverage(win) {
 // every counter (functions, statements, branches) as it goes so the next
 // flush reports only what fired after this one. Dead windows' objects are
 // zeroed and pruned — only the current window can still gain counts.
-function collectAndZeroFunctionCounts(currentWin) {
+// With `branchHits`, the branch arms that ran are added to it before they are zeroed.
+function collectAndZeroFunctionCounts(currentWin, branchHits = null) {
   trackCoverage(currentWin);
   const f = {};
   for (const coverage of coverageObjects) {
@@ -134,6 +151,13 @@ function collectAndZeroFunctionCounts(currentWin) {
       }
       for (const idx of Object.keys(fileCov.s || {})) {
         fileCov.s[idx] = 0;
+      }
+      if (branchHits) {
+        try {
+          addBranchHits(branchHits, file, fileCov.b || {});
+        } catch {
+          captureStats.errors += 1;
+        }
       }
       for (const counts of Object.values(fileCov.b || {})) {
         counts.fill(0);
@@ -177,6 +201,8 @@ function newCaptureStats() {
     snapshotMs: 0,
     eventMs: 0,
     dumpRequests: 0,
+    skippedDumps: 0,
+    failedDumpRequests: 0,
     errors: 0,
     droppedEvents: 0,
     droppedCuts: 0,
@@ -314,9 +340,19 @@ function functionDeltas() {
   return deltas;
 }
 
+// A failed request dumps nothing, so the cut's backend code lands in the next dump.
+function markDumpFailed(attempt, step) {
+  captureStats.errors += 1;
+  if (attempt === attemptId && !stepsClosed && steps[step]) {
+    steps[step].dumpFailed = true;
+    captureStats.failedDumpRequests += 1;
+  }
+}
+
 // Fire-and-forget, so the command queue never waits on the backend.
 function requestBackendDump(step, seq) {
   captureStats.dumpRequests += 1;
+  const attempt = attemptId;
   try {
     fetch(
       `${stepDumpUrl}?attempt=${attemptId}&step=${step}&seq=${seq}&sent=${Date.now()}`,
@@ -326,10 +362,10 @@ function requestBackendDump(step, seq) {
         keepalive: true,
       },
     ).catch(() => {
-      captureStats.errors += 1;
+      markDumpFailed(attempt, step);
     });
   } catch {
-    captureStats.errors += 1;
+    markDumpFailed(attempt, step);
   }
 }
 
@@ -360,7 +396,7 @@ function takeStep(trigger, triggerSeq) {
     }
     const step = steps.length;
     const seq = eventSeq;
-    steps.push({
+    const cut = {
       seq,
       trigger,
       triggerSeq,
@@ -369,10 +405,18 @@ function takeStep(trigger, triggerSeq) {
       url: currentPath(),
       inFlight,
       f: functionDeltas(),
-    });
+    };
+    steps.push(cut);
     // The final cut gets the backend dump taken by the recordTestCapture task.
+    // A cut that skips its dump leaves its backend code to the next dump.
     if (stepDumpUrl && trigger !== "end") {
-      requestBackendDump(step, seq);
+      if (started - lastDumpRequestAt >= STEP_DUMP_INTERVAL_MS) {
+        lastDumpRequestAt = started;
+        requestBackendDump(step, seq);
+      } else {
+        cut.dumpSkipped = true;
+        captureStats.skippedDumps += 1;
+      }
     }
   } catch {
     captureStats.errors += 1;
@@ -408,6 +452,40 @@ function summarizeArg(arg) {
   }
 }
 
+// Tests pass `{log: false}` to keep secrets such as license tokens out of the Cypress log.
+function hidesArgs(args) {
+  return (args || []).some(
+    (arg) =>
+      arg != null &&
+      typeof arg === "object" &&
+      !Array.isArray(arg) &&
+      arg.log === false,
+  );
+}
+
+// A `cy.request` can carry secrets in its body, headers and query string, so its chain text has only the method and path.
+function requestText(args) {
+  const target = requestTarget(args || []);
+  const route = target ? parseRoute(target[1]) : null;
+  if (!route) {
+    return "request(<unparsed>)";
+  }
+  const method = isHttpMethod(target[0])
+    ? String(target[0]).toUpperCase()
+    : "<method>";
+  return `request(${method} ${route.target})`;
+}
+
+function commandText(name, args) {
+  if (hidesArgs(args)) {
+    return `${name}(${args.map(() => "<hidden>").join(", ")})`;
+  }
+  if (name === "request") {
+    return requestText(args);
+  }
+  return `${name}(${(args || []).map(summarizeArg).join(", ")})`;
+}
+
 // The commands of one `cy.a().b().should()` chain share a chainerId.
 function chainOf(command) {
   const chainerId = command?.get?.("chainerId");
@@ -416,10 +494,9 @@ function chainOf(command) {
   while (
     current &&
     current.get("chainerId") === chainerId &&
-    parts.length < 8
+    parts.length < MAX_CHAIN_COMMANDS
   ) {
-    const args = (current.get("args") || []).map(summarizeArg).join(", ");
-    parts.unshift(`${current.get("name")}(${args})`);
+    parts.unshift(commandText(current.get("name"), current.get("args")));
     current = current.get("prev");
   }
   return parts.join(".");
@@ -429,9 +506,9 @@ function chainOf(command) {
 // The spec bundle is not minified, so frame names are the helper function names.
 const SPEC_BUNDLE_FRAME =
   /at (?:async )?([\w$.]+) \((?:[^)]*__cypress\/tests[^)]*)\)/;
+const SPEC_BUNDLE_POSITION = /__cypress\/tests\?p=([^:)\s]+):(\d+):(\d+)/;
 
-function helpersOf(command) {
-  const stack = command?.get?.("userInvocationStack");
+function helpersOfStack(stack) {
   if (typeof stack !== "string") {
     return undefined;
   }
@@ -443,6 +520,73 @@ function helpersOf(command) {
     }
   }
   return names.length > 0 ? names : undefined;
+}
+
+function helpersOf(command) {
+  return helpersOfStack(command?.get?.("userInvocationStack"));
+}
+
+// Every command of a chain, with the `.should()` commands that Cypress runs inside the previous command and never starts.
+function chainOfChainer(chainerId) {
+  const commands = chainCommands.get(chainerId);
+  if (!commands) {
+    return null;
+  }
+  return {
+    chain: commands
+      .map((attrs) => commandText(attrs.name, attrs.args))
+      .join("."),
+    helpers: helpersOfStack(commands[0].userInvocationStack),
+  };
+}
+
+// Cypress keeps the stack of the latest expect() or assert() call in `currentAssertionUserInvocationStack`.
+// While that call logs its assertion,
+// the stack's first spec-bundle frame is where the assertion is written.
+function assertionCallSite() {
+  try {
+    const stack = cy.state("currentAssertionUserInvocationStack");
+    const frame =
+      typeof stack === "string"
+        ? stack.split("\n").find((line) => line.includes("__cypress/tests"))
+        : undefined;
+    if (!frame) {
+      return undefined;
+    }
+    const source = Cypress.stackUtils?.getSourceDetailsForFirstLine?.(
+      frame,
+      Cypress.config("projectRoot"),
+    );
+    const file = source?.relativeFile || source?.originalFile;
+    if (file && source.line != null) {
+      return { file, line: source.line, column: source.column };
+    }
+    const position = frame.match(SPEC_BUNDLE_POSITION);
+    return position
+      ? {
+          bundle: position[1],
+          line: Number(position[2]),
+          column: Number(position[3]),
+        }
+      : undefined;
+  } catch {
+    captureStats.errors += 1;
+    return undefined;
+  }
+}
+
+// A body that fails to encode still leaves its request event recorded.
+function bodyFields(read) {
+  try {
+    return read();
+  } catch {
+    captureStats.errors += 1;
+    return {};
+  }
+}
+
+function isHttpMethod(value) {
+  return HTTP_METHODS.has(String(value).toUpperCase());
 }
 
 function isCaptureCommand(command) {
@@ -565,7 +709,10 @@ if (isInstrumented) {
     stepsClosed = false;
     stepFiles = new Map();
     endedAssertLogs = new Set();
+    assertCallSites = new Map();
     commandSeqs = new WeakMap();
+    chainCommands = new Map();
+    lastDumpRequestAt = -Infinity;
     captureStats = newCaptureStats();
     if (stepLevel > 0) {
       resetPreviousCounts();
@@ -638,7 +785,14 @@ if (isInstrumented) {
     // middleware: true observes and passes through, so this coexists with the
     // specs' own cy.intercept stubs/waits without changing any behavior.
     cy.intercept(captureRoute, (req) => {
-      recordRoute(req.method, req.url, `proxy:${req.resourceType}`);
+      recordRoute(
+        req.method,
+        req.url,
+        `proxy:${req.resourceType}`,
+        journeyCapture
+          ? bodyFields(() => proxyBodyFields(req.body, req.headers))
+          : undefined,
+      );
       // Framed documents (embedding specs) never hit window:before:load,
       // which only fires for the top app window.
       if (req.resourceType === "document") {
@@ -675,11 +829,21 @@ if (isInstrumented) {
           return;
         }
         const name = command.get("name");
+        const chainerId = command.get("chainerId");
         if (name === "request") {
-          const target = requestTarget(command.get("args") || []);
-          const helpers = helpersOf(command);
+          const args = command.get("args") || [];
+          const target = requestTarget(args);
+          const details = {
+            helpers: helpersOf(command),
+            chainerId,
+            ...(hidesArgs(args)
+              ? { bodyType: "hidden" }
+              : bodyFields(() =>
+                  requestBodyFields(requestBodyArg(args, isHttpMethod)),
+                )),
+          };
           const seq = target
-            ? recordRoute(target[0], target[1], "cy.request", { helpers })
+            ? recordRoute(target[0], target[1], "cy.request", details)
             : null;
           commandSeqs.set(
             command,
@@ -688,7 +852,7 @@ if (isInstrumented) {
                 initiator: "cy.request",
                 method: null,
                 path: null,
-                helpers,
+                ...details,
               }),
           );
           return;
@@ -697,6 +861,7 @@ if (isInstrumented) {
           command,
           recordEvent("command", {
             name,
+            chainerId,
             chain: chainOf(command),
             helpers: helpersOf(command),
           }),
@@ -704,27 +869,66 @@ if (isInstrumented) {
       }),
     );
 
-    // `.should()` and `expect()` both log with name "assert", while the asserted command is current.
+    Cypress.on(
+      "command:enqueued",
+      guarded((attrs) => {
+        const chainerId = attrs?.chainerId;
+        if (chainerId == null) {
+          return;
+        }
+        const commands = chainCommands.get(chainerId);
+        if (!commands) {
+          chainCommands.set(chainerId, [attrs]);
+        } else if (commands.length < MAX_CHAIN_COMMANDS) {
+          commands.push(attrs);
+        }
+      }),
+    );
+
+    // `.should()` and `expect()` both log with name "assert",
+    // and Cypress gives the log the chainerId of the command running when it is created.
     // A retried `.should()` ends its log once, when it finally passes or fails, and that is the moment recorded.
-    const onAssertLog = guarded((attrs) => {
+    const onAssertLog = (attrs, added) => {
+      if (attrs.name !== "assert" || endedAssertLogs.has(attrs.id)) {
+        return;
+      }
       const ended = attrs.ended || (attrs.state && attrs.state !== "pending");
-      if (attrs.name !== "assert" || !ended || endedAssertLogs.has(attrs.id)) {
+      // Only log:added runs inside the expect() call that made the log, which is when its call site is readable.
+      const callSite = added
+        ? assertionCallSite()
+        : assertCallSites.get(attrs.id);
+      if (!ended) {
+        if (added) {
+          assertCallSites.set(attrs.id, callSite);
+        }
         return;
       }
       endedAssertLogs.add(attrs.id);
-      const current = cy.state("current");
+      assertCallSites.delete(attrs.id);
+      const fromChainer =
+        attrs.chainerId != null ? chainOfChainer(attrs.chainerId) : null;
+      const current = fromChainer ? null : cy.state("current");
       const seq = recordEvent("assert", {
         state: attrs.state,
         message: clip(attrs.message ?? ""),
-        chain: chainOf(current),
-        helpers: helpersOf(current),
+        chainerId: attrs.chainerId,
+        chain: fromChainer ? fromChainer.chain : chainOf(current),
+        helpers: fromChainer ? fromChainer.helpers : helpersOf(current),
+        ...(!fromChainer && { chainSource: "current" }),
+        callSite,
       });
       if (stepLevel >= STEP_LEVELS.assertions) {
         takeStep("assert", seq);
       }
-    });
-    Cypress.on("log:added", onAssertLog);
-    Cypress.on("log:changed", onAssertLog);
+    };
+    Cypress.on(
+      "log:added",
+      guarded((attrs) => onAssertLog(attrs, true)),
+    );
+    Cypress.on(
+      "log:changed",
+      guarded((attrs) => onAssertLog(attrs, false)),
+    );
 
     if (stepLevel >= STEP_LEVELS.commands) {
       Cypress.on(
@@ -766,8 +970,14 @@ if (isInstrumented) {
         takeStep("end", eventSeq);
         stepsClosed = true;
       }
-      const f = collectAndZeroFunctionCounts(win);
+      const branchHits = journeyCapture ? {} : null;
+      const f = collectAndZeroFunctionCounts(win, branchHits);
       if (journeyCapture) {
+        try {
+          journey.branchHits = flattenBranchHits(branchHits);
+        } catch {
+          captureStats.errors += 1;
+        }
         journey.capture = captureStats;
         journey.steps =
           stepLevel > 0

@@ -1,7 +1,24 @@
 import { Buffer } from "node:buffer";
 
+import {
+  MAX_BODY_TEXT,
+  addBranchHits,
+  canonicalBody,
+  flattenBranchHits,
+  hashText,
+  indexBranchHits,
+  proxyBodyFields,
+  requestBodyArg,
+  requestBodyFields,
+} from "../support/journey-capture-encoding";
+
 import jacoco from "./jacoco";
-import { checkSteps, subtractBaselines } from "./journey-capture.mjs";
+import {
+  assertionChains,
+  checkSteps,
+  firedBranches,
+  subtractBaselines,
+} from "./journey-capture.mjs";
 
 function utf(text) {
   const bytes = Buffer.from(text, "utf8");
@@ -201,6 +218,29 @@ describe("checkSteps", () => {
     expect(check.backend.gapMs).toBe(5);
   });
 
+  it("should expect no dump for cuts that skipped theirs and count failed requests as missing", () => {
+    const check = checkSteps({
+      ...test,
+      steps: {
+        ...test.steps,
+        cuts: [
+          { f: [], dumpSkipped: true },
+          { f: [], dumpFailed: true },
+          test.steps.cuts[0],
+          { f: [], dumpSkipped: true },
+          test.steps.cuts[1],
+        ],
+      },
+    });
+    expect(check.frontend.ok).toBe(true);
+    expect(check.backend).toMatchObject({
+      mergedCuts: 2,
+      failedRequests: 1,
+      cutsWithoutDump: 1,
+      gapMs: 0,
+    });
+  });
+
   it("should count backend dumps that ran in a different order than their cuts", () => {
     const check = checkSteps({
       ...test,
@@ -213,5 +253,245 @@ describe("checkSteps", () => {
       },
     });
     expect(check.backend).toMatchObject({ outOfOrder: 1, gapMs: 0 });
+  });
+});
+
+describe("hashText", () => {
+  it("should hash the UTF-8 bytes with FNV-1a 64", () => {
+    expect(hashText("")).toEqual({ hash: "cbf29ce484222325", bytes: 0 });
+    expect(hashText("a")).toEqual({ hash: "af63dc4c8601ec8c", bytes: 1 });
+    expect(hashText("foobar").hash).toBe("85944171f73967e8");
+  });
+
+  it("should match hashing the bytes TextEncoder produces", () => {
+    const text = "héllo ✓ 😀 \ud800";
+    const bytes = new TextEncoder().encode(text);
+    let reference = 0xcbf29ce484222325n;
+    for (const byte of bytes) {
+      reference ^= BigInt(byte);
+      reference = (reference * 0x100000001b3n) & 0xffffffffffffffffn;
+    }
+    expect(hashText(text)).toEqual({
+      hash: reference.toString(16).padStart(16, "0"),
+      bytes: bytes.length,
+    });
+  });
+});
+
+describe("canonicalBody", () => {
+  it("should sort keys at every level and keep array order", () => {
+    expect(
+      canonicalBody({ b: 1, a: { d: [3, { z: 1, y: 2 }], c: null } }),
+    ).toBe('{"a":{"c":null,"d":[3,{"y":2,"z":1}]},"b":1}');
+  });
+
+  it("should give the same text for the same body built in a different key order", () => {
+    expect(canonicalBody({ name: "q", display: "table" })).toBe(
+      canonicalBody({ display: "table", name: "q" }),
+    );
+  });
+
+  it("should mask the values of password, token, secret and session keys anywhere in the body", () => {
+    expect(
+      canonicalBody({
+        email: "a@b.c",
+        Password: "hunter2",
+        details: { "ldap-password": 1, api_TOKEN: { nested: true } },
+        list: [{ "jwt-shared-secret": "x", session_id: "y", value: "kept" }],
+      }),
+    ).toBe(
+      '{"Password":"<masked>","details":{"api_TOKEN":"<masked>","ldap-password":"<masked>"},' +
+        '"email":"a@b.c","list":[{"jwt-shared-secret":"<masked>","session_id":"<masked>","value":"kept"}]}',
+    );
+  });
+
+  it("should drop undefined and function values like JSON does", () => {
+    expect(canonicalBody({ a: undefined, b: () => 1, c: [undefined] })).toBe(
+      '{"c":[null]}',
+    );
+  });
+
+  it("should canonicalize a string that holds JSON and mask form fields in other strings", () => {
+    expect(canonicalBody('{"b":1,"password":"x","a":2}')).toBe(
+      '{"a":2,"b":1,"password":"<masked>"}',
+    );
+    expect(canonicalBody("username=a&password=b&x=1")).toBe(
+      '"username=a&password=<masked>&x=1"',
+    );
+  });
+});
+
+describe("requestBodyFields", () => {
+  it("should record nothing for a body-less request", () => {
+    expect(requestBodyFields(undefined)).toEqual({});
+  });
+
+  it("should record the canonical body with the hash and length of the whole of it", () => {
+    const fields = requestBodyFields({ b: [1, 2], a: "x" });
+    expect(fields).toEqual({
+      body: '{"a":"x","b":[1,2]}',
+      ...(({ hash, bytes }) => ({ bodyHash: hash, bodyBytes: bytes }))(
+        hashText('{"a":"x","b":[1,2]}'),
+      ),
+    });
+  });
+
+  it("should clip the recorded body but hash all of it", () => {
+    const big = { rows: Array.from({ length: 500 }, (_, i) => ({ i })) };
+    const small = { rows: big.rows.slice(0, 400) };
+    const fields = requestBodyFields(big);
+    expect(fields.body).toHaveLength(MAX_BODY_TEXT + 1);
+    expect(fields.body.endsWith("…")).toBe(true);
+    expect(fields.bodyBytes).toBe(canonicalBody(big).length);
+    expect(fields.body).toBe(requestBodyFields(small).body);
+    expect(fields.bodyHash).not.toBe(requestBodyFields(small).bodyHash);
+  });
+
+  it("should record only the type of a body that is not plain JSON", () => {
+    expect(requestBodyFields(new Map([["a", 1]]))).toEqual({
+      bodyType: "Map",
+    });
+    expect(requestBodyFields(new Uint8Array([1, 2]))).toEqual({
+      bodyType: "Uint8Array",
+    });
+  });
+});
+
+describe("requestBodyArg", () => {
+  const isMethod = (value) =>
+    ["GET", "POST", "PUT"].includes(String(value).toUpperCase());
+
+  it("should find the body the way cy.request reads its arguments", () => {
+    expect(requestBodyArg(["/api/card"], isMethod)).toBeUndefined();
+    expect(requestBodyArg(["/api/card", { a: 1 }], isMethod)).toEqual({
+      a: 1,
+    });
+    expect(requestBodyArg(["POST", "/api/card"], isMethod)).toBeUndefined();
+    expect(requestBodyArg(["POST", "/api/card", { a: 2 }], isMethod)).toEqual({
+      a: 2,
+    });
+    expect(
+      requestBodyArg([{ url: "/api/card", body: { a: 3 } }], isMethod),
+    ).toEqual({ a: 3 });
+    expect(requestBodyArg([{ url: "/api/card" }], isMethod)).toBeUndefined();
+  });
+});
+
+describe("proxyBodyFields", () => {
+  it("should hash the JSON text Cypress forwards for a parsed JSON body", () => {
+    const raw = '{"type":"query","query":{"source-table":2}}';
+    const { hash, bytes } = hashText(raw);
+    expect(
+      proxyBodyFields(JSON.parse(raw), { "content-type": "application/json" }),
+    ).toEqual({ bodyHash: hash, bodyBytes: bytes });
+  });
+
+  it("should hash string bodies as they are", () => {
+    expect(proxyBodyFields("a=1&b=2", {}).bodyHash).toBe(
+      hashText("a=1&b=2").hash,
+    );
+  });
+
+  it("should record only the type and length of multipart bodies", () => {
+    expect(
+      proxyBodyFields("--x\r\nfile\r\n--x--", {
+        "Content-Type": "multipart/form-data; boundary=x",
+      }),
+    ).toEqual({ bodyType: "multipart", bodyBytes: 16 });
+  });
+
+  it("should record only the type of a binary body", () => {
+    expect(
+      proxyBodyFields(Buffer.from("binary"), {
+        "content-type": "application/octet-stream",
+      }),
+    ).toEqual({ bodyType: "Uint8Array" });
+  });
+
+  it("should record nothing for an empty body", () => {
+    expect(proxyBodyFields("", {})).toEqual({});
+    expect(proxyBodyFields(undefined, {})).toEqual({});
+  });
+});
+
+describe("branch hits", () => {
+  const fileA = "/home/runner/work/metabase/metabase/frontend/src/a.ts";
+  const fileB = "/home/runner/work/metabase/metabase/frontend/src/b.ts";
+
+  it("should keep only the arms that ran, summed across windows", () => {
+    const hits = {};
+    addBranchHits(hits, fileA, { 0: [0, 2], 1: [0, 0], 2: [1, 0, 3] });
+    addBranchHits(hits, fileB, { 0: [0, 0] });
+    addBranchHits(hits, fileA, { 0: [0, 1] });
+    expect(flattenBranchHits(hits)).toEqual({
+      files: [fileA],
+      hits: [0, 0, 1, 3, 0, 2, 0, 1, 0, 2, 2, 3],
+    });
+  });
+
+  it("should share one file table across the tests of a spec", () => {
+    const first = {
+      branchHits: { files: [fileB, fileA], hits: [0, 1, 0, 1, 1, 4, 1, 2] },
+    };
+    const second = { branchHits: { files: [fileA], hits: [0, 4, 0, 5] } };
+    const control = { title: "no branch hits" };
+    const files = indexBranchHits([first, second, control]);
+    expect(files).toEqual([fileB, fileA]);
+    expect(first.branchHits).toEqual([0, 1, 0, 1, 1, 4, 1, 2]);
+    expect(second.branchHits).toEqual([1, 4, 0, 5]);
+    expect(control.branchHits).toBeUndefined();
+
+    const entry = { branchFiles: files, tests: [first, second] };
+    expect([...firedBranches(entry, second)]).toEqual([
+      "frontend/src/a.ts#4:0",
+    ]);
+    expect([...firedBranches(entry, { f: {} })]).toEqual([]);
+  });
+
+  it("should subtract the arms the baselines ran", () => {
+    const shard = {
+      classes: [],
+      backendBaselines: [],
+      baselines: [
+        {
+          baseline: { name: "coverage-baseline", round: "start" },
+          branchFiles: [fileA],
+          tests: [{ branchHits: [0, 0, 1, 1] }],
+        },
+      ],
+      tests: [
+        {
+          spec: "e2e/test/scenarios/a.cy.spec.js",
+          branchFiles: [fileA],
+          tests: [{ title: "a", branchHits: [0, 0, 1, 2, 0, 0, 0, 1] }],
+        },
+      ],
+    };
+    const [test] = subtractBaselines(shard);
+    expect(test.branches).toEqual(["frontend/src/a.ts#0:0"]);
+  });
+});
+
+describe("assertionChains", () => {
+  it("should join each assertion to the commands that share its chainerId", () => {
+    const events = [
+      { seq: 0, kind: "request", initiator: "cy.request", chainerId: "ch-1" },
+      { seq: 1, kind: "command", name: "get", chainerId: "ch-2" },
+      { seq: 2, kind: "command", name: "click", chainerId: "ch-3" },
+      { seq: 3, kind: "assert", message: "visible", chainerId: "ch-2" },
+      { seq: 4, kind: "request", initiator: "fetch", chainerId: "ch-2" },
+      { seq: 5, kind: "assert", message: "status", chainerId: "ch-1" },
+      { seq: 6, kind: "assert", message: "schema 1" },
+    ];
+    expect(
+      assertionChains(events).map(({ assert, commands }) => [
+        assert.seq,
+        commands.map((event) => event.seq),
+      ]),
+    ).toEqual([
+      [3, [1]],
+      [5, [0]],
+      [6, []],
+    ]);
   });
 });

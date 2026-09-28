@@ -2,8 +2,8 @@
 
 `.github/workflows/e2e-journey-capture.yml` runs the Cypress suite against an instrumented build and keeps raw, per-test data:
 
-- frontend function counters (Istanbul), optionally including the browser copy of the cljs code
-- one ordered event stream per test: navigations, requests with who made them, Cypress commands and assertions
+- frontend function and branch counters (Istanbul), optionally including the browser copy of the cljs code
+- one ordered event stream per test: navigations, requests with who made them and what they sent, Cypress commands and assertions
 - backend coverage per test, as the set of backend classes that ran (JaCoCo)
 - optionally, step snapshots: the frontend and backend code each test ran between two steps (navigations, assertions or commands)
 
@@ -11,7 +11,7 @@ Nothing is subtracted or filtered on the runner. Setup traffic (`cy.request`, `/
 
 The workflow is separate from the nightly coverage manifest (`e2e-coverage-manifest.yml`) and shares none of its artifacts. The shared support files only record the extra data when `JOURNEY_CAPTURE=true`, and the nightly's payload is unchanged.
 
-Every shard artifact also carries a copy of this file.
+Before a shard's data leaves the runner, it is scrubbed of secrets and encrypted, as described in [Secrets](#secrets). It also carries a copy of this file.
 
 ## Running it
 
@@ -35,23 +35,32 @@ Inputs:
 | `step_snapshots`         | assertions               | `none`, `navigations`, `assertions` (navigations too) or `commands` (everything)                                           |
 | `compare_step_snapshots` | false                    | run the shard's tests a second time with `step_snapshots: none`, into `tests-control/`, to measure what the snapshots cost |
 | `keep_test_exec`         | false                    | also keep a raw `.exec` per test and per step. Large, meant for small runs                                                 |
+| `upload`                 | true                     | upload the encrypted shard data, `journey-capture-cljs` and `journey-capture-openapi`. Off uploads none of them, see below |
 
-Dispatched runs keep their artifacts for 30 days.
+Every artifact is kept for 7 days.
+
+With `upload: false`, each shard still runs every step up to and including the encryption, then prints `Validation run, nothing uploaded: pass` or `FAIL`, with the scrub's counts, to its log and step summary.
+The instrumented uberjar is the one artifact such a run uploads, because the shards download it. It holds no capture data.
+
 A run without dispatch inputs (a `push` trigger) uses a 2-shard smoke configuration:
 `e2e/test/scenarios/question/saved.cy.spec.js` and `e2e/test/scenarios/custom-column/cc-typing-suggestion.cy.spec.js`,
-`assertions` snapshots with the control pass, a raw `.exec` per test, and 7-day retention.
+`assertions` snapshots with the control pass and a raw `.exec` per test.
+It uploads nothing, as with `upload: false`.
 
 ## Artifacts
 
-- `journey-capture-uberjar`: the instrumented build, kept for 1 day.
+- `journey-capture-uberjar`: the instrumented build.
 - `journey-capture-openapi`: the `openapi.json` generated at the run's SHA, for matching captured routes to endpoints.
 - `journey-capture-cljs`: `target/cljs_release/metabase*.js` and their source maps, when `cljs_coverage` is on. See "cljs functions" below.
-- `journey-capture-shard-<n>`: one per shard, laid out as below.
+- `journey-capture-shard-<n>`: one per shard, holding a single file, `journey-capture-shard-<n>.tar.gz.age`. It is the shard's data, laid out as below, as a gzipped tarball encrypted with age. [Secrets](#secrets) says how to read it.
+
+The first three are built from the run's commit and hold no capture data, so they aren't encrypted.
 
 ```
 meta.json                      run and shard metadata (see below)
 README.md                      this file
 fnmap-<uuid>.json              Istanbul function metadata per file: {file: {fnIndex: {name, line, column}}}
+branchmap-<uuid>.json          Istanbul branch metadata per file: {file: [[type, line, column, arms], ...]}, indexed by branch index
 summary.txt                    the reader's summary: counts, recording errors, step consistency check, timing against the control pass
 tests/<spec>.json              one file per spec, kind "test"
 tests-control/<spec>.json      the same tests without step snapshots, when compare_step_snapshots is on
@@ -63,19 +72,21 @@ backend/classes.jsonl          class dictionary for every backend index in this 
 backend/exec/...               raw JaCoCo .exec files: every baseline, plus tests and steps with keep_test_exec
 ```
 
-`<spec>` is the spec path relative to the repo, with `/` replaced by `__`. Paths inside Istanbul data are absolute on the runner (`/home/runner/work/metabase/metabase/...`). Strip that prefix before relativizing. Several `fnmap-*.json` files are normal: each Cypress process writes its own, and entries for the same file are identical.
+`<spec>` is the spec path relative to the repo, with `/` replaced by `__`. Paths inside Istanbul data are absolute on the runner (`/home/runner/work/metabase/metabase/...`). Strip that prefix before relativizing. Several `fnmap-*.json` and `branchmap-*.json` files are normal: each Cypress process writes its own pair, and entries for the same file are identical.
+
+In a `branchmap` entry, `type` is Istanbul's branch type (`if`, `cond-expr`, `binary-expr`, `switch`, `default-arg`, ...), `line` and `column` are where the branch starts, and `arms` is its number of arms. Arm `i` of an `if` or `cond-expr` is the `i`-th outcome (consequent, then alternate), of a `binary-expr` the `i`-th operand, of a `switch` the `i`-th case.
 
 ### meta.json
 
 ```
 {
   "schema": "metabase-e2e-journey-capture",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sha", "ref", "event", "runId", "runAttempt",
   "shard": {"index", "count"},
   "inputs": the raw dispatch inputs ({} or null for other triggers),
   "effective": {"spec", "edition", "grepTags", "idleSeconds"},
-  "capture": {"frontendFunctions", "cljsFunctions", "events", "stepSnapshots", "controlPassWithoutSteps",
+  "capture": {"frontendFunctions", "frontendBranches", "cljsFunctions", "events", "stepSnapshots", "controlPassWithoutSteps",
               "backend": {"agent": "jacoco", "version", "includes", "granularity": "class", "keepTestExec"} or null},
   "java", "startedAt", "finishedAt",
   "outcomes": {"baselinesStart", "tests", "testsControl", "baselinesEnd"}   GitHub step outcomes. Tests may fail, the data is kept
@@ -84,6 +95,15 @@ backend/exec/...               raw JaCoCo .exec files: every baseline, plus test
 ```
 
 Readers should check `schema` and `schemaVersion` and refuse versions they don't know.
+
+Schema 2 adds, and schema 1 artifacts lack:
+
+- per-test branch hits (`branchHits`, `branchFiles`) and `branchmap-*.json`
+- request bodies on `request` events (`body`, `bodyHash`, `bodyBytes`, `bodyType`)
+- `chainerId` on `command`, `cy.request` and `assert` events, and the assertion's own chain, `callSite` and `chainSource`
+- step dumps limited to one per 250 ms, with `dumpSkipped` and `dumpFailed` on cuts and `skippedDumps`, `failedDumpRequests` and `drainStop` in `capture`
+
+In schema 1, an assert event's `chain` and `helpers` describe whatever command was running when the assertion ended, which is rarely the assertion's own chain.
 
 ### Spec files (`tests/`, `snapshots/`, `baselines/start|end/`)
 
@@ -95,6 +115,7 @@ Readers should check `schema` and `schemaVersion` and refuse versions they don't
   "stepSnapshots": "none" | "navigations" | "assertions" | "commands"
   "spec": "e2e/test/scenarios/...",
   "coverage": {absoluteFile: {"f": {fnIndex: count}}}   spec-level counters from @cypress/code-coverage, files with a fired function only
+  "branchFiles": [absoluteFile, ...]                  file table for the tests' branchHits, when any test has one
   "tests": [test attempt, ...]
 }
 ```
@@ -113,6 +134,7 @@ Each test attempt:
   "attemptId": id shared with the attempt's step .exec files,
   "state": "passed" | "failed" | ...,
   "f": {absoluteFile: {fnIndex: count}}   functions fired during this attempt, counters zeroed after each attempt
+  "branchHits": [fileIndex, branchIndex, armIndex, count, ...]   branch arms that ran during this attempt, flat quads, fileIndex into the spec's branchFiles
   "routes": ["METHOD /path", ...]   deduped and sorted, same as the nightly. Third-party hosts keep their origin
   "pages": ["/path", ...]           document loads only, deduped and sorted
   "events": [event, ...]            in order
@@ -125,12 +147,17 @@ Each test attempt:
 
 `f`, `routes` and `pages` have the same meaning as in the nightly coverage manifest's raw files, so existing readers work on them. Unlike the nightly, `routes` includes `cy.request` traffic.
 
+`branchHits` only lists arms with a count above zero. Like `f`, it is read at the per-test flush, before the counters are zeroed, and step cuts don't have it.
+
 `capture` has:
 
 - `snapshotMs` and `snapshots`: time spent taking step snapshots in the browser, and how many were taken
 - `eventMs`: time spent in the other recording handlers in the browser
 - `drainMs`: how long the afterEach task waited for the attempt's backend step dumps
+- `drainStop`: why that wait ended. `received` when every request arrived, `stalled` when none arrived and no dump finished for 10 s, `capped` after 40 s
 - `dumpRequests` and `stepDumpsReceived`: backend step dumps the browser asked for, and how many reached the listener
+- `skippedDumps`: cuts that asked for no dump, because the previous request was less than 250 ms earlier
+- `failedDumpRequests`: dump requests the browser saw fail before the flush. They are also counted in `errors`
 - `errors`: recording failures. Recording never fails a test, it counts here instead
 - `droppedEvents`, `droppedCuts`: events past 5,000 and cuts past 2,000 per attempt, which aren't kept
 - `lateCuts`: cuts that arrived after the final cut and were discarded
@@ -141,19 +168,27 @@ Each test attempt:
 
 Every event has `seq` (order within the attempt), `t` (ms since the attempt started), `kind`, `phase` (`"test"`, the Mocha hook name such as `"before each"`, or null between runnables) and `url` (the app's pathname at that moment).
 
-| kind      | fields                                   | source                                                                                                                                                                                               |
-| --------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nav`     | `how`: `"document"` or `"url"`, `path`   | `window:before:load` for top-window document loads, and `url:changed`, which also fires for pushState and hash changes                                                                               |
-| `request` | `initiator`, `method`, `path`, `helpers` | `initiator` is `fetch` or `xhr` (wrappers in the app window), `proxy:<resourceType>` (the pass-through `cy.intercept`, which also sees iframes), `cy.request` (`command:start`) or `journey-capture` |
-| `command` | `name`, `chain`, `helpers`               | Cypress `command:start`. `cy.task` and the capture's own `cy.intercept` are left out                                                                                                                 |
-| `assert`  | `state`, `message`, `chain`, `helpers`   | Cypress `log:added`/`log:changed` with name `assert`, once per assertion when it ends. A retried `.should()` records one event, with its final state                                                 |
+| kind      | fields                                                                                             | source                                                                                                                                                                                               |
+| --------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nav`     | `how`: `"document"` or `"url"`, `path`                                                             | `window:before:load` for top-window document loads, and `url:changed`, which also fires for pushState and hash changes                                                                               |
+| `request` | `initiator`, `method`, `path`, `helpers`, `chainerId`, `body`, `bodyHash`, `bodyBytes`, `bodyType` | `initiator` is `fetch` or `xhr` (wrappers in the app window), `proxy:<resourceType>` (the pass-through `cy.intercept`, which also sees iframes), `cy.request` (`command:start`) or `journey-capture` |
+| `command` | `name`, `chainerId`, `chain`, `helpers`                                                            | Cypress `command:start`. `cy.task` and the capture's own `cy.intercept` are left out                                                                                                                 |
+| `assert`  | `state`, `message`, `chainerId`, `chain`, `helpers`, `callSite`, `chainSource`                     | Cypress `log:added`/`log:changed` with name `assert`, once per assertion when it ends. A retried `.should()` records one event, with its final state                                                 |
 
 - One browser request can show up both as `fetch`/`xhr` and as `proxy:*`. That is the same request seen twice.
 - Framed documents (embedding) show up as `proxy:document` requests, not `nav` events.
 - `path` of a request has the same form as `routes`: a bare path for the app's own origin, origin and path for third-party hosts.
+- No recorded URL keeps its query string or hash: `routes`, `pages`, `nav` and request paths, and every event's `url`, are paths only. The arguments of commands other than `cy.request`, such as a `cy.visit` URL, are recorded as the test wrote them.
 - `journey-capture` requests are the step snapshots' own backend dump requests. They never appear in `routes`.
-- `chain` is the command chain the event belongs to, for example `get("[data-testid=x]").should("be.visible")`. Arguments are clipped at 300 characters.
+- `cy.request` events record the request body as `body`: canonical JSON with object keys sorted, clipped at 2,048 characters. `bodyHash` (FNV-1a 64 of the UTF-8 bytes, 16 hex digits) and `bodyBytes` cover the whole canonical text, so two setups with the same fixture have the same hash. The value of every key matching `password`, `token`, `secret` or `session` (any case, at any depth) is `"<masked>"`, before hashing. A string body that holds JSON is canonicalized as that JSON, other strings have matching form fields masked. A body that isn't plain JSON (`FormData`, `Blob`, `ArrayBuffer`, ...) records only `bodyType`. Body-less requests have none of these fields. A `cy.request` with `{log: false}` records `"bodyType": "hidden"` and no other body field.
+- `proxy:*` events record `bodyHash` and `bodyBytes` of the body the pass-through `cy.intercept` sees, never the body itself. Cypress parses JSON bodies for intercept handlers and forwards `JSON.stringify` of them, so the hash is of the bytes the backend receives. Multipart bodies, whose random boundary changes the hash on every request, record `"bodyType": "multipart"` and `bodyBytes` only. Binary bodies, which Cypress hands the handler as a buffer, record only `bodyType`. `fetch` and `xhr` events have no body fields: the app sends most requests as `fetch(new Request(...))`, whose body is a stream that can't be read without consuming it.
+- Before a spec file is written, every value of a runner environment variable whose name contains `TOKEN`, `SECRET`, `PASSWORD`, `API_KEY` or `PRIVATE` and that is at least 16 characters long is replaced with `<masked>`, wherever it appears. That covers the premium tokens, which tests send to `/api/setting/premium-embedding-token` as `{"value": ...}` and type into the license form. The scrub before upload also covers the pieces of them that clipping leaves, see [Secrets](#secrets).
+- `chain` is the command chain the event belongs to, for example `get("[data-testid=x]").should("be.visible")`. Arguments are clipped at 300 characters, and a chain at 8 commands. A `command` event's chain ends at that command.
+- In a chain, a `cy.request` is `request(<METHOD> <path>)`, with the path in the same form as a request event's `path`, and never its body, headers or query string. A command with `{log: false}` in its arguments shows each of them as `<hidden>`, for example `type(<hidden>, <hidden>)`. Tests use `{log: false}` to keep secrets out of the Cypress log.
 - `helpers` lists the functions from the spec and support bundles on the JS stack when the command was queued, outermost first (for example `["Context.eval", "visitQuestion"]`, where `Context.eval` is the test or hook body). It comes from Cypress's `userInvocationStack` and names only functions that appear in stack frames.
+- `chainerId` is Cypress's id for one `cy.a().b().should()` chain, shared by all its commands. Cypress gives an assertion's log the `chainerId` of the command running when the log is created, which for `.should()` is a command of its own chain and for `expect()` inside `.then()` is that `then`. Matching `chainerId` joins an assertion to its `command` and `cy.request` events (`assertionChains()` in the reader). A `.should()` that Cypress runs as part of the command before it never starts on its own, so it has no `command` event.
+- An `assert` event's `chain` lists every command queued with its `chainerId`, including the `.should()` ones, and `helpers` come from the first of them. When the log has no `chainerId`, or none of its commands was queued during the attempt, both come from the command running when the assertion ended, as in schema 1, and the event has `"chainSource": "current"`.
+- `callSite` is where an `expect()` or `assert()` call was written, including one inside a `.should()` or `.then()` callback: `{"file", "line", "column"}`, from the first spec-bundle frame of the stack Cypress keeps for that call (`currentAssertionUserInvocationStack`), mapped to the source by Cypress's own source-map lookup. When that lookup gives nothing, it is `{"bundle", "line", "column"}` with the position in the spec bundle. Chainer assertions such as `.should("be.visible")` have none, because their stack holds no spec frame.
 - Commands from `@cypress/code-coverage`'s own hooks appear with phase `"after each"`.
 - Cypress sends `log:changed` at most every 4 ms, so a `.should()` assert event lands a few milliseconds after the assertion passed, sometimes after the next command's `command:start`. `url:changed` also arrives shortly after the navigation.
 
@@ -192,6 +227,8 @@ The per-test data is converted to class sets on the runner, because a raw `.exec
       "inFlight": app fetch/XHR requests started and not finished at the cut,
       "f": [fileIndex, fnIndex, count, ...]   flat triples, functions that ran since the previous cut
       "backend": dump, plus {"step", "seq", "sentAt", "receivedAt", "startedAt", "latencyMs"} for step dumps
+      "dumpSkipped": true when the cut asked for no backend dump, see below
+      "dumpFailed": true when the cut's dump request failed in the browser
     }
   ]
 }
@@ -204,7 +241,8 @@ Each cut holds what ran since the previous cut. The last cut, `end`, is taken in
 - The frontend cut reads the function counters (`f`) of every tracked app window and compares them with the values at the previous cut. It doesn't zero them, so the per-test `f` is still read straight from the counters at the flush, which keeps the consistency check meaningful. The files each window has registered are kept in a list and only rescanned when the window registers new ones.
 - A cut doesn't wait for the network. `inFlight` says how many app requests were still running, so a cut with requests in flight has a fuzzy boundary: their responses land in a later step. A `fetch` counts until its response headers arrive, an XHR until `loadend`.
 - The backend can't be dumped synchronously from the browser. Each cut sends a fire-and-forget `POST` to a listener the Cypress config process runs on `127.0.0.1:6301` (path `/__journey-capture/backend-dump`), which dumps and resets the JaCoCo agent over its TCP port. Dumps run one at a time in the order they arrive. `latencyMs` is the time from the cut in the browser to the dump in the backend: code that runs in that interval lands in this step rather than the next. The request goes through Cypress's proxy like any browser request.
-- The final cut's backend is the per-test dump taken by the afterEach task, which first waits up to 10 s for the attempt's step dumps (`drainMs`).
+- A test sends at most one dump request per 250 ms. A cut less than 250 ms after the last request sends none and has `"dumpSkipped": true`, and its backend code lands in the next cut that has a dump, or in the final cut. Chrome fails keepalive requests once 256 are in flight for a page, and a burst of assertion cuts can send more than that. A request that fails in the browser dumps nothing either, so its code also lands in the next dump. Its cut gets `"dumpFailed": true` when the failure arrives before the flush.
+- The final cut's backend is the per-test dump taken by the afterEach task, which first waits for the attempt's step dumps (`drainMs`). It waits as long as requests keep arriving or dumps keep finishing, stops after 10 s without either, and after 40 s in any case (`drainStop`). A request that arrives after that skips its dump, and its code lands in the next dump (`lateStepDumpRequests`).
 - With step snapshots on, `backend.test` is the union of the cuts' dumps and has `"fromSteps": true`. Every dump resets the agent, so no independent per-test backend total exists.
 
 #### Consistency check
@@ -213,6 +251,7 @@ Each cut holds what ran since the previous cut. The last cut, `end`, is taken in
 
 - frontend: summing the cuts' deltas per function gives exactly the per-test `f`, which is read separately at the flush. Any difference means a cut missed code, for example a window or a lazily loaded file.
 - backend: the attempt's dump windows (`beforeTest` and every cut) follow each other, and the cuts' dumps ran in cut order. The agent timestamps each reset right after writing the dump, so a gap between one window's end and the next one's start is time whose hits no dump holds. Writing a dump takes a few milliseconds, so small gaps are expected. The check reports them, and lists attempts whose gaps add up to more than 50 ms.
+- backend: every cut except those with `dumpSkipped` has a dump. Cuts with `dumpSkipped` are counted as merged into the next dump, not as missing. Cuts whose request failed or never arrived are missing, and `failedRequests` counts the ones the browser saw fail.
 
 #### Measuring the cost
 
@@ -237,30 +276,79 @@ Each file is `{"kind": "baseline", "baseline": {"name", "position"}, "backend": 
 
 With `cljs_coverage`, the build also instruments `target/cljs_release/metabase.*.js`, the advanced-compiled browser copy of the cljs code (`metabase.lib` and friends). Their `f` counters use those files as keys, like any other file. The code is minified, so `fnmap` names are `(anonymous_N)` and most functions sit on the same line. Journey-capture `fnmap` entries therefore also have `column`. To map a function to cljs source, look up its `line` and `column` in the matching `.js.map` from the `journey-capture-cljs` artifact.
 
+## Secrets
+
+The shards run with the staging license tokens in their environment, and tests send them to the backend and type them into forms.
+The capture itself leaves out `cy.request` arguments, the arguments of `{log: false}` commands and query strings, and masks the runner's secret environment variables and body keys named like secrets, as described in [Events](#events).
+On top of that, every shard scrubs, checks and encrypts its data before it uploads anything.
+
+### Scrub
+
+`e2e/coverage/journey-capture-scrub.mjs` runs in the `Scrub and verify shard capture` step, the only step that gets `toJSON(secrets)`. In every text file it replaces these with `<scrubbed>`:
+
+- every secret of the workflow that is at least 16 characters long, also trimmed and line by line, in each of these spellings: as it is, JSON-escaped once and twice, URL-encoded, and base64, standard and URL-safe, at each of the three byte alignments. Any 20 characters of any of these spellings are replaced too, which catches a secret cut off by the 300-character clip
+- JWTs: `eyJ` and at least three dot-separated parts
+- tokens that start with `ghp_`, `gho_`, `github_pat_`, `dckr_pat_`, `mb_dev_` or `airgap_`
+- runs of 64 or more hex digits
+- the value of a query parameter whose name contains `token`, `secret`, `password`, `passwd`, `session`, `jwt`, `api_key`, `auth`, `signature` or `credential`
+
+JSON and JSONL files are scrubbed one string at a time, keys included, and written back with `JSON.stringify`, so they stay valid. No rule touches 16- or 40-character hex (body hashes, JaCoCo class ids, commit SHAs), UUIDs or entity ids. Binary files, such as `.exec`, are never edited.
+
+A secret shorter than 16 characters, or fewer than 20 characters of a longer one, stays.
+
+### Verify
+
+The same script then reads every file again. It looks for any spelling or 20-character piece of a secret in every file, text and binary, and for the token shapes in every text file and file name. Any hit, or anything that isn't a regular file or a directory, fails the step, and the shard encrypts and uploads nothing. The step prints counts, file names and secret names, never a value, and adds the reader's summary to the step summary only once the check has passed.
+
+### Encryption
+
+The `Encrypt shard capture` step packs the scrubbed directory as a gzipped tarball and encrypts it with age to every recipient in `e2e/journey-capture/age-recipients.txt`. Only that `.age` file is uploaded. age comes from its GitHub release, pinned in `AGE_VERSION` and checked against `AGE_SHA256`.
+
+While `age-recipients.txt` has no recipient, a run with `upload` on fails in `Build shard matrix`, before any shard runs, and every shard fails at its encryption step.
+
+To add a key, run `age-keygen -o <identity file>` and add the public key it prints, the line starting with `age1`, to `age-recipients.txt`. Anyone with the identity file can read every run's data, so it stays with its owner.
+
+To read a run, install age (`brew install age`) and let `fetch_journey.sh` download and decrypt it:
+
+```
+JOURNEY_AGE_IDENTITY=<identity file> e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>
+```
+
+It fails when `JOURNEY_AGE_IDENTITY` isn't set. One shard by hand:
+
+```
+gh run download <run id> -n journey-capture-shard-<n> -D <download dir>
+mkdir -p <run dir>/journey-capture-shard-<n>
+age -d -i <identity file> <download dir>/journey-capture-shard-<n>.tar.gz.age | tar -xzf - -C <run dir>/journey-capture-shard-<n>
+```
+
 ## Size
 
-Estimates, not measurements. They start from the nightly coverage artifacts (about 51 tests per shard at 100 shards, 95 KB of `f`, `routes` and `pages` per test, compressing 7x) and assume 150 to 500 events and 10 to 60 assertion cuts per test. The backend part assumes about 48,000 `metabase` classes at 75 to 95 bytes each in a `.exec`, nearly all of them hit during boot. `meta.json` (`sizeBeforeMetadata`) and each shard's step summary give real numbers.
+Schema 1 measured, on the full `assertions` run 36089233978 (5,141 attempts over 100 shards, 48 per shard): a median attempt of 350 KB raw, a median shard of 31.6 MB raw and 6.8 MB gzipped (13.3 MB at most), and 3.4 GB raw, 0.72 GB gzipped for the run. `meta.json` (`sizeBeforeMetadata`) and each shard's step summary give the numbers of any run.
+
+Schema 2 adds, per attempt, 45 to 60 KB raw and 11 to 15 KB gzipped: 35 to 50 KB of `branchHits` (3,500 to 5,000 hit arms, estimated from the 3,500 functions a median attempt fires and the one two-armed branch per function in a sample of `frontend/src/metabase`), about 9 KB for the attempt's share of its spec's `branchFiles`, about 4 KB of `cy.request` bodies and 3 KB of `chainerId`s. Merging cuts into fewer backend dumps takes about 5 KB raw off. Each `branchmap-*.json` is about 0.56 times the size of its `fnmap`, about 3 MB raw and 0.45 MB gzipped per shard. That puts a median `assertions` shard at about 37 MB raw and 8 MB gzipped, and the run at about 4 GB raw and 0.85 GB gzipped.
 
 | Setting                      | Per test, raw | Per shard, zipped | Whole run (100 shards), zipped |
 | ---------------------------- | ------------- | ----------------- | ------------------------------ |
-| `step_snapshots: none`       | 150-300 KB    | 5-9 MB            | 0.5-0.9 GB                     |
-| `step_snapshots: assertions` | 300-650 KB    | 6-12 MB           | 0.6-1.2 GB                     |
-| `step_snapshots: commands`   | 0.45-1 MB     | 8-14 MB           | 0.8-1.4 GB                     |
+| `step_snapshots: none`       | 200-350 KB    | 5-10 MB           | 0.5-1 GB                       |
+| `step_snapshots: assertions` | 350-700 KB    | 7-15 MB           | 0.8-1 GB                       |
+| `step_snapshots: commands`   | 0.5-1.1 MB    | 9-16 MB           | 0.9-1.6 GB                     |
 
 About 4 to 6 MB of each zipped shard is fixed: the baseline `.exec` files (the boot dump alone is about 4 MB raw), `backend/classes.jsonl` and `fnmap`. Unzipped is roughly four to six times larger. `compare_step_snapshots` adds the `none` size of the tests again. `keep_test_exec` adds 0.5 to 2 MB per test, so it is only meant for a few specs. The run-level `journey-capture-cljs` artifact is about 10 MB zipped.
 
 ## Reading a run
 
 ```
-gh run download <run id> -p 'journey-capture-shard-*' -D <run dir>
+JOURNEY_AGE_IDENTITY=<identity file> e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>
 node e2e/coverage/journey-capture.mjs <run dir> [--subtract] [--baselines <name,...>] [--compare <other run dir>]
 ```
 
 It prints, per shard: counts, recording errors, the step consistency check, the timing comparison against `tests-control/` and against `--compare`, and the backend baselines. `<run dir>` can also be a single shard directory.
 
-As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()` and `compareTiming()`. Subtraction is per shard, because every shard has its own backend:
+As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()`, `compareTiming()`, `firedBranches()` (an attempt's branch arms as `file#branch:arm` keys) and `assertionChains()` (each assert event with the events of its chain). It reads schema 1 and 2 artifacts. Subtraction is per shard, because every shard has its own backend:
 
 - frontend functions: drop functions the chosen baselines fired (default `coverage-baseline`, both rounds)
+- frontend branch arms: drop arms the same baselines ran
 - routes: drop routes the chosen baselines requested
 - backend classes: drop classes seen in the chosen Cypress baselines and in `backend-idle` (both positions)
 
@@ -271,3 +359,5 @@ As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard 
 - Frontend counters are read from the top app window only. Code running in iframes (the embedding SDK, data apps) has no function counts. Its requests still appear in `events` and `routes`.
 - Background jobs in the backend land in whichever test is running. The idle windows measure how much that is.
 - The nightly `routes` have no `cy.request` traffic. In CI, `cypress-terminal-report` also overwrites `request`, and Cypress's `Commands.overwrite` wraps the original command rather than the previous overwrite, so the last overwrite wins. Journey capture records `cy.request` from `command:start` instead, and `capture.requestOverwrites` shows whether the overwrite ran.
+- App requests made in a suite-level `before()` hook have no body fields: no intercept is live then, and the `fetch` and `xhr` wrappers don't read bodies.
+- Branch hits, like `f`, come from the top app window only.

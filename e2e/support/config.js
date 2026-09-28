@@ -41,6 +41,7 @@ import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import { indexBranchHits } from "./journey-capture-encoding";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
@@ -110,6 +111,10 @@ const FNMAP_FILE = path.join(
   RAW_DIR,
   `fnmap-${require("node:crypto").randomUUID()}.json`,
 );
+const BRANCHMAP_FILE = path.join(
+  RAW_DIR,
+  path.basename(FNMAP_FILE).replace(/^fnmap-/, "branchmap-"),
+);
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 const isCI = !!process.env.CI;
@@ -139,8 +144,10 @@ function enqueueBackendDump(dumpFn) {
 }
 
 // Journey tasks resolve by this deadline even when a dump hangs, so a stuck agent can't fail a test.
-const BACKEND_DEADLINE_MS = 60000;
-const STEP_DUMP_WAIT_MS = 10000;
+// It leaves room after the longest step dump wait for the queued dumps and the test's own dump.
+const BACKEND_DEADLINE_MS = 90000;
+const STEP_DUMP_STALL_MS = 10000;
+const STEP_DUMP_MAX_WAIT_MS = 40000;
 
 function withDeadline(promise, ms, fallback) {
   let timer;
@@ -160,7 +167,7 @@ let lateStepDumpRequests = 0;
 function stepDumpState(attemptId) {
   let state = stepDumps.get(attemptId);
   if (!state) {
-    state = { received: 0, results: [], onReceive: null };
+    state = { received: 0, results: [], onProgress: null };
     stepDumps.set(attemptId, state);
   }
   return state;
@@ -186,7 +193,7 @@ function startStepDumpListener(port) {
     const receivedAt = Date.now();
     const state = stepDumpState(attemptId);
     state.received += 1;
-    state.onReceive?.();
+    state.onProgress?.();
     enqueueBackendDump(async () => {
       const startedAt = Date.now();
       const record = await dumpBackendNow(
@@ -203,6 +210,7 @@ function startStepDumpListener(port) {
         latencyMs: record.window ? record.window.end - sentAt : null,
         ...record,
       });
+      state.onProgress?.();
     });
   });
   server.on("error", (error) => {
@@ -213,23 +221,39 @@ function startStepDumpListener(port) {
 }
 
 // Waits until the browser's step dump requests for this attempt have arrived and run.
+// It stops early when no request has arrived and no dump has finished for STEP_DUMP_STALL_MS.
 async function collectStepDumps(attemptId, expected) {
   const state = stepDumpState(attemptId);
+  let stop = "received";
   if (state.received < expected) {
-    await new Promise((resolve) => {
-      const timer = setTimeout(resolve, STEP_DUMP_WAIT_MS);
-      state.onReceive = () => {
+    stop = await new Promise((resolve) => {
+      let stallTimer = null;
+      let capTimer = null;
+      const finish = (reason) => {
+        clearTimeout(stallTimer);
+        clearTimeout(capTimer);
+        state.onProgress = null;
+        resolve(reason);
+      };
+      const waitForProgress = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => finish("stalled"), STEP_DUMP_STALL_MS);
+      };
+      capTimer = setTimeout(() => finish("capped"), STEP_DUMP_MAX_WAIT_MS);
+      state.onProgress = () => {
         if (state.received >= expected) {
-          clearTimeout(timer);
-          resolve();
+          finish("received");
+        } else {
+          waitForProgress();
         }
       };
+      waitForProgress();
     });
   }
   collectedAttempts.add(attemptId);
   stepDumps.delete(attemptId);
   await backendQueue;
-  return state;
+  return { state, stop };
 }
 
 function journeyEntryDir() {
@@ -297,10 +321,13 @@ function attachStepDumps(steps, stepState, testDump) {
 
 async function journeyBackend({ spec, attemptId, capture, steps }, stats) {
   const drainStarted = Date.now();
-  const stepState = steps
-    ? await collectStepDumps(attemptId, capture?.dumpRequests ?? 0)
-    : null;
+  // Requests the browser already saw fail never reach the listener.
+  const expected =
+    (capture?.dumpRequests ?? 0) - (capture?.failedDumpRequests ?? 0);
+  const collected = steps ? await collectStepDumps(attemptId, expected) : null;
+  const stepState = collected?.state ?? null;
   stats.drainMs = Date.now() - drainStarted;
+  stats.drainStop = collected?.stop;
   stats.stepDumpsReceived = stepState?.received ?? 0;
   const testDump = await dumpBackendSegment(spec, "test");
   return {
@@ -409,9 +436,59 @@ function appendFnMap(coverage) {
   }
 }
 
+// Per file, [type, start line, start column, arm count] at each Istanbul branch index.
+let branchMap = null;
+
+function appendBranchMap(coverage) {
+  branchMap ??= {};
+  let changed = false;
+  for (const [file, fileCov] of Object.entries(coverage)) {
+    if (branchMap[file] || !fileCov.branchMap) {
+      continue;
+    }
+    const entry = [];
+    for (const [idx, branch] of Object.entries(fileCov.branchMap)) {
+      const start = branch.loc?.start ?? branch.locations?.[0]?.start;
+      entry[Number(idx)] = [
+        branch.type,
+        start?.line ?? null,
+        start?.column ?? null,
+        branch.locations?.length ?? 0,
+      ];
+    }
+    branchMap[file] = entry;
+    changed = true;
+  }
+  if (changed) {
+    fs.writeFileSync(BRANCHMAP_FILE, JSON.stringify(branchMap));
+  }
+}
+
+// Tests type the runner's secrets, such as the premium tokens, or send them as a settings API `value`,
+// so masking by key name misses them.
+const SECRET_VALUES = isJourneyCapture
+  ? Object.entries(process.env)
+      .filter(
+        ([name, value]) =>
+          /TOKEN|SECRET|PASSWORD|API_KEY|PRIVATE/i.test(name) &&
+          typeof value === "string" &&
+          value.length >= 16,
+      )
+      .map(([, value]) => JSON.stringify(value).slice(1, -1))
+  : [];
+
+function maskSecrets(json) {
+  let text = json;
+  for (const secret of SECRET_VALUES) {
+    text = text.split(secret).join("<masked>");
+  }
+  return text;
+}
+
 function writeJourneyEntry(spec, coverage, tests) {
   const dir = path.join(RAW_DIR, journeyEntryDir());
   fs.mkdirSync(dir, { recursive: true });
+  const branchFiles = indexBranchHits(tests);
   const entry = {
     kind: JOURNEY_ROLE,
     ...(JOURNEY_ROLE === "baseline" && {
@@ -424,10 +501,14 @@ function writeJourneyEntry(spec, coverage, tests) {
     stepSnapshots: JOURNEY_STEP_SNAPSHOTS,
     spec: spec.relative,
     coverage,
+    ...(branchFiles.length > 0 && { branchFiles }),
     tests,
   };
   const entryName = spec.relative.replace(/[\\/]/g, "__") + ".json";
-  fs.writeFileSync(path.join(dir, entryName), JSON.stringify(entry));
+  fs.writeFileSync(
+    path.join(dir, entryName),
+    maskSecrets(JSON.stringify(entry)),
+  );
 }
 
 // Persists raw __coverage__ counters per spec, plus the per-test breakdown
@@ -453,6 +534,9 @@ function writeSpecCoverageEntry(spec) {
 
   fs.mkdirSync(RAW_DIR, { recursive: true });
   appendFnMap(coverage);
+  if (isJourneyCapture) {
+    appendBranchMap(coverage);
+  }
 
   // The manifest builder only needs per-file function counters to compute the
   // baseline greater-delta. Drop statement/branch maps and counters, and drop

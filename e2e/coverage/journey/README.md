@@ -26,11 +26,13 @@ e2e/coverage/journey/pipeline/run_all_journey.sh <run id | run dir> [--out <dir>
     [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
 ```
 
-A run id is downloaded with `gh` into `$JOURNEY_ANALYSIS_DIR/<run id>/artifacts`, and an interrupted download picks up where it stopped. A run dir is one you downloaded yourself:
+A run id is downloaded with `gh` into `$JOURNEY_ANALYSIS_DIR/<run id>/artifacts` and decrypted with `$JOURNEY_AGE_IDENTITY`, and an interrupted download picks up where it stopped. A run dir is one you downloaded and decrypted yourself:
 
 ```
-gh run download <run id> -p 'journey-capture-shard-*' -p journey-capture-openapi -D <run dir>
+JOURNEY_AGE_IDENTITY=<identity file> e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>
 ```
+
+The shard artifacts are encrypted, as described in `e2e/journey-capture/README.md` under "Secrets".
 
 The steps, in order:
 
@@ -55,6 +57,7 @@ The steps, in order:
 | Environment variable   | Meaning                                                                                                 |
 | ---------------------- | ------------------------------------------------------------------------------------------------------- |
 | `JOURNEY_ANALYSIS_DIR` | downloads, outputs and the Python environment. Default `journey-analysis/` at the repo root, which is gitignored |
+| `JOURNEY_AGE_IDENTITY` | the age identity file that decrypts the shard artifacts. Needed to download a run id                    |
 | `JOURNEY_PYTHON`       | a Python with `numpy` and `scipy`. Without it, the driver makes a virtualenv in `$JOURNEY_ANALYSIS_DIR/.venv` |
 | `OPENAPI`              | the `openapi.json` to match routes against, default the run's `journey-capture-openapi` artifact           |
 | `REPO_SLUG`            | where to download from, default `metabase/metabase`                                                      |
@@ -383,11 +386,11 @@ node e2e/coverage/journey/lookup/build-lines.mjs --jar <metabase.jar from journe
 node e2e/coverage/journey/lookup/build-cljs-origins.mjs --maps <journey-capture-cljs dir> --index <index dir>
 ```
 
-A run dir holds the run's `journey-capture-shard-*` artifacts. To start from a run id, download them first, with `gh run download <run id> -p 'journey-capture-shard-*' -D <run dir>` or `e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>`. `build-index.mjs` takes about a minute for a 100-shard run.
+A run dir holds the run's decrypted `journey-capture-shard-*` artifacts. To start from a run id, download and decrypt them first, with `JOURNEY_AGE_IDENTITY=<identity file> e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>`. `build-index.mjs` takes about a minute for a 100-shard run.
 
 `build-index.mjs` records the app commit the capture branch sits on as `appBase` in `meta.json`, for the [location ledger](#location-ledger)'s base check. It's `--app-base` when given, and otherwise the merge base of the captured commit and `origin/master` in the repo this folder is in. When neither gives a commit, the index has no `appBase` and the build prints a warning.
 
-The other two steps are optional. Without `lines.json`, backend matching is by var name only, which misses `defmethod` bodies. Without `cljs-origins.json`, `.cljc` forms have no browser side. GitHub keeps the uberjar artifact for one day only.
+The other two steps are optional. Without `lines.json`, backend matching is by var name only, which misses `defmethod` bodies. Without `cljs-origins.json`, `.cljc` forms have no browser side. GitHub keeps the uberjar artifact for 7 days, like the others.
 
 ### Index files
 

@@ -3,7 +3,7 @@
 #          [--backend-baseline union|shard] [--kills <file>] [--min-mutants <k>] [--require-strata <s,...>]
 #          [--fe-code functions|branches|both] [--cover-branches]
 # Builds the step graph and the overlap analysis of an e2e journey-capture run.
-# A run id is downloaded into $JOURNEY_ANALYSIS_DIR/<run id>/artifacts first.
+# A run id is downloaded into $JOURNEY_ANALYSIS_DIR/<run id>/artifacts first, and decrypted with $JOURNEY_AGE_IDENTITY (see fetch_journey.sh).
 # A run dir holds the downloaded shard directories.
 # A rerun supplies passing attempts for tests that never passed in the main run, and second samples of the others.
 # --backend-baseline union (the default) also drops backend classes that any shard's coverage baseline ran,

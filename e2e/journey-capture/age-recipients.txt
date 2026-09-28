@@ -1,0 +1,3 @@
+# The age public keys that .github/workflows/e2e-journey-capture.yml encrypts shard data to, one per line.
+# The workflow uploads nothing while this file has none.
+age1vgsdj5mcyvg4xe7ypqjga35895cqhf4f4spvmu2vw35y9waqueyqgkltvu

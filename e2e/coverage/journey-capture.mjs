@@ -16,7 +16,7 @@ import jacoco from "./jacoco.js";
 import { normalizeRoute } from "./routes.mjs";
 
 export const SCHEMA = "metabase-e2e-journey-capture";
-export const SCHEMA_VERSIONS = [1];
+export const SCHEMA_VERSIONS = [1, 2];
 
 const RUNNER_PREFIX = "/home/runner/work/metabase/metabase/";
 
@@ -109,6 +109,46 @@ function firedFunctions(f) {
   return fired;
 }
 
+/**
+ * The branch arms a test ran, as "file#branch:arm" keys. Schema 1 tests have no branch hits.
+ */
+export function firedBranches(entry, test) {
+  const fired = new Set();
+  const hits = test.branchHits ?? [];
+  for (let i = 0; i + 3 < hits.length; i += 4) {
+    const file = entry.branchFiles?.[hits[i]];
+    if (file && hits[i + 3] > 0) {
+      fired.add(`${relative(file)}#${hits[i + 1]}:${hits[i + 2]}`);
+    }
+  }
+  return fired;
+}
+
+/**
+ * Pairs each assertion event with the command and cy.request events of its chain, matched by chainerId.
+ * Schema 1 events have no chainerId, so their assertions get no commands.
+ */
+export function assertionChains(events) {
+  const byChainer = new Map();
+  for (const event of events) {
+    const fromCommand =
+      event.kind === "command" ||
+      (event.kind === "request" && event.initiator === "cy.request");
+    if (fromCommand && event.chainerId != null) {
+      const chain = byChainer.get(event.chainerId) ?? [];
+      chain.push(event);
+      byChainer.set(event.chainerId, chain);
+    }
+  }
+  return events
+    .filter((event) => event.kind === "assert")
+    .map((assert) => ({
+      assert,
+      commands:
+        assert.chainerId != null ? (byChainer.get(assert.chainerId) ?? []) : [],
+    }));
+}
+
 function classNames(shard, dump) {
   return new Set((dump?.classes ?? []).map((i) => shard.classes[i]?.[0]));
 }
@@ -126,15 +166,23 @@ export function subtractBaselines(
     includeBeforeTest = false,
   } = {},
 ) {
+  const baselineEntries = (names) =>
+    shard.baselines.filter((entry) => names.includes(entry.baseline?.name));
   const cypressBaselines = (names) =>
-    shard.baselines
-      .filter((entry) => names.includes(entry.baseline?.name))
-      .flatMap((entry) => entry.tests);
+    baselineEntries(names).flatMap((entry) => entry.tests);
 
   const baselineFunctions = new Set();
   for (const test of cypressBaselines(frontend)) {
     for (const fn of firedFunctions(test.f)) {
       baselineFunctions.add(fn);
+    }
+  }
+  const baselineBranches = new Set();
+  for (const entry of baselineEntries(frontend)) {
+    for (const test of entry.tests) {
+      for (const arm of firedBranches(entry, test)) {
+        baselineBranches.add(arm);
+      }
     }
   }
   const baselineRoutes = new Set(
@@ -171,6 +219,9 @@ export function subtractBaselines(
         state: test.state,
         functions: [...firedFunctions(test.f)].filter(
           (fn) => !baselineFunctions.has(fn),
+        ),
+        branches: [...firedBranches(entry, test)].filter(
+          (arm) => !baselineBranches.has(arm),
         ),
         routes: [...new Set((test.routes ?? []).map(normalizeRoute))].filter(
           (route) => !baselineRoutes.has(route),
@@ -241,11 +292,15 @@ export function checkSteps(test) {
       overlapMs -= gap;
     }
   }
+  // A cut that skipped its dump leaves its backend code to the next dump, so it is expected to have none.
   const backend = test.backend
     ? {
         dumps: dumps.length,
         failed: dumps.filter((dump) => dump.error).length,
-        cutsWithoutDump: cuts.filter((cut) => !cut.backend).length,
+        cutsWithoutDump: cuts.filter((cut) => !cut.backend && !cut.dumpSkipped)
+          .length,
+        mergedCuts: cuts.filter((cut) => cut.dumpSkipped).length,
+        failedRequests: cuts.filter((cut) => cut.dumpFailed).length,
         outOfOrder,
         gapMs,
         overlapMs,
@@ -347,6 +402,7 @@ function summarize(runDir, { subtract, baselines, compareDir }) {
         `${shard.backendBaselines.length} backend baselines, ` +
         `${shard.classes.length} backend classes`,
       `  raw median per attempt: ${median(raw.map((t) => t.functions.length))} functions, ` +
+        `${median(raw.map((t) => t.branches.length))} branch arms, ` +
         `${median(raw.map((t) => t.routes.length))} routes, ` +
         `${median(raw.map((t) => t.backendClasses.length))} backend classes, ` +
         `${median(raw.map((t) => t.events.length))} events`,
@@ -364,6 +420,7 @@ function summarize(runDir, { subtract, baselines, compareDir }) {
       );
       lines.push(
         `  after subtraction: ${median(net.map((t) => t.functions.length))} functions, ` +
+          `${median(net.map((t) => t.branches.length))} branch arms, ` +
           `${median(net.map((t) => t.routes.length))} routes, ` +
           `${median(net.map((t) => t.backendClasses.length))} backend classes`,
       );
@@ -384,7 +441,8 @@ function summarize(runDir, { subtract, baselines, compareDir }) {
     lines.push(
       `  recording: ${sum("errors")} errors, ${sum("droppedEvents")} dropped events, ` +
         `${sum("droppedCuts")} dropped cuts, ${sum("lateCuts")} late cuts, ` +
-        `${sum("lateStepDumpRequests")} late step dump requests; ` +
+        `${sum("lateStepDumpRequests")} late step dump requests, ` +
+        `${sum("skippedDumps")} step dumps skipped by the rate limit; ` +
         `cy.request seen ${requestEvents} times through command:start and ${sum("requestOverwrites")} times through the command overwrite`,
     );
 
@@ -403,7 +461,9 @@ function summarize(runDir, { subtract, baselines, compareDir }) {
             ? `, backend gaps ${Math.max(...backendChecks.map((c) => c.gapMs))}ms max, ` +
               `overlaps ${Math.max(...backendChecks.map((c) => c.overlapMs))}ms max, ` +
               `${backendChecks.reduce((n, c) => n + c.outOfOrder, 0)} out-of-order dumps, ` +
-              `${backendChecks.reduce((n, c) => n + c.cutsWithoutDump + c.failed, 0)} missing or failed dumps, ` +
+              `${backendChecks.reduce((n, c) => n + c.cutsWithoutDump + c.failed, 0)} missing or failed dumps ` +
+              `(${backendChecks.reduce((n, c) => n + (c.failedRequests ?? 0), 0)} requests failed in the browser), ` +
+              `${backendChecks.reduce((n, c) => n + (c.mergedCuts ?? 0), 0)} cuts merged into the next dump, ` +
               `median dump latency ${median(backendChecks.map((c) => c.latencyMs))}ms`
             : ""),
       );
@@ -421,7 +481,7 @@ function summarize(runDir, { subtract, baselines, compareDir }) {
         lines.push(
           `    ${testLabel(entry, test)}: frontend ${frontend.mismatched} mismatched, ${frontend.missing} missing, ${frontend.extra} extra` +
             (backend
-              ? `; backend ${backend.gapMs}ms gaps, ${backend.outOfOrder} out of order, ${backend.failed} failed, ${backend.cutsWithoutDump} cuts without a dump`
+              ? `; backend ${backend.gapMs}ms gaps, ${backend.outOfOrder} out of order, ${backend.failed} failed, ${backend.cutsWithoutDump} cuts without a dump, ${backend.failedRequests} failed requests`
               : ""),
         );
       }

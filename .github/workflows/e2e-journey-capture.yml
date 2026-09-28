@@ -1,8 +1,9 @@
 name: E2E Journey Capture
 
 # On-demand instrumented e2e run that keeps raw per-test data for offline analysis:
-# frontend function counters, an ordered event stream, backend class hits from a JaCoCo agent,
+# frontend function and branch counters, an ordered event stream, backend class hits from a JaCoCo agent,
 # and optionally the code each test ran between steps.
+# Each shard's data is scrubbed of secrets and encrypted to the keys in e2e/journey-capture/age-recipients.txt before it is uploaded.
 # The artifact format is described in e2e/journey-capture/README.md.
 
 on:
@@ -50,6 +51,10 @@ on:
         description: "Also keep a raw JaCoCo .exec file per test (large, meant for small runs)"
         type: boolean
         default: false
+      upload:
+        description: "Upload the encrypted shard data, the cljs output and the OpenAPI table. Off still scrubs, verifies and encrypts"
+        type: boolean
+        default: true
 
 concurrency:
   group: e2e-journey-capture-${{ github.ref }}
@@ -57,7 +62,7 @@ concurrency:
 
 # Runs without dispatch inputs (a push trigger) use the smoke-test values after each `||`.
 env:
-  SCHEMA_VERSION: 1
+  SCHEMA_VERSION: 2
   JACOCO_VERSION: "0.8.15"
   JACOCO_AGENT_SHA256: "fb5b0036a0899ea97edfa0fc2c7985b55f3f7c5695028163e5e60d4f3cf6075d"
   JACOCO_PORT: 6300
@@ -73,7 +78,11 @@ env:
   KEEP_TEST_EXEC: ${{ (github.event_name != 'workflow_dispatch' || inputs.keep_test_exec) && 'true' || 'false' }}
   STEP_SNAPSHOTS: ${{ inputs.step_snapshots || 'assertions' }}
   COMPARE_STEP_SNAPSHOTS: ${{ (github.event_name != 'workflow_dispatch' || inputs.compare_step_snapshots) && 'true' || 'false' }}
-  RETENTION_DAYS: ${{ github.event_name == 'workflow_dispatch' && 30 || 7 }}
+  UPLOAD: ${{ (github.event_name == 'workflow_dispatch' && inputs.upload) && 'true' || 'false' }}
+  RETENTION_DAYS: 7
+  AGE_VERSION: "v1.3.2"
+  AGE_SHA256: "cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10"
+  AGE_RECIPIENTS: e2e/journey-capture/age-recipients.txt
 
 jobs:
   build-instrumented:
@@ -98,10 +107,10 @@ jobs:
         with:
           name: journey-capture-uberjar
           path: target/uberjar/metabase.jar
-          retention-days: 1
+          retention-days: ${{ env.RETENTION_DAYS }}
       # The release cljs output is minified, so cljs function positions only map back to source through these maps.
       - name: Upload cljs output and source maps
-        if: env.CLJS_COVERAGE == 'true'
+        if: env.CLJS_COVERAGE == 'true' && env.UPLOAD == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: journey-capture-cljs
@@ -113,6 +122,7 @@ jobs:
       - name: Generate OpenAPI route table
         run: bun run generate-openapi
       - name: Upload OpenAPI route table
+        if: env.UPLOAD == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: journey-capture-openapi
@@ -126,6 +136,19 @@ jobs:
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
     steps:
+      # A run that uploads stops here, before any shard runs, when there is no key to encrypt to.
+      - uses: actions/checkout@v6
+        if: env.UPLOAD == 'true'
+        with:
+          sparse-checkout: ${{ env.AGE_RECIPIENTS }}
+          sparse-checkout-cone-mode: false
+      - name: Check age recipients
+        if: env.UPLOAD == 'true'
+        run: |
+          if ! grep -Eq '^(age1[0-9a-z]+|ssh-(ed25519|rsa) )' "$AGE_RECIPIENTS"; then
+            echo "::error::$AGE_RECIPIENTS has no age recipient, so the capture can't be encrypted or uploaded"
+            exit 1
+          fi
       - id: gen
         run: |
           matrix=$(node -e "console.log(JSON.stringify({split_index:[...Array(Number(process.env.SHARDS)).keys()]}))")
@@ -171,6 +194,7 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
+          mocksaml: true
           postgres: true
           mysql: true
           mongo: true
@@ -349,6 +373,7 @@ jobs:
               effective: {spec: $spec, edition: $edition, grepTags: $grepTags, idleSeconds: $idleSeconds},
               capture: {
                 frontendFunctions: true,
+                frontendBranches: true,
                 cljsFunctions: $cljs,
                 events: true,
                 stepSnapshots: $stepSnapshots,
@@ -370,23 +395,69 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Prints per-shard counts, the step consistency check and the timing against the control pass.
+      # Writes per-shard counts, the step consistency check and the timing against the control pass.
+      # They reach the log and the step summary only after the scrub.
       - name: Summarize capture
         if: always()
         continue-on-error: true
+        run: node e2e/coverage/journey-capture.mjs "$JOURNEY_CAPTURE_DIR" --subtract > "$JOURNEY_CAPTURE_DIR/summary.txt"
+
+      # Only this step gets the secrets context, so no other process on the runner sees every secret.
+      - name: Scrub and verify shard capture
+        id: scrub
+        if: always()
+        shell: bash
+        env:
+          JOURNEY_SCRUB_SECRETS: ${{ toJSON(secrets) }}
         run: |
-          node e2e/coverage/journey-capture.mjs "$JOURNEY_CAPTURE_DIR" --subtract | tee "$JOURNEY_CAPTURE_DIR/summary.txt"
+          status=0
+          node e2e/coverage/journey-capture-scrub.mjs "$JOURNEY_CAPTURE_DIR" > "$RUNNER_TEMP/journey-capture-scrub.txt" || status=$?
           {
             echo '```'
-            cat "$JOURNEY_CAPTURE_DIR/summary.txt"
+            if [ "$status" -eq 0 ] && [ -f "$JOURNEY_CAPTURE_DIR/summary.txt" ]; then
+              cat "$JOURNEY_CAPTURE_DIR/summary.txt"
+              echo ""
+            fi
+            cat "$RUNNER_TEMP/journey-capture-scrub.txt"
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Encrypt shard capture
+        id: encrypt
+        if: always() && steps.scrub.outcome == 'success'
+        shell: bash
+        env:
+          SHARD_INDEX: ${{ matrix.split_index }}
+        run: |
+          if ! grep -Eq '^(age1[0-9a-z]+|ssh-(ed25519|rsa) )' "$AGE_RECIPIENTS"; then
+            echo "::error::$AGE_RECIPIENTS has no age recipient, so the capture can't be encrypted or uploaded"
+            exit 1
+          fi
+          curl -fsSL -o "$RUNNER_TEMP/age.tar.gz" \
+            "https://github.com/FiloSottile/age/releases/download/${AGE_VERSION}/age-${AGE_VERSION}-linux-amd64.tar.gz"
+          echo "${AGE_SHA256}  $RUNNER_TEMP/age.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/age.tar.gz" -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/journey-capture-encrypted"
+          encrypted="$RUNNER_TEMP/journey-capture-encrypted/journey-capture-shard-${SHARD_INDEX}.tar.gz.age"
+          tar -czf - -C "$JOURNEY_CAPTURE_DIR" . | "$RUNNER_TEMP/age/age" --encrypt -R "$AGE_RECIPIENTS" -o "$encrypted"
+          echo "Encrypted shard capture: $(stat -c %s "$encrypted") bytes" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload shard capture
-        if: always()
+        if: always() && steps.encrypt.outcome == 'success' && env.UPLOAD == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: journey-capture-shard-${{ matrix.split_index }}
-          path: e2e/journey-capture-raw/
+          path: ${{ runner.temp }}/journey-capture-encrypted/
           retention-days: ${{ env.RETENTION_DAYS }}
-          if-no-files-found: warn
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Report validation run
+        if: always() && env.UPLOAD != 'true'
+        env:
+          SCRUB: ${{ steps.scrub.outcome }}
+          ENCRYPT: ${{ steps.encrypt.outcome }}
+        run: |
+          if [ "$SCRUB" = success ] && [ "$ENCRYPT" = success ]; then result=pass; else result=FAIL; fi
+          echo "Validation run, nothing uploaded: $result (scrub and verify: $SCRUB, encryption: $ENCRYPT)" | tee -a "$GITHUB_STEP_SUMMARY"

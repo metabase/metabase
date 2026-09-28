@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-# Usage: e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>
+# Usage: JOURNEY_AGE_IDENTITY=<age identity file> e2e/coverage/journey/pipeline/fetch_journey.sh <run id> <run dir>
 # Downloads a journey-capture run's shard artifacts and its openapi.json into <run dir>.
+# Each shard artifact is decrypted with the identity into <run dir>/journey-capture-shard-<n>/.
 # Shards that are already there are skipped, so an interrupted download can be resumed.
 set -euo pipefail
 
 RUN_ID="${1:?run id}"
 RUN_DIR="${2:?run dir}"
 REPO_SLUG="${REPO_SLUG:-metabase/metabase}"
+if [ -z "${JOURNEY_AGE_IDENTITY:-}" ] || [ ! -f "$JOURNEY_AGE_IDENTITY" ]; then
+  echo "JOURNEY_AGE_IDENTITY must name the age identity file for a key in e2e/journey-capture/age-recipients.txt" >&2
+  exit 1
+fi
+if ! command -v age > /dev/null; then
+  echo "age is not installed: https://github.com/FiloSottile/age#installation" >&2
+  exit 1
+fi
 mkdir -p "$RUN_DIR"
 
 retry() {
@@ -24,8 +33,12 @@ for name in $names; do
     journey-capture-shard-*)
       dir="$RUN_DIR/$name"
       [ -f "$dir/meta.json" ] && continue
-      rm -rf "$dir"
-      retry gh run download "$RUN_ID" --repo "$REPO_SLUG" -n "$name" -D "$dir"
+      download="$RUN_DIR/.download-$name"
+      rm -rf "$dir" "$download"
+      retry gh run download "$RUN_ID" --repo "$REPO_SLUG" -n "$name" -D "$download"
+      mkdir -p "$dir"
+      age --decrypt -i "$JOURNEY_AGE_IDENTITY" "$download/$name.tar.gz.age" | tar -xzf - -C "$dir"
+      rm -rf "$download"
       ;;
     journey-capture-openapi)
       [ -f "$RUN_DIR/$name/openapi.json" ] || retry gh run download "$RUN_ID" --repo "$REPO_SLUG" -n "$name" -D "$RUN_DIR/$name"
