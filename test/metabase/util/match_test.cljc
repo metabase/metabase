@@ -38,7 +38,7 @@
     (t/is (= [41]
              ;; return just the dest IDs of Fields in a fk-> clause
              (match/match-many a-query
-               [:field dest-id {:source-field (_ :guard integer?)}] (inc dest-id))))
+               [:field dest-id {:source-field #'integer?}] (inc dest-id))))
     (t/is (= [10 20]
              (match/match-many (:breakout a-query) [:field id nil] id)))))
 
@@ -210,7 +210,7 @@
     (t/is (= {:fields [[:field 1 nil]
                        [:magical-field [:field 2 {:temporal-unit :day}]]
                        [:magical-field [:field 4 {:source-field 3, :temporal-unit :month}]]]}
-             (match/replace another-query [:field _ (_ :guard :temporal-unit)] [:magical-field &match])))))
+             (match/replace another-query [:field _ {:temporal-unit &truthy}] [:magical-field &match])))))
 
 (t/deftest ^:parallel replace-&parents-test
   (t/testing "can we use the anaphor `&parents` to look at the parents of the match?"
@@ -233,7 +233,7 @@
              (match/replace {:filter [:and
                                       [:= [:field 1 nil] 4000]
                                       [:= [:field 2 nil] 5000]]}
-               (_ :guard integer?)
+               #'integer?
                (when (= := (last &parents))
                  (float &match)))))))
 
@@ -245,7 +245,7 @@
                               [:field 1 {:temporal-unit :day}]
                               [:absolute-datetime #inst "2016-11-08T00:00:00.000-00:00" :day]]
                              [:= [:field 100 nil] 20]]
-               [_ [:field _ (_ :guard :temporal-unit)] & _] nil)))))
+               [_ [:field _ {:temporal-unit &truthy}] & _] nil)))))
 
 (t/deftest ^:parallel replace-short-circut-test
   (t/testing (str "can we use short-circuting patterns to do something tricky like only replace `:field-id` clauses that "
@@ -320,11 +320,11 @@
 
 (t/deftest ^:parallel match-one-and-syntax
   (t/is (= 10 (match/match-one [1 2 3]
-                (:and [a b c] (_ :guard vector?)) (* a 10))))
+                (:and [a b c] #'vector?) (* a 10))))
   (t/is (= nil (match/match-one [1 2 3]
-                 (:and [a b c] (_ :guard map?)) (* a 10))))
+                 (:and [a b c] #'map?) (* a 10))))
   (t/is (= nil (match/match-one [1 2 3]
-                 (:and [a b] (_ :guard vector?)) (* a 10))))
+                 (:and [a b] #'vector?) (* a 10))))
   (t/is (= 6 (match/match-one [1 2 3]
                (:and [a b c] (v :guard vector?)) (reduce * 1 v))))
   (t/testing "later patterns can refer to earlier bindings"
@@ -373,8 +373,8 @@
                 [(a :guard (odd? a))] a
                 [(b :guard (even? b))] (- b))))
   (t/is (= -2 (match/match-one [2]
-                [(_ :guard odd?)] 1
-                [(_ :guard even?)] -2)))
+                [#'odd?] 1
+                [#'even?] -2)))
   (t/is (= 2 (match/match-one [{:b 2}]
                [(_ :guard :a)] 1
                [(_ :guard :b)] 2)))
@@ -403,13 +403,13 @@
   (t/is (= [6 15] (match/match-many [[1 2 3] [4 5 6]]
                     [a b c] (+ a b c))))
   (t/is (= [1 2 3 4 5 6] (match/match-many [[1 2 3] [4 5 6]]
-                           (_ :guard number?) &match)))
+                           #'number? &match)))
   (t/is (= [100] (match/match-many [[1 2 3] [4 5 6]]
-                   (_ :guard keyword?) &match
+                   #'keyword? &match
                    _ 100)))
   (t/testing "absent of matches returns nil"
     (t/is (= nil (match/match-many [[1 2 3] [4 5 6]]
-                   (_ :guard keyword?) &match))))
+                   #'keyword? &match))))
   (t/testing "nils aren't recorded into the result"
     (t/is (= [15] (match/match-many [[1 2 3] [4 5 6]]
                     [a b c] (when (> a 1)

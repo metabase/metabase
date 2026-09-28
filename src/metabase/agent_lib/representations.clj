@@ -141,22 +141,20 @@
 (defn- table-fk?
   "Portable table FK: [db-name, schema-or-null, table-name]."
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (s :guard (or (nil? s) (string? s))) (_ :guard non-blank-string?)]))
+  (match/matches? x [#'non-blank-string? (s :guard (or (nil? s) (string? s))) #'non-blank-string?]))
 
 (defn- field-fk?
   "Portable field FK: [db-name, schema-or-null, table-name, field-name, ...json-path-segments]."
   [x]
   (match/matches? x
-                  [(_ :guard non-blank-string?)
+                  [#'non-blank-string?
                    (s :guard (or (nil? s) (string? s)))
-                   (_ :guard non-blank-string?)
+                   #'non-blank-string?
                    & (args :guard (every? non-blank-string? args))]))
 
 (defn- clause-shape?
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (_ :guard map?) & _]))
+  (match/matches? x [#'non-blank-string? #'map? & _]))
 
 (defn- numeric-id-when-allowed?
   "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at

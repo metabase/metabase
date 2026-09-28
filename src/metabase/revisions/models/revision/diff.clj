@@ -21,7 +21,7 @@
     [:description nil _]
     (deferred-tru "added a description")
 
-    [:description (_ :guard some?) _]
+    [:description #'some? _]
     (deferred-tru "changed the description")
 
     [:document _ _]
@@ -96,7 +96,7 @@
     (deferred-tru "modified the query")
 
     ;; report_card.type
-    [:type (_ :guard #{:question "question"}) (_ :guard #{:model "model"})]
+    [:type #{:question "question"} #{:model "model"}]
     (deferred-tru "turned this to a model")
 
     [:type old new]
