@@ -99,6 +99,10 @@
   }
 }
 
+.supportButton {
+  flex-shrink: 0;
+}
+
 .video {
   aspect-ratio: 16 / 9;
   border: 1px solid var(--mb-color-border-neutral);

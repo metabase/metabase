@@ -137,6 +137,7 @@ export const Onboarding = () => {
                   <Text>{t`Reach out to engineers who can help with technical troubleshooting. Not your typical support agents.`}</Text>
                 </Stack>
                 <Button
+                  className={S.supportButton}
                   component={ExternalLink}
                   href={helpLink.href}
                   variant="filled"
