@@ -18,6 +18,7 @@ export function MetricHistoryPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
 }: MetricPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -31,6 +32,7 @@ export function MetricHistoryPage({
             renderBreadcrumbs={renderBreadcrumbs}
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
+            isInlineEditable={isInlineEditable}
           />
           <Card withBorder shadow="none" p="lg" flex={1} className={S.card}>
             <Box maw={800} pt="lg" px="lg">

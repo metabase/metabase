@@ -15,6 +15,7 @@ export function MetricDimensionsPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
 }: MetricPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -28,6 +29,7 @@ export function MetricDimensionsPage({
             renderBreadcrumbs={renderBreadcrumbs}
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
+            isInlineEditable={isInlineEditable}
           />
           <MetricDimensions metricId={card.id} queryMetadata={metadata} />
         </PageContainer>

@@ -31,6 +31,7 @@ export function MetricQueryPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
 }: MetricPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -43,6 +44,7 @@ export function MetricQueryPage({
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
           showDataStudioLink={showDataStudioLink}
+          isInlineEditable={isInlineEditable}
         />
       )}
     </MetricPageCard>
@@ -60,6 +62,7 @@ function MetricQueryPageBody({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink,
+  isInlineEditable,
 }: MetricQueryPageBodyProps) {
   const cardQuestion = useQuestionFromCard(card);
   const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
@@ -136,6 +139,7 @@ function MetricQueryPageBody({
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
           showDataStudioLink={showDataStudioLink}
+          isInlineEditable={isInlineEditable}
           actions={
             <PaneHeaderActions
               errorMessage={validationResult.errorMessage}

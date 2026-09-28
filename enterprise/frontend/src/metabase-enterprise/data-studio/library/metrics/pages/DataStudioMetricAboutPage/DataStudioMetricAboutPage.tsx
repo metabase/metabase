@@ -9,7 +9,9 @@ export function DataStudioMetricAboutPage() {
       urls={dataStudioMetricUrls}
       showAppSwitcher
       showDataStudioLink={false}
+      isInlineEditable
       showManagementPanels
+      titleSize="h3"
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}
     />
   );

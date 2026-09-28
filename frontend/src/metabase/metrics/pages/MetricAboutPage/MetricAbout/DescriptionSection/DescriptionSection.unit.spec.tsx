@@ -43,6 +43,7 @@ type SetupOpts = {
   role?: "admin" | "analyst" | "consumer";
   dependenciesCount?: number;
   dependentsCount?: number;
+  isInlineEditable?: boolean;
 };
 
 function setup({
@@ -50,6 +51,7 @@ function setup({
   role = "consumer",
   dependenciesCount = 0,
   dependentsCount = 0,
+  isInlineEditable = false,
 }: SetupOpts = {}) {
   setupDependencyGraphEndpoint(
     createMockDependencyGraph({
@@ -104,7 +106,16 @@ function setup({
   setupEnterprisePlugins();
 
   renderWithProviders(
-    <Route path="/" element={<DescriptionSection card={card} urls={URLS} />} />,
+    <Route
+      path="/"
+      element={
+        <DescriptionSection
+          card={card}
+          urls={URLS}
+          isInlineEditable={isInlineEditable}
+        />
+      }
+    />,
     {
       storeInitialState: state,
       withRouter: true,
@@ -123,13 +134,22 @@ describe("DescriptionSection", () => {
     );
   });
 
-  it("renders EditableText when the user can write", async () => {
-    setup({ card: { can_write: true } });
+  it("renders EditableText when inline editing is on and the user can write", async () => {
+    setup({ card: { can_write: true }, isInlineEditable: true });
     expect(await screen.findByTestId("editable-text")).toBeInTheDocument();
   });
 
+  it("renders read-only Markdown when inline editing is off, even if the user can write", () => {
+    setup({ card: { can_write: true, description: "Read me" } });
+    expect(screen.queryByTestId("editable-text")).not.toBeInTheDocument();
+    expect(screen.getByText("Read me")).toBeInTheDocument();
+  });
+
   it("renders read-only Markdown when the user cannot write", () => {
-    setup({ card: { can_write: false, description: "Read me" } });
+    setup({
+      card: { can_write: false, description: "Read me" },
+      isInlineEditable: true,
+    });
     expect(screen.queryByTestId("editable-text")).not.toBeInTheDocument();
     expect(screen.getByText("Read me")).toBeInTheDocument();
   });

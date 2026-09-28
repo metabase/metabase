@@ -22,6 +22,7 @@ export function MetricOverviewPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
 }: MetricPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -34,6 +35,7 @@ export function MetricOverviewPage({
           renderBreadcrumbs={renderBreadcrumbs}
           showAppSwitcher={showAppSwitcher}
           showDataStudioLink={showDataStudioLink}
+          isInlineEditable={isInlineEditable}
         />
       )}
     </MetricPageCard>
@@ -51,6 +53,7 @@ function MetricOverviewPageBody({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink,
+  isInlineEditable,
 }: MetricOverviewPageBodyProps) {
   const navigate = useNavigate();
   const { data: metric, isLoading: isMetricLoading } = useGetMetricQuery(
@@ -85,6 +88,7 @@ function MetricOverviewPageBody({
         renderBreadcrumbs={renderBreadcrumbs}
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
+        isInlineEditable={isInlineEditable}
       />
       <MetricDimensionGrid metricId={card.id} dimensions={dimensions} />
     </PageContainer>

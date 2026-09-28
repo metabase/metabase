@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { PaneHeaderTitleSize } from "metabase/common/data-studio/components/PaneHeader";
 import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
@@ -20,6 +21,8 @@ interface MetricPageShellProps {
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
   showDataStudioLink?: boolean;
+  titleSize?: PaneHeaderTitleSize;
+  isInlineEditable?: boolean;
 }
 
 export function MetricPageShell({
@@ -29,6 +32,8 @@ export function MetricPageShell({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  titleSize,
+  isInlineEditable = false,
 }: MetricPageShellProps) {
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
@@ -80,6 +85,8 @@ export function MetricPageShell({
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
         breadcrumbs={renderBreadcrumbs?.(card)}
+        titleSize={titleSize}
+        isInlineEditable={isInlineEditable}
       />
     </>
   );

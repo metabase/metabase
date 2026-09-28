@@ -16,8 +16,8 @@ export const getPageCollection = (state: State) => {
   return state.app.pageCollection;
 };
 
-export const getPageBackground = (state: State) => {
-  return state.app.pageBackground;
+export const getPageFrame = (state: State) => {
+  return state.app.pageFrame;
 };
 
 export const getNavSectionOverride = (state: State) => {

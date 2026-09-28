@@ -28,4 +28,6 @@ export interface MetricPageProps {
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
   showDataStudioLink?: boolean;
+  /** Inline title and description editing, for Data Studio. The main app is read-only. */
+  isInlineEditable?: boolean;
 }

@@ -27,9 +27,14 @@ import type { Card as CardApiType, CardType } from "metabase-types/api";
 interface DescriptionSectionProps {
   card: CardApiType;
   urls: MetricUrls;
+  isInlineEditable: boolean;
 }
 
-export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
+export function DescriptionSection({
+  card,
+  urls,
+  isInlineEditable,
+}: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -94,7 +99,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         </Text>
       </Tooltip>
       <Box mt="lg" data-testid="metric-description-section">
-        {card.can_write ? (
+        {isInlineEditable && card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
             placeholder={t`No description`}
@@ -105,7 +110,21 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
             px={0}
           />
         ) : (
-          <Markdown>{card.description || t`No description`}</Markdown>
+          // Mirrors EditableText's resting box (padding, transparent border, line height,
+          // placeholder color) so the read-only text sits exactly where the editable one did.
+          <Box
+            py="xxs"
+            bd="1px solid transparent"
+            lh={1.57}
+            c={card.description ? "text-primary" : "text-disabled"}
+            style={{ overflowWrap: "break-word" }}
+          >
+            {card.description ? (
+              <Markdown>{card.description}</Markdown>
+            ) : (
+              t`No description`
+            )}
+          </Box>
         )}
       </Box>
 

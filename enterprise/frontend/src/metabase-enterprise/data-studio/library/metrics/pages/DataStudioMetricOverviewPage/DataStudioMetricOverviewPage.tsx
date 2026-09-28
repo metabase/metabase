@@ -9,6 +9,7 @@ export function DataStudioMetricOverviewPage() {
       urls={dataStudioMetricUrls}
       showAppSwitcher
       showDataStudioLink={false}
+      isInlineEditable
       renderBreadcrumbs={(card) => <DataStudioMetricBreadcrumbs card={card} />}
     />
   );

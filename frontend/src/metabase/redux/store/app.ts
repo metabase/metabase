@@ -52,15 +52,21 @@ export interface PageCollection {
 }
 
 /**
- * Which page background the current page paints, so the app header above it can
- * match instead of cutting a lighter strip across the top.
+ * How the current page frames its content, so the app header above it can match:
+ * the same background (instead of a lighter strip across the top) and the same
+ * horizontal gutter (so the breadcrumbs line up with the page's edges).
  */
-export type PageBackground = "primary" | "secondary";
+export interface PageFrame {
+  background: "primary" | "secondary";
+  /** Horizontal padding, as a Mantine spacing value or CSS length. */
+  gutter: string;
+}
 
 export interface AppState {
   /** `null` when no page has claimed a collection. */
   pageCollection: PageCollection | null;
-  pageBackground: PageBackground;
+  /** `null` when the page uses the default frame. */
+  pageFrame: PageFrame | null;
   errorPage: AppErrorDescriptor | null;
   navSection: NavSection | null;
   /** The section of whatever is currently open, used when the user has not chosen one. */

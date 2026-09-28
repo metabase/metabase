@@ -2,7 +2,7 @@ import type { AppState } from "metabase/redux/store";
 
 export const createMockAppState = (opts?: Partial<AppState>): AppState => ({
   pageCollection: null,
-  pageBackground: "primary",
+  pageFrame: null,
   navSection: null,
   navSectionSeed: null,
   openNavItems: [],

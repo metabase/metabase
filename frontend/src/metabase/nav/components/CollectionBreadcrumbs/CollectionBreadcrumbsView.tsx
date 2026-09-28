@@ -31,6 +31,7 @@ type CollectionBreadcrumbsViewProps = {
   path: BreadcrumbCrumb[];
   /** Pinned after the path, and never collapsed away. */
   terminal?: BreadcrumbCrumb;
+  showIcons?: boolean;
 };
 
 const BreadcrumbSeparator = () => (
@@ -50,30 +51,42 @@ const getCrumbKey = (crumb: BreadcrumbCrumb) =>
     ? `collection-${crumb.collection.id}`
     : `static-${crumb.key}`;
 
-const CrumbContent = ({ crumb }: { crumb: BreadcrumbCrumb }) =>
+const CrumbContent = ({
+  crumb,
+  showIcon,
+}: {
+  crumb: BreadcrumbCrumb;
+  showIcon: boolean;
+}) =>
   crumb.kind === "collection" ? (
     <CollectionBadge
       collectionId={crumb.collection.id}
       onClick={crumb.onClick}
+      showIcon={showIcon}
     />
   ) : (
-    <Breadcrumb icon={crumb.icon} to={crumb.to} onClick={crumb.onClick}>
+    <Breadcrumb
+      icon={showIcon ? crumb.icon : undefined}
+      to={crumb.to}
+      onClick={crumb.onClick}
+    >
       {crumb.label}
     </Breadcrumb>
   );
 
 type TrailItem = { key: string; node: ReactNode };
 
-const toTrailItem = (crumb: BreadcrumbCrumb): TrailItem => ({
-  key: getCrumbKey(crumb),
-  node: <CrumbContent crumb={crumb} />,
-});
-
 export const CollectionBreadcrumbsView = ({
   path,
   terminal,
+  showIcons = true,
 }: CollectionBreadcrumbsViewProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const toTrailItem = (crumb: BreadcrumbCrumb): TrailItem => ({
+    key: getCrumbKey(crumb),
+    node: <CrumbContent crumb={crumb} showIcon={showIcons} />,
+  });
 
   const isCollapsed = path.length > 2 && !isExpanded;
 

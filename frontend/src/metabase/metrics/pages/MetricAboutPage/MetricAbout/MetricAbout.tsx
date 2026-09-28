@@ -40,6 +40,8 @@ interface MetricAboutProps {
   urls: MetricUrls;
   /** Dimension management and revision history, shown only in Data Studio. */
   showManagementPanels?: boolean;
+  /** Inline description editing, for Data Studio. */
+  isInlineEditable?: boolean;
 }
 
 const GRAPH_PANEL_HEIGHT = 360;
@@ -49,6 +51,7 @@ export function MetricAbout({
   metadata,
   urls,
   showManagementPanels = false,
+  isInlineEditable = false,
 }: MetricAboutProps) {
   const [selectedDimensionId, setSelectedDimensionId] = useState<string | null>(
     null,
@@ -103,7 +106,15 @@ export function MetricAbout({
   const deltas = data && isTimeSeries ? getMetricDeltas(data) : null;
 
   return (
-    <DetailPageLayout rail={<DescriptionSection card={card} urls={urls} />}>
+    <DetailPageLayout
+      rail={
+        <DescriptionSection
+          card={card}
+          urls={urls}
+          isInlineEditable={isInlineEditable}
+        />
+      }
+    >
       <Card withBorder shadow="none" p={0}>
         <Stack gap={0} p="lg" pb={0}>
           {headline && (

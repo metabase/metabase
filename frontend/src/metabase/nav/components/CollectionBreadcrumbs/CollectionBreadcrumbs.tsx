@@ -15,6 +15,7 @@ export interface CollectionBreadcrumbsProps {
   dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
+  showIcons?: boolean;
 }
 
 export const CollectionBreadcrumbs = ({
@@ -22,6 +23,7 @@ export const CollectionBreadcrumbs = ({
   dashboard,
   onClick,
   baseCollectionId = null,
+  showIcons,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const tc = useTranslateContent();
 
@@ -32,6 +34,7 @@ export const CollectionBreadcrumbs = ({
   return (
     <CollectionBreadcrumbsView
       path={collectionToCrumbs({ collection, baseCollectionId, onClick })}
+      showIcons={showIcons}
       terminal={
         dashboard
           ? {

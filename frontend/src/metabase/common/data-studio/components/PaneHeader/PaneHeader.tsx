@@ -72,13 +72,19 @@ export const PaneHeader = ({
   );
 };
 
+export type PaneHeaderTitleSize = "h1" | "h3";
+
 type PaneHeaderTitleProps = {
   children?: ReactNode;
+  size?: PaneHeaderTitleSize;
 };
 
-export function PanelHeaderTitle({ children }: PaneHeaderTitleProps) {
+export function PanelHeaderTitle({
+  children,
+  size = "h3",
+}: PaneHeaderTitleProps) {
   return (
-    <Box fw="bold" fz="h3" lh="h3">
+    <Box fw="bold" fz={size} lh={size}>
       {children}
     </Box>
   );
@@ -90,6 +96,7 @@ type PaneHeaderInputProps = {
   maxLength?: number;
   isOptional?: boolean;
   readOnly?: boolean;
+  size?: PaneHeaderTitleSize;
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
@@ -102,6 +109,7 @@ export function PaneHeaderInput({
   "data-testid": dataTestId,
   isOptional,
   readOnly = false,
+  size = "h3",
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -112,8 +120,8 @@ export function PaneHeaderInput({
       maxLength={maxLength}
       p={0}
       fw="bold"
-      fz="h3"
-      lh="h3"
+      fz={size}
+      lh={size}
       px={isOptional ? "xxs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}

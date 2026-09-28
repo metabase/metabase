@@ -19,7 +19,7 @@ const DASHBOARD = createMockDashboard({
   collection_id: 3,
 });
 
-function setup() {
+function setup({ showIcons }: { showIcons?: boolean } = {}) {
   setupCollectionByIdEndpoint({ collections: [COLLECTION] });
 
   return renderWithProviders(
@@ -30,6 +30,7 @@ function setup() {
           baseCollectionId={null}
           collection={COLLECTION}
           dashboard={DASHBOARD}
+          showIcons={showIcons}
         />
       }
     />,
@@ -54,5 +55,21 @@ describe("CollectionBreadcrumbs", () => {
         (child) => child.tagName.toLowerCase() !== "style",
       ),
     ).toHaveLength(1);
+  });
+
+  it("renders crumb icons by default", async () => {
+    setup();
+
+    expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
+    expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
+    expect(screen.getByLabelText("dashboard icon")).toBeInTheDocument();
+  });
+
+  it("renders crumbs without icons when showIcons is false", async () => {
+    setup({ showIcons: false });
+
+    expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
+    expect(screen.getByText("Bar Dashboard")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/icon$/)).not.toBeInTheDocument();
   });
 });

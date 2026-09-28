@@ -10,8 +10,8 @@ import type {
 } from "metabase/nav/containers/MainNavbar/types";
 import { combineReducers, handleActions } from "metabase/redux";
 import type {
-  PageBackground,
   PageCollection,
+  PageFrame,
   TempStorage,
   TempStorageKey,
   TempStorageValue,
@@ -87,19 +87,18 @@ const pageCollection = handleActions<PageCollection | null>(
   null,
 );
 
-export const SET_PAGE_BACKGROUND = "metabase/app/SET_PAGE_BACKGROUND";
+export const SET_PAGE_FRAME = "metabase/app/SET_PAGE_FRAME";
 
-/** Published by `PageContainer`, which paints the secondary page background. */
-export const setPageBackground =
-  createAction<PageBackground>(SET_PAGE_BACKGROUND);
+/** Published by `PageContainer`; `null` restores the default frame. */
+export const setPageFrame = createAction<PageFrame | null>(SET_PAGE_FRAME);
 
-const pageBackground = handleActions<PageBackground>(
+const pageFrame = handleActions<PageFrame | null>(
   {
-    [SET_PAGE_BACKGROUND]: {
+    [SET_PAGE_FRAME]: {
       next: (_state, { payload }) => payload,
     },
   },
-  "primary",
+  null,
 );
 
 export const SET_NAV_SECTION = "metabase/app/SET_NAV_SECTION";
@@ -186,7 +185,7 @@ export const { setTempSetting } = tempStorageSlice.actions;
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   pageCollection,
-  pageBackground,
+  pageFrame,
   errorPage,
   navSection,
   navSectionSeed,

@@ -87,8 +87,7 @@ describe("scenarios > metrics > metric page", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should display scalar metric, edit name and description, explore link, and more menu actions", () => {
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  it("should display scalar metric with read-only name and description, explore link, and more menu actions", () => {
     cy.intercept("POST", "/api/card").as("createCard");
 
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
@@ -121,34 +120,25 @@ describe("scenarios > metrics > metric page", () => {
       .should("have.attr", "href")
       .and("include", "/explore");
 
-    cy.log("edit description");
-    H.MetricPage.aboutPageDescriptionSidebar().within(() => {
-      cy.findByText("Total number of orders").click();
+    cy.log("name and description are read-only in the main app");
+    H.MetricPage.aboutPage().within(() => {
+      cy.findByTestId("metric-header")
+        .findByText("Orders count")
+        .should("be.visible");
+      cy.findByDisplayValue("Orders count").should("not.exist");
     });
-    cy.focused().clear().type("Updated description").blur();
-    cy.wait("@updateCard");
     H.MetricPage.aboutPageDescriptionSidebar()
-      .findByText("Updated description")
-      .should("be.visible");
-
-    cy.log("edit name inline");
-    H.MetricPage.aboutPage()
-      .findByDisplayValue("Orders count")
-      .clear()
-      .type("Renamed metric{enter}");
-    cy.wait("@updateCard");
-    H.MetricPage.aboutPage()
-      .findByDisplayValue("Renamed metric")
-      .should("be.visible");
+      .findByTestId("editable-text")
+      .should("not.exist");
 
     cy.log("duplicate via more menu");
     H.MetricPage.moreMenu().click();
     H.popover().findByText("Duplicate").click();
     H.modal().within(() => {
       cy.findByLabelText("Name")
-        .should("have.value", "Renamed metric - Duplicate")
+        .should("have.value", "Orders count - Duplicate")
         .clear()
-        .type("Renamed metric copy");
+        .type("Orders count copy");
       cy.button("Duplicate").click();
     });
     cy.wait("@createCard");

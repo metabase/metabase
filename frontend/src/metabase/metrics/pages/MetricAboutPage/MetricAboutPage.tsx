@@ -1,4 +1,5 @@
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import type { PaneHeaderTitleSize } from "metabase/common/data-studio/components/PaneHeader";
 import type {
   MetricPageParams,
   MetricPageProps,
@@ -13,6 +14,7 @@ import { MetricAbout } from "./MetricAbout";
 
 interface MetricAboutPageProps extends MetricPageProps {
   showManagementPanels?: boolean;
+  titleSize?: PaneHeaderTitleSize;
 }
 
 export function MetricAboutPage({
@@ -20,7 +22,9 @@ export function MetricAboutPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
   showManagementPanels,
+  titleSize = "h1",
 }: MetricAboutPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -34,12 +38,15 @@ export function MetricAboutPage({
             renderBreadcrumbs={renderBreadcrumbs}
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
+            titleSize={titleSize}
+            isInlineEditable={isInlineEditable}
           />
           <MetricAbout
             card={card}
             metadata={metadata}
             urls={urls}
             showManagementPanels={showManagementPanels}
+            isInlineEditable={isInlineEditable}
           />
         </PageContainer>
       )}

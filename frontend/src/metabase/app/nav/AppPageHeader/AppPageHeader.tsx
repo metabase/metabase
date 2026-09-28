@@ -10,8 +10,8 @@ import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedIt
 import { getQuestion } from "metabase/query_builder";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
-import { getPageBackground } from "metabase/selectors/app";
-import { Box, Flex, Group } from "metabase/ui";
+import { getPageFrame } from "metabase/selectors/app";
+import { Box, Flex, Group, rem } from "metabase/ui";
 
 /**
  * The page's own header, in place of the old app bar: where you are on the left, and the two
@@ -24,7 +24,7 @@ export function AppPageHeader() {
     getIsCollectionPathVisible(state, { location }),
   );
   const breadcrumbCollectionId = useSelector(getCollectionId);
-  const pageBackground = useSelector(getPageBackground);
+  const pageFrame = useSelector(getPageFrame);
 
   const question = useSelector(getQuestion);
   const dashboardId = isQuestionPath(location.pathname)
@@ -40,10 +40,14 @@ export function AppPageHeader() {
       align="center"
       justify="space-between"
       gap="lg"
-      px="xl"
-      py="md"
+      px={pageFrame?.gutter ?? "xl"}
+      // Centers the row on the nav rail's Official/Unofficial switcher text: the
+      // rail's 8px top padding + the switcher's 8px padding + half its 38px height
+      // puts that text at 35px, and this row's 32px controls need 19px above them.
+      pt={rem(19)}
+      pb="md"
       wrap="nowrap"
-      bg={`background_page-${pageBackground}`}
+      bg={`background_page-${pageFrame?.background ?? "primary"}`}
       data-testid="app-page-header"
     >
       <Box miw={0} style={{ overflow: "hidden" }}>
@@ -51,6 +55,7 @@ export function AppPageHeader() {
           <CollectionBreadcrumbs
             dashboard={dashboardId != null ? dashboard : undefined}
             collectionId={breadcrumbCollectionId ?? undefined}
+            showIcons={false}
           />
         )}
       </Box>
