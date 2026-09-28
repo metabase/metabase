@@ -3719,7 +3719,9 @@
            warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/ConnectionImpersonation
                     :model/Permissions
+                    :model/Sandbox
                     :model/Table}}
 
   enterprise/data-studio

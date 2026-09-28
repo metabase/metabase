@@ -2,6 +2,7 @@ import type {
   AddDataAppGroupsRequest,
   DataApp,
   DataAppGroup,
+  DataAppGroupPermissionWarning,
   DataAppRepoStatus,
   RemoveDataAppGroupRequest,
   SetDataAppEnabledRequest,
@@ -42,6 +43,16 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
         url: "/api/apps/repo-status",
       }),
       providesTags: () => [REPO_STATUS_TAG],
+    }),
+    getDataAppGroupPermissionWarnings: builder.query<
+      DataAppGroupPermissionWarning[],
+      string
+    >({
+      query: (name) => ({
+        method: "GET",
+        url: `/api/apps/${encodeURIComponent(name)}/group-permission-warnings`,
+      }),
+      providesTags: (_, __, name) => [idTag("data-app", name)],
     }),
     getDataAppGroups: builder.query<DataAppGroup[], string>({
       query: (name) => ({
@@ -94,6 +105,7 @@ export const {
   useGetDataAppQuery,
   useGetDataAppRepoStatusQuery,
   useGetDataAppGroupsQuery,
+  useGetDataAppGroupPermissionWarningsQuery,
   useAddDataAppGroupsMutation,
   useRemoveDataAppGroupMutation,
   useSetDataAppEnabledMutation,
