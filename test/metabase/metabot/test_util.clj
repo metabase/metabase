@@ -209,3 +209,11 @@
   [xf-a xf-b events]
   (= (normalize-generated-ids (into [] xf-a events))
      (normalize-generated-ids (into [] xf-b events))))
+
+(defn stop-reason->finish-reason
+  "The Clojure translators' stop-reason lookup, which the parity tests' copies of them still call: unmapped reasons →
+  \"other\"; nil → nil. The translators themselves now use `AiSdkChunk.Finish/of`. Scaffolding: delete it with the
+  parity tests."
+  [stop-reasons raw]
+  (when raw
+    (get stop-reasons raw "other")))

@@ -179,7 +179,7 @@
                             ;; non-standard extension, not in AISDK5
                             :id    (:id response)
                             :model @model-name}
-                     raw (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons raw)
+                     raw (assoc :finish-reason     (metabot.tu/stop-reason->finish-reason stop-reasons raw)
                                 :raw-finish-reason raw))))
              ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
              ;; `response.error`, not in a top-level `error` event, so surface it explicitly.

@@ -118,7 +118,7 @@
                                       :usage (claude-usage->aisdk-usage @last-usage)
                                       :id    @message-id
                                       :model @model-name}
-                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                               @stop-reason (assoc :finish-reason     (metabot.tu/stop-reason->finish-reason stop-reasons @stop-reason)
                                                    :raw-finish-reason @stop-reason)))
            true          (rf)))
         ([result {t :type :keys [message content_block delta error index] :as chunk}]

@@ -215,7 +215,7 @@
                                                                             :id    @message-id
                                                                             :model @model-name}
                                                                      @stop-reason
-                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
+                                                                     (assoc :finish-reason     (metabot.tu/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))))))))))
 
 

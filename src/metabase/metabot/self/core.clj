@@ -24,7 +24,7 @@
   (:import
    (java.io BufferedReader Closeable InputStream)
    (java.util.concurrent Callable Executors ExecutorService)
-   (metabase.metabot.providers AiSdkChunk$FinishReason ChunkTranslator)))
+   (metabase.metabot.providers ChunkTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -331,17 +331,6 @@
          (rf (unreduced (u/reduce-preserving-reduced rf result (.finishClj translator)))))
         ([result event]
          (u/reduce-preserving-reduced rf result (.stepClj translator event)))))))
-
-(def finish-reasons
-  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
-  (into #{} (map #(.wire ^AiSdkChunk$FinishReason %)) (AiSdkChunk$FinishReason/values)))
-
-(defn stop-reason->finish-reason
-  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
-  Unmapped reasons → \"other\"; nil → nil."
-  [stop-reasons raw]
-  (when raw
-    (get stop-reasons raw "other")))
 
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.

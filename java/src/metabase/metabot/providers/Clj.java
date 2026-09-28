@@ -17,7 +17,7 @@ public final class Clj {
         return Keyword.intern(name);
     }
 
-    private static Object get(Map<?, ?> m, String key) {
+    public static Object get(Map<?, ?> m, String key) {
         return m == null ? null : m.get(kw(key));
     }
 
@@ -37,6 +37,12 @@ public final class Clj {
     /** A map's `:type`, or "" without one, so a parser can `switch` on it directly. */
     public static String type(Map<?, ?> m) {
         return str(m, "type") instanceof String t ? t : "";
+    }
+
+    /** Clojure truthiness: anything but nil and false. */
+    public static boolean truthy(Map<?, ?> m, String key) {
+        Object v = get(m, key);
+        return v != null && !Boolean.FALSE.equals(v);
     }
 
     public static long num(Map<?, ?> m, String key) {

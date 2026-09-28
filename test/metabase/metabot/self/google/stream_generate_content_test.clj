@@ -764,16 +764,17 @@
                 :raw-finish-reason "SAFETY"}]
               (into [] (comp (sgc/->aisdk-chunks-xf) (self.core/aisdk-xf)) events))))))
 
-(deftest ^:parallel stop-reasons-translate-to-aisdk-finish-reasons-test
-  (testing "every translation is one of the AI SDK v5 FinishReason values the client knows how to render"
-    (is (every? self.core/finish-reasons (vals @#'sgc/stop-reasons)))))
-
 (deftest ^:parallel finish-reasons-without-error-are-the-ones-the-client-renders-test
   (testing "STOP plus every reason translating to \"length\" or \"content-filter\" emits no error part"
-    (is (= #{"STOP" "MAX_TOKENS"
-             "BLOCKLIST" "ESCALATION" "IMAGE_PROHIBITED_CONTENT" "IMAGE_RECITATION" "IMAGE_SAFETY" "LANGUAGE"
-             "MODEL_ARMOR" "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"}
-           @#'sgc/finish-reasons-without-error))))
+    (let [emits-error? (fn [reason]
+                         (boolean (some #(= :error (:type %))
+                                        (into [] (sgc/->aisdk-chunks-xf) [{:candidates [{:finishReason reason}]}]))))]
+      (doseq [reason ["STOP" "MAX_TOKENS"
+                      "BLOCKLIST" "ESCALATION" "IMAGE_PROHIBITED_CONTENT" "IMAGE_RECITATION" "IMAGE_SAFETY" "LANGUAGE"
+                      "MODEL_ARMOR" "PROHIBITED_CONTENT" "RECITATION" "SAFETY" "SPII"]]
+        (is (not (emits-error? reason)) reason))
+      (doseq [reason ["OTHER" "FINISH_REASON_UNSPECIFIED" "MALFORMED_FUNCTION_CALL" "UNEXPECTED_TOOL_CALL" "BRAND_NEW"]]
+        (is (emits-error? reason) reason)))))
 
 (deftest ^:parallel malformed-function-call-finish-reason-test
   (testing "MALFORMED_FUNCTION_CALL arrives with no parts at all, so the error part is the only diagnostic"

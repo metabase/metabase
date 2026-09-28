@@ -18,8 +18,10 @@ public sealed interface Part {
         public AiSdkChunk end() { return new TextEnd(id); }
     }
 
-    record Tool(String id, String name) implements Part {
-        public AiSdkChunk start() { return new ToolInputStart(id, name); }
+    /** `metadata` rides the start, where replay reads it from; see {@link ToolInputStart}. */
+    record Tool(String id, String name, ProviderMetadata metadata) implements Part {
+        public Tool(String id, String name) { this(id, name, null); }
+        public AiSdkChunk start() { return new ToolInputStart(id, name, metadata); }
         public AiSdkChunk delta(String d) { return new ToolInputDelta(id, d); }
         public AiSdkChunk end() { return new ToolInputAvailable(id, name); }
     }

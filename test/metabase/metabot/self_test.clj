@@ -32,7 +32,9 @@
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [ring.adapter.jetty :as jetty]))
+   [ring.adapter.jetty :as jetty])
+  (:import
+   (metabase.metabot.providers AiSdkChunk$FinishReason)))
 
 (set! *warn-on-reflection* true)
 
@@ -948,7 +950,8 @@
       (is (=? {:type "finish" :finishReason "stop"}
               (last (sse-events [(usage-part "tool-calls" "tool_use")])))))
     (testing "an in-turn error outranks every non-length provider finish reason"
-      (doseq [finish-reason (disj self.core/finish-reasons "length" "error")]
+      (doseq [finish-reason (disj (into #{} (map #(.wire ^AiSdkChunk$FinishReason %)) (AiSdkChunk$FinishReason/values))
+                                  "length" "error")]
         (is (=? {:type "finish" :finishReason "error"}
                 (last (sse-events [error-part
                                    (usage-part finish-reason nil)]))))))))

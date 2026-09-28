@@ -27,7 +27,8 @@ public sealed interface AiSdkChunk {
     /** `metadata` is what the provider needs to see again next round-trip, when it sent any. */
     record ReasoningEnd(String id, ProviderMetadata metadata) implements AiSdkChunk {}
 
-    record ToolInputStart(String toolCallId, String toolName) implements AiSdkChunk {}
+    /** `metadata` is what the provider needs to see again when this call is replayed, when it sent any. */
+    record ToolInputStart(String toolCallId, String toolName, ProviderMetadata metadata) implements AiSdkChunk {}
     record ToolInputDelta(String toolCallId, String inputTextDelta) implements AiSdkChunk {}
     record ToolInputAvailable(String toolCallId, String toolName) implements AiSdkChunk {}
 
@@ -139,12 +140,9 @@ public sealed interface AiSdkChunk {
             case TextEnd(var id) -> mapOf("type", kw("text-end"), "id", id);
             case ReasoningStart(var id) -> mapOf("type", kw("reasoning-start"), "id", id);
             case ReasoningDelta(var id, var delta) -> mapOf("type", kw("reasoning-delta"), "id", id, "delta", delta);
-            case ReasoningEnd(var id, var metadata) -> {
-                IPersistentMap m = mapOf("type", kw("reasoning-end"), "id", id);
-                yield metadata == null ? m : m.assoc(kw("providerMetadata"), metadata.toClj());
-            }
-            case ToolInputStart(var callId, var name) ->
-                mapOf("type", kw("tool-input-start"), "toolCallId", callId, "toolName", name);
+            case ReasoningEnd(var id, var metadata) -> withMetadata(mapOf("type", kw("reasoning-end"), "id", id), metadata);
+            case ToolInputStart(var callId, var name, var metadata) ->
+                withMetadata(mapOf("type", kw("tool-input-start"), "toolCallId", callId, "toolName", name), metadata);
             case ToolInputDelta(var callId, var delta) ->
                 mapOf("type", kw("tool-input-delta"), "toolCallId", callId, "inputTextDelta", delta);
             case ToolInputAvailable(var callId, var name) ->
@@ -156,5 +154,9 @@ public sealed interface AiSdkChunk {
             }
             case Error(var text) -> mapOf("type", kw("error"), "errorText", text);
         };
+    }
+
+    private static IPersistentMap withMetadata(IPersistentMap chunk, ProviderMetadata metadata) {
+        return metadata == null ? chunk : chunk.assoc(kw("providerMetadata"), metadata.toClj());
     }
 }
