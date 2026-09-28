@@ -118,7 +118,9 @@ describe(
         // the app's group alone, and the source action, in the root collection,
         // through none of them.
         H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) => {
-          H.addUserToGroup(app.permission_group_id, USERS.nocollection.email);
+          H.assignDataAppTestGroup(app.name).then((groupId) => {
+            H.addUserToGroup(groupId, USERS.nocollection.email);
+          });
         });
 
         cy.signIn("nocollection");

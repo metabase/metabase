@@ -70,6 +70,15 @@ export const DataAppActionsMenu = ({ app, canRemove = false }: Props) => {
             {t`View resources`}
           </Menu.Item>
 
+          {
+            <Menu.Item
+              component={Link}
+              to={`/admin/settings/apps/${encodeURIComponent(app.name)}/groups`}
+            >
+              {t`Manage group access`}
+            </Menu.Item>
+          }
+
           <Menu.Item onClick={handleToggleEnabled}>
             {app.enabled ? t`Disable` : t`Re-enable`}
           </Menu.Item>

@@ -13,6 +13,7 @@ import type {
   Group,
   RemoteSyncTask,
   WritebackAction,
+  GroupInfo,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -47,7 +48,6 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
   bundle_path: "dist/index.js",
   enabled: true,
   resource_collection_id: 1,
-  permission_group_id: null,
   table_ids: [],
   allowed_hosts: [],
   bundle_hash: "e2e-bundle-hash",
@@ -728,6 +728,21 @@ export function buildDataAppHostApp() {
     failOnNonZeroExit: false,
     timeout: 180_000,
   });
+}
+
+/** Create and assign an ordinary group for an access-control test. */
+export function assignDataAppTestGroup(slug: string) {
+  cy.request<GroupInfo>("POST", "/api/permissions/group", {
+    name: `Test app readers: ${slug}`,
+  })
+    .its("body")
+    .as("dataAppTestGroup");
+
+  cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
+    cy.request("POST", `/api/apps/${slug}/groups`, { group_ids: [id] }),
+  );
+
+  return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
 }
 
 const DATA_APP_DEV_HOST_APP_DIR =

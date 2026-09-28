@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase.actions.core :as actions]
@@ -43,15 +44,19 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [permission_group_id]} (data-app.resources/ensure-resources! app)]
+              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)
+              permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))]
           (testing "a non-member cannot open a data app or load its bundle"
-            (is (= [{:name "demo" :display_name "Demo"}]
-                   (mt/user-http-request :rasta :get 200 "apps")))
+            (is (= [] (mt/user-http-request :rasta :get 200 "apps")))
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "apps/demo")))
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 "apps/demo/bundle"))))
+          (testing "collection access alone does not assign an app"
+            (perms/grant-collection-read-permissions! (perms/all-users-group) resource_collection_id)
+            (mt/user-http-request :rasta :get 403 "apps/demo"))
           (testing "a member can open a data app"
+            (group-access/add-groups! app [permission_group_id])
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
             (is (= {:name "demo" :display_name "Demo"}
                    (mt/user-http-request :rasta :get 200 "apps/demo")))
@@ -77,32 +82,11 @@
           (is (=? [{:name "demo" :display_name "Demo"}]
                   (mt/user-http-request :crowberto :get 200 "apps")))
           (is (=? {:name "demo"
-                   :resource_collection_id pos-int?
-                   :permission_group_id pos-int?}
+                   :resource_collection_id pos-int?}
                   (mt/user-http-request :crowberto :get 200 "apps/demo")))
           (is (str/includes?
                (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
                "BUNDLE")))))))
-
-(deftest deleting-a-data-app-removes-its-permission-group-test
-  (testing "removing a data app through the admin API — clearing out one left behind after its
-            repo was disconnected or a remote-sync branch switch — deletes its server-managed
-            permission group and resource collection along with the row"
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [permission_group_id resource_collection_id]}
-              (data-app.resources/ensure-resources! app)]
-          (is (t2/exists? :model/PermissionsGroup :id permission_group_id)
-              "precondition: the app has a permission group")
-          (mt/user-http-request :crowberto :delete 204 "apps/demo")
-          (is (not (t2/exists? :model/DataApp :id (:id app)))
-              "the app row is gone")
-          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))
-              "its permission group is removed too")
-          (is (not (t2/exists? :model/Collection :id resource_collection_id))
-              "and so is its resource collection"))))))
 
 (deftest read-only-remote-sync-blocks-data-app-changes-test
   (mt/with-premium-features #{:data-apps}
@@ -140,79 +124,24 @@
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
 
-(deftest deactivated-users-cannot-be-added-to-data-apps-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [{app-group-id :permission_group_id}
-            (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
-        (mt/with-temp [:model/User {user-id :id} {:email "deactivated-data-app-user@example.com"
-                                                  :is_active false}]
-          (is (= "Deactivated users cannot be added to data apps."
-                 (mt/user-http-request :crowberto :post 400 "permissions/membership"
-                                       {:group_id app-group-id :user_id user-id}))))))))
-
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
     (mt/user-http-request :crowberto :post 402 "apps/serialize-resources"
                           {:collection "goodAppCollection0000" :queries [] :actions []})))
 
-(deftest data-app-membership-additions-require-feature-token-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (create-app!)
-    (let [{group-id :permission_group_id}
-          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
-      (mt/with-premium-features #{}
-        (mt/user-http-request :crowberto :post 402 "permissions/membership"
-                              {:group_id group-id :user_id (mt/user->id :lucky)})
-        (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
-
-(deftest data-app-membership-removal-without-feature-token-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (create-app!)
-    (let [{group-id :permission_group_id}
-          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-          user-id (mt/user->id :rasta)]
-      (perms/add-user-to-group! user-id group-id)
-      (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership
-                                            :group_id group-id :user_id user-id)
-            endpoint (format "permissions/membership/%d" membership-id)]
-        (mt/with-premium-features #{}
-          (mt/user-http-request :rasta :delete 403 endpoint)
-          (is (t2/exists? :model/PermissionsGroupMembership :id membership-id))
-          ;; memberships and collection grants still remain after the token expires,
-          ;; so admins must still be able to remove a member without the feature token.
-          (mt/user-http-request :crowberto :delete 204 endpoint)
-          (is (not (t2/exists? :model/PermissionsGroupMembership :id membership-id))))))))
-
-(deftest data-app-membership-clearing-without-feature-token-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (create-app!)
-    (let [{group-id :permission_group_id}
-          (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
-          endpoint (format "permissions/membership/%d/clear" group-id)]
-      (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-      (perms/add-user-to-group! (mt/user->id :lucky) group-id)
-      (mt/with-premium-features #{}
-        (mt/user-http-request :rasta :put 403 endpoint)
-        (is (= 2 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
-        ;; memberships and collection grants still remain after the token expires,
-        ;; so admins must still be able to remove all members without the feature token.
-        (mt/user-http-request :crowberto :put 204 endpoint)
-        (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
 
 (deftest data-app-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (mt/with-non-admin-groups-no-root-collection-perms
-          ;; Its own slug: the `Data App: <slug>` group outlives other tests in
-          ;; this namespace, so sharing "demo" collides on the group name.
-          (let [{:keys [permission_group_id resource_collection_id]}
+          (let [{:keys [resource_collection_id] :as app}
                 (first (t2/insert-returning-instances! :model/DataApp
                                                        {:name         "action-perms-app"
                                                         :display_name "Action perms app"
-                                                        :bundle_path  "data_apps/action-perms-app/index.js"}))]
+                                                        :bundle_path  "data_apps/action-perms-app/index.js"}))
+                permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Action readers"}))
+                _ (group-access/add-groups! app [permission_group_id])]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
             ;; an action on no model lives in a data actions collection, as a data app runs them
             (mt/with-temp [:model/Collection {source-collection-id :id} {:namespace :data-actions}]
@@ -240,7 +169,7 @@
       (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
                   :enabled false)
       (is (=? [{:name "ready" :display_name "Ready"}]
-              (mt/user-http-request :rasta :get 200 "apps?available=true"))))))
+              (mt/user-http-request :crowberto :get 200 "apps?available=true"))))))
 
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
@@ -250,10 +179,12 @@
                     :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "abc123" :version 1)
         (t2/insert! :model/DataApp :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
                     :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "def456" :version 2)
-        (doseq [slug ["old" "current"]
-                :let [{:keys [permission_group_id]}
-                      (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name slug))]]
-          (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id))
+        (let [group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "App readers"}))]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (doseq [slug ["old" "current"]
+                  :let [app (t2/select-one :model/DataApp :name slug)]]
+            (data-app.resources/ensure-resources! app)
+            (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
             (doseq [url ["apps" "apps?available=true"]]
@@ -270,14 +201,14 @@
             (is (str/includes?
                  (str (mt/user-real-request :crowberto :get 200 "apps/current/bundle"))
                  "BUNDLE")))
-          (testing "an admin sees the outdated app flagged, and can still read it to manage its users"
+          (testing "an admin sees the outdated app flagged, and can still read it to manage its groups"
             (is (=? [{:name "current" :version 2 :outdated false}
                      {:name "old" :version 1 :outdated true}]
                     (mt/user-http-request :crowberto :get 200 "apps")))
             (is (=? [{:name "current"}]
                     (mt/user-http-request :crowberto :get 200 "apps?available=true"))
                 "but the navbar's available list leaves it out for admins too")
-            (is (=? {:name "old" :version 1 :outdated true :permission_group_id pos-int?}
+            (is (=? {:name "old" :version 1 :outdated true}
                     (mt/user-http-request :crowberto :get 200 "apps/old"))))
           (testing "nobody gets an outdated bundle"
             (is (=? {:error-code "data-app-outdated"}
@@ -352,8 +283,7 @@
                    :version                1
                    :enabled                true
                    :bundle_hash            string?
-                   :resource_collection_id pos-int?
-                   :permission_group_id    pos-int?}
+                   :resource_collection_id pos-int?}
                   (mt/user-http-request :crowberto :post 200 "apps"
                                         (assoc app-request :bundle_path "./dist/index.js"))))
           (is (str/includes? (str (mt/user-real-request :crowberto :get 200 "apps/demo/bundle"))
@@ -395,31 +325,19 @@
           (testing "updating a missing app 404s"
             (mt/user-http-request :crowberto :put 404 "apps/missing" {:enabled false})))))))
 
-(deftest delete-endpoint-test
-  (mt/test-helpers-set-global-values!
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (let [{:keys [resource_collection_id permission_group_id]}
-              (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))]
-          (mt/with-temp [:model/Card {card-id :id} {:collection_id resource_collection_id}
-                         :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
-                                                              :group_id permission_group_id}]
-            (testing "a non-superuser cannot remove an app"
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :delete 403 "apps/demo")))
-              (is (t2/exists? :model/DataApp :name "demo")))
-            ;; each data app owns a permission group and a collection
-            ;; containing saved questions and models
-            (testing "a superuser removes the app, its resources, and their contents"
-              (is (nil? (mt/user-http-request :crowberto :delete 204 "apps/demo")))
-              (is (not (t2/exists? :model/DataApp :name "demo")))
-              (is (not (t2/exists? :model/Collection :id resource_collection_id)))
-              (is (not (t2/exists? :model/Card :id card-id)))
-              (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id)))
-              (is (not (t2/exists? :model/PermissionsGroupMembership :group_id permission_group_id))))
-            (testing "removing a non-existent app 404s"
-              (mt/user-http-request :crowberto :delete 404 "apps/missing"))))))))
+(deftest delete-endpoint-preserves-assigned-groups-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (create-app!)
+      (mt/with-temp [:model/PermissionsGroup group {}]
+        (let [app (t2/select-one :model/DataApp :name "demo")
+              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+          (group-access/add-groups! app [(:id group)])
+          (mt/user-http-request :crowberto :delete 204 "apps/demo")
+          (is (not (t2/exists? :model/DataApp :id (:id app))))
+          (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+          (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+          (is (t2/exists? :model/PermissionsGroup :id (:id group))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 

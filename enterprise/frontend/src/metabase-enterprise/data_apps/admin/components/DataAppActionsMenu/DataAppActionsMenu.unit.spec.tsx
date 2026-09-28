@@ -43,17 +43,22 @@ const confirmRemove = async () =>
   );
 
 describe("DataAppActionsMenu", () => {
-  it("links to the app's resources above the enable action", async () => {
+  it("links to the app's resources and group above the enable action", async () => {
     setup();
 
     await openMenu();
 
     const menuItems = await screen.findAllByRole("menuitem");
 
-    expect(menuItems).toHaveLength(2);
+    expect(menuItems).toHaveLength(3);
     expect(menuItems[0]).toHaveTextContent("View resources");
     expect(menuItems[0]).toHaveAttribute("href", "/collection/9");
-    expect(menuItems[1]).toHaveTextContent("Disable");
+    expect(menuItems[1]).toHaveTextContent("Manage group access");
+    expect(menuItems[1]).toHaveAttribute(
+      "href",
+      "/admin/settings/apps/sales/groups",
+    );
+    expect(menuItems[2]).toHaveTextContent("Disable");
   });
 
   it("should show a toast when toggling enabled fails", async () => {

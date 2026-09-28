@@ -103,28 +103,24 @@ middleware's lookup doesn't pull in route code.
 
 ## Permissions
 
-Each app owns two server-managed resources, created with the app and reasserted on
-every import: a **collection** holding the copies the app is served from (saved questions, actions,
-table-sourced metrics) and a **permissions group** its users belong to. The collection is a root
-collection of the `data-apps` namespace, created as the app's row is inserted unless an import names
-one (`models/data_app.clj`), and can never be swapped for another; `resources.clj` keeps its name and
-permissions in step and brings it out of the trash. Deleting the app deletes both, and the
-collection's own hooks delete what it holds.
+Each app owns a resource collection, created with the app in the `data-apps` namespace. The collection
+is never swapped for another; `resources.clj` keeps its name and permissions in step and restores it from the trash.
+Administrators assign existing internal permission groups through `/api/apps/:slug/groups`. Assignments live in
+`data_app_group` and stay local to the instance. Repository sync preserves them while the app row exists.
 
-The group is set database-level `view-data :blocked` on every database, so it grants **no data
-access of its own** (which cascades `create-queries`/`download-results` to `:no`); every group but
-admins is revoked from the collection before the app group gets read access. Deleting an app deletes
-both resources and everything in the collection.
+Membership in any assigned group grants app access. Administrators can access every app. The list API hides
+unassigned apps from other users, and metadata, bundle, and HTML entry-point requests check the same assignment.
+Collection access alone does not grant app access. An authorized request for an app without a resource collection
+returns HTTP 409 so the frontend can show its unpublished state.
 
-**Viewing an app** requires read access to its resource collection. You have to be a member in
-the app's group or be an admin.
+Assignments grant read-only access to the resource collection. Sync restores these grants and removes collection
+access from unassigned groups. Assignment changes never change data permissions. Deleting an app deletes its
+collection and assignments, but preserves the assigned groups.
 
-**A viewer sees an app's data only through access they already hold.** The app group grants no
-view-data of its own, so a viewer without access to an app's tables (e.g. a sandboxed user) sees no
-data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
-nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
+**A viewer sees an app's data only through access they already hold.** Assignment changes never change
+View Data permissions; the viewer's other groups and sandboxes continue to determine data access.
 
-**Managing is superuser-only** — enabling, disabling, deleting, and repo status.
+**Managing is superuser-only** — assignments, enabling, disabling, deleting, and repo status.
 Exporting an app's resources also needs a superuser.
 
 ## Namespace map
@@ -136,7 +132,7 @@ Exporting an app's resources also needs a superuser.
 | `config.clj`          | The serialized layout and data app contract version constants.                                     |
 | `schema.clj`          | Column schemas, with the normalization and validation every write goes through.                     |
 | `api.clj`             | The `/api/apps` endpoints, bundle serving, ETag handling.                                           |
-| `resources.clj`       | Lifecycle of the app-owned collection and permission group: creation, view-data blocking, deletion. |
+| `resources.clj`       | Lifecycle of the app-owned collection and derived collection permissions. |
 | `models/data_app.clj` | The `:model/DataApp` Toucan model: hooks, permissions, default fields, serialization.               |
 | `resource_serialization.clj` | The serialization an app's resource files are written from: built queries, actions, metrics. |
 | `query_definition.clj`| The closed schema of a `defineQuery` definition the serialization accepts.                                 |
@@ -145,3 +141,5 @@ Exporting an app's resources also needs a superuser.
 | `db.clj`              | The module's application-database queries.                                                          |
 | `csp.clj`             | `allowed_hosts` lookup for the core CSP middleware.                                                 |
 | `init.clj`            | Loads the above so endpoints, models, and hooks register.                                           |
+
+`group_access.clj` manages assignments. `models/data_app_group.clj` defines the local association model.
