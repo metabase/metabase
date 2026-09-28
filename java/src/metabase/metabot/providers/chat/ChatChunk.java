@@ -7,6 +7,7 @@ import static metabase.metabot.providers.Clj.str;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
 import org.jspecify.annotations.Nullable;
@@ -35,7 +36,9 @@ public record ChatChunk(@Nullable String id,
     public sealed interface Content {
         record Text(String text) implements Content {}
         /** The opening delta of a tool call. Parallel calls are told apart by `id`, never by `index`. */
-        record ToolCallStart(String id, @Nullable String name, @Nullable String arguments) implements Content {}
+        record ToolCallStart(String id, String name, String arguments) implements Content {}
+        /** An opening delta missing what it needs, so not a call that can be started; `what` says which. */
+        record ToolCallMalformed(String what) implements Content {}
         /** A later delta of the open tool call; `arguments` may be absent. */
         record ToolCallArguments(@Nullable String arguments) implements Content {}
         record Reasoning(String text) implements Content {}
@@ -63,9 +66,14 @@ public record ChatChunk(@Nullable String id,
         if (toolCall != null) {
             Map<?, ?> function = map(toolCall, "function");
             String id = str(toolCall, "id");
-            return id != null
-                ? new Content.ToolCallStart(id, str(function, "name"), str(function, "arguments"))
-                : new Content.ToolCallArguments(str(function, "arguments"));
+            String arguments = str(function, "arguments");
+            if (id == null) {
+                return new Content.ToolCallArguments(arguments);
+            }
+            String name = str(function, "name");
+            return name != null
+                ? new Content.ToolCallStart(id, name, Objects.requireNonNullElse(arguments, ""))
+                : new Content.ToolCallMalformed("tool call without a name");
         }
         String reasoning = reasoning(delta);
         return reasoning != null ? new Content.Reasoning(reasoning) : new Content.None();

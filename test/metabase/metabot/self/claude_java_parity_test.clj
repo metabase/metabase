@@ -8,7 +8,8 @@
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.test-util :as metabot.tu]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log.capture :as log.capture]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,12 +217,10 @@
             {:type "content_block_stop" :index 0}
             {:type "message_delta" :delta {:stop_reason "end_turn"} :usage {:output_tokens 7}}
             {:type "message_stop"}]
-           "redacted thinking, with and without data"
+           "redacted thinking"
            [message-start
             {:type "content_block_start" :index 0 :content_block {:type "redacted_thinking" :data "opaque"}}
-            {:type "content_block_stop" :index 0}
-            {:type "content_block_start" :index 1 :content_block {:type "redacted_thinking"}}
-            {:type "content_block_stop" :index 1}]
+            {:type "content_block_stop" :index 0}]
            "interrupted: open block and message_start usage are flushed"
            [message-start
             {:type "content_block_start" :index 0 :content_block {:type "text" :text ""}}
@@ -259,8 +258,8 @@
               (for [t thoughts] {:type "content_block_delta" :index index :delta {:type "thinking_delta" :thinking t}})
               (for [s sigs] {:type "content_block_delta" :index index :delta {:type "signature_delta" :signature s}})
               [{:type "content_block_stop" :index index}]))
-    (gen/let [data (gen/one-of [(gen/return nil) gen/string-alphanumeric])]
-      [{:type "content_block_start" :index index :content_block (cond-> {:type "redacted_thinking"} data (assoc :data data))}
+    (gen/let [data gen/string-alphanumeric]
+      [{:type "content_block_start" :index index :content_block {:type "redacted_thinking" :data data}}
        {:type "content_block_stop" :index index}])]))
 
 (def ^:private gen-stream
@@ -309,3 +308,34 @@
              (mapv :type (into [] (legacy-xf) events))))
       (is (= [:text-start :text-end :tool-input-start :tool-input-available]
              (mapv :type (into [] (claude/claude->aisdk-chunks-xf) events)))))))
+
+(deftest ^:parallel events-missing-what-they-need-are-not-translated-test
+  (testing "a block or delta without its content is dropped, rather than streamed with nils in it"
+    (let [events [message-start
+                  {:type "content_block_start" :index 0 :content_block {:type "redacted_thinking"}}
+                  {:type "content_block_stop" :index 0}
+                  {:type "content_block_start" :index 1 :content_block {:type "tool_use" :id "t"}}
+                  {:type "content_block_stop" :index 1}
+                  {:type "content_block_start" :index 2 :content_block {:type "text"}}
+                  {:type "content_block_delta" :index 2 :delta {:type "text_delta"}}
+                  {:type "content_block_stop" :index 2}]]
+      (is (=? [{:type :start}
+               {:type :reasoning-start} {:type :reasoning-end :providerMetadata {:anthropic {:redactedData nil}}}
+               {:type :tool-input-start :toolName nil} {:type :tool-input-available :toolName nil}
+               {:type :text-start} {:type :text-delta :delta nil} {:type :text-end}
+               {:type :usage}]
+              (into [] (legacy-xf) events)))
+      (is (= [:start :text-start :text-end :usage]
+             (mapv :type (into [] (claude/claude->aisdk-chunks-xf) events)))))))
+
+(deftest malformed-events-are-logged-test
+  (testing "an event dropped for missing what it needs is reported, not dropped silently"
+    (let [messages (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+                     (is (= [:start :usage]
+                            (mapv :type (into [] (claude/claude->aisdk-chunks-xf)
+                                              [message-start
+                                               {:type "content_block_start" :index 0
+                                                :content_block {:type "tool_use" :id "t"}}]))))
+                     (messages))]
+      (is (=? [{:level :warn :message #"(?s).*malformed event.*tool_use block without a name.*"}]
+              messages)))))

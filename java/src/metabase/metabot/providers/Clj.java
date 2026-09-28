@@ -7,6 +7,8 @@ import clojure.lang.PersistentArrayMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -65,8 +67,12 @@ public final class Clj {
         return get(m, key) instanceof Number v ? v.longValue() : 0L;
     }
 
-    public static @Nullable Long optNum(@Nullable Map<?, ?> m, String key) {
-        return get(m, key) instanceof Number v ? v.longValue() : null;
+    /**
+     * `ifPresent` of `value` when there is one, else `ifAbsent`: how a parser turns a value the wire may omit into a
+     * variant that has it, or one that says it is missing.
+     */
+    public static <T, R> R present(@Nullable T value, Function<T, R> ifPresent, Supplier<R> ifAbsent) {
+        return value != null ? ifPresent.apply(value) : ifAbsent.get();
     }
 
     /**

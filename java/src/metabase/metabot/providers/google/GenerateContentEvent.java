@@ -7,10 +7,12 @@ import static metabase.metabot.providers.Clj.num;
 import static metabase.metabot.providers.Clj.str;
 import static metabase.metabot.providers.Clj.truthy;
 
+import clojure.lang.PersistentArrayMap;
 import clojure.lang.RT;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import metabase.metabot.providers.AiSdkChunk.TokenUsage;
 import org.jspecify.annotations.Nullable;
 
@@ -37,13 +39,15 @@ public record GenerateContentEvent(@Nullable String responseId,
          * Arrives with complete `args`, which stay Clojure data until they are encoded. `thoughtSignature`, which
          * Gemini 3.x adds, must go back to Google when the call is replayed.
          */
-        record FunctionCall(@Nullable String name, @Nullable Object args, @Nullable String thoughtSignature) implements GeminiPart {}
+        record FunctionCall(String name, Object args, @Nullable String thoughtSignature) implements GeminiPart {}
         /** A thought summary; `text` may be empty. */
         record Thought(String text) implements GeminiPart {}
         /** `text` may be empty. A `thoughtSignature` here is optional to replay, so it is dropped. */
         record Text(String text) implements GeminiPart {}
         /** Anything else, including a thought with no text, which emits nothing. */
         record Other() implements GeminiPart {}
+        /** A part missing what it needs; `what` says which. */
+        record Malformed(String what) implements GeminiPart {}
     }
 
     public static GenerateContentEvent parse(Map<?, ?> event) {
@@ -72,7 +76,12 @@ public record GenerateContentEvent(@Nullable String responseId,
     private static GeminiPart parsePart(Map<?, ?> part) {
         Map<?, ?> call = map(part, "functionCall");
         if (call != null) {
-            return new GeminiPart.FunctionCall(str(call, "name"), get(call, "args"), str(part, "thoughtSignature"));
+            // a call without a name cannot be answered, so it is not one; one without args takes none
+            String name = str(call, "name");
+            Object args = get(call, "args");
+            return name == null ? new GeminiPart.Malformed("functionCall part without a name")
+                : new GeminiPart.FunctionCall(name, Objects.requireNonNullElse(args, PersistentArrayMap.EMPTY),
+                                              str(part, "thoughtSignature"));
         }
         String text = str(part, "text");
         if (text == null) {

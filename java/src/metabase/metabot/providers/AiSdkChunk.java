@@ -22,19 +22,18 @@ public sealed interface AiSdkChunk {
     record Start(@Nullable String messageId) implements AiSdkChunk {}
 
     record TextStart(String id) implements AiSdkChunk {}
-    record TextDelta(String id, @Nullable String delta) implements AiSdkChunk {}
+    record TextDelta(String id, String delta) implements AiSdkChunk {}
     record TextEnd(String id) implements AiSdkChunk {}
 
     record ReasoningStart(String id) implements AiSdkChunk {}
-    record ReasoningDelta(String id, @Nullable String delta) implements AiSdkChunk {}
+    record ReasoningDelta(String id, String delta) implements AiSdkChunk {}
     /** `metadata` is what the provider needs to see again next round-trip, when it sent any. */
     record ReasoningEnd(String id, @Nullable ProviderMetadata metadata) implements AiSdkChunk {}
 
     /** `metadata` is what the provider needs to see again when this call is replayed, when it sent any. */
-    record ToolInputStart(@Nullable String toolCallId, @Nullable String toolName, @Nullable ProviderMetadata metadata)
-        implements AiSdkChunk {}
-    record ToolInputDelta(@Nullable String toolCallId, @Nullable String inputTextDelta) implements AiSdkChunk {}
-    record ToolInputAvailable(@Nullable String toolCallId, @Nullable String toolName) implements AiSdkChunk {}
+    record ToolInputStart(String toolCallId, String toolName, @Nullable ProviderMetadata metadata) implements AiSdkChunk {}
+    record ToolInputDelta(String toolCallId, String inputTextDelta) implements AiSdkChunk {}
+    record ToolInputAvailable(String toolCallId, String toolName) implements AiSdkChunk {}
 
     /** Non-standard: AI SDK v5 has no usage chunk. `finish` is null for a response that completed normally. */
     record Usage(@Nullable String responseId, @Nullable String model, TokenUsage usage, @Nullable Finish finish)
@@ -151,25 +150,29 @@ public sealed interface AiSdkChunk {
 
     static IPersistentMap toClj(AiSdkChunk chunk) {
         return switch (chunk) {
-            case Start(var messageId) -> mapOf("type", kw("start"), "messageId", messageId);
+            case Start start -> mapOf("type", kw("start"), "messageId", start.messageId());
             case TextStart(var id) -> mapOf("type", kw("text-start"), "id", id);
             case TextDelta(var id, var delta) -> mapOf("type", kw("text-delta"), "id", id, "delta", delta);
             case TextEnd(var id) -> mapOf("type", kw("text-end"), "id", id);
             case ReasoningStart(var id) -> mapOf("type", kw("reasoning-start"), "id", id);
             case ReasoningDelta(var id, var delta) -> mapOf("type", kw("reasoning-delta"), "id", id, "delta", delta);
-            case ReasoningEnd(var id, var metadata) -> withMetadata(mapOf("type", kw("reasoning-end"), "id", id), metadata);
-            case ToolInputStart(var callId, var name, var metadata) ->
-                withMetadata(mapOf("type", kw("tool-input-start"), "toolCallId", callId, "toolName", name), metadata);
+            case ReasoningEnd end -> withMetadata(mapOf("type", kw("reasoning-end"), "id", end.id()), end.metadata());
+            case ToolInputStart start ->
+                withMetadata(mapOf("type", kw("tool-input-start"), "toolCallId", start.toolCallId(),
+                                   "toolName", start.toolName()),
+                             start.metadata());
             case ToolInputDelta(var callId, var delta) ->
                 mapOf("type", kw("tool-input-delta"), "toolCallId", callId, "inputTextDelta", delta);
             case ToolInputAvailable(var callId, var name) ->
                 mapOf("type", kw("tool-input-available"), "toolCallId", callId, "toolName", name);
-            case Usage(var responseId, var model, var usage, var finish) -> {
-                IPersistentMap m = mapOf("type", kw("usage"), "usage", usage.toClj(), "id", responseId, "model", model);
+            case Usage usage -> {
+                IPersistentMap m = mapOf("type", kw("usage"), "usage", usage.usage().toClj(),
+                                         "id", usage.responseId(), "model", usage.model());
+                Finish finish = usage.finish();
                 yield finish == null ? m : m.assoc(kw("finish-reason"), finish.reason().wire)
                                             .assoc(kw("raw-finish-reason"), finish.raw());
             }
-            case ErrorChunk(var text) -> mapOf("type", kw("error"), "errorText", text);
+            case ErrorChunk error -> mapOf("type", kw("error"), "errorText", error.errorText());
         };
     }
 

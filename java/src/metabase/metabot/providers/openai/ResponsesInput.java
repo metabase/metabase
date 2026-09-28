@@ -43,24 +43,25 @@ public final class ResponsesInput {
     private static @Nullable IPersistentMap item(AiSdkPart part, Function<@Nullable Object, String> encodeJson) {
         return switch (part) {
             case Reasoning reasoning -> reasoningItem(reasoning);
-            case Text(var text) ->
+            case Text text ->
                 mapOf("type", "message",
                       "role", "assistant",
                       // RT.vector, not PersistentVector.create: a map is Iterable, so create would build a vector
                       // of its entries
-                      "content", RT.vector(mapOf("type", "output_text", "text", text)));
-            case ToolInput(var id, var function, var arguments) ->
+                      "content", RT.vector(mapOf("type", "output_text", "text", text.text())));
+            case ToolInput input ->
                 mapOf("type", "function_call",
-                      "call_id", id,
-                      "name", function,
-                      "arguments", arguments instanceof String json ? json : encodeJson.apply(arguments));
-            case ToolOutput(var id, var result, var error) -> {
-                String output = result instanceof Map<?, ?> m ? str(m, "output") : null;
+                      "call_id", input.id(),
+                      "name", input.function(),
+                      "arguments", input.arguments() instanceof String json ? json : encodeJson.apply(input.arguments()));
+            case ToolOutput output -> {
+                String text = output.result() instanceof Map<?, ?> m ? str(m, "output") : null;
+                String error = output.error();
                 yield mapOf("type", "function_call_output",
-                            "call_id", id,
-                            "output", output != null ? output
+                            "call_id", output.id(),
+                            "output", text != null ? text
                                       : error != null ? "Error: " + error
-                                      : RT.printString(result));
+                                      : RT.printString(output.result()));
             }
             case Message(var role, var content) ->
                 mapOf("role", role.name().toLowerCase(Locale.ROOT), "content", content);

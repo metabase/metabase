@@ -108,10 +108,7 @@
    "ImmutableMemberCollection"     ; wants Guava's immutable types; records copy into unmodifiable collections instead
    "CanIgnoreReturnValueSuggester" ; wants Error Prone's annotations jar, for one fluent method
    "AddNullMarkedToClass"          ; packages are @NullMarked, which RequireExplicitNullMarking checks
-   "Java8ApiChecker"               ; flags every API newer than Java 8; the sources target Java 25
-   ;; takes a variable bound by a record pattern for non-null, whatever the component says, so it flags the very checks
-   ;; that keep a @Nullable one from throwing; see [[lint!]]
-   "RedundantNullCheck"])
+   "Java8ApiChecker"])             ; flags every API newer than Java 8; the sources target Java 25
 
 (def ^:private error-prone-options
   (str/join " " (concat ["-Xplugin:ErrorProne"
@@ -129,9 +126,8 @@
   finding fails the lint, once all of them are reported; with `-Werror`, the first would stop Error Prone analyzing the
   files after it. Writes nothing to `java/classes`.
 
-  NullAway does not look inside record patterns (uber/NullAway#840): a variable bound by `case R(var x)` goes unchecked,
-  whatever `R`'s component says; only the accessor, `r.x()`, is checked. So keep `@Nullable` components off the records
-  that get deconstructed, and null-check what such a pattern binds.
+  NullAway does not check a variable bound by a record pattern (uber/NullAway#840); the rules that keep that from
+  hiding a null are in `java/src/metabase/metabot/providers/package-info.java`.
 
   Run as `clojure -X:javac:javac-lint`: that JVM has Error Prone on its classpath and opens it javac's internals."
   [_opts]

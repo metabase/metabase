@@ -3,6 +3,7 @@ package metabase.metabot.providers.chat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
 import metabase.metabot.providers.AiSdkChunk.Finish;
@@ -30,6 +31,7 @@ public final class ChatCompletionsTranslator implements ChunkTranslator<ChatChun
      * separate question, and chunks nothing consumes only add stream volume.
      */
     private final boolean forwardReasoning;
+    private final Consumer<String> malformed;
 
     private final Part.Slot open = new Part.Slot();
     private @Nullable String messageId;
@@ -38,10 +40,12 @@ public final class ChatCompletionsTranslator implements ChunkTranslator<ChatChun
 
     public ChatCompletionsTranslator(Supplier<String> newId,
                                      Map<String, FinishReason> stopReasons,
-                                     boolean forwardReasoning) {
+                                     boolean forwardReasoning,
+                                     Consumer<String> malformed) {
         this.newId = newId;
         this.stopReasons = stopReasons;
         this.forwardReasoning = forwardReasoning;
+        this.malformed = malformed;
     }
 
     @Override
@@ -67,22 +71,24 @@ public final class ChatCompletionsTranslator implements ChunkTranslator<ChatChun
                 out.add(part.delta(text));
             }
             case Content.ToolCallStart(var id, var name, var arguments) -> {
-                // a tool call without a name cannot be started; the open part still ends here
-                open.close(out);
-                if (name != null) {
-                    var part = open.start(out, new Part.Tool(id, name));
-                    if (arguments != null && !arguments.isBlank()) {
-                        out.add(part.delta(arguments));
-                    }
+                var part = open.start(out, new Part.Tool(id, name));
+                if (!arguments.isBlank()) {
+                    out.add(part.delta(arguments));
                 }
             }
-            case Content.ToolCallArguments(var arguments) when open.get() instanceof Part.Tool part -> {
+            case Content.ToolCallArguments delta when open.get() instanceof Part.Tool part -> {
+                String arguments = delta.arguments();
                 if (arguments != null) {
                     out.add(part.delta(arguments));
                 }
             }
-            // arguments with no tool call open to receive them
+            // a later delta with no tool call open to receive it
             case Content.ToolCallArguments _ -> open.close(out);
+            // cannot be started, but the open part still ends here
+            case Content.ToolCallMalformed(var what) -> {
+                malformed.accept(what);
+                open.close(out);
+            }
             case Content.Reasoning _, Content.None _ -> {}
         }
         if (chunk.reasoningMetadata() != null && open.get() instanceof Part.Reasoning(var id, _)) {

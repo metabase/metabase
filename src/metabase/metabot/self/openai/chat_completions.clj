@@ -144,7 +144,7 @@
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons {:keys [forward-reasoning?]}]
    (let [table (AiSdkChunk$FinishReason/table stop-reasons)]
-     (core/translator-xf #(ChatCompletionsTranslator. core/mkid table (boolean forward-reasoning?))))))
+     (core/translator-xf #(ChatCompletionsTranslator. core/mkid table (boolean forward-reasoning?) core/log-malformed-event)))))
 
 ;;; Request body
 

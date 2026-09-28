@@ -30,8 +30,8 @@ public sealed interface ResponsesEvent {
     /** `response.completed` or `response.incomplete`. The latter still has valid partial output. */
     record Finished(@Nullable String responseId, TokenUsage usage, @Nullable String incompleteReason) implements ResponsesEvent {}
 
-    /** `response.failed`: the error lives nested under `response.error`. */
-    record Failed(@Nullable String message, @Nullable String code) implements ResponsesEvent {}
+    /** `response.failed`: the error lives nested under `response.error`, whose message or code may say why. */
+    record Failed(@Nullable String reason) implements ResponsesEvent {}
 
     /** A top-level `error` event. */
     record StreamError(@Nullable String message) implements ResponsesEvent {}
@@ -40,10 +40,12 @@ public sealed interface ResponsesEvent {
 
     sealed interface Item {
         record Message() implements Item {}
-        record FunctionCall(@Nullable String callId, @Nullable String name) implements Item {}
+        record FunctionCall(String callId, String name) implements Item {}
         record Reasoning(@Nullable String id, @Nullable String encryptedContent) implements Item {}
         /** Built-in tool calls and the like, which we do not translate. */
         record Unsupported() implements Item {}
+        /** An item missing what it needs; `what` says which. */
+        record Malformed(String what) implements Item {}
     }
 
     static ResponsesEvent parse(Map<?, ?> event) {
@@ -63,7 +65,8 @@ public sealed interface ResponsesEvent {
             }
             case "response.failed" -> {
                 Map<?, ?> error = map(map(event, "response"), "error");
-                yield new Failed(str(error, "message"), str(error, "code"));
+                String message = str(error, "message");
+                yield new Failed(message != null ? message : str(error, "code"));
             }
             case "error" -> {
                 String nested = str(map(event, "error"), "message");
@@ -79,7 +82,14 @@ public sealed interface ResponsesEvent {
     private static Item parseItem(@Nullable Map<?, ?> item) {
         return switch (type(item)) {
             case "message" -> new Item.Message();
-            case "function_call" -> new Item.FunctionCall(str(item, "call_id"), str(item, "name"));
+            case "function_call" -> {
+                // without either, the call cannot be answered, so it is not one
+                String callId = str(item, "call_id");
+                String name = str(item, "name");
+                yield callId != null && name != null
+                    ? new Item.FunctionCall(callId, name)
+                    : new Item.Malformed("function_call item without a call_id or name");
+            }
             case "reasoning" -> new Item.Reasoning(str(item, "id"), str(item, "encrypted_content"));
             default -> new Item.Unsupported();
         };

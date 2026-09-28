@@ -2,7 +2,6 @@ package metabase.metabot.providers.google;
 
 import static java.util.Map.entry;
 
-import clojure.lang.PersistentArrayMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -83,6 +82,7 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
     private final Function<Object, String> encodeJson;
     /** Logs through Metabase's logging, which attributes the line to its owning team and feeds log capture. */
     private final Consumer<String> logEarlyStop;
+    private final Consumer<String> malformed;
 
     private final Part.Slot open = new Part.Slot();
     private @Nullable String messageId;
@@ -92,10 +92,12 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
 
     public GenerateContentTranslator(Supplier<String> newId,
                                      Function<Object, String> encodeJson,
-                                     Consumer<String> logEarlyStop) {
+                                     Consumer<String> logEarlyStop,
+                                     Consumer<String> malformed) {
         this.newId = newId;
         this.encodeJson = encodeJson;
         this.logEarlyStop = logEarlyStop;
+        this.malformed = malformed;
     }
 
     @Override
@@ -143,11 +145,12 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
 
     private void emit(List<AiSdkChunk> out, GeminiPart part) {
         switch (part) {
-            case GeminiPart.FunctionCall(var name, var args, var signature) -> {
+            case GeminiPart.FunctionCall call -> {
+                String signature = call.thoughtSignature();
                 var tool = open.start(out, new Part.Tool(
-                    newId.get(), name,
+                    newId.get(), call.name(),
                     signature == null ? null : ProviderMetadata.of("google", "thoughtSignature", signature)));
-                out.add(tool.delta(encodeJson.apply(args != null ? args : PersistentArrayMap.EMPTY)));
+                out.add(tool.delta(encodeJson.apply(call.args())));
                 open.close(out);
             }
             case GeminiPart.Thought(var text) when open.get() instanceof Part.Reasoning block -> out.add(block.delta(text));
@@ -156,6 +159,7 @@ public final class GenerateContentTranslator implements ChunkTranslator<Generate
             case GeminiPart.Text(var text) when open.get() instanceof Part.Text block -> out.add(block.delta(text));
             case GeminiPart.Text(var text) when !text.isEmpty() ->
                 out.add(open.start(out, new Part.Text(newId.get())).delta(text));
+            case GeminiPart.Malformed(var what) -> malformed.accept(what);
             case GeminiPart.Thought _, GeminiPart.Text _, GeminiPart.Other _ -> {}
         }
     }

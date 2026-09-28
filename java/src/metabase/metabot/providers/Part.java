@@ -19,20 +19,20 @@ import org.jspecify.annotations.Nullable;
  */
 public sealed interface Part {
     AiSdkChunk start();
-    AiSdkChunk delta(@Nullable String delta);
+    AiSdkChunk delta(String delta);
     AiSdkChunk end();
 
     record Text(String id) implements Part {
         @Override public AiSdkChunk start() { return new TextStart(id); }
-        @Override public AiSdkChunk delta(@Nullable String d) { return new TextDelta(id, d); }
+        @Override public AiSdkChunk delta(String d) { return new TextDelta(id, d); }
         @Override public AiSdkChunk end() { return new TextEnd(id); }
     }
 
     /** `metadata` rides the start, where replay reads it from; see {@link ToolInputStart}. */
-    record Tool(@Nullable String id, @Nullable String name, @Nullable ProviderMetadata metadata) implements Part {
-        public Tool(@Nullable String id, @Nullable String name) { this(id, name, null); }
+    record Tool(String id, String name, @Nullable ProviderMetadata metadata) implements Part {
+        public Tool(String id, String name) { this(id, name, null); }
         @Override public AiSdkChunk start() { return new ToolInputStart(id, name, metadata); }
-        @Override public AiSdkChunk delta(@Nullable String d) { return new ToolInputDelta(id, d); }
+        @Override public AiSdkChunk delta(String d) { return new ToolInputDelta(id, d); }
         @Override public AiSdkChunk end() { return new ToolInputAvailable(id, name); }
     }
 
@@ -40,7 +40,7 @@ public sealed interface Part {
     record Reasoning(String id, @Nullable ProviderMetadata metadata) implements Part {
         public Reasoning(String id) { this(id, null); }
         @Override public AiSdkChunk start() { return new ReasoningStart(id); }
-        @Override public AiSdkChunk delta(@Nullable String d) { return new ReasoningDelta(id, d); }
+        @Override public AiSdkChunk delta(String d) { return new ReasoningDelta(id, d); }
         @Override public AiSdkChunk end() { return new ReasoningEnd(id, metadata); }
     }
 

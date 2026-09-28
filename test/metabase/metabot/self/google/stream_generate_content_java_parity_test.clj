@@ -329,3 +329,10 @@
                 :level     :info
                 :message   #"Gemini stopped early.*MAX_TOKENS.*"}]
               messages)))))
+
+(deftest ^:parallel function-call-without-name-is-not-translated-test
+  (testing "a function call that could not be answered is dropped, rather than streamed with a nil name"
+    (let [events [{:candidates [{:content {:parts [{:functionCall {:args {:a 1}}}]}}]}]]
+      (is (=? [{:type :start} {:type :tool-input-start :toolName nil} {:type :tool-input-delta} {:type :tool-input-available}]
+              (into [] (legacy-xf) events)))
+      (is (= [:start] (mapv :type (into [] (sgc/->aisdk-chunks-xf) events)))))))

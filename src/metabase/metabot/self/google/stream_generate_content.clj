@@ -212,4 +212,5 @@
   (core/translator-xf
    #(GenerateContentTranslator. core/mkid
                                 json/encode
-                                (fn [reason] (log/info "Gemini stopped early" {:finishReason reason})))))
+                                (fn [reason] (log/info "Gemini stopped early" {:finishReason reason}))
+                                core/log-malformed-event)))

@@ -352,3 +352,12 @@
     (is (= [{:role "developer" :content "x"}] (legacy-input [{:role :developer :content "x"}])))
     (is (thrown-with-msg? IllegalArgumentException #"not a message role: developer"
                           (openai/parts->openai-input [{:role :developer :content "x"}])))))
+
+(deftest ^:parallel function-call-without-id-or-name-is-not-translated-test
+  (testing "a function call that could not be answered is dropped, rather than streamed with nils in it"
+    (let [events [{:type "response.output_item.added" :item {:type "function_call" :name "f"}}
+                  {:type "response.function_call_arguments.delta" :delta "{}"}
+                  {:type "response.output_item.done" :item {:type "function_call" :name "f"}}]]
+      (is (=? [{:type :tool-input-start :toolName "f"} {:type :tool-input-delta} {:type :tool-input-available}]
+              (into [] (legacy-xf) events)))
+      (is (= [] (into [] (openai/openai->aisdk-chunks-xf) events))))))

@@ -320,6 +320,12 @@
 
 ;;; AISDK5
 
+(defn log-malformed-event
+  "How a Java translator reports a provider event missing something it needs, which it drops: the stream goes on, but
+  the answer may lack a part, so it is worth a warning. `what` names the event and what it lacks."
+  [what]
+  (log/warn "LLM provider sent a malformed event; dropped it" {:what what}))
+
 (defn translator-xf
   "A transducer driving a Java [[ChunkTranslator]] over a provider's decoded SSE events. `new-translator` is called
   once per transduction, since a translator holds the state of one stream."

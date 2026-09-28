@@ -3,6 +3,7 @@ package metabase.metabot.providers.anthropic;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
 import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
@@ -44,6 +45,7 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
         "refusal", FinishReason.CONTENT_FILTER);
 
     private final Supplier<String> newId;
+    private final Consumer<String> malformed;
 
     private final Part.Slot open = new Part.Slot();
     private @Nullable String messageId;
@@ -51,8 +53,9 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
     private @Nullable TokenUsage lastUsage;
     private @Nullable String stopReason;
 
-    public MessagesTranslator(Supplier<String> newId) {
+    public MessagesTranslator(Supplier<String> newId, Consumer<String> malformed) {
         this.newId = newId;
+        this.malformed = malformed;
     }
 
     @Override
@@ -64,17 +67,18 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
     public List<AiSdkChunk> step(MessagesEvent event) {
         var out = new ArrayList<AiSdkChunk>(1);
         switch (event) {
-            case MessageStart(var id, var m, var usage) -> {
-                messageId = id;
-                model = m;
-                lastUsage = usage;
-                out.add(new Start(id));
+            case MessageStart start -> {
+                messageId = start.messageId();
+                model = start.model();
+                lastUsage = start.usage();
+                out.add(new Start(messageId));
             }
-            case BlockStart(var blockId, var index, var block) -> {
+            case BlockStart start -> {
                 // Anthropic stops every block before starting the next; a stray one is closed rather than lost
                 open.close(out);
-                String id = blockId != null ? blockId : index != null ? index.toString() : newId.get();
-                switch (block) {
+                String given = start.id();
+                String id = given != null ? given : newId.get();
+                switch (start.block()) {
                     case Block.Text() -> open.start(out, new Part.Text(id));
                     case Block.ToolUse(var name) -> open.start(out, new Part.Tool(id, name));
                     case Block.Thinking() -> open.start(out, new Part.Reasoning(id));
@@ -82,6 +86,7 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
                     case Block.RedactedThinking(var data) ->
                         open.start(out, new Part.Reasoning(id, ProviderMetadata.of("anthropic", "redactedData", data)));
                     case Block.Unsupported() -> {}
+                    case Block.Malformed(var what) -> malformed.accept(what);
                 }
             }
             case BlockDelta(var delta) -> {
@@ -91,18 +96,19 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
                         out.add(part.delta(text));
                     case Delta.InputJson(var json) when open.get() instanceof Part.Tool part -> out.add(part.delta(json));
                     // the signature rides the reasoning-end; nothing is emitted to the client
-                    case Delta.Signature(var piece) when open.get() instanceof Part.Reasoning(var id, var metadata) ->
-                        open.update(new Part.Reasoning(id, withSignaturePiece(metadata, piece)));
+                    case Delta.Signature(var piece) when open.get() instanceof Part.Reasoning reasoning ->
+                        open.update(new Part.Reasoning(reasoning.id(), withSignaturePiece(reasoning.metadata(), piece)));
+                    case Delta.Malformed(var what) -> malformed.accept(what);
                     // a delta that does not belong to the open block, or no block at all
                     default -> {}
                 }
             }
             case BlockStop() -> open.close(out);
-            case MessageDelta(var usage, var reason) -> {
-                lastUsage = usage;
-                stopReason = reason;
+            case MessageDelta delta -> {
+                lastUsage = delta.usage();
+                stopReason = delta.stopReason();
             }
-            case StreamError(var message) -> out.add(new ErrorChunk(message));
+            case StreamError error -> out.add(new ErrorChunk(error.message()));
             case Ignored() -> {}
         }
         return out;
@@ -119,9 +125,9 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
     }
 
     /** A signature arrives in pieces, which concatenate into the one a thinking block is replayed with. */
-    private static ProviderMetadata withSignaturePiece(@Nullable ProviderMetadata metadata, @Nullable String piece) {
+    private static ProviderMetadata withSignaturePiece(@Nullable ProviderMetadata metadata, String piece) {
         String prior = metadata == null ? null : metadata.fields().get("signature");
-        String signature = (prior == null ? "" : prior) + (piece == null ? "" : piece);
+        String signature = prior == null ? piece : prior + piece;
         return metadata == null
             ? ProviderMetadata.of("anthropic", "signature", signature)
             : metadata.with("signature", signature);

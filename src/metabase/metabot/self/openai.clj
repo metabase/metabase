@@ -22,7 +22,8 @@
   []
   (core/translator-xf
    #(ResponsesTranslator. core/mkid
-                          (fn [] (tru "The model provider failed to complete the response")))))
+                          (fn [] (tru "The model provider failed to complete the response"))
+                          core/log-malformed-event)))
 
 ;;; AISDK parts → OpenAI Responses API input items
 

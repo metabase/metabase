@@ -2,7 +2,8 @@ package metabase.metabot.providers.anthropic;
 
 import static metabase.metabot.providers.Clj.map;
 import static metabase.metabot.providers.Clj.num;
-import static metabase.metabot.providers.Clj.optNum;
+import static metabase.metabot.providers.Clj.get;
+import static metabase.metabot.providers.Clj.present;
 import static metabase.metabot.providers.Clj.str;
 import static metabase.metabot.providers.Clj.type;
 
@@ -20,8 +21,8 @@ public sealed interface MessagesEvent {
     /** `usage` is null when the event carries none. */
     record MessageStart(@Nullable String messageId, @Nullable String model, @Nullable TokenUsage usage) implements MessagesEvent {}
 
-    /** `id` is the block's own id where it has one (tool use); `index` is its position in the message. */
-    record BlockStart(@Nullable String id, @Nullable Long index, Block block) implements MessagesEvent {}
+    /** `id` is the block's own id where it has one (tool use), else its position in the message. */
+    record BlockStart(@Nullable String id, Block block) implements MessagesEvent {}
 
     record BlockDelta(Delta delta) implements MessagesEvent {}
 
@@ -36,21 +37,25 @@ public sealed interface MessagesEvent {
 
     sealed interface Block {
         record Text() implements Block {}
-        record ToolUse(@Nullable String name) implements Block {}
+        record ToolUse(String name) implements Block {}
         record Thinking() implements Block {}
         /** Opaque to us, and streams no deltas; `data` has to be echoed back verbatim. */
-        record RedactedThinking(@Nullable String data) implements Block {}
+        record RedactedThinking(String data) implements Block {}
         /** Server tool use and the like, which we do not translate. */
         record Unsupported() implements Block {}
+        /** A block missing what it needs; `what` says which. */
+        record Malformed(String what) implements Block {}
     }
 
     sealed interface Delta {
-        record Text(@Nullable String text) implements Delta {}
-        record Thinking(@Nullable String thinking) implements Delta {}
-        record InputJson(@Nullable String partialJson) implements Delta {}
+        record Text(String text) implements Delta {}
+        record Thinking(String thinking) implements Delta {}
+        record InputJson(String partialJson) implements Delta {}
         /** Arrives in pieces, which concatenate into the signature a thinking block is replayed with. */
-        record Signature(@Nullable String signature) implements Delta {}
+        record Signature(String signature) implements Delta {}
         record Unsupported() implements Delta {}
+        /** A delta missing its content; `what` says which. */
+        record Malformed(String what) implements Delta {}
     }
 
     static MessagesEvent parse(Map<?, ?> event) {
@@ -61,7 +66,7 @@ public sealed interface MessagesEvent {
             }
             case "content_block_start" -> {
                 Map<?, ?> block = map(event, "content_block");
-                yield new BlockStart(str(block, "id"), optNum(event, "index"), parseBlock(block));
+                yield new BlockStart(blockId(block, event), parseBlock(block));
             }
             case "content_block_delta" -> new BlockDelta(parseDelta(map(event, "delta")));
             case "content_block_stop" -> new BlockStop();
@@ -72,22 +77,37 @@ public sealed interface MessagesEvent {
         };
     }
 
+    /** The block's own id where it has one (tool use), else its position in the message. */
+    private static @Nullable String blockId(@Nullable Map<?, ?> block, Map<?, ?> event) {
+        String id = str(block, "id");
+        if (id != null) {
+            return id;
+        }
+        return get(event, "index") instanceof Number index ? index.toString() : null;
+    }
+
     private static Block parseBlock(@Nullable Map<?, ?> block) {
         return switch (type(block)) {
             case "text" -> new Block.Text();
-            case "tool_use" -> new Block.ToolUse(str(block, "name"));
+            case "tool_use" -> present(str(block, "name"), Block.ToolUse::new,
+                                       () -> new Block.Malformed("tool_use block without a name"));
             case "thinking" -> new Block.Thinking();
-            case "redacted_thinking" -> new Block.RedactedThinking(str(block, "data"));
+            case "redacted_thinking" -> present(str(block, "data"), Block.RedactedThinking::new,
+                                                () -> new Block.Malformed("redacted_thinking block without data"));
             default -> new Block.Unsupported();
         };
     }
 
     private static Delta parseDelta(@Nullable Map<?, ?> delta) {
         return switch (type(delta)) {
-            case "text_delta" -> new Delta.Text(str(delta, "text"));
-            case "thinking_delta" -> new Delta.Thinking(str(delta, "thinking"));
-            case "input_json_delta" -> new Delta.InputJson(str(delta, "partial_json"));
-            case "signature_delta" -> new Delta.Signature(str(delta, "signature"));
+            case "text_delta" -> present(str(delta, "text"), Delta.Text::new,
+                                         () -> new Delta.Malformed("text_delta without text"));
+            case "thinking_delta" -> present(str(delta, "thinking"), Delta.Thinking::new,
+                                             () -> new Delta.Malformed("thinking_delta without thinking"));
+            case "input_json_delta" -> present(str(delta, "partial_json"), Delta.InputJson::new,
+                                               () -> new Delta.Malformed("input_json_delta without partial_json"));
+            case "signature_delta" -> present(str(delta, "signature"), Delta.Signature::new,
+                                              () -> new Delta.Malformed("signature_delta without signature"));
             default -> new Delta.Unsupported();
         };
     }

@@ -28,7 +28,7 @@
 
    The translation itself is [[MessagesTranslator]]."
   []
-  (core/translator-xf #(MessagesTranslator. core/mkid)))
+  (core/translator-xf #(MessagesTranslator. core/mkid core/log-malformed-event)))
 
 ;;; AISDK parts → Claude messages
 

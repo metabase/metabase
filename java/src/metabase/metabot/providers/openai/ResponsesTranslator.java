@@ -3,6 +3,7 @@ package metabase.metabot.providers.openai;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
 import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
@@ -42,13 +43,16 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
     private final Supplier<String> newId;
     /** User-facing, so it comes from the caller: it has to be rendered in their locale by Metabase's i18n. */
     private final Supplier<String> failedWithoutMessage;
+    private final Consumer<String> malformed;
 
     private final Part.Slot open = new Part.Slot();
     private @Nullable String model;
 
-    public ResponsesTranslator(Supplier<String> newId, Supplier<String> failedWithoutMessage) {
+    public ResponsesTranslator(Supplier<String> newId, Supplier<String> failedWithoutMessage,
+                               Consumer<String> malformed) {
         this.newId = newId;
         this.failedWithoutMessage = failedWithoutMessage;
+        this.malformed = malformed;
     }
 
     @Override
@@ -60,29 +64,35 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
     public List<AiSdkChunk> step(ResponsesEvent event) {
         var out = new ArrayList<AiSdkChunk>(2);
         switch (event) {
-            case Created(var responseId, var m) -> {
-                model = m;
-                out.add(new Start(responseId));
+            case Created created -> {
+                model = created.model();
+                out.add(new Start(created.responseId()));
             }
             case ItemAdded(var item) -> {
                 open.close(out);
                 switch (item) {
                     case Item.Message() -> open.start(out, new Part.Text(newId.get()));
                     // a reasoning item always has an id; should one not, it still gets one, as every other part does
-                    case Item.Reasoning(var id, _) -> open.start(out, new Part.Reasoning(id != null ? id : newId.get()));
+                    case Item.Reasoning reasoning -> {
+                        String id = reasoning.id();
+                        open.start(out, new Part.Reasoning(id != null ? id : newId.get()));
+                    }
                     case Item.FunctionCall(var callId, var name) -> open.start(out, new Part.Tool(callId, name));
                     case Item.Unsupported() -> {}
+                    case Item.Malformed(var what) -> malformed.accept(what);
                 }
             }
             case ItemDone(var item) -> {
                 // a finished reasoning item carries the encrypted content that lets us replay it next
                 // round-trip; it rides out on the reasoning-end
-                if (item instanceof Item.Reasoning(var id, var content)
-                        && content != null
+                if (item instanceof Item.Reasoning reasoning
                         && open.get() instanceof Part.Reasoning(var openId, _)
-                        && openId.equals(id)) {
-                    open.update(new Part.Reasoning(openId, ProviderMetadata.of(
-                        "openai", "itemId", openId, "encryptedContent", content)));
+                        && openId.equals(reasoning.id())) {
+                    String content = reasoning.encryptedContent();
+                    if (content != null) {
+                        open.update(new Part.Reasoning(openId, ProviderMetadata.of(
+                            "openai", "itemId", openId, "encryptedContent", content)));
+                    }
                 }
                 open.close(out);
             }
@@ -97,11 +107,13 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                     out.add(reasoning.delta("\n\n"));
                 }
             }
-            case Finished(var responseId, var usage, var incompleteReason) ->
-                out.add(new Usage(responseId, model, usage, Finish.ofNullable(STOP_REASONS, incompleteReason)));
-            case Failed(var message, var code) -> out.add(new ErrorChunk(
-                message != null ? message : code != null ? code : failedWithoutMessage.get()));
-            case StreamError(var message) -> out.add(new ErrorChunk(message));
+            case Finished finished -> out.add(new Usage(finished.responseId(), model, finished.usage(),
+                                                        Finish.ofNullable(STOP_REASONS, finished.incompleteReason())));
+            case Failed failed -> {
+                String reason = failed.reason();
+                out.add(new ErrorChunk(reason != null ? reason : failedWithoutMessage.get()));
+            }
+            case StreamError error -> out.add(new ErrorChunk(error.message()));
             case Ignored() -> {}
         }
         return out;
