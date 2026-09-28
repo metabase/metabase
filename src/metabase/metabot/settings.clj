@@ -192,11 +192,11 @@
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
 
 (defn- mini-model-ref
-  "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
-  provider type has no such model."
+  "The model reference for the cheaper model the connection `model-ref` names was listed as serving, or nil when
+  its listing offered none."
   [model-ref]
   (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
-    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+    (when-let [model (llm.provider/connection-mini-model (llm.provider/connection conn-key))]
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
@@ -208,10 +208,11 @@
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
-  model Metabot chats on, so with nothing stored this resolves to the fastest model of the
-  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
-  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
-  names a model as long as Metabot does."
+  model Metabot chats on, so with nothing stored this resolves to the cheaper model the
+  connection [[llm-metabot-provider]] names was listed as serving when it was saved. Connections with no such model —
+  the ones that name the single model they serve, the managed provider, and any whose own listing left out the
+  cheaper tier its type is known for — fall through to the Metabot model itself, so this always names a model as
+  long as Metabot does, and never one the connection was not seen to serve."
   []
   (or (explicit-mini-model)
       (let [metabot-ref (llm-metabot-provider)]
