@@ -501,6 +501,43 @@
     :alternatives
     {:appdb-postgres {:query "\"or\"", :hits [:A]}
      :semantic       {:query "\"or\"", :hits [:A]}}}]}
+ ;; Controls: every engine can express these intents, some only by adapting
+ ;; the query. No document contains the word inside a longer word; see
+ ;; or-only-operator for that trap.
+ {:id     "or-word-control"
+  :focus  "control: or as a literal word"
+  :config "simple"
+  :query  "or"
+  :docs   {:A {:name "or"}
+           :B {:name "amber"}
+           :C {:name "this or that"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}
+  :comparisons
+  [{:focus   "quoting or makes it a searchable word"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"or\"", :hits [:A :C]}
+     :semantic       {:query "\"or\"", :hits [:A :C]}}}]}
+ {:id     "and-word-control"
+  :focus  "control: and as a literal word"
+  :config "simple"
+  :query  "and"
+  :docs   {:A {:name "and"}
+           :B {:name "amber"}
+           :C {:name "salt and pepper"}}
+  :expect {:in-place       [:A :C]
+           :appdb-h2       [:A :C]
+           :appdb-postgres []
+           :semantic       {:keyword [], :vector []}}
+  :comparisons
+  [{:focus   "quoting and makes it a searchable word"
+    :correct [:A :C]
+    :alternatives
+    {:appdb-postgres {:query "\"and\"", :hits [:A :C]}
+     :semantic       {:query "\"and\"", :hits [:A :C]}}}]}
  {:id     "punctuation-vector"
   :focus  "punctuation-only query can still return a semantic vector hit"
   :config "simple"
