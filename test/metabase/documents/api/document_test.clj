@@ -323,6 +323,52 @@
                 (testing "no Card carrying that target may exist afterwards"
                   (is (empty? (t2/select :model/Card :collection_id coll-id))))))))))))
 
+(deftest document-draft-card-inherits-source-card-timeline-visibility-test
+  (testing "a draft card forked from a saved card inherits the source card's timeline selection"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id}       {}
+                       :model/Collection {restricted-id :id} {}
+                       :model/Timeline   private-timeline    {:collection_id restricted-id}
+                       :model/Timeline   private-timeline-2  {:collection_id restricted-id}
+                       :model/Card       source              {:collection_id          coll-id
+                                                              :display                :line
+                                                              :dataset_query          (mt/mbql-query venues)
+                                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                                       [(:id private-timeline)]}}
+                       :model/Card       unreadable-source   {:collection_id          restricted-id
+                                                              :display                :line
+                                                              :dataset_query          (mt/mbql-query venues)
+                                                              :visualization_settings {:timeline.selected_timeline_ids
+                                                                                       [(:id private-timeline)]}}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (let [draft     (-> source
+                              (select-keys [:dataset_query :visualization_settings])
+                              (assoc :name "Draft" :display "bar"))
+                save-doc! (fn [status card]
+                            (mt/user-http-request :rasta :post status "document/"
+                                                  {:name          "d"
+                                                   :collection_id coll-id
+                                                   :document      {:type "doc" :content []}
+                                                   :cards         {"-1" card}}))]
+            (testing "with the source card id the draft saves with the inherited timeline selection"
+              (let [doc-id (:id (save-doc! 200 (assoc draft :source_card_id (:id source))))]
+                (is (=? {:display                :bar
+                         :visualization_settings {:timeline.selected_timeline_ids [(:id private-timeline)]}}
+                        (t2/select-one :model/Card :document_id doc-id)))))
+            (t2/delete! :model/Card :name "Draft")
+            (testing "without the source card id the unreadable timeline is refused"
+              (save-doc! 403 draft))
+            (testing "a newly added unreadable timeline is still refused"
+              (save-doc! 403 (-> draft
+                                 (assoc :source_card_id (:id source))
+                                 (assoc-in [:visualization_settings :timeline.selected_timeline_ids]
+                                           [(:id private-timeline) (:id private-timeline-2)]))))
+            (testing "a source card the user cannot read is refused"
+              (save-doc! 403 (assoc draft :source_card_id (:id unreadable-source))))
+            (testing "no draft card exists after the refused saves"
+              (is (empty? (t2/select :model/Card :name "Draft"))))))))))
+
 (deftest copy-document-archived-document-test
   (testing "POST /api/document/:id/copy - archived source document returns 404"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Archived Document"
