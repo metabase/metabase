@@ -78,16 +78,17 @@ function ChartContexts({ width, height }: { width: number; height: number }) {
 const meta = {
   title: "Viz/Cartesian presentation",
   component: ChartContexts,
-  args: { width: 440, height: 280 },
+  args: { width: 280, height: 180 },
   decorators: [createWaitForResizeToStopDecorator()],
 } satisfies Meta<typeof ChartContexts>;
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const SmallContexts: Story = { args: { width: 440, height: 280 } };
-export const MediumContexts: Story = { args: { width: 700, height: 400 } };
-export const LargeContexts: Story = { args: { width: 960, height: 500 } };
+export const SmallContexts: Story = { args: { width: 280, height: 180 } };
+export const MediumContexts: Story = { args: { width: 440, height: 280 } };
+export const LargeContexts: Story = { args: { width: 700, height: 400 } };
+export const FullscreenContexts: Story = { args: { width: 960, height: 500 } };
 
 function SdkChart({ theme }: { theme: MetabaseTheme }) {
   return (

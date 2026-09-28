@@ -3,14 +3,19 @@ import { init } from "echarts/core";
 import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-context";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
-import { getChartHeight } from "metabase/static-viz/lib/utils";
+import {
+  STATIC_CARTESIAN_CHART_SIZE,
+  getChartHeight,
+} from "metabase/static-viz/lib/utils";
 import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 import {
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
   getLegendItems,
+  getSizeAdjustedSettings,
   registerEChartsModules,
 } from "metabase/viz-core";
 
@@ -18,8 +23,6 @@ import Watermark from "../../watermark.svg?component";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
-const WIDTH = 540;
-const HEIGHT = 360;
 const LEGEND_PADDING = 8;
 
 const DATA_OUT_OF_RANGE_RECT = {
@@ -31,14 +34,25 @@ registerEChartsModules();
 
 export const ComboChart = ({
   rawSeries,
-  settings,
-  renderingContext,
-  width = WIDTH,
-  height = HEIGHT,
+  settings: originalSettings,
+  renderingContext: originalRenderingContext,
+  width = STATIC_CARTESIAN_CHART_SIZE.width,
+  height = STATIC_CARTESIAN_CHART_SIZE.height,
   isStorybook = false,
   hasDevWatermark = false,
   fitWithinBounds = false,
+  gridSize,
 }: StaticChartProps) => {
+  const renderingContext = withCartesianChartSize(originalRenderingContext, {
+    width,
+    height,
+  });
+  const settings = getSizeAdjustedSettings({
+    settings: originalSettings,
+    width,
+    height,
+    gridSize,
+  });
   const chartModel = getCartesianChartModel(
     rawSeries,
     settings,

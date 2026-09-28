@@ -1,9 +1,12 @@
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-context";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { STATIC_CARTESIAN_CHART_SIZE } from "metabase/static-viz/lib/utils";
 import {
   getChartLayout,
+  getSizeAdjustedSettings,
   getWaterfallChartModel,
   getWaterfallChartOption,
   registerEChartsModules,
@@ -13,18 +16,26 @@ import Watermark from "../../watermark.svg?component";
 
 registerEChartsModules();
 
-const WIDTH = 540;
-const HEIGHT = 360;
-
 export function WaterfallChart({
   rawSeries,
-  settings,
-  renderingContext,
-  width = WIDTH,
-  height = HEIGHT,
+  settings: originalSettings,
+  renderingContext: originalRenderingContext,
+  width = STATIC_CARTESIAN_CHART_SIZE.width,
+  height = STATIC_CARTESIAN_CHART_SIZE.height,
   isStorybook = false,
   hasDevWatermark = false,
+  gridSize,
 }: StaticChartProps) {
+  const renderingContext = withCartesianChartSize(originalRenderingContext, {
+    width,
+    height,
+  });
+  const settings = getSizeAdjustedSettings({
+    settings: originalSettings,
+    width,
+    height,
+    gridSize,
+  });
   const chartModel = getWaterfallChartModel(
     rawSeries,
     settings,

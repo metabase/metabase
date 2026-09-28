@@ -235,7 +235,7 @@ export const getDefaultYAxisTitle = (metricNames: (string | undefined)[]) => {
   return metricsCount === 1 ? metricNames[0] : null;
 };
 
-export const getIsYAxisLabelEnabledDefault = () => true;
+export const getIsYAxisLabelEnabledDefault = () => "auto" as const;
 
 export const getYAxisAutoRangeDefault = () => true;
 
@@ -269,7 +269,7 @@ export const getDefaultXAxisTitle = (
   return dimensionColumn.display_name;
 };
 
-export const getIsXAxisLabelEnabledDefault = () => true;
+export const getIsXAxisLabelEnabledDefault = () => "auto" as const;
 
 export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
   return dimensionColumn.binning_info != null;

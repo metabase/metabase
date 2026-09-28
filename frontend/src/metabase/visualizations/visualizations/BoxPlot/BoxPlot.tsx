@@ -21,8 +21,8 @@ import {
   getBoxPlotOption,
   getBoxPlotTooltipOption,
   getChartLayout,
-  getDashboardAdjustedSettings,
   getLegendItems,
+  getSizeAdjustedSettings,
   useClickedStateTooltipSync,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -33,7 +33,6 @@ import { useBoxPlotEvents } from "./events";
 function BoxPlotInner({
   rawSeries,
   settings: originalSettings,
-  autoAdjustSettings,
   isVisualizer,
   fontFamily,
   card,
@@ -43,6 +42,8 @@ function BoxPlotInner({
   isEditing,
   isQueryBuilder,
   isFullscreen,
+  isMobile,
+  gridSize,
   hovered,
   clicked,
   showTitle,
@@ -69,14 +70,13 @@ function BoxPlotInner({
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
-        ? getDashboardAdjustedSettings({
-            settings: originalSettings,
-            height,
-            width,
-          })
-        : originalSettings,
-    [originalSettings, height, width, autoAdjustSettings],
+      getSizeAdjustedSettings({
+        settings: originalSettings,
+        height,
+        width,
+        gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
+      }),
+    [originalSettings, height, width, isMobile, gridSize],
   );
 
   const renderingContext = useBrowserRenderingContext({

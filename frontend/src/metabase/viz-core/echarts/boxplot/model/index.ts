@@ -415,7 +415,8 @@ export const getBoxPlotModel = (
   showWarning?: ShowWarning,
   cartesianSize?: CartesianChartSize,
 ): BoxPlotChartModel => {
-  const hasResponsiveTicks = cartesianSize != null && cartesianSize !== "large";
+  const hasResponsiveTicks =
+    cartesianSize != null && cartesianSize !== "fullscreen";
   const labelValueFormatting = getLabelValueFormatting(
     settings["graph.label_value_formatting"],
     hasResponsiveTicks,

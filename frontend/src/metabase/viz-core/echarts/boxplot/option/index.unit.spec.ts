@@ -115,11 +115,11 @@ function setup({
 }
 
 describe("responsive BoxPlot presentation", () => {
-  it.each(["small", "medium", "large"] as const)(
+  it.each(["small", "medium", "large", "fullscreen"] as const)(
     "uses the %s size policy for axes and data labels",
     (cartesianSize) => {
       const { model } = setup({ cartesianSize });
-      const responsive = cartesianSize !== "large";
+      const responsive = cartesianSize !== "fullscreen";
       expect(model.leftAxisModel?.formatter(1000)).toBe(
         responsive ? "1.0k" : "1,000",
       );
@@ -130,17 +130,17 @@ describe("responsive BoxPlot presentation", () => {
     },
   );
 
-  it("keeps native large-axis formatting when data labels are hidden", () => {
+  it("keeps native fullscreen-axis formatting when data labels are hidden", () => {
     const { model } = setup({
-      cartesianSize: "large",
+      cartesianSize: "fullscreen",
       settings: { "graph.show_values": false },
     });
 
     expect(model.leftAxisModel?.formatter(1000)).toBe("1,000");
   });
 
-  it("preserves native tick density on large boxplots", () => {
-    const { option } = setup({ cartesianSize: "large" });
+  it("preserves native tick density on fullscreen boxplots", () => {
+    const { option } = setup({ cartesianSize: "fullscreen" });
     expect(option).toMatchObject({
       yAxis: [
         {

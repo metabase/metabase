@@ -414,7 +414,7 @@ export type {
   RowChartTheme,
   Series,
 } from "./shared/components/RowChart/types";
-export { getDashboardAdjustedSettings } from "./shared/settings-adjustments";
+export { getSizeAdjustedSettings } from "./shared/settings-adjustments";
 export {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,

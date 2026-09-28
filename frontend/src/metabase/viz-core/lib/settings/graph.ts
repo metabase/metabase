@@ -1052,8 +1052,29 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Show label`;
     },
-    inline: true,
-    widget: "toggle",
+    widget: "segmentedControl",
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`On`;
+          },
+          value: true,
+        },
+        {
+          get name() {
+            return t`Off`;
+          },
+          value: false,
+        },
+      ],
+    }),
     getDefault: getIsXAxisLabelEnabledDefault,
   },
   "graph.x_axis.title_text": {
@@ -1082,8 +1103,29 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     get group() {
       return t`Y-axis`;
     },
-    widget: "toggle",
-    inline: true,
+    widget: "segmentedControl",
+    getProps: () => ({
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`On`;
+          },
+          value: true,
+        },
+        {
+          get name() {
+            return t`Off`;
+          },
+          value: false,
+        },
+      ],
+    }),
     getDefault: getIsYAxisLabelEnabledDefault,
   },
   "graph.y_axis.split_number": {

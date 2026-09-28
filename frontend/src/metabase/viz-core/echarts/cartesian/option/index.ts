@@ -490,7 +490,7 @@ export function buildSplitPanelYAxisLabel(
   const panelHeight = chartLayout.panelHeight ?? 0;
   const totalPanelsHeight =
     panelCount * panelHeight + (panelCount - 1) * chartLayout.panelGap;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize, fontWeight } = renderingContext.theme.cartesian.axisTitle;
 
   return [
     {
@@ -501,7 +501,7 @@ export function buildSplitPanelYAxisLabel(
         text: label,
         fill: renderingContext.getColor("text-primary"),
         fontSize,
-        fontWeight: CHART_STYLE.axisName.weight,
+        fontWeight,
         fontFamily: renderingContext.fontFamily,
         textAlign: "center",
         textVerticalAlign: "middle",
