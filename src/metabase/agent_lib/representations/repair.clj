@@ -2090,24 +2090,15 @@
     (catch Exception _ nil)))
 
 (defn- try-resolve-card-source-info
-  "Everything Pass 3 needs about a `source-card:` stage, or nil when it cannot be worked out.
+  "What Pass 3 needs about the `source-card:` stage on `card-id`: the card's returned field ids, the tables of those
+  columns, and its implicit-join FK candidates by target table, as lib's `visible-columns` reports them. nil, meaning
+  skip the stage, for native and `:metric` cards or when the card cannot be inspected.
 
-  nil means SKIP THE STAGE, and must never mean \"repair anyway\": `:returned-field-ids` is consulted as a *skip*
-  condition, so an empty-on-failure set would let a column the card really returns be re-derived through a different
-  join path -- different rows, no error.
-
-  Candidates come from the card's *returned* columns, not the table underneath it, mirroring
-  [[metabase.lib.metadata.calculation/implicitly-joinable-columns]] by asking lib for them directly. The base table
-  is the wrong origin: a card that aggregates, restricts its `:fields`, or reaches a column through its own explicit
-  join does not expose every FK its base table has, and a `source-field` naming one the card does not return compiles
-  to `__mb_source.<COLUMN>`, which does not exist. Deferring to lib also inherits its exclusion of tables the card
-  already reads from, which is what stops us answering through the base table's FK instead of the card's own join.
-
-  The invariant: repair may only produce a join lib would have offered on this source.
-
-  Native cards are skipped (`:table-id` nil) -- their columns carry no field ids, and erroring there would be a new
-  behaviour on a path this pass never handled. A `:metric` card takes a different `lib/query` branch entirely and is
-  not a legal `source-card:` anyway."
+  Repair may only produce a join lib would have offered on this source."
+  ;; Candidates come from the card's returned columns, not its base table: a card that aggregates, restricts
+  ;; `:fields`, or joins does not expose every FK its base table has, and a `source-field` naming one it does not
+  ;; return compiles to `__mb_source.<COLUMN>`. nil must never mean "repair anyway": `:returned-field-ids` is a skip
+  ;; condition, so an empty set on failure would re-derive a returned column through a different join path.
   [mp card-id]
   (try
     (when-let [card (and mp card-id (lib.metadata/card mp card-id))]

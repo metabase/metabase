@@ -315,20 +315,11 @@
                  explicit-joins)))))))
 
 (def ^:private ^:dynamic *card-read-verdicts*
-  "`{card-id -> boolean}` of read checks the *calling code* has already performed, letting [[metric-details]] skip
-  the per-metric `can-read?` on a metric's source card (the pk arity costs a full-row select apiece).
-
-  Records the NEGATIVE verdicts too, not just the readable ids: a metric whose source card is unreadable is exactly
-  the case a readable-ids set cannot answer, so it would fall through and pay the very select the batch exists to
-  avoid. An id that was checked but is absent from the app DB belongs here as `false` -- the pk arity of `can-read?`
-  throws outright on a row that is gone, which would turn a 400 into a 500.
-
-  A permission-check bypass, so it is deliberately NOT an entry in the `options` map: the tool entry points forward
-  their `arguments` -- an LLM-authored JSON payload -- into that map, and the only thing standing between it and a
-  skipped permission check would be a `:closed` Malli schema declared in another namespace. As a dynamic var bound
-  only by trusted callers here, it cannot be expressed in a tool call at all.
-
-  Bind it only to verdicts you established yourself."
+  "`{card-id -> boolean}` of source-card read checks the caller has already made, consulted by [[card-readable?]].
+  Holds `false` verdicts too, including for cards that no longer exist. Bind it only to verdicts you established
+  yourself."
+  ;; A permission-check bypass, so not an `options` key: tool entry points forward LLM-authored `arguments` into
+  ;; `options`, and a dynamic var cannot be expressed in a tool call.
   {})
 
 (defn- card-read-verdicts-for-metrics
@@ -843,11 +834,7 @@
                     {:metabot_id metabot-id, :status-code 400}))))
 
 (defn- arguments->options
-  "The detail-fn options for a tool call's `arguments` map.
-
-  Nothing here filters the map for safety: the read-verdict bypass lives in [[*card-read-verdicts*]], a dynamic var
-  that is not part of `options` at all, so no `arguments` key can reach it. Blocklisting one key name would only
-  suggest otherwise."
+  "The detail-fn options for a tool call's `arguments` map."
   [arguments]
   (cond-> arguments
     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity)))

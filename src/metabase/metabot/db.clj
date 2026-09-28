@@ -789,39 +789,26 @@
   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
 
 (def ^:private card-source-info-columns
-  "Columns [[card-source-info]] selects.
-
-  Do NOT add `:type`. Selecting `:dataset_query` already puts these rows through the full
-  `upgrade-card-schema-to-latest` loop; it stays cheap only because `upgrade-card-schema-to 24` short-circuits on
-  `(= :metric (keyword (:type card)))`, which is nil while `:type` is unselected. Adding it arms that upgrade, which
-  runs `metrics/compute-full-dimension-set` over the query of every un-curated metric on the page -- a large cost
-  with no visible symptom. Named rather than inlined so a test can pin it."
+  "Columns [[card-source-info]] selects. Do NOT add `:type`."
+  ;; With `:dataset_query` selected, rows go through `upgrade-card-schema-to-latest`. `upgrade-card-schema-to 24`
+  ;; only stays cheap because it short-circuits on `(= :metric (keyword (:type card)))`; selecting `:type` makes it
+  ;; run `metrics/compute-full-dimension-set` over every un-curated metric on the page. Pinned by a test.
   [:model/Card :id :card_schema :table_id :dataset_query])
 
 (mu/defn card-source-info
-  "A map of Card ID to `{:table_id ... :dataset_query ...}` for `card-ids` -- what
-  [[metabase.metabot.tools.util/metric-required-source]] needs to say which source a metric can be consumed from.
-
-  Deliberately NOT `:source_card_id`: that column is `lib/primary-source-card-id`, i.e. stage 0, so it cannot tell a
-  single-stage card-based metric (consumed from that card) from a multi-stage one (consumed from its base table).
-  Only the stage structure in `:dataset_query` can. `:card_schema` is required alongside it --
-  `t2/define-after-select` refuses to run its schema upgrades without it once the column list includes
-  `:dataset_query`.
-
-  See [[card-source-info-columns]] for why the column list is pinned."
+  "A map of Card ID to `{:table_id ... :dataset_query ...}` for `card-ids`, the input to
+  [[metabase.metabot.tools.util/metric-required-source]]."
+  ;; Not `:source_card_id`: it is stage 0's source, which cannot tell a single-stage card-based metric from a
+  ;; multi-stage one. `:card_schema` is required by `t2/define-after-select` once `:dataset_query` is selected.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select-pk->fn #(select-keys % [:table_id :dataset_query])
                     card-source-info-columns
                     :id [:in card-ids]))
 
 (mu/defn card-source-rows
-  "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries.
-
-  `:collection_id` and `:document_id` are not surfaced to callers but must be selected: both feed
-  [[metabase.models.interface/can-read?]] on a `:model/Card` instance, and a missing `:collection_id` makes a card in
-  a restricted collection look readable. `:card_schema` is carried for consistency with every other narrowed Card
-  select in this namespace; this particular column list does not trip `t2/define-after-select`'s schema upgrades,
-  which need `:id` plus one of `:type` / `:database_id` / `:dataset_query` / `:result_metadata`."
+  "The Cards with `card-ids`, for use as another entity's source, read-checkable without further queries."
+  ;; `:collection_id` and `:document_id` feed `mi/can-read?`; without `:collection_id` a card in a restricted
+  ;; collection reads as readable.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (t2/select [:model/Card :id :card_schema :name :entity_id :collection_id :document_id] :id [:in card-ids]))
 
