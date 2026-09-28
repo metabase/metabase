@@ -3853,7 +3853,7 @@
           (is (true? (:finished (message)))))))))
 
 (deftest data-app-group-assignments-migration-test
-  (impl/test-migrations ["v64.2026-09-16T00:00:00" "v64.2026-09-16T00:00:04"] [migrate!]
+  (impl/test-migrations ["v65.2026-09-16T00:00:00" "v65.2026-09-16T00:00:08"] [migrate!]
     (let [legacy-group (t2/insert-returning-pk! :permissions_group {:name "Data App: birds" :is_data_app_group true :entity_id "legacy-app-group"})
           ordinary-group (t2/insert-returning-pk! :permissions_group {:name "Finches" :entity_id "ordinary-group"})
           user-id (t2/insert-returning-pk! :core_user {:email "finch@test.com" :entity_id "migration-finch" :date_joined :%now
@@ -3870,4 +3870,13 @@
       (is (t2/exists? :data_app :id app-id))
       (is (empty? (t2/select :data_app_group)))
       (is (not (contains? (t2/select-one :data_app :id app-id) :permission_group_id)))
-      (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group))))))
+      (is (not (contains? (t2/select-one :permissions_group :id ordinary-group) :is_data_app_group)))
+      (testing "rollback restores the old columns without deleting apps or ordinary groups"
+        (migrate! :down 64)
+        (is (contains? (t2/select-one :data_app :id app-id) :permission_group_id))
+        (is (false? (:is_data_app_group (t2/select-one :permissions_group :id ordinary-group)))))
+      (testing "the migration can run again after rollback"
+        (migrate!)
+        (is (t2/exists? :data_app :id app-id))
+        (is (t2/exists? :permissions_group :id ordinary-group))
+        (is (empty? (t2/select :data_app_group)))))))
