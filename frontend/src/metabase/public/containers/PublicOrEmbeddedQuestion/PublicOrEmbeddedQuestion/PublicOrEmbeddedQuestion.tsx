@@ -39,7 +39,6 @@ export const PublicOrEmbeddedQuestion = () => {
 
   const dispatch = useDispatch();
   const store = useStore();
-  const buildQuestion = useQuestionFromCard();
 
   const [initialized, setInitialized] = useState(false);
 
@@ -188,12 +187,14 @@ export const PublicOrEmbeddedQuestion = () => {
     run();
   }, [run]);
 
+  const question = useQuestionFromCard(card);
+
   const getParameters = () => {
-    if (!initialized || !card) {
+    if (!initialized || !question) {
       return [];
     }
 
-    return buildQuestion(card).parameters();
+    return question.parameters();
   };
 
   return (

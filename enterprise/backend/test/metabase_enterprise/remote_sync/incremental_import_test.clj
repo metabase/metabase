@@ -261,6 +261,24 @@
 
 ;;; ------------------------------------------ First import: never incremental ------------------------------------------
 
+(deftest cancelled-after-commit-keeps-the-sync-base-test
+  (testing "a pull whose task is cancelled after its transaction committed still advances last-version, so the
+            next pull of the same snapshot is skipped instead of re-importing everything"
+    (do-with-bench!
+     (fn [f0]
+       (search.tu/with-index-disabled
+         (let [f1  (update f0 (path-with f0 "card_b") str/replace "display: table" "display: line")
+               src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
+           (is (= :success (:status (import-at! src "v0" :force? true))))
+           (let [task (t2/insert-returning-pk! :model/RemoteSyncTask
+                                               {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+             (is (= :success (:status (impl/import! (source.p/snapshot-at src "v1") task))))
+             ;; The worker died (or an admin cancelled) between the commit and the result bookkeeping.
+             (remote-sync.task/cancel-sync-task! task)
+             (is (=? {:cancelled true :version "v1"} (t2/select-one :model/RemoteSyncTask :id task))))
+           (is (= "v1" (remote-sync.task/last-version)))
+           (is (=? {:status :success :outcome {:kind "pull-skipped"}} (import-at! src "v1")))))))))
+
 (deftest first-import-no-force-uses-full-load-test
   (testing "GHY-3779: a first import (no prior version, so last-version is nil) with force? false must NOT
             attempt the incremental fast-path. incremental-load-snapshot! assumes local state equals

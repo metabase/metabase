@@ -14,7 +14,7 @@ import { getEngineNativeType } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Center, Flex, Icon } from "metabase/ui";
+import { Box, Button, Center, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetError, DatasetErrorType } from "metabase-types/api";
@@ -160,14 +160,15 @@ export function VisualizationError({
           <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           <Flex align="center" my="lg" gap="lg">
             {isSql && showMetabaseLinks && (
-              <ExternalLink
-                className={VisErrorS.QueryErrorLink}
+              <Button
+                component={ExternalLink}
                 href={getLearnUrl(
                   "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
                 )}
+                variant="subtle"
               >
                 {t`Learn how to debug SQL errors`}
-              </ExternalLink>
+              </Button>
             )}
             {errorAction}
           </Flex>

@@ -25,7 +25,6 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [throttle.core :as throttle])
   (:import
@@ -168,18 +167,18 @@
   "Format a sequence of JSON-RPC messages as SSE event text."
   [messages]
   (str/join (for [message messages]
-              (str "event: message\ndata: " (json/encode message) "\n\n"))))
+              (str "event: message\ndata: " (message/json-text message) "\n\n"))))
 
 ;;; -------------------------------------------------- Responses ---------------------------------------------------
 
 (defn- json-response
-  "Build a Ring response with a JSON-encoded `body`."
+  "Build a Ring response with `body` as [[message/json-text]]."
   ([status body]
    (json-response status body nil))
   ([status body extra-headers]
    {:status  status
     :headers (merge {"Content-Type" "application/json"} extra-headers)
-    :body    (json/encode body)}))
+    :body    (message/json-text body)}))
 
 (defn- sse-response
   "Return a plain Ring response with SSE-formatted body for POST requests."
@@ -693,10 +692,17 @@
   [{:keys [tools-hash-fn endpoint-paths default-path default-ask-scopes] :as opts}]
   (open-api/handler-with-open-api-spec
    (fn [request respond raise]
-     (let [origin-error (validate-origin request)
-           bearer-token (oauth-server/extract-bearer-token request)
-           session-auth api/*current-user-id*
-           token-scopes (:token-scopes request)]
+     (let [origin-error  (validate-origin request)
+           bearer-token  (oauth-server/extract-bearer-token request)
+           session-auth  api/*current-user-id*
+           token-scopes  (:token-scopes request)
+           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose token
+           ;; expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
+           invalid-token (delay (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
+                                               {"WWW-Authenticate"
+                                                (str (www-authenticate-discovery endpoint-paths default-path
+                                                                                 default-ask-scopes request)
+                                                     ", error=\"invalid_token\"")}))]
        (letfn [(dispatch [user-id token-scopes]
                  (request/with-current-user user-id
                    ;; Charge the throttle per JSON-RPC message, not per HTTP request, so a batch can't smuggle many
@@ -725,6 +731,11 @@
            (some? origin-error)
            (respond origin-error)
 
+           ;; The session middleware never authenticates an OAuth token without scopes. Should one arrive, the
+           ;; `session-auth` branch below would dispatch nil scopes as unrestricted, so refuse it as an invalid token.
+           (and (:authenticated-via-oauth? request) (empty? token-scopes))
+           (respond @invalid-token)
+
            ;; Respect the scope set attached to an authenticated request. Sessions without one
            ;; retain unrestricted access.
            session-auth
@@ -741,12 +752,7 @@
            ;; active-user check (a disabled user's token still authenticated) and the scope trust hinge (raw token
            ;; scopes dispatched verbatim). Return the RFC 6750 `invalid_token` 401 and dispatch nothing.
            bearer-token
-           ;; RFC 6750 `invalid_token`, still carrying the RFC 9728 discovery parameters: a client whose
-           ;; token expired re-discovers the protected-resource metadata from this 401 (MCP auth spec MUST).
-           (respond (json-response 401 (jsonrpc-error nil -32603 (message/msg ["Invalid bearer token"]))
-                                   {"WWW-Authenticate" (str (www-authenticate-discovery endpoint-paths default-path
-                                                                                        default-ask-scopes request)
-                                                            ", error=\"invalid_token\"")}))
+           (respond @invalid-token)
 
            ;; No auth at all — return 401 with discovery
            :else

@@ -33,9 +33,9 @@ export function ObjectDetail({
     }
   }, [data.rows, currentObjectIndex]);
 
-  const buildQuestion = useQuestionFromCard();
+  const cardQuestion = useQuestionFromCard(card);
   const hasPagination = data?.rows?.length > 1;
-  const resolvedQuestion = question ?? (card ? buildQuestion(card) : undefined);
+  const resolvedQuestion = question ?? cardQuestion;
 
   return (
     <>

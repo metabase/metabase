@@ -549,6 +549,43 @@
                 (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "resource_metadata=")
                     "the invalid_token challenge still carries RFC 9728 discovery")))))))))
 
+(defn- invoke-transport
+  "Invoke an MCP transport handler directly, bypassing the session middleware, as `user-id` with the given extra
+  request keys, and return the response."
+  [user-id request-keys body]
+  (let [handler (mcp.transport/make-handler {:dispatch-method-fn (fn [id & _] (mcp.transport/jsonrpc-response id {}))
+                                             :capabilities       {:tools {}}
+                                             :tools-hash-fn      (constantly "hash")
+                                             :endpoint-paths     #{"/api/metabase-mcp"}
+                                             :default-path       "/api/metabase-mcp"})
+        result  (promise)]
+    (mt/with-current-user user-id
+      (handler (merge {:request-method :post
+                       :uri            "/api/metabase-mcp"
+                       :headers        {}
+                       :body           body}
+                      request-keys)
+               #(deliver result %)
+               #(deliver result %)))
+    (deref result 10000 ::timeout)))
+
+(deftest oauth-request-without-token-scopes-is-refused-by-the-transport-test
+  (testing "GHY-4542: defense in depth behind the session middleware. A request authenticated via OAuth but carrying
+            no `:token-scopes` is refused with the invalid_token 401 rather than dispatched as unrestricted. The
+            marker the session middleware records decides it, so a cookie session (nil token-scopes, no marker)
+            keeps unrestricted access."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [initialize {"jsonrpc" "2.0" "id" 1 "method" "initialize" "params" {"capabilities" {}}}]
+        (doseq [token-scopes [nil #{}]]
+          (testing (str "OAuth-authenticated with token-scopes " (pr-str token-scopes))
+            (let [response (invoke-transport (mt/user->id :rasta)
+                                             {:authenticated-via-oauth? true :token-scopes token-scopes}
+                                             initialize)]
+              (is (= 401 (:status response)))
+              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token")))))
+        (testing "a session request with nil token-scopes is served"
+          (is (= 200 (:status (invoke-transport (mt/user->id :rasta) {} initialize)))))))))
+
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
 (deftest per-user-throttle-returns-429-test

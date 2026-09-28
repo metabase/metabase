@@ -76,9 +76,10 @@ export const UnarchivedBulkActions = ({
       )}
       <Menu position="top-end">
         <Menu.Target>
-          <BulkActionButton aria-label={t`More actions`} px="sm">
-            <Icon name="ellipsis" />
-          </BulkActionButton>
+          <BulkActionButton
+            aria-label={t`More actions`}
+            leftSection={<Icon name="ellipsis" />}
+          />
         </Menu.Target>
         <Menu.Dropdown data-testid="bulk-actions-menu">
           {isPinnedOnly && (

@@ -914,7 +914,8 @@
                                    {:profile-id "internal"})))
         (is (== 2 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms
@@ -940,7 +941,8 @@
                                    {:profile-id "internal"})))
         (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
                                    {:model "openrouter/anthropic/claude-haiku-4-5"
-                                    :source "agent"})))
+                                    :source "agent"
+                                    :provider "openrouter"})))
         (is (== 1 (:count (mt/metric-value system :metabase-metabot/agent-duration-ms
                                            {:profile-id "internal"}))))
         (is (pos? (:sum (mt/metric-value system :metabase-metabot/agent-duration-ms

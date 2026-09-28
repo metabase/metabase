@@ -10,7 +10,6 @@ import {
   Accordion,
   Box,
   Flex,
-  Icon,
   List,
   Stack,
   Text,
@@ -40,10 +39,7 @@ export const DataPermissionsHelp = () => {
         <Title order={3}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
-      <Accordion
-        chevron={<Icon name="chevrondown" size={12} />}
-        defaultValue="database-level"
-      >
+      <Accordion defaultValue="database-level">
         <Accordion.Item
           value="database-view-data-level"
           data-testid="database-view-data-level"
