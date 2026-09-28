@@ -442,6 +442,38 @@ describe("metabot reducer", () => {
       ]);
     });
 
+    it("marks the matching tool step errored when its call fails", () => {
+      const store = createStreamingStore();
+      store.dispatch(
+        metabotActions.toolCallStart({
+          conversationId,
+          toolCallId: "t1",
+          toolName: "search",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallStart({
+          conversationId,
+          toolCallId: "t2",
+          toolName: "read_resource",
+        }),
+      );
+      store.dispatch(
+        metabotActions.toolCallEnd({
+          conversationId,
+          toolCallId: "t1",
+          result: "Search is unavailable",
+          isError: true,
+        }),
+      );
+
+      const chain = getChain(store);
+      expect(chain?.type === "chain_of_thought" && chain.steps).toEqual([
+        { kind: "tool", id: "t1", name: "search", status: "errored" },
+        { kind: "tool", id: "t2", name: "read_resource", status: "started" },
+      ]);
+    });
+
     it("persists the chain but closes it when the answer text starts", () => {
       const store = createStreamingStore();
       store.dispatch(metabotActions.reasoningStart({ conversationId }));

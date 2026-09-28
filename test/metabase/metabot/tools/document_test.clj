@@ -160,3 +160,31 @@
               structured (:structured-output result)]
           (is (= chart-type (:display structured)))
           (is (= chart-type (:chart_type structured))))))))
+
+(deftest document-tools-errors-test
+  (testing "a database that no longer exists goes back to the agent as output"
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:999999" "Gone"}})]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= "Not found." (:output (document-tools/document-schema-collect-tool {})))))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [shared/current-context (fn [] {:references {"database:1" "Test Database"}})
+                                warehouses/get-database (fn [_] (throw (ex-info "boom" {})))
+                                create-sql-query-tools/create-sql-query (fn [_] (throw (ex-info "boom" {})))
+                                construct-tools/construct-notebook-query-tool (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (document-tools/document-schema-collect-tool {})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (document-tools/document-construct-sql-chart-tool
+                             {:database_id  1
+                              :name         "Test Name"
+                              :description  "Test Desc"
+                              :analysis     "Test Analysis"
+                              :approach     "Test Approach"
+                              :sql          "SELECT 1"
+                              :viz_settings {:chart_type "bar"}})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (document-tools/document-construct-model-chart-tool
+                             {:name         "Test Name"
+                              :description  "Test Desc"
+                              :query        ""
+                              :viz_settings {:chart_type "bar"}}))))))
