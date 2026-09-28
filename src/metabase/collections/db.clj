@@ -352,8 +352,8 @@
   ;; byte-identical SQL -- and are written so the lint sees every outside value accounted for.
   (t2/query-one {:update :collection
                  :set    {:location             [:replace :location
-                                                  [:auto/param orig-children-location]
-                                                  [:auto/param new-children-location]]
+                                                 [:auto/param orig-children-location]
+                                                 [:auto/param new-children-location]]
                           :is_remote_synced     remote-synced?
                           :archive_operation_id nil
                           :archived_directly    nil
@@ -373,8 +373,8 @@
   ;; `[:replace ...]` binds them as `REPLACE(location, ?, ?)` regardless -- the markers are a verified no-op.
   (t2/query-one {:update :collection
                  :set    {:location         [:replace :location
-                                              [:auto/param orig-children-location]
-                                              [:auto/param new-children-location]]
+                                             [:auto/param orig-children-location]
+                                             [:auto/param new-children-location]]
                           :is_remote_synced remote-synced?}
                  :where  [:like :location [:auto/param (str orig-children-location "%")]]}))
 
