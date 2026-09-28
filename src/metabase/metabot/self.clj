@@ -335,8 +335,9 @@
 
 (defn- report-tool-usage-xf
   "Transducer that fires an agent_used_tool :snowplow/ai_service_event per tool call.
-  Only fires when :source and :request-id are present in tracking-opts."
-  [{:keys [request-id session-id source profile-id iteration]}]
+  Only fires when :source and :request-id are present in tracking-opts. A tool name outside `tools` is
+  model output that may carry user data, so it is reported as \"unknown\"."
+  [{:keys [request-id session-id source profile-id iteration]} tools]
   (map (fn [part]
          (when (and (some? source)
                     (some? request-id)
@@ -351,7 +352,9 @@
                                          :profile                       (some-> profile-id name)
                                          :duration-ms                   (some-> (:duration-ms part) long)
                                          :result                        (if (:error part) "error" "success")
-                                         :event-details                 (cond-> {"tool_name" (:function part)}
+                                         :event-details                 (cond-> {"tool_name" (if (contains? tools (:function part))
+                                                                                               (:function part)
+                                                                                               "unknown")}
                                                                           (some? iteration) (assoc "step" iteration))}))
          part)))
 
@@ -518,7 +521,7 @@
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
                                                 (report-token-usage-xf tracking-opts)
-                                                (report-tool-usage-xf tracking-opts))
+                                                (report-tool-usage-xf tracking-opts tools))
                                           (stream-fn streaming-opts)))]
            (reify clojure.lang.IReduceInit
              (reduce [_ rf init]
