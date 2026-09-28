@@ -523,7 +523,7 @@
   (< (System/currentTimeMillis) @fast-mode-cooldown-until))
 
 (defn- fast-mode-retry-or-throw!
-  "The `:on-error` handler for [[claude-raw]]. Retries the request at standard speed when Anthropic
+  "The `:on-request-error` handler for [[claude-raw]]. Retries the request at standard speed when Anthropic
   rejected fast mode itself, and otherwise rethrows through the usual translation.
 
   Decoding the error body also closes the streamed response, so the connection is not leaked when the
