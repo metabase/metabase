@@ -1,5 +1,4 @@
 import { type FormikErrors, useFormikContext } from "formik";
-import { useCallback } from "react";
 import { t } from "ttag";
 
 import { useValidateDatabaseMutation } from "metabase/api";
@@ -12,10 +11,6 @@ import type { DatabaseData } from "metabase-types/api";
 import { getSubmitValues } from "../../utils/schema";
 
 import { getEngine } from "./utils";
-
-interface DatabaseTestConnectionButtonProps {
-  isAdvanced: boolean;
-}
 
 /** Formik types this as a string, but per-field errors arrive as an object keyed by field name */
 const getDetailErrorPaths = (details: unknown): string[] => {
@@ -34,16 +29,14 @@ const getConnectionErrorPaths = ({
   ...getDetailErrorPaths(details),
 ];
 
-export const DatabaseTestConnectionButton = ({
-  isAdvanced,
-}: DatabaseTestConnectionButtonProps) => {
+export const DatabaseTestConnectionButton = () => {
   const { values, validateForm, setFieldError, setFieldTouched } =
     useFormikContext<DatabaseData>();
   const engines = useSetting("engines");
   const [validateDatabase, { isLoading }] = useValidateDatabaseMutation();
   const [sendToast] = useToast();
 
-  const handleTestConnection = useCallback(async () => {
+  const handleTestConnection = async () => {
     const invalidPaths = getConnectionErrorPaths(await validateForm());
 
     if (invalidPaths.length > 0) {
@@ -59,7 +52,7 @@ export const DatabaseTestConnectionButton = ({
     const submitValues = getSubmitValues(
       getEngine(engines, engineKey),
       values,
-      isAdvanced,
+      true,
     );
 
     try {
@@ -92,21 +85,12 @@ export const DatabaseTestConnectionButton = ({
         icon: "warning",
       });
     }
-  }, [
-    engines,
-    isAdvanced,
-    sendToast,
-    setFieldError,
-    setFieldTouched,
-    validateDatabase,
-    validateForm,
-    values,
-  ]);
+  };
 
   return (
     <Button
       data-testid="database-test-connection-button"
-      disabled={isLoading || values.engine == null}
+      disabled={values.engine == null}
       loading={isLoading}
       onClick={handleTestConnection}
     >

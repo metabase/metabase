@@ -63,7 +63,7 @@ export const DatabaseFormFooter = ({
           )}
 
           <Flex gap="sm">
-            <DatabaseTestConnectionButton isAdvanced={isAdvanced} />
+            <DatabaseTestConnectionButton />
             <Button onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               disabled={!isDirty}
