@@ -61,9 +61,11 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.db :as models.db]
@@ -1269,9 +1271,25 @@
            (lib/all-template-tags x)))
     x))
 
+(defn- legacy-mbql-query->mbql5
+  "Converts an imported legacy MBQL query to MBQL 5, returning `x` unchanged if it isn't one or conversion fails.
+
+  Export writes every Field ID as a portable path, so a raw integer left in an imported query is a literal. Converting
+  here with `{:legacy-int-field-ids? false}` keeps it one; the legacy normalization models apply on save would treat
+  it as an MBQL 2 Field ID."
+  [x]
+  (if (and (map? x) (= (lib/normalized-query-type x) :query))
+    (try
+      (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+        (lib/->mbql5 (mbql.normalize/normalize :metabase.legacy-mbql.schema/Query x {:legacy-int-field-ids? false})))
+      (catch Throwable e
+        (log/warnf "Error converting imported legacy MBQL query: %s" (ex-message e))
+        x))
+    x))
+
 (defn import-mbql
   "Given an MBQL expression (or any structure that may contain portable references) as an EDN structure with portable
-  IDs embedded, convert the IDs back to raw numeric IDs.
+  IDs embedded, convert the IDs back to raw numeric IDs. Legacy MBQL queries are converted to MBQL 5.
 
   Throws if an MBQL 5 expression doesn't match the schema."
   [x]
@@ -1279,7 +1297,8 @@
           import-mbql*
           normalize-imported
           (cond-> (not *skip-schema-validation?*) validate-imported-query!)
-          repair-card-template-tag-names))
+          repair-card-template-tag-names
+          legacy-mbql-query->mbql5))
 
 (declare ^:private mbql-deps-map)
 
