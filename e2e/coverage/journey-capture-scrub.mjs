@@ -211,17 +211,24 @@ export function newCounts() {
 }
 
 /**
- * Applies every rule to one string, adding what it replaced to `counts`.
+ * Applies every rule to one string, adding what it replaced to `counts`,
+ * and the secret replacements to `bySecret` by secret name.
  */
-export function scrubString(text, matcher, counts) {
+export function scrubString(
+  text,
+  matcher,
+  counts,
+  bySecret = Object.create(null),
+) {
   let result = text;
   const ranges = matcher.find(result);
   if (ranges.length > 0) {
     let pieces = "";
     let from = 0;
-    for (const { start, end } of ranges) {
+    for (const { start, end, name } of ranges) {
       pieces += result.slice(from, start) + PLACEHOLDER;
       from = end;
+      bySecret[name] = (bySecret[name] ?? 0) + 1;
     }
     result = pieces + result.slice(from);
     counts.secret += ranges.length;
@@ -310,6 +317,7 @@ function walk(dir, prefix = "") {
 export function scrubDir(dir, secrets) {
   const matcher = textMatcher(secrets);
   const counts = newCounts();
+  const bySecret = Object.create(null);
   const stats = {
     files: 0,
     textFiles: 0,
@@ -317,9 +325,12 @@ export function scrubDir(dir, secrets) {
     changedFiles: 0,
     unparsedJson: 0,
     counts,
+    bySecret,
   };
   const scrub = (text) =>
-    text.length < SHORTEST_MATCH ? text : scrubString(text, matcher, counts);
+    text.length < SHORTEST_MATCH
+      ? text
+      : scrubString(text, matcher, counts, bySecret);
   for (const { relative, regular } of walk(dir)) {
     if (!regular) {
       continue;
@@ -401,13 +412,17 @@ export function verifyDir(dir, secrets) {
   return { ok: leftovers.length === 0, files, leftovers };
 }
 
-function report({ parsed, scrubbed, verified }) {
+export function report({ parsed, scrubbed, verified }) {
+  const byName = Object.entries(scrubbed.bySecret)
+    .sort(([nameA, a], [nameB, b]) => b - a || nameA.localeCompare(nameB))
+    .map(([name, n]) => `${name} ${n}`);
   const lines = [
     `secrets: ${parsed.secrets.length} values from ${parsed.names} secrets, ` +
       `${parsed.short} secrets left out as shorter than ${MIN_SECRET_LENGTH} characters`,
     `scrub: ${scrubbed.files} files, ${scrubbed.textFiles} text and ${scrubbed.binaryFiles} binary, ` +
       `${scrubbed.changedFiles} changed, ${scrubbed.unparsedJson} JSON files or lines scrubbed as plain text`,
     `replacements: ${RULES.map((rule) => `${rule} ${scrubbed.counts[rule]}`).join(", ")}`,
+    `secret replacements by name: ${byName.length > 0 ? byName.join(", ") : "none"}`,
     `verify: ${verified.ok ? "pass" : "FAIL"}, ${verified.files} files checked, ${verified.leftovers.length} leftovers`,
   ];
   for (const { file, rule, name } of verified.leftovers.slice(0, MAX_LISTED)) {

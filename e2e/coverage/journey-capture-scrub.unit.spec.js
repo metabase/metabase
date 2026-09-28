@@ -11,6 +11,7 @@ import {
   PLACEHOLDER,
   newCounts,
   parseSecrets,
+  report,
   scrubDir,
   scrubString,
   textMatcher,
@@ -23,13 +24,14 @@ const TOKEN =
 const JWT =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MX19.c2lnbmF0dXJlLW9mLXRoZS1mYWtl";
 const GITHUB_TOKEN = "ghs_FakeFakeFakeFakeFakeFakeFakeFake0123";
-const SECRETS = parseSecrets(
+const PARSED = parseSecrets(
   JSON.stringify({
     STAGING_MB_ALL_FEATURES_TOKEN: TOKEN,
     github_token: GITHUB_TOKEN,
     DOCKERHUB_USERNAME: "metabase",
   }),
-).secrets;
+);
+const SECRETS = PARSED.secrets;
 
 const KEPT = {
   hex16: "0000000000000abc",
@@ -542,6 +544,53 @@ describe("scrubDir and verifyDir", () => {
         },
       ],
     });
+  });
+
+  it("should count the secret replacements of each secret by name", () => {
+    writeShard(dir, recordAttempt(recordLeakShapes));
+    fs.appendFileSync(path.join(dir, "summary.txt"), `${GITHUB_TOKEN}\n`);
+
+    const { counts, bySecret } = scrubDir(dir, SECRETS);
+
+    expect(Object.keys(bySecret).sort()).toEqual([
+      "STAGING_MB_ALL_FEATURES_TOKEN",
+      "github_token",
+    ]);
+    expect(bySecret.github_token).toBe(1);
+    expect(bySecret.STAGING_MB_ALL_FEATURES_TOKEN).toBeGreaterThanOrEqual(3);
+    expect(Object.values(bySecret).reduce((sum, n) => sum + n, 0)).toBe(
+      counts.secret,
+    );
+  });
+
+  it("should print the secret replacements by name and never a secret value", () => {
+    writeShard(dir, recordAttempt(recordLeakShapes));
+    fs.appendFileSync(path.join(dir, "summary.txt"), `${GITHUB_TOKEN}\n`);
+
+    const scrubbed = scrubDir(dir, SECRETS);
+    const text = report({
+      parsed: PARSED,
+      scrubbed,
+      verified: verifyDir(dir, SECRETS),
+    });
+
+    expect(text.split("\n")).toContain(
+      `secret replacements by name: STAGING_MB_ALL_FEATURES_TOKEN ${scrubbed.bySecret.STAGING_MB_ALL_FEATURES_TOKEN}, github_token 1`,
+    );
+    expect(survivingPieces(text, TOKEN)).toEqual([]);
+    expect(survivingPieces(text, GITHUB_TOKEN)).toEqual([]);
+  });
+
+  it("should print none when no secret was replaced", () => {
+    fs.writeFileSync(path.join(dir, "meta.json"), "{}");
+
+    const text = report({
+      parsed: PARSED,
+      scrubbed: scrubDir(dir, SECRETS),
+      verified: verifyDir(dir, SECRETS),
+    });
+
+    expect(text.split("\n")).toContain("secret replacements by name: none");
   });
 
   it("should fail verification on a symlink", () => {
