@@ -1,1 +1,4 @@
-export { MeasureAggregationPicker } from "./MeasureAggregationPicker";
+export {
+  MeasureAggregationPicker,
+  ReadOnlyMeasureAggregationPicker,
+} from "./MeasureAggregationPicker";

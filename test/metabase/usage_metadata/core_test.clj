@@ -35,7 +35,7 @@
    :observation {:type :low-cardinality, :value 5}
    :count       1})
 
-(deftest implicit-segments-delegate-to-insights-test
+(deftest ^:parallel implicit-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-segments
                                             (fn [opts]
@@ -46,7 +46,7 @@
       (is (= {:source-type :card, :source-id 99, :limit 3}
              @captured-args)))))
 
-(deftest implicit-metrics-delegate-to-insights-test
+(deftest ^:parallel implicit-metrics-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-metrics
                                             (fn [opts]
@@ -57,7 +57,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 7}
              @captured-args)))))
 
-(deftest implicit-dimensions-delegate-to-insights-test
+(deftest ^:parallel implicit-dimensions-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/implicit-dimensions
                                             (fn [opts]
@@ -68,7 +68,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 9}
              @captured-args)))))
 
-(deftest suggested-segments-delegate-to-insights-test
+(deftest ^:parallel suggested-segments-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/suggested-segments-for-owner
                                             (fn [opts]
@@ -79,7 +79,7 @@
       (is (= {:source-type :table, :source-id 42, :limit 5}
              @captured-args)))))
 
-(deftest profile-observations-delegate-to-insights-test
+(deftest ^:parallel profile-observations-delegate-to-insights-test
   (let [captured-args (atom nil)]
     (dynamic-redefs/with-dynamic-fn-redefs [insights/profile-observations
                                             (fn [opts]

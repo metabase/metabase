@@ -229,6 +229,7 @@ export interface TreeTableProps<
 
   onRowClick?: (row: Row<TData>, event: MouseEvent) => void;
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
+  onScrollEnd?: () => void;
 
   /**
    * Custom selection state callback. When provided, bypasses TanStack selection

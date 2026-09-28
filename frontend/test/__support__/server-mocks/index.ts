@@ -61,4 +61,5 @@ export * from "./timeline";
 export * from "./transform";
 export * from "./user";
 export * from "./user-key-value";
+export * from "./usage-metadata";
 export * from "./util";

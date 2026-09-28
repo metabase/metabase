@@ -16,6 +16,8 @@ describe("getCurrentTab", () => {
     ${"/data-studio/library/metrics/456"}          | ${"library"}
     ${"/data-studio/library/metrics/456/overview"} | ${"library"}
     ${"/data-studio/library/tables/42"}            | ${"library"}
+    ${"/data-studio/cleanup"}                      | ${"cleanup"}
+    ${"/data-studio/cleanup/tables/42"}            | ${"cleanup"}
     ${"/data-studio/transforms/runs"}              | ${"transforms"}
     ${"/data-studio/transforms/runs?page=2"}       | ${"transforms"}
     ${"/data-studio/transforms"}                   | ${"transforms"}

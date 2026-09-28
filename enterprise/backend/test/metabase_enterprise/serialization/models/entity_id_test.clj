@@ -147,6 +147,11 @@
     :model/TransformJobTransformTag
     :model/TransformTransformTag
     :model/Undo
+    :model/UsageMetadataCandidate
+    :model/UsageMetadataCandidateDismissal
+    :model/UsageMetadataCandidateMatch
+    :model/UsageMetadataCandidateRun
+    :model/UsageMetadataCandidateSource
     :model/User
     :model/UserParameterValue
     :model/UserKeyValue

@@ -122,7 +122,7 @@ const TreeTableRowContent = memo(function TreeTableRowContent<
         [classNames?.rowDisabled ?? ""]: isDisabled && classNames?.rowDisabled,
       })}
       align="stretch"
-      h={DEFAULT_ROW_HEIGHT}
+      h={styles?.row?.height ?? DEFAULT_ROW_HEIGHT}
       fz="0.875rem"
       lh="1.25rem"
       c="text-primary"

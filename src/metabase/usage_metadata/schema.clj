@@ -1,10 +1,10 @@
 (ns metabase.usage-metadata.schema
-  "Shared malli schemas for usage-metadata public API inputs and results.
-
-  These are the shape contracts pinned at the `metabase.usage-metadata.core` boundary and
-  enforced inside `metabase.usage-metadata.insights` producers."
+  "Shared malli schemas for usage-metadata inputs and results."
   (:require
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -23,6 +23,15 @@
    [:limit        {:optional true, :description "Maximum number of results to return."}
     [:maybe pos-int?]]])
 
+(mr/def ::candidate-opts
+  [:map {:closed true}
+   [:card-ids       {:optional true, :description "Explicit Card IDs controlling which questions and models are analyzed."}
+    [:maybe [:set pos-int?]]]
+   [:min-view-count {:optional true, :description "Lifetime Card view_count used by the default source and as popularity evidence."}
+    [:maybe nat-int?]]
+   [:view-count-window-days {:optional true, :description "When set, use Card views within this many days instead of lifetime view_count."}
+    [:maybe pos-int?]]])
+
 (mr/def ::source
   [:map
    [:type         ::source-type]
@@ -39,9 +48,126 @@
    [:name         [:maybe :string]]
    [:display-name [:maybe :string]]])
 
+(mr/def ::candidate-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]
+   [:collection-id        [:maybe pos-int?]]
+   [:last-used-at         [:maybe ms/TemporalInstant]]
+   [:stage-numbers        [:sequential {:min 1} nat-int?]]
+   [:joined?              :boolean]
+   [:model-lineage        {:optional true}
+    [:sequential {:min 1}
+     [:map {:closed true}
+      [:id   pos-int?]
+      [:name [:maybe :string]]]]]])
+
+(mr/def ::candidate-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]
+   [:last-used-at          [:maybe ms/TemporalInstant]]])
+
+(mr/def ::candidate-table-model
+  [:map {:closed true}
+   [:id   pos-int?]
+   [:name [:maybe :string]]])
+
+(mr/def ::candidate-table-dependency-path
+  [:map {:closed true}
+   [:direct? :boolean]
+   [:models  [:sequential ::candidate-table-model]]])
+
+(mr/def ::candidate-table-source-item
+  [:map {:closed true}
+   [:id                   pos-int?]
+   [:name                 [:maybe :string]]
+   [:type                 [:enum :question :model]]
+   [:verified?            :boolean]
+   [:official-collection? :boolean]
+   [:popular?             :boolean]
+   [:view-count           nat-int?]
+   [:collection-id        [:maybe pos-int?]]
+   [:last-used-at         [:maybe ms/TemporalInstant]]
+   [:dependency-paths     [:sequential {:min 1} ::candidate-table-dependency-path]]])
+
+(mr/def ::candidate-table-evidence
+  [:map {:closed true}
+   [:source-items          [:sequential {:min 1} ::candidate-table-source-item]]
+   [:distinct-source-count pos-int?]
+   [:verified-source-count nat-int?]
+   [:official-source-count nat-int?]
+   [:popular-source-count  nat-int?]
+   [:total-view-count      nat-int?]
+   [:last-used-at          [:maybe ms/TemporalInstant]]])
+
+(mr/def ::candidate-table-metadata
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]])
+
+(mr/def ::candidate-table
+  [:map {:closed true}
+   [:table    ::candidate-table-metadata]
+   [:evidence ::candidate-table-evidence]])
+
+(mr/def ::unsupported-candidate-source-item
+  [:map {:closed true}
+   [:id            pos-int?]
+   [:name          [:maybe :string]]
+   [:type          [:enum :question :model]]
+   [:reason        [:enum :native-query :unreadable-query]]
+   [:model-lineage {:optional true} [:sequential {:min 1} ::candidate-table-model]]])
+
+(mr/def ::candidate-table-report
+  [:map {:closed true}
+   [:candidates               [:sequential ::candidate-table]]
+   [:unsupported-source-items [:sequential ::unsupported-candidate-source-item]]])
+
 (mr/def ::mbql-clause
   [:fn {:error/message "expected an MBQL clause"}
    (fn [x] (and (vector? x) (keyword? (first x))))])
+
+(mr/def ::candidate-metric-required-table
+  [:map {:closed true}
+   [:id             pos-int?]
+   [:database-id    pos-int?]
+   [:database-name  [:maybe :string]]
+   [:schema         [:maybe :string]]
+   [:name           [:maybe :string]]
+   [:display-name   [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:data-layer     [:maybe :keyword]]
+   [:data-authority [:maybe :keyword]]
+   [:view-count     nat-int?]
+   [:published?     :boolean]])
+
+(mr/def ::candidate-metric
+  [:map {:closed true}
+   [:definition            :map]
+   [:suggested-name        ::lib.schema.common/non-blank-string]
+   [:suggested-description ::lib.schema.common/non-blank-string]
+   [:aggregation           ::mbql-clause]
+   [:temporal-breakout     {:optional true} ::mbql-clause]
+   [:required-tables       [:sequential {:min 1} ::candidate-metric-required-table]]
+   [:evidence              ::candidate-evidence]])
 
 (mr/def ::implicit-segment
   [:map {:closed true}
@@ -207,3 +333,203 @@
    [:predicate      {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
+
+;;; ------------------------------------------------ Candidate rows -------------------------------------------------
+
+(mr/def ::candidate-type
+  [:enum :measure :segment :metric :table])
+
+(mr/def ::candidate-run-status
+  [:enum :queued :running :succeeded :failed])
+
+(mr/def ::app-db-timestamp
+  "A timestamp column value: an instant, or a Honey SQL expression such as [[metabase.models.interface/now]] that the
+  application database evaluates."
+  [:or ms/TemporalInstant ::h2x/expr])
+
+(mr/def ::candidate-evidence-cutoff
+  [:map {:closed true}
+   [:minimum-distinct-source-count {:optional true} pos-int?]
+   [:minimum-total-view-count      nat-int?]])
+
+(mr/def ::candidate-source-config
+  "The mining inputs and evidence cutoffs a candidate refresh run was materialized with."
+  [:map {:closed true}
+   [:kind                      [:enum :qualified-cards]]
+   [:usage-window-days         pos-int?]
+   [:minimum-recent-view-count nat-int?]
+   [:candidate-cutoffs         [:map {:closed true}
+                                [:verified ::candidate-evidence-cutoff]
+                                [:official ::candidate-evidence-cutoff]
+                                [:general  ::candidate-evidence-cutoff]]]])
+
+(mr/def ::candidate-run.update
+  "What an update (or insert) of a UsageMetadataCandidateRun accepts: every column of `:usage_metadata_candidate_run`
+  except `id`, all optional."
+  [:map {:closed true}
+   [:status            {:optional true} [:maybe ::candidate-run-status]]
+   [:trigger           {:optional true} [:maybe [:enum :manual :scheduled]]]
+   [:requested_by      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:algorithm_version {:optional true} [:maybe :int]]
+   [:source_config     {:optional true} [:maybe ::candidate-source-config]]
+   [:started_at        {:optional true} [:maybe ::app-db-timestamp]]
+   [:finished_at       {:optional true} [:maybe ::app-db-timestamp]]
+   [:error             {:optional true} [:maybe :string]]
+   [:summary           {:optional true} [:maybe [:map {:closed true} [:table-count nat-int?]]]]])
+
+(mr/def ::candidate-field
+  [:map {:closed true}
+   [:id           pos-int?]
+   [:name         [:maybe :string]]
+   [:display-name [:maybe :string]]])
+
+(mr/def ::candidate-atom
+  "One atomic predicate of a candidate, as presented."
+  [:map {:closed true}
+   [:signature    :string]
+   [:display-name :string]
+   [:kind         :keyword]])
+
+(mr/def ::candidate-measure-details
+  "The `:semantic_details` of a Measure candidate: its aggregation."
+  [:map {:closed true}
+   [:type                 :keyword]
+   [:field                [:maybe ::candidate-field]]
+   [:percentile           {:optional true} number?]
+   [:condition            {:optional true} [:maybe ::mbql-clause]]
+   [:condition-fields     {:optional true} [:sequential ::candidate-field]]
+   [:condition-atom-count {:optional true} nat-int?]
+   [:condition-atoms      {:optional true} [:sequential ::candidate-atom]]
+   [:base-name            {:optional true} :string]])
+
+(mr/def ::candidate-segment-details
+  "The `:semantic_details` of a Segment candidate: its predicate and the atoms it combines."
+  [:map {:closed true}
+   [:predicate  [:maybe ::mbql-clause]]
+   [:fields     [:sequential ::candidate-field]]
+   [:atoms      {:optional true} [:maybe [:sequential ::candidate-atom]]]
+   [:composite? :boolean]
+   [:atom-count nat-int?]])
+
+(mr/def ::candidate-metric-details
+  "The `:semantic_details` of a Metric candidate."
+  [:map {:closed true}
+   [:aggregation       ::mbql-clause]
+   [:required-tables   [:sequential ::candidate-metric-required-table]]
+   [:temporal-breakout {:optional true} ::mbql-clause]])
+
+(mr/def ::candidate-table-details
+  "The `:semantic_details` of a publish-Table candidate: the Table and the saved content depending on it."
+  [:map {:closed true}
+   [:table               ::candidate-table-metadata]
+   [:source-dependencies [:sequential [:map {:closed true}
+                                       [:card-id          pos-int?]
+                                       [:dependency-paths [:sequential ::candidate-table-dependency-path]]]]]])
+
+(mr/def ::candidate.update
+  "What an update (or insert) of a UsageMetadataCandidate accepts: every column of `:usage_metadata_candidate` except
+  `id`, all optional."
+  [:map {:closed true}
+   [:run_id                {:optional true} [:maybe ms/PositiveInt]]
+   [:candidate_type        {:optional true} [:maybe ::candidate-type]]
+   [:table_id              {:optional true} [:maybe ::lib.schema.id/table]]
+   [:signature_version     {:optional true} [:maybe :int]]
+   [:signature_hash        {:optional true} [:maybe :string]]
+   [:signature             {:optional true} [:maybe :string]]
+   [:definition            {:optional true} [:maybe [:or
+                                                     [:map {:closed true} [:table-id ::lib.schema.id/table]]
+                                                     ::lib-be.schema/maybe-legacy-query]]]
+   [:semantic_details      {:optional true} [:maybe [:or
+                                                     ::candidate-measure-details
+                                                     ::candidate-segment-details
+                                                     ::candidate-metric-details
+                                                     ::candidate-table-details]]]
+   [:suggested_name        {:optional true} [:maybe :string]]
+   [:display_name          {:optional true} [:maybe :string]]
+   [:suggested_description {:optional true} [:maybe :string]]
+   [:modeling_status       {:optional true} [:maybe [:enum :missing :partially-modeled :modeled]]]
+   [:verified_source_count {:optional true} [:maybe nat-int?]]
+   [:official_source_count {:optional true} [:maybe nat-int?]]
+   [:popular_source_count  {:optional true} [:maybe nat-int?]]
+   [:distinct_source_count {:optional true} [:maybe nat-int?]]
+   [:recent_view_count     {:optional true} [:maybe nat-int?]]
+   [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:complexity            {:optional true} [:maybe nat-int?]]
+   [:sort_position         {:optional true} [:maybe nat-int?]]])
+
+(mr/def ::candidate-source.update
+  "What an update (or insert) of a UsageMetadataCandidateSource accepts: every column of
+  `:usage_metadata_candidate_source` except `id`, all optional."
+  [:map {:closed true}
+   [:candidate_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:card_id           {:optional true} [:maybe ::lib.schema.id/card]]
+   [:card_name         {:optional true} [:maybe :string]]
+   [:card_type         {:optional true} [:maybe [:enum :question :model]]]
+   [:verified          {:optional true} [:maybe :boolean]]
+   [:official          {:optional true} [:maybe :boolean]]
+   [:popular           {:optional true} [:maybe :boolean]]
+   [:recent_view_count {:optional true} [:maybe nat-int?]]
+   [:joined            {:optional true} [:maybe :boolean]]
+   [:stage_numbers     {:optional true} [:maybe [:sequential nat-int?]]]
+   [:model_lineage     {:optional true} [:maybe [:sequential ::candidate-table-model]]]
+   [:collection_id     {:optional true} [:maybe pos-int?]]
+   [:last_used_at      {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::candidate-match-relation
+  [:enum :exact :same-base :subset :superset :overlap])
+
+(mr/def ::candidate-match.update
+  "What an update (or insert) of a UsageMetadataCandidateMatch accepts: every column of
+  `:usage_metadata_candidate_match` except `id`, all optional."
+  [:map {:closed true}
+   [:candidate_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:relation           {:optional true} [:maybe ::candidate-match-relation]]
+   [:entity_id          {:optional true} [:maybe ms/PositiveInt]]
+   [:entity_name        {:optional true} [:maybe :string]]
+   [:entity_description {:optional true} [:maybe :string]]])
+
+(mr/def ::candidate-dismissal-identity
+  "The durable identity a candidate shares with its instance-wide dismissal."
+  [:map {:closed true}
+   [:candidate_type    ::candidate-type]
+   [:table_id          ::lib.schema.id/table]
+   [:signature_version :int]
+   [:signature_hash    :string]])
+
+(mr/def ::candidate-dismissal.update
+  "What an insert of a UsageMetadataCandidateDismissal accepts."
+  [:merge
+   ::candidate-dismissal-identity
+   [:map {:closed true}
+    [:dismissed_by [:maybe ::lib.schema.id/user]]
+    [:dismissed_at ::app-db-timestamp]]])
+
+(mr/def ::candidate-list-filters
+  "The filters of a candidate or candidate-Table list. Every filter narrows the list; a missing or empty one does not."
+  [:map {:closed true}
+   [:table-id          {:optional true} [:maybe ::lib.schema.id/table]]
+   [:database-id       {:optional true} [:maybe ::lib.schema.id/database]]
+   [:schema            {:optional true} [:maybe :string]]
+   [:table-published?  {:optional true} [:maybe :boolean]]
+   [:candidate-types   {:optional true} [:maybe [:set ::candidate-type]]]
+   [:reviews           {:optional true, :description "Whether to include candidates still to review, dismissed ones, or both."}
+    [:maybe [:set [:enum :to-review :discarded]]]]
+   [:modeling-statuses {:optional true} [:maybe [:set [:enum :missing :partially-modeled :modeled]]]]
+   [:last-used-from    {:optional true, :description "Inclusive lower bound on when a candidate's sources were last used."}
+    [:maybe ms/TemporalInstant]]
+   [:last-used-to      {:optional true, :description "Exclusive upper bound on when a candidate's sources were last used."}
+    [:maybe ms/TemporalInstant]]
+   [:search            {:optional true} [:maybe :string]]])
+
+(mr/def ::sort-direction
+  [:enum :asc :desc])
+
+(mr/def ::candidate-list-sort
+  [:map {:closed true}
+   [:column    [:enum :name :views :sources :last-used]]
+   [:direction ::sort-direction]])
+
+(mr/def ::candidate-table-list-sort
+  [:map {:closed true}
+   [:column    [:enum :name :views :candidates]]
+   [:direction ::sort-direction]])
