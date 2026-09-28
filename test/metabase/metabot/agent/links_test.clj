@@ -2,13 +2,15 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (defn- decode-question-url
   "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
@@ -17,6 +19,75 @@
       (subs (count "/question#"))
       u/decode-base64
       (json/decode+kw)))
+
+(deftest ^:parallel native-query-link-round-trip-test
+  (let [query (lib/normalize {:lib/type :mbql/query
+                              :database 1
+                              :stages [{:lib/type :mbql.stage/native
+                                        :native "SELECT DATE '2026-07-01' AS probe_date"}]})
+        decoded (:dataset_query (decode-question-url (links/query-and-viz-link query :table)))]
+    (is (= "native" (:type decoded)))
+    (is (= (lib/->legacy-MBQL query)
+           (-> decoded lib.convert/js-legacy-query->mbql5 lib/->legacy-MBQL)))))
+
+(deftest ^:parallel temporal-filter-link-round-trip-test
+  (testing "Metabot links retain date predicates after JSON and legacy conversion (#79629)"
+    (let [field [:field {:base-type :type/Date} "probe_date"]
+          start [:absolute-datetime {} "2026-07-01" :day]
+          end   [:absolute-datetime {} "2026-07-31" :day]]
+      (doseq [date-filter [[:during {} field "2026-07-01" :month]
+                           [:between {} field start end]
+                           [:between {} (assoc-in field [1 :temporal-unit] :year) start end]
+                           [:or {} [:between {} field start end]
+                            [:between {} field
+                             [:absolute-datetime {} "2025-07-01" :day]
+                             [:absolute-datetime {} "2025-07-31" :day]]]]]
+        (testing (pr-str date-filter)
+          (let [query (lib/normalize
+                       {:lib/type :mbql/query
+                        :database 1
+                        :stages [{:lib/type :mbql.stage/mbql
+                                  :source-card 1
+                                  :aggregation [[:count {}]]
+                                  :filters [[:and {}
+                                             [:= {} [:field {:base-type :type/Boolean} "is_included"] true]
+                                             date-filter]]}]})
+                expected (:query (links/->legacy-mbql query))]
+            (doseq [url [(links/resolve-metabase-uri "metabase://query/q1" {"q1" query} {})
+                         (links/query-and-viz-link query :scalar)]]
+              (let [decoded  (:dataset_query (decode-question-url url))
+                    reopened (lib.convert/js-legacy-query->mbql5 decoded)]
+                (is (= expected (:query (lib/->legacy-MBQL reopened))))
+                (testing "the MBQL 5 query also survives the JSON round-trip used when saving and reopening"
+                  (is (= expected
+                         (-> reopened json/encode json/decode+kw
+                             lib.convert/js-legacy-query->mbql5 lib/->legacy-MBQL :query))))))))))))
+
+(deftest temporal-filter-native-source-link-test
+  (testing "a link over a saved native question counts only July rows, also after saving and reopening (#79629)"
+    ;; Run the synthetic native SQL fixture against the local H2 test database.
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+    (mt/test-drivers #{:h2}
+      (let [sql (str/join " UNION ALL "
+                          (for [date ["2026-06-30" "2026-07-01" "2026-07-31" "2026-08-01"]]
+                            (str "SELECT DATE '" date "' AS \"probe_date\", TRUE AS \"is_included\"")))]
+        (mt/with-temp [:model/Card source {:dataset_query (mt/native-query {:query sql})}]
+          (let [query (lib/normalize
+                       {:lib/type :mbql/query
+                        :database (mt/id)
+                        :stages [{:lib/type :mbql.stage/mbql
+                                  :source-card (:id source)
+                                  :aggregation [[:count {}]]
+                                  :filters [[:= {} [:field {:base-type :type/Boolean} "is_included"] true]
+                                            [:during {} [:field {:base-type :type/Date} "probe_date"]
+                                             "2026-07-01" :month]]}]})
+                decoded (:dataset_query (decode-question-url (links/query-and-viz-link query :scalar)))]
+            (is (= [[4]] (mt/rows (mt/process-query (update-in query [:stages 0] dissoc :filters)))))
+            (is (= [[2]] (mt/rows (mt/process-query query))))
+            (is (= [[2]] (mt/rows (mt/process-query decoded))))
+            (mt/with-temp [:model/Card saved {:dataset_query (lib.convert/js-legacy-query->mbql5 decoded)}]
+              (let [reopened (t2/select-one-fn :dataset_query :model/Card :id (:id saved))]
+                (is (= [[2]] (mt/rows (mt/process-query reopened))))))))))))
 
 (deftest ^:parallel ->legacy-mbql-rehydrated-query-test
   (testing "normalizes enum values stringified by JSON persistence before conversion"
