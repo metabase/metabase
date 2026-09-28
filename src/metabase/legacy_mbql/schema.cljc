@@ -450,7 +450,10 @@
 (defn- normalize-raw-positive-int-to-field-ref
   "Treats raw positive integers as Field IDs for backwards compatibility with MBQL 2, e.g.
 
-    [:= 10 20] => [:= [:field 10 nil] 20]"
+    [:= 10 20] => [:= [:field 10 nil] 20]
+
+  Runs as a `:decode/legacy-int-field-ids` decoder, which [[metabase.lib.normalize/normalize]] applies unless called
+  with `{:legacy-int-field-ids? false}`."
   [x]
   (if (pos-int? x)
     [:field x nil]
@@ -458,7 +461,7 @@
 
 (mr/def ::FieldOrExpressionRef
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    (one-of expression field)])
 
 ;; aggregate field reference refers to an aggregation, e.g.
@@ -977,7 +980,7 @@
 (mr/def ::EqualityFilterFieldArg
   "Schema for the first arg to `=`, `!=`, and friends."
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    [:ref ::EqualityComparable]])
 
 (defclause =
@@ -1034,7 +1037,7 @@
 
 (mr/def ::OrderedFilterFieldArg
   [:schema
-   {:decode/normalize #'normalize-raw-positive-int-to-field-ref}
+   {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}
    [:ref ::OrderComparable]])
 
 (defclause <,  field [:ref ::OrderedFilterFieldArg], value-or-field [:ref ::OrderComparable])
