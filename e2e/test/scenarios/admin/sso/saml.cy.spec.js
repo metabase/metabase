@@ -8,7 +8,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
   });
@@ -42,7 +42,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     getSamlCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable and enable saml", () => {
+  it("should allow to disable and enable saml, then reset its settings", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication");
 
@@ -55,12 +55,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Active").should("exist");
-  });
 
-  it("should allow to reset saml settings", () => {
-    setupSaml();
-    cy.visit("/admin/settings/authentication");
-
+    cy.log("Deactivating resets the saml settings");
     getSamlCard().icon("ellipsis").click();
     H.popover().findByText("Deactivate").click();
     H.modal().button("Deactivate").click();

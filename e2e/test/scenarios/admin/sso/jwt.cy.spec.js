@@ -6,7 +6,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
 
@@ -28,7 +28,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable and enable jwt", () => {
+  it("should allow to disable and enable jwt, regenerate its key, and reset its settings", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
@@ -41,37 +41,8 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
-  });
 
-  it("should allow the user to enable/disable user provisioning", () => {
-    enableJwtAuth();
-    cy.visit("/admin/settings/authentication/jwt");
-
-    cy.findByRole("switch", { name: "User provisioning" })
-      .should("be.checked")
-      .click({ force: true });
-    cy.wait("@updateSetting");
-
-    H.undoToast().findByText("Changes saved").should("be.visible");
-    cy.findByRole("switch", { name: "User provisioning" }).should(
-      "not.be.checked",
-    );
-  });
-
-  it("should allow to reset jwt settings", () => {
-    enableJwtAuth();
-    cy.visit("/admin/settings/authentication");
-
-    getJwtCard().icon("ellipsis").click();
-    H.popover().findByText("Deactivate").click();
-    H.modal().button("Deactivate").click();
-    cy.wait("@updateSettings");
-
-    getJwtCard().findByText("Set up").should("exist");
-  });
-
-  it("should allow to regenerate the jwt key and save the settings", () => {
-    enableJwtAuth();
+    cy.log("Regenerating the existing jwt key and saving the settings");
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.findByLabelText(/String used by the JWT signing key/i).should(
@@ -93,6 +64,31 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.findByTestId("admin-layout-content")
       .findByText("Success")
       .should("exist");
+
+    cy.log("Deactivating resets the jwt settings");
+    H.goToAuthOverviewPage();
+
+    getJwtCard().icon("ellipsis").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getJwtCard().findByText("Set up").should("exist");
+  });
+
+  it("should allow the user to enable/disable user provisioning", () => {
+    enableJwtAuth();
+    cy.visit("/admin/settings/authentication/jwt");
+
+    cy.findByRole("switch", { name: "User provisioning" })
+      .should("be.checked")
+      .click({ force: true });
+    cy.wait("@updateSetting");
+
+    H.undoToast().findByText("Changes saved").should("be.visible");
+    cy.findByRole("switch", { name: "User provisioning" }).should(
+      "not.be.checked",
+    );
   });
 
   describe("Group mapping", () => {

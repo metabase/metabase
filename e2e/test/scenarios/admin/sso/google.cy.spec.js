@@ -6,16 +6,32 @@ describe("scenarios > admin > settings > SSO > Google", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/google/settings").as("updateGoogleSettings");
   });
 
-  it("should save the client id on subsequent tries (metabase#15974)", () => {
+  it("should reject a client id without the correct suffix, then save the client id on subsequent tries (metabase#15974, metabase#15975)", () => {
     cy.visit("/admin/settings/authentication/google");
 
-    H.typeAndBlurUsingLabel("Client ID", "example1.apps.googleusercontent.com");
+    cy.log(
+      "A client id that does not end with the correct suffix shows an error (metabase#15975)",
+    );
+    H.typeAndBlurUsingLabel("Client ID", "fake-client-id");
     cy.button("Save and enable").click();
+    cy.wait("@updateGoogleSettings");
+    cy.findByTestId("admin-layout-content")
+      .findByText(
+        `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
+      )
+      .should("be.visible");
+
+    cy.log(
+      "A valid client id is saved, and so is a later change to it (metabase#15974)",
+    );
+    H.typeAndBlurUsingLabel("Client ID", "example1.apps.googleusercontent.com");
+    // the submit button reads "Failed" for 5s after the rejected save
+    cy.button(/Save and enable|Failed/).click();
     cy.wait("@updateGoogleSettings");
     cy.reload();
     cy.findByDisplayValue(`example1.${CLIENT_ID_SUFFIX}`).should("be.visible");
@@ -26,7 +42,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     cy.findByRole("button", { name: "Success" }).should("be.visible");
   });
 
-  it("should allow to disable and enable google auth (metabase#20442)", () => {
+  it("should allow to disable and enable google auth, then reset its settings (metabase#20442)", () => {
     setupGoogleAuth();
     cy.visit("/admin/settings/authentication");
 
@@ -39,30 +55,14 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getGoogleCard().findByText("Active").should("exist");
-  });
 
-  it("should allow to reset google settings", () => {
-    setupGoogleAuth();
-    cy.visit("/admin/settings/authentication");
-
+    cy.log("Deactivating resets the google settings");
     getGoogleCard().icon("ellipsis").click();
     H.popover().findByText("Deactivate").click();
     H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getGoogleCard().findByText("Set up").should("exist");
-  });
-
-  it("should show an error message if the client id does not end with the correct suffix (metabase#15975)", () => {
-    cy.visit("/admin/settings/authentication/google");
-
-    H.typeAndBlurUsingLabel("Client ID", "fake-client-id");
-    cy.button("Save and enable").click();
-    cy.findByTestId("admin-layout-content")
-      .findByText(
-        `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
-      )
-      .should("be.visible");
   });
 
   it("should show the button to sign in via google only when enabled", () => {
