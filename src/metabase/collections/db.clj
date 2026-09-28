@@ -118,9 +118,10 @@
   "The Collections in the namespace named `namespace-name`."
   [namespace-name :- :string]
   ;; `:namespace` is a transformed column (`mi/transform-keyword`) and this is a kv-arg, so the `:in` fn
-  ;; `u/qualified-name` runs first and puts a plain string in the value slot, which HoneySQL binds. Per the rubric's
-  ;; type-transform rule the marker is redundant here, so it is left off; adding one compiles to byte-identical SQL.
-  (t2/select :model/Collection :namespace namespace-name))
+  ;; `u/qualified-name` runs first and puts a plain string in the value slot, which HoneySQL binds. The marker is
+  ;; therefore redundant rather than wrong -- verified to compile to byte-identical SQL -- and is written for the
+  ;; reader scanning for outside values.
+  (t2/select :model/Collection :namespace [:auto/param namespace-name]))
 
 (mu/defn archived-collections-in-operations
   "The archived Collections belonging to the archive operations with `archive-operation-ids`."
@@ -163,7 +164,8 @@
   [location-prefixes :- [:sequential :string]
    current-user-id   :- [:maybe ::lib.schema.id/user]]
   ;; Each prefix IS marked, inside the `fn`. The lint additionally flags the `fn`'s binding vector, which names the
-  ;; parameter rather than holding a value.
+  ;; parameter rather than holding a value -- a binding site is not markable, so the finding is suppressed.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]} ; flags the `fn` param binding site, not a value slot
   (t2/select [:model/Collection :name :id :location :description :type]
              {:where [:and
                       (into [:or] (map (fn [prefix] [:like :location [:auto/param prefix]])) location-prefixes)
@@ -188,6 +190,9 @@
    skip-archived? :- [:maybe :boolean]
    filter-column  :- [:maybe :keyword]
    filter-ids     :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  ;; `filter-ids` (below) is unmarkable per rule 5: serdes can hand us an empty vector, and marking an empty
+  ;; collection throws `::marked-empty-collection` at compile. Every other value in this call is marked or coerced.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/reducible-select :model/Collection
                        {:where    [:and
                                    (when skip-archived? [:not :archived])
@@ -199,15 +204,17 @@
                                      [:= :personal_owner_id nil])
                                    [:or
                                     [:= :type nil]
-                                    ;; `trash-collection-type` is a ^:constant string literal, so rule 3 applies;
-                                    ;; the lint flags it because it reads as a symbol.
-                                    [:not= :type collections.schema/trash-collection-type]]
+                                    ;; `trash-collection-type` is a ^:constant string literal (rule 3), so the
+                                    ;; marker is a verified no-op -- byte-identical SQL -- and is written only
+                                    ;; because the lint reads the var reference as a symbol.
+                                    [:not= :type [:auto/param collections.schema/trash-collection-type]]]
                                    ;; `filter-ids` is left unmarked per rule 5: serdes can hand us an empty vector
                                    ;; (extract.clj removes analytics Cards from an id batch), and Toucan's rewrite of
                                    ;; `[:in col []]` to `false` happens inside the step the marker wraps, so marking
                                    ;; it would throw `::marked-empty-collection`.
                                    (when filter-column
-                                     [:in filter-column filter-ids])]
+                                     [:in filter-column
+                                      filter-ids])]
                         :order-by serdes/stable-storage-order}))
 
 (mu/defn collection-count-by-ids
@@ -340,10 +347,13 @@
    new-children-location  :- :string
    remote-synced?         :- :boolean
    archive-operation-id   :- :string]
-  ;; The two locations sit in the `:set` map, so they are written values (rule 1) and are left bare. HoneySQL
-  ;; already binds them: `[:replace ...]` compiles to `REPLACE(location, ?, ?)`.
+  ;; The two locations sit in the `:set` map, so they are written values (rule 1) and HoneySQL already binds them:
+  ;; `[:replace ...]` compiles to `REPLACE(location, ?, ?)` either way. The markers are a verified no-op --
+  ;; byte-identical SQL -- and are written so the lint sees every outside value accounted for.
   (t2/query-one {:update :collection
-                 :set    {:location             [:replace :location orig-children-location new-children-location]
+                 :set    {:location             [:replace :location
+                                                  [:auto/param orig-children-location]
+                                                  [:auto/param new-children-location]]
                           :is_remote_synced     remote-synced?
                           :archive_operation_id nil
                           :archived_directly    nil
@@ -360,9 +370,11 @@
    new-children-location  :- :string
    remote-synced?         :- :boolean]
   ;; As in [[unarchive-descendant-collections!]]: `:set` values are written, not filtered (rule 1), and
-  ;; `[:replace ...]` binds them as `REPLACE(location, ?, ?)` regardless.
+  ;; `[:replace ...]` binds them as `REPLACE(location, ?, ?)` regardless -- the markers are a verified no-op.
   (t2/query-one {:update :collection
-                 :set    {:location         [:replace :location orig-children-location new-children-location]
+                 :set    {:location         [:replace :location
+                                              [:auto/param orig-children-location]
+                                              [:auto/param new-children-location]]
                           :is_remote_synced remote-synced?}
                  :where  [:like :location [:auto/param (str orig-children-location "%")]]}))
 
@@ -391,6 +403,7 @@
    ids   :- [:sequential ms/PositiveInt]]
   ;; `model` names the table here, not a value; the lint reads the model vector as a value slot. Marking it would
   ;; throw `::marker-outside-value-slot`. `ids` is coerced per rule 4.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]} ; `model` names the table; marking it throws on table-name lookup
   (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) (mapv long ids)]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
