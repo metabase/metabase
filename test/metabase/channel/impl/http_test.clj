@@ -337,7 +337,7 @@
                               #"No URL is configured for this webhook"
                               (channel/send! channel nil)))))
     (testing "an unparseable webhook URL throws a human-readable error (#76802)"
-      (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+      (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "external-only"]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid webhook URL"
                               (channel/send! {:type    :channel/http
@@ -347,7 +347,7 @@
 (deftest send!-rejects-any-local-ula-cgnat-test
   (testing "under :external-only, hosts the old valid-host? let through -- any-local (0.0.0.0 / [::]),
            IPv6 ULA, IPv4 CGNAT -- are rejected up front"
-    (mt/with-temporary-setting-values [http-channel-host-strategy :external-only]
+    (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "external-only"]
       (doseq [host ["0.0.0.0" "[::]" "[fc00::1]" "100.64.0.1"]]
         (testing host
           (is (thrown-with-msg?
@@ -363,7 +363,7 @@
                                   [:allow-private true]
                                   [:external-only true]]]
       (with-captured-http-requests [requests]
-        (mt/with-temporary-setting-values [http-channel-host-strategy strategy]
+        (mt/with-temp-env-var-value! [mb-http-channel-host-strategy (name strategy)]
           (channel/send! {:type :channel/http
                           :details {:url         "https://8.8.8.8"
                                     :auth-method "none"
