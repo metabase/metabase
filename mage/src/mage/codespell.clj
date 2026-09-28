@@ -1,7 +1,7 @@
 (ns mage.codespell
   (:require
-   [mage.shell :as shell]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,6 +46,7 @@
                    "*.xml"
                    "docs/developers-guide/drivers/driver-tests.md"
                    "docs/developers-guide/e2e-tests.md"
+                   "docs/embedding/sdk/api"
                    "docs/questions/query-builder/expressions-list.md"
                    "docs/questions/visualizations/country-codes.md"
                    "e2e/test/scenarios/admin/i18n/content-translation/constants.ts"
@@ -53,5 +54,4 @@
                    "frontend/src/metabase/querying/expressions/tokenizer/lezer.js"
                    "frontend/src/metabase/static-viz/constants/char-sizes.ts"
                    "frontend/src/metabase/visualizations/lib/mapping_codes.ts"
-                   "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"
-                   ])))
+                   "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"])))
