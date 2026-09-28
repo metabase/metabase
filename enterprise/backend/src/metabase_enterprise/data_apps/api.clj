@@ -14,7 +14,6 @@
    [metabase-enterprise.data-apps.query-definition :as query-definition]
    [metabase-enterprise.data-apps.resource-serialization :as data-app.resource-serialization]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
-   [metabase-enterprise.data-apps.user-access :as data-app.user-access]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -98,7 +97,6 @@
    [:resource_collection_id ms/PositiveInt]
    [:permission_group_id    [:maybe ms/PositiveInt]]
    [:table_ids       [:sequential ms/PositiveInt]]
-   [:has_user_permission_warnings {:optional true} :boolean]
    [:bundle_hash     [:maybe :string]]
    [:created_at      :any]
    [:updated_at      :any]])
@@ -132,23 +130,6 @@
   [:map
    [:configured :boolean]
    [:url [:maybe :string]]])
-
-(def ^:private PermissionWarningsRequest
-  [:map {:closed true}
-   [:user_ids [:sequential {:min 1 :max 100 :distinct true} ms/PositiveInt]]])
-
-(def ^:private MissingTable
-  [:map {:closed true}
-   [:id ms/PositiveInt]
-   [:name ms/NonBlankString]
-   [:schema [:maybe :string]]
-   [:database_id ms/PositiveInt]
-   [:database_name ms/NonBlankString]])
-
-(def ^:private PermissionWarning
-  [:map {:closed true}
-   [:user_id ms/PositiveInt]
-   [:missing_tables [:sequential MissingTable]]])
 
 (def ^:private SerializeResourcesRequest
   [:map {:closed true}
@@ -238,13 +219,6 @@
     (assoc app :outdated (data-app.config/outdated? app))
     (select-keys app [:name :display_name])))
 
-(defn- data-app-list-response
-  [warning-group-ids app]
-  (cond-> (data-app-response app)
-    api/*is-superuser?*
-    (assoc :has_user_permission_warnings
-           (contains? warning-group-ids (:permission_group_id app)))))
-
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
    resource collection, which every app has."
@@ -274,10 +248,8 @@
   (let [apps (->> (data-apps.db/data-apps available)
                   (remove #(and (or available (not api/*is-superuser?*))
                                 (data-app.config/outdated? %)))
-                  (mapv api/read-check))
-        warning-group-ids (when api/*is-superuser?*
-                            (data-app.user-access/groups-with-permission-warnings apps))]
-    (mapv (partial data-app-list-response warning-group-ids) apps)))
+                  (mapv api/read-check))]
+    (mapv data-app-response apps)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
@@ -338,21 +310,6 @@
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema
   ;; above (returning `generic-204-no-content` would fail that validation).
   nil)
-
-(api.macros/defendpoint :post ["/:slug/user-permission-warnings" :slug slug-regex]
-  :- [:sequential PermissionWarning]
-  "Return warnings for users who cannot access every table used by a data app."
-  [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
-   _query-params
-   {user-ids :user_ids} :- PermissionWarningsRequest]
-  (let [app   (write-check-data-app slug)
-        users (data-apps.db/users-for-permission-warnings user-ids)]
-    (api/check-404 (= (count users) (count user-ids)))
-    (api/check-400 (every? :is_active users)
-                   (tru "Deactivated users cannot be added to data apps."))
-    (api/check-400 (every? (comp nil? :tenant_id) users)
-                   (tru "Tenant users cannot be added to data apps."))
-    (data-app.user-access/permission-warnings (:table_ids app) users)))
 
 (api.macros/defendpoint :post "/serialize-resources" :- SerializeResourcesResponse
   "Serialize what the files of a data app's collection are written from, as serialization writes it: the saved question

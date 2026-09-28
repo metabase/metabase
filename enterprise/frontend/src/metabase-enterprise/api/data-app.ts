@@ -1,8 +1,6 @@
 import type {
   DataApp,
   DataAppRepoStatus,
-  DataAppUserPermissionWarning,
-  GetDataAppUserPermissionWarningsRequest,
   SetDataAppEnabledRequest,
 } from "metabase-types/api";
 
@@ -42,16 +40,6 @@ export const dataAppApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [REPO_STATUS_TAG],
     }),
-    getDataAppUserPermissionWarnings: builder.query<
-      DataAppUserPermissionWarning[],
-      GetDataAppUserPermissionWarningsRequest
-    >({
-      query: ({ name, user_ids }) => ({
-        method: "POST",
-        url: `/api/apps/${encodeURIComponent(name)}/user-permission-warnings`,
-        body: { user_ids },
-      }),
-    }),
     setDataAppEnabled: builder.mutation<DataApp, SetDataAppEnabledRequest>({
       query: ({ name, enabled }) => ({
         method: "PUT",
@@ -76,7 +64,6 @@ export const {
   useListDataAppsQuery,
   useGetDataAppQuery,
   useGetDataAppRepoStatusQuery,
-  useGetDataAppUserPermissionWarningsQuery,
   useSetDataAppEnabledMutation,
   useDeleteDataAppMutation,
 } = dataAppApi;

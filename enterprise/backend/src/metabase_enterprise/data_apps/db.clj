@@ -55,11 +55,6 @@
                          filter-column       (assoc :where [:in filter-column filter-ids])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(defn users-for-permission-warnings
-  "The fields needed to calculate permission warnings for Users with `user-ids`."
-  [user-ids]
-  (t2/select [:model/User :id :is_superuser :is_active :tenant_id] :id [:in user-ids]))
-
 (mu/defn data-app-exists?
   "Whether a DataApp named `slug` exists."
   [slug :- :string]
@@ -280,50 +275,3 @@
               :join [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where [:in :t.id table-ids]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
-
-(defn sandboxed-user-table-access
-  "Sandboxed table access from non-data-app groups for the requested users and tables."
-  [user-ids table-ids]
-  (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                               [:s.table_id :table_id]]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:sandboxes :s] [:= :s.group_id :pgm.group_id]
-                    [:permissions_group :pg] [:= :pg.id :pgm.group_id]]
-             :where [:and
-                     [:in :pgm.user_id user-ids]
-                     [:in :s.table_id table-ids]
-                     [:not :pg.is_data_app_group]]}))
-
-(defn unrestricted-user-table-access
-  "Unrestricted table access from non-data-app groups for the requested users and tables."
-  [user-ids table-ids]
-  (t2/query {:select-distinct [[:pgm.user_id :user_id]
-                               [:t.id :table_id]]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:data_permissions :dp] [:= :dp.group_id :pgm.group_id]
-                    [:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                    (warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
-                    [:and
-                     [:= :t.db_id :dp.db_id]
-                     [:or
-                      [:= :dp.table_id nil]
-                      [:= :dp.table_id :t.id]]]]
-             :where [:and
-                     [:in :pgm.user_id user-ids]
-                     [:in :t.id table-ids]
-                     [:not :pg.is_data_app_group]
-                     [:= :dp.perm_type (u/qualified-name :perms/view-data)]
-                     [:= :dp.perm_value "unrestricted"]]}))
-
-(defn active-group-members
-  "Active user memberships for `group-ids`, including API-key users."
-  [group-ids]
-  (t2/query {:select [[:pgm.group_id :group_id]
-                      [:u.id :id]
-                      :u.is_superuser
-                      :u.email]
-             :from [[:permissions_group_membership :pgm]]
-             :join [[:core_user :u] [:= :u.id :pgm.user_id]]
-             :where [:and
-                     [:in :pgm.group_id group-ids]
-                     [:= :u.is_active true]]}))
