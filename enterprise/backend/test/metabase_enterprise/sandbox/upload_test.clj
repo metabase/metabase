@@ -68,3 +68,19 @@
                 (is (= nil
                        (:based_on_upload (get-card))
                        (:based_on_upload (get-collection-item))))))))))))
+
+(deftest can-upload-false-for-sandboxed-user-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/dataset dataset
+      (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+        (upload-test/with-uploads-enabled!
+          (testing "Sanity check: an unsandboxed admin can upload to the same database"
+            (is (true? (:can_upload (mt/user-http-request :crowberto :get 200 (str "database/" (mt/id)))))))
+          (testing "GET /api/database/:id"
+            (is (false? (:can_upload (mt/user-http-request :rasta :get 200 (str "database/" (mt/id)))))))
+          (testing "GET /api/database"
+            (is (false? (->> (mt/user-http-request :rasta :get 200 "database")
+                             :data
+                             (filter #(= (mt/id) (:id %)))
+                             first
+                             :can_upload)))))))))
