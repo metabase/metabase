@@ -378,8 +378,8 @@
                                    (sort-by :entity_id)))))))
 
 (mu/defn ^:private get-group-by-entity-id
-  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
-  static, nor data-app groups, as Metabase manages their membership itself, so none can be managed via SCIM."
+  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups,
+  as these are static and cannot be managed via SCIM."
   [entity-id :- ms/NonBlankString]
   (or (scim.db/scim-group-by-entity-id entity-id (hidden-group-ids))
       (throw-scim-error 404 "Group not found")))
