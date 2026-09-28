@@ -531,6 +531,22 @@
     "2020-10-20T10:20:00Z"
     "10:20:00"))
 
+(deftest ^:parallel ->legacy-MBQL-raw-int-literals-test
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                   (lib/join (lib/join-clause (meta/table-metadata :categories) [(lib/= 1 1)]))
+                   (lib/filter (lib/= 1 1))
+                   (lib/filter (lib/< 4 5))
+                   (lib/filter (lib/between 5 1 10)))
+        legacy (lib.convert/->legacy-MBQL query)]
+    (testing "raw integer literals in comparisons stay literals in legacy MBQL"
+      (is (=? {:filter [:and [:= 1 1] [:< 4 5] [:between 5 1 10]]
+               :joins  [{:condition [:= 1 1]}]}
+              (:query legacy))))
+    (testing "raw integer literals survive converting back to MBQL 5"
+      (is (=? {:filters [[:= {} 1 1] [:< {} 4 5] [:between {} 5 1 10]]
+               :joins   [{:conditions [[:= {} 1 1]]}]}
+              (-> legacy lib.convert/->mbql5 :stages first))))))
+
 (deftest ^:parallel round-trip-filter-expression-test
   (are [expressions filter-expression]
        (test-round-trip {:database 1
