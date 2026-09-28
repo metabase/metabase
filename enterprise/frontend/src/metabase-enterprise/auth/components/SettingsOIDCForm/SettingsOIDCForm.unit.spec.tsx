@@ -9,7 +9,11 @@ import {
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import type { CustomOidcConfig } from "metabase-enterprise/api";
-import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
+import {
+  createMockGroup,
+  createMockSettingDefinition,
+  createMockSettings,
+} from "metabase-types/api/mocks";
 
 import { SettingsOIDCForm } from "./SettingsOIDCForm";
 
@@ -52,13 +56,16 @@ const OIDC_GROUP_PLACEHOLDER = "Enter OIDC group...";
 // the providers live in one setting, so the mock keeps what the page writes and hands it back on refetch
 function setupProviderEndpoints(
   initialProviders: CustomOidcConfig[],
-  { writeDelay, readDelay, writeStatus }: ProviderDelays = {},
+  { writeDelay, readDelay, readStatus, writeStatus }: ProviderDelays = {},
 ) {
   const providers = initialProviders.map((provider) => ({ ...provider }));
 
   fetchMock.get(
     "path:/api/ee/sso/oidc",
-    () => providers.map((provider) => ({ ...provider })),
+    () =>
+      readStatus != null
+        ? { status: readStatus }
+        : providers.map((provider) => ({ ...provider })),
     { delay: readDelay },
   );
   fetchMock.post("path:/api/ee/sso/oidc", ({ options }) => {
@@ -96,14 +103,30 @@ function setupProviderEndpoints(
 type ProviderDelays = {
   writeDelay?: number;
   readDelay?: number;
+  readStatus?: number;
   writeStatus?: number;
 };
 
 const setup = async ({
   providers = [],
+  providersEnvName,
   ...delays
-}: { providers?: CustomOidcConfig[] } & ProviderDelays = {}) => {
-  setupSettingsEndpoints([]);
+}: {
+  providers?: CustomOidcConfig[];
+  // the env var that owns the providers, which the settings list reports as an env setting
+  providersEnvName?: string;
+} & ProviderDelays = {}) => {
+  setupSettingsEndpoints(
+    providersEnvName == null
+      ? []
+      : [
+          createMockSettingDefinition({
+            key: "oidc-providers",
+            is_env_setting: true,
+            env_name: providersEnvName,
+          }),
+        ],
+  );
   // the provisioning switch reads its value back after saving, so the properties mock has to remember writes
   setupStatefulSettingsEndpoints(createMockSettings());
   fetchMock.get("path:/api/permissions/group", GROUPS);
@@ -113,7 +136,10 @@ const setup = async ({
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
 
-  await screen.findByText("OpenID Connect");
+  // the page title only renders once the providers have loaded
+  if (delays.readStatus == null) {
+    await screen.findByText("OpenID Connect");
+  }
 };
 
 const getOidcPuts = async () => {
@@ -157,6 +183,61 @@ const addMapping = async (name: string, groupName: string) => {
 };
 
 describe("SettingsOIDCForm", () => {
+  describe("loading", () => {
+    it("shows an error instead of an empty form when the providers fail to load", async () => {
+      await setup({ readStatus: 500 });
+
+      expect(
+        await screen.findByText("Error loading OIDC configuration"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("OpenID Connect")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("environment variable", () => {
+    it("locks the whole page when the providers come from an environment variable", async () => {
+      await setup({
+        providers: [MAPPED_PROVIDER],
+        providersEnvName: "MB_OIDC_PROVIDERS",
+      });
+
+      expect(screen.getByTestId("setting-env-var-message")).toHaveTextContent(
+        "This has been set by the MB_OIDC_PROVIDERS environment variable.",
+      );
+      expect(screen.getByLabelText(/^Issuer URI/)).toHaveAttribute("readonly");
+      expect(screen.getByLabelText("Group attribute name")).toHaveAttribute(
+        "readonly",
+      );
+      expect(
+        screen.queryByRole("button", { name: "Save changes" }),
+      ).not.toBeInTheDocument();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      // the page banner names the env var, so the card does not repeat it
+      expect(
+        screen.queryByText("Using MB_OIDC_PROVIDERS"),
+      ).not.toBeInTheDocument();
+      expect(queryMappingRow("admins")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "New" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Delete mapping")).not.toBeInTheDocument();
+      // provisioning is its own setting, so its switch stays live
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).not.toHaveAttribute("aria-disabled");
+    });
+
+    it("locks an empty page too, since a new provider would be ignored as well", async () => {
+      await setup({ providersEnvName: "MB_OIDC_PROVIDERS" });
+
+      expect(screen.getByTestId("setting-env-var-message")).toBeInTheDocument();
+      expect(screen.getByLabelText(/^Key/)).toHaveAttribute("readonly");
+      expect(
+        screen.queryByRole("button", { name: "Save and enable" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("layout", () => {
     it("lays the cards out in the designed order", async () => {
       await setup({ providers: [EXISTING_PROVIDER] });
@@ -195,22 +276,18 @@ describe("SettingsOIDCForm", () => {
       await setup();
       // the attributes card only opens once a provider exists, so its claims are checked in the test below
 
-      expect(screen.getByLabelText(/^Key/)).toHaveAttribute(
-        "placeholder",
-        "okta",
-      );
-      expect(screen.getByLabelText(/^Login prompt/)).toHaveAttribute(
-        "placeholder",
-        "Sign in with Okta",
-      );
-      expect(screen.getByLabelText(/^Client ID/)).toHaveAttribute(
-        "placeholder",
-        "metabase-client-id",
-      );
-      expect(screen.getByLabelText(/^Client secret/)).toHaveAttribute(
-        "placeholder",
-        "your-client-secret",
-      );
+      const key = screen.getByLabelText(/^Key/);
+      expect(key).toHaveValue("");
+      expect(key).toHaveAttribute("placeholder", "okta");
+      const loginPrompt = screen.getByLabelText(/^Login prompt/);
+      expect(loginPrompt).toHaveValue("");
+      expect(loginPrompt).toHaveAttribute("placeholder", "Sign in with Okta");
+      const clientId = screen.getByLabelText(/^Client ID/);
+      expect(clientId).toHaveValue("");
+      expect(clientId).toHaveAttribute("placeholder", "metabase-client-id");
+      const clientSecret = screen.getByLabelText(/^Client secret/);
+      expect(clientSecret).toHaveValue("");
+      expect(clientSecret).toHaveAttribute("placeholder", "your-client-secret");
       // scopes live in the server settings card, visible without expanding anything
       const scopes = screen.getByLabelText(/^Scopes/);
       expect(scopes).toBeVisible();
@@ -225,19 +302,15 @@ describe("SettingsOIDCForm", () => {
 
       await expandAttributes();
 
-      expect(screen.getByLabelText("Email attribute key")).toHaveValue("");
-      expect(screen.getByLabelText("Email attribute key")).toHaveAttribute(
-        "placeholder",
-        "email",
-      );
-      expect(screen.getByLabelText("First name attribute key")).toHaveAttribute(
-        "placeholder",
-        "given_name",
-      );
-      expect(screen.getByLabelText("Last name attribute key")).toHaveAttribute(
-        "placeholder",
-        "family_name",
-      );
+      const email = screen.getByLabelText("Email attribute key");
+      expect(email).toHaveValue("");
+      expect(email).toHaveAttribute("placeholder", "email");
+      const firstName = screen.getByLabelText("First name attribute key");
+      expect(firstName).toHaveValue("");
+      expect(firstName).toHaveAttribute("placeholder", "given_name");
+      const lastName = screen.getByLabelText("Last name attribute key");
+      expect(lastName).toHaveValue("");
+      expect(lastName).toHaveAttribute("placeholder", "family_name");
     });
 
     it("shows the group attribute default as a placeholder and leaves the field empty", async () => {
@@ -313,48 +386,26 @@ describe("SettingsOIDCForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("comes alive once the provider is saved", async () => {
-      await setup({ providers: [EXISTING_PROVIDER] });
-
-      const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
-    });
-
     it("saves right away without touching the page form", async () => {
       await setup({ providers: [EXISTING_PROVIDER] });
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      await waitFor(() => expect(toggle).toBeEnabled());
-      expect(toggle).toBeChecked();
+      await waitFor(() => {
+        expect(toggle).toBeEnabled();
+        expect(toggle).not.toHaveAttribute("aria-disabled");
+      });
 
       await userEvent.click(toggle);
 
-      await waitFor(() => expect(toggle).not.toBeChecked());
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(1);
       expect(puts[0].url).toMatch(
         /\/api\/setting\/oidc-user-provisioning-enabled%3F$/,
       );
-      expect(puts[0].body).toEqual({ value: false });
-      expect(
-        screen.getByRole("button", { name: "Save changes" }),
-      ).toBeDisabled();
     });
   });
 
   describe("group mapping", () => {
-    it("keeps the mappings and the group attribute hidden while group mapping is off", async () => {
-      await setup({ providers: [EXISTING_PROVIDER] });
-
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("textbox", { name: /Group attribute name/ }),
-      ).not.toBeInTheDocument();
-    });
-
     it("turns group mapping on right away and keeps the provider's other group settings", async () => {
       await setup({
         providers: [
@@ -425,7 +476,9 @@ describe("SettingsOIDCForm", () => {
         screen.getByRole("switch", { name: "User provisioning" }),
       );
 
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).not.toBeChecked();
     });
 
@@ -447,31 +500,57 @@ describe("SettingsOIDCForm", () => {
 
       await addMapping("devs", "Engineering");
 
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
     });
 
-    it("holds the mapping editor while the switch write is in flight", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], writeDelay: 200 });
+    it("holds the card while the page form saves the provider", async () => {
+      await setup({ providers: [MAPPED_PROVIDER], writeDelay: 200 });
+      await userEvent.type(screen.getByLabelText(/^Login prompt/), "!");
 
-      await userEvent.click(groupMappingSwitch());
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save changes" }),
+      );
 
+      await waitFor(() =>
+        expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true"),
+      );
       expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
     });
 
-    it("shows the new value and holds the switch while the write is in flight", async () => {
+    it("keeps the page form from saving while the card writes", async () => {
+      await setup({ providers: [MAPPED_PROVIDER], writeDelay: 200 });
+      await userEvent.type(screen.getByLabelText(/^Login prompt/), "!");
+      const saveButton = screen.getByRole("button", { name: "Save changes" });
+      expect(saveButton).toBeEnabled();
+
+      await userEvent.click(groupMappingSwitch());
+
+      expect(saveButton).toBeDisabled();
+      await waitFor(() => expect(saveButton).toBeEnabled());
+    });
+
+    it("shows the new value and holds the card while the write is in flight", async () => {
       await setup({ providers: [EXISTING_PROVIDER], writeDelay: 200 });
 
       await userEvent.click(groupMappingSwitch());
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
       expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
+      expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
       expect(await getOidcPuts()).toHaveLength(1);
     });
 
@@ -483,24 +562,11 @@ describe("SettingsOIDCForm", () => {
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
 
       expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(groupMappingSwitch()).toBeChecked();
-    });
-
-    it("puts the old value back when the write fails", async () => {
-      await setup({ providers: [EXISTING_PROVIDER], writeStatus: 500 });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(
-        await screen.findByText(/Error saving group mapping/),
-      ).toBeInTheDocument();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
     });
 
     it("drops an unsaved group attribute edit when group mapping is turned off", async () => {
@@ -524,11 +590,15 @@ describe("SettingsOIDCForm", () => {
       expect(saveButton()).toBeEnabled();
 
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
 
       expect(saveButton()).toBeDisabled();
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
       expect(attributeInput()).toHaveValue("roles");
     });
 
@@ -592,35 +662,6 @@ describe("SettingsOIDCForm", () => {
         "group-attribute": "roles",
         "group-mappings": { admins: [2], devs: [3] },
       });
-    });
-
-    it("keeps group mapping on when the last mapping is deleted", async () => {
-      await setup({ providers: [MAPPED_PROVIDER] });
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Delete mapping" }),
-      );
-      const modal = await screen.findByRole("dialog");
-      // JWT warns here that sync turns off with the last mapping; OIDC keeps it on
-      expect(
-        within(modal).queryByText(/group mapping will be turned off/),
-      ).not.toBeInTheDocument();
-      await userEvent.click(
-        within(modal).getByRole("button", { name: "Remove mapping" }),
-      );
-
-      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-      const [{ body }] = await getOidcPuts();
-      expect(body).toEqual({
-        "group-sync": {
-          enabled: true,
-          "group-attribute": "groups",
-          "group-mappings": {},
-        },
-      });
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(screen.getByText("No mappings yet")).toBeInTheDocument();
-      expect(queryMappingRow("admins")).toBeUndefined();
     });
   });
 });

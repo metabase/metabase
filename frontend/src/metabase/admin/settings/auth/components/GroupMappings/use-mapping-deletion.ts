@@ -1,43 +1,45 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type {
-  DeleteMappingModalValueType,
-  GroupIds,
-} from "metabase/admin/types";
 import {
   useClearGroupMembershipMutation,
   useDeletePermissionsGroupMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import type { GroupId } from "metabase-types/api";
 
+import type { CascadeValue, DeleteMappingModalValueType } from "./types";
 import type { GroupMappingsState } from "./use-group-mappings";
-import { type GroupLookup, withoutMapping } from "./utils";
+import { type GroupLookup, withoutGroups, withoutMapping } from "./utils";
 
 type MappingCascade = {
-  value: Exclude<DeleteMappingModalValueType, "nothing">;
-  groupIds: GroupIds;
+  value: CascadeValue;
+  groupIds: GroupId[];
+};
+
+type CascadeOutcome = {
+  deletedIds: GroupId[];
+  failureCount: number;
 };
 
 export type MappingDeletionState = {
   target: string | null;
-  targetGroupIds: GroupIds;
+  targetGroupIds: GroupId[];
   isDeleting: boolean;
   requestDelete: (name: string) => void;
   cancelDelete: () => void;
-  confirmDelete: (
-    value: DeleteMappingModalValueType,
-    groupIds: GroupIds,
-    name: string,
-  ) => Promise<void>;
+  confirmDelete: (value: DeleteMappingModalValueType) => Promise<void>;
 };
 
 export function useMappingDeletion({
   groupMapping,
   groupLookup,
+  lastMappingDeletedMessage,
 }: {
   groupMapping: GroupMappingsState;
   groupLookup: GroupLookup;
+  // replaces the success toast when the deletion empties the mappings, for providers that stop syncing then
+  lastMappingDeletedMessage?: string;
 }): MappingDeletionState {
   const [sendToast] = useToast();
   const [clearGroupMembership] = useClearGroupMembershipMutation();
@@ -51,9 +53,11 @@ export function useMappingDeletion({
       : groupLookup.existingIds(groupMapping.mappings[target] ?? []);
 
   // "nothing, just remove the mapping" arrives as null and touches no group
-  const runCascade = async (cascade: MappingCascade | null) => {
+  const runCascade = async (
+    cascade: MappingCascade | null,
+  ): Promise<CascadeOutcome> => {
     if (cascade == null) {
-      return { failureCount: 0 };
+      return { deletedIds: [], failureCount: 0 };
     }
     const results = await Promise.allSettled(
       cascade.groupIds.map((groupId) =>
@@ -64,23 +68,39 @@ export function useMappingDeletion({
     );
     const failures = results.filter((result) => result.status === "rejected");
     failures.forEach((failure) => console.error(failure.reason));
-    return { failureCount: failures.length };
+    let deletedIds: GroupId[] = [];
+    if (cascade.value === "delete") {
+      deletedIds = cascade.groupIds.filter(
+        (_groupId, index) => results[index].status === "fulfilled",
+      );
+    }
+    return { deletedIds, failureCount: failures.length };
   };
 
   const deleteMapping = async (
     name: string,
     cascade: MappingCascade | null,
   ) => {
-    const nextMappings = withoutMapping(
-      groupMapping.mappings,
-      name,
-      cascade?.value === "delete" ? cascade.groupIds : [],
-    );
+    // the mapping goes first, so a failed write never leaves deleted groups behind
+    const nextMappings = withoutMapping(groupMapping.mappings, name);
     const result = await groupMapping.saveMappings(nextMappings);
     if (!result.ok) {
       return;
     }
-    const { failureCount } = await runCascade(cascade);
+    const { deletedIds, failureCount } = await runCascade(cascade);
+    // the other mappings lose a group only once the backend has deleted it
+    const deleted = new Set(deletedIds);
+    const hasDeletedGroups = Object.values(nextMappings).some((ids) =>
+      ids.some((groupId) => deleted.has(groupId)),
+    );
+    if (hasDeletedGroups) {
+      const scrubResult = await groupMapping.saveMappings(
+        withoutGroups(nextMappings, deletedIds),
+      );
+      if (!scrubResult.ok) {
+        return;
+      }
+    }
     if (failureCount > 0) {
       sendToast({
         message: t`Mapping deleted, but not all of its groups could be updated`,
@@ -89,19 +109,27 @@ export function useMappingDeletion({
       });
       return;
     }
-    sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
+    const isLastMapping = Object.keys(nextMappings).length === 0;
+    sendToast({
+      message:
+        isLastMapping && lastMappingDeletedMessage != null
+          ? lastMappingDeletedMessage
+          : t`Mapping deleted`,
+      icon: "check_filled",
+    });
   };
 
-  const confirmDelete = async (
-    value: DeleteMappingModalValueType,
-    groupIds: GroupIds,
-    name: string,
-  ) => {
+  const confirmDelete = async (value: DeleteMappingModalValueType) => {
+    if (target == null) {
+      return;
+    }
+    const name = target;
+    const groupIds = targetGroupIds;
     setTarget(null);
     const cascade =
       value === "nothing"
         ? null
-        : { value, groupIds: groupLookup.actionableIds(groupIds) };
+        : { value, groupIds: groupLookup.actionableIds(groupIds, value) };
     // the write releases its own busy flag before the cascade, so this one covers the whole operation
     setIsDeleting(true);
     try {

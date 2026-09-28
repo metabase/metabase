@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { SettingsGroupMappingSection } from "metabase/admin/settings/auth/components/GroupMappings";
 import {
   SETTINGS_FIELD_DESCRIPTION_PROPS,
   getDefaultPlaceholder,
@@ -22,6 +23,8 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -42,8 +45,6 @@ import type {
   EnterpriseSettings,
   SettingDefinitionMap,
 } from "metabase-types/api";
-
-import { SamlGroupMappingSection } from "./SamlGroupMappingSection";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,
@@ -82,6 +83,7 @@ export function SettingsSAMLForm() {
     [updateSamlSettings],
   );
 
+  const applicationName = useSelector(getApplicationName);
   const siteUrl = useSetting("site-url");
   const scimEnabled = useSetting("scim-enabled");
 
@@ -272,7 +274,12 @@ export function SettingsSAMLForm() {
                 lockedNote={scimNote}
               />
 
-              <SamlGroupMappingSection
+              <SettingsGroupMappingSection
+                syncSettingKey="saml-group-sync"
+                mappingsSettingKey="saml-group-mappings"
+                description={t`Automatically assign people to ${applicationName} groups based on groups from your SAML identity provider`}
+                nameLabel={t`SAML group name`}
+                namePlaceholder={t`Enter SAML group...`}
                 data-testid="saml-group-mapping-section"
                 disabled={!isConfigured}
                 onToggle={(enabled) => {
@@ -294,7 +301,7 @@ export function SettingsSAMLForm() {
                     settingDetails["saml-attribute-group"],
                   )}
                 />
-              </SamlGroupMappingSection>
+              </SettingsGroupMappingSection>
 
               <FormErrorMessage />
               <Flex justify="end">

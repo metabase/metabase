@@ -129,7 +129,7 @@ describe(
 
       enterLdapPort("21.3");
       cy.get("@portSection")
-        .findByText("ldap-port must be an integer")
+        .findByText("Port must be a whole number between 1 and 65535")
         .should("be.visible");
 
       enterLdapPort("389 ");

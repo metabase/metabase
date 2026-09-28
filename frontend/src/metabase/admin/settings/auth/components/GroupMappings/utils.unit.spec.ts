@@ -1,6 +1,11 @@
 import { createMockGroup } from "metabase-types/api/mocks";
 
-import { createGroupLookup, withMappingEntry, withoutMapping } from "./utils";
+import {
+  createGroupLookup,
+  withMappingEntry,
+  withoutGroups,
+  withoutMapping,
+} from "./utils";
 
 describe("withMappingEntry", () => {
   it("appends a new mapping", () => {
@@ -39,10 +44,13 @@ describe("withoutMapping", () => {
       devs: [4, 3],
     });
   });
+});
 
-  it("scrubs deleted group ids from the remaining mappings", () => {
-    expect(withoutMapping({ old: [4], devs: [4, 3] }, "old", [4])).toEqual({
+describe("withoutGroups", () => {
+  it("scrubs the given group ids from every mapping", () => {
+    expect(withoutGroups({ devs: [4, 3], ops: [4] }, [4])).toEqual({
       devs: [3],
+      ops: [],
     });
   });
 });
@@ -56,19 +64,35 @@ describe("createGroupLookup", () => {
       magic_group_type: "admin",
     }),
     createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
+    createMockGroup({
+      id: 4,
+      name: "Data Analysts",
+      magic_group_type: "data-analyst",
+    }),
   ]);
 
-  it("excludes magic groups from the mappable ones", () => {
-    expect(groupLookup.mappableGroups.map((group) => group.id)).toEqual([2, 3]);
+  it("excludes the default groups from the mappable ones", () => {
+    expect(groupLookup.mappableGroups.map((group) => group.id)).toEqual([
+      2, 3, 4,
+    ]);
   });
 
   it("filters ids of groups that no longer exist", () => {
     expect(groupLookup.existingIds([3, 9])).toEqual([3]);
   });
 
-  it("leaves the admin group out of cascades", () => {
-    expect(groupLookup.actionableIds([2, 3, 9])).toEqual([3]);
-    expect(groupLookup.hasAdminGroup([2, 3])).toBe(true);
-    expect(groupLookup.hasAdminGroup([3])).toBe(false);
+  it("leaves every built-in group out of a delete cascade", () => {
+    expect(groupLookup.actionableIds([2, 3, 4, 9], "delete")).toEqual([3]);
+    expect(groupLookup.keptGroupNames([2, 3, 4], "delete")).toEqual([
+      "Administrators",
+      "Data Analysts",
+    ]);
+  });
+
+  it("leaves only the Administrators group out of a clear cascade", () => {
+    expect(groupLookup.actionableIds([2, 3, 4, 9], "clear")).toEqual([3, 4]);
+    expect(groupLookup.keptGroupNames([2, 3, 4], "clear")).toEqual([
+      "Administrators",
+    ]);
   });
 });

@@ -10,8 +10,9 @@ import {
 type SetupOpts = Partial<DeleteGroupMappingModalProps>;
 
 const DEFAULT_PROPS = {
-  name: "cn=People",
   groupIds: [1],
+  keptOnClear: [],
+  keptOnDelete: [],
   onConfirm: jest.fn(),
   onHide: jest.fn(),
 };
@@ -36,8 +37,8 @@ describe("DeleteGroupMappingModal", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Nothing, just remove the mapping"),
-    ).toBeInTheDocument();
+      screen.getByLabelText("Nothing, just remove the mapping"),
+    ).toBeChecked();
     expect(
       screen.getByText("Also remove all members from this group"),
     ).toBeInTheDocument();
@@ -65,16 +66,41 @@ describe("DeleteGroupMappingModal", () => {
     expect(screen.getByText("Also delete the groups")).toBeInTheDocument();
   });
 
-  it("notes that the Administrators group is left alone when it is mapped", () => {
-    setup({ groupIds: [1, 2], hasAdminGroup: true });
+  it("still offers clearing a built-in group that cannot be deleted", () => {
+    setup({ groupIds: [1], keptOnDelete: ["Data Analysts"] });
 
     expect(
-      screen.getAllByText(/The Administrators group is not affected/),
-    ).toHaveLength(2);
+      screen.getByLabelText("Also remove all members from this group"),
+    ).toBeEnabled();
+    expect(screen.getByLabelText("Also delete the group")).toBeDisabled();
+    expect(
+      screen.getByText("The Data Analysts group is not affected."),
+    ).toBeInTheDocument();
+  });
+
+  it("lists every built-in group a delete would leave alone", () => {
+    setup({
+      groupIds: [1, 2, 3],
+      keptOnClear: ["Administrators"],
+      keptOnDelete: ["Administrators", "Data Analysts"],
+    });
+
+    expect(
+      screen.getByText(/The Administrators group is not affected\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "These groups are not affected: Administrators, Data Analysts.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("offers no group options when only the Administrators group is mapped", () => {
-    setup({ groupIds: [1], hasAdminGroup: true });
+    setup({
+      groupIds: [1],
+      keptOnClear: ["Administrators"],
+      keptOnDelete: ["Administrators"],
+    });
 
     expect(
       screen.getByText("The Administrators group is not affected."),
@@ -97,14 +123,6 @@ describe("DeleteGroupMappingModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("starts with 'Nothing' option checked", () => {
-    setup();
-
-    expect(
-      screen.getByLabelText("Nothing, just remove the mapping"),
-    ).toBeChecked();
-  });
-
   it("confirms when clearing members", async () => {
     setup();
 
@@ -116,11 +134,7 @@ describe("DeleteGroupMappingModal", () => {
       screen.getByRole("button", { name: "Remove mapping and members" }),
     );
 
-    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith(
-      "clear",
-      DEFAULT_PROPS.groupIds,
-      DEFAULT_PROPS.name,
-    );
+    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith("clear");
   });
 
   it("confirms when deleting groups", async () => {
@@ -132,10 +146,6 @@ describe("DeleteGroupMappingModal", () => {
       screen.getByRole("button", { name: "Remove mapping and delete group" }),
     );
 
-    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith(
-      "delete",
-      DEFAULT_PROPS.groupIds,
-      DEFAULT_PROPS.name,
-    );
+    expect(DEFAULT_PROPS.onConfirm).toHaveBeenCalledWith("delete");
   });
 });

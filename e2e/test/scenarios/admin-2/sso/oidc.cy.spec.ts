@@ -16,8 +16,9 @@ const {
 } = groupMappingCardHelpers({
   sectionTestId: "oidc-group-mapping-section",
   nameLabel: "OIDC group name",
-  switchWrite: { alias: "updateProvider", valuePath: "group-sync.enabled" },
-  mappingsAlias: "updateProvider",
+  switchRequestAlias: "updateProvider",
+  switchValuePath: "group-sync.enabled",
+  mappingsRequestAlias: "updateProvider",
 });
 
 describe("scenarios > admin > settings > SSO > OIDC", () => {
