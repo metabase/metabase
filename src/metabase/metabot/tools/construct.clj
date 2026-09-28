@@ -674,7 +674,8 @@
 
   - The QP's second conjunct compares source-card *ids*, not a boolean. That is why a single-stage card-based metric
     is pinned to one exact card: a different card over the same table has a different id.
-  - A metric whose definition cannot be read is left alone rather than rejected. Same for
+  - A metric with neither a readable definition nor a `table_id` is left alone rather than rejected; one with only a
+    `table_id` is classified as single-stage table-based. Same for
     [[metabase.lib.core/available-metrics]]' other exclusions (archived, and so on): reporting those would tell the
     LLM to change the source to the one it already has.
 
@@ -687,8 +688,9 @@
                            [:metric _ (id :guard pos-int?)]
                            id))]
     (when (seq referenced)
-      (lib.metadata/bulk-metadata mp :metadata/card referenced)
       (let [stage-card-id (lib.util/source-card-id query)
+            _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
+                                                                          stage-card-id (conj stage-card-id)))
             ;; The QP compares the resolved table. `::unresolved` rather than nil so an unresolvable card does not
             ;; compare equal to a table-based metric whose own `:table-id` is nil, which would reject every
             ;; table-based metric on the stage.
