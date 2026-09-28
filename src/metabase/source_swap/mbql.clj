@@ -6,9 +6,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -23,25 +21,6 @@
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------ upgrade-field-refs ------------------------------------------------
-
-(mu/defn- same-ref? :- :boolean
-  "Checks if two refs are the same. Ignores :lib/uuid, :base-type, and :effective-type."
-  [ref-1 :- ::lib.schema.ref/ref
-   ref-2 :- ::lib.schema.ref/ref]
-  (= (lib.schema.util/mbql-clause-distinct-key ref-1)
-     (lib.schema.util/mbql-clause-distinct-key ref-2)))
-
-(mu/defn- walk-clause-field-refs :- :any
-  "Walks a clause and applies a function to all `:field` clauses."
-  [clause :- [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]
-   f      :- fn?]
-  (lib.walk/walk-clause clause
-                        (fn [clause]
-                          (cond-> clause
-                            (lib.util/field-clause? clause)
-                            f))))
-
 (mu/defn- preserve-expression-name :- ::lib.schema.ref/ref
   "Copy the expression name from `old-field-ref` to `new-field-ref`."
   [old-ref :- ::lib.schema.ref/ref
@@ -51,69 +30,57 @@
       expression-name
       (lib.options/update-options assoc :lib/expression-name expression-name))))
 
-(mu/defn upgrade-field-ref :- ::lib.schema.ref/ref
-  "Generate a new ref for a column. Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref."
-  [query         :- ::lib.schema/query
-   stage-number  :- :int
-   field-ref     :- :mbql.clause/field]
-  (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
+(defn- resolved-field-ref
+  [query stage-number original-ref candidate-ref]
+  (or (when-let [column (lib.field.resolution/resolve-field-ref query stage-number candidate-ref)]
         (when-not (::lib.field.resolution/fallback-metadata? column)
-          (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref column))]
-            (when-not (same-ref? field-ref new-field-ref)
-              new-field-ref))))
-      field-ref))
+          (let [new-ref (preserve-expression-name original-ref (lib.ref/ref column))]
+            (when-not (= (lib.schema.util/mbql-clause-distinct-key original-ref)
+                         (lib.schema.util/mbql-clause-distinct-key new-ref))
+              new-ref))))
+      original-ref))
 
-(mu/defn- upgrade-field-refs-in-clauses :- [:sequential :any]
-  "Upgrade all field refs in a list of clauses to use name-based field refs when possible."
-  [query               :- ::lib.schema/query
-   stage-number        :- :int
-   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
-   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
-  (into []
-        (cond-> (map (fn [clause]
-                       (walk-clause-field-refs clause #(upgrade-field-ref query stage-number %))))
-          distinct? (comp (m/distinct-by lib.schema.util/mbql-clause-distinct-key)))
-        clauses))
-
-(mu/defn- upgrade-field-refs-in-join :- ::lib.schema.join/join
-  "Upgrade all field refs in a join. :fields in a join can be a keyword :all or :none, or a list of field refs."
+(mu/defn upgrade-field-ref :- ::lib.schema.ref/ref
+  "Resolve a field ref to its column's current ref, preserving expression names and unresolved refs."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   join         :- ::lib.schema.join/join]
-  (-> join
-      (m/update-existing :fields #(if (keyword? %) % (upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))
-      (m/update-existing :conditions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))))
+   field-ref    :- :mbql.clause/field]
+  (resolved-field-ref query stage-number field-ref field-ref))
 
-(mu/defn- upgrade-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  "Upgrade all field refs in a list of joins."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   joins        :- [:sequential ::lib.schema.join/join]]
-  (perf/mapv #(upgrade-field-refs-in-join query stage-number %) joins))
+(defn- map-field-refs-in-clauses
+  [f distinct? clauses]
+  (if (keyword? clauses)
+    clauses
+    (into []
+          (cond-> (map #(lib.walk/walk-clause % (fn [clause]
+                                                  (cond-> clause (lib.util/field-clause? clause) f))))
+            distinct? (comp (m/distinct-by lib.schema.util/mbql-clause-distinct-key)))
+          clauses)))
 
-(mu/defn- upgrade-field-refs-in-stage :- ::lib.schema/stage
-  "Upgrade all field refs in a stage."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (let [stage (lib.util/query-stage query stage-number)]
-    (-> stage
-        (m/update-existing :fields      #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
-        (m/update-existing :joins       #(upgrade-field-refs-in-joins query stage-number %))
-        (m/update-existing :expressions #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (m/update-existing :filters     #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (m/update-existing :aggregation #(upgrade-field-refs-in-clauses query stage-number % {:distinct? false}))
-        (m/update-existing :breakout    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true}))
-        (m/update-existing :order-by    #(upgrade-field-refs-in-clauses query stage-number % {:distinct? true})))))
+(defn- map-field-refs-in-stage
+  [stage f]
+  (-> (reduce (fn [stage [k distinct?]]
+                (m/update-existing stage k #(map-field-refs-in-clauses f distinct? %)))
+              stage
+              [[:fields true] [:expressions false] [:filters false]
+               [:aggregation false] [:breakout true] [:order-by true]])
+      (m/update-existing :joins
+                         (fn [joins]
+                           (mapv #(-> %
+                                      (m/update-existing :fields (partial map-field-refs-in-clauses f true))
+                                      (m/update-existing :conditions (partial map-field-refs-in-clauses f false)))
+                                 joins)))))
+
+(defn- map-field-refs-in-query
+  [query f]
+  (update query :stages
+          #(into [] (map-indexed (fn [stage-number stage]
+                                   (map-field-refs-in-stage stage (partial f query stage-number)))) %)))
 
 (mu/defn upgrade-field-refs-in-mbql-stages :- ::lib.schema/query
   "Upgrade all field refs in `query` to use name-based field refs when possible."
-  [query     :- ::lib.schema/query]
-  (update query :stages
-          (fn [stages]
-            (into []
-                  (map-indexed (fn [stage-number _]
-                                 (upgrade-field-refs-in-stage query stage-number)))
-                  stages))))
+  [query :- ::lib.schema/query]
+  (map-field-refs-in-query query upgrade-field-ref))
 
 (mu/defn- parameter-target-stage-number :- [:maybe :int]
   "Gets the stage number from the parameter target, if it exists and is valid."
@@ -189,19 +156,8 @@
           old-columns)))
 
 (mu/defn- swap-field-ref :- ::lib.schema.ref/ref
-  "Swaps a field ref to reference the new source. Assumes that query has been upgraded to use alias-based field refs.
-
-  For ID-based refs:
-  - Uses the new field ID when swapping table->table.
-  - Uses the new column alias when swapping table->card.
-
-  For implicit joins:
-  - Uses the ID of the new column in :source-field.
-
-  Also:
-  - Resolves the new field ref and generates a new one based on the resolved column.
-  - Always takes a `:field` ref, may return a `:field` ref or an `:expression` ref.
-  - Preserves the expression name from the original field ref."
+  "Resolve a ref against swapped sources, remapping column IDs and implicit-join :source-field IDs.
+   Input should already use aliases where possible. Unresolved refs and expression names are preserved."
   [query            :- ::lib.schema/query
    stage-number     :- :int
    field-id-mapping :- ::field-id-mapping
@@ -220,79 +176,16 @@
                             ;; implicit joins FK table field ID
                             (and new-fk-id-column (:id new-fk-id-column))
                             (lib.options/update-options assoc :source-field (:id new-fk-id-column)))]
-    (or (when-let [new-column (lib.field.resolution/resolve-field-ref query stage-number swapped-field-ref)]
-          (when-not (::lib.field.resolution/fallback-metadata? new-column)
-            (let [new-field-ref (preserve-expression-name field-ref (lib.ref/ref new-column))]
-              (when-not (same-ref? field-ref new-field-ref)
-                new-field-ref))))
-        field-ref)))
-
-(mu/defn- swap-field-refs-in-clauses :- [:sequential :any]
-  "Swaps field refs in a list of clauses."
-  [query               :- ::lib.schema/query
-   stage-number        :- :int
-   field-id-mapping    :- ::field-id-mapping
-   clauses             :- [:sequential [:or ::lib.schema.expression/expression :metabase.lib.schema.order-by/order-by]]
-   {:keys [distinct?]} :- [:map {:closed true} [:distinct? :boolean]]]
-  (into []
-        (cond-> (map (fn [clause]
-                       (walk-clause-field-refs clause #(swap-field-ref query stage-number field-id-mapping %))))
-          distinct? (comp (m/distinct-by lib.schema.util/mbql-clause-distinct-key)))
-        clauses))
-
-(mu/defn- swap-field-refs-in-join :- ::lib.schema.join/join
-  "Swaps field refs in a join."
-  [query            :- ::lib.schema/query
-   stage-number     :- :int
-   field-id-mapping :- ::field-id-mapping
-   join             :- ::lib.schema.join/join]
-  (-> join
-      (m/update-existing :fields (fn [fields]
-                                   (if (keyword? fields)
-                                     fields
-                                     (swap-field-refs-in-clauses query stage-number field-id-mapping fields {:distinct? true}))))
-      (m/update-existing :conditions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))))
-
-(mu/defn- swap-field-refs-in-joins :- [:sequential ::lib.schema.join/join]
-  "Swaps field refs in a list of joins."
-  [query            :- ::lib.schema/query
-   stage-number     :- :int
-   field-id-mapping :- ::field-id-mapping
-   joins            :- [:sequential ::lib.schema.join/join]]
-  (perf/mapv #(swap-field-refs-in-join query stage-number field-id-mapping %) joins))
-
-(mu/defn- swap-field-refs-in-stage :- ::lib.schema/stage
-  "Swaps field refs in a stage."
-  [query            :- ::lib.schema/query
-   stage-number     :- :int
-   field-id-mapping :- ::field-id-mapping]
-  (-> (lib.util/query-stage query stage-number)
-      (m/update-existing :fields      #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
-      (m/update-existing :joins       #(swap-field-refs-in-joins query stage-number field-id-mapping %))
-      (m/update-existing :expressions #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (m/update-existing :filters     #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (m/update-existing :aggregation #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? false}))
-      (m/update-existing :breakout    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))
-      (m/update-existing :order-by    #(swap-field-refs-in-clauses query stage-number field-id-mapping % {:distinct? true}))))
-
-(mu/defn- swap-field-refs-in-query :- ::lib.schema/query
-  "Swaps field refs in a query."
-  [query            :- ::lib.schema/query
-   field-id-mapping :- ::field-id-mapping]
-  (m/update-existing query :stages
-                     (fn [stages]
-                       (into []
-                             (map-indexed (fn [stage-number _]
-                                            (swap-field-refs-in-stage query stage-number field-id-mapping)))
-                             stages))))
+    (resolved-field-ref query stage-number field-ref swapped-field-ref)))
 
 (mu/defn swap-source-in-mbql-stages :- ::lib.schema/query
   "Updates the query to use the new source table or card."
   [query      :- ::lib.schema/query
    old-source :- ::source-swap.schema/source
    new-source :- ::source-swap.schema/source]
-  (swap-field-refs-in-query (swap-source-table-or-card-in-query query old-source new-source)
-                            (build-field-id-mapping query old-source new-source)))
+  (let [field-id-mapping (build-field-id-mapping query old-source new-source)]
+    (map-field-refs-in-query (swap-source-table-or-card-in-query query old-source new-source)
+                             #(swap-field-ref %1 %2 field-id-mapping %3))))
 
 (mu/defn swap-source-in-parameter-mbql-target :- ::lib.schema.parameter/target
   "If the parameter target is a field ref, swap it to reference the new source."
