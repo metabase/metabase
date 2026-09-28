@@ -52,7 +52,7 @@ jobs:
     timeout-minutes: 10
     name: Clj-Kondo
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
@@ -64,7 +64,7 @@ jobs:
     timeout-minutes: 20
     name: Eastwood
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
@@ -77,7 +77,7 @@ jobs:
     timeout-minutes: 45
     name: Eastwood (tests only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
@@ -90,7 +90,7 @@ jobs:
     timeout-minutes: 15
     name: Eastwood (changed tests only)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Enough history for `git merge-base` on a typical PR.
           fetch-depth: 200
@@ -189,7 +189,7 @@ jobs:
       # GDGT-3126: re-enable and properly fix old migrations tests
       __ADDITIONAL_EXCLUDED_TAG__: ':mb/old-migrations-test'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -347,7 +347,7 @@ jobs:
         java-version: [25]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
@@ -360,7 +360,7 @@ jobs:
     timeout-minutes: 10
     name: Cljfmt
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run cljfmt
