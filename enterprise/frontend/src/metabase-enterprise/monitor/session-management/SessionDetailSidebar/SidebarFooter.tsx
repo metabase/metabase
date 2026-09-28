@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Stack } from "metabase/ui";
-
-import { getSessionUserName } from "../utils";
+import { Button, Group } from "metabase/ui";
 
 import S from "./SessionDetailSidebar.module.css";
 import type { SidebarFooterProps } from "./types";
@@ -15,28 +13,19 @@ export const SidebarFooter = ({
   onRevokeSession,
   onRevokeUserSessions,
 }: SidebarFooterProps) => (
-  <Stack className={S.footer} gap="sm">
+  <Group className={S.footer} gap="sm" grow>
     {canRevokeSession && (
-      <Button
-        fullWidth
-        variant="filled"
-        color="feedback-negative"
-        disabled={isRevoking}
-        onClick={() => onRevokeSession(session)}
-      >
+      <Button disabled={isRevoking} onClick={() => onRevokeSession(session)}>
         {t`Revoke session`}
       </Button>
     )}
     {canRevokeUserSessions && (
       <Button
-        fullWidth
-        variant="filled"
-        color="feedback-negative"
         disabled={isRevoking}
         onClick={() => onRevokeUserSessions(session)}
       >
-        {t`Revoke all sessions for ${getSessionUserName(session.user)}`}
+        {t`Revoke active sessions`}
       </Button>
     )}
-  </Stack>
+  </Group>
 );

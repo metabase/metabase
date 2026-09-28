@@ -2,14 +2,14 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type {
-  AdminSessionEndReason,
-  AdminSessionType,
-  AdminSessionUser,
+  SessionEndReason,
+  SessionType,
+  SessionUser,
 } from "metabase-types/api";
 
 import type { SessionsTimePreset } from "./SessionsPage/types";
 
-export const getSessionUserName = (user: AdminSessionUser): string =>
+export const getSessionUserName = (user: SessionUser): string =>
   user.common_name ?? user.email;
 
 export const getProviderLabel = (provider: string): string =>
@@ -25,7 +25,7 @@ export const getProviderLabel = (provider: string): string =>
     .with("unknown", () => t`Unknown`)
     .otherwise(() => provider);
 
-export const getSessionTypeLabel = (type: AdminSessionType): string =>
+export const getSessionTypeLabel = (type: SessionType): string =>
   match(type)
     .with("normal", () => t`Normal`)
     .with("full-app-embed", () => t`Embedded`)
@@ -39,7 +39,7 @@ export const getTimePresetLabel = (preset: SessionsTimePreset): string =>
     .with("month", () => t`Past month`)
     .exhaustive();
 
-export const getEndReasonLabel = (reason: AdminSessionEndReason): string =>
+export const getEndReasonLabel = (reason: SessionEndReason): string =>
   match(reason)
     .with("admin", () => t`Revoked by admin`)
     .with("logout", () => t`Signed out`)

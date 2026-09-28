@@ -17,13 +17,10 @@ import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTit
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { ActionIcon, Flex, Icon, Menu, Text } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useLazyListSessionsQuery } from "metabase-enterprise/api";
-import type {
-  AdminSessionId,
-  RevokeAdminSessionsRequest,
-} from "metabase-types/api";
+import type { RevokeSessionsRequest, SessionId } from "metabase-types/api";
 
 import { SessionDetailSidebar } from "../SessionDetailSidebar";
 import { SessionsFilters } from "../SessionsFilters";
@@ -126,7 +123,7 @@ export const SessionsPage = () => {
 
   // Keep page, search and sort in the URL while the sidebar opens, closes, and steps between sessions
   const navigateToSession = useCallback(
-    (id: AdminSessionId | undefined) => {
+    (id: SessionId | undefined) => {
       navigate({
         pathname:
           id === undefined
@@ -164,7 +161,7 @@ export const SessionsPage = () => {
   }, [sessionId, sessions]);
 
   const handleRevoked = useCallback(
-    (request: RevokeAdminSessionsRequest) => {
+    (request: RevokeSessionsRequest) => {
       clearSelection();
       // The caller's own session survives every revoke, and an id list only removes the sessions it names
       const isShownSessionKept =
@@ -192,31 +189,7 @@ export const SessionsPage = () => {
     <>
       <Flex ref={containerRef} h="100%" wrap="nowrap">
         <MonitorMain>
-          <Flex justify="space-between" align="center" mb="sm" pr="3rem">
-            <MonitorHeaderTitle>{t`Session management`}</MonitorHeaderTitle>
-            <Menu position="bottom-end" withinPortal>
-              <Menu.Target>
-                <ActionIcon
-                  aria-label={t`More actions`}
-                  size="lg"
-                  c="icon-primary"
-                  disabled={isRevoking}
-                >
-                  <Icon name="ellipsis" />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  c="feedback-negative"
-                  leftSection={<Icon name="exit" />}
-                  disabled={total === 0}
-                  onClick={revokeAll}
-                >
-                  {t`Revoke all active sessions`}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-          </Flex>
+          <MonitorHeaderTitle mb="sm">{t`Session management`}</MonitorHeaderTitle>
 
           <SessionsTabs
             tab={urlState.tab}
@@ -237,6 +210,11 @@ export const SessionsPage = () => {
               onChange={handleSearchChange}
             />
             <SessionsFilters state={urlState} onChange={patchUrlState} />
+            {!isEndedTab && (
+              <Button disabled={isRevoking || total === 0} onClick={revokeAll}>
+                {t`Revoke all active sessions`}
+              </Button>
+            )}
           </Flex>
 
           <SessionsTable

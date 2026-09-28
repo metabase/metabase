@@ -6,31 +6,11 @@ import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { Flex, Stack, Text } from "metabase/ui";
 import { useListSessionsQuery } from "metabase-enterprise/api";
-import type { AdminSession } from "metabase-types/api";
 
 import { SessionDetails } from "./SessionDetails";
 import { SidebarFooter } from "./SidebarFooter";
 import { SidebarHeader } from "./SidebarHeader";
 import type { SessionDetailSidebarProps } from "./types";
-
-type SidebarBodyProps = {
-  session: AdminSession | undefined;
-  error: unknown;
-  isLoaded: boolean;
-};
-
-const SidebarBody = ({ session, error, isLoaded }: SidebarBodyProps) => {
-  if (session) {
-    return <SessionDetails session={session} />;
-  }
-  if (error != null) {
-    return <LoadingAndErrorWrapper error={error} />;
-  }
-  if (!isLoaded) {
-    return <LoadingAndErrorWrapper loading />;
-  }
-  return <Text c="text-secondary">{t`This session is no longer active.`}</Text>;
-};
 
 export const SessionDetailSidebar = ({
   sessionId,
@@ -50,7 +30,6 @@ export const SessionDetailSidebar = ({
   const session = sessionFromPage ?? currentData?.data[0];
   const currentUser = useSelector(getUser);
 
-  // An ended session has nothing left to revoke, and the endpoint rejects it
   const canRevokeSession =
     session !== undefined && !session.current && session.status === "live";
   const canRevokeUserSessions =
@@ -83,11 +62,17 @@ export const SessionDetailSidebar = ({
           onNavigate={onNavigate}
           onClose={onClose}
         />
-        <SidebarBody
-          session={session}
+        <LoadingAndErrorWrapper
+          loading={session === undefined && currentData === undefined}
           error={error}
-          isLoaded={currentData !== undefined}
-        />
+          noWrapper
+        >
+          {session ? (
+            <SessionDetails session={session} />
+          ) : (
+            <Text c="text-secondary">{t`This session is no longer active.`}</Text>
+          )}
+        </LoadingAndErrorWrapper>
       </Stack>
       {session && (canRevokeSession || canRevokeUserSessions) && (
         <SidebarFooter

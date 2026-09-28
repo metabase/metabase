@@ -1,31 +1,28 @@
 import type {
-  AdminSessionListParams,
-  AdminSessionListResponse,
-  RevokeAdminSessionsRequest,
-  RevokeAdminSessionsResponse,
+  RevokeSessionsRequest,
+  RevokeSessionsResponse,
+  SessionListParams,
+  SessionListResponse,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, provideAdminSessionListTags } from "./tags";
+import { invalidateTags, listTag, provideSessionListTags } from "./tags";
 
 export const sessionManagementApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listSessions: builder.query<
-      AdminSessionListResponse,
-      AdminSessionListParams
-    >({
+    listSessions: builder.query<SessionListResponse, SessionListParams>({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/session-management",
         params,
       }),
       providesTags: (response) =>
-        response ? provideAdminSessionListTags(response.data) : [],
+        response ? provideSessionListTags(response.data) : [],
     }),
 
     revokeSessions: builder.mutation<
-      RevokeAdminSessionsResponse,
-      RevokeAdminSessionsRequest
+      RevokeSessionsResponse,
+      RevokeSessionsRequest
     >({
       query: (body) => ({
         method: "POST",
