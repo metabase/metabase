@@ -810,6 +810,8 @@ export interface EnterpriseSettings extends Settings {
   "jwt-group-sync": boolean | null;
   "oidc-enabled": boolean;
   "oidc-configured": boolean;
+  // a sensitive JSON list, which the settings API hands over obfuscated, so pages read the providers through /api/ee/sso/oidc instead
+  "oidc-providers": string | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
   "saml-user-provisioning-enabled?": boolean;

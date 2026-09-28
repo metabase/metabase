@@ -3,15 +3,28 @@ const { H } = cy;
 type GroupMappingCardOptions = {
   sectionTestId: string;
   nameLabel: string;
+  // the label of the button that starts a mapping, which the JWT card calls "New mapping"
+  newMappingLabel?: string;
+  // alias of the intercepted request a switch click sends
+  switchRequestAlias?: string;
+  // path of the new on/off value inside that request's body, for instance "group-sync.enabled"
+  switchValuePath?: string;
+  // alias of the intercepted request that saves the mappings
+  mappingsRequestAlias?: string;
 };
 
 /**
  * Helpers for the group mapping card the SSO pages share.
- * Callers alias PUT /api/setting/* as @updateSetting and PUT /api/setting as @updateSettings.
+ * The spec intercepts the card's requests itself.
+ * By default the switch sends `PUT /api/setting/*`, aliased `updateSetting`, with the new value at `body.value`, and the mappings are saved with `PUT /api/setting`, aliased `updateSettings`.
  */
 export const groupMappingCardHelpers = ({
   sectionTestId,
   nameLabel,
+  newMappingLabel = "New",
+  switchRequestAlias = "updateSetting",
+  switchValuePath = "value",
+  mappingsRequestAlias = "updateSettings",
 }: GroupMappingCardOptions) => {
   const groupMappingSection = () => cy.findByTestId(sectionTestId);
 
@@ -22,20 +35,23 @@ export const groupMappingCardHelpers = ({
     cy.contains('[data-testid="group-mapping-row"]', name);
 
   const newMappingButton = () =>
-    groupMappingSection().findByRole("button", { name: "New" });
+    groupMappingSection().findByRole("button", { name: newMappingLabel });
 
   const groupsPicker = () => cy.findByLabelText("Metabase groups");
 
   // Mantine hides the switch input, so the click goes to the title label wired to it
-  const clickGroupMappingSwitch = () =>
+  const clickGroupMappingSwitch = () => {
+    // a click during a write is ignored, so wait for the switch to be free first
+    groupMappingSwitch().should("not.have.attr", "aria-disabled");
     groupMappingSection().contains("label", "Group mapping").click();
+  };
 
   const toggleGroupMapping = (enabled: boolean) => {
     groupMappingSwitch().should(enabled ? "not.be.checked" : "be.checked");
     clickGroupMappingSwitch();
-    cy.wait("@updateSetting")
-      .its("request.body")
-      .should("deep.equal", { value: enabled });
+    cy.wait(`@${switchRequestAlias}`)
+      .its(`request.body.${switchValuePath}`)
+      .should("equal", enabled);
   };
 
   const addMapping = (name: string, groups: string[]) => {
@@ -46,7 +62,7 @@ export const groupMappingCardHelpers = ({
       cy.findByRole("option", { name: group }).click();
     });
     cy.button("Add mapping").click();
-    cy.wait("@updateSettings");
+    cy.wait(`@${mappingsRequestAlias}`);
     mappingRow(name).should("contain", groups.join(", "));
   };
 
@@ -61,7 +77,7 @@ export const groupMappingCardHelpers = ({
       cy.findByRole("radio", { name: consequenceLabel }).click();
       cy.button(confirmLabel).click();
     });
-    cy.wait("@updateSettings");
+    cy.wait(`@${mappingsRequestAlias}`);
     mappingRow(name).should("not.exist");
   };
 

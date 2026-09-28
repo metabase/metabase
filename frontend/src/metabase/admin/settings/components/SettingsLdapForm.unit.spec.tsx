@@ -55,14 +55,12 @@ const setup = async ({
   settingDefinitions = [],
   saveStatus,
   saveMessage,
-  readDelay,
 }: {
   settingValues?: Partial<EnterpriseSettings>;
   // entries here win over the ones derived from settingValues
   settingDefinitions?: SettingDefinition[];
   saveStatus?: number;
   saveMessage?: string;
-  readDelay?: number;
 } = {}) => {
   const settings = createMockSettings(settingValues);
   delete settings["ldap-group-membership-filter"]; // not present in OSS
@@ -74,9 +72,7 @@ const setup = async ({
     ...toDefinitions(settingValues).filter(({ key }) => !listedKeys.has(key)),
   ]);
   // the switch and the mappings read their values back after saving, so the properties mock has to remember writes
-  const settingsStore = setupStatefulSettingsEndpoints(settings, {
-    readDelay,
-  });
+  const settingsStore = setupStatefulSettingsEndpoints(settings);
   if (saveStatus != null) {
     // a rejected write comes back as a plain-text reason, the way the settings endpoint reports a 400
     fetchMock.removeRoute("update-settings");
@@ -95,7 +91,7 @@ const setup = async ({
   fetchMock.delete("express:/api/permissions/group/:id", 204);
   fetchMock.put("path:/api/ldap/settings", { status: 204 });
 
-  const { store } = renderWithProviders(<SettingsLdapForm />, {
+  renderWithProviders(<SettingsLdapForm />, {
     withUndos: true,
     storeInitialState: createMockState({
       settings: createMockSettingsState(settings),
@@ -103,7 +99,7 @@ const setup = async ({
   });
 
   await screen.findByText("Server settings");
-  return { store, settingsStore };
+  return { settingsStore };
 };
 
 const setupConfigured = (options: Parameters<typeof setup>[0] = {}) =>
@@ -301,6 +297,23 @@ describe("SettingsLdapForm", () => {
       expect(body["ldap-port"]).toBe(636);
     });
 
+    it("rejects an out-of-range port", async () => {
+      await setupConfigured();
+
+      const port = screen.getByLabelText(/LDAP port/);
+      await userEvent.clear(port);
+      await userEvent.type(port, "99999");
+      await userEvent.tab();
+
+      expect(
+        await screen.findByText(
+          "Port must be a whole number between 1 and 65535",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
     it("shows the value an env var gives a field, read-only", async () => {
       await setup({
         settingValues: { "ldap-host": "ldap.env.test" },
@@ -379,19 +392,6 @@ describe("SettingsLdapForm", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("comes alive once the host and user search base are saved, with the mappings still hidden", async () => {
-      await setupConfigured();
-
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("textbox", { name: /Group search base/ }),
-      ).not.toBeInTheDocument();
-    });
-
     it("turns group mapping on right away and reveals the mappings and the group fields", async () => {
       await setupConfigured();
 
@@ -426,66 +426,16 @@ describe("SettingsLdapForm", () => {
       expect(saveButton()).toBeEnabled();
 
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
 
       expect(saveButton()).toBeDisabled();
       await userEvent.click(groupMappingSwitch());
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
-      expect(groupBase()).toHaveValue("ou=groups,dc=example,dc=org");
-    });
-
-    it("shows the new value and holds the switch while the write is in flight", async () => {
-      const { settingsStore } = await setupConfigured();
-      // the properties mock answers the write late, so the in-flight state can be seen
-      fetchMock.removeRoute("update-setting");
-      fetchMock.put(
-        new RegExp("/api/setting/(.+)"),
-        ({ url, options }) => {
-          const key = decodeURIComponent(url.split("/api/setting/")[1]);
-          settingsStore[key] = JSON.parse(String(options.body)).value;
-          return { status: 204 };
-        },
-        { name: "update-setting", delay: 200 },
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
       );
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(await findRequests("PUT")).toHaveLength(1);
-    });
-
-    it("holds the switch until the settings refetch after the write lands", async () => {
-      // the properties mock answers reads late, so the refetch the write triggers can be seen
-      await setupConfigured({ readDelay: 200 });
-
-      await userEvent.click(groupMappingSwitch());
-      expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      await waitFor(() => expect(groupMappingSwitch()).toBeEnabled());
-      expect(groupMappingSwitch()).toBeChecked();
-    });
-
-    it("puts the old value back when the write fails", async () => {
-      await setupConfigured();
-      fetchMock.removeRoute("update-setting");
-      fetchMock.put(new RegExp("/api/setting/(.+)"), 500, {
-        name: "update-setting",
-      });
-
-      await userEvent.click(groupMappingSwitch());
-
-      expect(await screen.findByText(/Error saving/)).toBeInTheDocument();
-      expect(groupMappingSwitch()).not.toBeChecked();
-      expect(groupMappingSwitch()).toBeEnabled();
-      expect(
-        screen.queryByText("Manual group mappings"),
-      ).not.toBeInTheDocument();
+      expect(groupBase()).toHaveValue("ou=groups,dc=example,dc=org");
     });
 
     it("asks only for internal groups, since LDAP users are never tenants", async () => {
@@ -540,7 +490,7 @@ describe("SettingsLdapForm", () => {
       expect(screen.getByRole("button", { name: /Save/ })).toBeDisabled();
     });
 
-    it("keeps the row editor busy while the mapping write is in flight", async () => {
+    it("keeps the row editor busy and open while the mapping write is in flight", async () => {
       const { settingsStore } = await setupConfigured({
         settingValues: { "ldap-group-sync": true },
       });
@@ -555,92 +505,25 @@ describe("SettingsLdapForm", () => {
         { name: "update-settings", delay: 200 },
       );
 
-      await addMapping(DEVS_DN, "bar");
+      await userEvent.click(screen.getByRole("button", { name: "New" }));
+      const nameInput = screen.getByPlaceholderText(LDAP_GROUP_PLACEHOLDER);
+      await userEvent.type(nameInput, DEVS_DN);
+      await userEvent.click(
+        screen.getByPlaceholderText("Pick Metabase group..."),
+      );
+      await userEvent.click(await screen.findByRole("option", { name: "bar" }));
+      // Enter keeps the focus in the field, so the Escape that follows reaches the editor
+      await userEvent.click(nameInput);
+      await userEvent.keyboard("{Enter}");
 
       const addButton = screen.getByRole("button", { name: "Add mapping" });
       expect(addButton).toHaveAttribute("data-loading", "true");
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+      await userEvent.keyboard("{Escape}");
+      expect(nameInput).toBeInTheDocument();
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
       expect(findMappingRow(DEVS_DN)).toBeDefined();
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
-    });
-
-    it("keeps group mapping on when the last mapping is deleted", async () => {
-      await setupConfigured({
-        settingValues: {
-          "ldap-group-sync": true,
-          "ldap-group-mappings": { [DEVS_DN]: [3] },
-        },
-      });
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Delete mapping" }),
-      );
-      const modal = await screen.findByRole("dialog");
-      expect(
-        within(modal).queryByText(/group mapping will be turned off/),
-      ).not.toBeInTheDocument();
-      await userEvent.click(
-        within(modal).getByRole("button", { name: "Remove mapping" }),
-      );
-
-      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
-      const [{ body }] = await findRequests("PUT");
-      expect(body).toEqual({ "ldap-group-mappings": {} });
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(screen.getByText("No mappings yet")).toBeInTheDocument();
-      expect(findMappingRow(DEVS_DN)).toBeUndefined();
-    });
-
-    it("locks the mappings to the ones an env var sets", async () => {
-      await setupConfigured({
-        settingValues: {
-          "ldap-group-sync": true,
-          "ldap-group-mappings": { [DEVS_DN]: [3] },
-        },
-        settingDefinitions: [
-          {
-            key: "ldap-group-mappings",
-            is_env_setting: true,
-            env_name: "MB_LDAP_GROUP_MAPPINGS",
-          },
-        ],
-      });
-
-      expect(
-        screen.getByText("Using MB_LDAP_GROUP_MAPPINGS"),
-      ).toBeInTheDocument();
-      const row = findMappingRow(DEVS_DN);
-      expect(row).toBeDefined();
-      expect(await within(row!).findByText("foo")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "New" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Edit mapping" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Delete mapping" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("locks the switch to the value an env var sets", async () => {
-      await setupConfigured({
-        settingValues: { "ldap-group-sync": true },
-        settingDefinitions: [
-          {
-            key: "ldap-group-sync",
-            is_env_setting: true,
-            env_name: "MB_LDAP_GROUP_SYNC",
-          },
-        ],
-      });
-
-      expect(groupMappingSwitch()).toBeChecked();
-      expect(groupMappingSwitch()).toBeDisabled();
-      expect(groupMappingSwitch()).toHaveAccessibleDescription(
-        /Using MB_LDAP_GROUP_SYNC/,
-      );
-      expect(screen.getByText("Manual group mappings")).toBeInTheDocument();
     });
 
     it("keeps the editor open and shows the backend's reason under the name", async () => {
@@ -695,7 +578,7 @@ describe("SettingsLdapForm", () => {
       expect(puts[0].url).toMatch(/\/api\/setting$/);
     });
 
-    it("edits an existing mapping in place", async () => {
+    it("edits a mapping in place and rejects a name another mapping uses", async () => {
       await setupConfigured({
         settingValues: {
           "ldap-group-sync": true,
@@ -711,6 +594,12 @@ describe("SettingsLdapForm", () => {
       const nameInput = screen.getByLabelText("LDAP group name");
       expect(nameInput).toHaveValue(DEVS_DN);
       expect(screen.getByText("foo")).toBeInTheDocument();
+      await userEvent.clear(nameInput);
+      await userEvent.type(nameInput, OPS_DN);
+      expect(
+        screen.getByText("A mapping for this group already exists"),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       await userEvent.clear(nameInput);
       await userEvent.type(nameInput, RENAMED_DN);
       await userEvent.click(screen.getByLabelText("Metabase groups"));

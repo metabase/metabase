@@ -304,6 +304,24 @@
              ;; All Users group (id=1) is the only group
              (is (= #{1} (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user)))))))))))
 
+(deftest oidc-group-sync-empty-mappings-keep-memberships-test
+  (testing "Empty mappings leave a returning user's memberships alone, since only mapped groups are synced"
+    (let [email (str "oidc-keep-" (random-uuid) "@example.com")]
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {:name (str "OIDC Unmapped Group " (random-uuid))}
+                     :model/User                       {user-id :id}  {:email email}
+                     :model/PermissionsGroupMembership _              {:user_id user-id :group_id group-id}]
+        (let [provider-config (assoc test-provider
+                                     :group-sync {:enabled         true
+                                                  :group-attribute "groups"
+                                                  :group-mappings  {}})]
+          (do-with-group-sync-login!
+           provider-config {:groups ["test-group"]} email
+           (fn [result]
+             (is (true? (:success? result)) (str "login result: " (pr-str result)))
+             (testing "the unmapped group membership survives the login and nothing else is added"
+               (is (= #{1 group-id}
+                      (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id)))))))))))
+
 (deftest oidc-group-sync-single-string-value-test
   (testing "Single group value (string instead of array) should still work"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name (str "OIDC String Group " (random-uuid))}]
