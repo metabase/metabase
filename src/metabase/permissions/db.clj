@@ -81,6 +81,9 @@
   groups (narrowed to `db-ids`, or every database when nil), the `[min max]` value rank pair."
   [user-id :- ::lib.schema.id/user
    db-ids  :- [:maybe [:sequential ::lib.schema.id/database]]]
+  ;; `table-level-case`/`value-rank-case` are HoneySQL [:case ...] forms built here, not values (rubric
+  ;; known limit: operator forms the walk does not classify). Marking one throws ::marked-operator-form.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/query (assoc (perm-rows-query-base user-id db-ids)
                    :select   [:p.perm_type :p.db_id :p.schema_name
                               [table-level-case :table_level]
@@ -95,6 +98,9 @@
   [user-id   :- [:maybe ::lib.schema.id/user]
    db-ids    :- [:maybe [:set ::lib.schema.id/database]]
    table-ids :- [:maybe [:set ms/IntGreaterThanOrEqualToZero]]]
+  ;; `value-rank-case` is a HoneySQL [:case ...] form built here, not a value (rubric known limit:
+  ;; operator forms the walk does not classify). Marking it throws ::marked-operator-form.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/query (-> (perm-rows-query-base user-id (when-not (seq table-ids) db-ids))
                 (assoc :select   [:p.perm_type :p.db_id :p.table_id
                                   [[:min value-rank-case] :mn]
@@ -184,6 +190,7 @@
    perm-types  :- [:sequential [:or :keyword :string]]]
   ;; `perm-types` stays unmarked (rubric rule 5): it can be empty, and a marked empty collection
   ;; hides the `IN () -> false` rewrite Toucan does inside the compile step the marker wraps.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/DataPermissions
              {:where [:and [:= :db_id (long database-id)] [:= :table_id nil]
                       [:in :group_id (mapv long group-ids)]
@@ -196,6 +203,7 @@
    group-ids   :- [:sequential ms/PositiveInt]
    perm-types  :- [:sequential [:or :keyword :string]]]
   ;; `perm-types` stays unmarked (rubric rule 5): see `database-level-permissions`.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select :model/DataPermissions
              {:select-distinct [:group_id :perm_type :schema_name :perm_value]
               :where           [:and [:= :db_id (long database-id)] [:not= :table_id nil]
@@ -243,6 +251,7 @@
   [group-ids  :- [:sequential ms/PositiveInt]
    perm-types :- [:sequential [:or :keyword :string]]]
   ;; `perm-types` stays unmarked (rubric rule 5): see `database-level-permissions`.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/query {:select-distinct [:group_id :perm_type :perm_value]
              :from            [[(t2/table-name :model/DataPermissions)]]
              :where           [:and
@@ -273,6 +282,7 @@
   ;; vector, but that proof is not local to this call -- the caller could stop guaranteeing it without
   ;; touching this namespace, and a marked empty collection throws rather than reaching Toucan's
   ;; `IN () -> false` rewrite. Strings rather than ids, so rule 4 does not preempt.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
 
 (defn- related-permission-objects-where
@@ -625,6 +635,10 @@
    ids-without-root      :- [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
    group-ids             :- [:maybe [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
    admin-group-id        :- [:maybe ms/PositiveInt]]
+  ;; `include-root?` is a structure switch, not a value: `[:inline ...]` emits TRUE/FALSE into the
+  ;; statement so the DB eliminates the root-collection UNION arm entirely. A marker inside
+  ;; `[:inline ...]` throws ::unmarked-nested-map, and binding it would defeat the elimination.
+  #_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
   (t2/reducible-query
    {:with [[:eligible_collections
             ^:allow-subquery
