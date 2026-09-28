@@ -2,11 +2,11 @@ import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addUserToGroup,
+  assignDataAppTestGroup,
   buildDataAppHostApp,
   createDataAppApiKey,
   createSecondDataApp,
   dataAppHostAppRoot,
-  dataAppPermissionGroupId,
   declareDataAppQueries,
   removeDataAppQueryDeclaration,
   resetDataAppHostAppSources,
@@ -435,25 +435,21 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("the app's lifecycle", () => {
-    it("takes the collection and the group with it when the app is removed", () => {
+    it("removes the app's resources and preserves its assigned group", () => {
       syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
             cy.request("DELETE", `/api/apps/${APP_SLUG}`);
 
-            // Nothing is left for a former viewer to reach.
             cy.request({
               url: `/api/collection/${app.resource_collection_id}`,
               failOnStatusCode: false,
             })
               .its("status")
               .should("eq", 404);
-            cy.request({
-              url: `/api/permissions/group/${groupId}`,
-              failOnStatusCode: false,
-            })
-              .its("status")
-              .should("eq", 404);
+            cy.request(`/api/permissions/group/${groupId}`)
+              .its("body.id")
+              .should("eq", groupId);
             cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
               .its("status")
               .should("eq", 404);
@@ -495,7 +491,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   describe("two apps on one instance", () => {
     const OTHER_SLUG = "sync-resources-second-app";
 
-    it("keeps each app's copies in its own collection, reachable only by its own group", () => {
+    it("keeps each app's copies in its own collection, reachable only by its assigned groups", () => {
       const otherRoot = createSecondDataApp(OTHER_SLUG);
 
       syncOneQuery().then((card) => {
@@ -509,12 +505,11 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         });
 
         cy.request(`/api/apps/${OTHER_SLUG}`).then(({ body: otherApp }) => {
-          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+          assignDataAppTestGroup(APP_SLUG).then((groupId) => {
             expect(
               otherApp.resource_collection_id,
               "each app gets its own collection",
             ).not.to.eq(null);
-            expect(otherApp.permission_group_id).not.to.eq(groupId);
 
             // Joining one app's group must not reach the other app's copy.
             addUserToGroup(groupId, USERS.normal.email);
@@ -578,9 +573,8 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("permissions", () => {
-    /** Puts the normal user in the app's group, as granting app access does. */
     const joinAppGroup = () =>
-      dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+      assignDataAppTestGroup(APP_SLUG).then((groupId) => {
         addUserToGroup(groupId, USERS.normal.email);
         return cy.wrap(groupId, { log: false });
       });
@@ -686,11 +680,9 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    // The copy exists so an app's viewers can read it: they are given the app's
-    // own group, which holds read on the app's collection and nothing else.
     it("lets the app's group read the copy while the rest of the instance cannot", () => {
       syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
+        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
           cy.signInAsNormalUser();
           cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
             .its("status")

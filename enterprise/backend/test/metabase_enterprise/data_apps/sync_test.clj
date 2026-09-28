@@ -65,58 +65,50 @@
                (t2/select-one-fn :sync_error :model/DataApp :name "broken")))
         (is (nil? (t2/select-one-fn :sync_error :model/DataApp :name "working")))))))
 
-(deftest sync-creates-stable-permission-resources-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [database-id (mt/id)
-          files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
-      (data-app.sync/import-from-snapshot! (snapshot files))
-      (let [{:keys [resource_collection_id permission_group_id]}
-            (t2/select-one :model/DataApp :name "sales")]
-        (testing "the first sync creates a dedicated group and collection"
-          (is (pos-int? resource_collection_id))
-          (is (pos-int? permission_group_id))
-          (is (= "Data App: sales"
-                 (t2/select-one-fn :name :model/Collection :id resource_collection_id)))
-          (is (= "Data App: sales"
-                 (t2/select-one-fn :name :model/PermissionsGroup :id permission_group_id)))
-          (is (t2/exists? :model/Permissions
-                          :group_id permission_group_id
-                          :object (perms/collection-read-path resource_collection_id)))
-          (is (not (t2/exists? :model/Permissions
-                               :group_id permission_group_id
-                               :object (perms/collection-readwrite-path resource_collection_id))))
-          (let [permissions (t2/select-fn-vec :perm_value :model/DataPermissions
-                                              :group_id permission_group_id
-                                              :db_id database-id
-                                              :perm_type :perms/create-queries)]
-            (is (seq permissions))
-            (is (every? #(= :no %) permissions))))
-        (testing "later syncs reuse the same resources"
-          (data-app.sync/import-from-snapshot! (snapshot files))
-          (is (=? {:resource_collection_id resource_collection_id
-                   :permission_group_id     permission_group_id}
-                  (t2/select-one :model/DataApp :name "sales"))))
-        (testing "removing the app deletes its resources"
-          (data-app.sync/import-from-snapshot! (snapshot {}))
-          (is (not (t2/exists? :model/Collection :id resource_collection_id)))
-          (is (not (t2/exists? :model/PermissionsGroup :id permission_group_id))))))))
-
-(deftest sync-restores-deleted-collection-and-permission-group-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
-      (data-app.sync/import-from-snapshot! (snapshot files))
-      (let [before (select-keys (t2/select-one :model/DataApp :name "sales")
-                                [:resource_collection_id :permission_group_id])]
-        (t2/delete! :model/Collection :id (:resource_collection_id before))
-        (t2/delete! :model/PermissionsGroup :id (:permission_group_id before))
+(deftest sync-preserves-local-assignments-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection]
+    (mt/with-temp [:model/PermissionsGroup group {}]
+      (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
         (data-app.sync/import-from-snapshot! (snapshot files))
-        ; after syncing the app again, the data app collection and
-        ; permission group should be re-created
-        (let [after (select-keys (t2/select-one :model/DataApp :name "sales") (keys before))]
-          (is (every? pos-int? (vals after)))
-          (is (t2/exists? :model/Collection :id (:resource_collection_id after)))
-          (is (t2/exists? :model/PermissionsGroup :id (:permission_group_id after)))
-          (is (not= before after)))))))
+        (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
+              assignment (t2/insert-returning-instance! :model/DataAppGroup
+                                                        {:data_app_id id :permission_group_id (:id group)})]
+          (data-app.sync/import-from-snapshot! (snapshot files))
+          (is (= assignment (t2/select-one :model/DataAppGroup :id (:id assignment))))
+          (is (= resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
+          (is (t2/exists? :model/Permissions :group_id (:id group)
+                          :object (perms/collection-read-path resource_collection_id))))))))
+
+(deftest sync-restores-deleted-collection-with-local-assignments-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection]
+    (mt/with-temp [:model/PermissionsGroup group {}]
+      (let [files (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})]
+        (data-app.sync/import-from-snapshot! (snapshot files))
+        (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
+              assignment (t2/insert-returning-instance! :model/DataAppGroup
+                                                        {:data_app_id id :permission_group_id (:id group)})]
+          (t2/delete! :model/Collection :id resource_collection_id)
+          (data-app.sync/import-from-snapshot! (snapshot files))
+          (is (= assignment (t2/select-one :model/DataAppGroup :id (:id assignment))))
+          (let [restored-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)]
+            (is (pos-int? restored-id))
+            (is (not= resource_collection_id restored-id))
+            (is (t2/exists? :model/Permissions :group_id (:id group)
+                            :object (perms/collection-read-path restored-id)))))))))
+
+(deftest sync-prunes-assignments-and-preserves-groups-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection]
+    (mt/with-temp [:model/PermissionsGroup group {}]
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "sales" {:name "Sales" :path "index.js" :bundle "V1"})))
+      (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp :name "sales")
+            assignment (t2/insert-returning-instance! :model/DataAppGroup
+                                                      {:data_app_id id :permission_group_id (:id group)})]
+        (data-app.sync/import-from-snapshot! (snapshot {}))
+        (is (not (t2/exists? :model/DataApp :id id)))
+        (is (not (t2/exists? :model/Collection :id resource_collection_id)))
+        (is (not (t2/exists? :model/DataAppGroup :id (:id assignment))))
+        (is (t2/exists? :model/PermissionsGroup :id (:id group)))))))
 
 (deftest changed-count-tracks-content-not-sha-bumps-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
