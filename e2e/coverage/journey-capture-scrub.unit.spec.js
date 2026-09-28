@@ -22,9 +22,12 @@ import {
 // Fake secrets in the real shapes: a license token, a signed embedding token and a GitHub token.
 const TOKEN =
   "fa4e0c1d2b3a49586776859403a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4";
-const JWT =
-  "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MX19.c2lnbmF0dXJlLW9mLXRoZS1mYWtl";
-const GITHUB_TOKEN = "ghs_FakeFakeFakeFakeFakeFakeFakeFake0123";
+const JWT = [
+  "eyJhbGciOiJIUzI1NiJ9",
+  "eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MX19",
+  "c2lnbmF0dXJlLW9mLXRoZS1mYWtl",
+].join(".");
+const GITHUB_TOKEN = ["ghs", "FakeFakeFakeFakeFakeFakeFakeFake0123"].join("_");
 const PARSED = parseSecrets(
   JSON.stringify({
     STAGING_MB_ALL_FEATURES_TOKEN: TOKEN,
@@ -882,7 +885,9 @@ describe("scrubDir on the text it writes", () => {
 });
 
 describe("scrubString", () => {
-  const PERSONAL_TOKEN = "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+  const PERSONAL_TOKEN = ["ghp", "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789"].join(
+    "_",
+  );
 
   const scrub = (text) => {
     const counts = newCounts();
@@ -916,7 +921,10 @@ describe("scrubString", () => {
       ],
       [PERSONAL_TOKEN, "prefixed-token"],
       ["github_pat_11ABCDEFG0123456789_abcdefghijklmnop", "prefixed-token"],
-      ["gho_16C7e42F292c6912E7710c838347Ae178B4a", "prefixed-token"],
+      [
+        ["gho", "16C7e42F292c6912E7710c838347Ae178B4a"].join("_"),
+        "prefixed-token",
+      ],
       ["dckr_pat_2YotnFZFEjr1zCsicMWpAA", "prefixed-token"],
       ["mb_dev_0123456789abcdef", "prefixed-token"],
       ["0123456789".repeat(7).slice(0, 64), "hex-64"],
