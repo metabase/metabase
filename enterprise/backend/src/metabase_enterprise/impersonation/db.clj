@@ -36,6 +36,13 @@
    database-id :- ::lib.schema.id/database]
   (t2/select :model/ConnectionImpersonation :group_id [:in group-ids] :db_id database-id))
 
+(mu/defn policies-for-groups-and-databases
+  "Group and database IDs for impersonation policies matching the requested groups and databases."
+  [group-ids    :- [:set ms/PositiveInt]
+   database-ids :- [:set ::lib.schema.id/database]]
+  (t2/select [:model/ConnectionImpersonation :group_id :db_id]
+             :group_id [:in group-ids] :db_id [:in database-ids]))
+
 (mu/defn impersonations-matching
   "The ConnectionImpersonations narrowed by the optional `database-id`, `group-id`, and `group-ids`, excluding the
   Database with `excluded-database-id` when given."
