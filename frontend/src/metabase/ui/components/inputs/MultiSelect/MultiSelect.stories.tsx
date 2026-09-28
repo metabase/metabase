@@ -145,12 +145,9 @@ export default {
 
 export const Default = {};
 
-const OVERVIEW_VARIANTS = [
-  { title: "Basic multiselect", searchable: false },
-  { title: "Searchable multiselect", searchable: true },
-] as const;
-
 const OVERVIEW_SIZES = ["md", "xs"] as const;
+
+const OVERVIEW_VALUE = [dataWithLabels[0].value, dataWithLabels[1].value];
 
 type OverviewRow = {
   id: string;
@@ -164,13 +161,13 @@ const OVERVIEW_STATES = [
   {
     id: "default-filled",
     label: "Default, filled",
-    props: { defaultValue: sampleArgs.value },
+    props: { defaultValue: OVERVIEW_VALUE },
   },
   { id: "focused-empty", label: "Focused, empty", props: {}, focus: true },
   {
     id: "focused-filled",
     label: "Focused, filled",
-    props: { defaultValue: sampleArgs.value },
+    props: { defaultValue: OVERVIEW_VALUE },
     focus: true,
   },
   {
@@ -181,7 +178,7 @@ const OVERVIEW_STATES = [
   {
     id: "error-filled",
     label: "Error, filled",
-    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+    props: { error: sampleArgs.error, defaultValue: OVERVIEW_VALUE },
   },
   {
     id: "error-focused-empty",
@@ -192,7 +189,7 @@ const OVERVIEW_STATES = [
   {
     id: "error-focused-filled",
     label: "Error + Focused, filled",
-    props: { error: sampleArgs.error, defaultValue: sampleArgs.value },
+    props: { error: sampleArgs.error, defaultValue: OVERVIEW_VALUE },
     focus: true,
   },
   {
@@ -203,7 +200,7 @@ const OVERVIEW_STATES = [
   {
     id: "disabled-filled",
     label: "Disabled, filled",
-    props: { disabled: true, defaultValue: sampleArgs.value },
+    props: { disabled: true, defaultValue: OVERVIEW_VALUE },
   },
 ] satisfies OverviewRow[];
 
@@ -224,13 +221,7 @@ const OVERVIEW_CONTENT = [
   },
 ] satisfies OverviewRow[];
 
-const OverviewGrid = ({
-  searchable,
-  rows,
-}: {
-  searchable: boolean;
-  rows: readonly OverviewRow[];
-}) => (
+const OverviewGrid = ({ rows }: { rows: readonly OverviewRow[] }) => (
   <Box
     style={{
       display: "grid",
@@ -242,9 +233,7 @@ const OverviewGrid = ({
   >
     <div />
     {OVERVIEW_SIZES.map((size) => (
-      <StoryJsx key={size}>
-        {`<MultiSelect${searchable ? " searchable" : ""} size="${size}" />`}
-      </StoryJsx>
+      <StoryJsx key={size}>{`<MultiSelect size="${size}" />`}</StoryJsx>
     ))}
     {rows.map((state) => (
       <Fragment key={state.id}>
@@ -258,7 +247,6 @@ const OverviewGrid = ({
               data={dataWithLabels}
               label="Label"
               placeholder="Placeholder"
-              searchable={searchable}
               size={size}
               {...state.props}
             />
@@ -271,13 +259,11 @@ const OverviewGrid = ({
 
 const OverviewTemplate: StoryFn<MultiSelectProps> = () => (
   <StoryShowcase title="MultiSelect">
-    {OVERVIEW_VARIANTS.map(({ title, searchable }) => (
-      <StorySection key={title} title={title}>
-        <OverviewGrid searchable={searchable} rows={OVERVIEW_STATES} />
-      </StorySection>
-    ))}
+    <StorySection title="States">
+      <OverviewGrid rows={OVERVIEW_STATES} />
+    </StorySection>
     <StorySection title="Content">
-      <OverviewGrid searchable={false} rows={OVERVIEW_CONTENT} />
+      <OverviewGrid rows={OVERVIEW_CONTENT} />
     </StorySection>
   </StoryShowcase>
 );

@@ -146,11 +146,6 @@ type OverviewRow = {
   focus?: boolean;
 };
 
-const OVERVIEW_VARIANTS = [
-  { title: "Basic select", searchable: false },
-  { title: "Searchable select", searchable: true },
-] as const;
-
 const OVERVIEW_SIZES = ["md", "xs"] as const;
 
 const OVERVIEW_STATES = [
@@ -248,13 +243,7 @@ const OVERVIEW_CONTENT = [
   },
 ] satisfies OverviewRow[];
 
-const OverviewGrid = ({
-  searchable,
-  rows,
-}: {
-  searchable: boolean;
-  rows: readonly OverviewRow[];
-}) => (
+const OverviewGrid = ({ rows }: { rows: readonly OverviewRow[] }) => (
   <Box
     style={{
       display: "grid",
@@ -266,9 +255,7 @@ const OverviewGrid = ({
   >
     <div />
     {OVERVIEW_SIZES.map((size) => (
-      <StoryJsx key={size}>
-        {`<Select${searchable ? " searchable" : ""} size="${size}" />`}
-      </StoryJsx>
+      <StoryJsx key={size}>{`<Select size="${size}" />`}</StoryJsx>
     ))}
     {rows.map((state) => (
       <Fragment key={state.id}>
@@ -282,7 +269,6 @@ const OverviewGrid = ({
               data={dataWithNoGroups}
               label="Label"
               placeholder="Placeholder"
-              searchable={searchable}
               size={size}
               {...state.props}
             />
@@ -295,13 +281,11 @@ const OverviewGrid = ({
 
 const OverviewTemplate: StoryFn<SelectProps<string>> = () => (
   <StoryShowcase title="Select">
-    {OVERVIEW_VARIANTS.map(({ title, searchable }) => (
-      <StorySection key={title} title={title}>
-        <OverviewGrid searchable={searchable} rows={OVERVIEW_STATES} />
-      </StorySection>
-    ))}
+    <StorySection title="States">
+      <OverviewGrid rows={OVERVIEW_STATES} />
+    </StorySection>
     <StorySection title="Content">
-      <OverviewGrid searchable={false} rows={OVERVIEW_CONTENT} />
+      <OverviewGrid rows={OVERVIEW_CONTENT} />
     </StorySection>
   </StoryShowcase>
 );
