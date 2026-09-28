@@ -64,10 +64,10 @@
                                                          (profile-row day-3 424242)
                                                          (profile-row day-2 434343)])
          (testing "segment rows"
-           (is (=? [{:source_id 424242 :total_count 2}]
+           (is (=? [{:source_id 424242 :total_count #(== 2 %)}]
                    (usage-metadata.db/grouped-segment-rows :table 424242 day-2 day-3))))
          (testing "profile rows"
-           (is (=? [{:source_id 424242 :total_count 2}]
+           (is (=? [{:source_id 424242 :total_count #(== 2 %)}]
                    (usage-metadata.db/grouped-profile-rows :table 424242 day-2 day-3)))))))))
 
 (deftest unarchived-segments-by-table-test
