@@ -337,12 +337,9 @@
                                 (change-set-ids change-log))]
       (when (seq versioned-ids)
         (throw (validation-error
-                ;; false unresolved-symbol from kondo's :cljs pass; this cljc is :clj+:bb only
-                #_{:clj-kondo/ignore [:unresolved-symbol]}
-                (format (str "Versioned changesets are not allowed from v%d on; add new changesets to a year-based "
-                             "directory (e.g. migrations/2026/) with version-less IDs: %s")
-                        first-versionless-major
-                        (str/join ", " versioned-ids))
+                (str "Versioned changesets are not allowed from v" first-versionless-major " on; add new changesets "
+                     "to a year-based directory (e.g. migrations/2026/) with version-less IDs: "
+                     (str/join ", " versioned-ids))
                 {:versioned-ids           (vec versioned-ids)
                  :first-versionless-major first-versionless-major}))))))
 

@@ -189,8 +189,12 @@
           ;; an existing instance with no recorded versions, split across two deployments by execution position (not
           ;; by id: the most recent changesets may be version-less, which carry no major in their id)
           (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'older'" changelog-table)])
-          (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE orderexecuted > (SELECT MAX(orderexecuted) - 10 FROM %s)"
-                                                     changelog-table changelog-table)])
+          ;; MySQL can't UPDATE a table that a subquery of the same statement reads, so find the boundary first
+          (let [boundary (-> (jdbc/query {:connection conn} [(format "SELECT MAX(orderexecuted) - 10 AS boundary FROM %s" changelog-table)])
+                             first
+                             :boundary)]
+            (jdbc/execute! {:connection conn} [(format "UPDATE %s SET deployment_id = 'newer' WHERE orderexecuted > ?" changelog-table)
+                                               boundary]))
           (versions/ensure-version-tracking! conn db)
           (testing "only the current deployment gets a ran row, with the highest vNN. major"
             (is (= [["newer" latest true]] (version-rows conn))))
@@ -234,6 +238,22 @@
           (is (thrown-with-msg? Exception #"boom" (mdb/migrate! (mdb/data-source) :up))))
         (mdb/migrate! (mdb/data-source) :up)
         (is (true? (versions/versions-table-exists? conn)))))))
+
+(deftest mysql-ran-migrations-is-bit-test
+  (testing "on MySQL/MariaDB ran_migrations is bit(1), like every other boolean column (see general-schema-tests)"
+    (mt/test-driver :mysql
+      (mt/with-temp-empty-app-db [conn :mysql]
+        (liquibase/with-liquibase [liquibase conn]
+          (versions/ensure-version-tracking! conn (.getDatabase liquibase)))
+        (is (= "bit"
+               (-> (jdbc/query {:connection conn}
+                               ["SELECT data_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'ran_migrations'"
+                                versions/databasechangelog-versions-table])
+                   first
+                   :data_type)))
+        (testing "and still reads back as a ran row"
+          (versions/record-deployment-version! conn "dep1" "x.64.0" true)
+          (is (= [["dep1" "x.64.0" true]] (version-rows conn))))))))
 
 ;;; ------------------------------------------------- deployment reads ---------------------------------------------
 

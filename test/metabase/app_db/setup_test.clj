@@ -267,9 +267,9 @@
           (liquibase/with-liquibase [liquibase conn]
             (let [sql (liquibase/migrations-sql liquibase)]
               (testing "backfills the pre-upgrade version for the existing install"
-                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
               (testing "records the upgrading version"
-                (is (re-find #"(?i)INSERT INTO databasechangelog_version[^;]+x\.64\.0" sql)))
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.64\.0" sql)))
               (testing "adds the legacy version-tracking marker so older binaries detect downgrades"
                 (is (re-find #"v64\.legacy-version-tracking" sql)))
               (testing "the version table is created by the printed SQL, not on the live database"

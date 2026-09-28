@@ -13,6 +13,7 @@
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
    [metabase.cmd.load-from-h2 :as load-from-h2]
    [metabase.cmd.test-util :as cmd.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.search.core :as search]
@@ -176,12 +177,15 @@
             db-type driver/*driver*
             source-db-def {:database-name "load-test-source"}
             data-source (get-data-source db-type source-db-def)]
-        ;; Create "load-test-source" once and then reuse it because creating it for each supported version, running all
-        ;; migrations and populating with data takes a lot of time.
-        (log/info "creating database")
-        (create-current-database! db-type source-db-def data-source)
-        (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
-          (fabricate-per-major-version-history!))
-        (doseq [version versions]
-          (migrate-down-then-up-and-create-dump! source-db-def h2-filename version)
-          (load-dump! "load-test-target" h2-filename version))))))
+        ;; migrate as a release of the current major: every deployment a development build makes records the same dev
+        ;; version, which `migrate down` refuses to roll back from
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" current-version))]
+          ;; Create "load-test-source" once and then reuse it because creating it for each supported version, running
+          ;; all migrations and populating with data takes a lot of time.
+          (log/info "creating database")
+          (create-current-database! db-type source-db-def data-source)
+          (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
+            (fabricate-per-major-version-history!))
+          (doseq [version versions]
+            (migrate-down-then-up-and-create-dump! source-db-def h2-filename version)
+            (load-dump! "load-test-target" h2-filename version)))))))

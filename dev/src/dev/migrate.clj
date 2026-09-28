@@ -99,10 +99,7 @@
   "Roll back everything that ran after `boundary-deployment-id` (nil: nothing to do), in its own transaction, keeping
   `databasechangelog_version` and the legacy-version-tracking marker in step. Returns the boundary deployment id."
   [boundary-deployment-id]
-  (if (nil? boundary-deployment-id)
-    ;; dev migration CLI; status goes to stdout for the human running it
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println "No earlier deployment to roll back to; nothing to do.")
+  (when boundary-deployment-id
     (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
       (.setAutoCommit conn false)
       (liquibase/with-liquibase [liquibase conn]
@@ -112,10 +109,12 @@
           (.commit conn)
           (catch Throwable e
             (.rollback conn)
-            (throw e))))
-      ;; dev migration CLI; status goes to stdout for the human running it
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      (println (format "Rolled back to deployment %s. Latest migration: %s" boundary-deployment-id (latest-migration)))))
+            (throw e))))))
+  ;; dev migration CLI; status goes to stdout for the human running it
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println (if boundary-deployment-id
+             (format "Rolled back to deployment %s. Latest migration: %s" boundary-deployment-id (latest-migration))
+             "No earlier deployment to roll back to; nothing to do."))
   boundary-deployment-id)
 
 (defn rollback-last-deployment!
