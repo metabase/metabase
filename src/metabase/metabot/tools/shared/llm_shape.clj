@@ -530,8 +530,7 @@
     :metric_source_card_name       source_card_name
     :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
-    ;; `metric-details` carries the name alongside the id. This used to read `:default_time_dimension_field`, a
-    ;; field map that nothing produces, so the line rendered empty on every metric.
+    ;; `metric-details` carries the name alongside the id.
     :metric_default_time_dimension default_time_dimension_field_name
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-metric-dimensions-table queryable-dimensions))

@@ -144,24 +144,14 @@
 (defn- enrich-with-metric-sources
   "Attach source info to metric search results: base-table (`:base_table_id`, `:base_table_name`,
   `:base_table_schema`, `:base_table_portable_fk`), source-card (`:source_card_id`, `:source_card_name`,
-  `:source_card_portable_entity_id`), or `:source_unavailable` when the metric names a source card that cannot be
-  offered -- because the current user may not read it, or because it no longer exists.
+  `:source_card_portable_entity_id`), or `:source_unavailable` when no source can be offered.
 
-  The LLM needs to know what to put in `source-table:` / `source-card:`. Without this it has only the metric's
-  `portable_entity_id` and must hallucinate the source (observed: `[<db>, public, customers]`) or spend a
-  `read_resource` round-trip.
+  [[metabase.metabot.tools.util/metric-required-source]] decides which applies. Source metadata is attached only
+  when the user can query that Table or read that Card; collection access to the metric Card does not imply access
+  to its source.
 
-  [[metabase.metabot.tools.util/metric-required-source]] decides which applies -- NOT `report_card.source_card_id`,
-  which only names what stage 0 reads and so cannot tell a single-stage card-based metric (consumed from that card)
-  from a multi-stage one (consumed from its base table). A metric pinned to a card carries the source-card fields
-  and omits the base-table ones, and vice versa; pairing either with the wrong source is a QP `Incompatible metric`
-  throw.
-
-  Source columns are read from `report_card` plus `metabase_table.{schema,name}`: a fixed number of queries per
-  search call regardless of result-set size, though no longer small ones -- deciding which source applies needs each
-  metric's `dataset_query`, so that read is now a JSON column per metric in the page rather than an int. Bounded by
-  page size, and there is no narrower column that answers the question. Source metadata is attached only when the
-  user can read that Table or Card; collection access to the metric Card does not imply access to its source.
+  A fixed number of queries per search call, but one reads each metric's `dataset_query`, since only the stage
+  structure says which source applies.
 
   Requires `:database_name` to already be set on each metric result (done earlier by
   [[enrich-with-database-engines]]) so we can assemble the full portable FK
@@ -196,10 +186,8 @@
                                             [metric-id (:table-id r)])))
                                   metric-id->required)
         table-ids (->> metric-id->table-id vals distinct)
-        ;; `can-query?`, not `can-read?`: this attribute promises the agent a table it can build a query on, and it
-        ;; must agree with `metric-details`, which gates the same disclosure on `can-query?`. Disagreeing now costs
-        ;; more than a missing attribute did -- the `:else` arm below turns a false negative into
-        ;; `source_unavailable`, which tells the agent to skip a metric the other surface hands it a source for.
+        ;; `can-query?`, matching `metric-details`: a false negative here becomes `source_unavailable` in the `:else`
+        ;; arm below, telling the agent to skip a metric the other surface offers a source for.
         table-id->info (when (seq table-ids)
                          (into {}
                                (comp (filter mi/can-query?)
