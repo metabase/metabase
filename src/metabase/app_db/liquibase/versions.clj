@@ -398,20 +398,35 @@
                  "CONSTRAINT uq_databasechangelog_version UNIQUE (deployment_id, metabase_version))%s")
             databasechangelog-versions-table id-column bool-type suffix)))
 
-(defn- backfill-version
-  "The version to record as having run the current deployment of an install that predates version tracking: the
-  highest `vNN.` major present in the changelog, as `x.<major>.0.0`, or nil when there are no versioned changesets.
+(defn- legacy-major
+  "The major of a `vNN.` changeset id (see [[extract-numbers]]), or nil for a version-less id."
+  [id]
+  (when (re-find #"^v\d+\." id)
+    (first (extract-numbers id))))
+
+(defn- version-less-id?
+  "Whether `id` is a version-less changeset's: neither a `vNN.` id nor a pre-4.2 numeric one."
+  [id]
+  (not (or (legacy-major id) (re-matches #"\d+" id))))
+
+(defn- highest-legacy-major
+  "The highest `vNN.` major in the changelog, or 0 when there are no versioned changesets.
 
   The highest major, not the major of the most-recently-*executed* changeset: back-ported patches can land a
   lower-version changeset (e.g. a `v44.` id) with a later `dateexecuted` than the highest-version changeset already
-  applied, and the schema's real version is the highest one. Older deployments are left without a row: downgrade
-  detection only consults the current deployment, and a legacy changeset's major is in its id."
+  applied, and the schema's real version is the highest one."
   [^Connection conn ^Database database]
-  (let [major (->> (query conn [(format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
-                   (keep (fn [{:keys [id]}]
-                           (when (re-find #"^v\d+\." id)
-                             (first (extract-numbers id)))))
-                   (reduce max 0))]
+  (->> (query conn [(format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table database))])
+       (keep (comp legacy-major :id))
+       (reduce max 0)))
+
+(defn- backfill-version
+  "The version to record as having run the current deployment of an install that predates version tracking: the
+  [[highest-legacy-major]] as `x.<major>.0.0`, or nil when there are no versioned changesets. Older deployments are
+  left without a row: every legacy changeset on the database counts as part of that version, which is as far back as
+  `migrate down` goes."
+  [^Connection conn ^Database database]
+  (let [major (highest-legacy-major conn database)]
     (when (pos? major)
       (format "x.%d.0.0" major))))
 
@@ -430,6 +445,38 @@
     (when-not (ran-version conn deployment-id)
       (when-let [version (backfill-version conn database)]
         (record-deployment-version! conn deployment-id version true)))))
+
+(defn repair-legacy-rollback!
+  "Correct the version rows of the current deployment after a binary that predates version tracking rolled it back with
+  its own `migrate down`: that removes the deployment's newest `vNN.` changesets but not its version rows, so its ran
+  version still names the major it was rolled back from. When the deployment ran only `vNN.` changesets and its ran
+  major is above the [[highest-legacy-major]] left in the changelog, the ran version becomes that major and the
+  deployment's version rows above it are dropped.
+
+  Deployments this binary's own versions made are left alone -- they carry version-less changesets or the
+  `vNN.legacy-version-tracking` marker of their major -- as is a development build's [[dev-version]]. Only safe while
+  holding the migration lock: until a migrating binary writes its marker, its deployment looks just like a trimmed one."
+  [^Connection conn ^Database database]
+  (when-let [deployment-id (last-deployment-id conn database)]
+    (let [ran       (ran-version conn deployment-id)
+          ran-major (some-> ran version->major)
+          major     (highest-legacy-major conn database)]
+      (when (and ran-major
+                 (not (synthetic-dev-major? ran-major))
+                 (pos? major)
+                 (> ran-major major)
+                 (not-any? (comp version-less-id? :id)
+                           (query conn [(format "SELECT id FROM %s WHERE deployment_id = ?" (changelog-table database))
+                                        deployment-id])))
+        (let [version (format "x.%d.0.0" major)]
+          (log/warnf "Deployment %s was recorded as run by version %s, but an older Metabase version rolled back its changesets above %d; recording it as %s"
+                     deployment-id ran major version)
+          (doseq [{:keys [id metabase_version]} (query conn [(format "SELECT id, metabase_version FROM %s WHERE deployment_id = ?"
+                                                                     databasechangelog-versions-table)
+                                                             deployment-id])
+                  :when (> (version->major metabase_version) major)]
+            (execute! conn [(format "DELETE FROM %s WHERE id = ?" databasechangelog-versions-table) id]))
+          (record-deployment-version! conn deployment-id version true))))))
 
 (defn version-tracking-sql
   "SQL statements recording an upgrade performed by hand from `migrate print` output: the same rows the exec listener,

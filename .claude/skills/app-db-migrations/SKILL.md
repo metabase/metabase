@@ -65,7 +65,7 @@ Rules the lint enforces (and reviewers expect):
   nothing to undo).
 - Preconditions that check a constraint or index must be scoped to a table (`indexExists` / `primaryKeyExists` /
   `uniqueConstraintExists` need `tableName`, `foreignKeyConstraintExists` needs `foreignKeyTableName`), or Liquibase
-  snapshots the whole schema to answer them.
+  snapshots the whole schema to answer them. NOTE: reconditions are rarely to never actually needed -- rely on liquibase changeset tracking
 - No `deleteCascade` on an `addColumn` constraint (add the foreign key with `addForeignKeyConstraint` instead).
 - Migrations must work on H2, PostgreSQL and MySQL/MariaDB; anything database-specific gets a `dbms:` filter.
 - **Shipped changesets are immutable.** Fix a mistake with a new changeset; never edit or delete one that a release

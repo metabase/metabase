@@ -361,6 +361,7 @@
   {:style/indent 1}
   [liquibase & body]
   `(run-in-scope-locked ~liquibase (fn [] ~@body)))
+
 (defn migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unrun `liquibase` migrations, custom
   migrations will be ignored. Ends with statements that record the upgrade in `databasechangelog_version` (and the
@@ -398,6 +399,7 @@
               (log/infof "Running %s migrations ..." unrun-migrations-count)
               (doseq [^ChangeSet change to-run-migrations]
                 (log/tracef "To run migration %s" (.getId change)))
+              (versions/repair-legacy-rollback! (.. database getConnection getUnderlyingConnection) database)
               (.setChangeExecListener liquibase (versions/recording-exec-listener database))
               (try
                 (.update liquibase contexts)
@@ -486,12 +488,13 @@
   "Point version-less changelog rows back at the year-directory changelog file that defines them, after an older
   Metabase binary consolidated them into the legacy/001 file.
 
-  Binaries before version-less changesets consolidate with an unguarded `WHEN ID < 'v45.00-001' THEN <legacy file>`,
-  which catches every version-less id sorting before `v` -- most of them. Any `migrate` command of such a binary
-  against an upgraded database (even one it then refuses as a downgrade) commits that rewrite via the Liquibase lock
-  release, and a boot of it that succeeds does the same. Left in place, the rewritten rows no longer match their
-  changesets, so a later `migrate down` here would clear their bookkeeping without reversing their DDL and the next
-  upgrade would fail on the orphaned objects.
+  Scenario: after upgrading, someone runs `java -jar <older metabase>.jar migrate down` (or any other `migrate`
+  command) against the database. The older binary's `migrate!` consolidates changeset filenames *before* its
+  newer-database check refuses, and the Liquibase lock release commits that. Its consolidation is an unguarded
+  `WHEN ID < 'v45.00-001' THEN <legacy file>`, which catches every version-less id sorting before `v` -- most of them.
+  Left in place, the rewritten rows no longer match their changesets, so a later `migrate down` from this version would
+  clear their bookkeeping without reversing their DDL and the next upgrade would fail with 'already exists'. (Booting
+  the older binary is safe: its downgrade check runs before consolidation.)
 
   Pre-4.2 numeric ids legitimately live in the legacy file and `vNN.` ids are never mis-consolidated, so only
   other ids are candidates; a candidate with no `[author id]` changeset in this changelog is left alone."

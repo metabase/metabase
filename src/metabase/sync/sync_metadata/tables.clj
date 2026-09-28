@@ -78,7 +78,6 @@
     ;; Liquibase
     #"^databasechangelog$"
     #"^databasechangeloglock$"
-    ;; Metabase's own Liquibase deployment -> version bookkeeping
     #"^databasechangelog_version$"
     ;; Lobos
     #"^lobos_migrations$"

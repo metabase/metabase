@@ -8,10 +8,12 @@
    [metabase.app-db.test-util :as mdb.test-util]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
   (:import
    (liquibase Liquibase)
    (liquibase.changelog ChangeSet)
+   (liquibase.lockservice LockServiceFactory)
    (liquibase.util LiquibaseUtil)))
 
 (set! *warn-on-reflection* true)
@@ -226,6 +228,21 @@
                 "the current deployment is the patch's, but its version is the highest major in the changelog")
             (is (= latest (versions/last-deployment-version conn db)))))))))
 
+(deftest migrate-up-repairs-legacy-rollbacks-under-the-lock-test
+  (testing "migrate up repairs a legacy rollback once it holds the migration lock, and not when there is nothing to run"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (let [lock-held-at-repair (atom [])
+            repair              (dynamic-redefs/original-fn #'versions/repair-legacy-rollback!)]
+        (mt/with-dynamic-fn-redefs [versions/repair-legacy-rollback!
+                                    (fn [conn database]
+                                      (swap! lock-held-at-repair conj
+                                             (.hasChangeLogLock (.getLockService (LockServiceFactory/getInstance) database)))
+                                      (repair conn database))]
+          (mdb/migrate! (mdb/data-source) :up)
+          (is (= [true] @lock-held-at-repair))
+          (mdb/migrate! (mdb/data-source) :up)
+          (is (= [true] @lock-held-at-repair)))))))
+
 (deftest migrate-recreates-version-table-after-failure-test
   (testing "the version table is (re)created at the start of every migrate!, so a rolled-back CREATE (transactional DDL) is simply redone"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -254,6 +271,45 @@
         (testing "and still reads back as a ran row"
           (versions/record-deployment-version! conn "dep1" "x.64.0" true)
           (is (= [["dep1" "x.64.0" true]] (version-rows conn))))))))
+
+(deftest repair-corrects-a-deployment-trimmed-by-a-legacy-rollback-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (mt/with-temp-empty-app-db [conn driver/*driver*]
+      (liquibase/with-liquibase [liquibase conn]
+        (let [db              (.getDatabase liquibase)
+              changelog-table (liquibase/changelog-table-name liquibase)]
+          (versions/ensure-version-tracking! conn db)
+          (testing "a pre-tracking binary's `migrate down` removes changesets but leaves their version rows"
+            ;; upgraded 62 -> 64 in one run (backfilled as 64 by the first 65 boot), then rolled back to 63 by 64
+            (mdb.test-util/fabricate-history! conn changelog-table
+                                              [{:deployment "d1"
+                                                :ran        "x.64.0.0"
+                                                :booted     ["x.64.2" "x.63.1"]
+                                                :changesets ["v62.00-001" "v63.00-001"]}])
+            (versions/ensure-version-tracking! conn db)
+            (versions/repair-legacy-rollback! conn db)
+            (is (= #{["d1" "x.63.0.0" true] ["d1" "x.63.1" false]} (set (version-rows conn)))
+                "the ran row is lowered to the highest remaining major, and newer boot rows are dropped")
+            (is (= 63 (versions/current-schema-major conn db)))))))))
+
+(deftest repair-leaves-tracked-deployments-alone-test
+  (testing "a ran version above the changelog's highest vNN. major is only corrected for a legacy-only deployment"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (doseq [[desc {:keys [ran changesets]}]
+              {"the binary's legacy marker keeps the major"  {:ran "x.65.0" :changesets ["v64.00-001" "v65.legacy-version-tracking"]}
+               "version-less changesets were run by a tracking binary" {:ran "x.66.0" :changesets ["v65.00-001" "2026-10-01-add-thing"]}
+               "a development build's version is never corrected" {:ran versions/dev-version :changesets ["v64.00-001"]}}]
+        (testing desc
+          (mt/with-temp-empty-app-db [conn driver/*driver*]
+            (liquibase/with-liquibase [liquibase conn]
+              (let [db              (.getDatabase liquibase)
+                    changelog-table (liquibase/changelog-table-name liquibase)]
+                (versions/ensure-version-tracking! conn db)
+                (mdb.test-util/fabricate-history! conn changelog-table
+                                                  [{:deployment "d1" :ran ran :changesets changesets}])
+                (versions/ensure-version-tracking! conn db)
+                (versions/repair-legacy-rollback! conn db)
+                (is (= [["d1" ran true]] (version-rows conn)))))))))))
 
 ;;; ------------------------------------------------- deployment reads ---------------------------------------------
 
