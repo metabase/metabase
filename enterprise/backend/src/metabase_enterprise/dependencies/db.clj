@@ -504,6 +504,10 @@
         first
         :total)))
 
+;; Rubric rule 5: `dependent-types` and `dependent-card-types` are `[:maybe [:sequential :string]]`, so a caller
+;; may pass a non-nil but empty vector. Marking one throws `::marked-empty-collection` and hides Toucan's
+;; `[:in col []]` -> `false` rewrite, so both stay unmarked.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn broken-entity-pairs
   "The `[:analyzed_entity_type :analyzed_entity_id]` pairs whose analysis failed and were caused by the entity
   `source-entity-type` `source-entity-id`, restricted to `dependent-types` and `dependent-card-types` (each nil
@@ -640,8 +644,8 @@
    to-type   :- EntityType
    to-id     :- ms/PositiveInt]
   (t2/exists? :model/Dependency
-              :from_entity_type from-type :from_entity_id (long from-id)
-              :to_entity_type to-type :to_entity_id (long to-id)))
+              :from_entity_type [:auto/param from-type] :from_entity_id (long from-id)
+              :to_entity_type [:auto/param to-type] :to_entity_id (long to-id)))
 
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
@@ -663,8 +667,8 @@
    new-to-type :- EntityType
    new-to-id   :- ms/PositiveInt]
   (t2/update! :model/Dependency
-              {:from_entity_type from-type :from_entity_id (long from-id)
-               :to_entity_type old-to-type :to_entity_id (long old-to-id)}
+              {:from_entity_type [:auto/param from-type] :from_entity_id (long from-id)
+               :to_entity_type [:auto/param old-to-type] :to_entity_id (long old-to-id)}
               {:to_entity_type new-to-type :to_entity_id new-to-id}))
 
 (mu/defn delete-dependencies!
@@ -680,14 +684,14 @@
    to-type   :- EntityType
    to-id     :- ms/PositiveInt]
   (t2/delete! :model/Dependency
-              :from_entity_type from-type :from_entity_id (long from-id)
-              :to_entity_type to-type :to_entity_id (long to-id)))
+              :from_entity_type [:auto/param from-type] :from_entity_id (long from-id)
+              :to_entity_type [:auto/param to-type] :to_entity_id (long to-id)))
 
 (mu/defn delete-dependencies-from!
   "Delete the Dependencies of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/Dependency :from_entity_type entity-type :from_entity_id (long entity-id)))
+  (t2/delete! :model/Dependency :from_entity_type [:auto/param entity-type] :from_entity_id (long entity-id)))
 
 (mu/defn downstream-table-ids-of-transform
   "The IDs of the Tables that depend on the Transform with `transform-id`."
@@ -714,14 +718,19 @@
   "The DependencyStatus of the entity `entity-type` `entity-id`, or nil."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (t2/select-one :model/DependencyStatus :entity_type entity-type :entity_id (long entity-id)))
+  (t2/select-one :model/DependencyStatus :entity_type [:auto/param entity-type] :entity_id (long entity-id)))
 
 (mu/defn delete-dependency-status!
   "Delete the DependencyStatus of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/DependencyStatus :entity_type entity-type :entity_id (long entity-id)))
+  (t2/delete! :model/DependencyStatus :entity_type [:auto/param entity-type] :entity_id (long entity-id)))
 
+;; Rubric rule 1: `mdb/update-or-insert!` merges its select-map into the row it inserts and into the update's
+;; changes map, so a marker there is written to `entity_type` rather than bound (verified: the insert path
+;; throws casting the marker vector through the column's keyword transform). The `existing` binding the
+;; lint also flags is the update-fn's parameter, not a value slot.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn mark-dependency-status-stale!
   "Mark the DependencyStatus of `entity-type` `entity-id` as stale for dependency recalculation, creating it if it
   doesn't exist. Resets retry state so previously-failed entities get a fresh chance."
@@ -735,6 +744,11 @@
        {:stale true :fail_count 0 :next_retry_at nil :terminal false}
        {:stale true :dependency_analysis_version 0}))))
 
+;; Rubric rule 1: `mdb/update-or-insert!` merges its select-map into the row it inserts and into the update's
+;; changes map, so a marker there is written to `entity_type` rather than bound (verified: the insert path
+;; throws casting the marker vector through the column's keyword transform). The `existing` binding the
+;; lint also flags is the update-fn's parameter, not a value slot.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn upsert-dependency-status!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, setting stale=false, `dependency_analysis_version` to
   `current-version`, and clearing any failure state."
@@ -750,6 +764,11 @@
       :fail_count 0
       :next_retry_at nil})))
 
+;; Rubric rule 1: `mdb/update-or-insert!` merges its select-map into the row it inserts and into the update's
+;; changes map, so a marker there is written to `entity_type` rather than bound (verified: the insert path
+;; throws casting the marker vector through the column's keyword transform). The `existing` binding the
+;; lint also flags is the update-fn's parameter, not a value slot.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn record-dependency-status-failure!
   "Upsert the DependencyStatus of `entity-type` `entity-id`, creating it if needed. `update-fn` receives the
   existing DependencyStatus row (or nil if none exists) and must return the columns to set."
@@ -766,6 +785,9 @@
   []
   (t2/exists? :model/DependencyStatus :terminal false :next_retry_at [:not= nil]))
 
+;; Rubric rule 2: `id-field` holds a column reference (`:<table>/id`) used in the join's ON condition, not a
+;; value. Marking it would bind the column name as data and drop the comparison.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn instances-for-dependency-calculation
   "Up to `batch-size` instances of the entity type `entity-type` without a DependencyStatus, or whose status is
   stale or below `current-version`, is not terminal, and whose retry time has passed at `now`; stale ones first."
@@ -829,7 +851,7 @@
   [entity-type :- EntityType
    entity-ids  :- [:sequential ms/PositiveInt]]
   (t2/update! :model/AnalysisFinding
-              :analyzed_entity_type entity-type
+              :analyzed_entity_type [:auto/param entity-type]
               :analyzed_entity_id [:in (mapv long entity-ids)]
               {:stale true}))
 
@@ -843,6 +865,9 @@
   []
   (t2/count :model/AnalysisFinding :stale true))
 
+;; Rubric rule 2: `id-field` holds a column reference (`:<table>/id`) used in the join's ON condition, not a
+;; value. Marking it would bind the column name as data and drop the comparison.
+#_{:clj-kondo/ignore [:metabase/unsafe-app-db-query]}
 (mu/defn instances-for-analysis
   "Up to `batch-size` instances of the entity type `entity-type` whose AnalysisFinding is stale, missing, or below
   `current-version`; stale ones first, then the longest unanalyzed."
@@ -912,14 +937,14 @@
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/select :model/AnalysisFindingError
-             :analyzed_entity_type entity-type
+             :analyzed_entity_type [:auto/param entity-type]
              :analyzed_entity_id (long entity-id)))
 
 (mu/defn finding-errors-from-source
   "The AnalysisFindingErrors caused by the entity `source-type` `source-id`."
   [source-type :- [:maybe :metabase.lib.schema.validate/source-entity-type]
    source-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id (long source-id)))
+  (t2/select :model/AnalysisFindingError :source_entity_type [:auto/param source-type] :source_entity_id (long source-id)))
 
 (mu/defn insert-finding-errors!
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
@@ -931,5 +956,5 @@
   [entity-type :- EntityType
    entity-id   :- ms/PositiveInt]
   (t2/delete! :model/AnalysisFindingError
-              :analyzed_entity_type entity-type
+              :analyzed_entity_type [:auto/param entity-type]
               :analyzed_entity_id (long entity-id)))
