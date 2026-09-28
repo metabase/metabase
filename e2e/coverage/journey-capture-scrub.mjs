@@ -210,6 +210,17 @@ export function newCounts() {
   return Object.fromEntries(RULES.map((rule) => [rule, 0]));
 }
 
+// `text` with each of `ranges`, in order and apart, replaced by `replacement`.
+function replaceRanges(text, ranges, replacement) {
+  let result = "";
+  let from = 0;
+  for (const { start, end } of ranges) {
+    result += text.slice(from, start) + replacement;
+    from = end;
+  }
+  return result + text.slice(from);
+}
+
 /**
  * Applies every rule to one string, adding what it replaced to `counts`,
  * and the secret replacements to `bySecret` by secret name.
@@ -220,19 +231,12 @@ export function scrubString(
   counts,
   bySecret = Object.create(null),
 ) {
-  let result = text;
-  const ranges = matcher.find(result);
-  if (ranges.length > 0) {
-    let pieces = "";
-    let from = 0;
-    for (const { start, end, name } of ranges) {
-      pieces += result.slice(from, start) + PLACEHOLDER;
-      from = end;
-      bySecret[name] = (bySecret[name] ?? 0) + 1;
-    }
-    result = pieces + result.slice(from);
-    counts.secret += ranges.length;
+  const ranges = matcher.find(text);
+  for (const { name } of ranges) {
+    bySecret[name] = (bySecret[name] ?? 0) + 1;
   }
+  counts.secret += ranges.length;
+  let result = replaceRanges(text, ranges, PLACEHOLDER);
   for (const { rule, pattern } of TOKEN_RULES) {
     result = result.replace(pattern, () => {
       counts[rule] += 1;
@@ -270,15 +274,57 @@ function total(counts) {
   return Object.values(counts).reduce((sum, n) => sum + n, 0);
 }
 
-// JSON is scrubbed value by value and written back with JSON.stringify, so it stays valid.
-// Text that doesn't parse is scrubbed as plain text.
-function scrubJsonText(text, scrub, stats) {
-  try {
-    return JSON.stringify(scrubJsonValue(JSON.parse(text), scrub));
-  } catch {
-    stats.unparsedJson += 1;
-    return scrub(text);
+/**
+ * Every secret fragment and token shape in `text`, as [start, end) ranges with the rule that found them,
+ * and the secret's name for a fragment.
+ */
+function findAll(text, matcher) {
+  const found = matcher
+    .find(text)
+    .map((range) => ({ ...range, rule: "secret" }));
+  for (const { rule, pattern } of TOKEN_RULES) {
+    pattern.lastIndex = 0;
+    for (
+      let match = pattern.exec(text);
+      match !== null;
+      match = pattern.exec(text)
+    ) {
+      found.push({ start: match.index, end: pattern.lastIndex, rule });
+    }
   }
+  return found;
+}
+
+const QUOTED_PLACEHOLDER = JSON.stringify(PLACEHOLDER);
+
+// Every string, number and literal in valid JSON text, keys included.
+const JSON_SCALAR =
+  /"(?:[^"\\]|\\.)*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/g;
+const LINE = /[^\n]+/g;
+
+/**
+ * The matches of `unit` in `text` that any of `found` overlaps,
+ * leaving out those that are the quoted placeholder already.
+ */
+function overlappedUnits(text, unit, found) {
+  const ranges = [...found].sort((a, b) => a.start - b.start);
+  let next = 0;
+  const units = [];
+  for (const match of text.matchAll(unit)) {
+    const start = match.index;
+    const end = start + match[0].length;
+    while (next < ranges.length && ranges[next].end <= start) {
+      next += 1;
+    }
+    if (
+      next < ranges.length &&
+      ranges[next].start < end &&
+      match[0] !== QUOTED_PLACEHOLDER
+    ) {
+      units.push({ start, end });
+    }
+  }
+  return units;
 }
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -312,7 +358,8 @@ function walk(dir, prefix = "") {
 }
 
 /**
- * Scrubs every text file under `dir` in place. Binary files are left alone for verifyDir to check.
+ * Scrubs every text file under `dir` in place, so that verifyDir finds nothing in its text.
+ * Binary files are left alone for verifyDir to check.
  */
 export function scrubDir(dir, secrets) {
   const matcher = textMatcher(secrets);
@@ -324,6 +371,9 @@ export function scrubDir(dir, secrets) {
     binaryFiles: 0,
     changedFiles: 0,
     unparsedJson: 0,
+    serialized: 0,
+    replacedValues: 0,
+    replacedWhole: 0,
     counts,
     bySecret,
   };
@@ -331,6 +381,52 @@ export function scrubDir(dir, secrets) {
     text.length < SHORTEST_MATCH
       ? text
       : scrubString(text, matcher, counts, bySecret);
+
+  // Searches the text to be written the way verifyDir does,
+  // and replaces each `unit` that a match overlaps with the quoted placeholder.
+  // A match across a JSON escape, JSON punctuation or a line break is in this text but in no single parsed string.
+  const leaveNoMatch = (text, unit) => {
+    let result = text;
+    for (;;) {
+      const found = findAll(result, matcher);
+      if (found.length === 0) {
+        return result;
+      }
+      for (const { rule, name } of found) {
+        stats.serialized += 1;
+        counts[rule] += 1;
+        if (name) {
+          bySecret[name] = (bySecret[name] ?? 0) + 1;
+        }
+      }
+      const units = unit ? overlappedUnits(result, unit, found) : [];
+      if (units.length === 0) {
+        stats.replacedWhole += 1;
+        return QUOTED_PLACEHOLDER;
+      }
+      stats.replacedValues += units.length;
+      result = replaceRanges(result, units, QUOTED_PLACEHOLDER);
+    }
+  };
+
+  // JSON is scrubbed value by value and written back with JSON.stringify, so it stays valid.
+  // Text that doesn't parse is scrubbed as plain text.
+  const scrubJson = (text) => {
+    let value;
+    try {
+      value = JSON.parse(text);
+    } catch {
+      stats.unparsedJson += 1;
+      return leaveNoMatch(scrub(text), null);
+    }
+    const before = total(counts);
+    scrubJsonValue(value, scrub);
+    return leaveNoMatch(
+      total(counts) > before ? JSON.stringify(value) : text,
+      JSON_SCALAR,
+    );
+  };
+
   for (const { relative, regular } of walk(dir)) {
     if (!regular) {
       continue;
@@ -346,19 +442,18 @@ export function scrubDir(dir, secrets) {
       continue;
     }
     stats.textFiles += 1;
-    const before = total(counts);
     let scrubbed;
     if (extension === ".json") {
-      scrubbed = scrubJsonText(text, scrub, stats);
+      scrubbed = scrubJson(text);
     } else if (extension === ".jsonl") {
-      scrubbed = text
+      const lines = text
         .split("\n")
-        .map((line) => (line ? scrubJsonText(line, scrub, stats) : line))
-        .join("\n");
+        .map((line) => (line ? scrubJson(line) : line));
+      scrubbed = leaveNoMatch(lines.join("\n"), LINE);
     } else {
-      scrubbed = scrub(text);
+      scrubbed = leaveNoMatch(scrub(text), null);
     }
-    if (total(counts) > before) {
+    if (scrubbed !== text) {
       fs.writeFileSync(file, scrubbed);
       stats.changedFiles += 1;
     }
@@ -378,13 +473,13 @@ export function verifyDir(dir, secrets) {
   const check = (relative, rule, name) =>
     leftovers.push({ file: relative, rule, ...(name && { name }) });
   const checkText = (relative, text, matcher) => {
-    const [found] = matcher.find(text);
-    if (found) {
-      check(relative, "secret", found.name);
+    const found = findAll(text, matcher);
+    const secret = found.find(({ rule }) => rule === "secret");
+    if (secret) {
+      check(relative, "secret", secret.name);
     }
-    for (const { rule, pattern } of TOKEN_RULES) {
-      pattern.lastIndex = 0;
-      if (pattern.test(text)) {
+    for (const { rule } of TOKEN_RULES) {
+      if (found.some((match) => match.rule === rule)) {
         check(relative, rule);
       }
     }
@@ -422,6 +517,8 @@ export function report({ parsed, scrubbed, verified }) {
     `scrub: ${scrubbed.files} files, ${scrubbed.textFiles} text and ${scrubbed.binaryFiles} binary, ` +
       `${scrubbed.changedFiles} changed, ${scrubbed.unparsedJson} JSON files or lines scrubbed as plain text`,
     `replacements: ${RULES.map((rule) => `${rule} ${scrubbed.counts[rule]}`).join(", ")}`,
+    `written text: ${scrubbed.serialized} of these replacements found after the scrub of each string, ` +
+      `${scrubbed.replacedValues} JSON values or lines and ${scrubbed.replacedWhole} files or JSON documents replaced whole`,
     `secret replacements by name: ${byName.length > 0 ? byName.join(", ") : "none"}`,
     `verify: ${verified.ok ? "pass" : "FAIL"}, ${verified.files} files checked, ${verified.leftovers.length} leftovers`,
   ];

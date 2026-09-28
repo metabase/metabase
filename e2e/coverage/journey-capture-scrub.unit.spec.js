@@ -14,6 +14,7 @@ import {
   report,
   scrubDir,
   scrubString,
+  secretForms,
   textMatcher,
   verifyDir,
 } from "./journey-capture-scrub.mjs";
@@ -39,6 +40,19 @@ const KEPT = {
   uuid: "123e4567-e89b-12d3-a456-426614174000",
   entityId: "Vu4DcAcYqD2Z0Pp8ZtRwS",
 };
+
+// A fake service account key. It is JSON text, so its private key holds literal \n escapes.
+const SERVICE_ACCOUNT = JSON.stringify(
+  {
+    type: "service_account",
+    project_id: "fake-project-0000",
+    private_key:
+      "-----BEGIN FAKE KEY-----\nZmFrZS1rZXktYm9keS1mb3Itc2NydWItdGVzdHM=\n-----END FAKE KEY-----\n",
+    client_email: "scrub-test@fake-project-0000.iam.gserviceaccount.com",
+  },
+  null,
+  2,
+);
 
 const SPEC = "e2e/test/scenarios/onboarding/setup/setup.cy.spec.ts";
 const CAPTURE_FILE = path.resolve(__dirname, "../support/per-test-capture.js");
@@ -325,6 +339,85 @@ function writeShard(dir, payload) {
   return exec;
 }
 
+// Mulberry32, so every run generates the same documents.
+function seeded(seed) {
+  let state = seed;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Generates JSON values and text that hold pieces of the spellings of `secrets`: in strings and keys,
+ * in strings whose JSON escapes spell a piece, and across the punctuation between keys, values and items.
+ */
+function secretPieces(secrets, seed) {
+  const random = seeded(seed);
+  const int = (n) => Math.floor(random() * n);
+  const pick = (items) => items[int(items.length)];
+  const names = [...new Set(secrets.map(({ name }) => name))];
+  const piece = () => {
+    const name = pick(names);
+    const forms = secretForms(
+      pick(secrets.filter((secret) => secret.name === name)).value,
+    );
+    const form = random() < 0.5 ? forms[0] : pick(forms);
+    const length = Math.min(form.length, 16 + int(25));
+    const start = int(form.length - length + 1);
+    return form.slice(start, start + length);
+  };
+  const word = () =>
+    pick(["", "a", "GET /api/card/1", "é", "😀", "\n", "\t", '"', "\\"]);
+  const parsed = (text) => {
+    try {
+      return [JSON.parse(text)];
+    } catch {
+      return [];
+    }
+  };
+  const opens = ["", '"', "[", '["', "{", '{"', '{"k":"'];
+  const closes = ["", '"', "]", '"]', "}", '"}', '":0}'];
+  const holding = (text) => [
+    word() + text + word(),
+    ...opens.flatMap((open) =>
+      closes.flatMap((close) => parsed(open + text + close)),
+    ),
+  ];
+  const key = () => {
+    const held = pick(holding(piece()));
+    return typeof held === "string" ? held : word();
+  };
+  const value = (depth) => {
+    const roll = random();
+    if (depth >= 3 || roll < 0.4) {
+      return pick([
+        word,
+        () => int(1e6),
+        () => pick([true, false, null]),
+        () => pick(holding(piece())),
+      ])();
+    }
+    const entries = Array.from({ length: 1 + int(4) }, () => [
+      key(),
+      value(depth + 1),
+    ]);
+    return roll < 0.7
+      ? entries.map(([, item]) => item)
+      : Object.fromEntries(entries);
+  };
+  return {
+    json: () => value(0),
+    text: () =>
+      Array.from({ length: 1 + int(5) }, () => word() + piece()).join(
+        pick([" ", "\n", ""]),
+      ),
+    indent: () => pick([0, 2]),
+  };
+}
+
 function readAll(dir) {
   const texts = [];
   const walk = (sub) => {
@@ -600,6 +693,191 @@ describe("scrubDir and verifyDir", () => {
       ok: false,
       leftovers: [{ file: "hosts", rule: "not a regular file" }],
     });
+  });
+});
+
+describe("scrubDir on the text it writes", () => {
+  let dir;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "journey-scrub-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const write = (name, text) => fs.writeFileSync(path.join(dir, name), text);
+  const read = (name) => fs.readFileSync(path.join(dir, name), "utf8");
+
+  it("should replace a string that matches a secret only in its JSON-escaped spelling", () => {
+    const parsed = parseSecrets(JSON.stringify({ SERVICE_ACCOUNT }));
+    const key =
+      "-----BEGIN OTHER FAKE KEY-----\nZmFrZQ==\n-----END OTHER FAKE KEY-----\n";
+    const event = { kind: "request", path: "/api/database", body: key };
+    write("entry.json", JSON.stringify({ kind: "test", events: [event] }));
+
+    expect(scrubString(key, textMatcher(parsed.secrets), newCounts())).toBe(
+      key,
+    );
+    expect(verifyDir(dir, parsed.secrets).leftovers).toEqual([
+      { file: "entry.json", rule: "secret", name: "SERVICE_ACCOUNT" },
+    ]);
+
+    const scrubbed = scrubDir(dir, parsed.secrets);
+    const verified = verifyDir(dir, parsed.secrets);
+
+    expect(verified).toMatchObject({ ok: true, leftovers: [] });
+    expect(JSON.parse(read("entry.json"))).toEqual({
+      kind: "test",
+      events: [{ ...event, body: PLACEHOLDER }],
+    });
+    expect(scrubbed).toMatchObject({
+      changedFiles: 1,
+      serialized: 1,
+      replacedValues: 1,
+      replacedWhole: 0,
+      counts: { ...newCounts(), secret: 1 },
+    });
+    expect({ ...scrubbed.bySecret }).toEqual({ SERVICE_ACCOUNT: 1 });
+    expect(report({ parsed, scrubbed, verified }).split("\n")).toContain(
+      "written text: 1 of these replacements found after the scrub of each string, " +
+        "1 JSON values or lines and 0 files or JSON documents replaced whole",
+    );
+  });
+
+  it("should replace a key and its value, or two array items, that a secret spans", () => {
+    const { secrets } = parseSecrets(
+      JSON.stringify({
+        OAUTH_CLIENT: '{"client-id-fake":"client-secret-fake"}',
+        SCOPES: '["fake-scope-0001","fake-scope-0002"]',
+      }),
+    );
+    write(
+      "entry.json",
+      JSON.stringify({
+        kind: "test",
+        body: { "client-id-fake": "client-secret-fake" },
+        attempt: 0,
+      }),
+    );
+    const classes = JSON.stringify(["metabase/api/card$fn__1"]);
+    write(
+      "lines.jsonl",
+      `${classes}\n${JSON.stringify({ scopes: ["fake-scope-0001", "fake-scope-0002"], n: 1 })}\n`,
+    );
+    expect(verifyDir(dir, secrets).leftovers).toEqual([
+      { file: "entry.json", rule: "secret", name: "OAUTH_CLIENT" },
+      { file: "lines.jsonl", rule: "secret", name: "SCOPES" },
+    ]);
+
+    const scrubbed = scrubDir(dir, secrets);
+
+    expect(verifyDir(dir, secrets)).toMatchObject({ ok: true, leftovers: [] });
+    expect(JSON.parse(read("entry.json"))).toEqual({
+      kind: "test",
+      body: { [PLACEHOLDER]: PLACEHOLDER },
+      attempt: 0,
+    });
+    expect(read("lines.jsonl")).toBe(
+      `${classes}\n${JSON.stringify({ scopes: [PLACEHOLDER, PLACEHOLDER], n: 1 })}\n`,
+    );
+    expect(scrubbed).toMatchObject({
+      serialized: 2,
+      replacedValues: 4,
+      replacedWhole: 0,
+    });
+  });
+
+  it("should replace the JSONL lines that a secret spans", () => {
+    const { secrets } = parseSecrets(
+      JSON.stringify({ ACROSS_LINES: 'ab-01"]\n["fake-1' }),
+    );
+    const lines = ['["x","ab-01"]', '["fake-1","y"]', '["z"]'];
+    write("lines.jsonl", `${lines.join("\n")}\n`);
+    expect(verifyDir(dir, secrets).leftovers).toEqual([
+      { file: "lines.jsonl", rule: "secret", name: "ACROSS_LINES" },
+    ]);
+
+    const scrubbed = scrubDir(dir, secrets);
+
+    expect(verifyDir(dir, secrets)).toMatchObject({ ok: true, leftovers: [] });
+    expect(read("lines.jsonl")).toBe(
+      `"${PLACEHOLDER}"\n"${PLACEHOLDER}"\n["z"]\n`,
+    );
+    expect(scrubbed).toMatchObject({
+      serialized: 1,
+      replacedValues: 2,
+      replacedWhole: 0,
+    });
+  });
+
+  it("should replace a whole file when a match is left outside every value it can replace", () => {
+    const { secrets } = parseSecrets(
+      JSON.stringify({
+        BRACKETS: "]".repeat(16),
+        FIRST: "fake-secret-value-0001",
+        AFTER_PLACEHOLDER: "d>fake-tail-000001",
+      }),
+    );
+    const nested = Array.from({ length: 16 }).reduce((inner) => [inner], 1);
+    write("nested.json", JSON.stringify(nested));
+    write("summary.txt", "fake-secret-value-0001fake-tail-000001\n");
+
+    const scrubbed = scrubDir(dir, secrets);
+
+    expect(verifyDir(dir, secrets)).toMatchObject({ ok: true, leftovers: [] });
+    expect(read("nested.json")).toBe(`"${PLACEHOLDER}"`);
+    expect(read("summary.txt")).toBe(`"${PLACEHOLDER}"`);
+    expect(scrubbed).toMatchObject({
+      changedFiles: 2,
+      serialized: 2,
+      replacedValues: 0,
+      replacedWhole: 2,
+    });
+  });
+
+  it("should leave nothing for verifyDir in generated JSON, JSONL and text files", () => {
+    const { secrets } = parseSecrets(
+      JSON.stringify({
+        SERVICE_ACCOUNT,
+        OAUTH_CLIENT: JSON.stringify({
+          client_id: "fake-client-0001",
+          client_secret: "fake-client-secret-0001",
+        }),
+        QUOTED: 'fake "quoted" \\ secret\twith-tab-0001',
+        DIGITS: "1234567890123456",
+      }),
+    );
+    const generate = secretPieces(secrets, 1);
+    for (let i = 0; i < 100; i++) {
+      write(
+        `${i}.json`,
+        JSON.stringify(generate.json(), null, generate.indent()),
+      );
+      const lines = Array.from({ length: 3 }, () =>
+        JSON.stringify(generate.json()),
+      );
+      write(`${i}.jsonl`, `${lines.join("\n")}\n`);
+      write(`${i}.txt`, generate.text());
+    }
+    expect(verifyDir(dir, secrets).ok).toBe(false);
+
+    const scrubbed = scrubDir(dir, secrets);
+
+    expect(verifyDir(dir, secrets).leftovers).toEqual([]);
+    expect(scrubbed.serialized).toBeGreaterThan(0);
+    expect(scrubbed.replacedWhole).toBe(0);
+    for (const name of fs.readdirSync(dir)) {
+      const documents = name.endsWith(".json")
+        ? [read(name)]
+        : name.endsWith(".jsonl")
+          ? read(name).split("\n").filter(Boolean)
+          : [];
+      for (const document of documents) {
+        expect(() => JSON.parse(document)).not.toThrow();
+      }
+    }
   });
 });
 
