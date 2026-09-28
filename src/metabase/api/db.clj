@@ -23,23 +23,31 @@
   [entity :- :keyword id :- [:maybe [:or ms/PositiveInt :string]] & conditions :- [:* [:maybe ::condition-value]]]
   (apply t2/select-one entity :id id conditions))
 
+(defn- shifted-position
+  "The SQL expression for `collection_position` plus or minus one."
+  [plus-or-minus]
+  ;; The operator becomes SQL syntax, so pick it from literals rather than passing it through.
+  (case plus-or-minus
+    :+ [:+ :collection_position 1]
+    :- [:- :collection_position 1]))
+
 (defn- shift-positions-after!
   [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:> position]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:> (long position)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (defn- shift-positions-from!
   [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:>= position]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:>= (long position)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (defn- shift-positions-between!
   [entity collection-id lower upper plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:between lower upper]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
+  (t2/update! entity {:collection_id       (some-> collection-id long)
+                      :collection_position [:between (long lower) (long upper)]}
+              {:collection_position (shifted-position plus-or-minus)}))
 
 (mu/defn shift-card-positions-after!
   "Add or subtract (`plus-or-minus`) one from the collection position of the Cards in the Collection with
