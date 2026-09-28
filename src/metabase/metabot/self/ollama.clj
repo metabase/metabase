@@ -9,8 +9,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.ollama.capabilities :as caps]
    [metabase.metabot.self.ollama.connection :as conn]
    [metabase.metabot.self.ollama.forced-calls :as forced]
@@ -19,8 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.o11y :refer [with-span]])
+   [metabase.util.malli :as mu])
   (:import
    (java.io IOException)
    (java.net SocketTimeoutException)))
@@ -32,17 +31,20 @@
            {:api-error  true
             :error-code :model-missing}))
 
-(defn- ollama-error-msg
-  "Canonical, status-specific Ollama error message."
-  [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "Ollama rejected the request — usually a model that cannot produce the requested tool call or JSON schema")
-      401 (tru "Ollama rejected the API key")
-      404 (tru "Ollama API endpoint was not found — the base URL should end in /v1, and the model must already be available")
-      429 (tru "Ollama is rate limiting this instance — wait and retry, or reduce concurrent Metabot use")
-      500 (tru "Ollama returned an internal server error")
-      (tru "Ollama API error (HTTP {0})" status))))
+(def ^:private provider
+  "Ollama's descriptor. No `:supports-ai-proxy?`, so [[adapter/request!]] refuses a proxied request: the
+  proxy fronts hosted providers, and both Ollama deployments are reached directly."
+  (adapter/provider
+   {:slug           "ollama"
+    :display-name   "Ollama"
+    :auth           conn/auth
+    ;; no `:error-fallback`: that exists to keep the msgids the pre-refactor adapters already have
+    ;; translations for. Ollama is new, so it takes the shared one, which renders the same English.
+    :errors         {400 #(tru "Ollama rejected the request — usually a model that cannot produce the requested tool call or JSON schema")
+                     401 #(tru "Ollama rejected the API key")
+                     404 #(tru "Ollama API endpoint was not found — the base URL should end in /v1, and the model must already be available")
+                     429 #(tru "Ollama is rate limiting this instance — wait and retry, or reduce concurrent Metabot use")
+                     500 #(tru "Ollama returned an internal server error")}}))
 
 (defn- inference-timeouts
   "Timeouts for a generation request."
@@ -70,7 +72,7 @@
 
 (defn- unreachable-ex
   "The Ollama error for a non-timeout transport failure. `extra` is the caller's own ex-data tags."
-  [^IOException e {:keys [url]} extra]
+  [^IOException e url extra]
   (ex-info (tru "Could not reach Ollama at {0}. Check that it is reachable from the Metabase server."
                 (str url))
            (merge {:api-error true :error-code :ollama-unreachable} extra)
@@ -79,7 +81,7 @@
 (defn- list-models-io-ex
   "Transport failure while fetching the catalog — the request behind the Connect button. Tagged 400
   so a mistyped base URL surfaces this message rather than a 500."
-  [^IOException e {:keys [url] :as auth}]
+  [^IOException e url]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server at {0} did not respond within {1}ms. Check that it is running and not loading a model."
                   (str url) (str (llm/llm-request-timeout-ms)))
@@ -87,31 +89,33 @@
               :status-code 400
               :error-code  :ollama-timeout}
              e)
-    (unreachable-ex e auth {:status-code 400})))
+    (unreachable-ex e url {:status-code 400})))
 
 ;;; ------------------------------------------------ Model listing -----------------------------------------------
 
 (defn- list-all-models
   "Fetch the pulled model catalog. Doubles as the credential round-trip behind the Connect button,
-  and fails closed on a 2xx whose body is not a catalog — a mistyped base URL is the likeliest cause."
-  [auth]
-  (try
-    (let [res (core/request auth (merge {:method  :get
-                                         :url     "/models"
-                                         :as      :json
-                                         :headers {"Content-Type" "application/json"}}
-                                        (control-timeouts)))]
-      ;; The URL off `auth`, not the setting: a connect verifies request credentials before saving them.
-      (chat-completions/models-catalog
-       "Ollama" res
-       {:detail (tru "Check that {0} is an Ollama server''s OpenAI-compatible API — the base URL should end in /v1."
-                     (str (:url auth)))}))
-    ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
-    ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
-    (catch IOException e
-      (throw (list-models-io-ex e auth)))
-    (catch Exception e
-      (core/rethrow-api-error! "ollama" ollama-error-msg e))))
+  and fails closed on a 2xx whose body is not a catalog — a mistyped base URL is the likeliest cause.
+
+  Not [[adapter/fetch-catalog]]: that renders a 2xx-but-not-a-catalog failure with the shared message,
+  and the address is the one thing an Ollama admin types, so naming it is the whole diagnosis."
+  [{:keys [credentials] :as req}]
+  (let [url (conn/base-url credentials)]
+    (try
+      (let [res (adapter/request! provider
+                                  (assoc req :method :get :path "/models" :as :json)
+                                  (control-timeouts))]
+        ;; the URL off the request credentials, not the setting: a connect verifies them before they are saved
+        (chat-completions/models-catalog
+         "Ollama" res
+         {:detail (tru "Check that {0} is an Ollama server''s OpenAI-compatible API — the base URL should end in /v1."
+                       (str url))}))
+      ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
+      ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
+      (catch IOException e
+        (throw (list-models-io-ex e url)))
+      (catch Exception e
+        (adapter/rethrow! provider e)))))
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
@@ -165,16 +169,17 @@
   "One non-streaming Chat Completions turn, returning the first choice. `body` carries what differs
   between probes — the messages, and either a tool or a `response_format`. `finish_reason` comes back
   with it because truncation and a model that cannot call tools both produce empty `tool_calls`."
-  [auth model body]
-  (let [res (core/request auth (merge {:method  :post
-                                       :url     "/chat/completions"
-                                       :as      :json
-                                       :headers {"Content-Type" "application/json"}
-                                       :body    (json/encode (merge {:model       model
-                                                                     :temperature 0
-                                                                     :max_tokens  probe-max-tokens}
-                                                                    body))}
-                                      (probe-timeouts)))]
+  [req model body]
+  (let [res (adapter/request! provider
+                              (assoc req
+                                     :method :post
+                                     :path   "/chat/completions"
+                                     :as     :json
+                                     :body   (json/encode (merge {:model       model
+                                                                  :temperature 0
+                                                                  :max_tokens  probe-max-tokens}
+                                                                 body)))
+                              (probe-timeouts))]
     (get-in res [:body :choices 0])))
 
 (defn- check-tool-calling!
@@ -184,9 +189,9 @@
   Whether it thought along the way is not recorded — `/api/show` answers that per model, for every
   model rather than only the probed one. Thinking is still read here, to tell \"spent the budget
   thinking\" apart from \"generated too much\" when nothing came back."
-  [auth model]
-  (let [{:keys [message finish_reason]} (probe-chat! auth model {:messages probe-messages
-                                                                 :tools    [probe-tool]})
+  [req model]
+  (let [{:keys [message finish_reason]} (probe-chat! req model {:messages probe-messages
+                                                                :tools    [probe-tool]})
         content    (str (:content message))
         ;; `reasoning` is the OpenAI-compatible spelling; `reasoning_content` is the older one some
         ;; builds still emit.
@@ -249,8 +254,8 @@
   ignores it and the model answers in prose. Cloud cannot fail that way: nothing there was ever going
   to enforce it, so a model that will not take the instruction has to be caught at connect — nothing
   downstream can repair it."
-  [auth model cloud?]
-  (let [choice (probe-chat! auth model (forced/probe-body cloud?))]
+  [req model cloud?]
+  (let [choice (probe-chat! req model (forced/probe-body cloud?))]
     (when-let [verdict (forced/probe-verdict cloud? choice)]
       (throw (preflight-ex
               (case verdict
@@ -311,19 +316,24 @@
   stopping at the first failure is strictly less work. Concurrency would not help — Ollama serializes
   generation per model unless `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called
   off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
-  [auth model cloud?]
+  [req model cloud?]
   (try
-    (check-tool-calling! auth model)
-    (check-structured-output! auth model cloud?)
+    (check-tool-calling! req model)
+    (check-structured-output! req model cloud?)
     (catch SocketTimeoutException _
       (throw (preflight-ex
               (tru "Ollama did not answer the connection test within {0}ms. On a self-hosted server the first request also loads the model into memory — if it is large, retry once it is warm, otherwise it is too slow to drive Metabot."
                    (str (:socket-timeout (probe-timeouts)))))))
     (catch Exception e
-      (core/rethrow-api-error! "ollama" ollama-error-msg e))))
+      (adapter/rethrow! provider e))))
 
 (defn- loaded-context-length
-  "The context window Ollama loaded `model` with, from `/api/ps`, or nil when it would not say."
+  "The context window Ollama loaded `model` with, from `/api/ps`, or nil when it would not say.
+
+  [[core/request]] rather than [[adapter/request!]]: that door authenticates with the descriptor's
+  `:auth`, which resolves the OpenAI-compatible surface, and this reads Ollama's own API at the server
+  root. There is nothing else it would add here — the proxy is already refused by the generation path
+  this runs after, and every failure below is swallowed rather than translated."
   [native-auth model]
   (try
     (let [res (core/request native-auth (merge {:method  :get
@@ -365,10 +375,10 @@
   listing, which agrees only while nothing reorders the catalog.
 
   The context-window check runs last: it needs the model loaded, which the probes do."
-  [auth credentials entries requested-model]
+  [{:keys [credentials] :as req} entries requested-model]
   (let [cloud? (conn/cloud? credentials)
         model  (:id (probe-target entries requested-model))]
-    (run-probes! auth model cloud?)
+    (run-probes! req model cloud?)
     (check-context-budget! (conn/native-auth credentials) model)
     model))
 
@@ -382,28 +392,28 @@
   (let [capable (caps/chat-capable-ids credentials (map :id entries))]
     (mapv #(assoc % ::chat? (contains? capable (:id %))) entries)))
 
-(defn list-models
+(mu/defn list-models :- adapter/ModelListing
   "The models the server has pulled that Metabot could run on, so the admin's picker only offers
   models a connection can actually be saved against — see [[tag-chat-capable]].
 
-  `:probe?` also runs [[preflight!]] and returns what it learned as `:learned-config` for the connect
+  `:probe?` also runs [[preflight!]] and returns what it learned as `:connection-info` for the connect
   path to store. Reserved for connect and edit: probing on every listing would stall the model picker
   behind a full model load. A `:proposed-model` is re-probed only while the server still has it."
   ([] (list-models {}))
-  ([{:keys [credentials ai-proxy? model proposed-model probe?]}]
-   (let [auth     (conn/auth credentials ai-proxy?)
-         catalog  (tag-chat-capable credentials (list-all-models auth))
+  ([{:keys [credentials ai-proxy? model proposed-model probe?]} :- adapter/ListOpts]
+   (let [req      {:credentials credentials :ai-proxy? ai-proxy?}
+         catalog  (tag-chat-capable credentials (list-all-models req))
          entries  (filterv ::chat? catalog)
          proposed (when (some #(= proposed-model (:id %)) entries)
                     proposed-model)
          probed   (when probe?
-                    (preflight! auth credentials catalog (or model proposed)))
+                    (preflight! req catalog (or model proposed)))
          models   (mapv (fn [{:keys [id] :as entry}]
                           {:id id :display_name (or (:name entry) id)})
                         entries)]
      (merge {:models models}
             (when probed
-              {:learned-config {:probed-model probed}})))))
+              {:connection-info {:probed-model probed}})))))
 
 ;;; --------------------------------------------------- Requests -------------------------------------------------
 
@@ -459,7 +469,7 @@
 
   ([{:keys [max-tokens model temperature credentials reasoning?] :as opts
      :or   {reasoning? true}} :- core/LLMRequestOpts
-    plan                      :- [:maybe :map]]
+    plan                      :- [:maybe ::forced/plan]]
    (forced/body-for
     plan
     (assoc (ollama-reasoning-spelling
@@ -497,7 +507,7 @@
   \"ollama API request failed: Read timed out\", naming neither the slowness nor the setting for it.
   `:retryable? false` matters more here than in [[stream-io-ex]]: nothing has been emitted yet, so
   `call-llm`'s own \"nothing emitted\" guard would not stop a replay."
-  [^IOException e auth timeout-ms]
+  [^IOException e url timeout-ms]
   (if (instance? SocketTimeoutException e)
     (ex-info (tru "The Ollama server did not respond within {0}ms. A cold model load happens on the first request — retry once it is warm, or raise the Ollama request timeout."
                   (str timeout-ms))
@@ -505,7 +515,7 @@
               :error-code :ollama-timeout
               :retryable? false}
              e)
-    (unreachable-ex e auth {:retryable? false})))
+    (unreachable-ex e url {:retryable? false})))
 
 (defn- io-guarded
   "Surface an `IOException` raised while *consuming* the stream as [[stream-io-ex]]; the adapter's
@@ -528,41 +538,37 @@
   ([opts :- core/LLMRequestOpts]
    (ollama-raw opts (forced/plan opts (conn/cloud? (:credentials opts)))))
 
-  ([{:keys [model tools credentials ai-proxy?] :as opts} :- core/LLMRequestOpts
-    plan                                                 :- [:maybe :map]]
+  ([{:keys [model credentials] :as opts} :- core/LLMRequestOpts
+    plan                                  :- [:maybe ::forced/plan]]
    (when (str/blank? model) (throw (missing-model-ex)))
-   (let [req        (ollama-request-body opts plan)
-         timeout-ms (llm/llm-ollama-request-timeout-ms)
-         ;; before the `try`, so the IO handler can name the address actually called — a Cloud
-         ;; connection carries no `:base-url` of its own
-         auth       (conn/auth credentials ai-proxy?)]
-     (log/debug "Ollama request" {:model model :msg-count (count (:messages req)) :tools (count (or tools []))})
-     (with-span :info {:name       :metabot.ollama/request
-                       :model      model
-                       :msg-count  (count (:messages req))
-                       :tool-count (count (or tools []))
-                       :forced     (:mechanism plan)}
-       (try
-         (let [response (core/request auth
-                                      (merge {:method  :post
-                                              :url     "/chat/completions"
-                                              :as      :stream
-                                              :headers {"Content-Type" "application/json"}
-                                              :body    (json/encode req)}
-                                             (inference-timeouts)))]
-           (-> (core/sse-reducible (:body response))
-               (debug/capture-stream {:provider "ollama"
-                                      :model    model
-                                      :url      "/chat/completions"
-                                      :request  req})
-               (io-guarded timeout-ms)
-               (core/reducible-with-api-errors "ollama" ollama-error-msg)))
-         ;; Ordered: clj-http raises an `IOException` only when there is no response at all, so this
-         ;; cannot swallow one `ollama-error-msg` would have translated.
-         (catch IOException e
-           (throw (request-io-ex e auth timeout-ms)))
-         (catch Exception e
-           (core/rethrow-api-error! "ollama" ollama-error-msg e)))))))
+   (let [timeout-ms (llm/llm-ollama-request-timeout-ms)
+         ;; resolved before the request, so the IO handler can name the address actually called — a
+         ;; Cloud connection carries no `:base-url` of its own
+         url        (conn/base-url credentials)]
+     (adapter/stream! provider opts
+                      {:path             "/chat/completions"
+                       :body             (ollama-request-body opts plan)
+                       :request-options  (inference-timeouts)
+                       :span-attrs       {:forced (some-> (:mechanism plan) name)}
+                       :wrap-stream      #(io-guarded % timeout-ms)
+                       ;; clj-http raises an `IOException` only when there is no response at all, so the
+                       ;; IO branch cannot swallow a failure the provider's own messages would translate.
+                       :on-request-error (fn [e]
+                                           (if (instance? IOException e)
+                                             (throw (request-io-ex e url timeout-ms))
+                                             (adapter/rethrow! provider e)))}))))
+
+(mu/defn streams-reasoning? :- :boolean
+  "Registry capability. Ollama answers per *model*, from what the server reports about it — a connection
+  serves every model the operator pulled, and Metabot and the mini model need not be on the same one, so
+  no flag on the connection could describe both.
+
+  The cached reader, never the one that would call Ollama: this backs the public
+  `llm-metabot-supports-reasoning?` setting, so every client's page load reaches it and none of them may
+  wait on the operator's server. Keeping that answer fresh is
+  [[metabase.metabot.self.ollama.capabilities]]' own business."
+  [{:keys [credentials model]} :- adapter/ResolvedRef]
+  (caps/cached-reasoning-model? credentials model))
 
 (defn ollama->aisdk-chunks-xf
   "Chat Completions chunks to AI SDK v5. Reasoning is forwarded when present, which is self-gating —

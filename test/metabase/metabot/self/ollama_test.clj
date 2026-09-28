@@ -417,7 +417,7 @@
 (deftest preflight-passes-on-a-model-that-calls-tools-test
   (testing "a model that returns a well-formed tool call passes and is adopted as the one to run on"
     (is (= {:models         [{:id "good-model" :display_name "good-model"}]
-            :learned-config {:probed-model "good-model"}}
+            :connection-info {:probed-model "good-model"}}
            (probe! [{:id "good-model"}] tool-calling-message)))))
 
 (deftest preflight-skips-models-that-cannot-chat-test
@@ -430,13 +430,13 @@
                (get-in (probe! [{:id "embedding-model" :capabilities ["embedding"]}
                                 {:id "thinking-model"  :capabilities ["completion" "tools" "thinking"]}]
                                tool-calling-message)
-                       [:learned-config :probed-model]))))))
+                       [:connection-info :probed-model]))))))
   (testing "a server that reports no capabilities rules nothing out, and keeps taking the first entry"
     (with-clean-capabilities!
       (fn []
         (is (= "first-model"
                (get-in (probe! [{:id "first-model"} {:id "second-model"}] tool-calling-message)
-                       [:learned-config :probed-model])))))))
+                       [:connection-info :probed-model])))))))
 
 (deftest preflight-says-so-when-no-model-can-chat-test
   (testing "a server that rules every model out is told so, rather than handed one to probe"
@@ -486,19 +486,19 @@
   (testing "a window that clears the floor passes"
     (is (= "good-model"
            (get-in (probe! [{:id "good-model" :context-length 16384}] tool-calling-message)
-                   [:learned-config :probed-model])))
+                   [:connection-info :probed-model])))
     (testing "and the rejected case above passes every probe, which is why the probes cannot stand in
              for this check: they are one-line prompts that fit in any window"
       (is (= "good-model"
              (get-in (probe! [{:id "good-model"}] tool-calling-message)
-                     [:learned-config :probed-model]))))))
+                     [:connection-info :probed-model]))))))
 
 (deftest preflight-does-not-read-the-window-off-the-catalog-test
   (testing (str "the window comes from `/api/ps`, not from the listing — Ollama's catalog carries no "
                 "`max_model_len`, and a hand-written one must not be mistaken for the loaded window")
     (is (= "good-model"
            (get-in (probe! [{:id "good-model" :max_model_len 4096}] tool-calling-message)
-                   [:learned-config :probed-model])))))
+                   [:connection-info :probed-model])))))
 
 (deftest preflight-passes-when-the-server-will-not-say-what-window-it-loaded-test
   (testing (str "an Ollama that answers `/api/ps` without the model — already unloaded under "
@@ -506,7 +506,7 @@
                 "connection whose probes passed")
     (is (= "good-model"
            (get-in (probe! [{:id "good-model"}] tool-calling-message)
-                   [:learned-config :probed-model])))
+                   [:connection-info :probed-model])))
     (mt/with-dynamic-fn-redefs [http/request (let [server (probing-server [{:id "good-model"}]
                                                                           {:tools      {:message tool-calling-message
                                                                                         :finish_reason "tool_calls"}
@@ -517,7 +517,7 @@
                                                    (server req))))]
       (is (= "good-model"
              (get-in (ollama/list-models {:credentials credentials :probe? true})
-                     [:learned-config :probed-model]))))))
+                     [:connection-info :probed-model]))))))
 
 (defn- cloud-probe!
   [models]
@@ -537,7 +537,7 @@
   (testing "a Cloud model whose window clears the floor passes"
     (is (= "big-window-model"
            (get-in (cloud-probe! [{:id "big-window-model" :context-length 131072}])
-                   [:learned-config :probed-model])))))
+                   [:connection-info :probed-model])))))
 
 (deftest preflight-rejects-a-model-that-cannot-call-tools-test
   (testing "the fix is always a different model — Ollama drives tool calling from the model's own

@@ -15,6 +15,7 @@
    [metabase.metabot.self.google :as google]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.registry :as registry]
@@ -43,6 +44,7 @@
    #'google/provider     :metabot.google/request
    #'mistral/provider    :metabot.mistral/request
    #'moonshot/provider   :metabot.moonshot/request
+   #'ollama/provider     :metabot.ollama/request
    #'openai/provider     :metabot.openai/request
    #'openrouter/provider :metabot.openrouter/request
    #'vllm/provider       :metabot.vllm/request
@@ -68,6 +70,9 @@
    #'google/provider     "Google API error (HTTP 418)"
    #'mistral/provider    "Mistral API error (HTTP 418)"
    #'moonshot/provider   "Moonshot API error (HTTP 418)"
+   ;; the one adapter with no `:error-fallback` of its own — new on this branch, so it has no shipped
+   ;; translation to keep and takes the shared msgid, which renders identically
+   #'ollama/provider     "Ollama API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"
    #'vllm/provider       "vLLM API error (HTTP 418)"
@@ -86,12 +91,22 @@
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
 
+(def ^:private adapters-with-shipped-fallback-translations
+  "The adapters whose own `... API error (HTTP {0})` msgid already has translations in `locales/*.po`.
+  They keep an `:error-fallback` of their own until the shared parameterised template is translated too
+  — see [[metabase.metabot.self.adapter/provider]], which says so. An adapter added after that split has
+  no shipped translation to keep, so it takes the shared msgid instead of adding one more to translate."
+  (disj (set (keys expected-spans)) #'ollama/provider))
+
 (deftest every-descriptor-brings-its-own-translated-messages-test
-  (testing "each adapter declares its own `:error-fallback` rather than inheriting the shared
-            parameterised template, which ships no translations. The rendered English is identical either
+  (testing "an adapter with translations already shipped for its own msgid keeps declaring it, rather
+            than inheriting the shared parameterised template. The rendered English is identical either
             way, so `error-message-test` cannot tell the two apart — this can"
-    (doseq [provider-var (keys expected-spans)]
+    (doseq [provider-var adapters-with-shipped-fallback-translations]
       (is (fn? (:error-fallback @provider-var)) (str provider-var))))
+  (testing "and an adapter newer than the split declares none, so the shared msgid is the only one
+            translators are given for it"
+    (is (nil? (:error-fallback @#'ollama/provider))))
   (testing "the proxy refusal deliberately does not get the same treatment: it stays one shared msgid,
             because `:ai-proxy?` is only ever set for the managed connection, whose catalog names only
             Anthropic models — the one provider the proxy can serve — so the refusal is unreachable"

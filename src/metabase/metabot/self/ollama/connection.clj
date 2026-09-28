@@ -12,6 +12,7 @@
   (:require
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.core :as core]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
@@ -22,33 +23,23 @@
   "An Ollama connection's `:config`, with the provider type's field defaults filled in — the shape
   every adapter entry point receives as `:credentials`.
 
-  Open, and `:maybe`: the map carries whatever else the connection holds (timeouts, what a probe
-  learned), and a caller with no connection at all — a request body built outside any connection —
-  passes nothing. `:hosting` is optional for the same reason, even though the registry marks the
-  field required and defaults it: it is only guaranteed once `with-field-defaults` has run.
+  `:maybe`, and every key optional: a caller with no connection at all — a request body built outside
+  any connection — passes nothing, and `:hosting` is only guaranteed once `with-field-defaults` has run,
+  even though the registry marks the field required and defaults it.
 
-  The `:hosting` values are the registry's own, rather than restated here, so the schema cannot drift
-  from the options the admin's form offers. Instrumentation is dev and test only, so this catches a
-  wrong value where it is a developer's mistake without turning a hand-written `llm-providers` typo
-  into a 500 in production — there, an unrecognized value reads as self-hosted and the admin gets
-  [[missing-base-url-ex]]'s advice instead."
+  The stricter twin of `metabase.metabot.self.core`'s own `OllamaCredentials`, which cannot name the
+  `:hosting` values because `metabase.llm.provider` is downstream of it. Here they are the registry's
+  own rather than restated, so the schema cannot drift from the options the admin's form offers.
+  Instrumentation is dev and test only, so this catches a wrong value where it is a developer's mistake
+  without turning a hand-written `llm-providers` typo into a 500 in production — there, an unrecognized
+  value reads as self-hosted and the admin gets [[missing-base-url-ex]]'s advice instead."
   [:maybe
-   [:map
-    [:hosting  {:optional true} [:maybe [:enum llm.provider/ollama-self-hosted llm.provider/ollama-cloud]]]
-    [:base-url {:optional true} [:maybe :string]]
-    [:api-key  {:optional true} [:maybe :string]]]])
-
-(def Auth
-  "An address to call and the headers to call it with, as [[metabase.metabot.self.core/request]]
-  takes them."
-  [:map
-   [:url     :string]
-   [:headers {:optional true} [:maybe [:map-of :string :string]]]])
-
-(defn- ai-proxy-unsupported-ex []
-  (ex-info (tru "AI proxy is not supported for Ollama")
-           {:api-error  true
-            :error-code :proxy-unsupported}))
+   [:map {:closed true}
+    [:hosting      {:optional true} [:maybe [:enum llm.provider/ollama-self-hosted llm.provider/ollama-cloud]]]
+    [:base-url     {:optional true} [:maybe :string]]
+    [:api-key      {:optional true} [:maybe :string]]
+    ;; recorded by the connect-time probe, not entered by the admin
+    [:probed-model {:optional true} [:maybe :string]]]])
 
 (defn- missing-base-url-ex []
   ;; `provider-client-error?` needs a numeric status to render this under the field; without one the
@@ -68,31 +59,37 @@
   [credentials :- Credentials]
   (= llm.provider/ollama-cloud (:hosting credentials)))
 
-(defn- resolve-base-url
+(mu/defn base-url :- :string
   "The address to call. A self-hosted connection with no address throws rather than falling through
-  to Cloud, which would send the operator's data somewhere they did not choose."
-  [credentials]
+  to Cloud, which would send the operator's data somewhere they did not choose.
+
+  Public because the adapter's transport errors name the address they failed to reach, and for Ollama
+  that is not simply `(:base-url credentials)`: a Cloud connection carries none of its own."
+  [credentials :- Credentials]
   (if (cloud? credentials)
     cloud-base-url
     (or (not-empty (:base-url credentials)) (throw (missing-base-url-ex)))))
 
-(mu/defn auth :- Auth
-  "Auth for the OpenAI-compatible API — the surface the adapter generates against.
+(mu/defn- resolve-auth :- adapter/Auth
+  [credentials :- Credentials]
+  (let [token (not-empty (:api-key credentials))]
+    (core/resolve-auth "ollama" "Ollama"
+                       (cond-> {:url (base-url credentials)}
+                         token (assoc :headers {"Authorization" (str "Bearer " token)}))
+                       false)))
+
+(mu/defn auth :- adapter/Auth
+  "Ollama's `:auth`, for the OpenAI-compatible API the adapter generates against.
 
   Never nil, so `core/resolve-auth`'s missing-key branch is unreachable: a keyless self-hosted server
-  is the normal configuration, not a broken one. Throws when `ai-proxy?` is set, which is how every
-  Ollama entry point refuses the proxy: it fronts hosted providers, and a self-hosted server is
-  reached directly."
-  [credentials :- Credentials
-   ai-proxy?   :- [:maybe :boolean]]
-  (when ai-proxy? (throw (ai-proxy-unsupported-ex)))
-  (let [token (not-empty (:api-key credentials))
-        auth  (merge {:url (resolve-base-url credentials)}
-                     (when token {:headers {"Authorization" (str "Bearer " token)}}))]
-    (core/resolve-auth "ollama" "Ollama" auth ai-proxy?)))
+  is the normal configuration, not a broken one. The proxy is refused before this runs — the
+  descriptor declares no `:supports-ai-proxy?`, so [[adapter/request!]] rejects a proxied call."
+  [_provider             :- adapter/Provider
+   {:keys [credentials]} :- adapter/Request]
+  (resolve-auth credentials))
 
-(mu/defn native-auth :- Auth
+(mu/defn native-auth :- adapter/Auth
   "Auth for Ollama's own API, which lives at the server root rather than under the `/v1` the
   OpenAI-compatible surface is mounted at. Cloud serves it on the same host, and takes the same key."
   [credentials :- Credentials]
-  (update (auth credentials false) :url str/replace #"/v1/*$" ""))
+  (update (resolve-auth credentials) :url str/replace #"/v1/*$" ""))
