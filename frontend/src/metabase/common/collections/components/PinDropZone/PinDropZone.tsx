@@ -1,7 +1,8 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import { PinDropTarget } from "metabase/common/components/dnd/PinDropTarget";
-import { Box, rem } from "metabase/ui";
+import { Box, Flex, Icon, rem } from "metabase/ui";
 
 import S from "./PinDropZone.module.css";
 
@@ -15,30 +16,52 @@ type PinDropTargetRenderArgs = {
   highlighted: boolean;
 };
 
-function PinDropZone({ variant, empty, ...props }: PinDropZoneProps) {
+function PinDropZone({ variant, empty }: PinDropZoneProps) {
   return (
     <PinDropTarget
       className={S.dropTarget}
       variant={variant}
       pinIndex={variant === "pin" ? 1 : null}
       hideUntilDrag
-      {...props}
     >
-      {({ hovered, highlighted }: PinDropTargetRenderArgs) => (
-        <Box
-          className={cx(S.indicator, {
-            [S.hovered]: hovered,
-            [S.empty]: empty,
-          })}
-          display={hovered || highlighted ? undefined : "none"}
-          pos="absolute"
-          top={0}
-          bottom={0}
-          left={0}
-          right={0}
-          mih={rem(32)}
-        />
-      )}
+      {({ hovered, highlighted }: PinDropTargetRenderArgs) => {
+        const isVisible = hovered || highlighted;
+
+        if (empty) {
+          return (
+            <Flex
+              className={cx(S.emptyTarget, { [S.emptyTargetHovered]: hovered })}
+              display={isVisible ? undefined : "none"}
+              pos="absolute"
+              left="var(--mantine-spacing-lg)"
+              right="var(--mantine-spacing-lg)"
+              mih={rem(32)}
+              align="center"
+              justify="center"
+              gap="sm"
+              bdrs="sm"
+              c="core-brand"
+              fw="bold"
+            >
+              <Icon name="pin" />
+              {t`Drag here to pin`}
+            </Flex>
+          );
+        }
+
+        return (
+          <Box
+            className={cx(S.indicator, { [S.hovered]: hovered })}
+            display={isVisible ? undefined : "none"}
+            pos="absolute"
+            top={0}
+            bottom={0}
+            left={0}
+            right={0}
+            mih={rem(32)}
+          />
+        );
+      }}
     </PinDropTarget>
   );
 }

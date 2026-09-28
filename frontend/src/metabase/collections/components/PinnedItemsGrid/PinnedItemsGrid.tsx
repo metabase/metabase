@@ -76,7 +76,8 @@ export function PinnedItemsGrid({
 
   if (sortedItems.length === 0) {
     return (
-      <Box mb={rem(48)} pos="relative">
+      // Real height: the table stays put and the drop zone gets a bottom edge.
+      <Box h={rem(16)} pos="relative">
         <PinDropZone variant="pin" empty />
       </Box>
     );

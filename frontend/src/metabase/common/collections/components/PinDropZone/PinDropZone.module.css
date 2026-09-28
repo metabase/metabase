@@ -1,5 +1,7 @@
 /* DropArea positions its root relatively and paints nothing, so only the
-   overrides that reach into it need !important or a child selector. */
+   overrides that reach into it need !important or a child selector. Its
+   background div opts out of pointer events only while the zone is hidden, so
+   the child rule never competes with that class. */
 .dropTarget {
   position: absolute !important;
   top: 0;
@@ -22,6 +24,14 @@
   border-left-color: var(--mb-color-core-brand);
 }
 
-.empty {
-  transform: translateY(calc(-1 * var(--mantine-spacing-lg)));
+/* Hangs from the container's bottom edge, which meets the items table. */
+.emptyTarget {
+  bottom: var(--mantine-spacing-sm);
+  z-index: 1;
+  border: 1px dashed var(--mb-color-core-brand);
+  transition: background-color 0.2s;
+}
+
+.emptyTargetHovered {
+  background-color: var(--mb-color-background_surface-brand-subtle);
 }
