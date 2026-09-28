@@ -53,6 +53,16 @@ export function getGoalLineParams(model: GoalLineParamsSource): GoalLineParams {
   };
 }
 
+export function getGoalLineValue(
+  value: number,
+  {
+    isNormalized,
+    toEChartsAxisValue,
+  }: Pick<GoalLineParams, "isNormalized" | "toEChartsAxisValue">,
+) {
+  return toEChartsAxisValue(isNormalized ? value / 100 : value);
+}
+
 function buildGoalLineLabel({
   labelOnLeft,
   xStart,
@@ -173,11 +183,13 @@ export function getGoalLineSeriesOption(
     return null;
   }
 
-  const value = isNormalized
-    ? settings["graph.goal_value"] / 100
-    : settings["graph.goal_value"];
-
-  const scaleTransformedGoalValue = toEChartsAxisValue(value);
+  const scaleTransformedGoalValue = getGoalLineValue(
+    settings["graph.goal_value"],
+    {
+      isNormalized,
+      toEChartsAxisValue,
+    },
+  );
   const { fontSize } = renderingContext.theme.cartesian.goalLine.label;
 
   return {

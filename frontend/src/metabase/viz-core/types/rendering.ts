@@ -19,6 +19,8 @@ export type Formatter = (
 
 export type Extent = [number, number];
 
+export type CartesianChartSize = "small" | "medium" | "large";
+
 export interface RenderingContext {
   getColor: ColorGetter;
   measureText: TextWidthMeasurer;
@@ -26,6 +28,7 @@ export interface RenderingContext {
   fontFamily: string;
   /** Defaults to "light" when not provided. */
   colorScheme?: "light" | "dark";
+  cartesianSize?: CartesianChartSize;
   /**
    * Whether the chart is rendered without interactivity, as in emailed
    * subscriptions and exports. Such renders cannot rely on hover affordances.
@@ -43,6 +46,11 @@ export interface VisualizationTheme {
   cartesian: {
     label: {
       fontSize: number;
+    };
+    ticks: {
+      fontSize: number;
+      marginX: number;
+      marginY: number;
     };
     goalLine: {
       label: {

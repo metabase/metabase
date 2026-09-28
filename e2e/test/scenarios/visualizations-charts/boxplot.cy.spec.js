@@ -470,10 +470,10 @@ describe("scenarios > visualizations > boxplot", () => {
     H.leftSidebar().findByText("Axes").click();
 
     // Default: pinned to zero, y-axis should include 0
-    H.echartsContainer().findByText("$0").should("be.visible");
+    H.echartsContainer().findByText("$0.00").should("be.visible");
     H.leftSidebar().findByText("Unpin from zero").click();
 
     // After unpinning, 0 should not be visible (y-axis starts higher since prices are ~$40-80)
-    H.echartsContainer().findByText("$0").should("not.exist");
+    H.echartsContainer().findByText("$0.00").should("not.exist");
   });
 });

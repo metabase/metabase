@@ -76,6 +76,7 @@ export function getMetabaseSdkCssVariables({
       --mb-default-font-family: ${getFontFamilyValue(font)};
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
       ${createColorVars(colorScheme, whitelabelColors)}
+      --mb-color-chart-axis: ${theme.fn.themeColor("chart-axis")};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}
