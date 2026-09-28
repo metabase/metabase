@@ -38,7 +38,7 @@ const GREP_TAGS = "-@mongo+-@python+-@OSS";
 const TOKEN_SETTING_PATH = "/api/setting/premium-embedding-token";
 const MAX_LISTED = 20;
 
-const SNAPSHOTS = ["blank", "setup", "without-models", "default"];
+const SNAPSHOTS = ["blank", "setup", "without_models", "default"];
 const INSTANCE_FILES = [
   "e2e/support/cypress_sample_instance_data.json",
   "e2e/support/cypress_sample_database.json",

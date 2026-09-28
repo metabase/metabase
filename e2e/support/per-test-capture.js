@@ -93,6 +93,12 @@ const HTTP_METHODS = new Set([
 // micro, ...), which record with their origin kept.
 const RELATIVE_ORIGIN = "http://relative.invalid";
 
+// Cypress sends every intercepted response to the browser with its body, over its DevTools connection,
+// and Chrome closes that connection on a message over 100 MiB, which hangs the run.
+// A hot dev build's instrumented bundles make messages bigger than that,
+// so the capture's intercept matches every path but theirs.
+const INTERCEPTED_PATHS = /^(?!.*\.hot(?:\.bundle|-update)\.js$)/;
+
 let routeBuffer = [];
 let pageBuffer = [];
 let eventBuffer = [];
@@ -781,7 +787,7 @@ if (isInstrumented) {
         { log: false, timeout: JOURNEY_TASK_TIMEOUT },
       );
     }
-    captureRoute = { pathname: "/**", middleware: true };
+    captureRoute = { pathname: INTERCEPTED_PATHS, middleware: true };
     // middleware: true observes and passes through, so this coexists with the
     // specs' own cy.intercept stubs/waits without changing any behavior.
     cy.intercept(captureRoute, (req) => {

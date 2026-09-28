@@ -330,10 +330,16 @@ It needs these, and checks for them before it starts:
 
 - an EE backend for e2e on port 4000 (or `MB_JETTY_PORT`) with the testing endpoints, for example from `node e2e/runner/start-backend.js`
 - the e2e snapshots in the backend's `e2e/snapshots`, and `e2e/support/cypress_sample_instance_data.json` and `cypress_sample_database.json` in this checkout. A normal local run such as `bun run test-cypress` writes them.
-- an instrumented frontend: the dev server started with `INSTRUMENT_COVERAGE=true bun run build-hot`, or a build from `INSTRUMENT_COVERAGE=true bun run build-release:js`
+- an instrumented frontend: the dev server started with `INSTRUMENT_COVERAGE=true bun run build-hot`, or a build from `INSTRUMENT_COVERAGE=true bun run build-release:js`. The dev server listens on port 8080, or on the port in `MB_FRONTEND_DEV_PORT`
 - no `cypress.env.json` in the repository root, because Cypress loads it into `cy.env()`
 
-Cypress uses Chrome unless `CYPRESS_BROWSER` names another browser. The e2e Docker containers are optional, because the tests with token routes only use the sample database. Without them, more of the other tests fail.
+It also needs four of the e2e Docker containers, which it doesn't check for. The setup spec's `beforeEach` resets Snowplow Micro on port 9090, so when Snowplow Micro isn't running every setup test fails, including the one that types a token. Snowplow Micro reads event schemas from `iglu`. The saved spec's alert tests send email to maildev and webhooks to the webhook tester. To start all four:
+
+```
+docker compose -f e2e/test/scenarios/docker-compose.yml up -d snowplow-micro iglu maildev webhook-tester
+```
+
+Cypress uses Chrome unless `CYPRESS_BROWSER` names another browser.
 
 ```
 node e2e/coverage/journey-capture-canary.mjs
@@ -407,3 +413,4 @@ As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard 
 - The nightly `routes` have no `cy.request` traffic. In CI, `cypress-terminal-report` also overwrites `request`, and Cypress's `Commands.overwrite` wraps the original command rather than the previous overwrite, so the last overwrite wins. Journey capture records `cy.request` from `command:start` instead, and `capture.requestOverwrites` shows whether the overwrite ran.
 - App requests made in a suite-level `before()` hook have no body fields: no intercept is live then, and the `fetch` and `xhr` wrappers don't read bodies.
 - Branch hits, like `f`, come from the top app window only.
+- Against a hot dev build (`bun run build-hot`), the capture's `cy.intercept` leaves out the `.hot.bundle.js` and `.hot-update.js` files, so their loads aren't in `routes` or the events. Cypress sends every intercepted response to the browser over its DevTools connection, and Chrome closes that connection on a message over 100 MiB, which the response of an instrumented hot bundle exceeds.
