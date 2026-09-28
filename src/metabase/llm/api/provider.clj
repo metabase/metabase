@@ -277,14 +277,21 @@
   for a type that probes more than its credentials, by exercising the model it will run on. Throws a 400 carrying
   the provider's own message when the credentials are rejected.
 
-  Returns the model listing and `:connection-info`: whatever the probe determined about the connection, for the
-  caller to store on it. A probe records the model it exercised as `:probed-model`."
+  Returns the model listing and `:connection-info`: whatever the listing determined about the connection, for the
+  caller to store on it. A probe records the model it exercised as `:probed-model`; every listing records whether it
+  included the type's mini model, so quick tasks are only ever derived onto a model the account was seen to serve."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
-    (let [{:keys [error] :as listed} (list-connection-models* conn config model true)]
+    (let [{:keys [error models] :as listed} (list-connection-models* conn config model true)]
       (when error
         (throw (ex-info error {:status-code 400 :api-error true})))
-      listed)))
+      (update listed :connection-info merge (llm.provider/served-mini-model (:type conn) models)))))
+
+(defn- with-connection-info
+  "`config` with what a listing determined layered over it. An answer that came back nil retires the stored one
+  rather than lingering beside it."
+  [config connection-info]
+  (without-blank-values (merge config connection-info)))
 
 (defn- seed-models-cache!
   "Cache the listing that verified `conn` under its post-save config and selected model. Call this only after any
@@ -448,7 +455,7 @@
                     :config config}]
       (llm.provider/validate-config! type config)
       (let [{:keys [connection-info] :as listed} (verify-credentials! conn config model)
-            conn              (update conn :config merge connection-info)
+            conn              (update conn :config with-connection-info connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
@@ -497,8 +504,8 @@
     (llm.provider/validate-config! (:type merged) effective)
     (let [{:keys [connection-info] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
-          merged                   (update merged :config merge connection-info)
-          effective                (merge effective connection-info)]
+          merged                   (update merged :config with-connection-info connection-info)
+          effective                (with-connection-info effective connection-info)]
       (llm.provider/set-connections! (assoc stored idx merged))
       (follow-edited-connection-model! (assoc merged :config effective) model)
       (seed-models-cache! (assoc merged :config effective) listed)
