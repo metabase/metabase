@@ -521,7 +521,6 @@ export type {
   AggregationFunction,
   ChartSettingColorRangeProps,
   ChartSettingEnumToggleProps,
-  ChartSettingGoalInputProps,
   ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
