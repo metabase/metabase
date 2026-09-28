@@ -1,10 +1,13 @@
 (ns metabase.metabot.tools.sql.validation
   (:require
    [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
@@ -109,9 +112,9 @@
 
 ;;;; Reference checks for SQL with template tags
 ;;;
-;;; [[validate-sql]] can't parse SQL containing `{{...}}`, so a query referencing a card or snippet used to be accepted
-;;; unchecked -- including references to the wrong card or to tables that don't exist. Here we compile the query (which
-;;; expands card and snippet references into their SQL) and check the table and column references against metadata.
+;;; [[validate-sql]] can't parse SQL containing `{{...}}`. For such SQL we check that the referenced cards and snippets
+;;; exist, then compile the query (expanding those references into their SQL) and check its table and column references
+;;; against metadata.
 ;;;
 ;;; Column/table problems are returned as warnings rather than errors: the checker reports false positives on a
 ;;; noticeable share of working queries, so a hard failure would leave the agent stuck on valid SQL.
@@ -128,49 +131,79 @@
     :validation-exception-error (tru "Validation failed: {0}" message)
     (tru "Validation problem: {0}" (pr-str error-type))))
 
-(defn- invalid-query-cause
-  "The exception in `e`'s cause chain that marks the query itself as invalid (e.g. it references a card that doesn't
-  exist or lives in another database), if any."
-  [e]
-  (some #(when (= :invalid-query (:type (ex-data %))) %)
-        (take-while some? (iterate ex-cause e))))
+(defn- check-references-exist!
+  "Throw an agent error when `query` references a card or snippet that doesn't exist. `mp` only returns cards of the
+  query's database, so a card from another database counts as missing."
+  [mp query]
+  (let [card-ids         (lib/native-query-card-ids query)
+        found-card-ids   (into #{} (map :id) (when (seq card-ids)
+                                               (lib.metadata/bulk-metadata mp :metadata/card card-ids)))
+        missing-cards    (vec (sort (remove found-card-ids card-ids)))
+        ;; `lib/native-query` resolves each snippet tag's `:snippet-id` by name; no id means no such snippet.
+        missing-snippets (vec (sort (keep #(when (and (= :snippet (:type %)) (nil? (:snippet-id %)))
+                                             (:snippet-name %))
+                                          (lib/all-template-tags query))))
+        messages         (cond-> []
+                           (seq missing-cards)
+                           (conj (tru "Card {0} does not exist, or is from a different Database."
+                                      (str/join ", " missing-cards)))
+                           (seq missing-snippets)
+                           (conj (tru "Snippet {0} does not exist." (str/join ", " (map pr-str missing-snippets)))))]
+    (when (seq messages)
+      (throw (ex-info (str/join " " messages)
+                      {:agent-error?  true
+                       :card-ids      missing-cards
+                       :snippet-names missing-snippets})))))
 
-(defn- compile-templated-sql
-  "Compile `sql` against `database-id`, expanding its template tags. Returns the compiled SQL, or nil when the query
-  can't be compiled without user input (e.g. a required variable has no value). Throws an agent error when the query
-  references something that doesn't exist."
-  [database-id sql]
+(defn- compile-templated-query
+  "Compile `query` with its template tags expanded and dummy values filled in for its parameters, so the result can be
+  parsed but not run. Returns nil when it can't be compiled.
+
+  Keep in sync with `metabase-enterprise.dependencies.native-validation/compile-query`, which prepares native queries
+  for the same checker."
+  [query]
   (try
-    (:query (qp.compile/compile (lib/native-query (lib-be/application-database-metadata-provider database-id) sql)))
+    ;; Nothing is executed, so there is no destination database to route to.
+    (database-routing/with-database-routing-off
+      (let [with-params (lib/add-parameters-for-template-tags query)]
+        (lib/native-query with-params (:query (qp.compile/compile-with-inline-parameters with-params)))))
     (catch Exception e
-      (when-let [cause (invalid-query-cause e)]
-        (throw (ex-info (ex-message cause) {:agent-error? true} e)))
       ;; Log the message only: ex-data from the QP can hold values that fail to print.
       (log/debugf "Skipping reference check for SQL that can't be compiled: %s" (ex-message e))
       nil)))
 
-(mu/defn templated-sql-warnings :- [:sequential :string]
-  "Check the table and column references of `sql`, a query with template tags, against `database-id`'s metadata.
-  Returns human-readable warnings, empty when nothing was found or the check couldn't run."
+(mr/def ::reference-check
+  [:map
+   [:status   [:enum :ran :skipped :failed]]
+   [:warnings [:sequential :string]]])
+
+(mu/defn- check-templated-sql-references :- ::reference-check
+  "Check the references of `sql`, a query with template tags, against `database-id`'s metadata. `:warnings` are
+  human-readable, and empty unless `:status` is `:ran`. Throws an agent error when `sql` references a card or snippet
+  that doesn't exist."
   [database-id :- :int
    sql         :- :string]
-  (if-let [compiled (compile-templated-sql database-id sql)]
-    (try
-      (let [driver (driver.u/database->driver database-id)
-            mp     (lib-be/application-database-metadata-provider database-id)]
-        (->> (driver/validate-native-query-fields driver (lib/native-query mp compiled))
-             (map error->warning)
-             distinct
-             sort
-             vec))
-      (catch Exception e
-        (log/warnf "Reference check failed for database %d: %s" database-id (ex-message e))
-        []))
-    []))
+  (let [mp    (lib-be/application-database-metadata-provider database-id)
+        query (lib/native-query mp sql)]
+    (check-references-exist! mp query)
+    (if-let [compiled (compile-templated-query query)]
+      (try
+        {:status   :ran
+         :warnings (->> (driver/validate-native-query-fields (:engine (lib.metadata/database mp)) compiled)
+                        (map error->warning)
+                        distinct
+                        sort
+                        vec)}
+        (catch Exception e
+          ;; Message only, as in [[compile-templated-query]].
+          (log/warnf "Reference check failed for database %d: %s" database-id (ex-message e))
+          {:status :failed, :warnings []}))
+      {:status :skipped, :warnings []})))
 
 (mu/defn validate-database-sql :- ::validation-result
   "[[validate-sql]] for `sql` against `database-id`, plus reference `:warnings` when `sql` has template tags (which
-  [[validate-sql]] can't parse). Throws an agent error when `sql` references a model or question that doesn't exist."
+  [[validate-sql]] can't parse). Throws an agent error when `sql` references a card or snippet that doesn't exist.
+  Like [[validate-sql]], checks nothing for dialects that [[dialect-mapping]] skips."
   [database-id :- :int
    sql         :- :string]
   (let [dialect (database-id->dialect database-id)
@@ -178,7 +211,8 @@
     (if (and (:valid? result)
              (get dialect-mapping dialect)
              (contains-template-tags? sql))
-      (let [warnings (templated-sql-warnings database-id sql)]
+      (let [{:keys [status warnings]} (check-templated-sql-references database-id sql)]
+        (analytics/inc! :metabase-metabot/sql-reference-checks {:status (name status)})
         (cond-> result
           (seq warnings) (assoc :warnings warnings)))
       result)))

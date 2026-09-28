@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql :as agent-sql]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -203,6 +204,32 @@
               (is (string? output))
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
+
+(deftest edit-and-replace-sql-query-reference-warnings-test
+  (testing "edit_sql_query and replace_sql_query check templated SQL and pass reference warnings on to the LLM"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} {:type          :model
+                                                  :database_id   (mt/id)
+                                                  :dataset_query (let [mp (mt/metadata-provider)]
+                                                                   (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+          (let [query-id "test-reference-warnings-q"
+                good-sql (str "SELECT v.name FROM {{#" card-id "}} AS v")
+                run      (fn [tool args]
+                           (binding [shared/*memory-atom*
+                                     (atom {:state {:queries {query-id (-> (lib/native-query (mt/metadata-provider) good-sql)
+                                                                           lib/->legacy-MBQL)}}})]
+                             (tool (merge {:query_id query-id :checklist "- [x] checked" :title "Results"} args))))
+                warned?  #(str/includes? % "- Column `customer_name` was not found")]
+            (doseq [[tool-name tool args] [["edit_sql_query" agent-sql/edit-sql-query-tool
+                                            {:edits [{:old_string "v.name" :new_string "v.customer_name"}]}]
+                                           ["replace_sql_query" agent-sql/replace-sql-query-tool
+                                            {:new_query (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")}]]]
+              (testing tool-name
+                (is (=? {:structured-output {:query-id query-id}
+                         :output            warned?
+                         :instructions      warned?}
+                        (run tool args)))))))))))
 
 (deftest edit-sql-query-viz-part-test
   (testing "edit_sql_query emits a generated_entity card unless an open code-editor buffer wins"

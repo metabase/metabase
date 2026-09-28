@@ -186,35 +186,77 @@
 
 ;;;; validate-database-sql
 
+(defn- thrown-agent-error
+  "Call `thunk`, returning the message and ex-data of the ExceptionInfo it throws, or nil if it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      {:message (ex-message e) :data (ex-data e)})))
+
 (deftest validate-database-sql-template-tags-test
   (mt/test-drivers #{:postgres}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {card-id :id} {:type          :model
                                                 :database_id   (mt/id)
                                                 :dataset_query (let [mp (mt/metadata-provider)]
-                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
+                                                                 (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+                     :model/NativeQuerySnippet _ {:name "no_such_column" :content "customer_name = 1"}]
         (let [validate #(metabot.tools.sql.validation/validate-database-sql (mt/id) %)]
           (testing "a query whose references resolve has no warnings"
-            (let [result (validate (str "SELECT v.name FROM {{#" card-id "}} AS v"))]
-              (is (true? (:valid? result)))
-              (is (not (contains? result :warnings)))))
+            (let [sql (str "SELECT v.name FROM {{#" card-id "}} AS v")]
+              (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                     (validate sql)))))
           (testing "a column the referenced model doesn't have is reported as a warning, not an error"
             (is (=? {:valid?   true
                      :warnings [#(str/includes? % "`customer_name`")]}
                     (validate (str "SELECT v.customer_name FROM {{#" card-id "}} AS v")))))
+          (testing "variables get dummy values, so the check still runs"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate (str "SELECT v.customer_name FROM {{#" card-id "}} AS v WHERE v.id = {{venue_id}}")))))
+          (testing "snippets are expanded before the check"
+            (is (=? {:valid?   true
+                     :warnings [#(str/includes? % "`customer_name`")]}
+                    (validate "SELECT name FROM venues WHERE {{snippet: no_such_column}}"))))
           (testing "a reference to a card that doesn't exist is an agent error"
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Card \d+ does not exist"
-                 (validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))))
-            (is (true? (try
-                         (validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))
-                         (catch clojure.lang.ExceptionInfo e
-                           (:agent-error? (ex-data e)))))))
-          (testing "a query that can't compile without a variable's value skips the check"
-            (let [result (validate (str "SELECT v.customer_name FROM {{#" card-id "}} AS v WHERE v.id = {{venue_id}}"))]
-              (is (true? (:valid? result)))
-              (is (not (contains? result :warnings)))))
+            (is (=? {:message (str "Card " Integer/MAX_VALUE " does not exist, or is from a different Database.")
+                     :data    {:agent-error? true :card-ids [Integer/MAX_VALUE] :snippet-names []}}
+                    (thrown-agent-error #(validate (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))))))
+          (testing "a reference to a snippet that doesn't exist is an agent error"
+            (is (=? {:message "Snippet \"nope\" does not exist."
+                     :data    {:agent-error? true :card-ids [] :snippet-names ["nope"]}}
+                    (thrown-agent-error #(validate "SELECT * FROM venues WHERE {{snippet: nope}}")))))
           (testing "SQL without template tags is validated as before, with no reference check"
             (is (=? {:valid? true :transpiled-sql #(str/includes? % "customer_name")}
                     (validate "SELECT customer_name FROM venues")))))))))
+
+(deftest validate-database-sql-other-database-card-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {other-db-id :id} {:engine :postgres}
+                     :model/Card     {card-id :id}     {:database_id   other-db-id
+                                                        :dataset_query {:database other-db-id
+                                                                        :type     :native
+                                                                        :native   {:query "SELECT 1 AS x"}}}]
+        (testing "a card from another database counts as missing"
+          (is (=? {:message (str "Card " card-id " does not exist, or is from a different Database.")
+                   :data    {:agent-error? true :card-ids [card-id] :snippet-names []}}
+                  (thrown-agent-error #(metabot.tools.sql.validation/validate-database-sql
+                                        (mt/id) (str "SELECT * FROM {{#" card-id "}} AS v"))))))))))
+
+(deftest validate-database-sql-broken-referenced-card-test
+  (mt/test-drivers #{:postgres}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card {broken-id :id} {:database_id   (mt/id)
+                                                  :dataset_query (lib/native-query
+                                                                  (mt/metadata-provider)
+                                                                  (str "SELECT * FROM {{#" Integer/MAX_VALUE "}} AS v"))}]
+        (mt/with-prometheus-system! [_ system]
+          (testing "an existing card that fails to compile skips the check instead of failing the query"
+            (let [sql (str "SELECT * FROM {{#" broken-id "}} AS b")]
+              (is (= {:valid? true :dialect "postgres" :transpiled-sql sql}
+                     (metabot.tools.sql.validation/validate-database-sql (mt/id) sql)))
+              (is (== 1 (mt/metric-value system :metabase-metabot/sql-reference-checks {:status "skipped"})))
+              (is (== 0 (mt/metric-value system :metabase-metabot/sql-reference-checks {:status "ran"}))))))))))

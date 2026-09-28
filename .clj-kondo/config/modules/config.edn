@@ -1468,6 +1468,7 @@
               audit-app
               channel
               collections
+              database-routing
               documents
               driver
               events

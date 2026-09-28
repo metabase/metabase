@@ -21,7 +21,10 @@
 
   Important: We don't preprocess before calling compile-with-inline-parameters because
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
-  to produce inline literals instead of ? placeholders."
+  to produce inline literals instead of ? placeholders.
+
+  Keep in sync with `metabase.metabot.tools.sql.validation/compile-templated-query`, which prepares native queries
+  for the same checker."
   [query :- ::lib.schema/query]
   (database-routing/with-database-routing-off
     (let [with-params (lib/add-parameters-for-template-tags query)
