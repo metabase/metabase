@@ -118,6 +118,7 @@ export function MappingEditorRow({
           <Flex align="center" gap="lg">
             <Button
               variant="subtle"
+              color="neutral"
               disabled={isSubmitting}
               onClick={onCancel}
             >{t`Cancel`}</Button>

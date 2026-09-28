@@ -26,7 +26,8 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.transforms.core :as transforms]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.warehouses.models.database :as database]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,6 +57,21 @@
        (if-let [text (common/exception-message e)]
          (message/msg ["The transform's query is not valid MBQL: %s %s"] (common/ellipsize text 300) accepted-shapes)
          (message/msg ["The transform's query is not valid MBQL. %s"] accepted-shapes))))))
+
+(defn- infer-database
+  "`query` with its top-level `:database` filled from the first stage's numeric `:source-table` when
+   the caller left it off. `execute_query` resolves the warehouse from the first stage and never
+   consults `:database`, and the accepted-shapes sentence promises `definition` takes that same
+   dialect, so a query that names its table is not sent back for the redundant key. Left alone when
+   `:database` is set or the first stage names no table by id, so [[normalize-transform-query]]
+   still reports the missing key. Read off the raw query rather than through `lib`, which only
+   accepts a normalized one — and normalizing is what needs the database. The first stage is
+   `stages[0]` of an MBQL 5 query, or the inner `:query` of a legacy MBQL 4 one."
+  [query]
+  (let [table-id (or (-> query :stages first :source-table) (-> query :query :source-table))]
+    (cond-> query
+      (and (nil? (:database query)) (pos-int? table-id))
+      (assoc :database (database/table-id->database-id table-id)))))
 
 (defn- definition->query
   "The query inside a caller-supplied `definition`, resolved to canonical MBQL 5. Source kinds this
@@ -90,7 +106,7 @@
         (normalize-transform-query
          (if (v2.queries/portable-query? query)
            (v2.queries/resolve-external-query query accepted-shapes)
-           query))))))
+           (infer-database query)))))))
 
 (defn- check-native-source-gates!
   "Throw unless `token-scopes` may store a native transform: they must match `agent:sql:run`, and the
@@ -437,4 +453,4 @@
                                       :create (create! a session-id token-scopes)
                                       :update (update! a b session-id token-scopes))
                                     nil)]
-    (common/success-content payload payload)))
+    (common/success-content payload)))

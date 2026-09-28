@@ -11,6 +11,7 @@ import {
   getIsNavBarEnabled,
 } from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
   Archived,
   GenericError,
@@ -21,6 +22,7 @@ import {
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
+import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
@@ -34,7 +36,6 @@ import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import { AppKBarProvider } from "./AppKBarProvider";
-import ErrorBoundary from "./ErrorBoundary";
 import ScrollToTop from "./ScrollToTop";
 import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
@@ -120,6 +121,7 @@ export function App() {
               <UndoListing />
               <StatusListing />
               <NewModals />
+              <EmbedSetupModals />
               <Metabot
                 hide={
                   isAdminApp || isDataStudioApp || isMonitorApp || isDataApp

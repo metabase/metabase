@@ -190,7 +190,11 @@ function ModalBody({
           <Box flex={1}>
             <FormErrorMessage />
           </Box>
-          <Button variant="subtle" onClick={onClose}>{t`Cancel`}</Button>
+          <Button
+            variant="subtle"
+            color="neutral"
+            onClick={onClose}
+          >{t`Cancel`}</Button>
           <FormSubmitButton
             label={getSubmitButtonLabel(
               selected_table,

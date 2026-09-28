@@ -442,7 +442,6 @@ export function SettingsOIDCForm() {
               <FormErrorMessage />
               <Flex gap="lg" wrap="wrap" justify="end">
                 <Button
-                  variant="outline"
                   loading={isChecking}
                   disabled={!values["issuer-uri"] || !values["client-id"]}
                   onClick={() => handleCheckConnection(values)}

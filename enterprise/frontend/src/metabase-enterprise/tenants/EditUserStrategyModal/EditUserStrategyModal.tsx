@@ -142,9 +142,7 @@ export const EditUserStrategyModal = ({
             </Radio.Group>
 
             <Flex justify="flex-end" gap="lg" mt="lg">
-              <Button variant="outline" onClick={handleCancel}>
-                {t`Cancel`}
-              </Button>
+              <Button onClick={handleCancel}>{t`Cancel`}</Button>
 
               <Button
                 onClick={handleApply}

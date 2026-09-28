@@ -270,7 +270,7 @@ const AddUsersRow = ({
 
     <Button
       variant="subtle"
-      bg="transparent"
+      color="neutral"
       onClick={onCancel}
       mr="sm"
       disabled={isSubmitting}
@@ -279,7 +279,7 @@ const AddUsersRow = ({
     </Button>
 
     <Button
-      variant={isValid ? "filled" : "outline"}
+      variant={isValid ? "filled" : "default"}
       disabled={!isValid || isSubmitting}
       loading={isSubmitting}
       onClick={onDone}

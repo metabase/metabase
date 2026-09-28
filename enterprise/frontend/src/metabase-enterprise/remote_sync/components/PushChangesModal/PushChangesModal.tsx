@@ -102,11 +102,11 @@ export const PushChangesModal = ({
 
       <Box>
         <Group gap="sm" justify="end">
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button
-            color="core-brand"
+            color="brand"
             disabled={isPushing}
             leftSection={<Icon name="upload" />}
             loading={isPushing}

@@ -7,11 +7,13 @@
    [clojure.string :as str]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -99,22 +101,60 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
-(defn- requested-scope-descriptions
-  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
-   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
-   string when a scope has no registered human-readable description. Returns nil when no scope was
-   requested."
+(def ^:private consent-scope-order
+  "The MCP v2 scopes in the order the consent page lists them, least to most harmful."
+  ["agent:resource:read"
+   "agent:content:read"
+   "agent:query:run"
+   "agent:content:write"
+   "agent:sql:run"
+   "agent:delivery:write"])
+
+(defn- scope-tokens
+  "Split a space-separated OAuth `scope` value into its distinct scope strings, in first-seen order. Returns nil when
+   blank.
+
+   Deduplicating here is what keeps a repeated scope out of the granted token: the decision filters the grant from this
+   list, so a duplicate left in it would be stored twice."
   [scope-param]
-  (when-let [scope-str (some-> scope-param str not-empty)]
-    (->> (str/split scope-str #"\s+")
-         (remove str/blank?)
-         distinct
-         (mapv (fn [s]
-                 {:scope        s
-                  :description  (or (some-> (api-scope/scope-description s) str) s)
-                  ;; Flag the broad first-party grant so the consent page can warn about it without
-                  ;; hardcoding the scope string in the view.
-                  :full-access? (= s oauth-server/full-access-scope)})))))
+  (some-> scope-param str str/trim not-empty (str/split #"\s+") distinct vec))
+
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps for
+   the consent page, so the user sees exactly what the client is asking for. Scopes in [[consent-scope-order]] come
+   first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always granted;
+   every other scope starts unticked. Falls back to the raw scope string when a scope has no registered human-readable
+   description. Returns nil when no scope was requested."
+  [scope-param]
+  (when-let [scopes (scope-tokens scope-param)]
+    (let [rank     (zipmap consent-scope-order (range))
+          baseline (set (mcp/v2-baseline-scopes))]
+      (->> scopes
+           ;; `sort-by` is stable, so unranked scopes keep their request order
+           (sort-by #(rank % (count rank)))
+           (mapv (fn [s]
+                   {:scope        s
+                    :description  (or (some-> (api-scope/scope-description s) str) s)
+                    ;; Flag the broad first-party grant so the consent page can warn about it without
+                    ;; hardcoding the scope string in the view.
+                    :full-access? (= s oauth-server/full-access-scope)
+                    :locked?      (contains? baseline s)}))))))
+
+(defn- form-values
+  "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
+  [v]
+  (cond
+    (nil? v)        []
+    (sequential? v) (vec v)
+    :else           [v]))
+
+(defn- granted-scopes
+  "The scopes an approved decision grants, in offered order: every `offered` scope the user `chosen`, plus every
+   offered MCP baseline scope, which the consent page shows as always granted. Returns nil when `chosen` names a scope
+   that was not offered."
+  [offered chosen]
+  (when (every? (set offered) chosen)
+    (filterv (some-fn (set chosen) (set (mcp/v2-baseline-scopes))) offered)))
 
 ;;; ------------------------------------------- Error descriptions ------------------------------------------------
 
@@ -386,8 +426,13 @@
 
    Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the
    form was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user
-   can re-sign anything. The endpoint that issues the code has to apply these rules itself."
+   can re-sign anything. The endpoint that issues the code has to apply these rules itself.
+
+   Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403
+   `params_tampered`, which is only the right status while the sole way to reach it is a choice naming an unoffered
+   scope. A blank offer would make an honest approval look like tampering."
   [parsed]
+  {:post [(not (str/blank? %))]}
   (let [;; A scope-less request would otherwise mint a token with no scopes.
         _          (when (str/blank? (:scope parsed))
                      (throw (ex-info "no scope was requested"
@@ -431,15 +476,17 @@
         csrf-token   (generate-csrf-token)
         oauth-params (select-keys parsed oauth-param-keys)
         params-sig   (sign-oauth-params csrf-token oauth-params)]
-    (-> {:status  200
-         :headers {"Content-Type" "text/html; charset=utf-8"}
-         :body    (consent-page/render-consent-page
-                   {:client-name  (some-> (:client-name client) (truncate 64))
-                    :nonce        (:nonce request)
-                    :csrf-token   csrf-token
-                    :params-sig   params-sig
-                    :scopes       (requested-scope-descriptions (:scope oauth-params))
-                    :oauth-params oauth-params})}
+    (-> {:status                               200
+         :headers                              {"Content-Type" "text/html; charset=utf-8"}
+         ;; the page's inline script is nonce'd, so it needs the nonce in `script-src`
+         mw.security/script-nonce-response-key true
+         :body                                 (consent-page/render-consent-page
+                                                {:client-name  (some-> (:client-name client) (truncate 64))
+                                                 :nonce        (:nonce request)
+                                                 :csrf-token   csrf-token
+                                                 :params-sig   params-sig
+                                                 :scopes       (requested-scope-descriptions (:scope oauth-params))
+                                                 :oauth-params oauth-params})}
         (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600)))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
@@ -493,6 +540,7 @@
             [:response_type         {:optional true} [:maybe :string]]
             [:redirect_uri          {:optional true} [:maybe :string]]
             [:scope                 {:optional true} [:maybe :string]]
+            [:granted_scope         {:optional true} [:maybe [:or :string [:sequential :string]]]]
             [:state                 {:optional true} [:maybe :string]]
             [:code_challenge        {:optional true} [:maybe :string]]
             [:code_challenge_method {:optional true} [:maybe :string]]
@@ -521,21 +569,42 @@
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
-                          parsed-params (select-keys parsed oauth-param-keys)]
-                      (if (or (str/blank? params-sig)
-                              (not (re-matches #"[a-fA-F0-9]+" params-sig))
-                              (odd? (count params-sig))
-                              (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
+                          parsed-params (select-keys parsed oauth-param-keys)
+                          signature-ok? (and (not (str/blank? params-sig))
+                                             (some? (re-matches #"[a-fA-F0-9]+" params-sig))
+                                             (even? (count params-sig))
+                                             (verify-oauth-params-signature cookie-token parsed-params params-sig))
+                          ;; The signature says the form was not tampered with by a third party, not that its
+                          ;; scope was ever validated: it is keyed by the CSRF token printed on the consent page,
+                          ;; so the user can re-sign anything. This is where the code is issued, so the scope
+                          ;; rules apply here too. A denial grants nothing and needs none of them. Evaluated only
+                          ;; once the signature holds, so a forged form is still answered `params_tampered`.
+                          offered       (when (and signature-ok? approved)
+                                          (scope-tokens (scope-to-grant parsed)))
+                          ;; The offered scope is what the consent page showed; the user's ticked boxes are
+                          ;; unsigned, so they may only narrow the offer.
+                          granted       (when (and signature-ok? approved)
+                                          (granted-scopes offered (form-values (:granted_scope body))))]
+                      (cond
+                        (or (not signature-ok?)
+                            ;; A choice naming a scope the consent page never offered.
+                            (and approved (nil? granted)))
                         {:status  403
                          :headers {"Content-Type" "application/json"}
                          :body    {:error "params_tampered"}}
-                        ;; The signature says the form was not tampered with by a third party, not that its scope
-                        ;; was ever validated: it is keyed by the CSRF token printed on the consent page, so the
-                        ;; user can re-sign anything. This is where the code is issued, so the scope rules apply
-                        ;; here too. A denial grants nothing and needs none of them.
+
+                        ;; Nothing granted would mint a token that can do nothing.
+                        (and approved (empty? granted))
+                        {:status  400
+                         :headers {"Content-Type" "application/json"}
+                         :body    {:error             "invalid_request"
+                                   :error_description "No scope was selected."}}
+
+                        :else
                         (redirect-authorization-decision provider
                                                          (cond-> parsed
-                                                           approved (assoc :scope (scope-to-grant parsed)))
+                                                           approved
+                                                           (assoc :scope (str/join " " granted)))
                                                          approved
                                                          request)))
                     (catch ExceptionInfo e

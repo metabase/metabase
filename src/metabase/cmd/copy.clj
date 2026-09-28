@@ -161,8 +161,6 @@
     :model/TransformTransformTag
     :model/TransformJob
     :model/TransformJobTransformTag
-    ;; Serialization never exports run history; a whole-instance move keeps it.
-    ;; A run still in flight at dump time arrives marked running, and the transform timeout job reaps it.
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
@@ -173,7 +171,9 @@
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin])))
+      :model/CustomVizPlugin
+      :model/TransformTest
+      :model/TransformTestRun])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

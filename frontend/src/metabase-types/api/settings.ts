@@ -294,6 +294,7 @@ const tokenStatusFeatures = [
   "sso",
   "transforms-basic",
   "transforms-python",
+  "transforms-testing",
   "upload-management",
   "whitelabel",
 ] as const;
@@ -377,6 +378,7 @@ export const tokenFeatures = [
   "semantic_search",
   "transforms-python",
   "transforms-basic",
+  "transforms-testing",
   "library",
   "library_retrieval",
   "support-users",
