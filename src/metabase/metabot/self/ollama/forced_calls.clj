@@ -208,12 +208,13 @@
   (when (= :grammar (:mechanism plan))
     (let [mode (:mode plan)]
       (fn [rf]
-        (let [buffer (StringBuilder.)
-              take!  (fn [] (let [held (str buffer)] (.setLength buffer 0) held))
-              flush! (fn [result]
-                       (if-let [chunk (forced-call-chunk mode (take!))]
-                         (rf result chunk)
-                         result))]
+        (let [buffer        (StringBuilder.)
+              take!         (fn [] (let [held (str buffer)] (.setLength buffer 0) held))
+              flush!        (fn [result]
+                              (if-let [chunk (forced-call-chunk mode (take!))]
+                                (rf result chunk)
+                                result))
+              strip-content #(update-in % [:choices 0 :delta] dissoc :content)]
           (fn
             ([result]
              (rf (cond-> result (pos? (.length buffer)) (flush!))))
@@ -242,7 +243,7 @@
                      ;; exists to keep it off.
                      (-> (rf result call)
                          (rf (-> chunk
-                                 (update-in [:choices 0 :delta] dissoc :content)
+                                 strip-content
                                  (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
                      ;; nothing became a call, so nothing may claim one: restating `stop` as
                      ;; `tool_calls` would promise the agent loop a call and hand it none. On `stop`
@@ -254,9 +255,10 @@
                                   (and (= "stop" finish_reason) (seq held))
                                   (assoc-in [:choices 0 :delta :content] held)))))
 
-                 content result
-
-                 :else (rf result chunk))))))))))
+                 ;; the content is held, but the chunk it came on still goes on without it: Ollama opens
+                 ;; with content rather than OpenAI's empty chunk (ollama/ollama#17485), so swallowing it
+                 ;; put the minted call ahead of the `:start` its message `id` carries
+                 :else (rf result (cond-> chunk content strip-content)))))))))))
 
 ;;; ------------------------------------------------- Preflight --------------------------------------------------
 

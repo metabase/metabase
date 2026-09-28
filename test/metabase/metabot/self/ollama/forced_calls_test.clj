@@ -7,7 +7,8 @@
   none was asked for means a model that can no longer answer in prose."
   (:require
    [clojure.test :refer :all]
-   [metabase.metabot.self.ollama.forced-calls :as forced]))
+   [metabase.metabot.self.ollama.forced-calls :as forced]
+   [metabase.metabot.self.openai.chat-completions :as chat-completions]))
 
 (set! *warn-on-reflection* true)
 
@@ -202,6 +203,25 @@
             (str "and no call is minted from the half-written buffer: `:structured`'s name is fixed, so it "
                  "would mint one regardless, and the caller would see `structured-output-invalid` instead "
                  "of the truncation"))))))
+
+(deftest ^:parallel read-back-passes-on-the-chunks-it-holds-content-from-test
+  (testing (str "Ollama opens a stream with content rather than OpenAI's empty chunk "
+                "(ollama/ollama#17485), so a held content chunk may be the first one carrying the "
+                "message `id`. Swallowing it whole put the minted call ahead of `:start`.")
+    (doseq [[plan answer] [[structured-plan "{\"title\": \"Late orders\"}"]
+                           [tool-union-plan "{\"name\": \"search_facts\", \"parameters\": {\"question\": \"q\"}}"]]]
+      (testing (:mode plan)
+        (let [chunk (fn [content & [finish-reason]]
+                      (assoc (content-chunk content finish-reason) :id "chatcmpl-1" :model "qwen2.5"))
+              types (into []
+                          (comp (chat-completions/chat-completions->aisdk-chunks-xf) (map :type))
+                          (read-back plan [(chunk (subs answer 0 5)) (chunk (subs answer 5))
+                                           (chunk "" "stop")]))]
+          (is (= :start (first types)))
+          (is (= [:tool-input-start :tool-input-delta :tool-input-available]
+                 (filterv #{:tool-input-start :tool-input-delta :tool-input-available} types)))
+          (is (not-any? #{:text-start :text-delta} types)
+              "the held content still stays off the text channel"))))))
 
 (deftest ^:parallel a-union-answer-that-is-not-a-call-is-not-reported-as-one-test
   (testing (str "`:tool-union` reads the tool's name out of the answer, so a model that answers in "
