@@ -66,8 +66,7 @@
 
 (defn reject-dangerous-additional-options!
   "Throw if `details` name a JDBC connection property on the shared SQL-JDBC denylist. Drivers that override
-  `validate-db-details!` must call this themselves -- a multimethod override replaces the `:sql-jdbc` body rather
-  than extending it, so the shared denylist does not otherwise reach them."
+  `validate-db-details!` must call this themselves."
   [details]
   (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
     (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
