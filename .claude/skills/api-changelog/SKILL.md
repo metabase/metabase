@@ -35,12 +35,14 @@ If the source is newer, regenerate before diffing the new ref:
 bun run generate-openapi   # rewrites resources/openapi/openapi.json in place
 ```
 
-Regenerating needs a working backend env, and it only produces the spec for the
-*current working tree* - you cannot regenerate a historical ref. So for an old
-ref, use its committed spec and flag that entries may be missing. A change
-present in source but absent from the committed spec is a **false negative**:
-this tool will not report it. Confirm suspected gaps with
-`grep -rn "defendpoint" src/.../api.clj`.
+This staleness check only matters when you are diffing the committed spec.
+`--refs` (below) generates each ref's spec from its own source, so it is not
+subject to this drift at all - prefer it.
+
+When you do read a committed spec, a change present in source but absent from
+that spec is a **false negative**: the diff will not report it, and an empty
+result is indistinguishable from an API that did not change. Confirm suspected
+gaps with `grep -rn "defendpoint" src/.../api.clj`.
 
 ## Steps
 
@@ -155,14 +157,3 @@ The commit that changed the spec is the PR that changed the API.
 A change landing in both `0.64.0` and older lines gets a full entry under the
 newest version and a one-line pointer under each backport version
 ("See the 0.64.0 entry."). Match the existing `POST /api/slack/bug-report` pattern.
-
-## Staleness check (run first)
-
-```bash
-./bin/mage openapi-staleness
-```
-
-Exits non-zero and lists the offending commits when the spec predates the newest
-API source change. A stale spec produces FALSE NEGATIVES, never false positives:
-a change in source but not in the spec is simply not reported. Treat a failing
-staleness check as "this diff may be incomplete", not as "no changes".

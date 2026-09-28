@@ -30,7 +30,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private max-ref-depth
-  "Recursion guard for self-referential `$ref` chains."
+  "How many `$ref` hops to follow before giving up on a chain.
+
+  Counts hops, not nesting levels: a deeply nested schema is ordinary and must still be compared
+  field by field, while a long `$ref` chain is the thing worth bounding. `seen` already breaks
+  cycles, so this only bounds chains that are long without repeating."
   12)
 
 (defn- resolve-refs
@@ -51,10 +55,11 @@
                target (get-in spec path {})
                rest'  (dissoc node "$ref")
                merged (if (seq rest') (merge target rest') target)]
+           ;; Only a $ref hop advances depth. Walking into a map or vector does not.
            (resolve-refs merged spec (inc depth) (conj seen ref))))
-       (update-vals node #(resolve-refs % spec (inc depth) seen)))
+       (update-vals node #(resolve-refs % spec depth seen)))
 
-     (sequential? node) (mapv #(resolve-refs % spec (inc depth) seen) node)
+     (sequential? node) (mapv #(resolve-refs % spec depth seen) node)
      :else node)))
 
 (defn- schema-props
@@ -119,6 +124,12 @@
         (and old-enum new-enum (not (set/subset? old-enum new-enum))) false
         (and (nil? old-enum) new-enum) false
 
+        ;; An array narrows when its element schema narrows. Without this an `items` change is
+        ;; invisible: the enclosing arrays compare as equal-typed and the leaf never gets checked.
+        (and (= "array" (get old-schema "type")) (= "array" (get new-schema "type"))
+             (not= (get old-schema "items") (get new-schema "items")))
+        (widening? (get old-schema "items" {}) (get new-schema "items" {}))
+
         :else
         (let [[old-props old-req] (schema-props old-schema)
               [new-props new-req] (schema-props new-schema)]
@@ -175,7 +186,7 @@
          (get value "type") (str (get value "type"))
          :else (truncate (json/generate-string value))))
      (let [s (json/generate-string value)]
-       (cond-> s (> (count s) limit) (subs 0 limit))))))
+       (cond-> s (> (count s) limit) (-> (subs 0 limit) (str "...")))))))
 
 (def ^:private breaking :breaking)
 (def ^:private additive :additive)
@@ -234,28 +245,43 @@
                   (sort (set/intersection old-keys new-keys)))))))))
 
 (defn- response-lines
-  "Compare one response schema. The rule inverts for output: a caller breaks when the API PROVIDES
-  LESS. Returning extra data is additive - clients ignore unknown fields."
-  [code old-schema new-schema]
-  (let [[old-props _] (schema-props old-schema)
-        [new-props _] (schema-props new-schema)]
-    (if (or (nil? old-props) (nil? new-props))
-      ;; Leaf/non-object: providing a narrower set of values is safe, a wider one (a new null, a new
-      ;; variant) can break a parsing client. Note the reversed argument order.
-      [[(if (widening? new-schema old-schema) additive breaking)
-        (str "    ~ response " code ": " (brief old-schema) " -> " (brief new-schema))]]
-      (let [old-keys (set (keys old-props))
-            new-keys (set (keys new-props))]
-        (concat
-         (for [k (sort (set/difference old-keys new-keys))]
-           [breaking (str "    - response " code "." k " REMOVED (provides less): " (brief (get old-props k)))])
-         (for [k (sort (set/difference new-keys old-keys))]
-           [additive (str "    + response " code "." k ": " (brief (get new-props k)))])
-         (for [k (sort (set/intersection old-keys new-keys))
-               :let [o (get old-props k), n (get new-props k)]
-               :when (not= o n)]
-           [(if (widening? n o) additive breaking)
-            (str "    ~ response " code "." k ": " (brief o) " -> " (brief n))]))))))
+  "Compare one response schema, recursively. The rule inverts for output: a caller breaks when the
+  API PROVIDES LESS. Returning extra data is additive - clients ignore unknown fields.
+
+  Recurses rather than delegating a nested object to [[widening?]]: swapping that function's
+  arguments inverts value-set semantics (which is why the nullable case reads correctly) but NOT
+  object-property semantics. A schema that drops a property is more permissive as INPUT whichever
+  way the arguments are passed, so a removed nested response field would read as additive."
+  ([code old-schema new-schema] (response-lines code old-schema new-schema 0))
+  ([code old-schema new-schema depth]
+   (let [label (str "response " code)
+         pad (str "    " (str/join (repeat depth "  ")))
+         [old-props _] (schema-props old-schema)
+         [new-props _] (schema-props new-schema)]
+     (cond
+       (> depth 4)
+       [[(if (widening? new-schema old-schema) additive breaking)
+         (str pad "~ " label ": " (brief old-schema) " -> " (brief new-schema))]]
+
+       (or (nil? old-props) (nil? new-props))
+       ;; Leaf/non-object: providing a narrower set of values is safe, a wider one (a new null, a
+       ;; new variant) can break a parsing client. Note the reversed argument order.
+       [[(if (widening? new-schema old-schema) additive breaking)
+         (str pad "~ " label ": " (brief old-schema) " -> " (brief new-schema))]]
+
+       :else
+       (let [old-keys (set (keys old-props))
+             new-keys (set (keys new-props))]
+         (concat
+          (for [k (sort (set/difference old-keys new-keys))]
+            [breaking (str pad "- " label "." k " REMOVED (provides less): " (brief (get old-props k)))])
+          (for [k (sort (set/difference new-keys old-keys))]
+            [additive (str pad "+ " label "." k ": " (brief (get new-props k)))])
+          (mapcat (fn [k]
+                    (let [o (get old-props k), n (get new-props k)]
+                      (when (not= o n)
+                        (response-lines (str code "." k) o n (inc depth)))))
+                  (sort (set/intersection old-keys new-keys)))))))))
 
 (defn- changed-operation-lines
   "All findings for one surviving operation, as `[severity text]` pairs."
@@ -292,8 +318,10 @@
           [breaking (str "    - response " code " schema removed (provides less)")]))))))
 
 (defn diff
-  "Structured diff of two parsed specs. Returns `{:removed :added :changed :counts}`, with `:changed`
-  sorted breaking-first."
+  "Structured diff of two parsed specs.
+
+  Returns `{:removed :added :changed :old :new :counts}`, with `:changed` sorted breaking-first.
+  `:old` and `:new` are the parsed operation maps, which the renderers read for descriptions."
   [old-spec new-spec]
   (let [old (operations old-spec)
         new (operations new-spec)
@@ -302,13 +330,23 @@
         added (sort (set/difference new-keys old-keys))
         changed (->> (sort (set/intersection old-keys new-keys))
                      (keep (fn [k]
-                             (let [findings (changed-operation-lines (get old k) (get new k))]
+                             (let [o (get old k)
+                                   n (get new k)
+                                   findings (changed-operation-lines o n)
+                                   ;; A description-only change carries no schema finding, so
+                                   ;; without this the DOC_ONLY severity is unreachable. The skill
+                                   ;; reads descriptions to spot changes it cannot explain, so a
+                                   ;; reworded docstring is worth surfacing.
+                                   findings (cond-> findings
+                                              (and (empty? findings)
+                                                   (not= (:description o) (:description n)))
+                                              (conj [doc-only "    ~ description changed"]))]
                                (when (seq findings)
                                  {:operation k
                                   :findings findings
                                   :severity (worst (map first findings))
-                                  :old-description (:description (get old k))
-                                  :new-description (:description (get new k))}))))
+                                  :old-description (:description o)
+                                  :new-description (:description n)}))))
                      (sort-by (juxt (comp severity-order :severity) :operation)))]
     {:removed removed
      :added added
@@ -352,17 +390,21 @@
   (let [visible? (fn [sev] (or (nil? min-severity)
                                (<= (severity-order sev) (severity-order min-severity))))
         groups (filter (comp visible? :severity) (grouped-findings changed))
-        endpoint-changes (+ (count removed) (count added))]
+        ;; Count only what is printed. `groups` is severity-filtered, so counting `changed` or
+        ;; every endpoint inflates the header above the body beneath it.
+        shown-ops (into (set (mapcat :operations groups)) (concat removed added))]
     (println (format "# %d distinct changes across %d endpoints (%d -> %d operations)"
-                     (+ (count groups) endpoint-changes)
-                     (+ (count changed) endpoint-changes)
+                     (+ (count groups) (if (seq removed) 1 0) (if (seq added) 1 0))
+                     (count shown-ops)
                      (:operations-before counts) (:operations-after counts)))
     (println)
-    (when (and (visible? breaking) (seq removed))
+    ;; Endpoint lists print at every severity: a removed + added pair is usually one endpoint
+    ;; moving, and --severity breaking is exactly where a drafter needs to see both halves.
+    (when (seq removed)
       (println (format "## BREAKING: %d REMOVED ENDPOINTS" (count removed)))
       (doseq [k removed] (println (str "  - " k)))
       (println))
-    (when (and (visible? additive) (seq added))
+    (when (seq added)
       (println (format "## ADDITIVE: %d NEW ENDPOINTS" (count added)))
       (doseq [k added] (println (str "  + " k)))
       (println))
@@ -400,13 +442,17 @@
         (println)
         (println (format "## BREAKING: CHANGED ENDPOINTS (%d)" (count bc)))
         (doseq [c bc] (print-operation c true))))
-    (when (visible? additive)
+    ;; The added-endpoint list prints at every severity: a removed + added pair is usually one
+    ;; endpoint moving, and hiding the added half at --severity breaking makes that unpairable.
+    (when (seq added)
       (println)
       (println (format "## ADDITIVE: NEW ENDPOINTS (%d) - check if any replaces a removed one" (count added)))
       (doseq [k added]
         (println (str "  + " k))
         (let [d (:description (get new k))]
           (when-not (str/blank? d) (println (str "      doc: " (subs d 0 (min 400 (count d))))))))
+      nil)
+    (when (visible? additive)
       (let [ac (filter #(= additive (:severity %)) changed)]
         (println)
         (println (format "## ADDITIVE: CHANGED ENDPOINTS (%d)" (count ac)))
@@ -435,7 +481,11 @@
   line-splitting then rejoining it is both wasteful and lossy on trailing whitespace."
   [ref out-path]
   (let [{:keys [exit]} (shell/sh* {:quiet? true}
-                                  "sh" "-c" (str "git show " ref ":" spec-path " > " out-path))]
+                                  ;; Values ride as positional args so the shell never parses them:
+                                  ;; interpolating a ref into the command string lets a ref
+                                  ;; containing `$`, a quote, or a space produce a wrong file.
+                                  "sh" "-c" "git show \"$1\" > \"$2\"" "sh"
+                                  (str ref ":" spec-path) out-path)]
     (when-not (zero? exit)
       (u/exit (str "Could not read " spec-path " at " ref
                    ". Try a fully-qualified ref such as origin/" ref ".") 1))
@@ -487,11 +537,33 @@
             [(committed-spec! ref out-path) true])
         (u/exit (str "Could not generate a spec at " ref ", and it has no committed spec.") 1)))))
 
-(defn- last-commit-date
-  "ISO date of the last commit touching `paths`, or nil when none."
-  [& paths]
-  (let [{:keys [out]} (apply shell/sh* {:quiet? true} "git" "log" "-1" "--format=%cI" "--" paths)]
-    (not-empty (str/trim (str/join out)))))
+(def ^:private api-source-pathspecs
+  "Everything that can declare an endpoint.
+
+  `src/metabase/**/api.clj` alone matches 66 files while 158 contain `defendpoint`: endpoints also
+  live under `src/metabase/*/api/*.clj` and throughout `enterprise/backend/src`, and the spec
+  carries 238 `/api/ee/` paths. Watching only the narrow pathspec lets the check report
+  `OK: spec is current` while dozens of newer endpoint files sit on disk, which is the exact
+  failure it exists to prevent."
+  ["src/metabase/**/api.clj"
+   "src/metabase/**/api/*.clj"
+   "src/metabase/**/routes.clj"
+   "enterprise/backend/src/**/api.clj"
+   "enterprise/backend/src/**/api/*.clj"
+   "enterprise/backend/src/**/routes.clj"])
+
+(defn- last-commit-epoch
+  "Unix timestamp of the last commit touching `paths`, or nil when none.
+
+  Epoch seconds rather than `%cI`: this history carries both `+08:00` and `Z` offsets, so two
+  same-day commits in different zones sort wrong when ISO strings are compared lexically."
+  [paths]
+  (let [{:keys [out]} (apply shell/sh* {:quiet? true} "git" "log" "-1" "--format=%ct" "--" paths)]
+    (some-> (not-empty (str/trim (str/join out))) parse-long)))
+
+(defn- format-epoch [epoch]
+  (let [{:keys [out]} (shell/sh* {:quiet? true} "date" "-r" (str epoch) "+%Y-%m-%d")]
+    (str/trim (str/join out))))
 
 (defn cli-staleness
   "Entry point for `./bin/mage openapi-staleness`.
@@ -500,24 +572,25 @@
   drifts behind master by default. A stale spec makes a diff produce FALSE NEGATIVES: changes that
   landed in source but were never regenerated are simply not reported."
   [_]
-  (let [spec-date (last-commit-date spec-path)
-        src-date  (last-commit-date "src/metabase/**/api.clj" "src/metabase/**/routes.clj")]
-    (println (str "spec last changed: " (or spec-date "never")))
-    (println (str "API source last changed: " (or src-date "never")))
+  (let [spec-epoch (last-commit-epoch [spec-path])
+        src-epoch  (last-commit-epoch api-source-pathspecs)]
+    (println (str "spec last changed: " (if spec-epoch (format-epoch spec-epoch) "never")))
+    (println (str "API source last changed: " (if src-epoch (format-epoch src-epoch) "never")))
     (cond
-      (not (and spec-date src-date))
+      (not (and spec-epoch src-epoch))
       (u/exit "\nCould not determine both dates; verify by hand." 1)
 
-      (neg? (compare spec-date src-date))
+      (< spec-epoch src-epoch)
       (do
         (println "\nSTALE: the committed OpenAPI spec predates the newest API source change.")
         (println "A diff against this spec under-reports. Either regenerate it for the current")
         (println "working tree with `bun run generate-openapi`, or confirm suspected gaps directly")
         (println "in source with `grep -rn defendpoint src/metabase/<module>/api.clj`.")
         (println "\nCommits that touched API source since the spec was last updated:")
-        (let [{:keys [out]} (shell/sh* {:quiet? true}
-                                       "git" "log" "--format=  %h %ad %an | %s" "--date=short"
-                                       (str "--since=" spec-date) "--" "src/metabase/**/api.clj")]
+        (let [{:keys [out]} (apply shell/sh* {:quiet? true}
+                                   "git" "log" "--format=  %h %ad %an | %s" "--date=short"
+                                   (str "--since=@" spec-epoch) "--"
+                                   api-source-pathspecs)]
           (doseq [line (take 20 out)] (println line)))
         (u/exit 1))
 
@@ -531,28 +604,42 @@
   blob but is not subject to its drift."
   [{:keys [arguments options]}]
   (let [[old-arg new-arg] arguments
-        min-severity (case (some-> (:severity options) str/lower-case)
+        severity-arg (some-> (:severity options) str/lower-case)
+        ;; An unrecognised value must not silently disable the filter: a typo would otherwise
+        ;; print the full diff and read as "there were no other changes".
+        min-severity (case severity-arg
                        "breaking" breaking
                        "additive" additive
-                       nil)
+                       nil nil
+                       (u/exit (str "Unknown --severity " (pr-str severity-arg)
+                                    ". Use `breaking` or `additive`.") 1))
+        _ (when (and (:committed options) (not (:refs options)))
+            (u/exit "--committed only applies with --refs." 1))
+        tmp-dir (when (:refs options)
+                  (str "/tmp/openapi-diff-specs-" (System/currentTimeMillis)))
         [old-path new-path stale-refs]
         (if (:refs options)
-          (let [dir (str "/tmp/openapi-diff-specs-" (System/currentTimeMillis))
-                committed? (boolean (:committed options))]
-            (.mkdirs (io/file dir))
-            (let [[op ostale] (spec-for-ref! old-arg (str dir "/old.json") committed?)
-                  [np nstale] (spec-for-ref! new-arg (str dir "/new.json") committed?)]
+          (let [committed? (boolean (:committed options))]
+            (.mkdirs (io/file tmp-dir))
+            (let [[op ostale] (spec-for-ref! old-arg (str tmp-dir "/old.json") committed?)
+                  [np nstale] (spec-for-ref! new-arg (str tmp-dir "/new.json") committed?)]
               [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
           [old-arg new-arg []])]
-    (when (:refs options) (println))
-    (let [d (diff (json/parse-string (slurp old-path))
-                  (json/parse-string (slurp new-path)))]
-      (if (:grouped options)
-        (print-grouped d min-severity)
-        (print-diff d min-severity)))
-    (when (seq stale-refs)
-      (println)
-      (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
-      (println "# The committed spec only updates on PRs labelled `openapi-self-healing`, so it lags")
-      (println "# source. This diff UNDER-REPORTS: changes never regenerated into the spec are absent,")
-      (println "# and an empty result does not mean there were no changes."))))
+    (try
+      (when (:refs options) (println))
+      (let [d (diff (json/parse-string (slurp old-path))
+                    (json/parse-string (slurp new-path)))]
+        (if (:grouped options)
+          (print-grouped d min-severity)
+          (print-diff d min-severity)))
+      (when (seq stale-refs)
+        (println)
+        (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
+        (println "# The committed spec only updates on PRs labelled `openapi-self-healing`, so it lags")
+        (println "# source. This diff UNDER-REPORTS: changes never regenerated into the spec are absent,")
+        (println "# and an empty result does not mean there were no changes."))
+      (finally
+        ;; Generated specs are megabytes each; leaving them behind fills /tmp over a few runs.
+        (when tmp-dir
+          (doseq [f (reverse (file-seq (io/file tmp-dir)))]
+            (io/delete-file f true)))))))
