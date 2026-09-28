@@ -4,7 +4,7 @@ import fetchMock from "fetch-mock";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
-import type { DataAppGroup } from "metabase-types/api";
+import type { DataApp, DataAppGroup } from "metabase-types/api";
 import { createMockDataApp, createMockGroup } from "metabase-types/api/mocks";
 
 import { ManageDataAppGroupsPage } from "./ManageDataAppGroupsPage";
@@ -22,14 +22,20 @@ const candidates = [
 ];
 
 const setup = ({
+  app = createMockDataApp(),
   groups = [],
   failFirstAdd = false,
 }: {
+  app?: DataApp;
   groups?: DataAppGroup[];
   failFirstAdd?: boolean;
 } = {}) => {
   let assigned = [...groups];
-  fetchMock.get("path:/api/apps/sales", createMockDataApp());
+  fetchMock.get("path:/api/apps", [app]);
+  fetchMock.get(
+    "path:/api/apps/sales",
+    !app.enabled ? 404 : !app.resource_collection_id ? 409 : app,
+  );
   fetchMock.get("path:/api/apps/sales/groups", () => assigned);
   fetchMock.get("path:/api/permissions/group", candidates);
   fetchMock.post("path:/api/apps/sales/groups", ({ options: { body } }) => {
@@ -82,6 +88,32 @@ const openPicker = async () => {
 };
 
 describe("ManageDataAppGroupsPage", () => {
+  it.each([
+    ["disabled", { enabled: false }],
+    ["missing its resource collection", { resource_collection_id: null }],
+  ])("manages assignments when the app is %s", async (_state, overrides) => {
+    setup({ app: createMockDataApp(overrides) });
+
+    await openPicker();
+    await userEvent.click(screen.getByRole("option", { name: "Finches" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add", exact: true }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Remove Finches" }),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("path:/api/apps/sales")).toBe(false);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Finches" }),
+    );
+
+    expect(
+      await screen.findByText("No groups have access yet"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the empty state and filters ineligible and assigned groups", async () => {
     setup({ groups: [{ id: 4, name: "Owls", member_count: 7 }] });
     expect(
