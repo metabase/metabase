@@ -235,4 +235,4 @@ be-tests-postgres-latest-ee:
         junit-name: "be-tests-postgres-latest-ee"
 ```
 
-For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
+For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).

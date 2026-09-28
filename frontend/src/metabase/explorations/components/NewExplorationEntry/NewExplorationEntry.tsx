@@ -89,8 +89,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
           <Button
             component={ForwardRefLink}
             to={Urls.newQuestion({ mode: "ask" })}
-            c="text-secondary"
-            bd="none"
+            variant="subtle"
+            color="neutral"
             flex="none"
             leftSection={<Icon name="arrow_left" />}
           >
@@ -130,9 +130,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
           )}
           <Flex justify="space-between" align="center">
             <Button
-              c="text-secondary"
-              bd="none"
-              className={S.buttonHoverSecondary}
+              variant="subtle"
+              color="neutral"
               leftSection={<Icon name="collection" />}
               onClick={() => setIsCollectionPickerOpen(true)}
             >
@@ -140,9 +139,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
             </Button>
             <Flex gap="sm">
               <Button
-                c="text-secondary"
-                bd="none"
-                className={S.buttonHoverSecondary}
+                variant="subtle"
+                color="neutral"
                 onClick={handleManualSetup}
               >
                 {t`Manual setup`}

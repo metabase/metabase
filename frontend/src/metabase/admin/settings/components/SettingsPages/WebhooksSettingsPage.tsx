@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
+import { useListChannelsQuery } from "metabase/api/channel";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useListChannelsQuery } from "metabase/api/channel";
+} from "metabase/settings-components";
 import {
   Button,
   Flex,
@@ -42,7 +42,6 @@ export const WebhooksSettingsPage = () => {
             {hasChannels && (
               <Button
                 variant="filled"
-                size="md"
                 leftSection={<Icon name="add" />}
                 onClick={() => setWebhookModal("create")}
               >{c("Short for 'Add another webhook'").t`Add another`}</Button>

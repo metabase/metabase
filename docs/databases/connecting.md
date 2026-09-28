@@ -25,7 +25,7 @@ To add a database connection:
 
 ## Connecting to supported databases
 
-The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing/) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing) will get official support. For each database, Metabase supports the oldest supported version through the latest stable version.
 
 - [Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
@@ -83,6 +83,6 @@ If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossa
 
 ## Further reading
 
-- [Metadata editing](../data-modeling/metadata-editing.md).
+- [Metadata editing](../data-modeling/metadata/metadata-editing.md).
 - [Setting data access permissions](../permissions/data.md).
 - [Metabase at scale](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-at-scale).

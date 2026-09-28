@@ -18,7 +18,7 @@ import type {
   MetabotMessage,
 } from "metabase/metabot/state/types";
 import { convertSlackMessage } from "metabase/metabot/utils/slack-mrkdwn";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
@@ -331,7 +331,7 @@ export function GeneratedQueryCard({ query }: { query: GeneratedQuery }) {
 }
 
 function SqlGeneratedQueryCard({ query }: { query: GeneratedQuery }) {
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const runUrl = useMemo(() => {
     if (query.database_id == null || !query.sql) {
@@ -401,7 +401,7 @@ function NotebookGeneratedQueryCard({
   const { isLoading, isError } = useGetAdhocQueryMetadataQuery(
     mbql.database != null ? mbql : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );

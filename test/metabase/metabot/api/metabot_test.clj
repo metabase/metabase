@@ -68,8 +68,9 @@
                                                        :tables :table_questions})))]
           ;; --------------------------- Generating sample prompts ---------------------------
           (testing "should generate prompt suggestions for metabot"
-            (let [response (with-redefs [metabot.example-question-generator/generate-example-questions
-                                         prompt-generator]
+            (let [response (mt/with-dynamic-fn-redefs
+                             [metabot.example-question-generator/generate-example-questions
+                              prompt-generator]
                              ;; Trigger prompt generation by calling the regenerate endpoint
                              (mt/user-http-request
                               :crowberto :post 200
@@ -151,7 +152,8 @@
                     (mt/user-http-request :rasta :post 403 url)
                     (is (= remaining-prompt-ids (current-prompt-ids))))
                   (testing "admin users are allowed"
-                    (with-redefs [metabot.example-question-generator/generate-example-questions prompt-generator]
+                    (mt/with-dynamic-fn-redefs
+                      [metabot.example-question-generator/generate-example-questions prompt-generator]
                       (is (=? {:status "generated" :prompt_count pos-int?}
                               (mt/user-http-request :crowberto :post 200 url)))))))
               (let [new-prompt-ids (current-prompt-ids)]

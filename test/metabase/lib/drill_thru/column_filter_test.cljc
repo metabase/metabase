@@ -232,15 +232,12 @@
                                                                                 :type   #:type{:DateTime {:earliest "2023-12-08T23:49:58.310952Z", :latest "2023-12-08T23:49:58.310952Z"}}}
                                                            :base_type          :type/DateTime}]
                                  :database-id            (meta/id)
-                                 :query-type             :native
                                  :dataset-query          {:database (meta/id)
                                                           :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
                                                           :type     :native}
                                  :id                     5
-                                 :parameter-mappings     []
                                  :display                :table
-                                 :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}
-                                 :parameters             []}
+                                 :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}}
                                 lib.tu/as-model
                                 lib.tu/metadata-provider-with-mock-card)
           query             (lib/query metadata-provider (lib.metadata/card metadata-provider 5))

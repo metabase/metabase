@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
+   [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -304,8 +305,8 @@
   [blocks :- (let [row [:map {:closed true}
                         [:id                    {:optional true} ms/PositiveInt]
                         [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-                        [:metrics               {:optional true} [:maybe [:sequential :map]]]
-                        [:dimensions            {:optional true} [:maybe [:sequential :map]]]
+                        [:metrics               {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.metric]]]
+                        [:dimensions            {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.dimension]]]
                         [:position              {:optional true} [:maybe :int]]
                         [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
                         [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]]]
@@ -573,7 +574,7 @@
                     [:created_at                         {:optional true} [:maybe ms/TemporalInstant]]
                     [:interestingness_score               {:optional true} [:maybe number?]]
                     [:contextual_interestingness_score    {:optional true} [:maybe number?]]
-                    [:chart_stats                         {:optional true} [:maybe :map]]
+                    [:chart_stats                         {:optional true} [:maybe ::chart.types/chart-stats]]
                     [:metric_description                  {:optional true} [:maybe :string]]
                     [:chart_description                   {:optional true} [:maybe :string]]]]
   (t2/insert! :model/ExplorationQueryResult query-result))

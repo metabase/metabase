@@ -8,6 +8,7 @@
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
+   [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]))
@@ -137,8 +138,7 @@
               (log/info "Created stub database; skipping sync.")
 
               (advanced-config.settings/config-from-file-sync-databases)
-              (let [sync-database! (requiring-resolve 'metabase.sync.core/sync-database!)]
-                (quick-task/submit-task! (fn [] (sync-database! db))))
+              (quick-task/submit-task! (fn [] (sync/sync-database! db)))
 
               :else
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))

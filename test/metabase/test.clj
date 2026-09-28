@@ -105,6 +105,8 @@
 #_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
+  action-executions
+  latest-query-execution-id
   with-actions
   with-actions-disabled
   with-actions-enabled

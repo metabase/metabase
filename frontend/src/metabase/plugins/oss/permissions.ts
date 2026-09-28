@@ -1,7 +1,6 @@
 import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import { getUserIsAdmin } from "metabase/current-user";
 import type { State } from "metabase/redux/store";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
@@ -247,7 +246,6 @@ const getDefaultFeatureLevelPermissions = () => ({
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
-  canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
   // Unjustified type cast. FIXME
   dataModelQueryProps: {} as any,
   // Unjustified type cast. FIXME
@@ -272,10 +270,6 @@ const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
   // Unjustified type cast. FIXME
   tabs: [] as any,
-  selectors: {
-    canAccessSettings: (_state: any) => false,
-    canManageSubscriptions: (_state: any) => true,
-  },
 });
 
 export const PLUGIN_APPLICATION_PERMISSIONS = definePluginSlot(

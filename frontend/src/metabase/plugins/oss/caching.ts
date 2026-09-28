@@ -150,13 +150,13 @@ export const getPerformanceTabMetadata = () =>
   // Unjustified type cast. FIXME
   [
     {
-      name: t`Database caching`,
+      getName: () => t`Database caching`,
       path: "/admin/performance/databases",
       key: "performance-databases",
       tabId: PerformanceTabId.Databases,
     },
     {
-      name: t`Model persistence`,
+      getName: () => t`Model persistence`,
       path: "/admin/performance/models",
       key: "performance-models",
       tabId: PerformanceTabId.Models,

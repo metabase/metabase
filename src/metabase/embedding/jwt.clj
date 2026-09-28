@@ -25,6 +25,13 @@
     (when (= alg "none")
       (throw (Exception. (trs "JWT `alg` cannot be `none`."))))))
 
+(defn- stringify-slug-keys
+  "Normalize the `:params` and `:_embedding_params` slug maps of decoded `claims` back to string keys."
+  [claims]
+  (cond-> claims
+    (map? (:params claims))            (update :params update-keys name)
+    (map? (:_embedding_params claims)) (update :_embedding_params update-keys name)))
+
 (defn unsign
   "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation. Check that the signature is
   valid (i.e., check that it was signed with `embedding-secret-key`) and it's otherwise a valid JWT (e.g., not
@@ -33,12 +40,13 @@
   (when (seq message)
     (try
       (check-valid-alg message)
-      (jwt/unsign message
-                  (or (embedding.settings/embedding-secret-key)
-                      (throw (ex-info (tru "The embedding secret key has not been set.") {:status-code 400})))
-                  ;; The library will reject tokens with a created at timestamp in the future, so to account for clock
-                  ;; skew tell the library to allow for 60 seconds of leeway
-                  {:leeway 60})
+      (stringify-slug-keys
+       (jwt/unsign message
+                   (or (embedding.settings/embedding-secret-key)
+                       (throw (ex-info (tru "The embedding secret key has not been set.") {:status-code 400})))
+                   ;; The library will reject tokens with a created at timestamp in the future, so to account for clock
+                   ;; skew tell the library to allow for 60 seconds of leeway
+                   {:leeway 60}))
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
         (throw (ex-info (ex-message e) {:status-code 400}))))))

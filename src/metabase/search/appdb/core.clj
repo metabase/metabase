@@ -75,7 +75,7 @@
 (defn- view-count-percentiles*
   [p-value]
   (into {} (for [{:keys [model vcp]} (search.db/view-count-percentile-rows (search.index/active-table) p-value)]
-             [(keyword model) vcp])))
+             [model vcp])))
 
 (def ^{:private true
        :arglists '([p-value])}

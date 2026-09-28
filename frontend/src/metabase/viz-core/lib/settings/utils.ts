@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { mergeLazily, omitLazily } from "metabase/utils/merge-lazily";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -19,22 +20,34 @@ export function getOptionFromColumn(col: DatasetColumn) {
 }
 
 export function metricSetting(id: string, def: SeriesSettingDefinition = {}) {
-  return fieldSetting(id, {
-    fieldFilter: isMetric,
-    getDefault: (series) => getDefaultDimensionAndMetric(series).metric,
-    ...def,
-  });
+  return fieldSetting(
+    id,
+    mergeLazily(
+      {
+        fieldFilter: isMetric,
+        getDefault: (series: Series) =>
+          getDefaultDimensionAndMetric(series).metric,
+      },
+      def,
+    ),
+  );
 }
 
 export function dimensionSetting(
   id: string,
   def: SeriesSettingDefinition = {},
 ) {
-  return fieldSetting(id, {
-    fieldFilter: isDimension,
-    getDefault: (series) => getDefaultDimensionAndMetric(series).dimension,
-    ...def,
-  });
+  return fieldSetting(
+    id,
+    mergeLazily(
+      {
+        fieldFilter: isDimension,
+        getDefault: (series: Series) =>
+          getDefaultDimensionAndMetric(series).dimension,
+      },
+      def,
+    ),
+  );
 }
 
 const DEFAULT_FIELD_FILTER = (_column: DatasetColumn) => true;
@@ -52,12 +65,7 @@ export function getDefaultColumn(
 
 export function fieldSetting(
   id: string,
-  {
-    fieldFilter = DEFAULT_FIELD_FILTER,
-    showColumnSetting,
-    autoOpenWhenUnset,
-    ...def
-  }: SeriesSettingDefinition & {
+  options: SeriesSettingDefinition & {
     fieldFilter?: FieldFilterFn;
     showColumnSetting?: boolean;
     autoOpenWhenUnset?: boolean;
@@ -65,21 +73,37 @@ export function fieldSetting(
 ): {
   [id]: SeriesSettingDefinition;
 } {
+  // Read by name only the keys this helper consumes. Everything else is copied
+  // by descriptor so getters survive.
+  const {
+    fieldFilter = DEFAULT_FIELD_FILTER,
+    showColumnSetting,
+    autoOpenWhenUnset,
+  } = options;
+  const def = omitLazily<SeriesSettingDefinition>(options, [
+    "fieldFilter",
+    "showColumnSetting",
+    "autoOpenWhenUnset",
+  ]);
+
   return {
-    [id]: {
-      widget: "field",
-      isValid: ([{ card, data }]) =>
-        columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getDefault: (series, vizSettings) =>
-        getDefaultColumn(series, vizSettings, fieldFilter),
-      getProps: ([{ data }]) => ({
-        options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
-        columns: data.cols,
-        showColumnSetting,
-        autoOpenWhenUnset,
-      }),
-      ...def,
-    },
+    // mergeLazily returns the merged descriptors, which is this shape.
+    [id]: mergeLazily(
+      {
+        widget: "field",
+        isValid: ([{ card, data }]: Series) =>
+          columnsAreValid(card.visualization_settings[id], data, fieldFilter),
+        getDefault: (series: Series, vizSettings: VisualizationSettings) =>
+          getDefaultColumn(series, vizSettings, fieldFilter),
+        getProps: ([{ data }]: Series) => ({
+          options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
+          columns: data.cols,
+          showColumnSetting,
+          autoOpenWhenUnset,
+        }),
+      },
+      def,
+    ) as SeriesSettingDefinition,
   };
 }
 

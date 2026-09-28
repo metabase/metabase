@@ -3,7 +3,9 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
@@ -11,7 +13,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
-} from "metabase/visualizations/visualizations/CartesianChart/CartesianChartLayout";
+} from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 import {
   extractRemappings,
@@ -38,6 +40,7 @@ function BoxPlotInner({
   width,
   height,
   isDashboard,
+  isVisualizer,
   isEditing,
   isQueryBuilder,
   isFullscreen,
@@ -57,6 +60,7 @@ function BoxPlotInner({
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
+  const [chartInstance, setChartInstance] = useState<EChartsType>();
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
   const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
@@ -174,8 +178,11 @@ function BoxPlotInner({
     onChangeCardAndRun,
   });
 
+  // The popover subscribes to the instance in an effect, and a ref mutation
+  // would not re-run it, so the instance is held in state as well.
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+    setChartInstance(chart);
   }, []);
 
   const handleResize = useCallback((width: number, height: number) => {
@@ -227,7 +234,13 @@ function BoxPlotInner({
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}
           onResize={handleResize}
-        />
+        >
+          <DataPointsVisiblePopover
+            isDashboard={isDashboard}
+            isVisualizer={isVisualizer}
+            chartInstance={chartInstance}
+          />
+        </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
     </CartesianChartRoot>
   );
@@ -241,7 +254,4 @@ function BoxPlotComponent(props: VisualizationProps) {
   );
 }
 
-export const BoxPlot = Object.assign(
-  BoxPlotComponent,
-  BOXPLOT_CHART_DEFINITION,
-);
+export const BoxPlot = assignLazily(BoxPlotComponent, BOXPLOT_CHART_DEFINITION);

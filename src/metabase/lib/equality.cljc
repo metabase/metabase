@@ -29,7 +29,7 @@
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
   ;; two things with different dispatch values (for maps, the `:lib/type` key; for MBQL clauses, the tag, and for
-  ;; everything else, the `:dispatch-type/*` key) can't be equal.
+  ;; everything else, a `:dispatch-type/...` keyword) can't be equal.
   (fn [x y]
     (let [x-dispatch-value (lib.dispatch/dispatch-value x)
           y-dispatch-value (lib.dispatch/dispatch-value y)]
@@ -317,7 +317,7 @@ are known to be the same."
            {:ref a-ref
             :columns columns}))
 
-(mu/defn- expression-column? [column]
+(mu/defn- expression-column? [column :- ::lib.schema.metadata/column]
   (or (clojure.core/= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
@@ -416,7 +416,7 @@ are known to be the same."
      (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
-  [:map [:generous? {:optional true} :boolean]])
+  [:map {:closed true} [:generous? {:optional true} :boolean]])
 
 (mu/defn find-matching-column :- [:maybe ::lib.schema.metadata/column]
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -442,7 +442,8 @@ are known to be the same."
     - The same disambiguation (by `:join-alias` etc.) is applied if there are multiple plausible matches.
 
   Returns the matching column, or nil if no match is found."
-  ([a-ref columns]
+  ([a-ref   :- ::lib.schema.ref/ref
+    columns :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column a-ref columns {}))
 
   ([[ref-kind _opts ref-id :as a-ref] :- ::lib.schema.ref/ref
@@ -464,7 +465,10 @@ are known to be the same."
                       (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
-  ([query stage-number a-ref-or-column columns]
+  ([query           :- [:maybe ::lib.schema/query]
+    stage-number    :- :int
+    a-ref-or-column :- [:or ::lib.schema.metadata/column ::lib.schema.ref/ref]
+    columns         :- [:sequential ::lib.schema.metadata/column]]
    (find-matching-column query stage-number a-ref-or-column columns {}))
 
   ([query           :- [:maybe ::lib.schema/query]
@@ -574,12 +578,14 @@ are known to be the same."
 (mu/defn find-column-for-legacy-ref :- [:maybe ::lib.schema.metadata/column]
   "Like [[find-matching-column]], but takes a legacy MBQL reference. The name here is for consistency with other
   FE names for similar functions."
-  ([query legacy-ref metadatas]
+  ([query        :- ::lib.schema/query
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
+    metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-column-for-legacy-ref query -1 legacy-ref metadatas))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    legacy-ref   :- :some
+    legacy-ref   :- :metabase.lib.convert/unnormalized-legacy-ref
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
    (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 

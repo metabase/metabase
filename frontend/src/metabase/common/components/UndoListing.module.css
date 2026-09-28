@@ -9,9 +9,17 @@
 }
 
 .toast {
+  --toast-row-height: rem(24px);
+  --toast-line-height: rem(20px);
+  --toast-icon-size: rem(16px);
+
   position: absolute;
   bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: max-content;
+  min-height: rem(56px);
 }
 
 .progress {
@@ -21,4 +29,33 @@
 
 .toast:hover .progress {
   animation-play-state: paused;
+}
+
+.message {
+  padding-block: calc((var(--toast-row-height) - var(--toast-line-height)) / 2);
+  overflow: hidden;
+  line-height: var(--toast-line-height);
+}
+
+.messageIcon {
+  margin-block-start: calc(
+    (var(--toast-line-height) - var(--toast-icon-size)) / 2
+  );
+}
+
+.controls {
+  min-height: var(--toast-row-height);
+  overflow: hidden;
+}
+
+.actionButton {
+  height: var(--toast-row-height);
+}
+
+.dismissIcon {
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.7;
+  }
 }

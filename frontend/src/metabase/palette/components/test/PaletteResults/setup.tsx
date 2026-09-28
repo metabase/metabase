@@ -153,11 +153,15 @@ export const commonSetup = ({
         app: createMockAdminAppState({
           paths: [
             {
-              name: "Permissions",
+              getName: () => "Permissions",
               path: "/admin/permissions",
               key: "permissions",
             },
-            { name: "Settings", path: "/admin/settings", key: "settings" },
+            {
+              getName: () => "Settings",
+              path: "/admin/settings",
+              key: "settings",
+            },
           ],
         }),
       })

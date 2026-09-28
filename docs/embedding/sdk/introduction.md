@@ -119,7 +119,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 ## Modular embedding SDK source code
 
-You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk-package).
 
 ## Modular embedding SDK on npm
 

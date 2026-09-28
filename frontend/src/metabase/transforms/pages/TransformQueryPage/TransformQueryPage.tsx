@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -20,14 +20,11 @@ import { loadQueryEditorWithParameters } from "metabase/parameters/components/Qu
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useLocation, useNavigate, useParams } from "metabase/router";
-import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type {
   Database,
-  DatasetQuery,
-  DraftTransformSource,
   Transform,
   UpdateTransformRequest,
 } from "metabase-types/api";
@@ -38,10 +35,7 @@ import {
   getInitialValues,
 } from "../../components/IncrementalTransform/form";
 import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
-import {
-  TransformEditor,
-  type TransformEditorProps,
-} from "../../components/TransformEditor";
+import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
@@ -110,15 +104,7 @@ function TransformQueryPageBody({
   readOnly,
   remoteSyncReadOnly,
 }: TransformQueryPageBodyProps) {
-  const {
-    source,
-    proposedSource,
-    isDirty,
-    setSource,
-    setSourceAndRejectProposed,
-    acceptProposed,
-    rejectProposed,
-  } = useSourceState({
+  const { source, isDirty, setSource } = useSourceState({
     transformId: transform.id,
     initialSource: transform.source,
   });
@@ -134,21 +120,6 @@ function TransformQueryPageBody({
     { open: openTurnOffIncremental, close: closeTurnOffIncremental },
   ] = useDisclosure(false);
 
-  const lastRunError = useMemo(() => {
-    if (!transform.last_run) {
-      return undefined;
-    }
-    return transform.last_run.status === "failed"
-      ? (transform.last_run.message ?? undefined)
-      : undefined;
-  }, [transform.last_run]);
-  const [dryRunError, setDryRunError] = useState<string | undefined>(undefined);
-  useRegisterMetabotTransformContext(
-    transform,
-    source,
-    dryRunError ?? lastRunError,
-  );
-
   const handleResetRef = useLatest(() => {
     setSource(transform.source);
     setUiState(getInitialUiState());
@@ -160,9 +131,9 @@ function TransformQueryPageBody({
 
   useEffect(() => {
     if (source.type !== "python" && !isEditMode) {
-      setSourceAndRejectProposed(transform.source);
+      setSource(transform.source);
     }
-  }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
+  }, [source.type, isEditMode, setSource, transform.source]);
 
   useEffect(() => {
     if (isEditRoute && remoteSyncReadOnly) {
@@ -266,32 +237,21 @@ function TransformQueryPageBody({
           ) : source.type === "python" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
-              proposedSource={
-                proposedSource?.type === "python" ? proposedSource : undefined
-              }
               uiOptions={{ readOnly }}
               isEditMode={isEditMode}
               transform={transform}
-              onChangeSource={setSourceAndRejectProposed}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
-              onDryRunErrorChange={setDryRunError}
+              onChangeSource={setSource}
             />
           ) : (
             <TransformEditor
               source={source}
-              proposedSource={
-                proposedSource?.type === "query" ? proposedSource : undefined
-              }
               uiState={uiState}
               // TODO (Uladzimir 2026-01-28) -- probably not the proper fix
               uiOptions={{ resizable: isEditMode && !readOnly }}
               isEditMode={isEditMode}
               databases={databases}
-              onChangeSource={setSourceAndRejectProposed}
+              onChangeSource={setSource}
               onChangeUiState={setUiState}
-              onAcceptProposed={acceptProposed}
-              onRejectProposed={rejectProposed}
               transform={transform}
               readOnly={readOnly}
             />
@@ -306,83 +266,8 @@ function TransformQueryPageBody({
         onConfirm={handleConfirmTurnOffIncremental}
         onClose={closeTurnOffIncremental}
       />
-      <LeaveRouteConfirmModal
-        isEnabled={isDirty && !isSaving}
-        onConfirm={rejectProposed}
-      />
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
     </>
-  );
-}
-
-export type TransformQueryPageEditorUiState = ReturnType<
-  typeof getInitialUiState
->;
-
-export type TransformQueryPageEditorProps = {
-  source: DraftTransformSource;
-  proposedSource?: DraftTransformSource;
-  uiState: TransformQueryPageEditorUiState;
-  databases: Database[];
-  setSourceAndRejectProposed: (source: DraftTransformSource) => void;
-  setUiState: (uiState: TransformQueryPageEditorUiState) => void;
-  isEditMode?: boolean;
-  acceptProposed: () => void;
-  rejectProposed: () => void;
-  uiOptions?: TransformEditorProps["uiOptions"];
-  onDryRunErrorChange?: (error: string | undefined) => void;
-  onRunQueryStart?: (query: DatasetQuery) => boolean | void;
-  onRunTransform?: (result: any) => void;
-  onRun?: () => void;
-};
-
-export function TransformQueryPageEditor({
-  source,
-  proposedSource,
-  uiState,
-
-  uiOptions,
-  databases,
-  setSourceAndRejectProposed,
-  setUiState,
-  isEditMode = false,
-  acceptProposed,
-  rejectProposed,
-  onDryRunErrorChange,
-  onRunQueryStart,
-  onRunTransform,
-  onRun,
-}: TransformQueryPageEditorProps) {
-  return source.type === "python" ? (
-    <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-      source={source}
-      uiOptions={uiOptions}
-      proposedSource={
-        proposedSource?.type === "python" ? proposedSource : undefined
-      }
-      isEditMode={isEditMode}
-      onChangeSource={setSourceAndRejectProposed}
-      onAcceptProposed={acceptProposed}
-      onRejectProposed={rejectProposed}
-      onDryRunErrorChange={onDryRunErrorChange}
-      onRunTransform={onRunTransform}
-      onRun={onRun}
-    />
-  ) : (
-    <TransformEditor
-      source={source}
-      proposedSource={
-        proposedSource?.type === "query" ? proposedSource : undefined
-      }
-      uiState={uiState}
-      uiOptions={uiOptions}
-      databases={databases}
-      isEditMode={isEditMode}
-      onChangeSource={setSourceAndRejectProposed}
-      onChangeUiState={setUiState}
-      onAcceptProposed={acceptProposed}
-      onRejectProposed={rejectProposed}
-      onRunQueryStart={onRunQueryStart}
-    />
   );
 }
 

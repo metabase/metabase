@@ -398,3 +398,38 @@
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
+
+(defn user-name-and-email
+  "The first name, last name, and email of the User with `user-id`, or nil."
+  [user-id]
+  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+
+(defn users-names-and-emails
+  "The first names, last names, and emails of the Users with `user-ids`."
+  [user-ids]
+  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
+
+(defn pulse-channel-kinds-for-pulse
+  "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
+  [pulse-id]
+  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
+
+(defn pulse-channel-recipient-rows
+  "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
+  [channel-id]
+  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id channel-id))
+
+(defn dashboard-parameters
+  "The id and parameters of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+
+(defn dashboard-name-description-creator
+  "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
+  [dashboard-id]
+  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+
+(defn unarchived-pulses-for-dashboard
+  "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
+  [dashboard-id]
+  (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))

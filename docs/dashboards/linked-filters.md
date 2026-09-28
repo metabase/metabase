@@ -17,8 +17,8 @@ You can only link dashboard filters that are wired to database columns (not cust
 Filters can only be linked when they're connected to columns that have an explicit relationship in the table metadata. By relationship, we mean that the columns should be either:
 
 - In the same table.
-- In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata-editing.md).
-- In two different tables that have foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata-editing.md).
+- In two different tables that have a foreign key relationship specified in the [table metadata](../data-modeling/metadata/metadata-editing.md).
+- In two different tables that have foreign key relationships to one or more intermediate tables, as specified in the [table metadata](../data-modeling/metadata/metadata-editing.md).
 
 ![Setting up foreign key in table metadata](./images/foreign-key-linked-filters.png)
 

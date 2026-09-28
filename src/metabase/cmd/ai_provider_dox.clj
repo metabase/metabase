@@ -18,10 +18,11 @@
 (def ^:private intro-resource "metabase/cmd/resources/ai-provider-intro.md")
 
 (def ^:private provider-notes-resources
-  "Hand-written prose appended to a provider type's section, keyed by type. Only the managed provider has an entry: its
-  section is otherwise a models table, and what an admin needs to know about it — that it's a Metabase Cloud offering,
-  how it's billed, how it authenticates — is prose rather than anything the registry holds."
-  {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"})
+  "Hand-written prose appended to a provider type's section, keyed by type, for what an admin needs to know that the
+  registry doesn't hold. The managed provider's covers that it's a Metabase Cloud offering, how it's billed, and how it
+  authenticates. Bedrock's covers the IAM actions the mantle endpoint needs and why the model picker is region-scoped."
+  {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
+   "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"})
 
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."

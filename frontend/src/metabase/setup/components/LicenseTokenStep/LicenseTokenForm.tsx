@@ -21,7 +21,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import { LICENSE_TOKEN_SCHEMA } from "./constants";
+import { getLicenseTokenSchema } from "./constants";
 
 type LicenseTokenFormProps = {
   onSubmit: (token: string) => Promise<void>;
@@ -47,7 +47,7 @@ export const LicenseTokenForm = ({
   return (
     <FormProvider
       initialValues={{ license_token: initialValue }}
-      validationSchema={LICENSE_TOKEN_SCHEMA}
+      validationSchema={getLicenseTokenSchema()}
       onSubmit={(values) => onSubmit(values.license_token)}
     >
       {({ errors, setValues }) => (
@@ -101,17 +101,16 @@ export const LicenseTokenForm = ({
             />
           </Flex>
           <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xxl" mb="lg" />
-          <Box>
+          <Stack gap="xs" align="flex-start">
             <Button
               onClick={onSkip}
-              variant="subtle"
-              px={0}
-              fw="normal"
+              variant="transparent"
+              size="compact-md"
             >{t`I'll activate later`}</Button>
-            <Text c="text-disabled" size="sm">
+            <Text c="text-secondary" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
-          </Box>
+          </Stack>
         </Form>
       )}
     </FormProvider>

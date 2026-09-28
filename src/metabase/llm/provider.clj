@@ -18,7 +18,7 @@
   [[resolve-model-ref]] turns one into the provider type, model, and credentials an adapter needs."
   (:require
    [clojure.string :as str]
-   [metabase.llm.settings :as llm.settings]
+   [metabase.llm.provider.settings :as llm.provider.settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.current :as request.current]
    [metabase.settings.core :as setting]
@@ -38,7 +38,7 @@
 
 (def ^:private aws-region-options
   (mapv (fn [region] {:value region :label region})
-        (sort llm.settings/known-aws-regions)))
+        (sort llm.provider.settings/known-aws-regions)))
 
 (def ollama-self-hosted
   "The `:hosting` value for a self-hosted Ollama. Named rather than inlined because the adapter
@@ -66,10 +66,10 @@
                      :required?   true
                      :placeholder "sk-ant-api03-..."
                      :prefix      "sk-ant-"
-                     :docs-url    "https://console.anthropic.com/settings/keys"}
+                     :docs-url    "https://platform.claude.com/settings/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -87,7 +87,7 @@
                      :docs-url    "https://platform.openai.com/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -105,7 +105,7 @@
                      :docs-url    "https://openrouter.ai/keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -123,7 +123,7 @@
                      :docs-url    "https://console.mistral.ai/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -141,7 +141,7 @@
                      :docs-url    "https://z.ai/manage-apikey/apikey-list"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -158,7 +158,7 @@
                      :docs-url    "https://platform.kimi.ai/console/api-keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -178,7 +178,7 @@
                      :docs-url    "https://platform.deepseek.com/api_keys"}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
@@ -211,7 +211,7 @@
                      :type        :text
                      :placeholder (deferred-tru "my-project")
                      :validate    (fn [value]
-                                    (when-not (llm.settings/valid-google-project-id? value)
+                                    (when-not (llm.provider.settings/valid-google-project-id? value)
                                       (tru "\"{0}\" is not a valid Google Cloud project ID. Use the project ID — 6 to 30 lowercase letters, digits and hyphens — rather than the project name or number." value)))
                      :help        (deferred-tru "The Google Cloud project to use. Optional if the service account key provides it.")
                      :docs-url    "https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects"}
@@ -220,7 +220,7 @@
                      :type      :text
                      :placeholder "global"
                      :validate  (fn [value]
-                                  (when-not (llm.settings/valid-google-location? value)
+                                  (when-not (llm.provider.settings/valid-google-location? value)
                                     (tru "\"{0}\" is not a valid Google Cloud location." value)))
                      :help      (deferred-tru "Optional. Defaults to global.")}
                     {:key       :auth-method
@@ -249,11 +249,11 @@
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
-                     :validate  llm.settings/llm-url-problem
+                     :validate  llm.provider.settings/llm-url-problem
                      :label     (deferred-tru "API base URL")
                      :type      :text
                      :advanced? true
-                     :default   llm.settings/google-global-api-base-url
+                     :default   llm.provider.settings/google-global-api-base-url
                      :help      (deferred-tru "Derived from the location when left at the global host.")}]}
    {:type          "azure"
     :label         (deferred-tru "Microsoft Azure")
@@ -270,7 +270,7 @@
                      :docs-url    "https://ai.azure.com"}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
-                     :validate    llm.settings/llm-url-problem
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -333,7 +333,7 @@
     :default-model nil
     :fields        [{:key         :base-url
                      :normalize   strip-trailing-slashes
-                     :validate    llm.settings/llm-url-problem
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :required?   true
@@ -373,7 +373,7 @@
                      :default   ollama-self-hosted}
                     {:key         :base-url
                      :normalize   strip-trailing-slashes
-                     :validate    llm.settings/llm-url-problem
+                     :validate    llm.provider.settings/llm-url-problem
                      :label       (deferred-tru "API base URL")
                      :type        :text
                      :show-when   {:field :hosting :value ollama-self-hosted}
@@ -417,6 +417,12 @@
   (or (premium-features/is-hosted?)
       (nil? (premium-features/canonically-has-feature? :hosting))))
 
+(defn config-field-keys
+  "Every key a connection's `:config` may carry: the `:fields` of every registered provider type, taken together. Which
+  of them a given connection may use depends on its type; [[validate-config!]] checks that."
+  []
+  (into (sorted-set) (comp (mapcat :fields) (map :key)) provider-type-registry))
+
 (defn provider-type
   "The registry entry for `type-name`, or nil when it is not a known provider type."
   [type-name]
@@ -439,7 +445,7 @@
   everything else is always available."
   [type-name]
   (if (managed-type? type-name)
-    (some? (llm.settings/llm-proxy-base-url))
+    (some? (llm.provider.settings/llm-proxy-base-url))
     (some? (provider-type type-name))))
 
 (defn secret-field-keys
@@ -635,7 +641,7 @@
   [type-name config]
   (and (nil? (config-problem type-name config))
        (if (managed-type? type-name)
-         (some? (llm.settings/llm-proxy-base-url))
+         (some? (llm.provider.settings/llm-proxy-base-url))
          (credentials-complete? type-name config))))
 
 ;;; ---------------------------------------- Connections configured by env var ------------------------------------
@@ -713,7 +719,7 @@
 
   Returns nil for a type no per-provider variable configures — the managed provider, which holds no credentials of
   its own, is the only one today. Setting these is the supported way to configure a single connection without writing
-  JSON into [[metabase.llm.settings/llm-providers]]."
+  JSON into [[metabase.llm.provider.settings/llm-providers]]."
   [type-name]
   (when-let [{:keys [settings]} (get single-provider-settings type-name)]
     (not-empty
@@ -772,7 +778,7 @@
   from [[connections]], so rebuilding the list from there would drop it from the setting the next time an admin
   saved anything — the credentials would be gone for good once the env var came back off."
   []
-  (vec (llm.settings/llm-providers)))
+  (vec (llm.provider.settings/llm-providers)))
 
 (defn- annotated-stored-connections
   []
@@ -906,7 +912,7 @@
 
 (defn validate-changed-connections!
   "Run the per-field `:validate` hooks over the fields `conns` changes. This is the
-  [[metabase.llm.settings/llm-providers]] setter, so trusted provisioning such as `config.yml` also validates base URLs.
+  [[metabase.llm.provider.settings/llm-providers]] setter, so trusted provisioning such as `config.yml` also validates base URLs.
   Direct generic settings API writes are forbidden by that setter.
 
   Only the `:validate` hooks: required fields, prefixes and options are the connection API's business, and demanding
@@ -958,10 +964,10 @@
   "Persist `conns` as the stored connection list, dropping the derived annotation keys and any field
   the connection explicitly switches off."
   [conns]
-  (llm.settings/set-llm-providers! (mapv #(-> %
-                                              (dissoc :source :env-vars :env-fields)
-                                              drop-switched-off-fields)
-                                         conns)))
+  (llm.provider.settings/set-llm-providers! (mapv #(-> %
+                                                       (dissoc :source :env-vars :env-fields)
+                                                       drop-switched-off-fields)
+                                                  conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 

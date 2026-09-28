@@ -23,7 +23,7 @@ Depending on the data type of the column, Metabase will present different filter
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
-- **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
+- **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/metadata/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
 - **Latitude and longitude columns** will have the same options as numeric columns, but also a special "Inside" filter type that will let you filter on both latitude and longitude simultaneously.
 
 ## Filtering by date
@@ -43,4 +43,4 @@ Learn more about writing [expressions](./expressions.md) or skip right to the [l
 
 ## Filtering by a segment
 
-If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
+If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/semantic-layer/segments.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”

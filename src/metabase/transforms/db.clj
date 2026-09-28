@@ -11,6 +11,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (def ^:private no-active-run-clause
@@ -401,9 +402,11 @@
                         :where  [:= :rn [:inline 1]]}))
 
 (mu/defn active-run-for-transform
-  "The active TransformRun of the Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/TransformRun :transform_id transform-id :is_active true))
+  "The active TransformRun of the Transform with `transform-id`, or nil. `transform-id` is nil for a
+  transform that hasn't been saved yet, in which case there is no run either."
+  [transform-id :- [:maybe ::lib.schema.id/transform]]
+  (when transform-id
+    (t2/select-one :model/TransformRun :transform_id transform-id :is_active true)))
 
 (mu/defn active-run-ids-of-parent
   "The IDs of the active TransformRuns whose `parent-column` is `parent-run-id`."
@@ -776,8 +779,8 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table table-id))
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -792,7 +795,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids]))
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-indexes-for-transforms
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
@@ -802,17 +805,17 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field field-id))
+  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-exists?
   "Whether a Field with `field-id` exists."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Field :id field-id))
+  (t2/exists? :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-field-ids-by-name
   "A map of name to ID for the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
+  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-users
   "The active Users with `user-ids`."

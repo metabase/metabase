@@ -115,6 +115,7 @@
    [java-time.api :as t]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
+   [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.util :as u]))
 
@@ -153,19 +154,12 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
-(let [resolved-fn (delay (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns))]
-  (defn- searchable-columns-fn
-    "Get searchable columns for a model.
-    Lazily resolves the function from the legacy namespace to avoid circular dependencies."
-    [model search-native-query]
-    (@resolved-fn model search-native-query)))
-
 (defn- text-scores-with
   "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column (searchable-columns-fn (:model search-result) search-native-query)
+  (let [scores (for [column (search-model/searchable-columns (:model search-result) search-native-query)
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let [matched-text (-> search-result

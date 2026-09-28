@@ -77,6 +77,9 @@ jobs:
 
       - name: Generate AI provider documentation
         id: generate_ai_provider_docs
+        # The generator only exists on branches that ship the multi-provider registry (master / 64+), but
+        # this reusable workflow always runs from master, so skip the step on release branches without it.
+        if: hashFiles('src/metabase/cmd/ai_provider_dox.clj') != ''
         run: |
           set -e  # Exit on any error
           echo "Generating AI provider documentation..."

@@ -72,6 +72,67 @@ describe("DataAppView", () => {
     expect(screen.getByText("Couldn’t load this data app")).toBeInTheDocument();
   });
 
+  it("shows a permission error when the user cannot access the data app", () => {
+    setup({ error: { status: 403 } });
+
+    expect(
+      screen.getByText("You don’t have access to this data app"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Ask an administrator for access to this data app."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText("Show error details")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Gather diagnostic information"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a not-published screen when the app has no resource collection yet", () => {
+    setup({ error: { status: 409 } });
+
+    expect(
+      screen.getByText("This data app isn’t published yet"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "An administrator needs to publish this data app before it can be opened.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the API's outdated message when the app 409s with the outdated error code", () => {
+    setup({
+      error: {
+        status: 409,
+        data: {
+          "error-code": "data-app-outdated",
+          message: "This app was built for version 1 of data apps.",
+        },
+      },
+    });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText("This app was built for version 1 of data apps."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the outdated screen to an admin, who still receives the app's metadata", () => {
+    setup({ data: createMockDataApp({ version: 1, outdated: true }) });
+
+    expect(screen.getByText("This data app is outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This app was built for version 1 of data apps. Migrate it to the current version, then rebuild and sync it again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+  });
+
   it("renders the app inside an iframe once metadata resolves", () => {
     setup({ data: createMockDataApp({ display_name: "Sales" }) });
 

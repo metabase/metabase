@@ -9,12 +9,10 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -67,20 +65,6 @@
   (throw (ex-info (tru "Querying this database requires the audit-app feature flag")
                   query)))
 
-(mu/defn remove-internal-keys :- ::lib.schema/query
-  "Pre-processing middleware. Strip internal query-processor keys from the incoming `query` so that they can only ever
-  be set by the query processor itself, not supplied by a client. Skipped while re-running pivot sub-queries, which
-  legitimately carry these keys."
-  [query :- ::lib.schema/query]
-  (cond-> query
-    (not qp.pipeline/*pivot?*) lib/prepare-after-deserialization))
-
-(mu/defn record-referenced-card-ids :- ::lib.schema/query
-  "Pre-processing middleware. Record the source-card IDs referenced by `query` under the
-  `:query-permissions/referenced-card-ids` key."
-  [query :- ::lib.schema/query]
-  (u/assoc-dissoc query :query-permissions/referenced-card-ids (lib/all-source-card-ids-recursive query)))
-
 (mu/defn check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [query :- ::qp.schema/any-query]
@@ -117,8 +101,16 @@
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
             *param-values-query*
-            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-              (throw (query-perms/perms-exception required-perms)))
+            (do
+              ;; The value-source Card itself is read-checked by the caller, but its query may nest other Cards; the
+              ;; user must be able to read every one of those too, just like when running the Card normally.
+              ;; Otherwise a readable wrapper Card launders the values of a Card the user cannot read. The
+              ;; result_metadata check covers tables a Card's saved columns name but its query footprint does not.
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-read-perms database-id card-id)
+                (query-perms/check-card-result-metadata-data-perms database-id card-id))
+              (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+                (throw (query-perms/perms-exception required-perms))))
 
             ;; Ad-hoc query (not a saved question)
             :else

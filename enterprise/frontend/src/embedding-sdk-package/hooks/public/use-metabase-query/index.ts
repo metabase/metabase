@@ -12,12 +12,14 @@ export { breakout, filter, orderBy } from "./query-helpers";
 export { useMetabaseQuery } from "./use-metabase-query";
 export { useMetabaseQueryObject } from "./use-metabase-query-object";
 export type {
+  DefinedQuery,
   LocalFieldReference,
   MetabaseBreakout,
+  MetabaseDynamicColumn,
+  MetabaseDynamicQuery,
   MetabaseOrderBy,
   MetabaseQueryOptions,
   OrderByDirection,
-  QuestionColumnReference,
   UseMetabaseQueryResult,
 } from "./types";
 export type { UseMetabaseQueryObjectResult } from "./use-metabase-query-object";

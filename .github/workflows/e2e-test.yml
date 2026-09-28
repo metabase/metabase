@@ -102,6 +102,7 @@ jobs:
           postgres: true
           mysql: true
           mongo: true
+          mocksaml: true
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
         uses: ./.github/actions/fetch-artifact

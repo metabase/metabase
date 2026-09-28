@@ -1,0 +1,200 @@
+{:cases
+ [{:name    "one table"
+   :dialect "postgres"
+   :sql     "SELECT * FROM users"
+   :tables  [[nil nil "users"]]}
+
+  {:name    "a join names both tables"
+   :dialect "postgres"
+   :sql     "SELECT u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id"
+   :tables  [[nil nil "orders"] [nil nil "users"]]}
+
+  {:name    "the same table name in two schemas is two tables"
+   :dialect "postgres"
+   :sql     "SELECT public.users.id, other.users.id FROM public.users u1 JOIN other.users u2 ON u1.id = u2.id"
+   :tables  [[nil "other" "users"] [nil "public" "users"]]}
+
+  {:name    "a CTE is not a table, and the table it reads is"
+   :dialect "postgres"
+   :sql     "WITH active AS (SELECT * FROM users WHERE active) SELECT * FROM active"
+   :tables  [[nil nil "users"]]}
+
+  {:name    "a CTE named after a real table shadows it"
+   :dialect "postgres"
+   :sql     "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders, people"
+   :tables  [[nil nil "people"]]}
+
+  {:name    "a CTE reading a CTE"
+   :dialect "postgres"
+   :sql     "WITH a AS (SELECT id FROM people), b AS (SELECT id FROM a) SELECT * FROM b"
+   :tables  [[nil nil "people"]]}
+
+  {:name    "a recursive CTE"
+   :dialect "postgres"
+   :sql     "WITH RECURSIVE r AS (SELECT id, parent_id FROM people UNION ALL SELECT p.id, p.parent_id FROM people p JOIN r ON p.parent_id = r.id) SELECT * FROM r"
+   :tables  [[nil nil "people"]]}
+
+  {:name    "a derived table is not a table, and the table inside it is"
+   :dialect "postgres"
+   :sql     "SELECT * FROM (SELECT id FROM users) AS sub"
+   :tables  [[nil nil "users"]]}
+
+  {:name    "a correlated subquery in the predicate is read"
+   :dialect "postgres"
+   :sql     "SELECT * FROM orders o WHERE EXISTS (SELECT 1 FROM people p WHERE p.id = o.user_id)"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "a table buried under several levels of subquery"
+   :dialect "postgres"
+   :sql     "SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT id FROM secrets) a) b) c"
+   :tables  [[nil nil "secrets"]]}
+
+  {:name    "both arms of a union"
+   :dialect "postgres"
+   :sql     "SELECT id, name FROM a UNION SELECT id, name FROM b"
+   :tables  [[nil nil "a"] [nil nil "b"]]}
+
+  {:name    "a union nested in a derived table"
+   :dialect "snowflake"
+   :sql     "SELECT * FROM (SELECT id FROM a UNION SELECT id FROM b) AS combined"
+   :tables  [[nil nil "a"] [nil nil "b"]]}
+
+  {:name    "intersect and except read both sides"
+   :dialect "bigquery"
+   :sql     "SELECT id FROM a INTERSECT DISTINCT SELECT id FROM b"
+   :tables  [[nil nil "a"] [nil nil "b"]]}
+
+  {:name    "a set operation inside a CTE"
+   :dialect "postgres"
+   :sql     "WITH u AS (SELECT id FROM a UNION ALL SELECT id FROM b) SELECT * FROM u"
+   :tables  [[nil nil "a"] [nil nil "b"]]}
+
+  {:name    "a table function is not a table, and the table beside it is"
+   :dialect "postgres"
+   :sql     "SELECT o.* FROM orders o, generate_series(1, 10) g"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "UNNEST is not a table either"
+   :dialect "bigquery"
+   :sql     "SELECT o.* FROM orders o, UNNEST([1]) AS val"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "VALUES is not a table"
+   :dialect "postgres"
+   :sql     "SELECT * FROM (VALUES (1), (2)) AS t(id) JOIN orders o ON o.id = t.id"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "a lateral join reads the table it is lateral to"
+   :dialect "postgres"
+   :sql     "SELECT * FROM orders o CROSS JOIN LATERAL (SELECT id FROM people p WHERE p.id = o.user_id) x"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "a window function does not hide the table under it"
+   :dialect "postgres"
+   :sql     "SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY created_at) FROM orders"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "an alias shadowing a real table name is an alias"
+   :dialect "postgres"
+   :sql     "SELECT people.id FROM orders AS people"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "the same table joined to itself twice"
+   :dialect "postgres"
+   :sql     "SELECT a.id FROM people a JOIN people b ON a.parent_id = b.id"
+   :tables  [[nil nil "people"]]}
+
+  {:name    "BigQuery fills all three slots from project.dataset.table"
+   :dialect "bigquery"
+   :sql     "SELECT * FROM myproject.analytics.events"
+   :tables  [["myproject" "analytics" "events"]]}
+
+  {:name    "Snowflake fills all three slots from database.schema.table"
+   :dialect "snowflake"
+   :sql     "SELECT * FROM mydb.public.orders"
+   :tables  [["mydb" "public" "orders"]]}
+
+  {:name    "Postgres puts a schema in the middle slot and leaves the catalog empty"
+   :dialect "postgres"
+   :sql     "SELECT * FROM public.users u JOIN other_schema.accounts a ON u.id = a.user_id"
+   :tables  [[nil "other_schema" "accounts"] [nil "public" "users"]]}
+
+  {:name    "MySQL puts a database in the schema slot, having no level between"
+   :dialect "mysql"
+   :sql     "SELECT * FROM mydb.users"
+   :tables  [[nil "mydb" "users"]]}
+
+  {:name    "H2 is read with sqlglot's default dialect, as transform testing reads it"
+   :dialect nil
+   :sql     "SELECT ID, NAME FROM PUBLIC.PEOPLE"
+   :tables  [[nil "public" "people"]]}
+
+  {:name    "SQL Server brackets quote an identifier"
+   :dialect "tsql"
+   :sql     "SELECT * FROM [dbo].[orders]"
+   :tables  [[nil "dbo" "orders"]]}
+
+  {:name    "ClickHouse reads a two-part name as database.table"
+   :dialect "clickhouse"
+   :sql     "SELECT * FROM analytics.events"
+   :tables  [[nil "analytics" "events"]]}
+
+  {:name    "a name in a comment is not a table"
+   :dialect "postgres"
+   :sql     "SELECT * FROM orders -- SELECT * FROM secrets"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "every statement is read, not only the first"
+   :dialect "postgres"
+   :sql     "SELECT * FROM orders; DELETE FROM people"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table a DELETE writes is one of its tables"
+   :dialect "postgres"
+   :sql     "DELETE FROM people WHERE id IN (SELECT id FROM orders)"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table an INSERT writes, likewise"
+   :dialect "postgres"
+   :sql     "INSERT INTO people (id) SELECT id FROM orders"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table an UPDATE writes, likewise"
+   :dialect "postgres"
+   :sql     "UPDATE people SET total = 1 WHERE id IN (SELECT id FROM orders)"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "the table a CREATE TABLE AS SELECT writes, and the one it reads"
+   :dialect "postgres"
+   :sql     "CREATE TABLE summary AS SELECT id FROM orders"
+   :tables  [[nil nil "orders"] [nil nil "summary"]]}
+
+  {:name    "the view a CREATE VIEW declares, and the table behind it"
+   :dialect "postgres"
+   :sql     "CREATE VIEW v_orders AS SELECT id FROM orders"
+   :tables  [[nil nil "orders"] [nil nil "v_orders"]]}
+
+  {:name    "a name written as one quoted identifier holding a dot is one table"
+   :dialect nil
+   :sql     "SELECT ssn FROM \"PUBLIC.SECRETS\""
+   :tables  [[nil nil "public.secrets"]]}
+
+  {:name    "both tables of a MERGE"
+   :dialect "postgres"
+   :sql     "MERGE INTO people tt USING orders ss ON tt.id = ss.id WHEN MATCHED THEN UPDATE SET total = ss.total"
+   :tables  [[nil nil "orders"] [nil nil "people"]]}
+
+  {:name    "a view is the table it names, the tables behind it being the warehouse's business"
+   :dialect "postgres"
+   :sql     "SELECT ssn FROM masked_view"
+   :tables  [[nil nil "masked_view"]]}
+
+  {:name    "SQL inside a string literal is a string"
+   :dialect "postgres"
+   :sql     "SELECT * FROM orders WHERE note = 'SELECT ssn FROM secrets'"
+   :tables  [[nil nil "orders"]]}
+
+  {:name    "a trailing comma the engine would refuse still names its table"
+   :dialect "clickhouse"
+   :sql     "SELECT id, FROM customers"
+   :tables  [[nil nil "customers"]]}]}

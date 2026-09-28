@@ -51,7 +51,7 @@ On self-hosted Metabases, this option determines whether or not you allow [anony
 
 {% include plans-blockquote.html feature="Collecting user data" %}
 
-You can switch on logging of IP addresses, user agents, embed path, query parameters, and Metabot conversation metadata for people using your Metabase, both for people logging in directly to Metabase, and for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can switch on logging of IP addresses, user agents, embed path, query parameters, the values people submit when they run an action, and Metabot conversation metadata for people using your Metabase, both for people logging in directly to Metabase, and for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 By default, collection of user data is turned **off**.
 
@@ -61,7 +61,7 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models/models.md).
 
 ## Enable X-rays
 

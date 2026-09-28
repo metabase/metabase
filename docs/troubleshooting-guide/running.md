@@ -93,4 +93,4 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 
 If you see the above error, ignore it. Your Metabase is perfectly healthy and performing as it should.
 
-[eclipse-memory-analyzer]: https://www.eclipse.org/mat/
+[eclipse-memory-analyzer]: https://eclipse.dev/mat/

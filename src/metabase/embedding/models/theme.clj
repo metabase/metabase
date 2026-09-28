@@ -1,6 +1,7 @@
 (ns metabase.embedding.models.theme
   "Model for embedding themes for use in the embedding theme editor."
   (:require
+   [metabase.embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -25,7 +26,8 @@
 (defmethod serdes/make-spec "EmbeddingTheme"
   [_model-name _opts]
   {:copy      [:entity_id :name :settings]
-   :skip      []
+   ;; is_default means the theme is a default theme for this instance.
+   :skip      [:is_default]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)}})
 

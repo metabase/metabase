@@ -40,7 +40,6 @@
   [query-params]
   {:database                 (database-reference (:database query-params))
    :library-collection-refs  (comma-separated-references (:library-collections query-params))
-   :question-collection-refs (comma-separated-references (:question-collections query-params))
    :include-data-library?    (enabled? (:include-data-library query-params))
    :include-metric-library?  (enabled? (:include-metric-library query-params))
    :include-models?          (enabled? (:include-models query-params))})
