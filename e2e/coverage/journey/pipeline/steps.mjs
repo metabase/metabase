@@ -223,11 +223,14 @@ const DROPPED_COMMANDS = new Set([
   "env",
 ]);
 
+// @cypress/code-coverage calls `cy.window({ log: false })` in its own beforeEach.
+// Schema 1 records its arguments, and schema 2 records them as `<hidden>`.
 export function isDroppedCommand(event) {
   const chain = event.chain ?? "";
   return (
     DROPPED_COMMANDS.has(event.name) ||
     chain.startsWith('window({"log":false})') ||
+    chain.startsWith("window(<hidden>)") ||
     chain.startsWith("task(")
   );
 }
