@@ -161,13 +161,14 @@
   (binding [serdes/*import-database-fk* (constantly 1)
             serdes/*import-table-fk*    (constantly 2)
             serdes/*import-field-fk*    (constantly 3)]
-    (testing "a legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons as literals"
+    (testing "a legacy MBQL query is converted to MBQL 5, keeping integer literals in comparisons and aggregations as literals"
       (is (=? {:lib/type :mbql/query
                :database 1
                :stages   [{:source-table 2
                            :filters      [[:= {} [:field {} 3] 1]
                                           [:= {} 1 1]
                                           [:< {} 4 5]]
+                           :aggregation  [[:sum-where {} [:field {} 3] [:= {} 6 6]]]
                            :joins        [{:alias      "J"
                                            :conditions [[:= {} 1 1]]}]}]}
               (serdes/import-mbql
@@ -178,6 +179,7 @@
                                           ["=" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] 1]
                                           ["=" 1 1]
                                           ["<" 4 5]]
+                           :aggregation  [["sum-where" ["field" ["DB" "SCHEMA" "TABLE" "FIELD"] nil] ["=" 6 6]]]
                            :joins        [{:source-table ["DB" "SCHEMA" "TABLE"]
                                            :alias        "J"
                                            :condition    ["=" 1 1]}]}}))))

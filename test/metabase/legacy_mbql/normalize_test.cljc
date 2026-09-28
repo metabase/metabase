@@ -915,11 +915,15 @@
                                               [:between 5 1 10]
                                               [:contains 6 "x"]
                                               [:= [:field 10 nil] 20]]
+                               :aggregation  [[:sum-where [:field 10 nil] [:= 7 7]]
+                                              [:count-where [:< 8 9]]
+                                              [:sum [:case [[[:= 11 11] 1]]]]
+                                              [:sum 12]]
                                :joins        [{:source-table 2, :alias "J", :condition ["=" 1 1]}]}}
         normalize  (fn [options]
                      (-> (mbql.normalize/normalize ::mbql.s/Query query options)
                          :query
-                         (select-keys [:filter :joins])))
+                         (select-keys [:filter :aggregation :joins])))
         literals   {:filter [:and
                              [:= 1 1]
                              [:!= 2 3]
@@ -927,6 +931,10 @@
                              [:between 5 1 10]
                              [:contains 6 "x"]
                              [:= [:field 10 nil] 20]]
+                    :aggregation [[:sum-where [:field 10 nil] [:= 7 7]]
+                                  [:count-where [:< 8 9]]
+                                  [:sum [:case [[[:= 11 11] 1]]]]
+                                  [:sum 12]]
                     :joins  [{:source-table 2, :alias "J", :condition [:= 1 1]}]}
         field-refs {:filter [:and
                              [:= [:field 1 nil] 1]
@@ -935,11 +943,15 @@
                              [:between [:field 5 nil] 1 10]
                              [:contains [:field 6 nil] "x"]
                              [:= [:field 10 nil] 20]]
+                    :aggregation [[:sum-where [:field 10 nil] [:= [:field 7 nil] 7]]
+                                  [:count-where [:< [:field 8 nil] 9]]
+                                  [:sum [:case [[[:= [:field 11 nil] 11] 1]]]]
+                                  [:sum [:field 12 nil]]]
                     :joins  [{:source-table 2, :alias "J", :condition [:= [:field 1 nil] 1]}]}]
-    (testing "{:legacy-int-field-ids? false} keeps raw integers in a comparison's first argument as literals"
+    (testing "{:legacy-int-field-ids? false} keeps raw integers as literals in comparisons and aggregation arguments"
       (is (= literals
              (normalize {:legacy-int-field-ids? false}))))
-    (testing "raw integers in a comparison's first argument are treated as Field IDs by default"
+    (testing "raw integers in comparisons and aggregation arguments are treated as Field IDs by default"
       (is (= field-refs
              (normalize nil))))
     (testing "the opt-out coercer is cached separately from the default one"

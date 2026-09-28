@@ -81,15 +81,18 @@
         (into (remove (comp own-keys first)) common-clause-option-entries)
         (into entries))))
 
-(defn- normalize-mbql-clause [x]
+(defn- normalize-mbql-clause [x options]
   (when-let [schema (infer-mbql-clause-schema x)]
-    (lib.normalize/normalize schema x)))
+    (lib.normalize/normalize schema x options)))
 
+;;; The nested normalize doesn't inherit the outer coercer's options, so the `:decode/normalize` pass keeps raw
+;;; integers as literals and the `:decode/legacy-int-field-ids` pass, which runs after it, coerces them.
 (mr/def ::AnyMBQLClause
   "Schema for ANY valid MBQL clause"
   [:fn
-   {:error/message "Valid MBQL clause"
-    :decode/normalize normalize-mbql-clause}
+   {:error/message               "Valid MBQL clause"
+    :decode/normalize            #(normalize-mbql-clause % {:legacy-int-field-ids? false})
+    :decode/legacy-int-field-ids #(normalize-mbql-clause % nil)}
    helpers/normalized-mbql-clause?])
 
 (mr/def ::options-style
@@ -1319,10 +1322,7 @@
   [:and
    [:ref ::FieldOrExpressionDef]
    [:any
-    {:decode/normalize (fn [x]
-                         (if (pos-int? x)
-                           [:field x nil]
-                           x))}]])
+    {:decode/legacy-int-field-ids #'normalize-raw-positive-int-to-field-ref}]])
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
