@@ -97,21 +97,15 @@ describe("UndoListing", () => {
   describe("auto-dismiss", () => {
     const TIMEOUT = 5000;
 
-    async function advanceTime(ms: number) {
-      await act(async () => {
-        jest.advanceTimersByTime(ms);
-      });
-    }
-
     // a dismissed toast stays mounted until its exit transition finishes,
     // so settle it before asserting either way
     async function expectDismissed() {
-      await advanceTime(1000);
+      await tick(1000);
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
     }
 
     async function expectStillOpen() {
-      await advanceTime(1000);
+      await tick(1000);
       expect(screen.getByRole("status")).toBeInTheDocument();
     }
 
@@ -124,20 +118,16 @@ describe("UndoListing", () => {
         store.dispatch(addUndo({ message: "Saved", ...undo }));
       });
       // let the toast's enter transition start
-      await advanceTime(10);
+      await tick(10);
       expect(screen.getByRole("status")).toBeInTheDocument();
 
       return { user };
     }
 
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
     it("dismisses the toast after the default timeout", async () => {
       await setupTimed();
 
-      await advanceTime(TIMEOUT);
+      await tick(TIMEOUT);
 
       await expectDismissed();
     });
@@ -148,11 +138,11 @@ describe("UndoListing", () => {
         const { user } = await setupTimed(undo);
 
         await user.hover(screen.getByRole("status"));
-        await advanceTime(TIMEOUT * 2);
+        await tick(TIMEOUT * 2);
         await expectStillOpen();
 
         await user.unhover(screen.getByRole("status"));
-        await advanceTime(TIMEOUT);
+        await tick(TIMEOUT);
         await expectDismissed();
       },
     );
@@ -162,11 +152,11 @@ describe("UndoListing", () => {
 
       await user.tab();
       expect(screen.getByRole("button", { name: "Undo" })).toHaveFocus();
-      await advanceTime(TIMEOUT * 2);
+      await tick(TIMEOUT * 2);
       await expectStillOpen();
 
       await user.tab();
-      await advanceTime(TIMEOUT);
+      await tick(TIMEOUT);
       await expectDismissed();
     });
 
@@ -176,13 +166,11 @@ describe("UndoListing", () => {
       await user.hover(screen.getByRole("status"));
       await user.tab();
       await user.unhover(screen.getByRole("status"));
-      await advanceTime(TIMEOUT * 2);
+      await tick(TIMEOUT * 2);
 
       await expectStillOpen();
     });
-  });
 
-  describe("pausing on hover", () => {
     it("toast replaced under same id while hovered stays open", async () => {
       const { user, store } = await setup(
         makeUndo({ id: "paste", timeout: null, message: "Saving" }),
