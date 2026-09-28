@@ -93,7 +93,6 @@
                                              :exclusions  [org.clojure/data.avl]}
   medley/medley                             {:mvn/version "1.4.0"}              ; lightweight lib of useful functions
   metabase/connection-pool                  {:mvn/version "1.2.0"}              ; simple wrapper around C3P0. JDBC connection pools
-  metabase/java                             {:local/root "java"}                ; Java sources for the backend; see java/deps.edn
   metabase/saml20-clj                       {:mvn/version "4.3.0"
                                              :exclusions [; EE SAML integration TODO: bump version when we release the library
                                                           org.bouncycastle/bcpkix-jdk15on
@@ -220,7 +219,8 @@
  ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  :paths
- ["src" "resources"]
+ ;; java/classes: the backend's compiled Java sources; see `mb.javac`
+ ["src" "resources" "java/classes"]
 
  ;; These are needed for the Athena and Redshift drivers if you are developing against them locally. If those drivers'
  ;; dependencies are not included (i.e., if we don't have the `:drivers` profile), these repos are effectively
@@ -296,7 +296,8 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"
+                 "java/tools"] ; `mb.javac`, which `dev.java` runs before anything loads
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -372,8 +373,11 @@
   ;; clojure -M:run
   ;; clojure -M:run:drivers (include all drivers)
   ;; clojure -M:run:ee (include EE code)
+  ;; Every alias here that starts backend code compiles java/src first, if it changed (see `mb.javac`); `-e` runs
+  ;; before `-m`. With `:dev`, `user` does it instead.
   :run
-  {:main-opts ["-m" "metabase.core.bootstrap"]
+  {:extra-paths ["java/tools"]
+   :main-opts   ["-e" "((requiring-resolve 'mb.javac/compile!))" "-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Dmb.warehouse.allowed.networks=allow-all"
                "-Dmacaw.run.mode=dev"
@@ -430,7 +434,8 @@
   ;;
   ;;    clojure -M:ee:doc api-documentation
   :doc
-  {:main-opts ["-m" "metabase.core.bootstrap"]
+  {:extra-paths ["java/tools"]
+   :main-opts   ["-e" "((requiring-resolve 'mb.javac/compile!))" "-m" "metabase.core.bootstrap"]
    :jvm-opts  ["-Dmb.run.mode=prod"
                "-Dmb.warehouse.allowed.networks=allow-all"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
@@ -613,8 +618,9 @@
   ;; checks that all the namespaces we actually ship can be loaded, without any dependencies that we don't
   ;; ship (such as `:dev` dependencies). See #27009 for more context.
   :load-namespaces
-  {:extra-paths ["bin/load-namespaces/src"]
-   :main-opts   ["-m" "load-namespaces.core"
+  {:extra-paths ["bin/load-namespaces/src" "java/tools"]
+   :main-opts   ["-e" "((requiring-resolve 'mb.javac/compile!))"
+                 "-m" "load-namespaces.core"
                  "src"
                  "enterprise/backend/src"
                  "modules/drivers/athena/src"
@@ -808,10 +814,17 @@
 
 ;;; building Uberjar, build and release scripts
 
+  ;; compile java/src by hand, e.g. `clojure -X:javac :force true`; see `mb.javac`
+  :javac
+  {:replace-paths ["java/tools"]
+   :replace-deps  {}
+   :exec-fn       mb.javac/compile!}
+
   :build
   {:extra-paths
    ["bin/build/resources"
-    "bin/build/src"]
+    "bin/build/src"
+    "java/tools"]
 
    :extra-deps
    {com.bhauman/spell-spec            {:mvn/version "0.1.2"}                    ; used to find misspellings in YAML files
@@ -907,7 +920,8 @@
 
   ;; Profile Metabase start time with clojure -M:profile
   :profile
-  {:main-opts ["-m" "metabase.core.bootstrap" "profile"]
+  {:extra-paths ["java/tools"]
+   :main-opts   ["-e" "((requiring-resolve 'mb.javac/compile!))" "-m" "metabase.core.bootstrap" "profile"]
    :jvm-opts  ["-XX:+CITime" ; print time spent in JIT compiler
                "-Xlog:gc"]}
 
@@ -933,7 +947,8 @@
    :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot
-  {:main-opts ["-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}
+  {:extra-paths ["java/tools"]
+   :main-opts   ["-e" "((requiring-resolve 'mb.javac/compile!))" "-m" "metabase.xrays.automagic-dashboards.dashboard-templates"]}
 
   ;; Start a Network REPL (nrepl) that you can connect your editor to.
   ;;

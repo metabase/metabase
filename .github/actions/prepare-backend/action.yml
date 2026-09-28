@@ -70,9 +70,3 @@ runs:
         path: ${{ steps.cache-spec.outputs.m2-path }}
         key: ${{ steps.cache-spec.outputs.m2-key }}
         restore-keys: ${{ steps.cache-spec.outputs.m2-restore-key }}
-
-    # The Clojure CLI refuses to build a classpath until the `java/` local dep is compiled, so every
-    # later `clojure` invocation depends on this.
-    - name: Compile Java sources
-      shell: bash
-      run: clojure -X:deps prep
