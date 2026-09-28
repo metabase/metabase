@@ -23,12 +23,12 @@ const MAX_LISTED = 20;
 export const TOKEN_RULES = [
   {
     rule: "jwt",
-    pattern: /(?<![\w-])eyJ[\w-]+\.[\w-]+(?:\.[\w-]*)+/g,
+    pattern: /(?<![\w$-])eyJ[\w-]+\.[\w-]+(?:\.[\w-]*)+/g,
   },
   {
     rule: "prefixed-token",
     pattern:
-      /(?<![A-Za-z0-9])(?:ghp_|gho_|github_pat_|dckr_pat_|mb_dev_|airgap_)[\w.-]{8,}/g,
+      /(?<![\w$])(?:ghp_|gho_|github_pat_|dckr_pat_|mb_dev_|airgap_)[\w.-]{8,}/g,
   },
   {
     rule: "hex-64",

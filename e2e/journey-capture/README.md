@@ -289,7 +289,7 @@ Each shard runs `.github/actions/upload-journey-capture` as its `Scrub, encrypt 
 
 - every secret of the workflow that is at least 16 characters long, also trimmed and line by line, in each of these spellings: as it is, JSON-escaped once and twice, URL-encoded, and base64, standard and URL-safe, at each of the three byte alignments. Any 20 characters of any of these spellings are replaced too, which catches a secret cut off by the 300-character clip
 - JWTs: `eyJ` and at least three dot-separated parts
-- tokens that start with `ghp_`, `gho_`, `github_pat_`, `dckr_pat_`, `mb_dev_` or `airgap_`
+- tokens that start with `ghp_`, `gho_`, `github_pat_`, `dckr_pat_`, `mb_dev_` or `airgap_`, where the prefix doesn't follow a letter, digit, `_` or `$`, so class names such as `token_check$assert_airgap_allows_user_creation_BANG_` stay whole
 - runs of 64 or more hex digits
 - the value of a query parameter whose name contains `token`, `secret`, `password`, `passwd`, `session`, `jwt`, `api_key`, `auth`, `signature` or `credential`
 

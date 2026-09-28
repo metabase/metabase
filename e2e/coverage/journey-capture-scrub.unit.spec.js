@@ -882,6 +882,8 @@ describe("scrubDir on the text it writes", () => {
 });
 
 describe("scrubString", () => {
+  const PERSONAL_TOKEN = "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+
   const scrub = (text) => {
     const counts = newCounts();
     return { text: scrubString(text, textMatcher(SECRETS), counts), counts };
@@ -912,7 +914,7 @@ describe("scrubString", () => {
         "airgap_eyJhbGciOiJSU0EtT0FFUCJ9.a2V5.aXY.Y2lwaGVy.dGFn",
         "prefixed-token",
       ],
-      ["ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789", "prefixed-token"],
+      [PERSONAL_TOKEN, "prefixed-token"],
       ["github_pat_11ABCDEFG0123456789_abcdefghijklmnop", "prefixed-token"],
       ["gho_16C7e42F292c6912E7710c838347Ae178B4a", "prefixed-token"],
       ["dckr_pat_2YotnFZFEjr1zCsicMWpAA", "prefixed-token"],
@@ -923,6 +925,38 @@ describe("scrubString", () => {
       const { text, counts } = scrub(`/embed/dashboard/${shape}#titled=true`);
       expect(text).toBe(`/embed/dashboard/${PLACEHOLDER}#titled=true`);
       expect(counts).toEqual({ ...newCounts(), [rule]: 1 });
+    }
+  });
+
+  it("should replace a prefixed token at the start or after a space, quote, = or /", () => {
+    const tokens = [
+      "airgap_eyJhbGciOiJSU0EtT0FFUCJ9.a2V5.aXY.Y2lwaGVy.dGFn",
+      PERSONAL_TOKEN,
+      "mb_dev_0123456789abcdef",
+    ];
+    for (const token of tokens) {
+      for (const before of ["", " ", '"', "=", "/"]) {
+        expect(scrub(`${before}${token}`)).toEqual({
+          text: `${before}${PLACEHOLDER}`,
+          counts: { ...newCounts(), "prefixed-token": 1 },
+        });
+      }
+    }
+  });
+
+  it("should keep class names that hold a token prefix or a JWT start after _ or $", () => {
+    const classNames = [
+      "metabase/premium_features/token_check$assert_valid_airgap_user_count_BANG_",
+      "metabase/premium_features/token_check$fn__12345$decode_airgap_token__12346",
+      "metabase/premium_features/token_check$assert_airgap_allows_user_creation_BANG_",
+      "metabase/premium_features/token_check$airgap_user_count_BANG_",
+      "metabase/api/embed$eyJhbGciOiJIUzI1NiJ9.eyJhIjoxfQ.c2ln",
+    ];
+    for (const className of classNames) {
+      expect(scrub(className)).toEqual({
+        text: className,
+        counts: newCounts(),
+      });
     }
   });
 
