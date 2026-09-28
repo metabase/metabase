@@ -87,8 +87,17 @@ function UndoToast({
     if (!hasTimer || wasInteracting === isInteracting) {
       return;
     }
-    dispatch(isInteracting ? pauseUndo(undo) : resumeUndo(undo));
+    dispatch(isInteracting ? pauseUndo(undo) : resumeUndo(undo.id));
   };
+
+  // handle the case where a hovered toast with no timer changes
+  // to one with a timer - pause it.
+  useEffect(() => {
+    const { isHovered, isFocused } = interaction.current;
+    if ((isHovered || isFocused) && hasTimer && undo.pausedAt == null) {
+      dispatch(pauseUndo(undo));
+    }
+  }, [undo, hasTimer, dispatch]);
 
   const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
     const isFocusStillInside =
@@ -96,6 +105,12 @@ function UndoToast({
       event.currentTarget.contains(event.relatedTarget);
     if (!isFocusStillInside) {
       updateInteraction({ isFocused: false });
+    }
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target.matches(":focus-visible")) {
+      updateInteraction({ isFocused: true });
     }
   };
 
@@ -112,7 +127,7 @@ function UndoToast({
       data-paused={undo.pausedAt != null || undefined}
       onMouseEnter={() => updateInteraction({ isHovered: true })}
       onMouseLeave={() => updateInteraction({ isHovered: false })}
-      onFocus={() => updateInteraction({ isFocused: true })}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
       c={dark ? "text-secondary-inverse" : "text-primary"}

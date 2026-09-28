@@ -1,36 +1,30 @@
+import type { Store } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { State } from "metabase/redux/store";
 import type { Undo } from "metabase/redux/store/undo";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import { UndoListing } from "./UndoListing";
 
-type UndoOverride = Partial<Omit<Undo, "id" | "_domId">>;
-
-function makeUndo(override: UndoOverride = {}, id = 0): Undo {
-  return {
-    icon: null,
-    message:
-      "Auto-connect this filter to all questions containing “Product.Title”, in the current tab?",
-    timeout: 12000,
-    timeoutId: null,
-    canDismiss: true,
-    id,
-    _domId: id,
-    ...override,
-  };
-}
+type UndoOverride = Partial<Omit<Undo, "_domId">>;
 
 async function setup(undo: Undo) {
-  renderWithProviders(<UndoListing />, {
+  jest.useFakeTimers();
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  const { store } = renderWithProviders(<UndoListing />, {
     storeInitialState: {
       undo: [undo],
     },
   });
 
   await screen.findByRole("status");
+
+  return { user, store };
 }
+
+afterEach(() => jest.useRealTimers());
 
 describe("UndoListing", () => {
   it("renders list of Undo toasts", async () => {
@@ -74,9 +68,9 @@ describe("UndoListing", () => {
 
   it("performs the undo action and dismisses the toast when clicked", async () => {
     const action = jest.fn();
-    await setup(makeUndo({ actions: [action] }));
+    const { user } = await setup(makeUndo({ actions: [action] }));
 
-    await userEvent.click(screen.getByRole("button", { name: "Undo" }));
+    await user.click(screen.getByRole("button", { name: "Undo" }));
 
     await waitFor(() => {
       expect(action).toHaveBeenCalled();
@@ -86,13 +80,13 @@ describe("UndoListing", () => {
 
   it("performs and dismisses the toast when the extra action is clicked", async () => {
     const action = jest.fn();
-    await setup(
+    const { user } = await setup(
       makeUndo({
         extraAction: { label: "See all", action },
       }),
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "See all" }));
+    await user.click(screen.getByRole("button", { name: "See all" }));
 
     await waitFor(() => {
       expect(action).toHaveBeenCalled();
@@ -187,4 +181,81 @@ describe("UndoListing", () => {
       await expectStillOpen();
     });
   });
+
+  describe("pausing on hover", () => {
+    it("toast replaced under same id while hovered stays open", async () => {
+      const { user, store } = await setup(
+        makeUndo({ id: "paste", timeout: null, message: "Saving" }),
+      );
+      await user.hover(screen.getByRole("status"));
+
+      await act(async () => {
+        store.dispatch(addUndo({ id: "paste", message: "Saved" }));
+      });
+      await tick(7000);
+      expect(undosInStore(store)).toEqual(["paste:Saved"]);
+    });
+
+    it("unhovering a replaced toast does not dismiss it immediately", async () => {
+      const { user, store } = await setup(
+        makeUndo({ id: "paste", timeout: null, message: "Saving" }),
+      );
+
+      await user.hover(screen.getByRole("status"));
+      await act(async () => {
+        store.dispatch(addUndo({ id: "paste", message: "Saved" }));
+      });
+      await tick(1000);
+      await user.unhover(screen.getByRole("status"));
+      await tick(100);
+      expect(undosInStore(store)).toEqual(["paste:Saved"]);
+    });
+
+    it("unhovering an exiting toast does not dismiss a later toast with the same id", async () => {
+      const { user, store } = await setup(
+        makeUndo({ id: "paste", message: "Saved", startedAt: Date.now() }),
+      );
+
+      await user.hover(screen.getByRole("status"));
+      await tick(1000);
+      await act(async () => {
+        store.dispatch(dismissUndo({ undoId: "paste" }));
+      });
+      await tick(10);
+      await user.unhover(screen.getByRole("status"));
+      await tick(1000);
+      await act(async () => {
+        store.dispatch(
+          addUndo({ id: "paste", timeout: null, message: "Saving again" }),
+        );
+      });
+      await tick(15000);
+      expect(undosInStore(store)).toEqual(["paste:Saving again"]);
+    });
+  });
 });
+
+function makeUndo(override: UndoOverride = {}): Undo {
+  const id = override.id ?? 0;
+  return {
+    icon: null,
+    message:
+      "Auto-connect this filter to all questions containing “Product.Title”, in the current tab?",
+    timeout: 12000,
+    timeoutId: null,
+    canDismiss: true,
+    id,
+    _domId: id,
+    ...override,
+  };
+}
+
+function tick(ms: number) {
+  return act(async () => {
+    jest.advanceTimersByTime(ms);
+  });
+}
+
+function undosInStore(store: Store<State>) {
+  return store.getState().undo.map((undo) => `${undo.id}:${undo.message}`);
+}

@@ -54,21 +54,34 @@ export const pauseUndo = createAction(PAUSE_UNDO, (undo: Undo) => {
 });
 
 const RESUME_UNDO = "metabase/questions/RESUME_UNDO";
-export const resumeUndo = createThunkAction(RESUME_UNDO, (undo) => {
-  const restTime = undo.timeout - (undo.pausedAt - undo.startedAt);
+export const resumeUndo = createThunkAction(
+  RESUME_UNDO,
+  (undoId: Undo["id"]) => {
+    return (dispatch, getState) => {
+      // The undo may already be gone, e.g. a toast still animating out after
+      // being dismissed, in which case there's nothing to resume.
+      const current = getUndo(getState(), undoId);
+      if (
+        !current?.timeout ||
+        current.pausedAt == null ||
+        current.startedAt == null
+      ) {
+        return undoId;
+      }
 
-  return (dispatch) => {
-    return {
-      ...undo,
-      pausedAt: null,
-      timeoutId: setTimeout(
-        () => dispatch(dismissUndo({ undoId: undo.id })),
-        restTime,
-      ),
-      timeout: restTime,
+      const restTime = current.timeout - (current.pausedAt - current.startedAt);
+      return {
+        ...current,
+        pausedAt: null,
+        timeoutId: setTimeout(
+          () => dispatch(dismissUndo({ undoId: current.id })),
+          restTime,
+        ),
+        timeout: restTime,
+      };
     };
-  };
-});
+  },
+);
 
 function getUndo(state: State, undoId: Undo["id"]) {
   return _.findWhere(state.undo, { id: undoId });
