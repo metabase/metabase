@@ -81,6 +81,7 @@
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.transforms.core :as transforms]
@@ -1021,7 +1022,7 @@
             (str "Too many URIs provided (" (count uris) "). "
                  "Please limit to " max-concurrent-uris " URIs maximum. "
                  "Be more selective and focus on the most relevant items for the current task or fetch them in batches.")
-            {:uri-count (count uris) :max max-concurrent-uris})))
+            {:agent-error? true :uri-count (count uris) :max max-concurrent-uris})))
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
   (let [resources (mapv fetch-single-uri uris)
@@ -1093,5 +1094,4 @@
   (try
     (read-resource {:uris uris})
     (catch Exception e
-      (log/errorf "Error in read_resource tool: %s" (ex-message e))
-      {:output (str "Failed to read resources: " (or (ex-message e) "Unknown error"))})))
+      (metabot.tools.u/handle-agent-error e))))
