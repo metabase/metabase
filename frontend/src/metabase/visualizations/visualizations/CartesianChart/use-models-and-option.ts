@@ -38,7 +38,8 @@ export function useModelsAndOption(
     isFullscreen,
     gridSize,
   }: VisualizationProps,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  hoveredTimelineEventIds?: TimelineEventId[],
 ) {
   const tc = useTranslateContent();
 

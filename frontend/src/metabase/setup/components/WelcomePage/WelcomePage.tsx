@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type JSX, useEffect } from "react";
 import { useTimeout } from "react-use";
 import { t } from "ttag";
 

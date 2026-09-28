@@ -1,5 +1,5 @@
 import { getIn } from "icepick";
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { jt, t } from "ttag";
 
 import { ActionButton } from "metabase/common/components/ActionButton";

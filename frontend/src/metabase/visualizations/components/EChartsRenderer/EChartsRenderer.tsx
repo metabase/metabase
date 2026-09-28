@@ -38,7 +38,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
     ref,
   ) {
     const chartElemRef = useRef<HTMLDivElement>(null);
-    const chartRef = useRef<EChartsType>();
+    const chartRef = useRef<EChartsType>(undefined);
 
     useMount(() => {
       chartRef.current = init(chartElemRef.current, null, {

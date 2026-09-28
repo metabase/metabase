@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, JSX } from "react";
 
 import { Divider, Stack } from "metabase/ui";
 import { trackClickActionPerformed } from "metabase/visualizations/analytics";

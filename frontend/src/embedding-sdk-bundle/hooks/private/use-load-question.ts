@@ -98,7 +98,7 @@ export function useLoadQuestion({
   const tokenRef = useRef(token);
   tokenRef.current = token;
 
-  const controllerRef = useRef<AbortController>();
+  const controllerRef = useRef<AbortController>(undefined);
 
   function nextSignal() {
     // Cancel the previous query when a new one is started.

@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Flex, Icon, Loader, Tooltip, UnstyledButton } from "metabase/ui";
 import type { IconName, InitialSyncStatus } from "metabase-types/api";
 

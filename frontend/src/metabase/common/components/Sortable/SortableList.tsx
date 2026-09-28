@@ -6,7 +6,7 @@ import type {
 } from "@dnd-kit/core";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import React, { useLayoutEffect, useMemo, useState } from "react";
+import React, { type JSX, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import _ from "underscore";
 

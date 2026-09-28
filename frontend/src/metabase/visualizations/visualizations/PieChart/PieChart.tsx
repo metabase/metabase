@@ -37,7 +37,7 @@ function PieChartComponent(props: VisualizationProps) {
   const hoveredSliceKeyPath = props.hovered?.pieSliceKeyPath;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const [sideLength, setSideLength] = useState(0);
 
   const [hiddenSlices, { toggle: toggleSliceVisibility }] = useSet<

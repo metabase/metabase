@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { useIsParameterPanelSticky } from "./use-is-parameter-panel-sticky";
 
 const setup = () => {
-  const parameterPanelRef: React.RefObject<HTMLDivElement> = {
+  const parameterPanelRef: React.RefObject<HTMLDivElement | null> = {
     current: document.createElement("div"),
   };
   const { result, unmount } = renderHook(() =>

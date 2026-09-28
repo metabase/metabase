@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Icon, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { ModerationReview, User } from "metabase-types/api";

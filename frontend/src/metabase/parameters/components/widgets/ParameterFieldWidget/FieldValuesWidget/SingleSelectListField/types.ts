@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import type { FieldValue, RowValue } from "metabase-types/api";
 
 export type Option = FieldValue;
