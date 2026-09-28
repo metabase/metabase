@@ -69,6 +69,7 @@ const WatermarkTemplate: StoryFn = () => (
 
 export const Default = {
   render: DefaultTemplate,
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -76,6 +77,7 @@ export const Default = {
 
 export const Watermark = {
   render: WatermarkTemplate,
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
