@@ -1,9 +1,3 @@
-/* eslint-disable import/order */
-
-import { TEST_SCHEMA } from "./fixtures";
-
-import type { RowValue } from "../../data-schema";
-
 import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { UseMetabaseQueryObjectResult } from "..";
@@ -16,8 +10,11 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "..";
-import { useAction, useDataAppAction } from "../../use-action";
 import { defineAction, defineQuery } from "../../../../data-app";
+import type { RowValue } from "../../data-schema";
+import { useAction, useDataAppAction } from "../../use-action";
+
+import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 

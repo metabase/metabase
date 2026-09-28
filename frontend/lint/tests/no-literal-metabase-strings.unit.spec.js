@@ -1,16 +1,8 @@
-import { RuleTester } from "eslint";
-
 import rule from "../eslint-plugin-metabase/rules/no-literal-metabase-strings";
 
-const ruleTester = new RuleTester({
-  languageOptions: {
-    ecmaVersion: 2015,
-    sourceType: "module",
-    parserOptions: {
-      ecmaFeatures: { jsx: true },
-    },
-  },
-});
+import { createRuleTester } from "./rule-tester";
+
+const ruleTester = createRuleTester();
 
 const VALID_CASES = [
   {

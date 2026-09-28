@@ -5,9 +5,6 @@
 # build a 200MB archive and race for one reservation on every lockfile change, and all pull the Cypress
 # binary at once on a version bump.
 #
-# The ESLint cache is the exception and saves from the lint job itself: it is under a megabyte and only a
-# couple of jobs write it, so there is no herd to avoid.
-#
 # A cache is readable from the ref that saved it, from that ref's pull requests, and - for every ref -
 # from the default branch. Warming on push to each merge target therefore serves the pull requests aimed
 # at it, and master's copy backs up every ref that has none of its own.

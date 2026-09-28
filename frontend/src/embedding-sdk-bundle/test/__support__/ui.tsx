@@ -2,8 +2,11 @@ import { render } from "@testing-library/react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
-import { seedApiQueryCache } from "__support__/state";
-import { type StoreSeedState, createMockState } from "__support__/state";
+import {
+  type StoreSeedState,
+  createMockState,
+  seedApiQueryCache,
+} from "__support__/state";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
