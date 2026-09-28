@@ -3,9 +3,9 @@ import { match } from "ts-pattern";
 
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useEntityData } from "metabase/metabot/hooks/use-entity-data";
 import { getConversationChart } from "metabase/metabot/state";
 import { useSelector } from "metabase/redux";
-import { useEntityData } from "metabase/rich_text_editing/tiptap/extensions/SmartLink/use-entity-data";
 import { entityToUrlableModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 import {
   type MetabaseProtocolEntityModel,

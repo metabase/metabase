@@ -1,4 +1,5 @@
 import type { NodeViewProps } from "@tiptap/react";
+import type { ReactNode } from "react";
 
 import {
   setupCardEndpoints,
@@ -9,6 +10,20 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  useGetCardQuery,
+  useGetCollectionQuery,
+  useGetDashboardQuery,
+  useGetDatabaseQuery,
+  useGetDocumentQuery,
+  useGetTableQuery,
+} from "metabase/api";
+import {
+  DEFAULT_EDITOR_HOST,
+  EditorHostProvider,
+  type EntityDataResult,
+  type SmartLinkEntity,
+} from "metabase/rich_text_editing/tiptap/EditorHost";
 import { RouterProviderMemory } from "metabase/router";
 import {
   createMockCard,
@@ -21,7 +36,93 @@ import {
 
 import type { SuggestionModel } from "../shared/types";
 
-import { SmartLinkComponent, type SmartLinkEntity } from "./SmartLinkNode";
+import { SmartLinkComponent } from "./SmartLinkNode";
+
+// Stands in for the resolver a composition root supplies, covering the models
+// these tests link to.
+const useTestEntityData = (
+  entityId: number | null,
+  model: SuggestionModel | null,
+): EntityDataResult => {
+  const isCard = model != null && ["card", "dataset", "metric"].includes(model);
+
+  const cardQuery = useGetCardQuery(
+    { id: entityId!, ignore_error: true },
+    { skip: !entityId || !isCard },
+  );
+  const dashboardQuery = useGetDashboardQuery(
+    { id: entityId!, ignore_error: true },
+    { skip: !entityId || model !== "dashboard" },
+  );
+  const collectionQuery = useGetCollectionQuery(
+    { id: entityId!, ignore_error: true },
+    { skip: !entityId || model !== "collection" },
+  );
+  const tableQuery = useGetTableQuery(
+    { id: entityId! },
+    { skip: !entityId || model !== "table" },
+  );
+  const databaseQuery = useGetDatabaseQuery(
+    { id: entityId! },
+    { skip: !entityId || model !== "database" },
+  );
+  const documentQuery = useGetDocumentQuery(
+    { id: entityId! },
+    { skip: !entityId || model !== "document" },
+  );
+
+  switch (model) {
+    case "card":
+    case "dataset":
+    case "metric":
+      return {
+        entity: cardQuery.data,
+        isLoading: cardQuery.isLoading,
+        error: cardQuery.error,
+      };
+    case "dashboard":
+      return {
+        entity: dashboardQuery.data,
+        isLoading: dashboardQuery.isLoading,
+        error: dashboardQuery.error,
+      };
+    case "collection":
+      return {
+        entity: collectionQuery.data,
+        isLoading: collectionQuery.isLoading,
+        error: collectionQuery.error,
+      };
+    case "table":
+      return {
+        entity: tableQuery.data,
+        isLoading: tableQuery.isLoading,
+        error: tableQuery.error,
+      };
+    case "database":
+      return {
+        entity: databaseQuery.data,
+        isLoading: databaseQuery.isLoading,
+        error: databaseQuery.error,
+      };
+    case "document":
+      return {
+        entity: documentQuery.data,
+        isLoading: documentQuery.isLoading,
+        error: documentQuery.error,
+      };
+    default:
+      return { entity: null, isLoading: false, error: null };
+  }
+};
+
+const testEditorHost = {
+  ...DEFAULT_EDITOR_HOST,
+  useEntityData: useTestEntityData,
+};
+
+const withResolver = (children: ReactNode) => (
+  <EditorHostProvider value={testEditorHost}>{children}</EditorHostProvider>
+);
 
 function createProps(
   model: SuggestionModel,
@@ -49,7 +150,9 @@ function setup({
   updateAttributes?: NodeViewProps["updateAttributes"];
 }) {
   const props = createProps(model, entity, label, updateAttributes);
-  renderWithProviders(<SmartLinkComponent {...props} />, { withRouter: true });
+  renderWithProviders(withResolver(<SmartLinkComponent {...props} />), {
+    withRouter: true,
+  });
 }
 
 describe("SmartLink", () => {
@@ -85,6 +188,22 @@ describe("SmartLink", () => {
           label: "Network Card Name",
         });
       });
+    });
+
+    it("should render the stored label as a link when no resolver is provided", () => {
+      const card = createMockCard({ id: 42, name: "Network Card Name" });
+      const props = createProps("card", card, "Stored Card Name");
+
+      renderWithProviders(<SmartLinkComponent {...props} />, {
+        withRouter: true,
+      });
+
+      expect(screen.getByText("Stored Card Name")).toBeInTheDocument();
+      expect(screen.getByText("Stored Card Name").closest("a")).toHaveAttribute(
+        "href",
+        "/question/42-stored-card-name",
+      );
+      expect(screen.queryByText("Failed to load")).not.toBeInTheDocument();
     });
   });
 
@@ -208,7 +327,12 @@ describe("SmartLink", () => {
         <RouterProviderMemory
           initialRoute="/subpath"
           basename="/subpath"
-          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+          routes={[
+            {
+              path: "*",
+              element: withResolver(<SmartLinkComponent {...props} />),
+            },
+          ]}
         />,
       );
 
@@ -235,7 +359,12 @@ describe("SmartLink", () => {
       renderWithProviders(
         <RouterProviderMemory
           initialRoute="/"
-          routes={[{ path: "*", element: <SmartLinkComponent {...props} /> }]}
+          routes={[
+            {
+              path: "*",
+              element: withResolver(<SmartLinkComponent {...props} />),
+            },
+          ]}
         />,
       );
 
