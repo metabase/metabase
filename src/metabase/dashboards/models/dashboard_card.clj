@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.dashboards.card-run-perms :as card-run-perms]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
@@ -62,6 +63,7 @@
 
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (card-run-perms/check-can-add-cards-to-dashboard! (:dashboard_id dashcard) [(:card_id dashcard)])
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -70,6 +72,8 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
+  (when (contains? (t2/changes dashcard) :card_id)
+    (card-run-perms/check-can-add-cards-to-dashboard! (:dashboard_id dashcard) [(:card_id dashcard)]))
   (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
@@ -171,17 +175,35 @@
 
   *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
   *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
-  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`
+
+  Existing series are kept rather than re-inserted, so only genuinely new ones go through the insert hook."
   {:arglists '([dashcard-id->card-ids])}
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
-    ;; first off, just delete all series on the dashboard card (we add them again below)
-    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
-    ;; now just insert all of the series that were given to us
-    (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
-                                      [i card-id]            (map-indexed vector card-ids)]
-                                  {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      (dashboards.db/insert-dashcard-series! card-series))))
+    (let [row-key  (juxt :dashboardcard_id :card_id)
+          wanted   (for [[dashcard-id card-ids] dashcard-id->card-ids
+                         [i card-id]            (map-indexed vector card-ids)]
+                     {:dashboardcard_id dashcard-id, :card_id card-id, :position i})
+          ;; match each wanted row to an existing one (a Card can appear twice on a dashcard); leftovers are stale
+          {:keys [kept added unmatched]}
+          (reduce (fn [acc row]
+                    (if-let [[match & others] (seq (get-in acc [:unmatched (row-key row)]))]
+                      (-> acc
+                          (assoc-in [:unmatched (row-key row)] others)
+                          (update :kept conj (assoc match :new-position (:position row))))
+                      (update acc :added conj row)))
+                  {:kept      []
+                   :added     []
+                   :unmatched (group-by row-key (dashboards.db/series-for-dashcards (keys dashcard-id->card-ids)))}
+                  wanted)]
+      (when-let [stale-ids (seq (map :id (apply concat (vals unmatched))))]
+        (dashboards.db/delete-series! stale-ids))
+      (doseq [{:keys [id position new-position]} kept
+              :when (not= position new-position)]
+        (dashboards.db/update-series-position! id new-position))
+      (when (seq added)
+        (dashboards.db/insert-dashcard-series! added)))))
 
 (def ^:private DashboardCardUpdates
   [:merge

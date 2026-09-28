@@ -5774,6 +5774,8 @@
                                                 {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4
                                                               :parameter_mappings mapping}]
                                                  :tabs      []}))]
+            ;; the Card itself must be viewable to add it at all
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :orders) :perms/view-data :unrestricted)
             (is (= "You must have data permissions to add a parameter referencing this Field." (put! 403)))
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/view-data :unrestricted)
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :products) :perms/create-queries :query-builder)
@@ -5835,6 +5837,8 @@
         (mt/with-temp [:model/Dashboard {dash-id :id} {}
                        :model/Card {native-id :id} {:dataset_query (lib/native-query mp "select * from people")}
                        :model/Card {final-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp native-id))}]
+          ;; the Card itself must be viewable to add it at all; ad-hoc query perms stay :no
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (is (=? {:dashcards [{:card_id final-id}]}
                   (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dash-id)
                                         {:dashcards [{:id -1 :card_id final-id :row 0 :col 0 :size_x 4 :size_y 4
@@ -6401,3 +6405,94 @@
                   (is (=? {:message #"(?i).*No destination parameter found.*"}
                           (mt/user-http-request :crowberto :post 400 execute-path
                                                 {:parameters {"id" 1 "name" "Store" "old_name" "Shop"}}))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                     Adding a Card to a Dashboard requires permission to run it (SEC-1200)                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-unrunnable-card! [f]
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/Card      {blocked-id :id}  {:name          "Blocked"
+                                                         :database_id   (mt/id)
+                                                         :table_id      (mt/id :venues)
+                                                         :dataset_query (mt/mbql-query venues)}
+                     :model/Card      {runnable-id :id} {:name          "Runnable"
+                                                         :database_id   (mt/id)
+                                                         :table_id      (mt/id :categories)
+                                                         :dataset_query (mt/mbql-query categories)}]
+        (f {:dashboard-id dashboard-id :blocked-id blocked-id :runnable-id runnable-id})))))
+
+(defn- new-dashcard [card-id & {:as more}]
+  (merge {:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4} more))
+
+(deftest add-card-requires-run-permission-test
+  (do-with-unrunnable-card!
+   (fn [{:keys [dashboard-id blocked-id runnable-id]}]
+     (let [url (format "dashboard/%d" dashboard-id)]
+       (testing "the Card is readable but the user can't run it"
+         (mt/with-current-user (mt/user->id :rasta)
+           (is (mi/can-read? :model/Card blocked-id)))
+         (mt/user-http-request :rasta :post 403 (format "card/%d/query" blocked-id)))
+       (testing "as a dashcard's card"
+         (is (str/includes? (pr-str (mt/user-http-request :rasta :put 403 url {:dashcards [(new-dashcard blocked-id)] :tabs []}))
+                            "You do not have permissions to run the query for this card"))
+         (is (empty? (t2/select :model/DashboardCard :dashboard_id dashboard-id))))
+       (testing "as an additional series"
+         (mt/user-http-request :rasta :put 403 url {:dashcards [(new-dashcard runnable-id :series [{:id blocked-id}])]
+                                                    :tabs      []})
+         (is (empty? (t2/select :model/DashboardCard :dashboard_id dashboard-id))))
+       (testing "as a parameter values source"
+         (mt/user-http-request :rasta :put 403 url {:parameters [{:id                   "_P_"
+                                                                  :name                 "P"
+                                                                  :slug                 "p"
+                                                                  :type                 "category"
+                                                                  :values_source_type   "card"
+                                                                  :values_source_config {:card_id     blocked-id
+                                                                                         :value_field (mt/$ids $venues.name)}}]})
+         (is (empty? (:parameters (t2/select-one :model/Dashboard dashboard-id)))))
+       (testing "a Card the user can run is fine"
+         (mt/user-http-request :rasta :put 200 url {:dashcards [(new-dashcard runnable-id)] :tabs []}))
+       (testing "an admin can add the Card"
+         (mt/user-http-request :crowberto :put 200 url
+                               {:dashcards (conj (vec (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+                                                 (new-dashcard blocked-id :row 4 :series [{:id blocked-id}]))
+                                :tabs      []}))))))
+
+(deftest edit-dashboard-already-holding-unrunnable-card-test
+  (do-with-unrunnable-card!
+   (fn [{:keys [dashboard-id blocked-id runnable-id]}]
+     (mt/with-temp [:model/DashboardCard {dashcard-id :id :as dashcard} {:dashboard_id dashboard-id
+                                                                         :card_id      runnable-id}
+                    :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id :card_id blocked-id :position 0}
+                    :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id :card_id runnable-id :position 1}]
+       (let [url      (format "dashboard/%d" dashboard-id)
+             existing (select-keys dashcard [:id :card_id :row :col :size_x :size_y])]
+         (testing "a non-admin can still move a dashcard and reorder series of a Card they can't run"
+           (mt/user-http-request :rasta :put 200 url
+                                 {:dashcards [(assoc existing :row 3 :series [{:id runnable-id} {:id blocked-id}])]
+                                  :tabs      []})
+           (is (= [runnable-id blocked-id]
+                  (t2/select-fn-vec :card_id :model/DashboardCardSeries
+                                    :dashboardcard_id dashcard-id {:order-by [[:position :asc]]}))))
+         (testing "and add another dashcard for a Card already on the dashboard"
+           (mt/user-http-request :rasta :put 200 url
+                                 {:dashcards [(assoc existing :series [{:id runnable-id} {:id blocked-id}])
+                                              (new-dashcard blocked-id :row 6)]
+                                  :tabs      []})))))))
+
+(deftest copy-dashboard-skips-unrunnable-cards-test
+  (do-with-unrunnable-card!
+   (fn [{:keys [dashboard-id blocked-id runnable-id]}]
+     (mt/with-temp [:model/DashboardCard _ {:dashboard_id dashboard-id :card_id runnable-id}
+                    :model/DashboardCard _ {:dashboard_id dashboard-id :card_id blocked-id}]
+       (let [{copy-id :id} (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)
+                                                 {:name "Copy"})]
+         (try
+           (is (= [runnable-id]
+                  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id copy-id)))
+           (finally
+             (t2/delete! :model/Dashboard copy-id))))))))

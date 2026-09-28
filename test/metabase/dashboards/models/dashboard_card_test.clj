@@ -107,6 +107,33 @@
       (is (= #{"card3" "card1"}
              (upd-series [card-id-1 card-id3]))))))
 
+(deftest update-dashboard-cards-series!-keeps-existing-rows-test
+  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                 :model/Card          {a :id} {}
+                 :model/Card          {b :id} {}
+                 :model/Card          {c :id} {}
+                 :model/DashboardCard {dc-1 :id} {:dashboard_id dashboard-id :card_id a}
+                 :model/DashboardCard {dc-2 :id} {:dashboard_id dashboard-id :card_id a}]
+    (let [series  (fn [dashcard-id]
+                    (t2/select-fn-vec (juxt :card_id :position) :model/DashboardCardSeries
+                                      :dashboardcard_id dashcard-id {:order-by [[:position :asc]]}))
+          row-ids (fn [dashcard-id]
+                    (t2/select-fn->fn :card_id :id :model/DashboardCardSeries :dashboardcard_id dashcard-id))]
+      (dashboard-card/update-dashboard-cards-series! {dc-1 [a b] dc-2 [c]})
+      (is (= [[a 0] [b 1]] (series dc-1)))
+      (is (= [[c 0]] (series dc-2)))
+      (let [before (row-ids dc-1)]
+        (testing "reordering keeps the existing rows and updates their positions"
+          (dashboard-card/update-dashboard-cards-series! {dc-1 [b a]})
+          (is (= [[b 0] [a 1]] (series dc-1)))
+          (is (= before (row-ids dc-1))))
+        (testing "only the dashcards passed are touched"
+          (is (= [[c 0]] (series dc-2)))))
+      (testing "adds, removes, and repeats"
+        (dashboard-card/update-dashboard-cards-series! {dc-1 [c a c] dc-2 []})
+        (is (= [[c 0] [a 1] [c 2]] (series dc-1)))
+        (is (empty? (series dc-2)))))))
+
 (deftest create-dashboard-card!-test
   (testing "create-dashboard-card! simple example with a single card"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}

@@ -18,6 +18,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
+   [metabase.dashboards.card-run-perms :as card-run-perms]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -429,7 +430,9 @@
   [deep-copy? :- ms/MaybeBooleanValue
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
-        readable? (fn [card] (and (mi/model card) (mi/can-read? card)))
+        readable? (fn [card] (and (mi/model card)
+                                  (mi/can-read? card)
+                                  (card-run-perms/can-run-card? (:id card) (:dataset_query card))))
         card->decision (fn [parent-card card]
                          (cond
                            (or
@@ -586,7 +589,7 @@
   (let [existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
-                        :parameters          (or (:parameters existing-dashboard) [])
+                        :parameters          (card-run-perms/remove-unrunnable-values-sources (or (:parameters existing-dashboard) []))
                         :creator_id          api/*current-user-id*
                         :collection_id       collection_id
                         :collection_position collection_position

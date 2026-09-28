@@ -5586,3 +5586,17 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+(deftest move-card-onto-dashboard-requires-run-permission-test
+  (testing "PUT /api/card/:id with dashboard_id can't place a Card the user can't run on a dashboard (SEC-1200)"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/Card      {blocked-id :id} {:database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (mt/mbql-query venues)}]
+          (mt/user-http-request :rasta :put 403 (str "card/" blocked-id) {:dashboard_id dash-id})
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card blocked-id)))
+          (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))))))

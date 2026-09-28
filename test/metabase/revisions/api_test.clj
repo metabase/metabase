@@ -1085,3 +1085,25 @@
                                 {:entity :card :id card-id :revision_id first-rev-id})
           (is (=? [{:target [:dimension [:template-tag "RATING"]]}]
                   (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dc-id))))))))
+
+(deftest revert-dashboard-requires-run-permission-for-restored-cards-test
+  (testing "Reverting can't put back a Card the reverting user can't run (SEC-1200)"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/Card      {blocked-id :id} {:database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (mt/mbql-query venues)}]
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                {:dashcards [{:id -1 :card_id blocked-id :row 0 :col 0 :size_x 4 :size_y 4}]})
+          (let [rev-id (:id (first (mt/user-http-request :crowberto :get 200 (str "revision/dashboard/" dash-id))))]
+            (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:dashcards []})
+            (mt/user-http-request :rasta :post 403 "revision/revert"
+                                  {:id dash-id, :entity :dashboard, :revision_id rev-id})
+            (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+            (testing "an admin can"
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:id dash-id, :entity :dashboard, :revision_id rev-id})
+              (is (= [blocked-id] (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dash-id))))))))))
