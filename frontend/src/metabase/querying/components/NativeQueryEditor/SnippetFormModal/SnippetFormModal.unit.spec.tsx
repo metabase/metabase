@@ -96,7 +96,7 @@ const LABEL = {
   NAME: /Give your snippet a name/i,
   DESCRIPTION: /Add a description/i,
   CONTENT: /Enter some SQL here so you can reuse it later/i,
-  FOLDER: /Folder this should be in/i,
+  COLLECTION: /Collection this should be in/i,
 };
 
 describe("SnippetFormModal", () => {
@@ -113,7 +113,7 @@ describe("SnippetFormModal", () => {
       expect(screen.getByLabelText(LABEL.CONTENT)).toBeInTheDocument();
       expect(screen.getByLabelText(LABEL.CONTENT)).toHaveValue("");
 
-      expect(screen.queryByText(LABEL.FOLDER)).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL.COLLECTION)).not.toBeInTheDocument();
 
       expect(
         screen.getByRole("button", { name: "Cancel" }),
@@ -135,7 +135,7 @@ describe("SnippetFormModal", () => {
 
       await setup({ withDefaultFoldersList: false });
 
-      expect(screen.getByText(LABEL.FOLDER)).toBeInTheDocument();
+      expect(screen.getByText(LABEL.COLLECTION)).toBeInTheDocument();
       expect(screen.getByText(TOP_SNIPPETS_FOLDER.name)).toBeInTheDocument();
     });
 
@@ -206,7 +206,7 @@ describe("SnippetFormModal", () => {
       expect(screen.getByLabelText(LABEL.CONTENT)).toBeInTheDocument();
       expect(screen.getByLabelText(LABEL.CONTENT)).toHaveValue(snippet.content);
 
-      expect(screen.queryByText(LABEL.FOLDER)).not.toBeInTheDocument();
+      expect(screen.queryByText(LABEL.COLLECTION)).not.toBeInTheDocument();
 
       expect(
         screen.getByRole("button", { name: "Cancel" }),
@@ -229,7 +229,7 @@ describe("SnippetFormModal", () => {
 
       await setupEditing({ withDefaultFoldersList: false });
 
-      expect(screen.getByText(LABEL.FOLDER)).toBeInTheDocument();
+      expect(screen.getByText(LABEL.COLLECTION)).toBeInTheDocument();
       expect(screen.getByText(TOP_SNIPPETS_FOLDER.name)).toBeInTheDocument();
     });
 

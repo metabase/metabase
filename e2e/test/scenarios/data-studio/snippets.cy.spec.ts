@@ -36,7 +36,9 @@ describe("scenarios > data studio > snippets", () => {
       H.DataStudio.Snippets.saveButton().click();
 
       H.modal().within(() => {
-        cy.findByText("Select a folder for your snippet").should("be.visible");
+        cy.findByText("Select a collection for your snippet").should(
+          "be.visible",
+        );
         cy.button("Select").click();
       });
 
@@ -301,7 +303,7 @@ describe("scenarios > data studio > snippets", () => {
         .should("be.visible");
     });
 
-    it("should be able to edit folder details", () => {
+    it("should be able to edit collection details", () => {
       H.createSnippetFolder({
         name: "Test Folder",
       });
@@ -310,7 +312,7 @@ describe("scenarios > data studio > snippets", () => {
 
       H.DataStudio.Library.result("Test Folder").icon("ellipsis").click();
 
-      H.popover().findByText("Edit folder details").click();
+      H.popover().findByText("Edit collection details").click();
 
       H.modal().within(() => {
         cy.findByLabelText("Name").clear().type("Updated Folder");
