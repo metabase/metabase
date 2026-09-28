@@ -123,7 +123,23 @@
          (when read-only?
            {:open_mode (read-only-open-mode)})
          ;; disallow "FDW" (connecting to other SQLite databases on the local filesystem) -- see https://github.com/metabase/metaboat/issues/152
-         {:limit_attached 0}))
+         {:limit_attached 0
+          ;; `load_extension()` runs native code from a file on the Metabase host. Set here, the property also wins over
+          ;; an `enable_load_extension=true` written into the database path.
+          :enable_load_extension "false"}))
+
+(defmethod driver/connection-parameter-hosts :sqlite
+  [driver {:keys [db] :as details}]
+  ;; `:resource:<url>` has the client fetch the database file from that URL itself, which no SSH tunnel carries -- so it
+  ;; is reported here, where it is checked whether or not a tunnel is in use, rather than as a connection host
+  (let [url (when (string? db)
+              (some-> (second (re-find #"(?i)^:resource:(.+)$" (str/trim db)))
+                      (str/replace #"(?i)^jar:" "")
+                      (str/replace #"!/.*$" "")))]
+    (cond-> ((get-method driver/connection-parameter-hosts :sql-jdbc) driver details)
+      ;; `file:` and schemeless (classpath) resources are read locally
+      (and url (re-find #"^[A-Za-z][A-Za-z0-9+.-]*://" url) (not (re-find #"(?i)^file:" url)))
+      (conj url))))
 
 (defmethod driver/describe-table-indexes :sqlite
   [driver database table]

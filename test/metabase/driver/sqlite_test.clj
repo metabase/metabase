@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
@@ -326,6 +327,48 @@
                clojure.lang.ExceptionInfo
                #"SQL error or missing database \(no such table: fdw_test\.products\)"
                (qp/process-query (mt/native-query {:query "SELECT count(*) FROM fdw_test.products;"})))))))))
+
+(defn- load-extension-refusal
+  "The error SQLite gives when asked to load an extension that does not exist over a connection built from `details`:
+  `not authorized` while extension loading is disabled, `no such file` once it tries to open the file."
+  [details]
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlite (merge {:db ":memory:"} details))]
+    (try
+      (jdbc/query spec ["SELECT load_extension('/nonexistent/metabase-test-extension')"])
+      ::loaded
+      (catch Exception e
+        (re-find #"not authorized|no such file" (ex-message e))))))
+
+(deftest ^:parallel extension-loading-is-always-disabled-test
+  (testing "loading an extension runs native code in the Metabase process, so it is disabled whatever the details say"
+    ;; detail keys reach the client as connection properties, and it also reads settings from the database path
+    (doseq [details [{}
+                     {:enable_load_extension true}
+                     {:enable_load_extension "true"}
+                     {:db ":memory:?enable_load_extension=true"}
+                     {:db "file::memory:?ENABLE_LOAD_EXTENSION=true"}]]
+      (testing (pr-str details)
+        (is (= "not authorized" (load-extension-refusal details)))))))
+
+(deftest resource-urls-are-subject-to-the-network-policy-test
+  ;; `:resource:<url>` has the client fetch the database file from that URL
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (testing "a resource URL naming an internal host is refused"
+      (doseq [details [{:db ":resource:http://localhost/x.db"}
+                       {:db ":resource:HTTP://127.0.0.1:8080/x.db"}
+                       {:db ":resource:jar:http://localhost/x.jar!/x.db"}
+                       ;; the SSH tunnel details mean nothing to a file-backed database, so they cannot swap the
+                       ;; database's own hosts for the tunnel's
+                       {:db ":resource:http://localhost/x.db" :tunnel-enabled true :tunnel-host "8.8.8.8"}]]
+        (testing (pr-str details)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"private or internal network address"
+                                (driver.u/validate-connection-hosts! :sqlite details))))))
+    (testing "a local database file, or a resource that is not fetched over the network, names no host"
+      (doseq [details [{:db "/tmp/x.db"}
+                       {:db ":memory:"}
+                       {:db ":resource:file:/tmp/x.db"}]]
+        (testing (pr-str details)
+          (is (nil? (driver.u/validate-connection-hosts! :sqlite details))))))))
 
 (deftest ^:parallel non-date-in-date-columns-are-returned-test
   (mt/test-driver :sqlite
