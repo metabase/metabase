@@ -1,2 +1,1 @@
-// side effect inside `./auth.ts`
-import "./auth";
+export { initializeSdkAuthPlugin } from "./auth";

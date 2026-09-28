@@ -1,24 +1,15 @@
-import type { Dispatch } from "@reduxjs/toolkit";
-
+import { PLUGIN_EMBEDDING_SDK_AUTH } from "embedding-sdk-bundle/plugins/auth";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
 
-// This is an SDK-only plugin and we co-locate it with its OSS usage for convenience and better three-shaking.
-export const PLUGIN_EMBEDDING_SDK_AUTH = {
-  initAuth: async (
-    _config: any, // should be `MetabaseAuthConfig & { isLocalHost?: boolean }` but we can't import it for now (it's EE code)
-    _dispatch: { dispatch: Dispatch },
-  ): Promise<void> => {},
-  refreshTokenAsync: async (
-    _config: any,
-    _getState: any,
-  ): Promise<any | null> => {
-    return null;
-  },
-};
+const createSdkAsyncThunk = createAsyncThunk.withTypes<{
+  state: SdkStoreState;
+  extra: void;
+}>();
 
-export const initAuth = createAsyncThunk(
+export const initAuth = createSdkAsyncThunk(
   "sdk/token/INIT_AUTH",
   async (
     authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
@@ -28,27 +19,14 @@ export const initAuth = createAsyncThunk(
   },
 );
 
-export const refreshTokenAsync = createAsyncThunk(
+export const refreshTokenAsync = createSdkAsyncThunk(
   "sdk/token/REFRESH_TOKEN",
   async (
-    {
-      metabaseInstanceUrl,
-      preferredAuthMethod,
-      jwtProviderUri,
-    }: {
-      metabaseInstanceUrl: string;
-      preferredAuthMethod?: MetabaseAuthConfig["preferredAuthMethod"];
-      jwtProviderUri?: string;
-    },
+    config: MetabaseAuthConfig,
     { getState },
   ): Promise<MetabaseEmbeddingSessionToken | null> => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync(
-      {
-        metabaseInstanceUrl,
-        preferredAuthMethod,
-        jwtProviderUri,
-      },
-      { getState },
-    );
+    return await PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync(config, {
+      getState,
+    });
   },
 );
