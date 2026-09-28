@@ -154,18 +154,20 @@
            :B {:name "amber and cobalt"}
            :C {:name "amber and"}
            :D {:name "cobalt"}
-           :E {:name "and"}}
-  :expect {:in-place       [:A :B :C :D :E]
-           :appdb-h2       [:B]
-           :appdb-postgres [:A :B]
-           :semantic       {:keyword [:A :B], :vector []}}
+           :E {:name "and"}
+           :F {:name "cobalt and amber"}}
+  :expect {:in-place       [:A :B :C :D :E :F]
+           :appdb-h2       [:B :F]
+           :appdb-postgres [:A :B :F]
+           :semantic       {:keyword [:A :B :F], :vector []}}
   :comparisons
-  [{:focus   "`and` is literal text, not an intersection"
-    :correct [:A :B :C :D :E]
+  ;; F defeats the phrase "amber and cobalt", which would otherwise conform
+  ;; only because no document orders the three words differently.
+  [{:focus   "`and` is a required word"
+    :correct [:B :F]
     :alternatives
-    {:appdb-h2       {:query "amber", :hits [:A :B :C]}
-     :appdb-postgres {:query "amber or \"and\" or cobalt", :hits [:A :B :C :D :E]}
-     :semantic       {:query "amber or \"and\" or cobalt", :hits [:A :B :C :D :E]}}}]}
+    {:appdb-postgres {:query "amber \"and\" cobalt", :hits [:B :F]}
+     :semantic       {:query "amber \"and\" cobalt", :hits [:B :F]}}}]}
  {:id     "english-stopword"
   :focus  "English stopword removal"
   :config "english"
@@ -180,11 +182,14 @@
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector []}}
   :comparisons
-  [{:focus   "English stopword"
-    :correct [:A :B]
+  ;; A stopword the user typed is probably intentional, e.g. a band name. The
+  ;; English dictionary strips "the" from indexed documents too, so no
+  ;; PostgreSQL query, quoted or not, can require it.
+  [{:focus   "`the` is part of the intended match"
+    :correct [:A]
     :alternatives
-    {:in-place {:query "widget", :hits [:A :B]}
-     :appdb-h2 {:query "widget", :hits [:A :B]}}}]}
+    {:appdb-postgres {:query "\"the widget\"", :hits [:A :B]}
+     :semantic       {:query "\"the widget\"", :hits [:A :B]}}}]}
  {:id     "simple-stopword"
   :focus  "same documents/query without English stopword removal"
   :config "simple"
@@ -269,14 +274,7 @@
   :expect {:in-place       [:A :B :D]
            :appdb-h2       [:D]
            :appdb-postgres [:A]
-           :semantic       {:keyword [:A], :vector [:B]}}
-  :comparisons
-  [{:focus   "lexical NOT cannot exclude a vector hit"
-    :correct [:A :B]
-    :alternatives
-    {:in-place       {:query "amber", :hits [:A :B :D]}
-     :appdb-h2       {:query "amber", :hits [:A :B :D]}
-     :appdb-postgres {:query "amber", :hits [:A :B :D]}}}]}
+           :semantic       {:keyword [:A], :vector [:B]}}}
  {:id     "english-stopword-only"
   :focus  "a query consisting only of an English stopword"
   :config "english"
@@ -358,11 +356,12 @@
            :appdb-postgres [:A :C :E]
            :semantic       {:keyword [:A :C :E], :vector []}}
   :comparisons
+  ;; PostgreSQL keeps the stopword's position, so any word can fill it and C
+  ;; matches. Without phrase support, H2 cannot exclude D.
   [{:focus   "English stopword inside a phrase"
-    :correct [:A :C :E]
+    :correct [:A :E]
     :alternatives
-    {:in-place {:query "amber cobalt", :hits [:A :B :C :D :E]}
-     :appdb-h2 {:query "amber cobalt", :hits [:A :B :C :D :E]}}}]}
+    {:appdb-h2 {:query "amber and cobalt", :hits [:A :D :E]}}}]}
  {:id     "simple-phrase-and"
   :focus  "same phrase with simple configuration retaining and"
   :config "simple"
@@ -427,8 +426,9 @@
            :appdb-postgres [:B :C :D :F :G]
            :semantic       {:keyword [:B :C :D :F :G], :vector []}}
   :comparisons
-  [{:focus   "prefix placement across OR branches"
-    :correct [:B :C :D :F :G]
+  ;; Both typed terms are word prefixes; PostgreSQL completes only the last.
+  [{:focus   "prefix completion on every OR branch"
+    :correct [:A :B :C :D :F :G]
     :alternatives
     {:in-place {:query "amb co", :hits [:A :B :C :D :E :F :G]}
      :appdb-h2 {:query "co", :hits [:C :D :E :F :G]}}}]}
@@ -494,8 +494,10 @@
            :appdb-postgres []
            :semantic       {:keyword [], :vector []}}
   :comparisons
-  [{:focus   "quoting or recovers a lexeme but not substring matches"
-    :correct [:A :B :C]
+  ;; The intended match is the word or a word starting with it; "north" only
+  ;; contains it.
+  [{:focus   "quoting or recovers the word but not prefix matches"
+    :correct [:A :B]
     :alternatives
     {:appdb-postgres {:query "\"or\"", :hits [:A]}
      :semantic       {:query "\"or\"", :hits [:A]}}}]}
