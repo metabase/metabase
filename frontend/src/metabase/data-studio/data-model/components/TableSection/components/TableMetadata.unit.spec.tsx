@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DateFormattingSettings } from "metabase-types/api";
+import type { DateFormattingSettings, Table } from "metabase-types/api";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { TableMetadata } from "./TableMetadata";
@@ -36,5 +36,42 @@ describe("TableMetadata", () => {
     });
 
     expect(screen.getByText("June 8, 2021, 2:40 PM")).toBeInTheDocument();
+  });
+
+  describe("estimated row count", () => {
+    function setupTable(table: Table) {
+      renderWithProviders(<TableMetadata table={table} />);
+    }
+
+    it("shows the row count when the table has one", () => {
+      setupTable(
+        createMockTable({
+          name: "ORDERS",
+          view_count: 7,
+          estimated_row_count: 18760,
+        }),
+      );
+
+      expect(screen.getByLabelText("Name in the database")).toHaveTextContent(
+        "ORDERS",
+      );
+      expect(screen.getByLabelText("View count")).toHaveTextContent("7");
+      expect(screen.getByLabelText("Est. row count")).toHaveTextContent(
+        "18,760",
+      );
+    });
+
+    it("hides the row count when the table has none", () => {
+      setupTable(
+        createMockTable({
+          name: "ORDERS",
+          view_count: 7,
+          estimated_row_count: null,
+        }),
+      );
+
+      expect(screen.getByLabelText("View count")).toHaveTextContent("7");
+      expect(screen.queryByLabelText("Est. row count")).not.toBeInTheDocument();
+    });
   });
 });

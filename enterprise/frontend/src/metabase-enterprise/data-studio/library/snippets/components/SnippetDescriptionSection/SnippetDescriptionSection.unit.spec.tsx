@@ -30,6 +30,13 @@ describe("SnippetDescriptionSection", () => {
     );
   });
 
+  it("renders the description as markdown", () => {
+    setup({ description: "**Bold text** and *italic text*" });
+
+    expect(screen.getByText("Bold text").tagName).toBe("STRONG");
+    expect(screen.getByText("italic text").tagName).toBe("EM");
+  });
+
   it("renders a disabled input when isDisabled is true", async () => {
     setup({ description: "My snippet description", isDisabled: true });
 

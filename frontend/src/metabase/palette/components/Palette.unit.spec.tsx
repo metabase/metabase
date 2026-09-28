@@ -9,6 +9,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 import { Route } from "metabase/router";
 import type { SearchResult } from "metabase-types/api";
 import {
@@ -34,7 +35,7 @@ const setup = ({
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
   });
-  renderWithProviders(
+  return renderWithProviders(
     <Route path={initialRoute ? "*" : "/"} element={<Palette />} />,
     {
       withKBar: true,
@@ -160,6 +161,25 @@ describe("command palette", () => {
 
     await screen.findByText("Metric search result");
     expect(getSelectedOption()?.textContent).toBe("New metric");
+  });
+
+  it("tracks metric_create_started and opens the new metric page from 'New metric'", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    const { router } = setup();
+    await userEvent.keyboard("[ControlLeft>]k");
+    await screen.findByTestId("command-palette");
+    const input = await screen.findByPlaceholderText(/search for anything/i);
+
+    await userEvent.type(input, "metric");
+    await userEvent.click(
+      await screen.findByRole("option", { name: /New metric/ }),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metric_create_started",
+      triggered_from: "command_palette",
+    });
+    await waitFor(() => expect(router?.location.pathname).toBe("/metric/new"));
   });
 
   it("should rank the most relevant action first", async () => {

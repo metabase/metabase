@@ -188,26 +188,42 @@
   (do-with-published-venues! {}
                              (fn [user-id _collection-id]
                                (testing "GET /api/field/:id/values resolves via the collection grant"
-                                 (is (=? {:field_id (mt/id :venues :price)}
+                                 (is (=? {:field_id (mt/id :venues :price)
+                                          :values   [[1] [2] [3] [4]]}
                                          (mt/with-current-user user-id
                                            (mt/user-http-request user-id :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
                                (testing "GET /api/field/:id/search/:search-id resolves via the collection grant"
-                                 (is (some? (mt/with-current-user user-id
-                                              (mt/user-http-request user-id :get 200
-                                                                    (format "field/%d/search/%d?limit=3" (mt/id :venues :name) (mt/id :venues :name))))))))))
+                                 (is (seq (mt/with-current-user user-id
+                                            (mt/user-http-request user-id :get 200
+                                                                  (format "field/%d/search/%d" (mt/id :venues :name) (mt/id :venues :name))
+                                                                  :value "a")))))))
+  (do-with-published-venues! {:grant? false}
+                             (fn [user-id _collection-id]
+                               (testing "without the collection grant, field values are denied"
+                                 (mt/with-current-user user-id
+                                   (mt/user-http-request user-id :get 403 (format "field/%d/values" (mt/id :venues :price)))
+                                   (mt/user-http-request user-id :get 403
+                                                         (format "field/%d/search/%d" (mt/id :venues :name) (mt/id :venues :name))
+                                                         :value "a"))))))
 
 (deftest published-table-remap-to-unpublished-target-permission-error-test
-  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished/blocked
-  (do-with-published-venues! {:db-view-data :blocked}
-                             (fn [user-id _collection-id]
-                               (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
-                                                                  :human_readable_field_id (mt/id :categories :name)
-                                                                  :type                    :external}]
-                                 (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
-                                   (is (=? {:status "failed"}
-                                           (mt/with-current-user user-id
-                                             (mt/user-http-request user-id :post 403 "dataset"
-                                                                   (mt/mbql-query venues {:limit 1}))))))))))
+  ;; venues is published; categories (the FK-remap target) is deliberately left unpublished
+  (doseq [db-view-data [:unrestricted :blocked]]
+    (testing (str "db view-data " db-view-data)
+      (do-with-published-venues! {:db-view-data db-view-data}
+                                 (fn [user-id _collection-id]
+                                   (testing "sanity: venues is queryable before the remap exists"
+                                     (is (=? {:status "completed"}
+                                             (mt/user-http-request user-id :post 202 "dataset"
+                                                                   (mt/mbql-query venues {:limit 1})))))
+                                   (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
+                                                                      :human_readable_field_id (mt/id :categories :name)
+                                                                      :type                    :external}]
+                                     (testing "querying venues (whose FK-remap target is unpublished) surfaces a permission error"
+                                       (is (=? {:status "failed"}
+                                               (mt/with-current-user user-id
+                                                 (mt/user-http-request user-id :post 403 "dataset"
+                                                                       (mt/mbql-query venues {:limit 1}))))))))))))
 
 (deftest published-sandboxed-table-query-reflects-sandbox-not-full-access-test
   (mt/with-additional-premium-features #{:library}
@@ -232,5 +248,18 @@
                 (is (< (:row_count result) full-count) "sanity: some rows filtered")
                 (is (every? #(= 4 (nth % price-index)) (mt/rows result))
                     "every returned row has price = 4, per the sandbox filter")))
+            (testing "GET /api/field/:id/values returns only sandboxed values"
+              (is (= [[4]]
+                     (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
+            (testing "GET /api/field/:id/search/:search-id returns only sandboxed matches"
+              (let [url             (format "field/%d/search/%d" (mt/id :venues :name) (mt/id :venues :name))
+                    sandboxed-names (set (map first (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                                                                   (mt/mbql-query venues {:fields [$name]})))))
+                    admin-matches   (mt/user-http-request :crowberto :get 200 url :value "a")
+                    rasta-matches   (mt/user-http-request :rasta :get 200 url :value "a")]
+                (is (seq rasta-matches))
+                (is (some (complement sandboxed-names) (map first admin-matches))
+                    "sanity: the unsandboxed search includes venues outside the sandbox")
+                (is (every? sandboxed-names (map first rasta-matches)))))
             (finally
               (t2/update! :model/Table (mt/id :venues) {:is_published false :collection_id nil}))))))))

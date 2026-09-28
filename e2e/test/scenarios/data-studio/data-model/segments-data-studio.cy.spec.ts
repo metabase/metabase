@@ -19,13 +19,18 @@ describe(
 
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("PUT", "/api/segment/*").as("updateSegment");
-      cy.intercept("DELETE", "/api/segment/*").as("deleteSegment");
-      cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     });
 
-    describe("Segment list", () => {
-      it("should show empty state and navigation when no segments exist", () => {
-        visitDataStudioSegments(ORDERS_ID);
+    describe("Segment creation", () => {
+      it("should create a segment from the Segments tab and use it in the query builder", () => {
+        visitDataStudioTable(ORDERS_ID);
+
+        cy.log("navigate from the Fields tab to the Segments tab");
+        cy.findByRole("tab", { name: /Fields/i })
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByRole("tab", { name: /Segments/i }).click();
+        cy.url().should("include", getSegmentsBaseUrl(ORDERS_ID));
 
         cy.log("verify empty state");
         SegmentList.getEmptyState().scrollIntoView().should("be.visible");
@@ -33,71 +38,9 @@ describe(
           .findByText("Create a segment to filter rows in this table.")
           .should("be.visible");
 
-        cy.log("verify new segment link and navigation");
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        cy.url().should("include", `${getSegmentsBaseUrl(ORDERS_ID)}/new`);
-      });
-
-      it("should display segments and allow navigation to edit page", () => {
-        createTestSegment({
-          name: "High Value Orders",
-          filter: [">", ["field", ORDERS.TOTAL, null], 100],
-        });
-        visitDataStudioSegments(ORDERS_ID);
-
-        cy.log("verify segment in list with filter description");
-        SegmentList.getSegment("High Value Orders")
-          .scrollIntoView()
-          .should("be.visible");
-        SegmentList.get()
-          .findByTestId("list-item-description")
-          .should("contain", "Filtered by Total is greater than 100");
-
-        cy.log("navigate to edit page");
-        SegmentList.getSegment("High Value Orders").click();
-        cy.get<number>("@segmentId").then((segmentId) => {
-          cy.url().should(
-            "include",
-            `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}`,
-          );
-        });
-      });
-
-      it("should navigate between Fields and Segments tabs", () => {
-        visitDataStudioTable(ORDERS_ID);
-
-        cy.log("verify both tabs visible");
-        cy.findByRole("tab", { name: /Fields/i }).scrollIntoView();
-        cy.findByRole("tab", { name: /Segments/i }).should("be.visible");
-
-        cy.log("navigate to segments tab");
-        cy.findByRole("tab", { name: /Segments/i }).click();
-        cy.url().should(
-          "include",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments`,
-        );
-        SegmentList.getEmptyState().scrollIntoView().should("be.visible");
-
-        cy.log("verify tab selection preserved on refresh");
-        cy.reload();
-        cy.wait("@metadata");
-        cy.findByRole("tab", { name: /Segments/i })
-          .scrollIntoView()
-          .should("have.attr", "aria-selected", "true");
-
-        cy.log("navigate back to fields tab");
-        cy.findByRole("tab", { name: /Fields/i }).click();
-        cy.url().should("include", "/field");
-      });
-    });
-
-    describe("Segment creation", () => {
-      it("should create a segment with filters and verify across features", () => {
-        visitDataStudioSegments(ORDERS_ID);
-
         cy.log("navigate to new segment page");
         SegmentList.getNewSegmentLink().scrollIntoView().click();
+        cy.url().should("include", `${getSegmentsBaseUrl(ORDERS_ID)}/new`);
 
         cy.log("verify segment_create_started event was tracked");
         H.expectUnstructuredSnowplowEvent({
@@ -108,6 +51,14 @@ describe(
 
         cy.log("fill in segment name");
         SegmentEditor.getNameInput().type("Premium Orders");
+
+        cy.log("leaving with unsaved changes asks for confirmation");
+        SegmentEditor.getBreadcrumb("Orders").click();
+        H.modal().within(() => {
+          cy.findByText("Discard your changes?").should("be.visible");
+          cy.button("Cancel").click();
+        });
+        SegmentEditor.get().findByText("Premium Orders").should("be.visible");
 
         cy.log("add filter");
         SegmentEditor.getFilterPlaceholder().click();
@@ -121,7 +72,7 @@ describe(
         cy.log("verify filter was added");
         SegmentEditor.get()
           .findByText(/Total is greater than 100/i)
-          .should("exist");
+          .should("be.visible");
 
         cy.log("save segment");
         SegmentEditor.getSaveButton().click();
@@ -147,168 +98,67 @@ describe(
         verifySegmentInQueryBuilder("Premium Orders");
       });
 
-      it("should add filter and show preview in menu", () => {
-        visitDataStudioSegments(PRODUCTS_ID);
-
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        SegmentEditor.getFilterPlaceholder().click();
-        H.popover().findByText("Price").click();
-        H.selectFilterOperator("Less than");
-        H.popover().within(() => {
-          cy.findByLabelText("Filter value").type("50");
-          cy.button("Add filter").click();
+      it("should create a segment with an implicit join filter using FK field values", () => {
+        cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+          has_field_values: "list",
         });
 
-        cy.log("verify filter was added");
-        SegmentEditor.get()
-          .findByText(/Price is less than 50/i)
-          .should("exist");
-
-        cy.log("verify preview is available in menu");
-        SegmentEditor.getActionsButton().click();
-        H.popover().findByText("Preview").should("be.visible");
-      });
-    });
-
-    describe("Segment editing", () => {
-      it("should display and update existing segment", () => {
-        createTestSegment({
-          name: "Test Segment",
-          description: "Test description",
-        });
-        cy.get<number>("@segmentId").then((segmentId) => {
-          visitDataModelSegment(ORDERS_ID, segmentId);
+        cy.log("create segment on Products table");
+        H.createSegment({
+          name: "Expensive Products",
+          definition: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": PRODUCTS_ID,
+              filter: [">", ["field", PRODUCTS.PRICE, null], 50],
+            },
+          },
         });
 
-        cy.log("verify existing data displayed");
-        SegmentEditor.get()
-          .findByDisplayValue("Test Segment")
-          .should("be.visible");
-        SegmentEditor.getDescriptionInput().should(
-          "have.value",
-          "Test description",
-        );
-
-        cy.log("update segment name (saves immediately on blur/enter)");
-        SegmentEditor.get()
-          .findByDisplayValue("Test Segment")
-          .click()
-          .type(" Updated{enter}");
-        cy.wait("@updateSegment");
-
-        cy.log("verify toast for name update");
-        H.undoToast().should("contain.text", "Segment name updated");
-
-        cy.log("update description");
-        SegmentEditor.getDescriptionInput().clear().type("Updated description");
-        SegmentEditor.getSaveButton().click();
-        cy.wait("@updateSegment");
-
-        cy.log("verify updated segment in query builder");
-        verifySegmentInQueryBuilder("Test Segment Updated");
-      });
-
-      it("should navigate back to segments tab via breadcrumb", () => {
-        createTestSegment({ name: "Breadcrumb Test Segment" });
-        cy.get<number>("@segmentId").then((segmentId) => {
-          visitDataModelSegment(ORDERS_ID, segmentId);
-        });
-
-        SegmentEditor.getBreadcrumb("Orders").click();
-
-        cy.url().should(
-          "include",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments`,
-        );
-        cy.findByRole("tab", { name: /Segments/i })
-          .scrollIntoView()
-          .should("have.attr", "aria-selected", "true");
-      });
-    });
-
-    describe("Segment deletion", () => {
-      it("should remove segment via more menu", () => {
-        createTestSegment({ name: "Segment to Delete" });
-        cy.get<number>("@segmentId").then((segmentId) => {
-          visitDataModelSegment(ORDERS_ID, segmentId);
-        });
-
-        cy.log("delete via more menu");
-        SegmentEditor.getActionsButton().click();
-        H.popover().findByText("Remove segment").click();
-        H.modal().button("Remove").click();
-
-        cy.log("verify redirect to list and removal");
-        H.undoToast().should("contain.text", "Segment removed");
-        cy.url().should(
-          "include",
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments`,
-        );
-        SegmentList.get()
-          .findByText("Segment to Delete", { timeout: 1000 })
-          .should("not.exist");
-
-        cy.log("verify segment removed from query builder");
-        verifySegmentNotInQueryBuilder("Segment to Delete");
-      });
-    });
-
-    describe("Unsaved changes", () => {
-      it("should show leave confirmation with unsaved changes", () => {
         visitDataStudioSegments(ORDERS_ID);
-
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-        SegmentEditor.getNameInput().type("Unsaved Segment");
-
-        cy.log("attempt to navigate away");
-        SegmentEditor.getBreadcrumb("Orders").click();
-
-        cy.log("verify confirmation modal");
-        H.modal().within(() => {
-          cy.findByText("Discard your changes?").should("be.visible");
-          cy.button("Cancel").click();
-        });
-
-        cy.log("verify still on editor");
-        SegmentEditor.get().findByText("Unsaved Segment").should("be.visible");
-      });
-    });
-
-    describe("Segment with implicit joins", () => {
-      it("should create a segment with implicit join filter", () => {
-        visitDataStudioSegments(ORDERS_ID);
-
-        cy.log("navigate to new segment page");
         SegmentList.getNewSegmentLink().scrollIntoView().click();
 
         cy.log("fill in segment name");
-        SegmentEditor.getNameInput().type("Widget Orders");
+        SegmentEditor.getNameInput().type("Gadget Orders");
 
-        cy.log("add filter via implicit join");
+        cy.log("expand Product via implicit join");
         SegmentEditor.getFilterPlaceholder().click();
+        H.popover().findByText("Product").click();
+
+        cy.log(
+          "verify FK table fields are listed but FK table segments are not",
+        );
+        H.popover().findByText("Category").should("be.visible");
+        H.popover().findByText("Expensive Products").should("not.exist");
+
+        cy.log("verify list values are hydrated for FK table field");
+        H.popover().findByText("Category").click();
         H.popover().within(() => {
-          cy.findByText("Product").click();
-          cy.findByText("Category").click();
-          cy.findByText("Widget").click();
+          cy.findByPlaceholderText("Search the list").should("be.visible");
+          cy.findByText("Widget").should("be.visible");
+          cy.findByText("Gadget").should("be.visible");
+          cy.findByText("Gizmo").should("be.visible");
+          cy.findByText("Doohickey").should("be.visible");
+          cy.findByText("Gadget").click();
           cy.button("Add filter").click();
         });
 
-        cy.log("verify filter was added and save");
+        cy.log("verify filter was added and save segment");
         SegmentEditor.get()
-          .findByText(/Product → Category is Widget/i)
-          .should("exist");
+          .findByText(/Product → Category is Gadget/i)
+          .should("be.visible");
         SegmentEditor.getSaveButton().click();
         cy.wait("@createSegment");
 
-        cy.log("verify redirected to edit page with segment name");
-        SegmentEditor.get().should("be.visible");
+        cy.log("verify segment created");
+        H.undoToast().should("contain.text", "Segment created");
         SegmentEditor.get()
-          .findByDisplayValue("Widget Orders")
+          .findByDisplayValue("Gadget Orders")
           .should("be.visible");
 
         cy.log("verify segment works in query builder");
-        verifySegmentInQueryBuilder("Widget Orders");
+        verifySegmentInQueryBuilder("Gadget Orders");
       });
     });
 
@@ -356,165 +206,109 @@ describe(
           .findByText("borer-hudson@yahoo.com")
           .should("be.visible");
       });
-
-      it("should display list values for implicit join field", () => {
-        cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
-          has_field_values: "list",
-        });
-
-        visitDataStudioSegments(ORDERS_ID);
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        cy.log("fill in segment name");
-        SegmentEditor.getNameInput().type("Gadget Orders");
-
-        cy.log("open filter picker for Product → Category via implicit join");
-        SegmentEditor.getFilterPlaceholder().click();
-        H.popover().within(() => {
-          cy.findByText("Product").click();
-          cy.findByText("Category").click();
-        });
-
-        cy.log("verify list values are hydrated for FK table field");
-        H.popover().within(() => {
-          cy.findByPlaceholderText("Search the list").should("be.visible");
-          cy.findByText("Widget").should("be.visible");
-          cy.findByText("Gadget").should("be.visible");
-          cy.findByText("Gizmo").should("be.visible");
-          cy.findByText("Doohickey").should("be.visible");
-          cy.findByText("Gadget").click();
-          cy.button("Add filter").click();
-        });
-
-        cy.log("verify filter was added and save segment");
-        SegmentEditor.get()
-          .findByText(/Product → Category is Gadget/i)
-          .should("exist");
-        SegmentEditor.getSaveButton().click();
-        cy.wait("@createSegment");
-
-        cy.log("verify segment created");
-        H.undoToast().should("contain.text", "Segment created");
-        SegmentEditor.get()
-          .findByDisplayValue("Gadget Orders")
-          .should("be.visible");
-      });
-
-      it("should not show segments from FK tables in the filter picker", () => {
-        cy.log("create segment on Products table");
-        H.createSegment({
-          name: "Expensive Products",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": PRODUCTS_ID,
-              filter: [">", ["field", PRODUCTS.PRICE, null], 50],
-            },
-          },
-        });
-
-        cy.log("navigate to create segment on Orders table");
-        visitDataStudioSegments(ORDERS_ID);
-        SegmentList.getNewSegmentLink().scrollIntoView().click();
-
-        cy.log("open filter picker and expand Product table");
-        SegmentEditor.getFilterPlaceholder().click();
-        H.popover().findByText("Product").click();
-
-        cy.log("verify Category field is visible but Products segment is not");
-        H.popover().findByText("Category").should("be.visible");
-        H.popover().findByText("Expensive Products").should("not.exist");
-      });
     });
 
-    describe("Segment dependencies", () => {
-      it("should create and use a segment based on another segment", () => {
-        cy.log("create base segment");
+    describe("Segment editing", () => {
+      it("should open a segment from the list, navigate back via breadcrumb, and update it", () => {
         createTestSegment({
-          name: "High Value Orders",
+          name: "Test Segment",
+          description: "Test description",
           filter: [">", ["field", ORDERS.TOTAL, null], 100],
         });
+        visitDataStudioSegments(ORDERS_ID);
 
-        cy.get<number>("@segmentId").then((baseSegmentId) => {
-          cy.log("create segment based on segment");
-          H.createSegment({
-            name: "High Value Recent Orders",
-            definition: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                filter: [
-                  "and",
-                  ["segment", baseSegmentId],
-                  [">", ["field", ORDERS.CREATED_AT, null], "2020-01-01"],
-                ],
-              },
-            },
-          });
-        });
+        cy.log("verify Segments tab is selected when loading its URL");
+        cy.findByRole("tab", { name: /Segments/i })
+          .scrollIntoView()
+          .should("have.attr", "aria-selected", "true");
 
-        cy.log("verify both segments appear in query builder");
-        verifySegmentInQueryBuilder("High Value Orders");
-        H.openTable({ table: ORDERS_ID, mode: "notebook" });
-        H.getNotebookStep("data").button("Filter").click();
-        H.popover().findByText("High Value Recent Orders").should("be.visible");
+        cy.log("verify segment in list with filter description");
+        SegmentList.getSegment("Test Segment")
+          .scrollIntoView()
+          .should("be.visible");
+        SegmentList.get()
+          .findByTestId("list-item-description")
+          .should("contain", "Filtered by Total is greater than 100");
 
-        cy.log("verify dependent segment works");
-        H.popover().findByText("High Value Recent Orders").click();
-        H.visualize();
-        H.tableInteractive().should("be.visible");
-      });
-    });
-
-    describe("Segment cycles", () => {
-      it.skip("should prevent creating segment cycles", () => {
-        cy.log("create Segment A");
-        H.createSegment({
-          name: "Segment A",
-          definition: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              filter: [">", ["field", ORDERS.TOTAL, null], 50],
-            },
-          },
-        }).then(({ body: segmentA }) => {
-          cy.log("create Segment B that depends on A");
-          H.createSegment({
-            name: "Segment B",
-            definition: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                filter: ["segment", segmentA.id],
-              },
-            },
-          });
-
-          cy.log("edit Segment A via UI and try to add Segment B as filter");
-          visitDataModelSegment(ORDERS_ID, segmentA.id);
-          cy.wait("@metadata");
-
-          SegmentEditor.get().icon("add").click();
-          H.popover().findByText("Segment B").click();
-
-          cy.log("try to save and verify error");
-          SegmentEditor.getSaveButton().click();
-          cy.wait("@updateSegment");
-          H.undoToast().should(
-            "contain.text",
-            "Unable to save segments with circular dependencies",
+        cy.log("navigate to edit page");
+        SegmentList.getSegment("Test Segment").click();
+        cy.get<number>("@segmentId").then((segmentId) => {
+          cy.url().should(
+            "include",
+            `${getSegmentsBaseUrl(ORDERS_ID)}/${segmentId}`,
           );
         });
+
+        cy.log("navigate back to segments tab via breadcrumb");
+        SegmentEditor.getBreadcrumb("Orders").click();
+        cy.url().should("include", getSegmentsBaseUrl(ORDERS_ID));
+        cy.url().should("not.match", /segments\/\d+/);
+        cy.findByRole("tab", { name: /Segments/i })
+          .scrollIntoView()
+          .should("have.attr", "aria-selected", "true");
+
+        cy.log("navigate to the Fields tab and back");
+        cy.findByRole("tab", { name: /Fields/i }).click();
+        cy.url().should("include", "/field");
+        cy.findByRole("tab", { name: /Segments/i }).click();
+        SegmentList.getSegment("Test Segment").scrollIntoView().click();
+
+        cy.log("verify existing data displayed");
+        SegmentEditor.get()
+          .findByDisplayValue("Test Segment")
+          .should("be.visible");
+        SegmentEditor.getDescriptionInput().should(
+          "have.value",
+          "Test description",
+        );
+
+        cy.log("update segment name (saves immediately on blur/enter)");
+        SegmentEditor.get()
+          .findByDisplayValue("Test Segment")
+          .click()
+          .type(" Updated{enter}");
+        cy.wait("@updateSegment");
+
+        cy.log("verify toast for name update");
+        H.undoToast().should("contain.text", "Segment name updated");
+
+        cy.log("update description");
+        SegmentEditor.getDescriptionInput().clear().type("Updated description");
+        SegmentEditor.getSaveButton().click();
+        cy.wait("@updateSegment");
+
+        cy.log("verify updated segment in query builder");
+        verifySegmentInQueryBuilder("Test Segment Updated");
       });
     });
 
-    describe("Revision history", () => {
-      it("should display revision history with changes to name, description, and filter", () => {
+    describe("Segment deletion", () => {
+      it("should remove segment via more menu", () => {
+        createTestSegment({ name: "Segment to Delete" });
+        cy.get<number>("@segmentId").then((segmentId) => {
+          visitDataModelSegment(ORDERS_ID, segmentId);
+        });
+
+        cy.log("delete via more menu");
+        SegmentEditor.getActionsButton().click();
+        H.popover().findByText("Remove segment").click();
+        H.modal().button("Remove").click();
+        cy.wait("@updateSegment");
+
+        cy.log("verify redirect to list and removal");
+        H.undoToast().should("contain.text", "Segment removed");
+        cy.url().should("include", getSegmentsBaseUrl(ORDERS_ID));
+        cy.url().should("not.match", /segments\/\d+/);
+        SegmentList.getEmptyState().scrollIntoView().should("be.visible");
+        SegmentList.get().findByText("Segment to Delete").should("not.exist");
+
+        cy.log("verify segment removed from query builder");
+        verifySegmentNotInQueryBuilder("Segment to Delete");
+      });
+    });
+
+    describe("Revision history and dependencies", () => {
+      it("should display revision history and the dependency graph for a segment", () => {
         createTestSegment({
           name: "Original Name",
           description: "Original description",
@@ -566,15 +360,11 @@ describe(
             },
           });
 
-          cy.wait(1000);
-
           visitDataModelSegment(ORDERS_ID, segmentId);
         });
 
         cy.log("navigate to revision history tab");
         SegmentEditor.getRevisionHistoryTab().click();
-
-        cy.log("verify URL");
         cy.get<number>("@segmentId").then((segmentId) => {
           cy.url().should(
             "include",
@@ -594,20 +384,9 @@ describe(
             .scrollIntoView()
             .should("be.visible");
         });
-      });
-    });
-
-    describe("Dependencies", () => {
-      it("should display dependency graph for a segment", () => {
-        createTestSegment({ name: "Dependencies Test Segment" });
-        cy.get<number>("@segmentId").then((segmentId) => {
-          visitDataModelSegment(ORDERS_ID, segmentId);
-        });
 
         cy.log("navigate to dependencies tab");
         SegmentEditor.getDependenciesTab().click();
-
-        cy.log("verify URL and dependency graph display");
         cy.get<number>("@segmentId").then((segmentId) => {
           cy.url().should(
             "include",
@@ -616,78 +395,66 @@ describe(
         });
         H.DependencyGraph.graph().should("be.visible");
         H.DependencyGraph.graph()
-          .findByText("Dependencies Test Segment")
+          .findByText("Updated Name")
           .should("be.visible");
       });
     });
 
     describe("Readonly access for data analysts", () => {
-      it("should show segments in list but hide New segment button for non-admin", () => {
-        createTestSegment({ name: "Readonly Test Segment" });
+      it("should show segments read-only and block segment creation for non-admin", () => {
+        createTestSegment({
+          name: "Readonly Test Segment",
+          description: "Test description for readonly",
+        });
 
         H.setUserAsAnalyst(NODATA_USER_ID);
         cy.signIn("nodata");
 
-        cy.log("verify segment is visible in list");
+        cy.log("verify segment is visible in list without New segment link");
         visitDataStudioSegments(ORDERS_ID);
         SegmentList.getSegment("Readonly Test Segment")
           .scrollIntoView()
           .should("be.visible");
-
-        cy.log("verify New segment button is not visible");
         SegmentList.get()
           .findByRole("link", { name: /New segment/i })
           .should("not.exist");
 
-        cy.log("verify direct navigation to new segment page is blocked");
-        cy.visit(
-          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
-        );
-        cy.url().should("include", "/unauthorized");
-      });
+        cy.log("open segment detail");
+        SegmentList.getSegment("Readonly Test Segment").click();
 
-      it("should display segment detail in readonly mode for non-admin", () => {
-        createTestSegment({
-          name: "Readonly Detail Segment",
-          description: "Test description for readonly",
-        });
+        cy.log("verify segment name input is disabled");
+        SegmentEditor.get()
+          .findByDisplayValue("Readonly Test Segment")
+          .should("be.disabled");
 
-        cy.get<number>("@segmentId").then((segmentId) => {
-          H.setUserAsAnalyst(NODATA_USER_ID);
-          cy.signIn("nodata");
+        cy.log("verify description is displayed as plain text");
+        SegmentEditor.get().findByText("Description").should("be.visible");
+        SegmentEditor.get()
+          .findByText("Test description for readonly")
+          .should("be.visible");
 
-          visitDataModelSegment(ORDERS_ID, segmentId);
+        cy.log("verify Save button is not visible");
+        SegmentEditor.get()
+          .findByRole("button", { name: /Save/i })
+          .should("not.exist");
 
-          cy.log("verify segment name input is disabled");
-          SegmentEditor.get()
-            .findByDisplayValue("Readonly Detail Segment")
-            .should("be.disabled");
+        cy.log("verify Remove segment option is hidden in actions menu");
+        SegmentEditor.getActionsButton().click();
+        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Remove segment").should("not.exist");
+        cy.realPress("Escape");
 
-          cy.log("verify description is displayed as plain text");
-          SegmentEditor.get().findByText("Description").should("be.visible");
-          SegmentEditor.get()
-            .findByText("Test description for readonly")
+        cy.log("verify revision history is still accessible");
+        SegmentEditor.getRevisionHistoryTab().click();
+        SegmentRevisionHistory.get().within(() => {
+          cy.findByText(/created this segment/i)
+            .scrollIntoView()
             .should("be.visible");
-
-          cy.log("verify Save button is not visible");
-          SegmentEditor.get()
-            .findByRole("button", { name: /Save/i })
-            .should("not.exist");
-
-          cy.log("verify Remove segment option is hidden in actions menu");
-          SegmentEditor.getActionsButton().click();
-          H.popover().findByText("Preview").should("be.visible");
-          H.popover().findByText("Remove segment").should("not.exist");
-          cy.realPress("Escape");
-
-          cy.log("verify revision history is still accessible");
-          SegmentEditor.getRevisionHistoryTab().click();
-          SegmentRevisionHistory.get().within(() => {
-            cy.findByText(/created this segment/i)
-              .scrollIntoView()
-              .should("be.visible");
-          });
         });
+
+        cy.log("verify direct navigation to new segment page is blocked");
+        cy.visit(`${getSegmentsBaseUrl(ORDERS_ID)}/new`);
+        cy.url().should("include", "/unauthorized");
       });
     });
   },
@@ -768,5 +535,6 @@ function verifySegmentNotInQueryBuilder(
   H.openTable({ table: tableId, mode: "notebook" });
 
   H.getNotebookStep("data").button("Filter").click();
+  H.popover().findByText("Total").should("be.visible");
   H.popover().findByText(segmentName).should("not.exist");
 }

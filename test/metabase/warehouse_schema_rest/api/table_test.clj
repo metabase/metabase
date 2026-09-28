@@ -1505,6 +1505,43 @@
                       (map :id)
                       set))))))))
 
+(deftest owner-and-data-source-filter-test
+  (testing "GET /api/table with owner-user-id, owner-email, and data-source"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/User {user-id :id} {}
+                   :model/Table {user-owned-id :id} {:db_id         db-id
+                                                     :name          "user_owned"
+                                                     :active        true
+                                                     :owner_user_id user-id
+                                                     :data_source   :upload}
+                   :model/Table {email-owned-id :id} {:db_id       db-id
+                                                      :name        "email_owned"
+                                                      :active      true
+                                                      :owner_email "owner-filter@example.com"
+                                                      :data_source :ingested}
+                   :model/Table {unowned-id :id} {:db_id  db-id
+                                                  :name   "unowned"
+                                                  :active true}]
+      (let [list-table-ids (fn [& params]
+                             (->> (apply mt/user-http-request :crowberto :get 200 "table" params)
+                                  (filter #(= (:db_id %) db-id))
+                                  (map :id)
+                                  set))]
+        (testing "all tables are returned without a filter"
+          (is (= #{user-owned-id email-owned-id unowned-id}
+                 (list-table-ids))))
+        (testing "owner-user-id"
+          (is (= #{user-owned-id}
+                 (list-table-ids :owner-user-id user-id))))
+        (testing "owner-email"
+          (is (= #{email-owned-id}
+                 (list-table-ids :owner-email "owner-filter@example.com"))))
+        (testing "data-source"
+          (is (= #{user-owned-id}
+                 (list-table-ids :data-source "upload")))
+          (is (= #{email-owned-id}
+                 (list-table-ids :data-source "ingested"))))))))
+
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
     (mt/with-temp-test-data

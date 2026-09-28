@@ -36,33 +36,8 @@ describe("Table editing", () => {
     );
   });
 
-  it("should display metadata information", { tags: ["@external"] }, () => {
-    H.restore("mysql-8");
-    H.activateToken("pro-self-hosted");
-    H.DataModel.visitDataStudio();
-    TablePicker.getDatabase("QA MySQL8").click();
-    TablePicker.getTable("Orders").click();
-
-    cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
-      const viewCount = response?.body.view_count ?? 0;
-
-      cy.findByLabelText("Name in the database").should("have.text", "ORDERS");
-      cy.findByLabelText("Last updated at").should("exist"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
-      cy.findByLabelText("View count").should("have.text", viewCount);
-      cy.findByLabelText("Est. row count").should("not.exist");
-      cy.findByLabelText("Dependencies").should("have.text", "0");
-      cy.findByLabelText("Dependents").should("have.text", "0");
-
-      H.DataModel.TableSection.get()
-        .findByRole("link", { name: "Dependency graph" })
-        .click();
-
-      H.DataStudio.Dependencies.graph().should("be.visible");
-    });
-  });
-
   it(
-    "should publish a single table to a collection and unpublish",
+    "should display metadata information, publish a single table to a collection and unpublish",
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
@@ -70,6 +45,26 @@ describe("Table editing", () => {
       H.DataModel.visitDataStudio();
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
+
+      cy.log("verify the metadata section");
+      cy.wait<MetadataResponse>("@metadata").then(({ response }) => {
+        H.DataModel.TableSection.get()
+          .findByLabelText("View count")
+          .should("have.text", response?.body.view_count ?? 0);
+      });
+      H.DataModel.TableSection.get().within(() => {
+        cy.findByLabelText("Name in the database").should(
+          "have.text",
+          "ORDERS",
+        );
+        cy.findByLabelText("Last updated at").should("be.visible"); // Testing the actual value is done in TableMetadata.unit.spec.tsx
+        cy.findByLabelText("Est. row count").should("not.exist");
+        cy.findByLabelText("Dependencies").should("have.text", "0");
+        cy.findByLabelText("Dependents").should("have.text", "0");
+        cy.findByRole("link", { name: "Dependency graph" }).click();
+      });
+      H.DataStudio.Dependencies.graph().should("be.visible");
+      cy.go("back");
 
       cy.log("publish the table and verify it's published");
       TablePicker.getTable("Orders")
@@ -100,6 +95,7 @@ describe("Table editing", () => {
         .findByTestId("table-published")
         .should("not.exist");
       H.DataStudio.nav().findByLabelText("Semantic layer").click();
+      H.DataStudio.Library.collectionItem("Data").should("be.visible");
       H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );

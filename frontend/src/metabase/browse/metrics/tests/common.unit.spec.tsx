@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
+import * as Analytics from "metabase/analytics";
 
 import { setup } from "./setup";
 
@@ -22,6 +23,23 @@ describe("BrowseMetrics (OSS)", () => {
     expect(
       await within(header).findByLabelText("Create a new metric"),
     ).toBeInTheDocument();
+  });
+
+  it("tracks metric_create_started and opens the new metric page from the header button", async () => {
+    const trackSimpleEvent = jest.spyOn(Analytics, "trackSimpleEvent");
+    const { router } = setup({ metricCount: 0 });
+
+    const header = await screen.findByTestId("browse-metrics-header");
+    await userEvent.click(
+      await within(header).findByLabelText("Create a new metric"),
+    );
+
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "metric_create_started",
+      triggered_from: "browse_metrics",
+    });
+    expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/metric/new");
   });
 
   it("should not show the Create metric button in an empty state if the user does not have data access", async () => {
