@@ -23,7 +23,8 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
-   (java.util.concurrent Callable Executors ExecutorService)))
+   (java.util.concurrent Callable Executors ExecutorService)
+   (metabase.metabot.providers ChunkTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -318,6 +319,18 @@
       (.close input))))
 
 ;;; AISDK5
+
+(defn translator-xf
+  "A transducer driving a Java [[ChunkTranslator]] over a provider's decoded SSE events. `new-translator` is called
+  once per transduction, since a translator holds the state of one stream."
+  [new-translator]
+  (fn [rf]
+    (let [^ChunkTranslator translator (new-translator)]
+      (fn
+        ([result]
+         (rf (unreduced (u/reduce-preserving-reduced rf result (.finishClj translator)))))
+        ([result event]
+         (u/reduce-preserving-reduced rf result (.stepClj translator event)))))))
 
 (def finish-reasons
   "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
