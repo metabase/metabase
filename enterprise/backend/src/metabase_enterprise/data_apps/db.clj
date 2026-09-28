@@ -273,15 +273,3 @@
               :join [[:metabase_database :d] [:= :d.id :t.db_id]]
               :where [:in :t.id table-ids]
               :order-by [[:d.name :asc] [:t.schema :asc] [:t.display_name :asc]]}))
-
-(defn group-sandboxes
-  "Sandbox policies for the requested groups and tables."
-  [group-ids table-ids]
-  (t2/select [:model/Sandbox :group_id :table_id]
-             :group_id [:in group-ids] :table_id [:in table-ids]))
-
-(defn group-impersonations
-  "Connection impersonation policies for the requested groups and databases."
-  [group-ids database-ids]
-  (t2/select [:model/ConnectionImpersonation :group_id :db_id]
-             :group_id [:in group-ids] :db_id [:in database-ids]))

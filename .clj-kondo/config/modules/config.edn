@@ -3787,16 +3787,16 @@
            settings
            util
            warehouse-schema-overlay
-           enterprise/serialization}
+           enterprise/serialization
+           enterprise/permissions.impersonation
+           enterprise/permissions.sandbox}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
-                    :model/ConnectionImpersonation
                     :model/Database
                     :model/Field
                     :model/Permissions
                     :model/QueryAction
-                    :model/Sandbox
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -4156,7 +4156,7 @@
   enterprise/permissions.impersonation
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.impersonation"
-   :api #{metabase-enterprise.impersonation.api}
+   :api #{metabase-enterprise.impersonation.api metabase-enterprise.impersonation.core}
    :uses #{api
            audit-app
            driver
@@ -4174,7 +4174,7 @@
   enterprise/permissions.sandbox
   {:team "UX West"
    :ns-prefix "metabase-enterprise.sandbox"
-   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
+   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.core metabase-enterprise.sandbox.schema}
    :uses #{analytics
            api
            api-scope

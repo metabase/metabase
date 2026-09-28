@@ -2,6 +2,8 @@
   (:require
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as resources]
+   [metabase-enterprise.impersonation.core :as impersonation]
+   [metabase-enterprise.sandbox.core :as sandbox]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -72,9 +74,9 @@
     (when (seq tables)
       {:permissions   (perms/index-database-permissions (vec group-ids) (vec database-ids))
        :sandboxes      (into #{} (map (juxt :group_id :table_id))
-                             (data-apps.db/group-sandboxes group-ids table-ids))
+                             (sandbox/policies-for-groups-and-tables group-ids table-ids))
        :impersonations (into #{} (map (juxt :group_id :db_id))
-                             (data-apps.db/group-impersonations group-ids database-ids))})))
+                             (impersonation/policies-for-groups-and-databases group-ids database-ids))})))
 
 (defn permission-warnings
   "Missing table access for assigned groups, including access inherited from All Users."
