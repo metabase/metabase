@@ -19,6 +19,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
@@ -490,6 +491,29 @@
          clojure.lang.ExceptionInfo
          #"\"offset\" with get_fields pages the fields of one large table"
          (#'tools.browse/get-fields {:action "get_fields" :table_ids [1 2] :offset 5})))))
+
+(deftest related-tables-cap-before-lookup-test
+  (testing "GHY-4323: each requested table's FK targets are capped before the table lookup, so its `IN` is bounded
+            by what the response can surface rather than by how many FK columns the tables have"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (let [target-ids (t2/insert-returning-pks! :model/Table
+                                                 (for [i (range 60)]
+                                                   {:db_id db-id :schema "public" :active true
+                                                    :name (str "spoke_" i) :display_name (str "spoke_" i)}))
+            rows       [{:id     -1
+                         :fields (for [id target-ids] {:target {:table_id id}})}]
+            looked-up  (atom [])
+            related    (let [active-tables-by-ids (mt/original-fn #'mcp.db/active-tables-by-ids)]
+                         (mt/with-dynamic-fn-redefs [mcp.db/active-tables-by-ids
+                                                     (fn [ids]
+                                                       (swap! looked-up conj (set ids))
+                                                       (active-tables-by-ids ids))]
+                           (mt/with-test-user :crowberto
+                             (#'tools.browse/related-tables-by-requested-table #{db-id} rows))))]
+        (is (= [(set (take 50 target-ids))] @looked-up)
+            "the lookup asks for the first 50 targets, in field order, and no more")
+        (is (= (take 50 target-ids) (map :id (get related -1)))
+            "the surfaced related tables are those same 50, in field order")))))
 
 (deftest get-fields-dedups-table-ids-test
   (testing "GHY-4138: duplicate table_ids are deduped before the guards run — the same id twice is
