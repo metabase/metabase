@@ -26,25 +26,25 @@
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/select-one-pk :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-expiry
   "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id user-id :provider provider))
+  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/exists? :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
@@ -67,14 +67,14 @@
   "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn delete-sessions-for-user!
   "Delete every Session of the User with `user-id`, returning the number deleted. Duplicates
   `metabase.session.db/delete-sessions-for-user!`; can't delegate to it because the `session` module already depends
   on `auth-identity`, so the reverse dependency would be a module cycle."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/Session :user_id user-id))
+  (t2/delete! :model/Session :user_id (long user-id)))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -105,7 +105,7 @@
 (mu/defn user-active?
   "Whether the User with `user-id` is active."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_active :model/User :id user-id))
+  (t2/select-one-fn :is_active :model/User :id (long user-id)))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`, returning the number updated."
@@ -133,6 +133,7 @@
                             [:saml-session-index  {:optional true} [:maybe :string]]
                             [:saml-name-id        {:optional true} [:maybe :string]]
                             [:saml-name-id-format {:optional true} [:maybe :string]]]]
+  ;; Written values stay unmarked: a column's `:in` transform would run on a marker and store it as data.
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
