@@ -28,7 +28,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable and enable jwt, regenerate its key, and reset its settings", () => {
+  it("should allow to disable and enable jwt, reset its settings, and regenerate its key", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
@@ -42,7 +42,18 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
 
+    cy.log("Deactivating resets the jwt settings");
+    getJwtCard().icon("ellipsis").click();
+    H.popover().findByText("Deactivate").click();
+    H.modal().button("Deactivate").click();
+    cy.wait("@updateSettings");
+
+    getJwtCard().findByText("Set up").should("exist");
+
     cy.log("Regenerating the existing jwt key and saving the settings");
+    // Kept last: after saving, the form still counts as dirty, so leaving the
+    // page opens a "Discard your changes?" modal.
+    enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
     cy.findByLabelText(/String used by the JWT signing key/i).should(
@@ -64,16 +75,6 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     cy.findByTestId("admin-layout-content")
       .findByText("Success")
       .should("exist");
-
-    cy.log("Deactivating resets the jwt settings");
-    H.goToAuthOverviewPage();
-
-    getJwtCard().icon("ellipsis").click();
-    H.popover().findByText("Deactivate").click();
-    H.modal().button("Deactivate").click();
-    cy.wait("@updateSettings");
-
-    getJwtCard().findByText("Set up").should("exist");
   });
 
   it("should allow the user to enable/disable user provisioning", () => {

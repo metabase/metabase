@@ -145,6 +145,9 @@ describe("scenarios > admin > embedding > guest embeds> content translation", ()
           const oneArabicFieldName = [nonAsciiFieldNames[0]];
           uploadTranslationDictionary(oneArabicFieldName);
           assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
+
+          cy.log("the German translations from the first upload are gone");
+          assertOnlyTheseTranslationsAreStored([], "de");
         });
       });
 

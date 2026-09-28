@@ -253,7 +253,7 @@ describe("scenarios > admin > people", () => {
           cy.findByText("Deactivate user").should("not.exist");
         });
         cy.realPress("Escape");
-        cy.get(H.POPOVER_ELEMENT).filter(":visible").should("not.exist");
+        H.menu().should("not.exist");
 
         cy.log(
           "should allow admin to deactivate and reactivate other admins/users",

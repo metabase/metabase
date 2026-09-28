@@ -709,6 +709,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         "should link to metabase help when the whitelabel feature is disabled (eg OSS)",
       );
       cy.signInAsAdmin();
+      // Point the help link at the custom destination first, so only the
+      // whitelabel feature gating can bring back the default Metabase help link
+      H.updateSetting("help-link", "custom");
       H.deleteToken();
 
       cy.signInAsNormalUser();
