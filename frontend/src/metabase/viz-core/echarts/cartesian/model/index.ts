@@ -99,12 +99,7 @@ export const getCardsReferencedColumns = (
   });
 };
 
-/**
- * The series a chart actually draws, which is not simply one per metric: the
- * list is sorted, capped, and its tail may be folded into a single "Other"
- * series. Anything deciding what the chart shows has to start from this list,
- * not from the raw series, or it will disagree with what gets rendered.
- */
+/** The series the chart draws: sorted, capped, and with the tail grouped into "Other". */
 export const getChartSeriesModels = (
   rawSeries: RawSeries,
   cardsColumns: CartesianChartColumns[],

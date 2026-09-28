@@ -716,8 +716,14 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
+// One split per sidebar build: every widget gets the same computed settings.
+const seriesNamesByYAxisCache = new WeakMap<
+  ComputedVisualizationSettings,
+  { series: Series; seriesNames: YAxisSeriesNames }
+>();
+
 // Not `useRawSeries`: it would also change the left label's default.
-const getSeriesNamesByYAxis = (
+const computeSeriesNamesByYAxis = (
   series: Series,
   vizSettings: ComputedVisualizationSettings,
 ): YAxisSeriesNames => {
@@ -730,6 +736,25 @@ const getSeriesNamesByYAxis = (
     console.warn("Error computing y-axis series", error);
     return { left: null, right: null };
   }
+};
+
+const getSeriesNamesByYAxis = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+): YAxisSeriesNames => {
+  // Both label fields are hidden, so skip the split.
+  if (vizSettings["graph.y_axis.labels_enabled"] === false) {
+    return { left: null, right: null };
+  }
+
+  const cached = seriesNamesByYAxisCache.get(vizSettings);
+  if (cached?.series === series) {
+    return cached.seriesNames;
+  }
+
+  const seriesNames = computeSeriesNamesByYAxis(series, vizSettings);
+  seriesNamesByYAxisCache.set(vizSettings, { series, seriesNames });
+  return seriesNames;
 };
 
 const isYAxisSplit = ({ left, right }: YAxisSeriesNames) =>
@@ -1039,11 +1064,8 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "input",
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    // The field shows the label the axis draws. An unset label names the axis
-    // after its one series; that stays out of getDefault because finding each
-    // axis's series takes a pass over the data, which rendering would then pay.
-    // With every series pinned right, the right axis is the only axis and
-    // takes this label.
+    // Not in getDefault: the split needs a pass over the rows, and every chart
+    // render computes defaults.
     getProps: (series, vizSettings) => {
       const { left, right } = getSeriesNamesByYAxis(series, vizSettings);
       return {
@@ -1076,9 +1098,7 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false ||
       !isYAxisSplit(getSeriesNamesByYAxis(series, vizSettings)),
-    // No getDefault: an unset value is what makes the right axis inherit the
-    // left label, so saved questions keep their current rendering. The field
-    // shows the label the axis draws, as the left one does.
+    // No getDefault: an unset value makes the right axis use the left label.
     getProps: (series, vizSettings) => ({
       value: getYAxisLabel(
         getSeriesNamesByYAxis(series, vizSettings).right ?? [],

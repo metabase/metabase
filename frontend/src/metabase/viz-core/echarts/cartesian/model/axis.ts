@@ -68,10 +68,10 @@ const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
     .length;
 };
 
-export function shouldAutoSplitYAxis(
+// The checks of `shouldAutoSplitYAxis` that don't need series extents.
+function canAutoSplitYAxis(
   settings: ComputedVisualizationSettings,
   seriesModels: SeriesModel[],
-  seriesExtents: SeriesExtents,
 ) {
   if (!settings["graph.y_axis.auto_split"] || settings["graph.split_panels"]) {
     return false;
@@ -80,10 +80,18 @@ export function shouldAutoSplitYAxis(
   const isSingleCardWithSingleMetricColumn =
     uniqueCards(seriesModels) <= 1 && getMetricColumnsCount(seriesModels) <= 1;
 
-  if (
-    isSingleCardWithSingleMetricColumn ||
-    settings["stackable.stack_type"] != null
-  ) {
+  return (
+    !isSingleCardWithSingleMetricColumn &&
+    settings["stackable.stack_type"] == null
+  );
+}
+
+export function shouldAutoSplitYAxis(
+  settings: ComputedVisualizationSettings,
+  seriesModels: SeriesModel[],
+  seriesExtents: SeriesExtents,
+) {
+  if (!canAutoSplitYAxis(settings, seriesModels)) {
     return false;
   }
 
@@ -231,7 +239,7 @@ export function computeSplit(
 export const getYAxisSplit = (
   seriesModels: SeriesModel[],
   stackModels: StackModel[],
-  seriesExtents: SeriesExtents,
+  dataset: ChartDataset,
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
@@ -294,12 +302,20 @@ export const getYAxisSplit = (
     }
   }
 
-  if (
-    !isAutoSplitSupported ||
-    !shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)
-  ) {
-    // assign all auto to the left
-    return [new Set([...left, ...auto]), new Set(right)];
+  const allAutoLeft = [new Set([...left, ...auto]), new Set(right)];
+
+  // Extents take a pass over the rows, so skip them when no auto split can happen.
+  if (!isAutoSplitSupported || !canAutoSplitYAxis(settings, seriesModels)) {
+    return allAutoLeft;
+  }
+
+  const seriesExtents = getDatasetExtents(
+    seriesModels.map((seriesModel) => seriesModel.dataKey),
+    dataset,
+  );
+
+  if (!shouldAutoSplitYAxis(settings, seriesModels, seriesExtents)) {
+    return allAutoLeft;
   }
 
   // computes a split with all axis unassigned, then moves
@@ -427,9 +443,7 @@ export const getYAxisLabel = (
     return undefined;
   }
 
-  // An unset right label inherits the left one, so questions saved before the
-  // right axis had its own label keep it. A blank one hides the label, as a
-  // blank left one does.
+  // An unset right label falls back to the left one; a blank one hides it.
   const specifiedAxisName = isSplitRightAxis
     ? (settings["graph.y_axis.right.title_text"] ??
       settings["graph.y_axis.title_text"])
@@ -585,13 +599,10 @@ export function getYAxesModels(
   isCompactFormatting: boolean,
   gridSize?: VisualizationGridSize,
 ) {
-  const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
-  const extents = getDatasetExtents(seriesDataKeys, dataset);
-
   const [leftAxisSeriesKeysSet, rightAxisSeriesKeysSet] = getYAxisSplit(
     seriesModels,
     stackModels,
-    extents,
+    dataset,
     settings,
     isAutoSplitSupported,
   );
@@ -647,10 +658,8 @@ export function getYAxesModels(
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
       gridSize,
-      // A right axis with nothing on the left is the chart's only axis, and
-      // the only axis takes the one label field the sidebar shows for it.
-      // Read the split, not the visible keys, so hiding every left series in
-      // the legend does not swap the right axis over to the left label.
+      // A right axis alone uses the left label. Legend visibility must not
+      // change which label it uses.
       isSplitRightAxis: leftAxisSeriesKeysSet.size > 0,
     },
   );

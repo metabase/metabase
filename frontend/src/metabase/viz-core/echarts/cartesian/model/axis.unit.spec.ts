@@ -236,8 +236,6 @@ describe("getYAxesModels", () => {
     );
 
   it("should label both axes with the legacy 'graph.y_axis.title_text' when no right-axis label is stored", () => {
-    // Deleting this test lets saved split-axis questions silently lose their
-    // right-axis label, which used to come from the single shared key.
     const { leftAxisModel, rightAxisModel } = getSplitAxesModels({
       "graph.y_axis.title_text": "Legacy label",
     });
@@ -290,8 +288,6 @@ describe("getYAxesModels", () => {
   });
 
   it("should label a right axis with no left axis from 'graph.y_axis.title_text'", () => {
-    // The sidebar hides the right label field on a one-axis chart, so a right
-    // label stored while the chart was split must not keep driving this axis.
     const { leftAxisModel, rightAxisModel } = getYAxesModels(
       seriesModels,
       dataset,

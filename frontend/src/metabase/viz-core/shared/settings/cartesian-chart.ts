@@ -25,10 +25,7 @@ import {
   getChartSeriesModels,
 } from "../../echarts/cartesian/model";
 import { getYAxisSplit } from "../../echarts/cartesian/model/axis";
-import {
-  getDatasetExtents,
-  getJoinedCardsDataset,
-} from "../../echarts/cartesian/model/dataset";
+import { getJoinedCardsDataset } from "../../echarts/cartesian/model/dataset";
 import { getCardsSeriesModels } from "../../echarts/cartesian/model/series";
 import { getStackModels } from "../../echarts/cartesian/model/stack";
 import type {
@@ -308,11 +305,7 @@ const getSeriesNamesBySide = (
   };
 };
 
-/**
- * The series the chart splits onto each y-axis. The renderer labels its axes
- * from this split, not from which series the legend shows, so the sidebar can
- * answer it without knowing the hidden series.
- */
+/** Series names on each y-axis, split the way the renderer splits them. */
 export function getYAxisSeriesNames(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -328,14 +321,12 @@ export function getYAxisSeriesNames(
 
   const display = firstSeries.card.display;
 
-  // A waterfall builds its one y-axis through `getYAxisModel` directly, with no
-  // series names, so only a typed label names it.
+  // A waterfall has one axis and no automatic label.
   if (display === "waterfall") {
     return { left: [], right: null };
   }
 
-  // A box plot splits its series through its own `getYAxisSplit`, over
-  // extents taken from the computed boxes.
+  // Box plots split on the extents of the computed boxes.
   if (display === "boxplot") {
     const { seriesModels, leftAxisSeriesKeys, rightAxisSeriesKeys } =
       getBoxPlotModel(rawSeries, settings);
@@ -354,22 +345,15 @@ export function getYAxisSeriesNames(
     settings,
   );
   const stackModels = getStackModels(seriesModels, settings);
-  // `getCartesianChartModel` sorts the dataset before taking extents; sorting
-  // cannot move a min or a max, so the unsorted dataset gives the same split.
-  const dataset = getJoinedCardsDataset(rawSeries, cardsColumns);
-  const seriesExtents = getDatasetExtents(
-    seriesModels.map((seriesModel) => seriesModel.dataKey),
-    dataset,
-  );
 
-  // `getScatterPlotModel` passes `false`, so a scatter plot only splits through
-  // an explicit per-series axis assignment.
+  // Scatter plots never auto-split, see `getScatterPlotModel`.
   const isAutoSplitSupported = display !== "scatter";
 
   const [leftAxisSeriesKeys, rightAxisSeriesKeys] = getYAxisSplit(
     seriesModels,
     stackModels,
-    seriesExtents,
+    // Unsorted is fine: sorting doesn't change a min or a max.
+    getJoinedCardsDataset(rawSeries, cardsColumns),
     settings,
     isAutoSplitSupported,
   );

@@ -195,10 +195,7 @@ export type TrendLinesModel = {
 
 export type YAxisSide = "left" | "right";
 
-/**
- * The names of the series each y-axis plots, which an unset axis label is
- * derived from. `null` for a side with no axis.
- */
+/** Series names on each y-axis, `null` for a side with no axis. */
 export type YAxisSeriesNames = Record<YAxisSide, string[] | null>;
 
 export type StackDisplay = "bar" | "area";
