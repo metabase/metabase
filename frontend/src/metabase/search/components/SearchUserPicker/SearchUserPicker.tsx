@@ -4,23 +4,19 @@ import { without } from "underscore";
 
 import { useListUserRecipientsQuery } from "metabase/api";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
-import {
-  SearchUserItemContainer,
-  SearchUserPickerContainer,
-  SearchUserPickerContent,
-  SearchUserSelectBox,
-  SelectedUserButton,
-  UserPickerInput,
-} from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserListElement } from "metabase/search/components/UserListElement";
-import { Center, Icon, Text } from "metabase/ui";
+import { Center, Pill, PillsInput, Stack, Text } from "metabase/ui";
 import type { UserId, UserListResult } from "metabase-types/api";
+
+import S from "./SearchUserPicker.module.css";
 
 export const SearchUserPicker = ({
   value,
+  width,
   onChange,
 }: {
   value: UserId[];
+  width?: string;
   onChange: (value: UserId[]) => void;
 }) => {
   const { isLoading, data } = useListUserRecipientsQuery();
@@ -74,46 +70,40 @@ export const SearchUserPicker = ({
       isLoading={isLoading}
       onApply={() => onChange(selectedUserIds)}
     >
-      <SearchUserPickerContainer p="sm" gap="xxs">
-        <SearchUserSelectBox gap={0}>
-          <SearchUserItemContainer
-            data-testid="search-user-select-box"
-            p="xxs"
-            mah="30vh"
-          >
+      <Stack className={S.container} w={width} p="sm" gap="xxs">
+        <PillsInput
+          data-testid="search-user-select-box"
+          classNames={{ input: S.selectBox }}
+        >
+          <Pill.Group>
             {selectedUserIds.map((userId) => {
               const user = users.find((user) => user.id === userId);
               return (
-                <SelectedUserButton
-                  data-testid="selected-user-button"
+                <Pill
                   key={userId}
-                  c="core-brand"
-                  px="md"
-                  maw="100%"
-                  rightSection={<Icon name="close" />}
-                  onClick={() => removeUser(user)}
+                  data-testid="selected-user-button"
+                  withRemoveButton
+                  removeButtonProps={{
+                    "aria-label": t`Remove ${user?.common_name}`,
+                    "aria-hidden": false,
+                  }}
+                  onRemove={() => removeUser(user)}
                 >
-                  <Text ta="left" w="100%" truncate c="inherit">
-                    {user?.common_name}
-                  </Text>
-                </SelectedUserButton>
+                  {user?.common_name}
+                </Pill>
               );
             })}
-            <UserPickerInput
-              variant="subtle"
-              pl="sm"
-              size="md"
+            <PillsInput.Field
               placeholder={t`Search for someone…`}
               value={userFilter}
-              tabIndex={0}
               onChange={(event) => setUserFilter(event.currentTarget.value)}
-              mt="-0.25rem"
-              miw="18ch"
             />
-          </SearchUserItemContainer>
-        </SearchUserSelectBox>
-        <SearchUserPickerContent
+          </Pill.Group>
+        </PillsInput>
+        <Stack
+          className={S.content}
           data-testid="search-user-list"
+          flex="1"
           h="100%"
           gap="xxs"
           p="xxs"
@@ -125,8 +115,8 @@ export const SearchUserPicker = ({
               <Text size="md" fw={700}>{t`No results`}</Text>
             </Center>
           )}
-        </SearchUserPickerContent>
-      </SearchUserPickerContainer>
+        </Stack>
+      </Stack>
     </SearchFilterPopoverWrapper>
   );
 };
