@@ -182,7 +182,7 @@ Every event has `seq` (order within the attempt), `t` (ms since the attempt star
 - `journey-capture` requests are the step snapshots' own backend dump requests. They never appear in `routes`.
 - `cy.request` events record the request body as `body`: canonical JSON with object keys sorted, clipped at 2,048 characters. `bodyHash` (FNV-1a 64 of the UTF-8 bytes, 16 hex digits) and `bodyBytes` cover the whole canonical text, so two setups with the same fixture have the same hash. The value of every key matching `password`, `token`, `secret` or `session` (any case, at any depth) is `"<masked>"`, before hashing. A string body that holds JSON is canonicalized as that JSON, other strings have matching form fields masked. A body that isn't plain JSON (`FormData`, `Blob`, `ArrayBuffer`, ...) records only `bodyType`. Body-less requests have none of these fields. A `cy.request` with `{log: false}` records `"bodyType": "hidden"` and no other body field.
 - `proxy:*` events record `bodyHash` and `bodyBytes` of the body the pass-through `cy.intercept` sees, never the body itself. Cypress parses JSON bodies for intercept handlers and forwards `JSON.stringify` of them, so the hash is of the bytes the backend receives. Multipart bodies, whose random boundary changes the hash on every request, record `"bodyType": "multipart"` and `bodyBytes` only. Binary bodies, which Cypress hands the handler as a buffer, record only `bodyType`. `fetch` and `xhr` events have no body fields: the app sends most requests as `fetch(new Request(...))`, whose body is a stream that can't be read without consuming it.
-- Before a spec file is written, every value of a runner environment variable whose name contains `TOKEN`, `SECRET`, `PASSWORD`, `API_KEY` or `PRIVATE` and that is at least 16 characters long is replaced with `<masked>`, wherever it appears. That covers the premium tokens, which tests send to `/api/setting/premium-embedding-token` as `{"value": ...}` and type into the license form. The scrub before upload also covers the pieces of them that clipping leaves, see [Secrets](#secrets).
+- Before a spec file is written, every value of a runner environment variable whose name contains `TOKEN`, `SECRET`, `PASSWORD`, `API_KEY` or `PRIVATE` and that is at least 16 characters long is replaced with `<masked>`, wherever it appears. That covers the premium tokens, which tests send to `/api/setting/premium-embedding-token` as `{"value": ...}` and type into the licence form. The scrub before upload also covers the pieces of them that clipping leaves, see [Secrets](#secrets).
 - `chain` is the command chain the event belongs to, for example `get("[data-testid=x]").should("be.visible")`. Arguments are clipped at 300 characters, and a chain at 8 commands. A `command` event's chain ends at that command.
 - In a chain, a `cy.request` is `request(<METHOD> <path>)`, with the path in the same form as a request event's `path`, and never its body, headers or query string. A command with `{log: false}` in its arguments shows each of them as `<hidden>`, for example `type(<hidden>, <hidden>)`. Tests use `{log: false}` to keep secrets out of the Cypress log.
 - `helpers` lists the functions from the spec and support bundles on the JS stack when the command was queued, outermost first (for example `["Context.eval", "visitQuestion"]`, where `Context.eval` is the test or hook body). It comes from Cypress's `userInvocationStack` and names only functions that appear in stack frames.
@@ -278,7 +278,7 @@ With `cljs_coverage`, the build also instruments `target/cljs_release/metabase.*
 
 ## Secrets
 
-The shards run with the staging license tokens in their environment, and tests send them to the backend and type them into forms.
+The shards run with the staging licence tokens in their environment, and tests send them to the backend and type them into forms.
 The capture itself leaves out `cy.request` arguments, the arguments of `{log: false}` commands and query strings, and masks the runner's secret environment variables and body keys named like secrets, as described in [Events](#events).
 On top of that, every shard scrubs, checks and encrypts its data before it uploads anything.
 
@@ -321,6 +321,52 @@ gh run download <run id> -n journey-capture-shard-<n> -D <download dir>
 mkdir -p <run dir>/journey-capture-shard-<n>
 age -d -i <identity file> <download dir>/journey-capture-shard-<n>.tar.gz.age | tar -xzf - -C <run dir>/journey-capture-shard-<n>
 ```
+
+### Canary check
+
+`e2e/coverage/journey-capture-canary.mjs` checks on real specs that no licence token reaches the capture output. Run it after changing the capture or the scrub.
+
+It needs these, and checks for them before it starts:
+
+- an EE backend for e2e on port 4000 (or `MB_JETTY_PORT`) with the testing endpoints, for example from `node e2e/runner/start-backend.js`
+- the e2e snapshots in the backend's `e2e/snapshots`, and `e2e/support/cypress_sample_instance_data.json` and `cypress_sample_database.json` in this checkout. A normal local run such as `bun run test-cypress` writes them.
+- an instrumented frontend: the dev server started with `INSTRUMENT_COVERAGE=true bun run build-hot`, or a build from `INSTRUMENT_COVERAGE=true bun run build-release:js`
+- no `cypress.env.json` in the repository root, because Cypress loads it into `cy.env()`
+
+Cypress uses Chrome unless `CYPRESS_BROWSER` names another browser. The e2e Docker containers are optional, because the tests with token routes only use the sample database. Without them, more of the other tests fail.
+
+```
+node e2e/coverage/journey-capture-canary.mjs
+```
+
+It passes when the scrubbed copy has nothing the verify step would reject, and each spec recorded the events of its token routes. It exits with 0 on a pass, 1 on a fail, and 2 when a prerequisite is missing or it refuses to run. The report names files, rules and canary labels, never a value.
+
+It sets each of the four token variables the e2e helpers read to a canary, a fake token for one label:
+
+| Variable                           | Label             |
+| ---------------------------------- | ----------------- |
+| `CYPRESS_MB_ALL_FEATURES_TOKEN`    | `all-features`    |
+| `CYPRESS_MB_STARTER_CLOUD_TOKEN`   | `starter-cloud`   |
+| `CYPRESS_MB_PRO_CLOUD_TOKEN`       | `pro-cloud`       |
+| `CYPRESS_MB_PRO_SELF_HOSTED_TOKEN` | `pro-self-hosted` |
+
+Each canary is 64 hex digits like a real token and starts with `fa4e`. The Cypress runs get no other variable named or shaped like a secret, and the script stops before Cypress starts if one would get through.
+
+It runs Cypress twice, with backend coverage off:
+
+- `onboarding/setup/setup.cy.spec.ts` and `question/saved.cy.spec.js`, as a shard runs its tests, with `assertions` step snapshots. The setup spec types a token into the licence form, which sends it to the backend. The saved spec activates one with `H.activateToken`.
+- the default snapshot creator, as a shard runs it. It also activates a token with `H.activateToken`.
+
+The tests that need a valid token fail. The capture still records what they did up to the failure.
+
+Then it looks for every spelling and 20-character piece of each canary with the scrub's `verifyDir`, in two places:
+
+1. the output as the capture wrote it. This is for information: it shows what the capture lets through before the scrub.
+2. a copy scrubbed with `scrubDir`, as the workflow scrubs a shard.
+
+The snapshot creator only works on an instance that isn't set up, so the script restores the `blank` snapshot first. The creator also overwrites the snapshots, and with a canary it stops before it writes the instance data that goes with them. The script puts both back when the runs end.
+
+Everything else goes to a new temporary directory, whose path it prints. `raw/` holds the capture output, with the `meta.json` and `summary.txt` the workflow adds, and `scrubbed/` holds the scrubbed copy.
 
 ## Size
 
