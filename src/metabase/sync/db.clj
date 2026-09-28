@@ -705,9 +705,8 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  ;; `types` stays unmarked: `:type` carries `mi/transform-keyword`, which maps over the vector in
-  ;; the value slot, so `[:in [:auto/param types]]` compiles to `IN (?, (?, ?))` with the marker
-  ;; keyword bound as the string "auto/param". The transform already binds each element.
+  ;; `types` stays unmarked: `[:set :keyword]` admits the empty set, and marking an empty collection
+  ;; is refused (rubric rule 5). The `:type` transform already binds each element as a parameter.
   (t2/count :model/FieldValues :field_id (long field-id) :type [:in types]
             :created_at (before-max-age-value max-age-days)))
 
@@ -716,6 +715,6 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  ;; Unmarked for the same reason as the count above: the `:type` transform would eat the marker.
+  ;; Unmarked for the same reason as the count above: the set may be empty (rubric rule 5).
   (t2/delete! :model/FieldValues :field_id (long field-id) :type [:in types]
               :created_at (before-max-age-value max-age-days)))
