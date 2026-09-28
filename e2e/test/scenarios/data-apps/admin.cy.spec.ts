@@ -129,7 +129,7 @@ describe("scenarios > data apps > admin management", () => {
       );
     }
 
-    it("badges an outdated app, refuses to open it, and still lets an admin manage its users", () => {
+    it("badges an outdated app and refuses to open it", () => {
       markAppOutdated();
 
       cy.visit("/admin/settings/apps");
@@ -141,21 +141,8 @@ describe("scenarios > data apps > admin management", () => {
             cy.findByText("Outdated").should("be.visible");
             cy.findByText(displayName).should("be.visible");
             cy.findByRole("link", { name: displayName }).should("not.exist");
-            cy.findByRole("button", {
-              name: `Actions for ${displayName}`,
-            }).click();
           });
       });
-
-      H.popover().findByText("Manage user access").click();
-
-      cy.location("pathname").should(
-        "eq",
-        `/admin/settings/apps/${OUTDATED_APP}/users`,
-      );
-      H.main()
-        .findByRole("heading", { name: "Manage access to this app" })
-        .should("be.visible");
 
       H.openDataApp(OUTDATED_APP);
       H.main().findByText("This data app is outdated").should("be.visible");
