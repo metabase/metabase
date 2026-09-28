@@ -18,13 +18,36 @@
 
 (deftest ^:parallel additional-connection-string-options-test
   (testing "Make sure you can add additional connection string options (#6651)"
-    (is (= {:classname   "com.vertica.jdbc.Driver"
-            :subprotocol "vertica"
-            :subname     "//localhost:5433/birds-near-me?ConnectionLoadBalance=1"}
+    (is (= {:classname        "com.vertica.jdbc.Driver"
+            :subprotocol      "vertica"
+            :subname          "//localhost:5433/birds-near-me?ConnectionLoadBalance=1"
+            :disablecopylocal "true"}
            (sql-jdbc.conn/connection-details->spec :vertica {:host               "localhost"
                                                              :port               5433
                                                              :db                 "birds-near-me"
                                                              :additional-options "ConnectionLoadBalance=1"})))))
+
+(deftest ^:parallel copy-local-is-disabled-test
+  (testing "`COPY ... FROM LOCAL` reads files on the Metabase host into the warehouse, so it is always disabled"
+    ;; the connection details pass detail keys through as connection properties and `:additional-options` into the
+    ;; URL, and the client reads property names case-insensitively, so a user's value in any casing, either way in, is
+    ;; dropped rather than left to compete with ours
+    (doseq [details [{}
+                     {:additional-options "DisableCopyLocal=false"}
+                     {:additional-options "ConnectionLoadBalance=1&disablecopylocal=0"}
+                     {:additional-options " DISABLECOPYLOCAL =false&ConnectionLoadBalance=1"}
+                     {:DisableCopyLocal false}
+                     {:disablecopylocal "false"}
+                     {:DISABLECOPYLOCAL "0"}]]
+      (testing (pr-str details)
+        (let [spec (sql-jdbc.conn/connection-details->spec :vertica (merge {:host "localhost" :port 5433 :db "birds"}
+                                                                           details))]
+          (is (= "true" (:disablecopylocal spec)))
+          (is (= [:disablecopylocal] (filterv #(re-find #"(?i)copylocal" (name %)) (keys spec))))
+          (is (not (re-find #"(?i)copylocal" (:subname spec))))
+          (testing "other options are kept"
+            (when (re-find #"ConnectionLoadBalance" (str (:additional-options details)))
+              (is (re-find #"ConnectionLoadBalance=1" (:subname spec))))))))))
 
 (defn- compile-query [query]
   (-> (qp.compile/compile query)
