@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.specialization.api :as specialization]
-   [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.query-semantics :as fixtures]
@@ -74,8 +73,7 @@
 
 (defn- available-appdb-dialect
   []
-  (when (and (search.engine/supported-engine? :search.engine/appdb)
-             (search/supports-index?))
+  (when (search.engine/supported-engine? :search.engine/appdb)
     (case (mdb/db-type)
       :h2       :appdb-h2
       :postgres :appdb-postgres
