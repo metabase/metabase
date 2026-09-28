@@ -20,11 +20,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { computeNumericDataInterval } from "../../../lib/numeric";
 import { getLineAreaBarComparisonSettings } from "../../../lib/settings";
-import type {
-  ComputedVisualizationSettings,
-  Extent,
-  VisualizationGridSize,
-} from "../../../types";
+import type { ComputedVisualizationSettings, Extent } from "../../../types";
 import type { ShowWarning } from "../../types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
@@ -59,6 +55,9 @@ import type {
   YAxisModel,
 } from "./types";
 import { getFormattingOptionsWithoutScaling } from "./util";
+
+// Default to 5 ticks for consistent behavior between single and multiple series
+const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5;
 
 const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
@@ -499,7 +498,7 @@ interface YAxisModelOptions {
   stackModels?: StackModel[];
   stackType?: StackType;
   formattingOptions?: ColumnSettings;
-  gridSize?: VisualizationGridSize;
+  hasResponsiveTicks?: boolean;
   showLabel?: boolean;
 }
 
@@ -515,7 +514,7 @@ export function getYAxisModel(
     stackModels = [],
     stackType = null,
     formattingOptions,
-    gridSize,
+    hasResponsiveTicks = false,
     showLabel = true,
   } = options;
 
@@ -554,12 +553,11 @@ export function getYAxisModel(
     formatter,
     formatGoal,
     isNormalized: stackType === "normalized",
+    hasResponsiveTicks,
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : gridSize?.height && gridSize.height <= 5
-          ? 2 // Use fewer ticks for small dashboard charts
-          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+        : DEFAULT_Y_AXIS_SPLIT_NUMBER,
   };
 }
 
@@ -572,7 +570,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
-  gridSize?: VisualizationGridSize,
+  hasResponsiveTicks = false,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -618,7 +616,7 @@ export function getYAxesModels(
       stackModels: leftStackModels,
       stackType: settings["stackable.stack_type"] ?? null,
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
@@ -635,7 +633,7 @@ export function getYAxesModels(
           ? null
           : (settings["stackable.stack_type"] ?? null),
       formattingOptions: { compact: isCompactFormatting },
-      gridSize,
+      hasResponsiveTicks,
     },
   );
 
@@ -651,7 +649,7 @@ export function getYAxesModels(
             columnByDataKey,
             {
               formattingOptions: { compact: isCompactFormatting },
-              gridSize,
+              hasResponsiveTicks,
               showLabel: false,
             },
           ),

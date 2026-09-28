@@ -138,20 +138,20 @@ const getLogScaleTickValues = (
   return tickValues;
 };
 
-const getYAxisTicksWidth = (
+const getYAxisWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
   settings: ComputedVisualizationSettings,
   { measureText, fontFamily, theme }: RenderingContext,
 ): number => {
   if (!settings["graph.y_axis.axis_enabled"]) {
-    return 0;
+    return CHART_STYLE.hiddenYAxisWidth;
   }
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     family: fontFamily,
-    size: theme.cartesian.label.fontSize,
+    size: theme.cartesian.ticks.fontSize,
   };
 
   const [min, max] = getYAxisExtentToMeasure(
@@ -211,7 +211,7 @@ const getYAxisTicksWidth = (
     return measureText(formattedValue, fontStyle);
   });
 
-  return Math.max(...measuredValues);
+  return Math.max(...measuredValues) + theme.cartesian.ticks.marginY;
 };
 
 const getXAxisTicksWidth = (
@@ -221,7 +221,7 @@ const getXAxisTicksWidth = (
   { theme, measureText, fontFamily }: RenderingContext,
   xTickWidthCap: number,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (!axisEnabledSetting || dataset.length === 0) {
     return { firstXTickWidth: 0, lastXTickWidth: 0 };
@@ -272,7 +272,7 @@ const getXAxisTicksHeight = (
   axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
   { theme }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   if (!axisEnabledSetting) {
     return 0;
@@ -309,7 +309,7 @@ const getAutoAxisEnabledSetting = (
   renderingContext: RenderingContext,
 ): ComputedVisualizationSettings["graph.x_axis.axis_enabled"] => {
   const { xAxisModel } = input;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
 
   const shouldAutoSelectSetting =
     settings["graph.x_axis.axis_enabled"] === true &&
@@ -373,7 +373,7 @@ const getXTicksToMeasure = (
   renderingContext: RenderingContext,
 ) => {
   const { xAxisModel } = input;
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
   const dataset = getDataset(input);
 
   if (isNumericAxis(xAxisModel) || isTimeSeriesAxis(xAxisModel)) {
@@ -408,7 +408,7 @@ const getMaxXTickWidth = (
     renderingContext,
   );
 
-  const { fontSize } = renderingContext.theme.cartesian.label;
+  const { fontSize } = renderingContext.theme.cartesian.ticks;
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
     size: fontSize,
@@ -444,23 +444,21 @@ const getTicksDimensions = (
   };
 
   if (leftAxisModel) {
-    ticksDimensions.yTicksWidthLeft =
-      getYAxisTicksWidth(
-        leftAxisModel,
-        yAxisScaleTransforms,
-        settings,
-        renderingContext,
-      ) + CHART_STYLE.axisTicksMarginY;
+    ticksDimensions.yTicksWidthLeft = getYAxisWidth(
+      leftAxisModel,
+      yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    );
   }
 
   if (rightAxisModel) {
-    ticksDimensions.yTicksWidthRight =
-      getYAxisTicksWidth(
-        rightAxisModel,
-        yAxisScaleTransforms,
-        settings,
-        renderingContext,
-      ) + CHART_STYLE.axisTicksMarginY;
+    ticksDimensions.yTicksWidthRight = getYAxisWidth(
+      rightAxisModel,
+      yAxisScaleTransforms,
+      settings,
+      renderingContext,
+    );
   }
 
   const currentBoundaryWidth =
@@ -511,15 +509,15 @@ const getTicksDimensions = (
       getXAxisTicksHeight(maxXTickWidth, axisEnabledSetting, renderingContext) +
       (isTimeSeries && hasTimelineEvents
         ? CHART_STYLE.timelineEvents.height
-        : CHART_STYLE.axisTicksMarginX);
+        : renderingContext.theme.cartesian.ticks.marginX);
 
     ticksDimensions.getXTickWidth = (text: string) => {
       if (axisEnabledSetting === "rotate-90") {
-        return renderingContext.theme.cartesian.label.fontSize;
+        return renderingContext.theme.cartesian.ticks.fontSize;
       }
       const width = renderingContext.measureText(text, {
         ...CHART_STYLE.axisTicks,
-        size: renderingContext.theme.cartesian.label.fontSize,
+        size: renderingContext.theme.cartesian.ticks.fontSize,
         family: renderingContext.fontFamily,
       });
       if (axisEnabledSetting === "rotate-45") {
@@ -749,7 +747,7 @@ const areHorizontalXAxisTicksOverlapping = (
   formatter: AxisFormatter,
   { theme, measureText, fontFamily }: RenderingContext,
 ) => {
-  const { fontSize } = theme.cartesian.label;
+  const { fontSize } = theme.cartesian.ticks;
 
   const fontStyle = {
     ...CHART_STYLE.axisTicks,
@@ -956,7 +954,7 @@ const computeSplitPanelLayout = (
   const panelAxisModels = input.splitPanelYAxisModels ?? [];
   const panelCount = panelAxisModels.length;
   const yAxisTickWidths: number[] = panelAxisModels.map((axisModel) =>
-    getYAxisTicksWidth(
+    getYAxisWidth(
       axisModel,
       input.yAxisScaleTransforms,
       settings,
@@ -965,9 +963,7 @@ const computeSplitPanelLayout = (
   );
 
   const maxYTicksWidth =
-    yAxisTickWidths.length > 0
-      ? Math.max(...yAxisTickWidths) + CHART_STYLE.axisTicksMarginY
-      : 0;
+    yAxisTickWidths.length > 0 ? Math.max(...yAxisTickWidths) : 0;
 
   const singleAxisInput: ChartLayoutInput = {
     ...input,

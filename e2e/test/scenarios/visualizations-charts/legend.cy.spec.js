@@ -151,7 +151,9 @@ describe("scenarios > visualizations > legend", () => {
     }).then(({ dashboard }) => H.visitDashboard(dashboard.id));
 
     H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY)
+        .first()
+        .realHover({ scrollBehavior: "nearest" }),
     );
     H.assertEChartsTooltip({
       header: "2025",
@@ -163,6 +165,7 @@ describe("scenarios > visualizations > legend", () => {
       ],
     });
 
+    H.getDashboardCard(0).scrollIntoView();
     H.getDashboardCard(0).within(() => {
       H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should(
         "have.length",
@@ -176,9 +179,8 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // some y-axis values
-        cy.findByText("1,800").should("exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.8k").should("be.visible");
+        cy.findByText("0").should("be.visible");
       });
 
       hideSeries(1); // Gadget
@@ -201,7 +203,9 @@ describe("scenarios > visualizations > legend", () => {
     });
 
     H.getDashboardCard(0).within(() =>
-      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+      H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY)
+        .first()
+        .realHover({ scrollBehavior: "nearest" }),
     );
     H.assertEChartsTooltip({
       header: "2025",
@@ -236,9 +240,9 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Created At: Year").should("exist"); // x-axis label
 
         // Ensure y-axis adjusts to visible series range
-        cy.findByText("1,800").should("not.exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.5k").should("be.visible");
+        cy.findByText("0").should("be.visible");
+        cy.findByText("1.8k").should("not.exist");
       });
 
       showSeries(1);
@@ -253,9 +257,8 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         cy.findByText("Count").should("exist"); // y-axis label
         cy.findByText("Created At: Year").should("exist"); // x-axis label
-        cy.findByText("1,800").should("exist");
-        cy.findByText("1,500").should("exist");
-        cy.findByText("1,200").should("exist");
+        cy.findByText("1.8k").should("be.visible");
+        cy.findByText("0").should("be.visible");
       });
 
       showSeries(2);
@@ -272,15 +275,16 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().findByText("500").should("not.exist"),
     );
 
+    H.getDashboardCard(2).scrollIntoView();
     H.getDashboardCard(2).within(() => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
-        cy.findByText("600,000").should("exist");
+        cy.findByText("600.0k").should("be.visible");
 
         // right axis
         cy.findByText("Sum of Quantity").should("exist");
-        cy.findByText("30,000").should("exist");
+        cy.findByText("30.0k").should("be.visible");
       });
       H.trendLine().should("have.length", 2);
 
@@ -289,11 +293,11 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("not.exist");
-        cy.findByText("600,000").should("not.exist");
+        cy.findByText("600.0k").should("not.exist");
 
         // right axis
         cy.findByText("Sum of Quantity").should("exist");
-        cy.findByText("30,000").should("exist");
+        cy.findByText("30.0k").should("be.visible");
       });
       H.trendLine().should("have.length", 1);
 
@@ -303,11 +307,11 @@ describe("scenarios > visualizations > legend", () => {
       H.echartsContainer().within(() => {
         // left axis
         cy.findByText("Sum of Total").should("exist");
-        cy.findByText("600,000").should("exist");
+        cy.findByText("600.0k").should("be.visible");
 
         // right axis
         cy.findByText("Sum of Quantity").should("not.exist");
-        cy.findByText("30,000").should("not.exist");
+        cy.findByText("30.0k").should("not.exist");
       });
       H.trendLine().should("have.length", 1);
     });
@@ -415,9 +419,8 @@ describe("scenarios > visualizations > legend", () => {
       cy.findByText("Created At: Year").should("exist"); // x-axis label
 
       // some y-axis values
-      cy.findByText("1,800").should("exist");
-      cy.findByText("1,500").should("exist");
-      cy.findByText("1,200").should("exist");
+      cy.findByText("1.8k").should("be.visible");
+      cy.findByText("0").should("be.visible");
     });
 
     hideSeries(1); // Gadget
@@ -425,6 +428,40 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+  });
+
+  it("should preserve full Y-axis formatting and custom ticks on a public dashboard", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        {
+          ...SINGLE_AGGREGATION_QUESTION,
+          visualization_settings: {
+            "graph.label_value_formatting": "full",
+            "graph.y_axis.split_number": 5,
+          },
+        },
+      ],
+      cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
+    }).then(({ dashboard }) => {
+      H.visitPublicDashboard(dashboard.id);
+    });
+
+    H.echartsContainer().within(() => {
+      cy.findByText("1,800").should("be.visible");
+      cy.findByText("1,500").should("be.visible");
+      cy.findByText("1,200").should("be.visible");
+      cy.findByText("1.8k").should("not.exist");
+    });
+
+    hideSeries(1); // Gadget
+
+    H.chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    H.echartsContainer().within(() => {
+      cy.findByText("1,800").should("be.visible");
+      cy.findByText("1,500").should("be.visible");
+      cy.findByText("1,200").should("be.visible");
+      cy.findByText("900").should("be.visible");
+    });
   });
 
   it("should toggle series visibility in the query builder", () => {
@@ -562,7 +599,7 @@ function hideSeries(legendItemIndex) {
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Hide series")
-    .click();
+    .click({ scrollBehavior: "nearest" });
 }
 
 function showSeries(legendItemIndex) {
@@ -570,7 +607,7 @@ function showSeries(legendItemIndex) {
   cy.findAllByTestId("legend-item")
     .eq(legendItemIndex)
     .findByLabelText("Show series")
-    .click();
+    .click({ scrollBehavior: "nearest" });
 }
 
 function getPieChartLegendItemPercentage(sliceName) {

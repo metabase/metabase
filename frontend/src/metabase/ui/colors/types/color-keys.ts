@@ -135,6 +135,7 @@ export type MetabaseColorKey =
   | "button-on_dark-secondary-default"
   | "button-on_dark-secondary-hover"
   | "button-on_dark-secondary-pressed"
+  | "chart-axis"
   | "core-blue-saturated"
   | "core-brand"
   | "core-brand-hover"

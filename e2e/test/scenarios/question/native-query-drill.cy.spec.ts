@@ -419,9 +419,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestionAndDashboard({
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
-      H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 150, right: 300 }),
-      );
+      H.getDashboardCard().within(() => H.applyBrushToPoints(2, 5));
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
     });
