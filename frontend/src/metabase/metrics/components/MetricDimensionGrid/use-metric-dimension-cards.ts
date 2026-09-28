@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMetricDefinition } from "metabase/metrics/common/hooks";
 import type { MetricDimension, MetricId } from "metabase-types/api/metric";
 
-import { type OverviewDimension, getOverviewDimensions } from "./utils";
+import { getOverviewDimensions } from "./utils";
 
 const INITIAL_VISIBLE_COUNT = 4;
 const AUTO_LOAD_VISIBLE_COUNT = 10;
@@ -28,8 +28,8 @@ export function useMetricDimensionCards(
   };
 }
 
-export function useVisibleDimensions(
-  dimensions: OverviewDimension[],
+export function useVisibleDimensions<T>(
+  dimensions: readonly T[],
   metricId: MetricId,
 ) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);

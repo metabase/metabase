@@ -130,10 +130,6 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
-export function isSyncedCollection(collection: Partial<Collection>): boolean {
-  return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
-}
-
 export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
@@ -394,7 +390,7 @@ export const getCollectionPathAsArray = (collection: Collection): string[] => {
 
 export function getCollectionIcon(
   collection: Partial<Collection>,
-  { tooltip = "default", isTenantUser = false } = {},
+  { tooltip = "default" } = {},
 ): {
   name: IconName;
   color?: ColorName;
@@ -410,11 +406,6 @@ export function getCollectionIcon(
 
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
-  }
-
-  if (isSyncedCollection(collection) && !isTenantUser) {
-    // tenant users see the normal icon, they don't know what a synced collection is
-    return { name: "synced_collection" };
   }
 
   if (collection.icon && isValidIconName(collection.icon)) {
@@ -471,10 +462,8 @@ export function buildCollectionTree(
   collections: Collection[] = [],
   {
     modelFilter,
-    isTenantUser = false,
   }: {
     modelFilter?: (model: CollectionContentModel) => boolean;
-    isTenantUser?: boolean;
   } = {},
 ): CollectionTreeItem[] {
   return collections.flatMap((collection) => {
@@ -492,7 +481,7 @@ export function buildCollectionTree(
     const children = !isRootTrashCollection(collection)
       ? buildCollectionTree(
           collection.children?.filter((child) => !child.archived) || [],
-          { modelFilter, isTenantUser },
+          { modelFilter },
         )
       : [];
 
@@ -503,7 +492,7 @@ export function buildCollectionTree(
     return {
       ...collection,
       schemaName: collection.originalName || collection.name,
-      icon: getCollectionIcon(collection, { isTenantUser }),
+      icon: getCollectionIcon(collection),
       children,
     };
   });

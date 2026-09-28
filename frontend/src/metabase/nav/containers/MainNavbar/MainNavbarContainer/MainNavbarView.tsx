@@ -367,22 +367,14 @@ export function MainNavbarView({
         }
       >
         <ErrorBoundary>
-          {PLUGIN_REMOTE_SYNC.CollectionsNavTree ? (
-            <PLUGIN_REMOTE_SYNC.CollectionsNavTree
-              collections={regularCollections}
-              selectedId={collectionItem?.id}
-              onSelect={onItemSelect}
-            />
-          ) : (
-            <Tree
-              data={regularCollections}
-              selectedId={collectionItem?.id}
-              onSelect={onItemSelect}
-              TreeNode={SidebarCollectionLink}
-              role="tree"
-              aria-label="collection-tree"
-            />
-          )}
+          <Tree
+            data={regularCollections}
+            selectedId={collectionItem?.id}
+            onSelect={onItemSelect}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+            aria-label="collection-tree"
+          />
           {showOtherUsersCollections && (
             <PaddedSidebarLink icon="group" url={OTHER_USERS_COLLECTIONS_URL}>
               {t`Other users' personal collections`}

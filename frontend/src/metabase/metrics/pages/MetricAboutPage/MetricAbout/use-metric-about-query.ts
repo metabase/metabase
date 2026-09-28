@@ -15,6 +15,7 @@ import {
   useMetricDefinition,
   useMetricDimensionQuery,
 } from "metabase/metrics/common/hooks";
+import { getOverviewDimensions } from "metabase/metrics/components/MetricDimensionGrid";
 import * as LibMetric from "metabase-lib/metric";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card, DatasetColumn } from "metabase-types/api";
@@ -77,21 +78,26 @@ export function useMetricAboutQuery(
     () => (definition ? getDimensionDescriptors(definition) : null),
     [definition],
   );
-  const dimensionOptions =
-    metric?.dimensions?.flatMap((dimension) => {
-      const descriptor = dimensionDescriptors?.get(dimension.id);
-      if (dimension.status === "status/orphaned" || !descriptor) {
-        return [];
-      }
+  const dimensionOptions = useMemo(() => {
+    if (!definition || !dimensionDescriptors || !metric?.dimensions) {
+      return [];
+    }
 
-      return [
-        {
-          value: dimension.id,
-          label: descriptor.displayName,
-          icon: getDimensionIcon(descriptor.dimensionMetadata),
-        },
-      ];
-    }) ?? [];
+    return getOverviewDimensions(definition, metric.dimensions).flatMap(
+      ({ dimensionId, label }) => {
+        const descriptor = dimensionDescriptors.get(dimensionId);
+        return descriptor
+          ? [
+              {
+                value: dimensionId,
+                label,
+                icon: getDimensionIcon(descriptor.dimensionMetadata),
+              },
+            ]
+          : [];
+      },
+    );
+  }, [definition, dimensionDescriptors, metric?.dimensions]);
   const activeDimensionId = selectedDimensionId ?? defaultDimensionId;
 
   const activeDimensionType =
@@ -158,6 +164,7 @@ export function useMetricAboutQuery(
     activeDimensionId,
     activeDimensionSelectLabel,
     data,
+    defaultDimensionId,
     dimensionOptions,
     isLoading,
     isTimeSeries,

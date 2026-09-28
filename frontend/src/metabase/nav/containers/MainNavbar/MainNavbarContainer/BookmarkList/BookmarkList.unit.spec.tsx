@@ -71,11 +71,6 @@ describe("BookmarkList", () => {
   describe("collection bookmark icons (enterprise)", () => {
     it.each([
       {
-        name: "Synced",
-        icon: "synced_collection",
-        overrides: { is_remote_synced: true },
-      },
-      {
         name: "Official",
         icon: "official_collection",
         overrides: { authority_level: "official" },

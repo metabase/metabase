@@ -22,15 +22,9 @@ export const useGetEntityPickerIcon = () => {
   return useCallback(
     (
       item: OmniPickerItem,
-      {
-        isSelected,
-        isTenantUser,
-      }: {
-        isSelected?: boolean;
-        isTenantUser?: boolean;
-      } = {},
+      { isSelected }: { isSelected?: boolean } = {},
     ): IconData & { c?: ColorName } => {
-      const icon = getIcon(item, { isTenantUser });
+      const icon = getIcon(item);
 
       if (item.id === "search-results") {
         icon.name = "search";

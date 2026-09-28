@@ -6,7 +6,6 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
-import { CollectionsNavTree } from "./components/CollectionsNavTree";
 import { GitSettingsModal } from "./components/GitSettingsModal";
 import { GitSyncControls } from "./components/GitSyncControls";
 import { GitSyncSetupMenuItem } from "./components/GitSyncSetupMenuItem";
@@ -38,7 +37,6 @@ export function initializePlugin() {
       SyncedCollectionsSidebarSection;
     PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;
     PLUGIN_REMOTE_SYNC.GitSettingsModal = GitSettingsModal;
-    PLUGIN_REMOTE_SYNC.CollectionsNavTree = CollectionsNavTree;
     PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge = CollectionSyncStatusBadge;
     PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS =
       REMOTE_SYNC_INVALIDATION_TAGS;

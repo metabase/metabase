@@ -33,7 +33,7 @@ export const useGetIconBase = () => {
 
   return useCallback(
     /** get an Icon for any entity object, doesn't depend on the entity system */
-    (item: ObjectWithModel, _opts?: { isTenantUser?: boolean }): IconData => {
+    (item: ObjectWithModel): IconData => {
       if (item.model === "card" && item.display) {
         return getIconForVizType(item.display);
       }

@@ -26,7 +26,6 @@ import {
   filterOutItemsFromInstanceAnalytics,
   getCollectionType,
   isRegularCollection,
-  isSyncedCollection,
   useGetIcon,
 } from "./utils";
 
@@ -34,10 +33,6 @@ import {
  * Initialize collections plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
-  if (hasPremiumFeature("remote_sync")) {
-    PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
-  }
-
   if (hasPremiumFeature("official_collections")) {
     PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
     PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;

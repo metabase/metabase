@@ -5,9 +5,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import {
   Box,
   type BoxProps,
@@ -67,7 +65,6 @@ export function ItemList({
     return items ? items.filter((i) => !isHiddenItem(i)) : items;
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
-  const isTenantUser = useSelector(getIsTenantUser);
   const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
@@ -102,7 +99,6 @@ export function ItemList({
         const isSelected = index === activeItemIndex;
         const icon = getEntityPickerIcon(item, {
           isSelected: isSelected && isCurrentLevel,
-          isTenantUser,
         });
         const isDisabled = isDisabledItem(item);
         const tooltip = options.getItemTooltip?.(item);

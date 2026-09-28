@@ -15,7 +15,13 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Card, Dataset, Field, Metric } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  DimensionMapping,
+  Field,
+  Metric,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -123,12 +129,13 @@ const BINNED_NUMERIC_DATASET = createMockDataset({
 interface SetupOptions {
   metric?: Metric;
   metricDataset?: Dataset;
+  showManagementPanels?: boolean;
 }
 
 function setup(
   card: Card,
   dataset: Dataset = SCALAR_DATASET,
-  { metric, metricDataset }: SetupOptions = {},
+  { metric, metricDataset, showManagementPanels }: SetupOptions = {},
 ) {
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);
@@ -138,7 +145,7 @@ function setup(
     metric ?? createMockMetric({ id: card.id, name: card.name }),
   );
   setupMetricDatasetEndpoint(metricDataset ?? dataset);
-  // The page now also renders the Dimensions, History and Definition panels.
+  // Data Studio also renders the Dimensions and History panels.
   setupMetricDimensionsEndpoints(card.id, { added: [], addable: [] });
   setupRevisionsEndpoints([]);
   setupAdhocQueryMetadataEndpoint(metadata);
@@ -146,7 +153,14 @@ function setup(
   renderWithProviders(
     <Route
       path="/"
-      element={<MetricAbout card={card} metadata={metadata} urls={mockUrls} />}
+      element={
+        <MetricAbout
+          card={card}
+          metadata={metadata}
+          urls={mockUrls}
+          showManagementPanels={showManagementPanels}
+        />
+      }
     />,
     {
       storeInitialState: createMockState(),
@@ -200,6 +214,51 @@ describe("MetricAbout", () => {
     // isn't trivially true (the page hasn't loaded yet).
     expect(await screen.findByText("Source")).toBeInTheDocument();
     expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
+  });
+
+  it("collapses the definition by default and expands it on click", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+    );
+
+    const toggle = await screen.findByRole("button", { name: /Definition/ });
+    const definition = await screen.findByTestId("metric-definition");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(definition).not.toBeVisible();
+
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(definition).toBeVisible());
+  });
+
+  it("hides the Dimensions and History panels on the main app page", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Definition/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dimensions")).not.toBeInTheDocument();
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
+  });
+
+  it("shows the Dimensions and History panels when showManagementPanels is set", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+      undefined,
+      { showManagementPanels: true },
+    );
+
+    expect(await screen.findByText("Dimensions")).toBeInTheDocument();
+    expect(await screen.findByText("History")).toBeInTheDocument();
   });
 
   describe("curated default dimension", () => {
@@ -475,6 +534,82 @@ describe("MetricAbout", () => {
         pressed: true,
       });
       expect(activePill).toHaveTextContent("Product - Rating: 8 bins");
+    });
+
+    it("limits break-out pills like the breakdowns grid while keeping the default visible", async () => {
+      const categoryFields = [
+        { id: "product-category", name: "Category", field: PRODUCTS.CATEGORY },
+        { id: "product-vendor", name: "Vendor", field: PRODUCTS.VENDOR },
+        { id: "product-title", name: "Title", field: PRODUCTS.TITLE },
+        { id: "product-ean", name: "Ean", field: PRODUCTS.EAN },
+        { id: "product-id", name: "Product ID", field: PRODUCTS.ID },
+      ];
+      const defaultDimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          ...categoryFields.map(({ id, name }) =>
+            createMockMetricDimension({
+              id,
+              display_name: name,
+              effective_type: "type/Text",
+              semantic_type: "type/Category",
+              status: "status/active",
+            }),
+          ),
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          ...categoryFields.map(
+            ({ id, field }): DimensionMapping => ({
+              dimension_id: id,
+              table_id: PRODUCTS_ID,
+              target: ["field", { "source-field": ORDERS.PRODUCT_ID }, field],
+            }),
+          ),
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
+      });
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: TIME_SERIES,
+      });
+
+      const pills = await screen.findByRole("group", { name: "Break out by" });
+      expect(
+        await screen.findByRole("button", {
+          name: /Created At/,
+          pressed: true,
+        }),
+      ).toBeInTheDocument();
+      for (const name of ["Category", "Vendor", "Title", "Ean"]) {
+        expect(
+          screen.getByRole("button", { name: new RegExp(`${name}$`) }),
+        ).toBeInTheDocument();
+      }
+      expect(
+        screen.queryByRole("button", { name: /Product ID$/ }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: /Show more/ }));
+
+      expect(
+        await screen.findByRole("button", { name: /Product ID$/ }),
+      ).toBeInTheDocument();
+      expect(pills).not.toHaveTextContent("Show more");
+      expect(screen.queryByText("Breakdowns")).not.toBeInTheDocument();
     });
   });
 

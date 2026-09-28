@@ -11,12 +11,17 @@ import { metricUrls as defaultUrls } from "../../urls";
 
 import { MetricAbout } from "./MetricAbout";
 
+interface MetricAboutPageProps extends MetricPageProps {
+  showManagementPanels?: boolean;
+}
+
 export function MetricAboutPage({
   urls = defaultUrls,
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
-}: MetricPageProps) {
+  showManagementPanels,
+}: MetricAboutPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
   return (
@@ -30,7 +35,12 @@ export function MetricAboutPage({
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
           />
-          <MetricAbout card={card} metadata={metadata} urls={urls} />
+          <MetricAbout
+            card={card}
+            metadata={metadata}
+            urls={urls}
+            showManagementPanels={showManagementPanels}
+          />
         </PageContainer>
       )}
     </MetricPageCard>

@@ -17,11 +17,7 @@ import {
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
-import {
-  getIsTenantUser,
-  getUser,
-  getUserCanWriteToCollections,
-} from "metabase/current-user";
+import { getUser, getUserCanWriteToCollections } from "metabase/current-user";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
@@ -74,7 +70,6 @@ function MainNavbarContainer({
   const hasDataAccess = (databasesResponse?.data.length ?? 0) > 0;
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
-  const isTenantUser = useSelector(getIsTenantUser);
   const dispatch = useDispatch();
 
   const { data: bookmarks = [] } = useListBookmarksQuery();
@@ -121,12 +116,12 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...displayableCollections);
 
-    const tree = buildCollectionTree(preparedCollections, { isTenantUser });
+    const tree = buildCollectionTree(preparedCollections);
     if (trashCollection) {
       const trash: CollectionTreeItem = {
         ...trashCollection,
         id: "trash",
-        icon: getCollectionIcon(trashCollection, { isTenantUser }),
+        icon: getCollectionIcon(trashCollection),
         children: [],
       };
       tree.push(trash);
@@ -135,14 +130,14 @@ function MainNavbarContainer({
     if (rootCollection) {
       const root: CollectionTreeItem = {
         ...rootCollection,
-        icon: getCollectionIcon(rootCollection, { isTenantUser }),
+        icon: getCollectionIcon(rootCollection),
         children: [],
       };
       return [root, ...tree];
     } else {
       return tree;
     }
-  }, [rootCollection, trashCollection, collections, currentUser, isTenantUser]);
+  }, [rootCollection, trashCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
     async ({ newIndex, oldIndex }: { newIndex: number; oldIndex: number }) => {

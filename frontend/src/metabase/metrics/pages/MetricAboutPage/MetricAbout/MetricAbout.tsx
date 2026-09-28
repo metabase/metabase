@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useGetMetricQuery } from "metabase/api";
 import {
   DetailPageLayout,
   DetailPanel,
@@ -13,8 +12,9 @@ import type { MetricUrls } from "metabase/common/metrics/types";
 import { getDatasetValueForMetric } from "metabase/common/metrics/utils/dataset-value";
 import { getUserIsAdmin, getUserIsAnalyst } from "metabase/current-user";
 import { useQuestionFromCard } from "metabase/metadata-store";
+import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { MetricActivityTimeline } from "metabase/metrics/components/MetricActivityTimeline";
-import { MetricDimensionGrid } from "metabase/metrics/components/MetricDimensionGrid";
+import { useVisibleDimensions } from "metabase/metrics/components/MetricDimensionGrid";
 import { MetricDimensions } from "metabase/metrics/components/MetricDimensions";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { getMetricDeltas } from "metabase/metrics/utils/deltas";
@@ -38,11 +38,18 @@ interface MetricAboutProps {
   card: CardApiType;
   metadata: CardQueryMetadata;
   urls: MetricUrls;
+  /** Dimension management and revision history, shown only in Data Studio. */
+  showManagementPanels?: boolean;
 }
 
 const GRAPH_PANEL_HEIGHT = 360;
 
-export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
+export function MetricAbout({
+  card,
+  metadata,
+  urls,
+  showManagementPanels = false,
+}: MetricAboutProps) {
   const [selectedDimensionId, setSelectedDimensionId] = useState<string | null>(
     null,
   );
@@ -50,6 +57,7 @@ export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
     activeDimensionId,
     activeDimensionSelectLabel,
     data,
+    defaultDimensionId,
     dimensionOptions,
     isLoading,
     isTimeSeries,
@@ -67,9 +75,25 @@ export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
       ),
     [dimensionOptions, activeDimensionId, activeDimensionSelectLabel],
   );
-
-  const { data: metric } = useGetMetricQuery(card.id);
-  const hasBreakdowns = Boolean(metric?.dimensions?.length);
+  const { cards: visiblePillOptions, showMore } = useVisibleDimensions(
+    pillOptions,
+    card.id,
+  );
+  // The curated default can sit past the visible cutoff; keep its pill visible so the
+  // initially charted dimension is always shown as pressed.
+  const shownPillOptions = useMemo(() => {
+    const defaultOption = pillOptions.find(
+      (option) => option.value === defaultDimensionId,
+    );
+    if (
+      !defaultOption ||
+      visiblePillOptions.some((option) => option.value === defaultDimensionId)
+    ) {
+      return visiblePillOptions;
+    }
+    return [...visiblePillOptions, defaultOption];
+  }, [pillOptions, visiblePillOptions, defaultDimensionId]);
+  const hasHiddenPillOptions = shownPillOptions.length < pillOptions.length;
 
   const canSeeDependencies =
     useSelector((state) => getUserIsAdmin(state) || getUserIsAnalyst(state)) &&
@@ -114,15 +138,25 @@ export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
         </Box>
         {dimensionOptions.length > 0 && (
           <MetricDimensionPills
-            options={pillOptions}
+            options={shownPillOptions}
             value={activeDimensionId}
             onChange={setSelectedDimensionId}
+            onShowMore={
+              hasHiddenPillOptions
+                ? () => {
+                    trackMetricPageShowMoreClicked(card.id);
+                    showMore();
+                  }
+                : undefined
+            }
           />
         )}
       </Card>
 
       <DetailPanel
         flush
+        collapsible
+        defaultCollapsed
         title={t`Definition`}
         actions={
           card.can_write && (
@@ -140,18 +174,11 @@ export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
         <MetricDefinitionPreview card={card} />
       </DetailPanel>
 
-      {hasBreakdowns && (
-        <DetailPanel title={t`Breakdowns`}>
-          <MetricDimensionGrid
-            metricId={card.id}
-            dimensions={metric?.dimensions ?? []}
-          />
+      {showManagementPanels && (
+        <DetailPanel title={t`Dimensions`}>
+          <MetricDimensions metricId={card.id} queryMetadata={metadata} />
         </DetailPanel>
       )}
-
-      <DetailPanel title={t`Dimensions`}>
-        <MetricDimensions metricId={card.id} queryMetadata={metadata} />
-      </DetailPanel>
 
       {canSeeDependencies && (
         <DetailPanel
@@ -181,11 +208,13 @@ export function MetricAbout({ card, metadata, urls }: MetricAboutProps) {
         </DetailPanel>
       )}
 
-      <DetailPanel title={t`History`}>
-        <Box maw={800}>
-          <MetricActivityTimeline card={card} />
-        </Box>
-      </DetailPanel>
+      {showManagementPanels && (
+        <DetailPanel title={t`History`}>
+          <Box maw={800}>
+            <MetricActivityTimeline card={card} />
+          </Box>
+        </DetailPanel>
+      )}
     </DetailPageLayout>
   );
 }
@@ -216,7 +245,7 @@ function MetricDefinitionPreview({ card }: { card: CardApiType }) {
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (
-    <Box mih={240}>
+    <Box mih={240} data-testid="metric-definition">
       <MetricQueryEditor
         query={question.query()}
         uiState={uiState}

@@ -9,12 +9,14 @@ export type MetricDimensionPillsProps = {
   options: readonly { value: string; label: string; icon: IconName }[];
   value: string | null;
   onChange: (value: string) => void;
+  onShowMore?: () => void;
 };
 
 export function MetricDimensionPills({
   options,
   value,
   onChange,
+  onShowMore,
 }: MetricDimensionPillsProps) {
   return (
     <Group
@@ -41,6 +43,17 @@ export function MetricDimensionPills({
           </Button>
         );
       })}
+      {onShowMore && (
+        <Button
+          radius="xl"
+          size="compact-sm"
+          variant="subtle"
+          leftSection={<Icon name="chevrondown" size={12} />}
+          onClick={onShowMore}
+        >
+          {t`Show more`}
+        </Button>
+      )}
     </Group>
   );
 }

@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useCreateCollectionMutation,
-  useListCollectionsQuery,
-} from "metabase/api";
+import { useCreateCollectionMutation } from "metabase/api";
 import { CreateCollectionForm } from "metabase/common/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm";
 import { buildCollectionTree } from "metabase/common/collections/utils";
@@ -23,8 +20,6 @@ import {
   tenantSpecificCollections,
   tenantUsersPersonalCollections,
 } from "metabase/urls";
-import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
-import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";
 
 export const MainNavSharedCollections = ({
@@ -47,49 +42,11 @@ export const MainNavSharedCollections = ({
   const isTenantsEnabled = useSetting("use-tenants");
   const isAdmin = useSelector(getUserIsAdmin);
 
-  // Fetch flat list of tenant collections to check if any are remote-synced
-  const { data: tenantCollectionsList = [] } = useListCollectionsQuery(
-    { namespace: "shared-tenant-collection" },
-    { skip: !isTenantsEnabled },
-  );
-
-  // Check if any tenant collections have is_remote_synced=true
-  const hasRemoteSyncedTenantCollections = useMemo(
-    () => tenantCollectionsList.some((c) => c.is_remote_synced),
-    [tenantCollectionsList],
-  );
-
-  const { data: dirtyData } = useGetRemoteSyncChangesQuery(undefined, {
-    skip: !hasRemoteSyncedTenantCollections,
-    refetchOnFocus: true,
-  });
-
   const [createCollection] = useCreateCollectionMutation();
 
-  // This component throws above for tenant users, so the tenant icon override never applies here.
   const sharedTenantCollectionTree = useMemo(
     () => buildCollectionTree(sharedTenantCollections),
     [sharedTenantCollections],
-  );
-
-  const changedCollections = useMemo(
-    () => dirtyData?.changedCollections ?? {},
-    [dirtyData?.changedCollections],
-  );
-
-  const showChangesBadge = useCallback(
-    (itemId?: number | string) => {
-      if (
-        !hasRemoteSyncedTenantCollections ||
-        !changedCollections ||
-        typeof itemId !== "number"
-      ) {
-        return false;
-      }
-
-      return !!changedCollections[itemId];
-    },
-    [hasRemoteSyncedTenantCollections, changedCollections],
   );
 
   const handleCreateTenantCollection = useCallback(
@@ -143,9 +100,6 @@ export const MainNavSharedCollections = ({
             TreeNode={SidebarCollectionLink}
             role="tree"
             aria-label="tenant-collection-tree"
-            rightSection={(item) =>
-              showChangesBadge(item?.id) && <CollectionSyncStatusBadge />
-            }
           />
           {canAccessTenantSpecificCollections && (
             <PaddedSidebarLink icon="group" url={tenantSpecificCollections()}>
