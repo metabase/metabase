@@ -36,10 +36,8 @@ export const SearchUserPicker = ({
     );
   });
 
-  const removeUser = (user?: UserListResult) => {
-    if (user) {
-      setSelectedUserIds(without(selectedUserIds, user.id));
-    }
+  const removeUser = (user: UserListResult) => {
+    setSelectedUserIds(without(selectedUserIds, user.id));
   };
 
   const addUser = (user: UserListResult) => {
@@ -53,6 +51,11 @@ export const SearchUserPicker = ({
       addUser(user);
     }
   };
+
+  const selectedUsers = selectedUserIds.flatMap((userId) => {
+    const user = users.find((user) => user.id === userId);
+    return user ? [user] : [];
+  });
 
   const generateUserListElements = (userList: UserListResult[]) => {
     return userList.map((user) => (
@@ -76,23 +79,20 @@ export const SearchUserPicker = ({
           classNames={{ input: S.selectBox }}
         >
           <Pill.Group>
-            {selectedUserIds.map((userId) => {
-              const user = users.find((user) => user.id === userId);
-              return (
-                <Pill
-                  key={userId}
-                  data-testid="selected-user-button"
-                  withRemoveButton
-                  removeButtonProps={{
-                    "aria-label": t`Remove ${user?.common_name}`,
-                    "aria-hidden": false,
-                  }}
-                  onRemove={() => removeUser(user)}
-                >
-                  {user?.common_name}
-                </Pill>
-              );
-            })}
+            {selectedUsers.map((user) => (
+              <Pill
+                key={user.id}
+                data-testid="selected-user-button"
+                withRemoveButton
+                removeButtonProps={{
+                  "aria-label": t`Remove ${user.common_name}`,
+                  "aria-hidden": false,
+                }}
+                onRemove={() => removeUser(user)}
+              >
+                {user.common_name}
+              </Pill>
+            ))}
             <PillsInput.Field
               placeholder={t`Search for someone…`}
               value={userFilter}
@@ -104,7 +104,6 @@ export const SearchUserPicker = ({
           className={S.content}
           data-testid="search-user-list"
           flex="1"
-          h="100%"
           gap="xxs"
           p="xxs"
         >
