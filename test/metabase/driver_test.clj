@@ -19,6 +19,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -161,8 +162,11 @@
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))
               (testing "sense check 2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should succeed"
-                (is (= {:status "ok"}
-                       (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
+                ;; run the endpoint's sync synchronously: if it is still running in the background, its connection
+                ;; can hold the database and make the destroy below fail
+                (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f] (f))]
+                  (is (= {:status "ok"}
+                         (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema")))))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
             (driver/notify-database-updated driver/*driver* db)
             ;; destroy the db
