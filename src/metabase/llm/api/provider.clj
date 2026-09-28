@@ -128,8 +128,9 @@
    :source     (name (or source :db))
    :usable     (llm.provider/config-complete? type config)
    :env_vars   (vec env-vars)
-   ;; the config keys the environment owns; the form disables exactly these inputs
-   :env_fields (mapv name env-fields)
+   ;; the config keys the caller may not write, which the form disables — wider than `:env-fields`; see
+   ;; [[llm.provider/env-locked-fields]]
+   :env_fields (mapv name (sort (llm.provider/env-locked-fields type env-fields)))
    :config     (or (:config (llm.provider/redact conn)) {})})
 
 ;;; ------------------------------------------------ Model listing -------------------------------------------------
@@ -468,8 +469,10 @@
         existing   (nth stored idx)
         live       (llm.provider/connection conn-key)
         _          (check-not-env-connection! live)
-        ;; fields the environment owns are not the client's to edit — the form disables them, and what it echoes
-        ;; back for them is the mask of the env value, which must not end up stored
+        ;; fields the environment supplies are not the client's to edit — the form disables them, and what it
+        ;; echoes back for them is the mask of the env value, which must not end up stored. Only what the
+        ;; environment literally supplies is stripped: the rest of a destination group it pins is a value the
+        ;; client really chose, so that is refused below rather than silently dropped
         env-config (select-keys (:config live) (:env-fields live))
         merged     (cond-> existing
                      (some? config)     (assoc :config (without-blank-values

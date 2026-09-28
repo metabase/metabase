@@ -1090,8 +1090,40 @@
   [type-name field]
   (boolean (some #{field} (destination-fields type-name))))
 
+(defn- env-pinned-destination
+  "The [[destination-fields]] key of `type-name` that `env-fields` pins, or nil where the environment pins
+  none of them.
+
+  One member pins the whole group: Ollama's `:hosting` decides whether the stored `:base-url` is read at
+  all, so a URL a variable pins is pinned only while the deployment is pinned with it."
+  [type-name env-fields]
+  (some (set env-fields) (destination-fields type-name)))
+
+(defn- env-managed-destination-ex
+  "The refusal for a write that would move a connection off a destination the environment owns.
+
+  `pinned` is the [[destination-fields]] key whose variable owns it — named in the message, since that
+  variable is the only thing the operator can act on — and `field` is the one the caller tried to write.
+  The two differ where a caller writes the other half of the group."
+  [type-name pinned field]
+  (ex-info (tru "This connection''s address comes from {0}. Change it there."
+                (get (connection-env-vars type-name) pinned "an environment variable"))
+           {:status-code 400
+            :api-error   true
+            :error-code  :llm-destination-is-env-managed
+            :field       field}))
+
+(defn env-locked-fields
+  "The config keys an API caller may not write, for a connection of `type-name` whose `env-fields` the
+  environment supplies: every field the environment supplies, plus the rest of the destination group when
+  it pins any of it — see [[env-pinned-destination]]."
+  [type-name env-fields]
+  (cond-> (set env-fields)
+    (env-pinned-destination type-name env-fields) (into (destination-fields type-name))))
+
 (defn assert-destination-change-authorized!
-  "Reject moving a connection while carrying a secret that the API caller did not freshly supply.
+  "Reject moving a connection: outright when the environment pins part of its destination, and otherwise
+  while it carries a secret the API caller did not freshly supply.
 
   `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
   registry defaults and normalization are applied here before comparing their [[destination-fields]]. `submitted-config` is the
@@ -1114,22 +1146,30 @@
          missing-secrets (remove fresh-secret? carried-secrets)
          moved-fields    (filter #(not= (get old-config %) (get new-config %))
                                  (destination-fields type-name))]
-     (when (and (seq moved-fields) (seq missing-secrets))
-       (let [env-secret? (some env-fields missing-secrets)]
-         (throw (ex-info (cond
-                           env-secret?
-                           (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
+     (when (seq moved-fields)
+       (let [moved  (first moved-fields)
+             pinned (env-pinned-destination type-name env-fields)]
+         (cond
+           ;; first, and regardless of credentials: an operator who pinned part of the address pinned the
+           ;; whole of it, so nothing the caller holds buys a move off it
+           pinned
+           (throw (env-managed-destination-ex type-name pinned moved))
 
-                           legacy-setting?
-                           (tru "Use the provider connection settings to move this connection and enter the credentials again.")
+           (seq missing-secrets)
+           (throw (ex-info (cond
+                             (some env-fields missing-secrets)
+                             (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
 
-                           :else
-                           (tru "Enter this connection''s credentials again to point it at a different server."))
-                         {:status-code 400
-                          :api-error   true
-                          :error-code  :llm-destination-change-requires-credentials
-                          :field       (first moved-fields)
-                          :secrets     (mapv name missing-secrets)})))))))
+                             legacy-setting?
+                             (tru "Use the provider connection settings to move this connection and enter the credentials again.")
+
+                             :else
+                             (tru "Enter this connection''s credentials again to point it at a different server."))
+                           {:status-code 400
+                            :api-error   true
+                            :error-code  :llm-destination-change-requires-credentials
+                            :field       moved
+                            :secrets     (mapv name missing-secrets)}))))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1179,15 +1219,13 @@
         (when (request.current/current-request)
           (if (destination-field? group-type field)
             (do
+              ;; Stricter than the move [[assert-destination-change-authorized!]] refuses below, and it can
+              ;; afford to be: nothing echoes this API, so a write of the value the variable already holds
+              ;; is nobody's normal traffic. Persisting it would leave an inert value under the overlay to
+              ;; become live the day the operator drops the variable. The connection settings cannot be this
+              ;; strict — the form resubmits every field it disabled, so there an echo is the normal case.
               (when (contains? (:env-fields live) field)
-                ;; Persisting an inert value underneath the environment overlay would make it live if the operator
-                ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
-                ;; earlier.
-                (throw (ex-info (tru "This value comes from an environment variable. Change it there.")
-                                {:status-code 400
-                                 :api-error   true
-                                 :error-code  :llm-destination-field-is-env-managed
-                                 :field       field})))
+                (throw (env-managed-destination-ex group-type field field)))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)
