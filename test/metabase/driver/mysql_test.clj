@@ -417,6 +417,22 @@
       ;; the driver lets a later duplicate win, so ours has to be appended after whatever the user wrote
       "allowLocalInfile=false&allowLocalInfile=true")))
 
+(deftest ^:parallel validate-db-details-rejects-dangerous-additional-options-test
+  (testing "MySQL inherits the shared SQL-JDBC denylist: socketFactory et al. are rejected"
+    (doseq [opt ["socketFactory=evil.SocketFactory"
+                 "sslfactory=evil.Factory"
+                 "hostnameverifier=evil.Verifier"
+                 ;; the driver's own denylist still applies too
+                 "autoDeserialize=true"
+                 "allowLoadLocalInfile=true"]]
+      (testing opt
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "benign additional options are still allowed"
+    (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
+      (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
+
 (deftest ^:synchronized local-infile-blocked-for-write-queries-test
   (mt/test-driver :mysql
     (testing "a write query cannot make the driver read a file off the Metabase host"
