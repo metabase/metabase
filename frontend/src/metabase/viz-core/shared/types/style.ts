@@ -5,9 +5,18 @@ export type ChartFont = {
   color: string;
 };
 
+export type GoalMarkerStyle = {
+  iconColor: string;
+  backgroundColor: string;
+  hoverBackgroundColor: string;
+  shadowColor: string;
+};
+
 export type GoalStyle = {
   lineStroke: string;
+  lineShadowStroke: string;
   label: ChartFont;
+  marker: GoalMarkerStyle;
 };
 
 export type AxisStyle = {

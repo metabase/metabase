@@ -23,12 +23,19 @@ export const getStaticChartTheme = (
       },
     },
     goal: {
-      lineStroke: getColor("text-secondary"),
+      lineStroke: getColor("icon-primary"),
+      lineShadowStroke: getColor("background_surface-primary"),
       label: {
         size: 14,
         weight: 700,
         color: getColor("text-secondary"),
         family: fontFamily,
+      },
+      marker: {
+        iconColor: getColor("icon-primary"),
+        backgroundColor: getColor("background_surface-primary"),
+        hoverBackgroundColor: getColor("background_surface-primary-hover"),
+        shadowColor: getColor("shadow-default"),
       },
     },
     dataLabels: {

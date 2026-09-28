@@ -15,6 +15,7 @@ import {
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import {
   type BarData,
+  type ChartGoal,
   type GroupedDatum,
   type HoveredData,
   type RemappingHydratedChartData,
@@ -177,6 +178,24 @@ const RowChartVisualization = ({
     });
   };
 
+  const handleGoalHover = (event: React.MouseEvent, goal: ChartGoal | null) => {
+    if (goal == null) {
+      onHoverChange?.(null);
+      return;
+    }
+
+    onHoverChange?.({
+      element: event.currentTarget,
+      data: [
+        {
+          col: null,
+          key: goal.label,
+          value: tickFormatters.xTickFormatter(goal.value),
+        },
+      ],
+    });
+  };
+
   const openQuestion = () => {
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
@@ -296,6 +315,7 @@ const RowChartVisualization = ({
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}
+          onGoalHover={handleGoalHover}
           xLabel={xLabel}
           yLabel={yLabel}
           xScaleType={settings["graph.y_axis.scale"]}

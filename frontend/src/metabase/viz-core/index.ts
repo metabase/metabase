@@ -446,6 +446,7 @@ export type {
 export type { HoveredData } from "./shared/types/events";
 export type { ChartTicksFormatters } from "./shared/types/format";
 export type { ContinuousDomain, Range } from "./shared/types/scale";
+export type { ChartGoal } from "./shared/types/settings";
 export { getGroupedDataset, getSeries, trimData } from "./shared/utils/data";
 export {
   getLabelsMetricColumn,

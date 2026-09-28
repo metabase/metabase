@@ -12,7 +12,7 @@ import { CHART_STYLE, Z_INDEXES } from "../constants/style";
 import type { ChartDataset } from "../model/types";
 
 export const GOAL_LINE_DASH = [2, 2];
-const GOAL_LINE_WIDTH = 1;
+export const GOAL_LINE_WIDTH = 1;
 
 export const isGoalLineSeriesId = (seriesId: string | undefined) =>
   seriesId?.startsWith(GOAL_LINE_SERIES_ID) ?? false;
