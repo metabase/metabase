@@ -24,13 +24,12 @@ function setup({ collection }: { collection?: string } = {}) {
     DEPRECATED_RAW_MBQL_databaseId: MONGO_DB_ID,
     metadata: METADATA,
   });
-  const metadataProvider = Lib.metadataProvider(MONGO_DB_ID, METADATA);
   const nativeQuestion = checkNotNull(
-    createNativeQuestion(
-      question,
-      { query: NATIVE_QUERY, collection, params: null },
-      metadataProvider,
-    ),
+    createNativeQuestion(question, {
+      query: NATIVE_QUERY,
+      collection,
+      params: null,
+    }),
   );
   return nativeQuestion.query();
 }
