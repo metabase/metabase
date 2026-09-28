@@ -881,15 +881,10 @@ export const getOtherSeriesTooltipModel = (
 
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
-  event: EChartsSeriesMouseEvent,
+  element: EventTarget | null,
   formatGoal?: AxisFormatter,
 ) => {
-  // Unjustified type cast. FIXME
-  const element = event.event.event.target as Element;
-
-  // Every element of the goal series except the marker is silent, so any hover
-  // reaching here came from the marker. The element only anchors the tooltip.
-  if (element == null) {
+  if (!(element instanceof Element)) {
     return null;
   }
 

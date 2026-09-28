@@ -705,7 +705,6 @@ export const getCartesianChartPadding = (
 
   if (hasGoalMarker) {
     const { backgroundRadius, shadowSpread } = CHART_STYLE.goalLine.marker;
-    // The goal marker is centered on the plot's right edge, so half of it overhangs into the padding.
     padding.right = Math.max(padding.right, backgroundRadius + shadowSpread);
   }
 

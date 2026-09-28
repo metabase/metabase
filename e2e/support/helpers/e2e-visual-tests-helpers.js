@@ -38,11 +38,6 @@ export function goalLine() {
   );
 }
 
-/**
- * The goal marker's hover target: an invisible circle covering the bullseye
- * rings at the end of the goal line. It is the only shape the chart renders
- * with a zero-opacity fill.
- */
 export function goalLineMarker() {
   return echartsContainer().find("path[fill-opacity='0']");
 }

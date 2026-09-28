@@ -908,12 +908,8 @@ describe("getTooltipModel", () => {
 });
 
 describe("getGoalLineHoverData", () => {
-  const createGoalHoverEvent = (nodeName: string) =>
-    // Only the nested DOM target is read; building a full ECharts mouse event
-    // here would add noise without improving coverage.
-    ({
-      event: { event: { target: { nodeName } } },
-    }) as unknown as EChartsSeriesMouseEvent;
+  const createMarkerElement = () =>
+    document.createElementNS("http://www.w3.org/2000/svg", "path");
 
   const settings = createMockVisualizationSettings({
     "graph.goal_value": 25000,
@@ -923,7 +919,7 @@ describe("getGoalLineHoverData", () => {
   it("shows the goal label and formatted value when the marker is hovered", () => {
     const hoverData = getGoalLineHoverData(
       settings,
-      createGoalHoverEvent("path"),
+      createMarkerElement(),
       (value) => `${value} orders`,
     );
 
@@ -933,9 +929,8 @@ describe("getGoalLineHoverData", () => {
   });
 
   it("anchors the tooltip to the hovered marker element", () => {
-    const event = createGoalHoverEvent("path");
-    const hoverData = getGoalLineHoverData(settings, event);
+    const marker = createMarkerElement();
 
-    expect(hoverData?.element).toBe(event.event.event.target);
+    expect(getGoalLineHoverData(settings, marker)?.element).toBe(marker);
   });
 });

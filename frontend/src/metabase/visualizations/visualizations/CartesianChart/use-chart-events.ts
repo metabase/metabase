@@ -162,7 +162,7 @@ export const useChartEvents = (
 
             const eventData = getGoalLineHoverData(
               settings,
-              event,
+              event.event.event.target,
               chartModel.leftAxisModel?.formatGoal,
             );
 
