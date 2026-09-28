@@ -221,7 +221,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write :collection :document [:threads :queries :timelines])
+      (t2/hydrate :creator :can_write :can_restore :can_delete :collection :document [:threads :queries :timelines])
       (update :threads
               #(some->> %
                         (mapv (comp redact-thread-query-errors attach-thread-status))
