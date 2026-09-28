@@ -19,7 +19,7 @@ jobs:
     outputs:
       release_source: ${{ steps.changes.outputs.release_source }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test which files changed
         uses: dorny/paths-filter@v3.0.0
         id: changes
@@ -33,7 +33,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
@@ -47,7 +47,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
@@ -61,7 +61,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: "release/ci-conductor"
       - name: Install bun
@@ -82,7 +82,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory

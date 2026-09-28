@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Verify Liquibase Migrations
