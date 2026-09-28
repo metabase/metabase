@@ -9,7 +9,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
-   (metabase.metabot.providers.openai ResponsesTranslator)))
+   (metabase.metabot.providers.openai ResponsesInput ResponsesTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -27,42 +27,10 @@
 ;;; AISDK parts → OpenAI Responses API input items
 
 (defn parts->openai-input
-  "Convert a sequence of AISDK parts into OpenAI Responses API input items.
-
-  Input: flat sequence of AISDK parts and user messages.
-  Output: OpenAI Responses API input array."
+  "Convert a sequence of AISDK parts into OpenAI Responses API input items; the conversion itself is
+  [[ResponsesInput]]."
   [parts]
-  (into []
-        (keep (fn [part]
-                (case (:type part)
-                  ;; with store:false the API keeps nothing server-side, so reasoning
-                  ;; items ride along as encrypted content ahead of their tool calls;
-                  ;; parts without it (bare summaries, foreign providers) drop
-                  :reasoning   (when-let [content (get-in part [:provider-metadata :openai :encryptedContent])]
-                                 {:type              "reasoning"
-                                  :id                (or (get-in part [:provider-metadata :openai :itemId])
-                                                         (:id part))
-                                  :summary           []
-                                  :encrypted_content content})
-                  :text        {:type    "message"
-                                :role    "assistant"
-                                :content [{:type "output_text"
-                                           :text (:text part)}]}
-                  :tool-input  {:type      "function_call"
-                                :call_id   (:id part)
-                                :name      (:function part)
-                                :arguments (let [args (:arguments part)]
-                                             (if (string? args) args (json/encode args)))}
-                  :tool-output {:type    "function_call_output"
-                                :call_id (:id part)
-                                :output  (or (get-in part [:result :output])
-                                             (when-let [err (:error part)]
-                                               (str "Error: " (:message err)))
-                                             (pr-str (:result part)))}
-                  ;; user messages
-                  {:role    (name (or (:role part) "user"))
-                   :content (or (:content part) "")})))
-        parts))
+  (ResponsesInput/fromClj parts json/encode))
 
 ;;; Tool definition format
 

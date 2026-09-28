@@ -10,7 +10,8 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -277,3 +278,77 @@
                   {:type "response.output_text.delta" :delta "b"}]]
       (is (= [:start :text-start]
              (mapv :type (into [] (comp (openai/openai->aisdk-chunks-xf) (take 2)) events)))))))
+
+;;; ------------------------------------------- request side: input items -------------------------------------------
+
+(defn- legacy-input
+  "Convert a sequence of AISDK parts into OpenAI Responses API input items.
+
+  Input: flat sequence of AISDK parts and user messages.
+  Output: OpenAI Responses API input array."
+  [parts]
+  (into []
+        (keep (fn [part]
+                (case (:type part)
+                  ;; with store:false the API keeps nothing server-side, so reasoning
+                  ;; items ride along as encrypted content ahead of their tool calls;
+                  ;; parts without it (bare summaries, foreign providers) drop
+                  :reasoning   (when-let [content (get-in part [:provider-metadata :openai :encryptedContent])]
+                                 {:type              "reasoning"
+                                  :id                (or (get-in part [:provider-metadata :openai :itemId])
+                                                         (:id part))
+                                  :summary           []
+                                  :encrypted_content content})
+                  :text        {:type    "message"
+                                :role    "assistant"
+                                :content [{:type "output_text"
+                                           :text (:text part)}]}
+                  :tool-input  {:type      "function_call"
+                                :call_id   (:id part)
+                                :name      (:function part)
+                                :arguments (let [args (:arguments part)]
+                                             (if (string? args) args (json/encode args)))}
+                  :tool-output {:type    "function_call_output"
+                                :call_id (:id part)
+                                :output  (or (get-in part [:result :output])
+                                             (when-let [err (:error part)]
+                                               (str "Error: " (:message err)))
+                                             (pr-str (:result part)))}
+                  ;; user messages
+                  {:role    (name (or (:role part) "user"))
+                   :content (or (:content part) "")})))
+        parts))
+
+(def ^:private gen-part
+  (let [s gen/string-alphanumeric]
+    (gen/one-of
+     [(gen/let [role    (gen/elements [nil :user "user" :system :assistant "tool"])
+                content (gen/one-of [(gen/return nil) s])]
+        (cond-> {:content content} role (assoc :role role)))
+      (gen/fmap (fn [t] {:type :text :text t}) s)
+      (gen/let [id s
+                t  s
+                pm (gen/elements [nil
+                                  {:openai {:encryptedContent "enc" :itemId "rs_1"}}
+                                  {:openai {:encryptedContent "enc"}}
+                                  {:openai {:itemId "rs_2"}}
+                                  {:anthropic {:signature "sig"}}
+                                  {:anthropic {:signature "sig"} :openai {:encryptedContent "enc2"}}])]
+        (cond-> {:type :reasoning :id id :text t} pm (assoc :provider-metadata pm)))
+      (gen/let [id   s
+                args (gen/elements [nil "{\"a\":1}" {:tz "UTC" :n 2}])]
+        {:type :tool-input :id id :function "get-time" :arguments args})
+      (gen/let [id     s
+                result (gen/elements [nil "plain" 42 {:output "out"} {:output ""} {:structured-output {:a 1}}])
+                error  (gen/elements [nil {:message "boom"} {}])]
+        (cond-> {:type :tool-output :id id :result result} error (assoc :error error)))])))
+
+(defspec ^:parallel generated-input-parity-test 300
+  (prop/for-all [parts (gen/vector gen-part 0 8)]
+    (= (legacy-input parts) (openai/parts->openai-input parts))))
+
+(deftest ^:parallel unknown-message-role-is-refused-test
+  (testing "a role the Responses API has no use for fails here, rather than at the provider"
+    (is (= [{:role "developer" :content "x"}] (legacy-input [{:role :developer :content "x"}])))
+    (is (thrown-with-msg? IllegalArgumentException #"not a message role: developer"
+                          (openai/parts->openai-input [{:role :developer :content "x"}])))))

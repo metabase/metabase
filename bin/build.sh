@@ -24,4 +24,8 @@ check_clojure_cli
 source "./bin/clear-outdated-cpcaches.sh"
 clear_outdated_cpcaches
 
+# compile the `java/` local dep, which the Clojure CLI requires before it will build any classpath; forced, so a
+# build never picks up classes compiled from older sources
+clojure -X:deps prep :force true
+
 clojure -X:drivers:build:build/all "$@"

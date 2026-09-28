@@ -61,13 +61,18 @@ public sealed interface AiSdkChunk {
                 throw new IllegalArgumentException("provider metadata names exactly one provider: " + m);
             }
             var entry = m.entrySet().iterator().next();
+            return fromClj(entry.getKey(), entry.getValue());
+        }
+
+        /** One provider's entry of a Clojure `{:<provider> {:<field> "value"}}`. */
+        public static ProviderMetadata fromClj(Object provider, Object cljFields) {
             var fields = new LinkedHashMap<String, String>();
-            if (entry.getValue() instanceof Map<?, ?> cljFields) {
-                for (var field : cljFields.entrySet()) {
+            if (cljFields instanceof Map<?, ?> m) {
+                for (var field : m.entrySet()) {
                     fields.put(((Keyword) field.getKey()).getName(), (String) field.getValue());
                 }
             }
-            return new ProviderMetadata(((Keyword) entry.getKey()).getName(), fields);
+            return new ProviderMetadata(((Keyword) provider).getName(), fields);
         }
 
         IPersistentMap toClj() {

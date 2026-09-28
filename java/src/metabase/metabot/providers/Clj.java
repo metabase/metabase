@@ -2,6 +2,7 @@ package metabase.metabot.providers;
 
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
+import clojure.lang.Named;
 import clojure.lang.PersistentArrayMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,15 @@ public final class Clj {
 
     public static String str(Map<?, ?> m, String key) {
         return get(m, key) instanceof String v ? v : null;
+    }
+
+    /** The name of a keyword or symbol value, or the string itself; null for anything else. */
+    public static String name(Map<?, ?> m, String key) {
+        return switch (get(m, key)) {
+            case Named n -> n.getName();
+            case String s -> s;
+            case null, default -> null;
+        };
     }
 
     /** A map's `:type`, or "" without one, so a parser can `switch` on it directly. */

@@ -1,0 +1,80 @@
+package metabase.metabot.providers.openai;
+
+import static metabase.metabot.providers.Clj.mapOf;
+import static metabase.metabot.providers.Clj.str;
+
+import clojure.lang.IPersistentMap;
+import clojure.lang.IPersistentVector;
+import clojure.lang.ITransientCollection;
+import clojure.lang.PersistentVector;
+import clojure.lang.RT;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import metabase.metabot.providers.AiSdkPart;
+import metabase.metabot.providers.AiSdkPart.*;
+
+/**
+ * The conversation history as OpenAI Responses API `input` items.
+ * https://platform.openai.com/docs/api-reference/responses/create#responses-create-input
+ */
+public final class ResponsesInput {
+    private ResponsesInput() {}
+
+    /** `parts` are Clojure AISDK part maps; the items come back as Clojure data, for the request body. */
+    public static IPersistentVector fromClj(Iterable<? extends Map<?, ?>> parts, Function<Object, String> encodeJson) {
+        ITransientCollection items = PersistentVector.EMPTY.asTransient();
+        for (var part : parts) {
+            var item = item(AiSdkPart.parse(part), encodeJson);
+            if (item != null) {
+                items = items.conj(item);
+            }
+        }
+        return (IPersistentVector) items.persistent();
+    }
+
+    /** The input item replaying `part`, or null for a part OpenAI cannot take back. */
+    private static IPersistentMap item(AiSdkPart part, Function<Object, String> encodeJson) {
+        return switch (part) {
+            case Reasoning reasoning -> reasoningItem(reasoning);
+            case Text(var text) ->
+                mapOf("type", "message",
+                      "role", "assistant",
+                      // RT.vector, not PersistentVector.create: a map is Iterable, so create would build a vector
+                      // of its entries
+                      "content", RT.vector(mapOf("type", "output_text", "text", text)));
+            case ToolInput(var id, var function, var arguments) ->
+                mapOf("type", "function_call",
+                      "call_id", id,
+                      "name", function,
+                      "arguments", arguments instanceof String json ? json : encodeJson.apply(arguments));
+            case ToolOutput(var id, var result, var error) -> {
+                String output = result instanceof Map<?, ?> m ? str(m, "output") : null;
+                yield mapOf("type", "function_call_output",
+                            "call_id", id,
+                            "output", output != null ? output
+                                      : error != null ? "Error: " + error
+                                      : RT.printString(result));
+            }
+            case Message(var role, var content) ->
+                mapOf("role", role.name().toLowerCase(Locale.ROOT), "content", content);
+        };
+    }
+
+    /**
+     * With store:false the API keeps nothing server-side, so reasoning rides along as its encrypted content, ahead of
+     * the tool calls it preceded. A part without that — a bare summary, another provider's — has nothing to replay.
+     */
+    private static IPersistentMap reasoningItem(Reasoning reasoning) {
+        var openai = reasoning.metadata("openai");
+        String content = openai == null ? null : openai.fields().get("encryptedContent");
+        if (content == null) {
+            return null;
+        }
+        String itemId = openai.fields().get("itemId");
+        return mapOf("type", "reasoning",
+                     "id", itemId != null ? itemId : reasoning.id(),
+                     "summary", PersistentVector.EMPTY,
+                     "encrypted_content", content);
+    }
+}
