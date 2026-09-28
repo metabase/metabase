@@ -98,6 +98,7 @@ jobs:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           RESULT_FILE: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
           HEAD_DIGEST: ${{ inputs.digest }}
+          CYPRESS_KEEP_VIDEOS: "true"
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
@@ -110,9 +111,9 @@ jobs:
           path: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
           if-no-files-found: ignore
 
-      - name: Upload Cypress Artifacts upon failure
+      - name: Upload Cypress Artifacts
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
           path: |
@@ -167,13 +168,14 @@ jobs:
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          CYPRESS_KEEP_VIDEOS: "true"
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
 
-      - name: Upload Cypress Artifacts upon failure
+      - name: Upload Cypress Artifacts
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}
           path: |
