@@ -1,3 +1,4 @@
+import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 import type { TestConfig } from "yup";
@@ -128,12 +129,14 @@ export const SettingsLdapForm = () => {
     settingDetails?.["ldap-port"]?.default ?? FALLBACK_LDAP_PORT;
 
   const handleSubmit = useCallback(
-    (values: LdapFormValues) => {
-      return updateLdapSettings({
+    async (values: LdapFormValues, helpers: FormikHelpers<LdapFormValues>) => {
+      await updateLdapSettings({
         ...values,
         "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
+      // the saved values become the baseline, so the form is clean before the refetch lands
+      helpers.resetForm({ values });
     },
     [updateLdapSettings, defaultPort],
   );

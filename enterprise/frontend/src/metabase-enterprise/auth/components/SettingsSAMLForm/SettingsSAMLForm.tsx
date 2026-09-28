@@ -1,3 +1,4 @@
+import type { FormikHelpers } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -77,8 +78,13 @@ export function SettingsSAMLForm() {
   const isConfigured = settingValues?.["saml-configured"] ?? false;
 
   const handleSubmit = useCallback(
-    (values: SAMLFormSettings) => {
-      return updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
+    async (
+      values: SAMLFormSettings,
+      helpers: FormikHelpers<SAMLFormSettings>,
+    ) => {
+      await updateSamlSettings({ ...values, "saml-enabled": true }).unwrap();
+      // the saved values become the baseline, so the form is clean before the refetch lands
+      helpers.resetForm({ values });
     },
     [updateSamlSettings],
   );

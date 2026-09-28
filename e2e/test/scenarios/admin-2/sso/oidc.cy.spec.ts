@@ -62,7 +62,7 @@ describe("scenarios > admin > settings > SSO > OIDC", () => {
 
     cy.log("The page switches to its configured state");
     cy.button("Save changes").should("be.visible");
-    cy.findByLabelText("Key").should("be.disabled");
+    cy.findByLabelText(/^Key/).should("be.disabled");
     groupMappingSwitch().should("be.enabled").and("not.be.checked");
   });
 
@@ -120,9 +120,9 @@ const setupOidcProvider = () => {
 };
 
 const enterProviderSettings = () => {
-  H.typeAndBlurUsingLabel("Key", "okta");
-  H.typeAndBlurUsingLabel("Login prompt", "Sign in with Okta");
-  H.typeAndBlurUsingLabel("Issuer URI", ISSUER_URI);
-  H.typeAndBlurUsingLabel("Client ID", "metabase-client-id");
-  H.typeAndBlurUsingLabel("Client secret", "metabase-client-secret");
+  H.typeAndBlurUsingLabel(/^Key/, "okta");
+  H.typeAndBlurUsingLabel(/^Login prompt/, "Sign in with Okta");
+  H.typeAndBlurUsingLabel(/^Issuer URI/, ISSUER_URI);
+  H.typeAndBlurUsingLabel(/^Client ID/, "metabase-client-id");
+  H.typeAndBlurUsingLabel(/^Client secret/, "metabase-client-secret");
 };

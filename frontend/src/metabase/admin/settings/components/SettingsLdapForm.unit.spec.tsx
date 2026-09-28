@@ -229,6 +229,21 @@ describe("SettingsLdapForm", () => {
     );
   });
 
+  it("leaves the form clean after a successful save", async () => {
+    await setup({ settingValues: ATTRS });
+
+    await userEvent.type(await screen.findByLabelText(/LDAP port/), "1");
+    await userEvent.click(screen.getByRole("button", { name: /Save/ }));
+
+    expect(await findRequests("PUT")).toHaveLength(1);
+    // a form left dirty after the save would keep the button live and arm the leave guard
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Success|Save/ }),
+      ).toBeDisabled(),
+    );
+  });
+
   it("does not offer user provisioning on OSS", async () => {
     await setup();
 

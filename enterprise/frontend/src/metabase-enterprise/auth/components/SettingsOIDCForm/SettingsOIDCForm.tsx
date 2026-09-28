@@ -1,3 +1,4 @@
+import type { FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -260,7 +261,7 @@ export function SettingsOIDCForm() {
   );
 
   const handleSubmit = useCallback(
-    async (values: OIDCFormValues) => {
+    async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
       // the connection check runs before saving and throws on failure
       await runCheck(values);
 
@@ -280,6 +281,8 @@ export function SettingsOIDCForm() {
         // Unjustified type cast. FIXME
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
+      // the saved values become the baseline, so the form is clean before the refetch lands
+      helpers.resetForm({ values });
     },
     [existingProvider, createProvider, updateProvider, runCheck],
   );

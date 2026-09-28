@@ -91,15 +91,21 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should not reset previously populated fields when schema validation fails for just one of them", () => {
+    it("should block an out-of-range port without resetting the other fields", () => {
       cy.visit("/admin/settings/authentication/ldap");
+
+      cy.findByLabelText(/LDAP Port/i)
+        .parent()
+        .parent()
+        .as("portSection");
 
       enterLdapSettings();
       enterLdapPort("0");
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
 
-      cy.findAllByText("nullable integer greater than 0").should("exist");
+      cy.get("@portSection")
+        .findByText("Port must be a whole number between 1 and 65535")
+        .should("be.visible");
+      cy.button("Save and enable").should("be.disabled");
       cy.findByDisplayValue("localhost").should("exist");
     });
 

@@ -186,6 +186,10 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         "Remove mapping and delete groups",
       );
       cy.wait(["@deleteGroup", "@deleteGroup"]);
+      // once the groups are gone, the surviving mappings are written again without them
+      cy.wait("@updateSettings")
+        .its("request.body.jwt-group-mappings")
+        .should("have.all.keys", "cn=People1", "cn=People3");
       mappingRow("cn=People1").should("contain", "Administrators, nosql");
       mappingRow("cn=People3")
         .should("contain", "readonly")
