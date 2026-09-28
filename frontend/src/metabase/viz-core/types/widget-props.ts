@@ -56,6 +56,7 @@ export type ChartSettingGoalInputProps = {
 export type ChartSettingGoalValueProps = {
   data: DatasetData;
   datasetQuery?: DatasetQuery;
+  excludedSelfColumn?: string;
   id: string;
   // false for visualizations that don't support dynamic goals yet
   isDynamic?: boolean;

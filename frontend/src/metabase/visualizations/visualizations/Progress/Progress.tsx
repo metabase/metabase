@@ -7,6 +7,8 @@ import { Flex, Icon } from "metabase/ui";
 import { assignLazily } from "metabase/utils/merge-lazily";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
+import { GoalResolutionState } from "metabase/visualizations/components/GoalResolutionState";
+import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { PROGRESS_CHART_DEFINITION } from "./definition";
@@ -14,6 +16,7 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
+  getGoalReferences,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
@@ -28,15 +31,19 @@ function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
-    series: [
-      {
-        data: { rows, cols },
-      },
-    ],
+    series: [{ card, data }],
     settings,
     onVisualizationClick,
     visualizationIsClickable,
   } = props;
+  const { rows, cols } = data;
+
+  const goalSetting = settings["progress.goal"];
+  const goalData = useResolvedGoalData(
+    card.dataset_query,
+    data,
+    getGoalReferences(goalSetting),
+  );
 
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,7 +58,10 @@ function ProgressComponent(props: VisualizationProps) {
     : -1;
 
   const value = extractProgressValue(rows, columnIndex);
-  const goal = getGoalValue(settings["progress.goal"], cols, rows);
+  const goal =
+    goalData.status === "resolved"
+      ? getGoalValue(goalSetting, goalData.data)
+      : 0;
 
   const metrics = calculateProgressMetrics(value, goal);
   const { hasValidValue, hasValidGoal, barPercent, arrowPercent } = metrics;
@@ -128,6 +138,16 @@ function ProgressComponent(props: VisualizationProps) {
   useEffect(() => {
     update();
   });
+
+  if (goalData.status !== "resolved") {
+    return (
+      <GoalResolutionState
+        className={className}
+        kind="value"
+        status={goalData.status}
+      />
+    );
+  }
 
   return (
     <div
