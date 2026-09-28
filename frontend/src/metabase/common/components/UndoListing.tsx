@@ -115,6 +115,8 @@ function UndoToast({
   };
 
   const dark = undo.dark ?? true;
+  const hasActionButton =
+    (undo.actions != null && undo.actions.length > 0) || !!undo.extraAction;
   const noBorder = undo.showProgress;
 
   return (
@@ -129,8 +131,8 @@ function UndoToast({
       onMouseLeave={() => updateInteraction({ isHovered: false })}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      bg={dark ? "background_page-primary-inverse" : "background_page-primary"}
-      c={dark ? "text-secondary-inverse" : "text-primary"}
+      bg={dark ? "tooltip-background" : "background_page-primary"}
+      c={dark ? "tooltip-text" : "text-primary"}
       withBorder={!noBorder}
       radius="sm"
       p="lg"
@@ -161,13 +163,17 @@ function UndoToast({
           }}
         />
       )}
-      <Flex align="flex-start" justify="space-between" gap="sm">
-        <Flex className={S.message} align="flex-start" maw="75ch">
+      <Flex
+        align={hasActionButton ? "baseline" : "flex-start"}
+        justify="space-between"
+        gap="sm"
+      >
+        <Flex className={S.message} align="baseline" maw="75ch">
           {undo.icon && (
             <Icon
               className={S.messageIcon}
               name={undo.icon}
-              c={undo.iconColor ?? "text-secondary-inverse"}
+              c={undo.iconColor ?? "tooltip-text"}
               mr="sm"
               flex="0 0 auto"
             />
@@ -184,7 +190,7 @@ function UndoToast({
           {undo.actions && undo.actions.length > 0 && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-primary" : "default"}
               size="sm"
               onClick={onUndo}
             >
@@ -194,7 +200,7 @@ function UndoToast({
           {undo.extraAction && (
             <Button
               className={S.actionButton}
-              variant="default"
+              variant={dark ? "on-dark-secondary" : "default"}
               size="sm"
               onClick={() => {
                 undo.extraAction?.action();
@@ -209,7 +215,7 @@ function UndoToast({
           {undo.canDismiss && (
             <Icon
               className={S.dismissIcon}
-              color={undo.dismissIconColor || "text-secondary-inverse"}
+              color={undo.dismissIconColor || "tooltip-text"}
               name="close"
               onClick={onDismiss}
               ml="lg"

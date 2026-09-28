@@ -38,6 +38,7 @@
 }
 
 .messageIcon {
+  align-self: flex-start;
   margin-block-start: calc(
     (var(--toast-line-height) - var(--toast-icon-size)) / 2
   );
