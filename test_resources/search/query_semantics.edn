@@ -4,6 +4,10 @@
 ;; not ranks. Comparisons belong here only when at least one engine uses a
 ;; different query. `:correct` declares the intended result set, which no
 ;; engine need achieve.
+;; Semantic search returns the union of a keyword arm, which follows the
+;; appdb/PostgreSQL rules, and a vector arm. Both are recorded, but comparisons
+;; and statistics treat semantic as the vector arm alone, since the keyword arm
+;; repeats PostgreSQL.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :config "simple"
@@ -24,8 +28,7 @@
     :correct [:A :B :C :D]
     :alternatives
     {:appdb-h2       {:query "amber", :hits [:A :C :D]}
-     :appdb-postgres {:query "amber or cobalt", :hits [:A :B :C :D]}
-     :semantic       {:query "amber or cobalt", :hits [:A :B :C :D]}}}
+     :appdb-postgres {:query "amber or cobalt", :hits [:A :B :C :D]}}}
    {:focus   "conjunction of substrings"
     :correct [:C :D]
     :alternatives
@@ -103,8 +106,7 @@
     :correct [:D]
     :alternatives
     {:in-place       {:query "or", :hits [:D :E]}
-     :appdb-postgres {:query "amber \"or\" cobalt", :hits [:D]}
-     :semantic       {:query "amber \"or\" cobalt", :hits [:A :B :C :D]}}}
+     :appdb-postgres {:query "amber \"or\" cobalt", :hits [:D]}}}
    {:focus   "explicit alternation"
     :correct [:A :B :C :D]
     :alternatives
@@ -168,8 +170,7 @@
   [{:focus   "`and` is a required word"
     :correct [:B :F]
     :alternatives
-    {:appdb-postgres {:query "amber \"and\" cobalt", :hits [:B :F]}
-     :semantic       {:query "amber \"and\" cobalt", :hits [:A :B :C :D :F]}}}]}
+    {:appdb-postgres {:query "amber \"and\" cobalt", :hits [:B :F]}}}]}
  {:id     "english-stopword"
   :focus  "English stopword removal"
   :config "english"
@@ -190,8 +191,7 @@
   [{:focus   "`the` is part of the intended match"
     :correct [:A]
     :alternatives
-    {:appdb-postgres {:query "\"the widget\"", :hits [:A :B]}
-     :semantic       {:query "\"the widget\"", :hits [:A :B :C]}}}]}
+    {:appdb-postgres {:query "\"the widget\"", :hits [:A :B]}}}]}
  {:id     "simple-stopword"
   :focus  "same documents/query without English stopword removal"
   :config "simple"
@@ -487,8 +487,7 @@
   [{:focus   "quoting or recovers the word but not prefix matches"
     :correct [:A :B]
     :alternatives
-    {:appdb-postgres {:query "\"or\"", :hits [:A]}
-     :semantic       {:query "\"or\"", :hits [:A]}}}]}
+    {:appdb-postgres {:query "\"or\"", :hits [:A]}}}]}
  ;; Controls: every engine can express these intents, some only by adapting
  ;; the query. No document contains the word inside a longer word; see
  ;; or-only-operator for that trap.
@@ -507,8 +506,7 @@
   [{:focus   "quoting or makes it a searchable word"
     :correct [:A :C]
     :alternatives
-    {:appdb-postgres {:query "\"or\"", :hits [:A :C]}
-     :semantic       {:query "\"or\"", :hits [:A :C]}}}]}
+    {:appdb-postgres {:query "\"or\"", :hits [:A :C]}}}]}
  {:id     "and-word-control"
   :focus  "control: and as a literal word"
   :config "simple"
@@ -524,8 +522,7 @@
   [{:focus   "quoting and makes it a searchable word"
     :correct [:A :C]
     :alternatives
-    {:appdb-postgres {:query "\"and\"", :hits [:A :C]}
-     :semantic       {:query "\"and\"", :hits [:A :C]}}}]}
+    {:appdb-postgres {:query "\"and\"", :hits [:A :C]}}}]}
  {:id     "field-term-agreement"
   :focus  "ordinary term matches either indexed text field"
   :config "simple"

@@ -10,12 +10,19 @@
   (-> "search/query_semantics.edn" io/resource slurp edn/read-string))
 
 (defn expected-hits
-  "Expected result labels for an engine's identical-query search."
+  "Expected result labels for an engine's identical-query search.
+
+  For semantic this is the vector arm alone; see [[expected-hybrid-hits]] for what search returns."
   [case engine]
-  (if (= engine :semantic)
-    (set/union (set (get-in case [:expect :semantic :keyword]))
-               (set (get-in case [:expect :semantic :vector])))
-    (set (get-in case [:expect engine]))))
+  (set (if (= engine :semantic)
+         (get-in case [:expect :semantic :vector])
+         (get-in case [:expect engine]))))
+
+(defn expected-hybrid-hits
+  "Expected semantic search results: the union of its keyword and vector arms."
+  [case]
+  (set/union (set (get-in case [:expect :semantic :keyword]))
+             (set (get-in case [:expect :semantic :vector]))))
 
 (defn comparison-spec
   "Return an engine's paired query and hits, inheriting the scenario pair unless overridden."
