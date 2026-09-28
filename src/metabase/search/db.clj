@@ -177,7 +177,7 @@
 (mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
   [engine :- :keyword]
-  (t2/select :model/SearchIndexMetadata :engine engine))
+  (t2/select :model/SearchIndexMetadata :engine [:auto/param engine]))
 
 (mu/defn index-row
   "The row of the search index `table` for `model` and `model-id`, or nil."
@@ -282,7 +282,7 @@
    lang-code  :- :string
    index-name :- :string]
   (t2/delete! :model/SearchIndexMetadata
-              :engine engine
+              :engine [:auto/param engine]
               :version [:auto/param version]
               :lang_code [:auto/param lang-code]
               :index_name [:auto/param index-name]
@@ -295,7 +295,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-             :engine engine
+             :engine [:auto/param engine]
              :version [:auto/param version]
              :lang_code [:auto/param lang-code]
              :status [:in [:active :pending]]))
@@ -316,7 +316,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata
-              :engine engine
+              :engine [:auto/param engine]
               :version [:auto/param version]
               :lang_code [:auto/param lang-code]
               :status :pending))
@@ -328,7 +328,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/select-one [:model/SearchIndexMetadata :id]
-                 :engine engine
+                 :engine [:auto/param engine]
                  :version [:auto/param version]
                  :lang_code [:auto/param lang-code]
                  :status :pending
@@ -340,7 +340,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/delete! :model/SearchIndexMetadata
-              :engine engine
+              :engine [:auto/param engine]
               :version [:auto/param version]
               :lang_code [:auto/param lang-code]
               :status :retired))
@@ -351,7 +351,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/update! :model/SearchIndexMetadata
-              {:engine    engine
+              {:engine    [:auto/param engine]
                :version   [:auto/param version]
                :lang_code [:auto/param lang-code]
                :status    :active}
@@ -363,7 +363,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/update! :model/SearchIndexMetadata
-              {:engine    engine
+              {:engine    [:auto/param engine]
                :version   [:auto/param version]
                :lang_code [:auto/param lang-code]
                :status    :pending}
@@ -375,7 +375,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/select-one-fn :index_name :model/SearchIndexMetadata
-                    :engine engine
+                    :engine [:auto/param engine]
                     :version [:auto/param version]
                     :lang_code [:auto/param lang-code]
                     :status :active))
