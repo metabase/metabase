@@ -315,6 +315,23 @@ describe("admin > database > database routing", () => {
         .click();
       assertDbRoutingNotDisabled();
 
+      cy.log("should be disabled if table editing is enabled");
+      // Table editing must be the only active conflict here: the routing
+      // section shows a single message, and model actions, model persistence,
+      // and uploads all take precedence over table editing.
+      tableEditingSection()
+        .findByLabelText("Editable tables")
+        .should("not.be.checked")
+        .click({ force: true });
+      assertDbRoutingDisabled(
+        "Database routing can't be enabled when table editing is enabled.",
+      );
+      tableEditingSection()
+        .findByLabelText("Editable tables")
+        .should("be.checked")
+        .click({ force: true });
+      assertDbRoutingNotDisabled();
+
       cy.log("should be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
@@ -437,99 +454,62 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      describe("model actions", () => {
-        it("should not be possible to enable model actions when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          modelsSection().within(() => {
-            cy.findByLabelText("Model actions").should("be.disabled");
-            cy.findByText(
-              "Model actions can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-
-      describe("model persistence", () => {
-        beforeEach(() => {
-          enableGlobalModelPersistence();
+      it("should not be possible to enable model persistence, model actions, table editing, or uploads when database routing is enabled", () => {
+        cy.log("setup");
+        enableGlobalModelPersistence();
+        configureDbRoutingViaAPI({
+          router_database_id: WRITABLE_DB_ID,
+          user_attribute: "role",
         });
 
-        it("should not be possible to enable model persistence when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
+        visitDatabaseAdminPage(WRITABLE_DB_ID);
 
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-          modelsSection().within(() => {
-            cy.findByLabelText("Model persistence").should("be.disabled");
-            cy.findByText(
-              "Model persistence can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-
-      describe("Table editing", () => {
-        it("should not be possible to enable table editing when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          tableEditingSection().within(() => {
-            cy.findByLabelText("Editable tables").should("be.disabled");
-            cy.findByText(
-              "Table editing can't be enabled when database routing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-
-        it("should not be possible to enable database routing when table editing is enabled", () => {
-          visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-          tableEditingSection()
-            .findByLabelText("Editable tables")
-            .click({ force: true });
-
-          dbRoutingSection().within(() => {
-            cy.findByLabelText("Enable database routing").should("be.disabled");
-            cy.findByText(
-              "Database routing can't be enabled when table editing is enabled.",
-            )
-              .scrollIntoView()
-              .should("be.visible");
-          });
-        });
-      });
-      describe("Uploads", () => {
-        it("should not be possible to enable uploads when database routing is enabled", () => {
-          configureDbRoutingViaAPI({
-            router_database_id: WRITABLE_DB_ID,
-            user_attribute: "role",
-          });
-
-          visitUploadSettingsPage();
-
-          cy.findByLabelText("Database to use for uploads").click();
-          H.popover()
-            .findByText("Writable Postgres12 (DB Routing Enabled)")
+        cy.log(
+          "should not be possible to enable model persistence when database routing is enabled",
+        );
+        modelsSection().within(() => {
+          cy.findByLabelText("Model persistence").should("be.disabled");
+          cy.findByText(
+            "Model persistence can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
             .should("be.visible");
         });
+
+        cy.log(
+          "should not be possible to enable model actions when database routing is enabled",
+        );
+        modelsSection().within(() => {
+          cy.findByLabelText("Model actions").should("be.disabled");
+          cy.findByText(
+            "Model actions can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
+            .should("be.visible");
+        });
+
+        cy.log(
+          "should not be possible to enable table editing when database routing is enabled",
+        );
+        tableEditingSection().within(() => {
+          cy.findByLabelText("Editable tables").should("be.disabled");
+          cy.findByText(
+            "Table editing can't be enabled when database routing is enabled.",
+          )
+            .scrollIntoView()
+            .should("be.visible");
+        });
+
+        cy.log(
+          "should not be possible to enable uploads when database routing is enabled",
+        );
+        // Keep this step last: it navigates away from the database page.
+        visitUploadSettingsPage();
+
+        cy.findByLabelText("Database to use for uploads").click();
+        H.popover()
+          .findByText("Writable Postgres12 (DB Routing Enabled)")
+          .should("be.visible");
       });
     });
   });

@@ -206,7 +206,7 @@ const databaseTestCases = [
 ];
 
 describe("Database connection strings", () => {
-  it("should parse connection strings for all supported databases", () => {
+  it("should parse connection strings for all supported databases without clearing existing values", () => {
     cy.visit("/admin/databases/create");
 
     databaseTestCases.forEach(
@@ -231,13 +231,12 @@ describe("Database connection strings", () => {
         }
       },
     );
-  });
 
-  it("should not clear the existing values", () => {
-    cy.visit("/admin/databases/create");
-
+    cy.log("should not clear the existing values");
+    // Keep this step last: values that the connection string doesn't set are
+    // preserved, so running it earlier could leak into the cases above.
     chooseDatabase("PostgreSQL");
-    cy.findByLabelText("Port").type("1111");
+    cy.findByLabelText("Port").clear().type("1111");
 
     cy.findByLabelText("Connection string (optional)").paste(
       "postgresql://postgres:password@db.apbkobhfnmcqqzqeeqss.supabase.co/postgres",
@@ -316,7 +315,8 @@ describe("Database connection strings events", () => {
     cy.visit("/admin/databases/create?engine=mysql");
   });
 
-  it("should track success events correctly", () => {
+  it("should track success and failure events correctly", () => {
+    cy.log("should track success events correctly");
     const successEvent = {
       event: "connection_string_parsed_success",
       triggered_from: "full-page",
@@ -340,9 +340,8 @@ describe("Database connection strings events", () => {
 
     // Should not track the same event again
     H.expectUnstructuredSnowplowEvent(successEvent, 1);
-  });
 
-  it("should track failure events correctly", () => {
+    cy.log("should track failure events correctly");
     cy.findByLabelText("Connection string (optional)")
       .focus()
       .paste("broken string")
