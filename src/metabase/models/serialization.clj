@@ -61,7 +61,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -1281,7 +1280,7 @@
   (if (and (map? x) (= (lib/normalized-query-type x) :query))
     (try
       (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-        (lib/->mbql5 (mbql.normalize/normalize :metabase.legacy-mbql.schema/Query x {:legacy-int-field-ids? false})))
+        (lib/->mbql5 (lib/normalize :metabase.legacy-mbql.schema/Query x {:legacy-int-field-ids? false})))
       (catch Throwable e
         (log/warnf "Error converting imported legacy MBQL query: %s" (ex-message e))
         x))
