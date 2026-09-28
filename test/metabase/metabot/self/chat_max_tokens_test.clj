@@ -94,7 +94,8 @@
                        "claude-fable-5-1"             32000
                        "my-deployment-3"              32000}
    ;; OpenAI Responses, direct: no default cap is sent (see openai/openai-request-body)
-   :openai            {"gpt-5.6-sol"                 omitted
+   :openai            {"gpt-6-astra"                 omitted
+                       "gpt-5.6-sol"                 omitted
                        "gpt-5.6-terra"               omitted
                        "gpt-5.6-luna"                omitted
                        "gpt-5.5"                     omitted
@@ -112,7 +113,8 @@
                        "anthropic.claude-opus-4-7"    32000
                        "anthropic.claude-sonnet-5"    32000
                        "anthropic.claude-haiku-4-5"   32000}
-   :bedrock-openai    {"openai.gpt-5.4"               32000
+   :bedrock-openai    {"openai.gpt-6-astra"           32000
+                       "openai.gpt-5.4"               32000
                        "openai.gpt-5.4-2026-03-05"    32000
                        "openai.gpt-5.5"               32000
                        "openai.gpt-5.5-2026-04-23"    32000}
@@ -130,7 +132,8 @@
                        "claude-opus-4-1"              32000
                        "Claude-Opus-4-8"              32000
                        "Claude-Haiku-4-5"             32000}
-   :azure-openai      {"gpt-5.6-sol"                 omitted
+   :azure-openai      {"gpt-6-astra"                 omitted
+                       "gpt-5.6-sol"                 omitted
                        "gpt-5.6-terra"               omitted
                        "gpt-5.6-luna"                omitted
                        "gpt-5.6"                     omitted
