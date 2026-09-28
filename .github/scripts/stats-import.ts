@@ -64,7 +64,9 @@ async function attemptImport(
     });
   } catch (networkError) {
     const message =
-      networkError instanceof Error ? networkError.message : String(networkError);
+      networkError instanceof Error
+        ? networkError.message
+        : String(networkError);
     throw new ImportError(message, { retryable: true });
   }
 
@@ -84,7 +86,11 @@ async function attemptImport(
     inserted?: number;
     ignoredKeys?: string[];
   };
-  return { success: true, inserted: result.inserted, ignoredKeys: result.ignoredKeys };
+  return {
+    success: true,
+    inserted: result.inserted,
+    ignoredKeys: result.ignoredKeys,
+  };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -116,7 +122,9 @@ export async function importStats({
   }
 
   if (!baseUrl) {
-    throw new Error("ENG_STATS_URL is not set, so there is no importer to push to");
+    throw new Error(
+      "ENG_STATS_URL is not set, so there is no importer to push to",
+    );
   }
 
   // Tolerate a trailing slash: the origin comes from a hand-entered secret.

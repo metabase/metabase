@@ -59,7 +59,8 @@ window.SAMPLE_CONTEXTS = {
     google: false,
     nonGoogleSSO: false,
     isActive: true,
-    passwordResetUrl: "http://localhost:3000/auth/reset_password/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    passwordResetUrl:
+      "http://localhost:3000/auth/reset_password/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     adminEmail: "admin@example.com",
     adminEmailSet: true,
   },
@@ -77,11 +78,14 @@ window.SAMPLE_CONTEXTS = {
     context: NOTIFICATION_CONTEXT,
     payload: {
       event_info: {
-        details: { invitor: { first_name: "Meredith", email: "meredith@example.com" } },
+        details: {
+          invitor: { first_name: "Meredith", email: "meredith@example.com" },
+        },
         object: { is_from_setup: false },
       },
       custom: {
-        user_invited_join_url: "http://localhost:3000/auth/join/a1b2c3d4-e5f6-7890",
+        user_invited_join_url:
+          "http://localhost:3000/auth/join/a1b2c3d4-e5f6-7890",
         // Set a name here (and optionally invite_target_is_dashboard) to
         // preview the "wants to share a question/dashboard" variant.
         invite_target_name: "",
@@ -107,7 +111,8 @@ window.SAMPLE_CONTEXTS = {
     emailType: "notification",
     logoHeader: true,
     heading: "We hope you've been enjoying Metabase.",
-    callToAction: "Would you mind taking a quick 5 minute survey to tell us how it's going?",
+    callToAction:
+      "Would you mind taking a quick 5 minute survey to tell us how it's going?",
     link: "https://metabase.com/feedback/active",
   },
 
@@ -128,7 +133,8 @@ window.SAMPLE_CONTEXTS = {
       dashboard: {
         id: 12,
         name: "Quarterly Revenue Overview",
-        description: "<p>Key revenue metrics, refreshed daily for the leadership team.</p>",
+        description:
+          "<p>Key revenue metrics, refreshed daily for the leadership team.</p>",
       },
       parameters: [
         { id: "a1b2c3d4", name: "Date Range", value: "past30days" },
@@ -140,7 +146,9 @@ window.SAMPLE_CONTEXTS = {
     computed: {
       icon_cid: "dashboard-icon@metabase", // cid: inline attachment; shows broken in browser
       dashboard_has_tabs: false,
-      dashboard_content: CARD_PLACEHOLDER("Monthly Orders") + CARD_PLACEHOLDER("Revenue by Region"),
+      dashboard_content:
+        CARD_PLACEHOLDER("Monthly Orders") +
+        CARD_PLACEHOLDER("Revenue by Region"),
       filters:
         "<table cellpadding='0' cellspacing='0'><tr>" +
         "<td style='font-size:12px;color:#949AAB;padding-right:12px;'><strong style='color:#696E7B;'>Date Range:</strong> Past 30 days</td>" +
@@ -156,7 +164,11 @@ window.SAMPLE_CONTEXTS = {
     creator: { common_name: "Meredith Palmer" },
     payload: {
       card: { id: 42, name: "Monthly Orders" },
-      notification_card: { send_condition: "goal_above", send_once: true, disable_links: false },
+      notification_card: {
+        send_condition: "goal_above",
+        send_once: true,
+        disable_links: false,
+      },
       style: NOTIFICATION_STYLE,
     },
     computed: {
@@ -195,14 +207,22 @@ window.SAMPLE_CONTEXTS = {
   notification_card_you_were_added: {
     emailType: "notification",
     logoHeader: true,
-    payload: { card_id: 42, card: { name: "Monthly Orders" }, send_condition: "has_result" },
+    payload: {
+      card_id: 42,
+      card: { name: "Monthly Orders" },
+      send_condition: "has_result",
+    },
   },
 
   notification_card_you_were_removed: {
     emailType: "notification",
     logoHeader: true,
     actor_name: "Meredith Palmer",
-    payload: { card_id: 42, card: { name: "Monthly Orders" }, disable_links: false },
+    payload: {
+      card_id: 42,
+      card: { name: "Monthly Orders" },
+      disable_links: false,
+    },
   },
 
   card_notification_archived: {
@@ -232,8 +252,16 @@ window.SAMPLE_CONTEXTS = {
       { name: "Product Category", value: "Gadget" },
     ],
     affectedUsers: [
-      { "notification-type": "email", recipient: "Meredith Palmer", role: "Dashboard Creator" },
-      { "notification-type": "email", recipient: "Oscar Nunez", role: "Subscription Creator" },
+      {
+        "notification-type": "email",
+        recipient: "Meredith Palmer",
+        role: "Dashboard Creator",
+      },
+      {
+        "notification-type": "email",
+        recipient: "Oscar Nunez",
+        role: "Subscription Creator",
+      },
     ],
   },
 
@@ -261,8 +289,10 @@ window.SAMPLE_CONTEXTS = {
         entity_title: "Q3 Planning Notes",
         document_href: "/document/87",
         comment_href: "/document/87?comment=214",
-        parent_comment: "<p>Should we fold the churn analysis into this doc, or keep it separate?</p>",
-        comment: "<p>Let's fold it in — I'll add a section under <strong>Retention</strong> this afternoon.</p>",
+        parent_comment:
+          "<p>Should we fold the churn analysis into this doc, or keep it separate?</p>",
+        comment:
+          "<p>Let's fold it in — I'll add a section under <strong>Retention</strong> this afternoon.</p>",
       },
     },
   },
@@ -281,7 +311,8 @@ window.SAMPLE_CONTEXTS = {
         severity_label: "Critical",
         severity_color: "#E65050",
         status_label: "Active",
-        security_center_url: "http://localhost:3000/admin/tools/security-center",
+        security_center_url:
+          "http://localhost:3000/admin/tools/security-center",
       },
       event_info: {
         object: {
@@ -289,8 +320,10 @@ window.SAMPLE_CONTEXTS = {
           description:
             "A vulnerability was identified that could allow specially crafted embedded question parameters " +
             "to execute arbitrary SQL against connected databases. Your instance version matches the affected range.",
-          remediation: "Upgrade to Metabase 55.8.2 or later, or disable static embedding until you can upgrade.",
-          advisory_url: "https://www.metabase.com/security/advisories/MB-2026-0042",
+          remediation:
+            "Upgrade to Metabase 55.8.2 or later, or disable static embedding until you can upgrade.",
+          advisory_url:
+            "https://www.metabase.com/security/advisories/MB-2026-0042",
         },
       },
     },
@@ -316,7 +349,8 @@ window.SAMPLE_CONTEXTS = {
           "Investigating slow dashboard loads reported by the customer.\n" +
           "Access limited to admin settings and query diagnostics.",
         ticket_number: "SUP-18342",
-        password_reset_url: "http://localhost:3000/auth/reset_password/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        password_reset_url:
+          "http://localhost:3000/auth/reset_password/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       },
     },
   },
@@ -326,7 +360,8 @@ window.SAMPLE_CONTEXTS = {
     errors: [
       {
         "is-not-first": false,
-        error: "Table 'orders_source' not found; it may have been renamed or dropped.",
+        error:
+          "Table 'orders_source' not found; it may have been renamed or dropped.",
         "card-id": 42,
         "card-name": "Monthly Orders",
         "collection-name": "Finance",
@@ -334,7 +369,8 @@ window.SAMPLE_CONTEXTS = {
         "last-run-trigger": "Scheduled",
         "card-url": "http://localhost:3000/question/42",
         "collection-url": "http://localhost:3000/collection/7",
-        "caching-log-details-url": "http://localhost:3000/admin/tools/model-caching/101",
+        "caching-log-details-url":
+          "http://localhost:3000/admin/tools/model-caching/101",
       },
       {
         "is-not-first": true,
@@ -346,7 +382,8 @@ window.SAMPLE_CONTEXTS = {
         "last-run-trigger": "Scheduled",
         "card-url": "http://localhost:3000/question/43",
         "collection-url": "http://localhost:3000/collection/7",
-        "caching-log-details-url": "http://localhost:3000/admin/tools/model-caching/102",
+        "caching-log-details-url":
+          "http://localhost:3000/admin/tools/model-caching/102",
       },
     ],
   },
@@ -363,7 +400,8 @@ window.SAMPLE_CONTEXTS = {
             transform_name: "Orders Enriched",
             transform_href: "http://localhost:3000/admin/transforms/15/runs",
             message: {
-              first_line: 'Column "discount_pct" does not exist in source table.',
+              first_line:
+                'Column "discount_pct" does not exist in source table.',
               details: [
                 "at stage 2 of 3 (join with promotions)",
                 "last successful run: July 9, 2026, 2:00 AM",
@@ -373,7 +411,10 @@ window.SAMPLE_CONTEXTS = {
           {
             transform_name: "Customer LTV Rollup",
             transform_href: "http://localhost:3000/admin/transforms/16/runs",
-            message: { first_line: "Query timed out after 600 seconds.", details: [] },
+            message: {
+              first_line: "Query timed out after 600 seconds.",
+              details: [],
+            },
           },
         ],
       },
@@ -392,7 +433,8 @@ window.SAMPLE_CONTEXTS = {
             job_name: "Nightly Warehouse Refresh",
             job_href: "http://localhost:3000/admin/transforms/jobs/7",
             failure_count: 3,
-            latest_error: 'Column "discount_pct" does not exist in source table.',
+            latest_error:
+              'Column "discount_pct" does not exist in source table.',
           },
           {
             job_name: "Hourly Events Rollup",

@@ -34,9 +34,7 @@ describe("buildMatrix", () => {
     );
 
     regularTests.forEach((test, index) => {
-      expect(test.name).toBe(
-        `e2e-group-${String(index + 1).padStart(2, "0")}`,
-      );
+      expect(test.name).toBe(`e2e-group-${String(index + 1).padStart(2, "0")}`);
     });
   });
 

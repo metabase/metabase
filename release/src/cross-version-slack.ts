@@ -50,7 +50,7 @@ export const buildFailureResults = (
   failedJobs: FailedJob[],
   artifactData: Map<string, FailureResult>,
 ): FailureResult[] => {
-  return failedJobs.map(job => {
+  return failedJobs.map((job) => {
     const parsed = parseJobName(job.name);
     if (!parsed) {
       return {
@@ -65,7 +65,12 @@ export const buildFailureResults = (
     const artifact = artifactData.get(key);
 
     if (artifact) {
-      return { phase: artifact.phase, source: artifact.source, target: artifact.target, jobUrl: job.url };
+      return {
+        phase: artifact.phase,
+        source: artifact.source,
+        target: artifact.target,
+        jobUrl: job.url,
+      };
     }
 
     return {

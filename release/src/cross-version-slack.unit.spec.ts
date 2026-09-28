@@ -87,7 +87,9 @@ describe("cross-version-slack", () => {
       const text = payload.blocks[0].text?.text ?? "";
 
       expect(text).toContain("Cross-version tests failing");
-      expect(text).toContain("<https://job/1|HEAD → v1.59.x> (migration failure)");
+      expect(text).toContain(
+        "<https://job/1|HEAD → v1.59.x> (migration failure)",
+      );
       expect(text).toContain("<https://job/2|v1.58.x → HEAD> (e2e failure)");
       expect(text).toContain("View full run");
     });

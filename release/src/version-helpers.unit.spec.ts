@@ -843,17 +843,13 @@ describe("version-helpers", () => {
     });
 
     it("should return the correct extra tags for a beta version", async () => {
-      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-      ]);
+      expect(await getExtraTagsForVersion({ version: "v1.75.0-beta" })).toEqual(
+        ["v0.75.x", "v1.75.x"],
+      );
 
-      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual([
-        "v0.75.x",
-        "v1.75.x",
-        "v0.75.1.x",
-        "v1.75.1.x",
-      ]);
+      expect(await getExtraTagsForVersion({ version: "v1.75.1-beta" })).toEqual(
+        ["v0.75.x", "v1.75.x", "v0.75.1.x", "v1.75.1.x"],
+      );
 
       expect(
         await getExtraTagsForVersion({ version: "v0.75.1.2-beta" }),
@@ -973,5 +969,4 @@ describe("version-helpers", () => {
       expect(getMinorVersion(input)).toBe(expected);
     });
   });
-
 });

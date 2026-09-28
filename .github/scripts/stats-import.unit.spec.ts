@@ -1,6 +1,9 @@
 import { importStats } from "./stats-import";
 
-const ok = (body: unknown = { inserted: 1 }) => ({ ok: true, json: async () => body });
+const ok = (body: unknown = { inserted: 1 }) => ({
+  ok: true,
+  json: async () => body,
+});
 const fail = (status: number) => ({
   ok: false,
   status,
@@ -52,7 +55,9 @@ describe("importStats requests", () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
 
-    await expect(load({ baseUrl: undefined })).rejects.toThrow("ENG_STATS_URL is not set");
+    await expect(load({ baseUrl: undefined })).rejects.toThrow(
+      "ENG_STATS_URL is not set",
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -81,7 +86,10 @@ describe("importStats requests", () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock;
 
-    await expect(load({ rows: [] })).resolves.toEqual({ success: true, inserted: 0 });
+    await expect(load({ rows: [] })).resolves.toEqual({
+      success: true,
+      inserted: 0,
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -111,15 +119,22 @@ describe("importStats retries", () => {
       .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("retries throttling", async () => {
-    const fetchMock = jest.fn().mockResolvedValueOnce(fail(429)).mockResolvedValueOnce(ok());
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(fail(429))
+      .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -130,7 +145,9 @@ describe("importStats retries", () => {
       .mockResolvedValueOnce(ok());
     global.fetch = fetchMock;
 
-    await expect(load({ retries: 2 })).resolves.toMatchObject({ success: true });
+    await expect(load({ retries: 2 })).resolves.toMatchObject({
+      success: true,
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

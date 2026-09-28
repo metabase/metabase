@@ -36,7 +36,9 @@ export async function resolveCoverageManifest({
       { owner, repo, name: ARTIFACT_NAME, per_page: 100 },
     );
     const candidates = artifacts
-      .filter((artifact) => !artifact.expired && artifact.workflow_run?.head_sha)
+      .filter(
+        (artifact) => !artifact.expired && artifact.workflow_run?.head_sha,
+      )
       .sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
