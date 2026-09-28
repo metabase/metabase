@@ -367,7 +367,5 @@ function getAddToDashboardToastProps(
     ),
     actionLabel: t`Add this to a dashboard`,
     action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
-    timeout: 200000,
-    initialTimeout: 20000,
   };
 }
