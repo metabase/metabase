@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
 import metabase.metabot.providers.AiSdkChunk.*;
 import metabase.metabot.providers.ChunkTranslator;
+import metabase.metabot.providers.Part;
 import metabase.metabot.providers.anthropic.MessagesEvent.*;
 
 /**
@@ -17,35 +18,6 @@ import metabase.metabot.providers.anthropic.MessagesEvent.*;
  * interrupted stream still reports the last usage it saw.
  */
 public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> {
-
-    /** The content block currently streaming. */
-    private sealed interface Open {
-        AiSdkChunk start();
-        AiSdkChunk end();
-
-        record Text(String id) implements Open {
-            public AiSdkChunk start() { return new TextStart(id); }
-            public AiSdkChunk end() { return new TextEnd(id); }
-        }
-
-        record Tool(String id, String name) implements Open {
-            public AiSdkChunk start() { return new ToolInputStart(id, name); }
-            public AiSdkChunk end() { return new ToolInputAvailable(id, name); }
-        }
-
-        /** `signature` is null until the first signature delta; a signed block is what Anthropic lets us replay. */
-        record Thinking(String id, String signature) implements Open {
-            public AiSdkChunk start() { return new ReasoningStart(id); }
-            public AiSdkChunk end() {
-                return new ReasoningEnd(id, signature == null ? null : ProviderMetadata.of("anthropic", "signature", signature));
-            }
-        }
-
-        record Redacted(String id, String data) implements Open {
-            public AiSdkChunk start() { return new ReasoningStart(id); }
-            public AiSdkChunk end() { return new ReasoningEnd(id, ProviderMetadata.of("anthropic", "redactedData", data)); }
-        }
-    }
 
     private static final Map<String, FinishReason> STOP_REASONS = Map.of(
         "end_turn", FinishReason.STOP,
@@ -58,7 +30,7 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
 
     private final Supplier<String> newId;
 
-    private Open open;
+    private final Part.Slot open = new Part.Slot();
     private String messageId;
     private String model;
     private TokenUsage lastUsage;
@@ -85,35 +57,32 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
             }
             case BlockStart(var blockId, var index, var block) -> {
                 // Anthropic stops every block before starting the next; a stray one is closed rather than lost
-                close(out);
+                open.close(out);
                 String id = blockId != null ? blockId : index != null ? index.toString() : newId.get();
-                open = switch (block) {
-                    case Block.Text() -> new Open.Text(id);
-                    case Block.ToolUse(var name) -> new Open.Tool(id, name);
-                    case Block.Thinking() -> new Open.Thinking(id, null);
-                    case Block.RedactedThinking(var data) -> new Open.Redacted(id, data);
-                    case Block.Unsupported() -> null;
-                };
-                if (open != null) {
-                    out.add(open.start());
+                switch (block) {
+                    case Block.Text() -> open.start(out, new Part.Text(id));
+                    case Block.ToolUse(var name) -> open.start(out, new Part.Tool(id, name));
+                    case Block.Thinking() -> open.start(out, new Part.Reasoning(id));
+                    // opaque to us, and streams no deltas; the data has to be echoed back verbatim
+                    case Block.RedactedThinking(var data) ->
+                        open.start(out, new Part.Reasoning(id, ProviderMetadata.of("anthropic", "redactedData", data)));
+                    case Block.Unsupported() -> {}
                 }
             }
             case BlockDelta(var delta) -> {
                 switch (delta) {
-                    case Delta.Text(var text) when open instanceof Open.Text(var id) ->
-                        out.add(new TextDelta(id, text));
-                    case Delta.Thinking(var thinking) when open instanceof Open.Thinking(var id, _) ->
-                        out.add(new ReasoningDelta(id, thinking));
-                    case Delta.InputJson(var json) when open instanceof Open.Tool(var id, _) ->
-                        out.add(new ToolInputDelta(id, json));
+                    case Delta.Text(var text) when open.get() instanceof Part.Text part -> out.add(part.delta(text));
+                    case Delta.Thinking(var text) when open.get() instanceof Part.Reasoning part ->
+                        out.add(part.delta(text));
+                    case Delta.InputJson(var json) when open.get() instanceof Part.Tool part -> out.add(part.delta(json));
                     // the signature rides the reasoning-end; nothing is emitted to the client
-                    case Delta.Signature(var piece) when open instanceof Open.Thinking(var id, var signature) ->
-                        open = new Open.Thinking(id, signature == null ? piece : signature + piece);
+                    case Delta.Signature(var piece) when open.get() instanceof Part.Reasoning(var id, var metadata) ->
+                        open.update(new Part.Reasoning(id, withSignaturePiece(metadata, piece)));
                     // a delta that does not belong to the open block, or no block at all
                     default -> {}
                 }
             }
-            case BlockStop() -> close(out);
+            case BlockStop() -> open.close(out);
             case MessageDelta(var usage, var reason) -> {
                 lastUsage = usage;
                 stopReason = reason;
@@ -127,17 +96,19 @@ public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> 
     @Override
     public List<AiSdkChunk> finish() {
         var out = new ArrayList<AiSdkChunk>(2);
-        close(out);
+        open.close(out);
         if (lastUsage != null) {
             out.add(new AiSdkChunk.Usage(messageId, model, lastUsage, Finish.of(STOP_REASONS, stopReason)));
         }
         return out;
     }
 
-    private void close(List<AiSdkChunk> out) {
-        if (open != null) {
-            out.add(open.end());
-            open = null;
-        }
+    /** A signature arrives in pieces, which concatenate into the one a thinking block is replayed with. */
+    private static ProviderMetadata withSignaturePiece(ProviderMetadata metadata, String piece) {
+        String prior = metadata == null ? null : metadata.fields().get("signature");
+        String signature = (prior == null ? "" : prior) + (piece == null ? "" : piece);
+        return metadata == null
+            ? ProviderMetadata.of("anthropic", "signature", signature)
+            : metadata.with("signature", signature);
     }
 }

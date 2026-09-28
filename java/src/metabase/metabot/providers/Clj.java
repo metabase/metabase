@@ -3,6 +3,7 @@ package metabase.metabot.providers;
 import clojure.lang.IPersistentMap;
 import clojure.lang.Keyword;
 import clojure.lang.PersistentArrayMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,6 +23,11 @@ public final class Clj {
 
     public static Map<?, ?> map(Map<?, ?> m, String key) {
         return get(m, key) instanceof Map<?, ?> v ? v : null;
+    }
+
+    /** The first element of a sequential value, when it is a map. */
+    public static Map<?, ?> firstMap(Map<?, ?> m, String key) {
+        return get(m, key) instanceof List<?> l && !l.isEmpty() && l.get(0) instanceof Map<?, ?> head ? head : null;
     }
 
     public static String str(Map<?, ?> m, String key) {

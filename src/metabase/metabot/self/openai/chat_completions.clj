@@ -11,30 +11,14 @@
    [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.schema :as schema]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (metabase.metabot.providers AiSdkChunk$FinishReason)
+   (metabase.metabot.providers.chat ChatCompletionsTranslator)))
 
 (set! *warn-on-reflection* true)
-
-(defn- usage->aisdk-usage
-  "Convert a Chat Completions `usage` block into the AISDK `:usage` shape.
-
-  `prompt_tokens` is the total input count, and the cache buckets are a subset
-  breakdown of it under `prompt_tokens_details`:
-
-      cached_tokens      — input tokens read from the provider cache
-      cache_write_tokens — input tokens written to the provider cache;
-                           undocumented but reported by both OpenRouter
-                           (Anthropic models) and newer OpenAI models.
-                           Providers without it (e.g. Z.AI) omit it."
-  [u]
-  (let [details (:prompt_tokens_details u)]
-    {:promptTokens        (:prompt_tokens u 0)
-     :completionTokens    (:completion_tokens u 0)
-     :cacheCreationTokens (or (:cache_write_tokens details) 0)
-     :cacheReadTokens     (or (:cached_tokens details) 0)}))
 
 ;;; AISDK parts → Chat Completions messages
 
@@ -147,184 +131,20 @@
    "function_call"  "tool-calls"
    "content_filter" "content-filter"})
 
-(defn- delta-reasoning
-  "Reasoning text carried by a Chat Completions delta or message, under either spelling. vLLM 0.26
-  emits `reasoning` and treats `reasoning_content` as its deprecated name; older builds, Z.AI, and
-  other OpenAI-compatible servers still emit the latter, and a self-hosted server's version is the
-  customer's choice."
-  [m]
-  (or (not-empty (:reasoning m))
-      (not-empty (:reasoning_content m))))
-
 (defn chat-completions->aisdk-chunks-xf
-  "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
+  "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks; the translation itself is
+  [[ChatCompletionsTranslator]].
 
-  Chat Completions streaming format:
-    {\"id\":\"chatcmpl-xxx\",
-     \"object\":\"chat.completion.chunk\",
-     \"model\":\"...\",
-     \"choices\":[{\"index\":0,
-                   \"delta\":{\"role\":\"assistant\",\"content\":\"Hello\"},
-                   \"finish_reason\":null}],
-     \"usage\":{...}}
-
-  Emits the same internal chunk types as claude.clj and openai.clj:
-    :start, :text-start, :text-delta, :text-end,
-    :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
-
-  Chat Completions has no explicit start/stop events per content block like
-  Claude or OpenAI Responses do — we infer transitions from the delta shape.
-
-  Parallel tool calls are tracked by tool-call `id`, not by `index`, which is
-  never read: a tool-call delta whose `id` differs from the open one closes the
-  previous block and opens a new one. That relies on providers sending `id` only
-  on a tool call's opening chunk — one that repeated it on continuation chunks
-  would lose their arguments, since neither the start branch (needs `:name`) nor
-  the argument-delta branch (needs no `:id`) would fire.
-
-  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
-
-  `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
-  deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
-  :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
-  a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
-  chunks nothing consumes only add stream volume."
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. `opts` may carry
+  `:forward-reasoning?`, which additionally translates reasoning deltas into :reasoning-start / :reasoning-delta /
+  :reasoning-end."
   ([]
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons]
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons {:keys [forward-reasoning?]}]
-   (fn [rf]
-     (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
-           current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
-           message-id   (volatile! nil)
-           model-name   (volatile! nil)
-           payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
-           stop-reason  (volatile! nil)
-           close!       (fn [result]
-                          (u/prog1 (rf result (merge {:type (case @current-type
-                                                              :text          :text-end
-                                                              :reasoning     :reasoning-end
-                                                              :function_call :tool-input-available)}
-                                                     @payload))
-                            (vreset! current-type nil)
-                            (vreset! current-id nil)
-                            (vreset! payload {})))]
-       (fn
-         ([result]
-          (cond-> result
-            @current-type (close!)
-            true          (rf)))
-
-         ([result {:keys [id model choices usage] :as _chunk}]
-          (let [choice        (first choices)
-                delta         (:delta choice)
-                finish-reason (:finish_reason choice)
-                tool-call     (first (:tool_calls delta))
-                reasoning-md  (:reasoning_metadata delta)
-                ;; Determine what kind of content this chunk carries.
-                ;; Empty-string content (common between tool calls) is ignored
-                ;; to avoid spurious text blocks that would close open tools.
-                chunk-type    (cond
-                                (not-empty (:content delta))  :text
-                                ;; tool_calls outrank reasoning: a delta carrying both would
-                                ;; otherwise classify as :reasoning, and the tool call's opening
-                                ;; chunk — the only one carrying its id and name — would be
-                                ;; lost, breaking the tool loop. Ranked this way, such a delta
-                                ;; loses its reasoning fragment instead: display text,
-                                ;; recoverable. No probed provider combines the two in one
-                                ;; delta today.
-                                (some? tool-call)             :function_call
-                                (and forward-reasoning?
-                                     (delta-reasoning delta)) :reasoning
-                                :else                         nil)
-                ;; For new tool calls, the id comes from the chunk; for deltas
-                ;; on the same tool, we keep current-id.
-                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-            (cond-> result
-              ;; Emit :start on first chunk
-              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
-                                                                   (u/prog1
-                                                                     (vreset! message-id id)
-                                                                     (vreset! model-name model)))
-              ;; Close previous block when type changes, or when a new tool
-              ;; call arrives (different id = different tool in parallel)
-              (and @current-type
-                   (or (and chunk-type
-                            (not= chunk-type @current-type))
-                       (and (= chunk-type :function_call)
-                            (not= chunk-id @current-id))))     (close!)
-              ;; Start a new text block
-              (and (= chunk-type :text)
-                   (not= @current-type :text))                 (-> (u/prog1
-                                                                     (let [tid (core/mkid)]
-                                                                       (vreset! current-type :text)
-                                                                       (vreset! current-id tid)
-                                                                       (vreset! payload {:id tid})))
-                                                                   (rf (merge {:type :text-start} @payload)))
-              ;; Text delta
-              (and (= chunk-type :text)
-                   (some? (:content delta)))                   (rf {:type  :text-delta
-                                                                    :id    @current-id
-                                                                    :delta (:content delta)})
-              ;; Start a new reasoning block
-              (and (= chunk-type :reasoning)
-                   (not= @current-type :reasoning))            (-> (u/prog1
-                                                                     (let [rid (core/mkid)]
-                                                                       (vreset! current-type :reasoning)
-                                                                       (vreset! current-id rid)
-                                                                       (vreset! payload {:id rid})))
-                                                                   (rf (merge {:type :reasoning-start} @payload)))
-              ;; Reasoning delta
-              (= chunk-type :reasoning)                        (rf {:type  :reasoning-delta
-                                                                    :id    @current-id
-                                                                    :delta (delta-reasoning delta)})
-              ;; A delta may carry ready-namespaced provider metadata for the
-              ;; open reasoning block, ridden out on its end chunk the way
-              ;; openai.clj rides out encrypted_content. :reasoning_metadata is
-              ;; not a wire key — no Chat Completions server emits it; only a
-              ;; dialect's own pre-transform mints it (today Mistral's
-              ;; flatten-content-chunks, carrying a think-chunk signature) — so
-              ;; this clause never fires for any other dialect. It is carried
-              ;; opaquely: the minting side owns the namespace inside it.
-              (and reasoning-md
-                   (= @current-type :reasoning))               (u/prog1
-                                                                 (vswap! payload assoc
-                                                                         :providerMetadata reasoning-md))
-              ;; Start a new tool call block
-              (and (= chunk-type :function_call)
-                   (:id tool-call)
-                   (:name (:function tool-call)))              (-> (u/prog1
-                                                                     (vreset! current-type :function_call)
-                                                                     (vreset! current-id (:id tool-call))
-                                                                     (vreset! payload {:toolCallId (:id tool-call)
-                                                                                       :toolName   (:name (:function tool-call))}))
-                                                                   (rf (merge {:type :tool-input-start} @payload))
-                                                                   ;; Emit initial arguments if present
-                                                                   (cond-> (not (str/blank? (:arguments (:function tool-call))))
-                                                                     (rf {:type           :tool-input-delta
-                                                                          :toolCallId     (:id tool-call)
-                                                                          :inputTextDelta (:arguments (:function tool-call))})))
-              ;; Tool argument delta (continuation of existing tool call)
-              (and (= chunk-type :function_call)
-                   (not (:id tool-call))
-                   (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
-                                                                    :toolCallId     (:toolCallId @payload)
-                                                                    :inputTextDelta (:arguments (:function tool-call))})
-              ;; Finish reason — close whatever is open
-              (some? finish-reason)                            (-> (u/prog1
-                                                                     (vreset! stop-reason finish-reason))
-                                                                   (cond->
-                                                                    @current-type (close!)))
-              ;; Usage (often on a separate final chunk with empty choices)
-              (some? usage)                                    (rf (cond-> {:type  :usage
-                                                                            :usage (usage->aisdk-usage usage)
-                                                                            :id    @message-id
-                                                                            :model @model-name}
-                                                                     @stop-reason
-                                                                     (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                            :raw-finish-reason @stop-reason)))))))))))
+   (let [table (AiSdkChunk$FinishReason/table stop-reasons)]
+     (core/translator-xf #(ChatCompletionsTranslator. core/mkid table (boolean forward-reasoning?))))))
 
 ;;; Request body
 

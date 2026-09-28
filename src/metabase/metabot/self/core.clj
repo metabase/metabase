@@ -24,7 +24,7 @@
   (:import
    (java.io BufferedReader Closeable InputStream)
    (java.util.concurrent Callable Executors ExecutorService)
-   (metabase.metabot.providers ChunkTranslator)))
+   (metabase.metabot.providers AiSdkChunk$FinishReason ChunkTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -334,7 +334,7 @@
 
 (def finish-reasons
   "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
-  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+  (into #{} (map #(.wire ^AiSdkChunk$FinishReason %)) (AiSdkChunk$FinishReason/values)))
 
 (defn stop-reason->finish-reason
   "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.

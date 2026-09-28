@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import metabase.metabot.providers.AiSdkChunk;
 import metabase.metabot.providers.AiSdkChunk.*;
 import metabase.metabot.providers.ChunkTranslator;
+import metabase.metabot.providers.Part;
 import metabase.metabot.providers.openai.ResponsesEvent.*;
 
 /**
@@ -18,35 +19,6 @@ import metabase.metabot.providers.openai.ResponsesEvent.*;
  */
 public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent> {
 
-    /** The part currently streaming. */
-    private sealed interface Open {
-        AiSdkChunk start();
-        AiSdkChunk delta(String delta);
-        AiSdkChunk end();
-
-        record Text(String id) implements Open {
-            public AiSdkChunk start() { return new TextStart(id); }
-            public AiSdkChunk delta(String d) { return new TextDelta(id, d); }
-            public AiSdkChunk end() { return new TextEnd(id); }
-        }
-
-        /** `encryptedContent` is null until the item is done; it is what lets us replay the item next round-trip. */
-        record Reasoning(String id, String encryptedContent) implements Open {
-            public AiSdkChunk start() { return new ReasoningStart(id); }
-            public AiSdkChunk delta(String d) { return new ReasoningDelta(id, d); }
-            public AiSdkChunk end() {
-                return new ReasoningEnd(id, encryptedContent == null ? null : ProviderMetadata.of(
-                    "openai", "itemId", id, "encryptedContent", encryptedContent));
-            }
-        }
-
-        record Tool(String callId, String name) implements Open {
-            public AiSdkChunk start() { return new ToolInputStart(callId, name); }
-            public AiSdkChunk delta(String d) { return new ToolInputDelta(callId, d); }
-            public AiSdkChunk end() { return new ToolInputAvailable(callId, name); }
-        }
-    }
-
     /** Only an incomplete response carries a reason, so there is nothing here for a normal or tool-call finish. */
     private static final Map<String, FinishReason> STOP_REASONS =
         Map.of("max_output_tokens", FinishReason.LENGTH,
@@ -56,7 +28,7 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
     /** User-facing, so it comes from the caller: it has to be rendered in their locale by Metabase's i18n. */
     private final Supplier<String> failedWithoutMessage;
 
-    private Open open;
+    private final Part.Slot open = new Part.Slot();
     private String model;
 
     public ResponsesTranslator(Supplier<String> newId, Supplier<String> failedWithoutMessage) {
@@ -78,34 +50,33 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
                 out.add(new Start(responseId));
             }
             case ItemAdded(var item) -> {
-                close(out);
-                open = switch (item) {
-                    case Item.Message() -> new Open.Text(newId.get());
-                    case Item.Reasoning(var id, _) -> new Open.Reasoning(id, null);
-                    case Item.FunctionCall(var callId, var name) -> new Open.Tool(callId, name);
-                    case Item.Unsupported() -> null;
-                };
-                if (open != null) {
-                    out.add(open.start());
+                open.close(out);
+                switch (item) {
+                    case Item.Message() -> open.start(out, new Part.Text(newId.get()));
+                    case Item.Reasoning(var id, _) -> open.start(out, new Part.Reasoning(id));
+                    case Item.FunctionCall(var callId, var name) -> open.start(out, new Part.Tool(callId, name));
+                    case Item.Unsupported() -> {}
                 }
             }
             case ItemDone(var item) -> {
                 // a finished reasoning item carries the encrypted content that lets us replay it next
                 // round-trip; it rides out on the reasoning-end
                 if (item instanceof Item.Reasoning(var id, var content)
-                        && open instanceof Open.Reasoning(var openId, _)
+                        && content != null
+                        && open.get() instanceof Part.Reasoning(var openId, _)
                         && openId.equals(id)) {
-                    open = new Open.Reasoning(openId, content);
+                    open.update(new Part.Reasoning(id, ProviderMetadata.of(
+                        "openai", "itemId", id, "encryptedContent", content)));
                 }
-                close(out);
+                open.close(out);
             }
             case Delta(var delta) -> {
-                if (open != null) {
-                    out.add(open.delta(delta));
+                if (open.get() != null) {
+                    out.add(open.get().delta(delta));
                 }
             }
             case SummaryPartAdded(var index) -> {
-                if (index > 0 && open instanceof Open.Reasoning reasoning) {
+                if (index > 0 && open.get() instanceof Part.Reasoning reasoning) {
                     out.add(reasoning.delta("\n\n"));
                 }
             }
@@ -122,14 +93,7 @@ public final class ResponsesTranslator implements ChunkTranslator<ResponsesEvent
     @Override
     public List<AiSdkChunk> finish() {
         var out = new ArrayList<AiSdkChunk>(1);
-        close(out);
+        open.close(out);
         return out;
-    }
-
-    private void close(List<AiSdkChunk> out) {
-        if (open != null) {
-            out.add(open.end());
-            open = null;
-        }
     }
 }

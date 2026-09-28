@@ -4,7 +4,10 @@ import static metabase.metabot.providers.Clj.kw;
 import static metabase.metabot.providers.Clj.mapOf;
 
 import clojure.lang.IPersistentMap;
+import clojure.lang.Keyword;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * The AI SDK v5 stream chunks a provider adapter emits (https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol),
@@ -37,11 +40,33 @@ public sealed interface AiSdkChunk {
     record ProviderMetadata(String provider, Map<String, String> fields) {
         /** From alternating `"field", value` pairs. Nil values are kept, as they would be in a Clojure literal. */
         public static ProviderMetadata of(String provider, String... kvs) {
-            var fields = new java.util.LinkedHashMap<String, String>();
+            var fields = new LinkedHashMap<String, String>();
             for (int i = 0; i < kvs.length; i += 2) {
                 fields.put(kvs[i], kvs[i + 1]);
             }
             return new ProviderMetadata(provider, fields);
+        }
+
+        /** A copy with `field` set to `value`. */
+        public ProviderMetadata with(String field, String value) {
+            var updated = new LinkedHashMap<>(fields);
+            updated.put(field, value);
+            return new ProviderMetadata(provider, updated);
+        }
+
+        /** From Clojure's `{:<provider> {:<field> "value"}}`, as a dialect's Clojure pre-transform mints it. */
+        public static ProviderMetadata fromClj(Map<?, ?> m) {
+            if (m.size() != 1) {
+                throw new IllegalArgumentException("provider metadata names exactly one provider: " + m);
+            }
+            var entry = m.entrySet().iterator().next();
+            var fields = new LinkedHashMap<String, String>();
+            if (entry.getValue() instanceof Map<?, ?> cljFields) {
+                for (var field : cljFields.entrySet()) {
+                    fields.put(((Keyword) field.getKey()).getName(), (String) field.getValue());
+                }
+            }
+            return new ProviderMetadata(((Keyword) entry.getKey()).getName(), fields);
         }
 
         IPersistentMap toClj() {
@@ -77,10 +102,32 @@ public sealed interface AiSdkChunk {
         STOP("stop"), LENGTH("length"), CONTENT_FILTER("content-filter"), TOOL_CALLS("tool-calls"),
         ERROR("error"), OTHER("other");
 
-        final String wire;
+        private final String wire;
 
         FinishReason(String wire) {
             this.wire = wire;
+        }
+
+        public static FinishReason fromWire(String wire) {
+            for (var reason : values()) {
+                if (reason.wire.equals(wire)) {
+                    return reason;
+                }
+            }
+            throw new IllegalArgumentException("not an AI SDK finish reason: " + wire);
+        }
+
+        /**
+         * A provider's stop-reason table as Clojure keeps it, `{"raw" "ai-sdk-reason"}`. Validated here, so a table
+         * naming a reason AI SDK does not have fails when the translator is built rather than on the wire.
+         */
+        public static Map<String, FinishReason> table(Map<?, ?> cljTable) {
+            return cljTable.entrySet().stream().collect(Collectors.toUnmodifiableMap(
+                e -> (String) e.getKey(), e -> fromWire((String) e.getValue())));
+        }
+
+        public String wire() {
+            return wire;
         }
     }
 
