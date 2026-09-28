@@ -10,7 +10,6 @@ import {
   provideUserTags,
 } from "metabase/api/tags";
 import {
-  type AdminSession,
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
@@ -21,6 +20,7 @@ import {
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
+  type Session,
   type SnippetDependencyNode,
   type SourceReplacementRun,
   type SupportAccessGrant,
@@ -245,16 +245,16 @@ export function provideSupportAccessGrantListTags(
   ];
 }
 
-export function provideAdminSessionTags(
-  session: AdminSession,
+export function provideSessionTags(
+  session: Session,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("session", session.id), ...provideUserTags(session.user)];
 }
 
-export function provideAdminSessionListTags(
-  sessions: AdminSession[],
+export function provideSessionListTags(
+  sessions: Session[],
 ): TagDescription<EnterpriseTagType>[] {
-  return [listTag("session"), ...sessions.flatMap(provideAdminSessionTags)];
+  return [listTag("session"), ...sessions.flatMap(provideSessionTags)];
 }
 
 export function provideSourceReplacementRunTags(

@@ -46,6 +46,10 @@ function getActiveSection(pathname: string): MonitorSection | null {
       () => "model-caching",
     )
     .with(
+      P.string.startsWith(Urls.monitorSessions()),
+      () => "session-management",
+    )
+    .with(
       P.string.startsWith(Urls.monitorAiAuditingMcp()),
       () => "ai-auditing-mcp",
     )
@@ -87,10 +91,6 @@ export function MonitorLayout() {
   const canAccessAiAuditingTab = useSelector(canAccessAiAuditing);
 
   const activeSection = getActiveSection(pathname);
-  // Session management isn't a tracked MonitorSection, so it can't come from getActiveSection
-  const isSessionManagementSelected = pathname.startsWith(
-    Urls.monitorSessions(),
-  );
 
   const hasContentManagement =
     canAccessDiagnostics || canAccessTools || canAccessAlerts;
@@ -181,9 +181,10 @@ export function MonitorLayout() {
               label={t`Session management`}
               icon="key"
               to={Urls.monitorSessions()}
-              isSelected={isSessionManagementSelected}
+              isSelected={activeSection === "session-management"}
               showLabel={isNavbarOpened}
               isGated={!hasSessionManagementFeature}
+              onClick={() => trackMonitorSectionClicked("session-management")}
             />
           )}
         </AreaTabGroup>

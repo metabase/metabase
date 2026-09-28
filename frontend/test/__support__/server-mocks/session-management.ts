@@ -1,17 +1,17 @@
 import fetchMock from "fetch-mock";
 
 import type {
-  AdminSession,
-  AdminSessionListResponse,
-  RevokeAdminSessionsResponse,
+  RevokeSessionsResponse,
+  Session,
+  SessionListResponse,
 } from "metabase-types/api";
-import { createMockRevokeAdminSessionsResponse } from "metabase-types/api/mocks";
+import { createMockRevokeSessionsResponse } from "metabase-types/api/mocks";
 
-export const setupAdminListSessionsEndpoint = (
-  sessions: AdminSession[] = [],
-  overrides: Partial<AdminSessionListResponse> = {},
+export const setupListSessionsEndpoint = (
+  sessions: Session[] = [],
+  overrides: Partial<SessionListResponse> = {},
 ) => {
-  const response: AdminSessionListResponse = {
+  const response: SessionListResponse = {
     data: sessions,
     total: sessions.length,
     limit: null,
@@ -21,16 +21,16 @@ export const setupAdminListSessionsEndpoint = (
   fetchMock.get("path:/api/ee/session-management", response);
 };
 
-export const setupAdminListSessionsErrorEndpoint = () => {
+export const setupListSessionsErrorEndpoint = () => {
   fetchMock.get("path:/api/ee/session-management", { status: 500 });
 };
 
-export const setupRevokeAdminSessionsEndpoint = (
-  response: RevokeAdminSessionsResponse = createMockRevokeAdminSessionsResponse(),
+export const setupRevokeSessionsEndpoint = (
+  response: RevokeSessionsResponse = createMockRevokeSessionsResponse(),
 ) => {
   fetchMock.post("path:/api/ee/session-management/revoke", response);
 };
 
-export const setupRevokeAdminSessionsErrorEndpoint = () => {
+export const setupRevokeSessionsErrorEndpoint = () => {
   fetchMock.post("path:/api/ee/session-management/revoke", { status: 500 });
 };

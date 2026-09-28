@@ -5,21 +5,18 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useRevokeSessionsMutation } from "metabase-enterprise/api";
-import type {
-  AdminSession,
-  RevokeAdminSessionsRequest,
-} from "metabase-types/api";
+import type { RevokeSessionsRequest, Session } from "metabase-types/api";
 
 import { getSessionUserName } from "../utils";
 
 type RevokeConfirmation = {
   title: string;
   message: string;
-  request: RevokeAdminSessionsRequest;
+  request: RevokeSessionsRequest;
 };
 
 type UseSessionRevocationOptions = {
-  onRevoked: (request: RevokeAdminSessionsRequest) => void;
+  onRevoked: (request: RevokeSessionsRequest) => void;
 };
 
 export function useSessionRevocation({
@@ -31,7 +28,7 @@ export function useSessionRevocation({
   const { modalContent: confirmModal, show: showConfirm } = useConfirmation();
 
   const revoke = useCallback(
-    async (request: RevokeAdminSessionsRequest) => {
+    async (request: RevokeSessionsRequest) => {
       try {
         const { revoked, remaining } = await revokeSessions(request).unwrap();
         dispatch(
@@ -79,7 +76,7 @@ export function useSessionRevocation({
   );
 
   const revokeSelected = useCallback(
-    (sessions: AdminSession[]) => {
+    (sessions: Session[]) => {
       const count = sessions.length;
       confirmRevoke({
         title: ngettext(
@@ -95,7 +92,7 @@ export function useSessionRevocation({
   );
 
   const revokeSession = useCallback(
-    (session: AdminSession) => {
+    (session: Session) => {
       const name = getSessionUserName(session.user);
       confirmRevoke({
         title: t`Revoke this session?`,
@@ -107,7 +104,7 @@ export function useSessionRevocation({
   );
 
   const revokeUserSessions = useCallback(
-    (session: AdminSession) => {
+    (session: Session) => {
       const name = getSessionUserName(session.user);
       confirmRevoke({
         title: t`Revoke all sessions for ${name}?`,

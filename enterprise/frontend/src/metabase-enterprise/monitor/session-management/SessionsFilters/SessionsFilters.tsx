@@ -7,10 +7,7 @@ import {
   ListFilterPopover,
 } from "metabase/common/components/ListFilterPopover";
 import { Select } from "metabase/ui";
-import type {
-  AdminSessionEndReason,
-  AdminSessionProvider,
-} from "metabase-types/api";
+import type { SessionEndReason, SessionProvider } from "metabase-types/api";
 
 import {
   END_REASON_VALUES,
@@ -34,10 +31,10 @@ type SessionsFiltersProps = {
 };
 
 type FilterDraft = {
-  provider: AdminSessionProvider[];
+  provider: SessionProvider[];
   last_active: SessionsTimePreset | null;
   ended: SessionsTimePreset | null;
-  reason: AdminSessionEndReason | null;
+  reason: SessionEndReason | null;
 };
 
 const stateToDraft = (state: SessionsUrlState): FilterDraft => ({
@@ -71,7 +68,7 @@ export const SessionsFilters = ({ state, onChange }: SessionsFiltersProps) => {
   const [draft, setDraft] = useState<FilterDraft>(() => stateToDraft(state));
   const isEndedTab = state.tab === "ended";
 
-  const toggleProvider = (provider: AdminSessionProvider) => {
+  const toggleProvider = (provider: SessionProvider) => {
     setDraft((prev) => ({
       ...prev,
       provider: prev.provider.includes(provider)

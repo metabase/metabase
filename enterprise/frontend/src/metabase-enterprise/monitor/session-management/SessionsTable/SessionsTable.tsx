@@ -25,7 +25,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
-import type { AdminSession, AdminSessionId } from "metabase-types/api";
+import type { Session, SessionId } from "metabase-types/api";
 
 import {
   getEndReasonLabel,
@@ -35,26 +35,26 @@ import {
 } from "../utils";
 
 type SessionsTableProps = {
-  sessions: AdminSession[];
+  sessions: Session[];
   error: unknown;
   isFetching: boolean;
   isLoading: boolean;
   isEndedTab: boolean;
   page: number;
   rowSelection: RowSelectionState;
-  selectedSessionId: AdminSessionId | undefined;
+  selectedSessionId: SessionId | undefined;
   sorting: SortingState;
   emptyLabel: string;
   onSortingChange: (sorting: SortingState) => void;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
-  onRowClick: (sessionId: AdminSessionId) => void;
+  onRowClick: (sessionId: SessionId) => void;
 };
 
-const getNodeId = (session: AdminSession) => session.id;
+const getNodeId = (session: Session) => session.id;
 
 // Revoking the caller's own session is done by logging out, not from this page, and the endpoint only ever ends
 // live ones — an ended session has nothing left to revoke
-const canSelectSession = (row: Row<AdminSession>) =>
+const canSelectSession = (row: Row<Session>) =>
   !row.original.current && row.original.status === "live";
 
 const ACTIVE_COLUMN_WIDTHS = [0.34, 0.3, 0.16, 0.2];
@@ -91,8 +91,8 @@ export const SessionsTable = ({
     [sorting, onSortingChange],
   );
 
-  const columns = useMemo<TreeTableColumnDef<AdminSession>[]>(() => {
-    const userColumn: TreeTableColumnDef<AdminSession> = {
+  const columns = useMemo<TreeTableColumnDef<Session>[]>(() => {
+    const userColumn: TreeTableColumnDef<Session> = {
       id: "user_email",
       header: t`User`,
       minWidth: 200,
@@ -112,7 +112,7 @@ export const SessionsTable = ({
       ),
     };
 
-    const deviceColumn: TreeTableColumnDef<AdminSession> = {
+    const deviceColumn: TreeTableColumnDef<Session> = {
       id: "device",
       header: t`Device`,
       minWidth: 180,
@@ -132,7 +132,7 @@ export const SessionsTable = ({
       ),
     };
 
-    const signedInColumn: TreeTableColumnDef<AdminSession> = {
+    const signedInColumn: TreeTableColumnDef<Session> = {
       id: "created_at",
       header: t`Signed in`,
       width: 170,
@@ -194,13 +194,13 @@ export const SessionsTable = ({
   }, [isEndedTab]);
 
   const handleRowActivate = useCallback(
-    (row: Row<AdminSession>) => {
+    (row: Row<Session>) => {
       onRowClick(row.original.id);
     },
     [onRowClick],
   );
 
-  const instance = useTreeTableInstance<AdminSession>({
+  const instance = useTreeTableInstance<Session>({
     data: sessions,
     columns,
     getNodeId,
@@ -226,7 +226,7 @@ export const SessionsTable = ({
   });
 
   const getRowProps = useCallback(
-    (row: Row<AdminSession>) => ({
+    (row: Row<Session>) => ({
       "data-testid": `session-row-${row.original.id}`,
     }),
     [],

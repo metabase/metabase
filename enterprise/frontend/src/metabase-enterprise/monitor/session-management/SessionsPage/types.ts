@@ -1,7 +1,7 @@
 import type {
-  AdminSessionEndReason,
-  AdminSessionProvider,
-  AdminSessionSortColumn,
+  SessionEndReason,
+  SessionProvider,
+  SessionSortColumn,
   SortDirection,
 } from "metabase-types/api";
 
@@ -17,10 +17,10 @@ export type SessionsUrlState = {
   page: number;
   query: string;
   tab: SessionsTab;
-  provider: AdminSessionProvider[];
+  provider: SessionProvider[];
   last_active: SessionsTimePreset | null;
   ended: SessionsTimePreset | null;
-  reason: AdminSessionEndReason | null;
-  sort_column: AdminSessionSortColumn;
+  reason: SessionEndReason | null;
+  sort_column: SessionSortColumn;
   sort_direction: SortDirection;
 };

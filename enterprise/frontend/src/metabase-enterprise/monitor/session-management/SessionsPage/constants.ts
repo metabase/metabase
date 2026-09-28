@@ -1,8 +1,8 @@
 import type {
-  AdminSessionEndReason,
-  AdminSessionProvider,
-  AdminSessionSortColumn,
-  AdminSessionStatusFilter,
+  SessionEndReason,
+  SessionProvider,
+  SessionSortColumn,
+  SessionStatusFilter,
   SortDirection,
 } from "metabase-types/api";
 
@@ -14,7 +14,7 @@ export const DEFAULT_TAB: SessionsTab = "active";
 
 export const TAB_VALUES: SessionsTab[] = ["active", "ended"];
 
-export const TAB_STATUS: Record<SessionsTab, AdminSessionStatusFilter> = {
+export const TAB_STATUS: Record<SessionsTab, SessionStatusFilter> = {
   active: "live",
   ended: "ended",
 };
@@ -26,8 +26,7 @@ export const TIME_PRESET_VALUES: SessionsTimePreset[] = [
   "month",
 ];
 
-// Every path that ends a session. The endpoint takes one at a time, not a list.
-export const END_REASON_VALUES: AdminSessionEndReason[] = [
+export const END_REASON_VALUES: SessionEndReason[] = [
   "admin",
   "logout",
   "password-change",
@@ -39,9 +38,7 @@ export const END_REASON_VALUES: AdminSessionEndReason[] = [
   "timed-out",
 ];
 
-// The auth methods the endpoint accepts as a filter. `unknown` is the bucket for sessions with no auth identity row,
-// not a provider anyone logs in with; `mcp` is absent because those sessions are never listed.
-export const PROVIDER_VALUES: AdminSessionProvider[] = [
+export const PROVIDER_VALUES: SessionProvider[] = [
   "password",
   "ldap",
   "google",
@@ -53,10 +50,10 @@ export const PROVIDER_VALUES: AdminSessionProvider[] = [
   "unknown",
 ];
 
-export const DEFAULT_SORT_COLUMN: AdminSessionSortColumn = "created_at";
+export const DEFAULT_SORT_COLUMN: SessionSortColumn = "created_at";
 export const DEFAULT_SORT_DIRECTION: SortDirection = "desc";
 
-export const SORT_COLUMN_VALUES: AdminSessionSortColumn[] = [
+export const SORT_COLUMN_VALUES: SessionSortColumn[] = [
   "created_at",
   "user_email",
   "provider",

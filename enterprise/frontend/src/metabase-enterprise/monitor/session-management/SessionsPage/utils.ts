@@ -11,9 +11,9 @@ import {
 } from "metabase/common/hooks/use-url-state";
 import { dayjs } from "metabase/dayjs";
 import type {
-  AdminSessionEndReason,
-  AdminSessionListParams,
-  AdminSessionProvider,
+  SessionEndReason,
+  SessionListParams,
+  SessionProvider,
 } from "metabase-types/api";
 
 import {
@@ -38,12 +38,12 @@ const parseQuery = (param: QueryParam): string => {
   return typeof value === "string" ? value.trim() : "";
 };
 
-const isProvider = (value: string): value is AdminSessionProvider =>
+const isProvider = (value: string): value is SessionProvider =>
   PROVIDER_VALUES.some((provider) => provider === value);
 
 // An unrecognised provider in the URL is dropped rather than sent on: the endpoint's enum would reject the whole
 // request, taking the rest of the filters down with it.
-const parseProviders = (param: QueryParam): AdminSessionProvider[] =>
+const parseProviders = (param: QueryParam): SessionProvider[] =>
   getAllParamValues(param).filter(isProvider);
 
 export const isTab = (value: string): value is SessionsTab =>
@@ -62,10 +62,10 @@ const parseTimePreset = (param: QueryParam): SessionsTimePreset | null => {
   return typeof value === "string" && isTimePreset(value) ? value : null;
 };
 
-export const isEndReason = (value: string): value is AdminSessionEndReason =>
+export const isEndReason = (value: string): value is SessionEndReason =>
   END_REASON_VALUES.some((reason) => reason === value);
 
-const parseEndReason = (param: QueryParam): AdminSessionEndReason | null => {
+const parseEndReason = (param: QueryParam): SessionEndReason | null => {
   const value = getFirstParamValue(param);
   return typeof value === "string" && isEndReason(value) ? value : null;
 };
@@ -116,7 +116,7 @@ export const buildListParams = (
   pageSize: number,
   lastActiveAfter: string | undefined,
   endedAfter: string | undefined,
-): AdminSessionListParams => {
+): SessionListParams => {
   // The ended-only criteria never match a live session, so each tab sends only the filters it shows
   const isEnded = state.tab === "ended";
   return {

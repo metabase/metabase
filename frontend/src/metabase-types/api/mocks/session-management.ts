@@ -1,23 +1,21 @@
 import type {
-  AdminSession,
-  AdminSessionUser,
-  RevokeAdminSessionsResponse,
+  RevokeSessionsResponse,
+  Session,
+  SessionUser,
 } from "metabase-types/api";
 
-export const createMockAdminSessionUser = (
-  opts: Partial<AdminSessionUser> = {},
-): AdminSessionUser => ({
+export const createMockSessionUser = (
+  opts: Partial<SessionUser> = {},
+): SessionUser => ({
   id: 1,
   email: "user@metabase.test",
   common_name: "Test User",
   ...opts,
 });
 
-export const createMockAdminSession = (
-  opts: Partial<AdminSession> = {},
-): AdminSession => ({
+export const createMockSession = (opts: Partial<Session> = {}): Session => ({
   id: "3b2f4c1e-9a7d-4e6b-8c5a-1d0f2e3b4a5c",
-  user: createMockAdminSessionUser(),
+  user: createMockSessionUser(),
   type: "normal",
   provider: "password",
   created_at: "2026-09-01T12:00:00Z",
@@ -36,9 +34,9 @@ export const createMockAdminSession = (
   ...opts,
 });
 
-export const createMockRevokeAdminSessionsResponse = (
-  opts: Partial<RevokeAdminSessionsResponse> = {},
-): RevokeAdminSessionsResponse => ({
+export const createMockRevokeSessionsResponse = (
+  opts: Partial<RevokeSessionsResponse> = {},
+): RevokeSessionsResponse => ({
   revoked: 1,
   remaining: 0,
   user_ids: [1],

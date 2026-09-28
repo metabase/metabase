@@ -2,11 +2,11 @@ import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { SortDirection } from "./sorting";
 import type { UserId } from "./user";
 
-export type AdminSessionId = string;
+export type SessionId = string;
 
-export type AdminSessionType = "normal" | "full-app-embed";
+export type SessionType = "normal" | "full-app-embed";
 
-export type AdminSessionProvider =
+export type SessionProvider =
   | "password"
   | "ldap"
   | "google"
@@ -17,15 +17,15 @@ export type AdminSessionProvider =
   | "support-access-grant"
   | "unknown";
 
-export type AdminSessionTenancy = "all" | "internal" | "external";
+export type SessionTenancy = "all" | "internal" | "external";
 
-export type AdminSessionStatus = "live" | "ended";
+export type SessionStatus = "live" | "ended";
 
 // A session is only ever live or ended; `all` is accepted by the filter alone
-export type AdminSessionStatusFilter = AdminSessionStatus | "all";
+export type SessionStatusFilter = SessionStatus | "all";
 
 // One value per path that ends a session
-export type AdminSessionEndReason =
+export type SessionEndReason =
   | "admin"
   | "logout"
   | "password-change"
@@ -36,24 +36,24 @@ export type AdminSessionEndReason =
   | "expired"
   | "timed-out";
 
-export type AdminSessionSortColumn =
+export type SessionSortColumn =
   | "created_at"
   | "last_active_at"
   | "user_email"
   | "provider"
   | "ended_at";
 
-export type AdminSessionUser = {
+export type SessionUser = {
   id: UserId;
   email: string;
   common_name: string | null;
 };
 
-export type AdminSession = {
-  id: AdminSessionId;
-  user: AdminSessionUser;
-  type: AdminSessionType;
-  // The response schema is any string; only the filter is limited to AdminSessionProvider
+export type Session = {
+  id: SessionId;
+  user: SessionUser;
+  type: SessionType;
+  // The response schema is any string; only the filter is limited to SessionProvider
   provider: string;
   created_at: string;
   last_active_at: string | null;
@@ -63,45 +63,45 @@ export type AdminSession = {
   ip_address: string | null;
   device_id: string | null;
   current: boolean;
-  status: AdminSessionStatus;
+  status: SessionStatus;
   ended_at: string | null;
-  end_reason: AdminSessionEndReason | null;
+  end_reason: SessionEndReason | null;
   ended_by: UserId | null;
 };
 
-export type AdminSessionFilters = {
+export type SessionFilters = {
   "user-id"?: UserId;
-  ids?: AdminSessionId[];
+  ids?: SessionId[];
   // A list: the endpoint coerces a single `?provider=` into one, so filtering on several auth methods is one request
-  provider?: AdminSessionProvider[];
-  type?: AdminSessionType;
-  tenancy?: AdminSessionTenancy;
+  provider?: SessionProvider[];
+  type?: SessionType;
+  tenancy?: SessionTenancy;
   "created-before"?: string;
   "created-after"?: string;
   "last-active-before"?: string;
   "last-active-after"?: string;
 };
 
-export type AdminSessionListParams = AdminSessionFilters &
+export type SessionListParams = SessionFilters &
   PaginationRequest & {
     query?: string;
-    status?: AdminSessionStatusFilter;
-    reason?: AdminSessionEndReason;
+    status?: SessionStatusFilter;
+    reason?: SessionEndReason;
     "ended-before"?: string;
     "ended-after"?: string;
-    "sort-column"?: AdminSessionSortColumn;
+    "sort-column"?: SessionSortColumn;
     "sort-direction"?: SortDirection;
   };
 
-export type AdminSessionListResponse = PaginationResponse & {
-  data: AdminSession[];
+export type SessionListResponse = PaginationResponse & {
+  data: Session[];
 };
 
-export type RevokeAdminSessionsRequest = AdminSessionFilters & {
+export type RevokeSessionsRequest = SessionFilters & {
   "exclude-current"?: boolean;
 };
 
-export type RevokeAdminSessionsResponse = {
+export type RevokeSessionsResponse = {
   revoked: number;
   remaining: number;
   user_ids: UserId[];

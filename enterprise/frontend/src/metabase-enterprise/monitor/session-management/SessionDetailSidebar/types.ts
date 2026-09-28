@@ -1,35 +1,35 @@
-import type { AdminSession, AdminSessionId } from "metabase-types/api";
+import type { Session, SessionId } from "metabase-types/api";
 
 export type SessionDetailSidebarProps = {
-  sessionId: AdminSessionId;
-  sessionFromPage: AdminSession | undefined;
-  prevSessionId: AdminSessionId | undefined;
-  nextSessionId: AdminSessionId | undefined;
+  sessionId: SessionId;
+  sessionFromPage: Session | undefined;
+  prevSessionId: SessionId | undefined;
+  nextSessionId: SessionId | undefined;
   isRevoking: boolean;
-  onNavigate: (sessionId: AdminSessionId) => void;
-  onRevokeSession: (session: AdminSession) => void;
-  onRevokeUserSessions: (session: AdminSession) => void;
+  onNavigate: (sessionId: SessionId) => void;
+  onRevokeSession: (session: Session) => void;
+  onRevokeUserSessions: (session: Session) => void;
   onClose: () => void;
 };
 
 export type SidebarHeaderProps = {
-  sessionId: AdminSessionId;
-  session: AdminSession | undefined;
-  prevSessionId: AdminSessionId | undefined;
-  nextSessionId: AdminSessionId | undefined;
-  onNavigate: (sessionId: AdminSessionId) => void;
+  sessionId: SessionId;
+  session: Session | undefined;
+  prevSessionId: SessionId | undefined;
+  nextSessionId: SessionId | undefined;
+  onNavigate: (sessionId: SessionId) => void;
   onClose: () => void;
 };
 
 export type SidebarFooterProps = {
-  session: AdminSession;
+  session: Session;
   isRevoking: boolean;
   canRevokeSession: boolean;
   canRevokeUserSessions: boolean;
-  onRevokeSession: (session: AdminSession) => void;
-  onRevokeUserSessions: (session: AdminSession) => void;
+  onRevokeSession: (session: Session) => void;
+  onRevokeUserSessions: (session: Session) => void;
 };
 
 export type SessionDetailsProps = {
-  session: AdminSession;
+  session: Session;
 };

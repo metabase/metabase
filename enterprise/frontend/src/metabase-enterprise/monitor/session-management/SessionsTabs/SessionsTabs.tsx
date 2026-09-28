@@ -41,7 +41,7 @@ export const SessionsTabs = ({ tab, onChange }: SessionsTabsProps) => {
           <Tabs.Tab
             key={config.value}
             value={config.value}
-            leftSection={<Icon name={config.icon} size={16} />}
+            leftSection={<Icon name={config.icon} />}
             data-testid={`sessions-tab-${config.value}`}
           >
             {config.label}

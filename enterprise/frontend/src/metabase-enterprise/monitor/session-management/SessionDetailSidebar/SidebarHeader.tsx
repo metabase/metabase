@@ -2,16 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  ActionIcon,
-  Flex,
-  Group,
-  Icon,
-  Menu,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { getSessionUserName } from "../utils";
@@ -61,25 +52,14 @@ export const SidebarHeader = ({
           </ActionIcon>
         </Group>
         <Group gap="sm">
-          <Menu position="bottom-end" withinPortal>
-            <Menu.Target>
-              <ActionIcon
-                aria-label={t`More actions`}
-                size="lg"
-                c="icon-primary"
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<Icon name="link" />}
-                onClick={handleCopyLink}
-              >
-                {t`Copy link to clipboard`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+          <ActionIcon
+            aria-label={t`Copy link to clipboard`}
+            size="lg"
+            c="icon-primary"
+            onClick={handleCopyLink}
+          >
+            <Icon name="link" />
+          </ActionIcon>
           <ActionIcon
             aria-label={t`Close`}
             size="lg"
