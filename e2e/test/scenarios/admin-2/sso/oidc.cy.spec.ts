@@ -61,7 +61,8 @@ describe("scenarios > admin > settings > SSO > OIDC", () => {
       });
 
     cy.log("The page switches to its configured state");
-    cy.button("Save changes").should("be.visible");
+    // the save button reads Success for a few seconds, so the configured state shows in the fields
+    cy.button("Success").should("be.visible");
     cy.findByLabelText(/^Key/).should("be.disabled");
     groupMappingSwitch().should("be.enabled").and("not.be.checked");
   });
