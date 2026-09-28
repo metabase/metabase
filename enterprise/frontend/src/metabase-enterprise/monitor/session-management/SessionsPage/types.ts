@@ -9,9 +9,11 @@ export type RouteParams = {
   sessionId?: string;
 };
 
-export type SessionsTab = "active" | "ended";
+export const SESSIONS_TABS = ["active", "ended"] as const;
+export type SessionsTab = (typeof SESSIONS_TABS)[number];
 
-export type SessionsTimePreset = "hour" | "day" | "week" | "month";
+export const SESSIONS_TIME_PRESETS = ["hour", "day", "week", "month"] as const;
+export type SessionsTimePreset = (typeof SESSIONS_TIME_PRESETS)[number];
 
 export type SessionsUrlState = {
   page: number;

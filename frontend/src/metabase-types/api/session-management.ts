@@ -6,16 +6,18 @@ export type SessionId = string;
 
 export type SessionType = "normal" | "full-app-embed";
 
-export type SessionProvider =
-  | "password"
-  | "ldap"
-  | "google"
-  | "slack-connect"
-  | "custom-oidc"
-  | "jwt"
-  | "saml"
-  | "support-access-grant"
-  | "unknown";
+export const SESSION_PROVIDERS = [
+  "password",
+  "ldap",
+  "google",
+  "slack-connect",
+  "custom-oidc",
+  "jwt",
+  "saml",
+  "support-access-grant",
+  "unknown",
+] as const;
+export type SessionProvider = (typeof SESSION_PROVIDERS)[number];
 
 export type SessionTenancy = "all" | "internal" | "external";
 
@@ -25,16 +27,18 @@ export type SessionStatus = "live" | "ended";
 export type SessionStatusFilter = SessionStatus | "all";
 
 // One value per path that ends a session
-export type SessionEndReason =
-  | "admin"
-  | "logout"
-  | "password-change"
-  | "user-deactivated"
-  | "tenant-deactivated"
-  | "sso-logout"
-  | "support-grant-revoked"
-  | "expired"
-  | "timed-out";
+export const SESSION_END_REASONS = [
+  "admin",
+  "logout",
+  "password-change",
+  "user-deactivated",
+  "tenant-deactivated",
+  "sso-logout",
+  "support-grant-revoked",
+  "expired",
+  "timed-out",
+] as const;
+export type SessionEndReason = (typeof SESSION_END_REASONS)[number];
 
 export type SessionSortColumn =
   | "created_at"
