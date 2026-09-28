@@ -59,6 +59,13 @@
    conditions :- Conditions]
   (apply t2/select-fn-set :id model-key (mapcat identity conditions)))
 
+(mu/defn entity-id-where :- [:maybe :string]
+  "The `:entity_id` of the instance of `model-key` whose `column` equals `value`, or nil."
+  [model-key :- :keyword
+   column    :- [:enum :name :term]
+   value     :- :string]
+  (t2/select-one-fn :entity_id model-key column value))
+
 (mu/defn count-where
   "The number of instances of `model-key` matching `conditions` (a map of column to value or Toucan 2
   operator-vector value, or nil for every instance)."
@@ -125,13 +132,14 @@
   (t2/count model-key {:where (unsynced-instance-expr model-key model-type removal-opts)}))
 
 (mu/defn unsynced-instance-names
-  "Up to `limit` names of the rows [[unsynced-instance-count]] counts."
+  "Up to `limit` values of `name-col` from the rows [[unsynced-instance-count]] counts."
   [model-key    :- :keyword
    model-type   :- :string
+   name-col     :- [:enum :name :term]
    removal-opts :- RemovalOpts
    limit        :- ms/PositiveInt]
-  (t2/select-fn-vec :name model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
-                                     :limit limit}))
+  (t2/select-fn-vec name-col model-key {:where (unsynced-instance-expr model-key model-type removal-opts)
+                                        :limit limit}))
 
 (mu/defn instance
   "The instance of `model` with `id`, or nil."
@@ -293,6 +301,21 @@
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
   []
   (t2/select [:model/NativeQuerySnippet :id :name :collection_id]))
+
+(mu/defn glossary-entries
+  "The `:id` and `:term` of every Glossary entry."
+  []
+  (t2/select [:model/Glossary :id :term]))
+
+(mu/defn untracked-glossary-entries
+  "The `:id` and `:term` of every Glossary entry with no RemoteSyncObject."
+  []
+  (t2/select [:model/Glossary :id :term]
+             {:where [:not [:exists ^:allow-subquery {:select [1]
+                                                      :from   [:remote_sync_object]
+                                                      :where  [:and
+                                                               [:= :remote_sync_object.model_type "Glossary"]
+                                                               [:= :remote_sync_object.model_id :glossary.id]]}]]}))
 
 (defn- subtree-expr
   "Matches `collections` and all of their descendants."

@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase-enterprise.remote-sync.events]
+   [metabase-enterprise.remote-sync.events :as events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.settings :as settings]
@@ -52,6 +52,13 @@
                                                 (impl/publish-sync-event! :event/remote-sync-import task-id
                                                                           {:branch branch :auto true} nil)))
               (throw (ex-info "Remote sync is enabled with read-only type, but there are unpublished changes. To force an overwrite, set `MB_REMOTE_SYNC_ALLOW=overwrite-unpublished`" {}))))))
+      ;; Read-only instances are skipped: a dirty ledger would fail the check above, and their next full pull
+      ;; rebuilds the ledger anyway.
+      (when (and (= :read-write (settings/remote-sync-type))
+                 (settings/library-is-remote-synced?))
+        (let [n (events/backfill-glossary-tracking!)]
+          (when (pos? n)
+            (log/infof "Tracking %d existing glossary entries for remote sync" n))))
       (when-not (collection/has-remote-synced-collection?)
         (if (nil? (settings/remote-sync-branch))
           (log/warn "Remote sync is enabled but no remote-sync branch is set. Cannot do initial import.")
