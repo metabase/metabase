@@ -3,7 +3,7 @@ import { Children, Fragment } from "react";
 
 import { Box, Divider } from "metabase/ui";
 
-import S from "./NotificationDetailSidebar.module.css";
+import S from "./DetailSidebar.module.css";
 
 export const DetailsTable = ({ children }: { children: ReactNode }) => {
   const items = Children.toArray(children).filter(Boolean);

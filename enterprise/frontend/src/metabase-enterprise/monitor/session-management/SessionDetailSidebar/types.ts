@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { AdminSession, AdminSessionId } from "metabase-types/api";
 
 export type SessionDetailSidebarProps = {
@@ -34,17 +32,4 @@ export type SidebarFooterProps = {
 
 export type SessionDetailsProps = {
   session: AdminSession;
-};
-
-export type SidebarSectionProps = {
-  title: string;
-  titleAside?: ReactNode;
-  children: ReactNode;
-};
-
-export type DetailsRowProps = {
-  label: ReactNode;
-  value: ReactNode;
-  bold?: boolean;
-  spanLabel?: boolean;
 };

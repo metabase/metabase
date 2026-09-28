@@ -17,10 +17,6 @@
   }
 }
 
-.detailsTable {
-  overflow: hidden;
-}
-
 .footer {
   border-top: 1px solid var(--mb-color-border-neutral);
   padding: var(--mantine-spacing-xl);

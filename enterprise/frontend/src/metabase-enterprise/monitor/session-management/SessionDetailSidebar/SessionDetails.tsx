@@ -1,6 +1,11 @@
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/monitor/components/DetailSidebar";
 import { Text } from "metabase/ui";
 import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 
@@ -11,9 +16,6 @@ import {
   getSessionUserName,
 } from "../utils";
 
-import { DetailsRow } from "./DetailsRow";
-import { DetailsTable } from "./DetailsTable";
-import { SidebarSection } from "./SidebarSection";
 import type { SessionDetailsProps } from "./types";
 
 const DateValue = ({ value }: { value: string }) => (
