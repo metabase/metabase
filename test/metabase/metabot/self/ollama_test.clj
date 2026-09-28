@@ -416,7 +416,7 @@
 
 (deftest preflight-passes-on-a-model-that-calls-tools-test
   (testing "a model that returns a well-formed tool call passes and is adopted as the one to run on"
-    (is (= {:models         [{:id "good-model" :display_name "good-model"}]
+    (is (= {:models          [{:id "good-model" :display_name "good-model"}]
             :connection-info {:probed-model "good-model"}}
            (probe! [{:id "good-model"}] tool-calling-message)))))
 

@@ -20,7 +20,7 @@
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [metabase.llm.settings :as llm]
-   [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.adapter :as adapter]
    [metabase.metabot.self.ollama.connection :as conn]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -61,14 +61,14 @@
   server that will not answer must not take down the request or the page that asked."
   [credentials model]
   (try
-    (let [res  (core/request (conn/native-auth credentials)
-                             {:method             :post
-                              :url                "/api/show"
-                              :as                 :json
-                              :headers            {"Content-Type" "application/json"}
-                              :body               (json/encode {:model model})
-                              :socket-timeout     native-api-timeout-ms
-                              :connection-timeout (llm/llm-connection-timeout-ms)})
+    (let [res  (adapter/request! conn/native-provider
+                                 {:credentials credentials
+                                  :method      :post
+                                  :path        "/api/show"
+                                  :as          :json
+                                  :body        (json/encode {:model model})}
+                                 {:socket-timeout     native-api-timeout-ms
+                                  :connection-timeout (llm/llm-connection-timeout-ms)})
           caps (get-in res [:body :capabilities])]
       {:answered? true
        :caps      (when (sequential? caps)

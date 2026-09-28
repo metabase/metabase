@@ -176,11 +176,13 @@
    ;; recorded by the connect-time probe, not entered by the admin
    [:probed-model        {:optional true} [:maybe :string]]])
 
-(def ^:private OllamaCredentials
+(def OllamaCredentials
   "An Ollama connection's config: which deployment it is, plus the API-key pair. `:hosting` picks between
   the stored `:base-url` and Cloud's fixed address, so it is part of the address rather than a flag beside
-  it. The enum it takes lives in `metabase.metabot.self.ollama.connection`, which can name
-  `metabase.llm.provider`'s own values where this namespace cannot."
+  it.
+
+  Public so `metabase.metabot.self.ollama.connection` can narrow `:hosting` to the registry's own values
+  instead of restating the key list — one place for the keys, one for the enum."
   [:map {:closed true}
    [:hosting      {:optional true} [:maybe :string]]
    [:api-key      {:optional true} [:maybe :string]]

@@ -67,6 +67,15 @@
   "What a structured-output probe showed: nil when the mechanism held, or why it did not."
   [:maybe [:enum :truncated :not-honored]])
 
+(mr/def ::choice
+  "One `choices` entry of a non-streaming Chat Completions answer. Open, like every other shape a
+  provider sends rather than one we compose: a build that adds a field must not fail validation for it."
+  [:map {::mr/deliberately-open true
+         :description "a Chat Completions choice"}
+   [:finish_reason {:optional true} [:maybe :string]]
+   [:message       {:optional true} [:maybe [:map {::mr/deliberately-open true
+                                                   :description "a Chat Completions assistant message"}]]]])
+
 (mr/def ::chat-completions-body
   "A Chat Completions request body. Open on purpose — this namespace reads and writes two of its keys
   and must not care about the rest."
@@ -294,15 +303,6 @@
         plan (plan opts cloud?)]
     (-> (body-for plan (chat-completions/request-body (opts-for plan opts)))
         (dissoc :model :stream :stream_options))))
-
-(mr/def ::choice
-  "One `choices` entry of a non-streaming Chat Completions answer. Open, like every other shape a
-  provider sends rather than one we compose: a build that adds a field must not fail validation for it."
-  [:map {::mr/deliberately-open true
-         :description "a Chat Completions choice"}
-   [:finish_reason {:optional true} [:maybe :string]]
-   [:message       {:optional true} [:maybe [:map {::mr/deliberately-open true
-                                                   :description "a Chat Completions assistant message"}]]]])
 
 (mu/defn probe-verdict :- ::probe-verdict
   "What a [[probe-body]] answer shows: nil when the mechanism held, `:truncated` when the answer was cut

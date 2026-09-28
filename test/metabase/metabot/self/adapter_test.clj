@@ -59,7 +59,7 @@
 (def ^:private expected-fallback-messages
   "What each adapter renders for an HTTP status it has no specific message for.
 
-  English only. Each adapter declares its own `:error-fallback` rather than sharing one parameterised
+  English only. The pre-split adapters declare their own `:error-fallback` rather than sharing one parameterised
   msgid, so these strings keep the translations already shipped for them in `locales/*.po`; the msgids
   themselves are guarded by review and by the extractor (`clojure -X:build i18n.enumerate/enumerate`),
   not by this test, which only pins the rendered English."
@@ -91,22 +91,24 @@
     (is (= "Anthropic API error (HTTP 0)"
            ((:error-msg @#'claude/provider) {})))))
 
-(def ^:private adapters-with-shipped-fallback-translations
-  "The adapters whose own `... API error (HTTP {0})` msgid already has translations in `locales/*.po`.
-  They keep an `:error-fallback` of their own until the shared parameterised template is translated too
-  — see [[metabase.metabot.self.adapter/provider]], which says so. An adapter added after that split has
-  no shipped translation to keep, so it takes the shared msgid instead of adding one more to translate."
-  (disj (set (keys expected-spans)) #'ollama/provider))
+(def ^:private legacy-error-fallbacks
+  "The adapters whose own `... API error (HTTP {0})` msgid already has translations in `locales/*.po`, so
+  they keep declaring an `:error-fallback` until the shared parameterised template is translated too — see
+  [[metabase.metabot.self.adapter/provider]], which says the key exists for exactly that.
+
+  Enumerated rather than derived as \"everything except the new ones\": this set may only shrink, and an
+  adapter added from here on has no shipped translation to keep, so it must not be enrolled by default."
+  #{#'azure/provider #'bedrock/provider #'claude/provider #'deepseek/provider #'google/provider
+    #'mistral/provider #'moonshot/provider #'openai/provider #'openrouter/provider #'vllm/provider
+    #'zai/provider})
 
 (deftest every-descriptor-brings-its-own-translated-messages-test
-  (testing "an adapter with translations already shipped for its own msgid keeps declaring it, rather
-            than inheriting the shared parameterised template. The rendered English is identical either
-            way, so `error-message-test` cannot tell the two apart — this can"
-    (doseq [provider-var adapters-with-shipped-fallback-translations]
-      (is (fn? (:error-fallback @provider-var)) (str provider-var))))
-  (testing "and an adapter newer than the split declares none, so the shared msgid is the only one
-            translators are given for it"
-    (is (nil? (:error-fallback @#'ollama/provider))))
+  (testing "exactly the adapters with translations already shipped for their own msgid declare one. The
+            rendered English is identical either way, so `error-message-test` cannot tell the two apart —
+            this can, in both directions: a legacy adapter may not silently lose its msgid, and a new one
+            may not add a twelfth for translators"
+    (is (= legacy-error-fallbacks
+           (set (filter #(fn? (:error-fallback @%)) (keys expected-spans))))))
   (testing "the proxy refusal deliberately does not get the same treatment: it stays one shared msgid,
             because `:ai-proxy?` is only ever set for the managed connection, whose catalog names only
             Anthropic models — the one provider the proxy can serve — so the refusal is unreachable"

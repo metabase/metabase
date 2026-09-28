@@ -23,10 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private min-context-length
-  "Smallest `max_model_len` [[preflight!]] will accept. A product floor, not a measurement."
-  16384)
-
 (defn- missing-base-url-ex []
   (ex-info (tru "No vLLM base URL is set")
            {:api-error  true
@@ -220,10 +216,10 @@
 
 (defn- check-context-budget!
   [{:keys [id max_model_len]}]
-  (when (and max_model_len (< (long max_model_len) min-context-length))
+  (when (and max_model_len (< (long max_model_len) adapter/min-context-window-tokens))
     (throw (preflight-ex
             (tru "{0} is served with a {1} token context window, which is too small for Metabot — it needs at least {2}. Restart vLLM with a larger --max-model-len."
-                 (str id) (str max_model_len) (str min-context-length))))))
+                 (str id) (str max_model_len) (str adapter/min-context-window-tokens))))))
 
 (defn- check-tool-calling!
   "Check that the server was started with `--enable-auto-tool-choice` and a `--tool-call-parser` whose

@@ -131,6 +131,15 @@
 
 ;;; ------------------------------------------------- Descriptor -------------------------------------------------
 
+(def min-context-window-tokens
+  "Smallest context window a connection may be saved on. A product floor, not a measurement: Metabot's
+  tools and system prompt run to several thousand tokens before any history, and a self-hosted server is
+  the only place the window is small enough to matter — the hosted providers all exceed it.
+
+  Shared because it is a statement about Metabot, not about a provider: the adapters that can observe a
+  window (vLLM from its catalog, Ollama from the loaded model) must not drift apart on the number."
+  16384)
+
 (defn- status-error-msg-fn
   "Build the `res->message` callback [[core/rethrow-api-error!]] and [[core/reducible-with-api-errors]] take.
 

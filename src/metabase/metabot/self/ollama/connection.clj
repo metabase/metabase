@@ -27,19 +27,16 @@
   any connection — passes nothing, and `:hosting` is only guaranteed once `with-field-defaults` has run,
   even though the registry marks the field required and defaults it.
 
-  The stricter twin of `metabase.metabot.self.core`'s own `OllamaCredentials`, which cannot name the
-  `:hosting` values because `metabase.llm.provider` is downstream of it. Here they are the registry's
-  own rather than restated, so the schema cannot drift from the options the admin's form offers.
-  Instrumentation is dev and test only, so this catches a wrong value where it is a developer's mistake
-  without turning a hand-written `llm-providers` typo into a 500 in production — there, an unrecognized
-  value reads as self-hosted and the admin gets [[missing-base-url-ex]]'s advice instead."
+  [[core/OllamaCredentials]] with `:hosting` narrowed to the registry's own values, so the keys are
+  declared once and the enum cannot drift from the options the admin's form offers. Instrumentation is dev
+  and test only, so the narrowing catches a wrong value where it is a developer's mistake without turning
+  a hand-written `llm-providers` typo into a 500 in production — there, an unrecognized value reads as
+  self-hosted and the admin gets [[missing-base-url-ex]]'s advice instead."
   [:maybe
-   [:map {:closed true}
-    [:hosting      {:optional true} [:maybe [:enum llm.provider/ollama-self-hosted llm.provider/ollama-cloud]]]
-    [:base-url     {:optional true} [:maybe :string]]
-    [:api-key      {:optional true} [:maybe :string]]
-    ;; recorded by the connect-time probe, not entered by the admin
-    [:probed-model {:optional true} [:maybe :string]]]])
+   [:merge
+    core/OllamaCredentials
+    [:map {:closed true}
+     [:hosting {:optional true} [:maybe [:enum llm.provider/ollama-self-hosted llm.provider/ollama-cloud]]]]]])
 
 (defn- missing-base-url-ex []
   ;; `provider-client-error?` needs a numeric status to render this under the field; without one the
@@ -93,3 +90,15 @@
   OpenAI-compatible surface is mounted at. Cloud serves it on the same host, and takes the same key."
   [credentials :- Credentials]
   (update (resolve-auth credentials) :url str/replace #"/v1/*$" ""))
+
+(def native-provider
+  "Descriptor for Ollama's own API, the surface that answers `/api/show` and `/api/ps`.
+
+  A second descriptor rather than a second door: the adapter's own descriptor authenticates the
+  OpenAI-compatible surface, and everything else [[adapter/request!]] does — the proxy refusal, the
+  `Content-Type` only where there is a body — applies here unchanged. It carries no `:errors`, because
+  every caller on this surface treats a failure as \"the server would not say\" and swallows it."
+  (adapter/provider
+   {:slug         "ollama"
+    :display-name "Ollama"
+    :auth         (fn [_provider {:keys [credentials]}] (native-auth credentials))}))

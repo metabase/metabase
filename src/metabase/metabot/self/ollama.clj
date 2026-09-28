@@ -148,11 +148,6 @@
   and tool call against one budget."
   16384)
 
-(def ^:private min-context-length
-  "Smallest context window [[preflight!]] will accept, matching vLLM's. A product floor, not a
-  measurement: Metabot's tools and system prompt run to several thousand tokens before any history."
-  16384)
-
 (def ^:private default-temperature
   "Sampling temperature when the caller supplies none. Ollama's per-model Modelfile default is
   commonly far too high for tool calling and SQL generation, and no server-side default corrects it."
@@ -254,8 +249,9 @@
   ignores it and the model answers in prose. Cloud cannot fail that way: nothing there was ever going
   to enforce it, so a model that will not take the instruction has to be caught at connect — nothing
   downstream can repair it."
-  [req model cloud?]
-  (let [choice (probe-chat! req model (forced/probe-body cloud?))]
+  [{:keys [credentials] :as req} model]
+  (let [cloud? (conn/cloud? credentials)
+        choice (probe-chat! req model (forced/probe-body cloud?))]
     (when-let [verdict (forced/probe-verdict cloud? choice)]
       (throw (preflight-ex
               (case verdict
@@ -316,10 +312,10 @@
   stopping at the first failure is strictly less work. Concurrency would not help — Ollama serializes
   generation per model unless `OLLAMA_NUM_PARALLEL` is raised, and a losing probe cannot be called
   off: `future-cancel` interrupts, and a blocking socket read ignores interrupts."
-  [req model cloud?]
+  [req model]
   (try
     (check-tool-calling! req model)
-    (check-structured-output! req model cloud?)
+    (check-structured-output! req model)
     (catch SocketTimeoutException _
       (throw (preflight-ex
               (tru "Ollama did not answer the connection test within {0}ms. On a self-hosted server the first request also loads the model into memory — if it is large, retry once it is warm, otherwise it is too slow to drive Metabot."
@@ -330,17 +326,13 @@
 (defn- loaded-context-length
   "The context window Ollama loaded `model` with, from `/api/ps`, or nil when it would not say.
 
-  [[core/request]] rather than [[adapter/request!]]: that door authenticates with the descriptor's
-  `:auth`, which resolves the OpenAI-compatible surface, and this reads Ollama's own API at the server
-  root. There is nothing else it would add here — the proxy is already refused by the generation path
-  this runs after, and every failure below is swallowed rather than translated."
-  [native-auth model]
+  [[conn/native-provider]], because `/api/ps` is on Ollama's own API rather than the OpenAI-compatible
+  surface the adapter's own descriptor authenticates."
+  [credentials model]
   (try
-    (let [res (core/request native-auth (merge {:method  :get
-                                                :url     "/api/ps"
-                                                :as      :json
-                                                :headers {"Content-Type" "application/json"}}
-                                               (control-timeouts)))]
+    (let [res (adapter/request! conn/native-provider
+                                {:credentials credentials :method :get :path "/api/ps" :as :json}
+                                (control-timeouts))]
       (some (fn [{:keys [name context_length] :as entry}]
               ;; `/api/ps` names a loaded model under both keys, and they agree except where a
               ;; Modelfile gave it another name
@@ -362,12 +354,12 @@
 
   The probes cannot show this. They are one-line prompts that fit in any window, so the truncation
   they would reveal is of the *answer*; this truncates the *question*."
-  [native-auth model]
-  (when-let [window (loaded-context-length native-auth model)]
-    (when (< window min-context-length)
+  [credentials model]
+  (when-let [window (loaded-context-length credentials model)]
+    (when (< window adapter/min-context-window-tokens)
       (throw (preflight-ex
               (tru "{0} runs with a {1} token context window, which is too small for Metabot — it needs at least {2}."
-                   (str model) (str window) (str min-context-length)))))))
+                   (str model) (str window) (str adapter/min-context-window-tokens)))))))
 
 (defn- preflight!
   "Exercise the agent loop's contract against the model that will actually serve it, returning that
@@ -376,10 +368,9 @@
 
   The context-window check runs last: it needs the model loaded, which the probes do."
   [{:keys [credentials] :as req} entries requested-model]
-  (let [cloud? (conn/cloud? credentials)
-        model  (:id (probe-target entries requested-model))]
-    (run-probes! req model cloud?)
-    (check-context-budget! (conn/native-auth credentials) model)
+  (let [model (:id (probe-target entries requested-model))]
+    (run-probes! req model)
+    (check-context-budget! credentials model)
     model))
 
 (defn- tag-chat-capable
@@ -532,31 +523,26 @@
           (throw (stream-io-ex e timeout-ms)))))))
 
 (mu/defn ollama-raw
-  "Stream a Chat Completions request. `:credentials` come from the connection serving it;
-  `:ai-proxy?` is unsupported and throws. `plan` may be supplied by a caller that already has one, so
-  that a request derives it once."
-  ([opts :- core/LLMRequestOpts]
-   (ollama-raw opts (forced/plan opts (conn/cloud? (:credentials opts)))))
-
-  ([{:keys [model credentials] :as opts} :- core/LLMRequestOpts
-    plan                                  :- [:maybe ::forced/plan]]
-   (when (str/blank? model) (throw (missing-model-ex)))
-   (let [timeout-ms (llm/llm-ollama-request-timeout-ms)
-         ;; resolved before the request, so the IO handler can name the address actually called — a
-         ;; Cloud connection carries no `:base-url` of its own
-         url        (conn/base-url credentials)]
-     (adapter/stream! provider opts
-                      {:path             "/chat/completions"
-                       :body             (ollama-request-body opts plan)
-                       :request-options  (inference-timeouts)
-                       :span-attrs       {:forced (some-> (:mechanism plan) name)}
-                       :wrap-stream      #(io-guarded % timeout-ms)
-                       ;; clj-http raises an `IOException` only when there is no response at all, so the
-                       ;; IO branch cannot swallow a failure the provider's own messages would translate.
-                       :on-request-error (fn [e]
-                                           (if (instance? IOException e)
-                                             (throw (request-io-ex e url timeout-ms))
-                                             (adapter/rethrow! provider e)))}))))
+  "Stream a Chat Completions request. `:credentials` come from the connection serving it; `:ai-proxy?` is
+  unsupported and throws."
+  [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
+  (when (str/blank? model) (throw (missing-model-ex)))
+  (let [plan       (forced/plan opts (conn/cloud? credentials))
+        timeout-ms (llm/llm-ollama-request-timeout-ms)]
+    (adapter/stream! provider opts
+                     {:path             "/chat/completions"
+                      :body             (ollama-request-body opts plan)
+                      :request-options  (inference-timeouts)
+                      :span-attrs       {:forced (some-> (:mechanism plan) name)}
+                      :wrap-stream      #(io-guarded % timeout-ms)
+                      ;; clj-http raises an `IOException` only when there is no response at all, so the
+                      ;; IO branch cannot swallow a failure the provider's own messages would translate.
+                      :on-request-error (fn [e]
+                                          (if (instance? IOException e)
+                                            ;; the address as resolved, not `(:base-url credentials)`: a
+                                            ;; Cloud connection carries none of its own
+                                            (throw (request-io-ex e (conn/base-url credentials) timeout-ms))
+                                            (adapter/rethrow! provider e)))})))
 
 (mu/defn streams-reasoning? :- :boolean
   "Registry capability. Ollama answers per *model*, from what the server reports about it — a connection
@@ -565,8 +551,7 @@
 
   The cached reader, never the one that would call Ollama: this backs the public
   `llm-metabot-supports-reasoning?` setting, so every client's page load reaches it and none of them may
-  wait on the operator's server. Keeping that answer fresh is
-  [[metabase.metabot.self.ollama.capabilities]]' own business."
+  wait on the operator's server."
   [{:keys [credentials model]} :- adapter/ResolvedRef]
   (caps/cached-reasoning-model? credentials model))
 
@@ -583,4 +568,4 @@
   (let [plan (forced/plan opts (conn/cloud? credentials))]
     (eduction (comp (or (forced/read-back-xf plan) identity)
                     (ollama->aisdk-chunks-xf))
-              (ollama-raw opts plan))))
+              (ollama-raw opts))))
