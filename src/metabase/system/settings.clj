@@ -145,20 +145,34 @@
   :getter     encryption/default-encryption-enabled?
   :doc        false)
 
+(defn- env-path-allowlist
+  "The allowlist of paths for `setting-name`, read from its env var only. `NONE` allows no path. With nothing set,
+  hosted instances allow no path and self-hosted ones allow every path."
+  [setting-name]
+  (if-let [raw (setting/env-var-value setting-name)]
+    (let [paths (into [] (comp (map str/trim) (remove str/blank?)) (str/split raw #","))]
+      (if (= paths ["NONE"]) [] paths))
+    (if (premium-features/is-hosted?) [] ["/"])))
+
 (defsetting readable-paths
-  "Comma separated allowlist of paths which this Metabase instance is allowed to read for settings. Use the special value NONE to allow no paths."
+  (deferred-tru (str "Comma-separated allowlist of directories Metabase may read files from, e.g. for database "
+                     "secrets given as a local file path. Use NONE to allow no paths. Defaults to NONE on Metabase "
+                     "Cloud and / (every path) when self-hosted."))
+  :type       :csv
   :encryption :no
   :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     #(env-path-allowlist :readable-paths)
+  :doc        false)
+
+(defsetting writable-paths
+  (deferred-tru (str "Comma-separated allowlist of directories Metabase may write files to. Use NONE to allow no "
+                     "paths. Defaults to NONE on Metabase Cloud and / (every path) when self-hosted."))
   :type       :csv
-  :export?    true
-  :getter     (fn []
-                (if (premium-features/is-hosted?)
-                  ;; empty vector means "allow none"
-                  []
-                  (if-let [paths-setting (setting/get-value-of-type :csv :readable-paths)]
-                    (if (= paths-setting ["NONE"])
-                      []
-                      paths-setting)
-                    ;; If not hosted, allow all by default
-                    ["/"])))
+  :encryption :no
+  :visibility :internal
+  :export?    false
+  :setter     :none
+  :getter     #(env-path-allowlist :writable-paths)
   :doc        false)
