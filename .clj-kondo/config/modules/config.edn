@@ -3791,8 +3791,7 @@
                     :model/Permissions
                     :model/PermissionsGroup
                     :model/QueryAction
-                    :model/Table
-                    :model/User}
+                    :model/Table}
    :model-exports #{:model/DataApp}}
 
   enterprise/data-studio
