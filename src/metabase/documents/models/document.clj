@@ -13,6 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.proof.core :as proof]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
    [metabase.queries.schema :as queries.schema]
@@ -30,6 +31,10 @@
    [toucan2.instance :as t2.instance]))
 
 (methodical/defmethod t2/table-name :model/Document [_model] :document)
+
+(defmethod proof/cascade-parents :model/Document
+  [_model]
+  {:model/Collection :collection_id})
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :document]
   [_original-model _k]

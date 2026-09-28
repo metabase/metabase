@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.proof.core :as proof]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -437,7 +438,8 @@
     (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
-          (t2/delete! :model/Collection :id coll-a)
+          (mt/with-current-user (mt/user->id :crowberto)
+            (collection/delete-collection! (proof/authorize-delete :model/Collection coll-a)))
           (testing "Table X (in the deleted collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

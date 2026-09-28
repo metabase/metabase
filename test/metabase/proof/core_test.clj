@@ -148,6 +148,53 @@
                             (binding [api/*current-user-id* 7]
                               (proof/cascade parent-proof ::child [:= :parent_id 10] nil)))))))
 
+(deftest ^:parallel cascade-by-path-and-subquery-test
+  ;; Collection declares itself a cascade parent by its materialized path, and Card declares Collection by column
+  (let [collection-proof (proof/test-only {:model :model/Collection, :operation :delete, :subject 10})
+        subtree          [:or [:= :id 10] [:like :location "/3/10/%"]]
+        contents         [:in :collection_id ^:allow-subquery {:select [:id], :from [:collection], :where subtree}]]
+    (testing "a where-clause on the path column keyed by the parent's id names its descendants"
+      (are [where] (= {:model :model/Collection, :operation :delete, :subject where}
+                      (proof/verify (proof/cascade collection-proof :model/Collection where nil)
+                                    {:model :model/Collection, :operation :delete, :subject-kind :where}))
+        [:like :location "/3/10/%"]
+        [:like :location "/10/%"]
+        [:and [:like :location "/10/%"] [:not :archived]]))
+    (testing "a path pattern not under the parent is refused"
+      (are [where] (=? {:status-code 500, :column [:path :location]}
+                       (invalid-proof-data #(proof/cascade collection-proof :model/Collection where nil)))
+        [:like :location "/3/11/%"]
+        [:like :location "/110/%"]
+        [:like :location "/3/%"]
+        [:= :location "/3/10/"]))
+    (testing "a subquery over the parent's table keyed by the parent's id (itself or its subtree) names the contents"
+      (is (= {:model :model/Card, :operation :delete, :subject contents}
+             (proof/verify (proof/cascade collection-proof :model/Card contents nil)
+                           {:model :model/Card, :operation :delete, :subject-kind :where})))
+      (is (=? {:model :model/Card, :operation :update, :changes {:archived true}}
+              (proof/verify (proof/cascade collection-proof :model/Card [:and contents [:= :archived_directly false]]
+                                           {:archived true})
+                            {:model :model/Card, :operation :update, :subject-kind :where}))))
+    (testing "a subquery that could name other rows is refused"
+      (are [subquery] (=? {:status-code 500, :column :collection_id}
+                          (invalid-proof-data
+                           #(proof/cascade collection-proof :model/Card [:in :collection_id subquery] nil)))
+        ;; another collection's subtree
+        {:select [:id], :from [:collection], :where [:or [:= :id 11] [:like :location "/11/%"]]}
+        ;; the parent or anything else
+        {:select [:id], :from [:collection], :where [:or [:= :id 10] [:= :archived true]]}
+        ;; another table
+        {:select [:id], :from [:report_dashboard], :where [:= :id 10]}
+        ;; extra clauses in the subquery
+        {:select [:id], :from [:collection], :where [:= :id 10], :limit 1}
+        ;; a list of ids, however right
+        [10]))
+    (testing "the subquery form is only for a column key: the parent's own rows are keyed by their path"
+      (is (=? {:status-code 500}
+              (invalid-proof-data #(proof/cascade collection-proof :model/Collection
+                                                  [:in :id {:select [:id], :from [:collection], :where [:= :id 10]}]
+                                                  nil)))))))
+
 (deftest authorize-test
   (mt/with-temp [:model/NativeQuerySnippet snippet {:name "proof-test", :content "1"}]
     (let [id (:id snippet)]

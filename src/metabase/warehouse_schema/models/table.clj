@@ -9,6 +9,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.proof.core :as proof]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -87,6 +88,10 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
+
+(defmethod proof/cascade-parents :model/Table
+  [_model]
+  {:model/Collection :collection_id})
 
 (doto :model/Table
   (derive :metabase/model)

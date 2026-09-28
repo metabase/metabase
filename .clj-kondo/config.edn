@@ -95,7 +95,10 @@
   ;; entry is a namespace symbol (exact) or a string (a regex on the namespace name).
   :metabase/proof-system-issuer
   {:level :warning
-   :allowed-callers {test-only #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}}
+   :allowed-callers {provisioning #{metabase.collections.models.collection}
+                     serdes-load  #{metabase-enterprise.remote-sync.impl
+                                    metabase-enterprise.remote-sync.init}
+                     test-only    #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}}
 
   :metabase/validate-deftest
   {:level :warning
@@ -729,8 +732,12 @@
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
+   metabase.proof.core/provisioning                                                                                          hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.core/serdes-load                                                                                           hooks.metabase.proof/lint-system-issuer-call
    metabase.proof.core/test-only                                                                                             hooks.metabase.proof/lint-system-issuer-call
    metabase.proof.impl/->Proof                                                                                               hooks.metabase.proof/lint-constructor-call
+   metabase.proof.impl/provisioning                                                                                          hooks.metabase.proof/lint-system-issuer-call
+   metabase.proof.impl/serdes-load                                                                                           hooks.metabase.proof/lint-system-issuer-call
    metabase.proof.impl/test-only                                                                                             hooks.metabase.proof/lint-system-issuer-call
    metabase.public-sharing-rest.api-test/with-required-param-card!                                                           hooks.common/with-one-binding
    metabase.public-sharing-rest.api-test/with-temp-public-card                                                               hooks.common/let-one-with-optional-value

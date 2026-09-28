@@ -22,6 +22,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -1724,5 +1725,6 @@
         ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).
         (:id (async-import! (settings/remote-sync-branch) true {} :force-deletion? false))))
     (do
-      (collection/clear-remote-synced-collection!)
+      (collection/clear-remote-synced-collection!
+       (proof/serdes-load collection/clear-remote-synced-write))
       nil)))

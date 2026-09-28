@@ -15,6 +15,8 @@
   cascade
   cascade-parents
   proof?
+  provisioning
+  serdes-load
   subject-kind
   test-only
   verify])

@@ -19,6 +19,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.proof.core :as proof]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
@@ -169,11 +170,20 @@
 
 (defonce ^:dynamic ^:private *clearing-remote-sync* false)
 
+(def clear-remote-synced-write
+  "The write [[clear-remote-synced-collection!]] applies, for its callers' system issuers to cover: mark every
+  remote-synced Collection as not remote-synced."
+  {:model     :model/Collection
+   :operation :update
+   :subject   [:= :is_remote_synced true]
+   :changes   {:is_remote_synced false}})
+
 (defn clear-remote-synced-collection!
-  "Marks any remote-synced-collection as non-remote-synced"
-  []
+  "Marks any remote-synced-collection as non-remote-synced. `proof` covers [[clear-remote-synced-write]], from the
+  remote-sync caller's system issuer."
+  [proof]
   (binding [*clearing-remote-sync* true]
-    (collections.db/clear-remote-synced-flags!)))
+    (collections.db/clear-remote-synced-flags! proof)))
 
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
@@ -242,31 +252,42 @@
     library-data-entity-id
     library-metrics-entity-id})
 
+(defn- provision-collection!
+  "Insert a Collection the application provisions for itself or for a User (see [[proof/provisioning]])."
+  [row]
+  (collections.db/insert-collection! (proof/provisioning {:model :model/Collection, :operation :create, :changes row})))
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
   (when-not (nil? (library-collection))
     (throw (ex-info "Library already exists" {})))
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
+  (let [library       (provision-collection! {:name      "Library"
+                                              :type      library-collection-type
+                                              :location  "/"
+                                              :entity_id library-entity-id})
         base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
+        data          (provision-collection! {:name      "Data"
+                                              :type      library-data-collection-type
+                                              :location  base-location
+                                              :entity_id library-data-entity-id})
+        metrics       (provision-collection! {:name      "Metrics"
+                                              :type      library-metrics-collection-type
+                                              :location  base-location
+                                              :entity_id library-metrics-entity-id})]
     (doseq [col [library data metrics]]
-      (collections.db/delete-permissions-for-collection! (:id col))
+      (perms/delete-permissions-by-collection-id! (:id col))
       (perms/grant-collection-read-permissions! (perms/all-users-group) col)
       (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) col))
     library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+
+;;; A Collection's proof covers its descendant Collections, named by their location under it: the issuing checks for
+;;; archiving, unarchiving and moving verify write permission on every descendant.
+(defmethod proof/cascade-parents :model/Collection
+  [_model]
+  {:model/Collection [:path :location]})
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
   [_original-model _k]
@@ -727,8 +748,8 @@
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
         (try
-          (collections.db/insert-collection! {:name              (user->personal-collection-name user-or-id :site)
-                                              :personal_owner_id (u/the-id user-or-id)})
+          (provision-collection! {:name              (user->personal-collection-name user-or-id :site)
+                                  :personal_owner_id (u/the-id user-or-id)})
           ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
           ;; condition where some other thread created it in the meantime; try one last time to fetch it
           (catch Throwable e
@@ -1668,41 +1689,134 @@
   [_seed-table-ids]
   nil)
 
+(defn- has-full-permissions-for-set?
+  [perms-set]
+  (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set* perms-set))
+
+(defn- parent-at-location
+  "The Collection that a Collection at `location` is a child of: a Collection row, or the root Collection of
+  `collection-namespace` for a top-level location. Nil when the parent row does not exist."
+  [location collection-namespace]
+  (if-let [parent-id (location-path->parent-id location)]
+    (collections.db/collection parent-id)
+    (assoc root-collection :namespace collection-namespace)))
+
+(defmethod mi/can-create? :model/Collection
+  [_model {:keys [location], collection-namespace :namespace}]
+  (boolean (some-> (parent-at-location (or location "/") collection-namespace) mi/can-write?)))
+
+(defmethod mi/can-update? :model/Collection
+  [collection changes]
+  (boolean
+   (and (mi/can-write? collection)
+        (or (not (api/column-will-change? (:authority_level collection)
+                                          (get changes :authority_level ::api/not-provided)))
+            api/*is-superuser?*)
+        (cond
+          ;; archiving: write on the Collection and every unarchived descendant
+          (and (contains? changes :archived) (:archived changes))
+          (has-full-permissions-for-set? (perms-for-archiving collection))
+
+          ;; unarchiving to a given parent: write on that parent and on the Collection and the descendants archived
+          ;; with it; unarchiving in place: `can_restore`, the single source of truth for the trash UI
+          (and (contains? changes :archived) (not (:archived changes)))
+          (if (contains? changes :location)
+            (and (some-> (parent-at-location (:location changes) (:namespace collection)) mi/can-write?)
+                 (has-full-permissions-for-set? (perms-for-unarchiving collection)))
+            (:can_restore (t2/hydrate collection :can_restore)))
+
+          ;; moving: write on the destination and on the Collection and every descendant
+          (api/column-will-change? (:location collection) (get changes :location ::api/not-provided))
+          (let [new-parent (parent-at-location (:location changes) (:namespace collection))]
+            (and new-parent
+                 (mi/can-write? new-parent)
+                 (has-full-permissions-for-set? (perms-for-moving collection new-parent))))
+
+          :else
+          true))))
+
+;;; The writes to a Collection's contents take proofs cascaded from the Collection's own proof: its descendant
+;;; Collections are named by their location under it, and the rows inside those Collections by a subquery over them.
+
+(defn- descendants-where
+  "A where-clause naming the descendant Collections of `collection`, keyed by its id for [[proof/cascade]]."
+  [collection]
+  [:like :location (str (children-location collection) "%")])
+
+(defn- contents-where
+  "A where-clause naming the rows of a collectable model inside `collection` or its descendants, keyed by the
+  Collection's id for [[proof/cascade]]. `collection-clauses` further restrict which of those Collections count;
+  `row-clauses` further restrict the rows."
+  [collection & {:keys [collection-clauses row-clauses]}]
+  (into [:and [:in :collection_id ^:allow-subquery {:select [:id]
+                                                    :from   [:collection]
+                                                    :where  (into [:and
+                                                                   [:or
+                                                                    [:= :id (u/the-id collection)]
+                                                                    (descendants-where collection)]]
+                                                                  collection-clauses)}]]
+        row-clauses))
+
+(defn- unpublish-tables!
+  "Under `proof` for a collection, unpublish the Tables that `where` names (see [[contents-where]]), in `metabase_table`
+  and in the per-user settings overlay."
+  [proof where]
+  (let [changes {:collection_id nil, :is_published false}]
+    (collections.db/unpublish-tables! (proof/cascade proof :model/Table where changes))
+    (collections.db/unpublish-table-user-settings! (proof/cascade proof :model/TableUserSettings where changes))))
+
+(defn- set-contents-archived!
+  "Under `proof` for `collection`, set `archived?` on everything inside it and the descendants that belong to the
+  archive operation `archive-operation-id` (a descendant trashed separately keeps its own state): Pulses, snippets and
+  Timelines outright; Cards, Dashboards, Documents and Explorations unless they were archived directly."
+  [proof collection archive-operation-id archived?]
+  (let [in-operation [[:= :archive_operation_id archive-operation-id]]
+        everything   (contents-where collection :collection-clauses in-operation)
+        not-directly (contents-where collection
+                                     :collection-clauses in-operation
+                                     :row-clauses        [[:= :archived_directly false]])
+        changes      {:archived archived?}]
+    (collections.db/set-pulses-archived! (proof/cascade proof :model/Pulse everything changes))
+    (collections.db/set-native-query-snippets-archived!
+     (proof/cascade proof :model/NativeQuerySnippet everything changes))
+    (collections.db/set-timelines-archived! (proof/cascade proof :model/Timeline everything changes))
+    (collections.db/set-cards-archived! (proof/cascade proof :model/Card not-directly changes))
+    (collections.db/set-dashboards-archived! (proof/cascade proof :model/Dashboard not-directly changes))
+    (collections.db/set-documents-archived! (proof/cascade proof :model/Document not-directly changes))
+    (collections.db/set-explorations-archived! (proof/cascade proof :model/Exploration not-directly changes))))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  (api/check-403
-   (perms/set-has-full-permissions-for-set?
-    @api/*current-user-permissions-set*
-    (perms-for-archiving collection)))
-  (api/check-400
-   (or *allow-modifying-tenant-root-collections?*
-       (not= (:type collection) tenant-specific-root-collection-type)))
-  (t2/with-transaction [_conn]
-    (let [archive-operation-id    (str (random-uuid))
-          affected-collection-ids (cons (u/the-id collection)
-                                        (collections.db/not-yet-archived-collection-ids-with-location-like
-                                         (str (children-location collection) "%")))]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:archive_operation_id archive-operation-id
-                                          :archived_directly    true
-                                          :archived             true})
-      (collections.db/archive-descendant-collections! (str (children-location collection) "%") archive-operation-id)
-      (collections.db/set-pulse-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-timeline-archived-in-collections! affected-collection-ids true)
-      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids true)
-      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids true)
-      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids true)
-      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids true)
-      (let [library-data-ids (collections.db/collection-ids-of-type affected-collection-ids library-data-collection-type)]
+  (let [archive-operation-id (str (random-uuid))
+        proof                (proof/authorize-update :model/Collection (u/the-id collection)
+                                                     {:archive_operation_id archive-operation-id
+                                                      :archived_directly    true
+                                                      :archived             true})]
+    (api/check-400
+     (or *allow-modifying-tenant-root-collections?*
+         (not= (:type collection) tenant-specific-root-collection-type)))
+    (t2/with-transaction [_conn]
+      (collections.db/update-collection! proof)
+      (collections.db/update-descendant-collections!
+       (proof/cascade proof :model/Collection [:and (descendants-where collection) [:not :archived]]
+                      {:archive_operation_id archive-operation-id
+                       :archived_directly    false
+                       :archived             true}))
+      ;; now the Collection and the descendants archived with it carry the operation id, so the contents are keyed by it
+      (set-contents-archived! proof collection archive-operation-id true)
+      (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
+            library-data-ids        (collections.db/collection-ids-of-type affected-collection-ids
+                                                                           library-data-collection-type)]
         (when (seq library-data-ids)
           (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-            (collections.db/unpublish-tables-in-collections! library-data-ids)
-            (unpublish-downstream-fk-tables! published-table-ids)))))
-    (let [updated-collection (collections.db/collection (:id collection))]
-      (when (:is_remote_synced updated-collection)
-        (check-remote-synced-dependents updated-collection)))))
+            (unpublish-tables! proof (contents-where collection
+                                                     :collection-clauses [[:= :type library-data-collection-type]]))
+            (unpublish-downstream-fk-tables! published-table-ids))))
+      ;; inside the transaction, so a refused archive rolls back
+      (let [updated-collection (collections.db/collection (:id collection))]
+        (when (:is_remote_synced updated-collection)
+          (check-remote-synced-dependents updated-collection))))))
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
@@ -1724,42 +1838,33 @@
         new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
-        new-children-location   (children-location (assoc collection :location new-location))
-        affected-collection-ids (cons (u/the-id collection)
-                                      (collections.db/archived-collection-ids-in-operation-with-location-like
-                                       (str (children-location collection) "%")
-                                       archive-operation-id))]
+        new-children-location   (children-location (assoc collection :location new-location))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
-    (if (contains? updates :parent_id)
-      (api/check-403
-       (and (mi/can-write? new-parent)
-            (perms/set-has-full-permissions-for-set?
-             @api/*current-user-permissions-set*
-             (perms-for-unarchiving collection))))
-      ;; Restoring to original location, use `can_restore` for a single source of truth
-      (api/check-403
-       (:can_restore (t2/hydrate collection :can_restore))))
-    (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:location             new-location
-                                          :is_remote_synced     (boolean new-parent-is-remote-synced?)
-                                          :archive_operation_id nil
-                                          :archived_directly    nil
-                                          :archived             false})
-      (collections.db/unarchive-descendant-collections! orig-children-location
-                                                        new-children-location
-                                                        (boolean new-parent-is-remote-synced?)
-                                                        (:archive_operation_id collection))
-      (collections.db/set-pulse-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-native-query-snippet-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-timeline-archived-in-collections! affected-collection-ids false)
-      (collections.db/set-card-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-dashboard-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-document-archived-in-collections-not-directly! affected-collection-ids false)
-      (collections.db/set-exploration-archived-in-collections-not-directly! affected-collection-ids false)
-      (when (:is_remote_synced collection)
-        (check-non-remote-synced-dependencies collection)))))
+    ;; the change set names the destination only when the caller specified one; the issuing check treats a change set
+    ;; without a location as a restore in place
+    (let [proof (proof/authorize-update :model/Collection (u/the-id collection)
+                                        (cond-> {:is_remote_synced     (boolean new-parent-is-remote-synced?)
+                                                 :archive_operation_id nil
+                                                 :archived_directly    nil
+                                                 :archived             false}
+                                          (contains? updates :parent_id) (assoc :location new-location)))]
+      (t2/with-transaction [_conn]
+        ;; the contents first, while the operation id still marks the Collections being restored
+        (set-contents-archived! proof collection archive-operation-id false)
+        (collections.db/update-collection! proof)
+        (collections.db/update-descendant-collections!
+         (proof/cascade proof :model/Collection [:and
+                                                 (descendants-where collection)
+                                                 [:= :archive_operation_id archive-operation-id]
+                                                 [:not= :archived_directly true]]
+                        {:location             [:replace :location orig-children-location new-children-location]
+                         :is_remote_synced     (boolean new-parent-is-remote-synced?)
+                         :archive_operation_id nil
+                         :archived_directly    nil
+                         :archived             false}))
+        (when (:is_remote_synced collection)
+          (check-non-remote-synced-dependencies collection))))))
 
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
@@ -1781,7 +1886,11 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (collections.db/collection-remote-synced? (parent-id* {:location new-location}))]
+        will-be-in-remote-synced? (collections.db/collection-remote-synced? (parent-id* {:location new-location}))
+        ;; the issuing check (403) comes before the shape checks, as it did when the endpoint ran it
+        proof                     (proof/authorize-update :model/Collection (u/the-id collection)
+                                                          {:location         new-location
+                                                           :is_remote_synced (boolean will-be-in-remote-synced?)})]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -1793,17 +1902,38 @@
                (u/the-id collection) (:location collection) new-location)
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection)
-                                         {:location         new-location
-                                          :is_remote_synced (boolean will-be-in-remote-synced?)})
+      (collections.db/update-collection! proof)
       ;; we need to update all the descendant collections as well...
-      (u/prog1 (collections.db/move-descendant-collections! orig-children-location
-                                                            new-children-location
-                                                            (boolean will-be-in-remote-synced?))
+      (u/prog1 (collections.db/update-descendant-collections!
+                (proof/cascade proof :model/Collection (descendants-where collection)
+                               {:location         [:replace :location orig-children-location new-children-location]
+                                :is_remote_synced (boolean will-be-in-remote-synced?)}))
         (when into-remote-synced?
           (check-non-remote-synced-dependencies collection))
         (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
           (check-remote-synced-dependents collection))))))
+
+(defn delete-collection!
+  "Delete the Collection that `proof` (a delete proof for it, from [[proof/authorize-delete]]) names, with everything
+  inside it and its descendants: its published Tables are unpublished, and its Cards, Dashboards, snippets, Pulses and
+  Timelines and its descendant Collections are deleted."
+  [proof]
+  (let [{:keys [subject]}       (proof/verify proof {:model :model/Collection, :operation :delete, :subject-kind :id})
+        collection              (api/check-404 (collections.db/collection subject))
+        everything              (contents-where collection)
+        affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
+        published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
+    (t2/with-transaction [_conn]
+      (unpublish-tables! proof everything)
+      (unpublish-downstream-fk-tables! published-table-ids)
+      (collections.db/delete-cards! (proof/cascade proof :model/Card everything nil))
+      (collections.db/delete-dashboards! (proof/cascade proof :model/Dashboard everything nil))
+      (collections.db/delete-native-query-snippets! (proof/cascade proof :model/NativeQuerySnippet everything nil))
+      (collections.db/delete-pulses! (proof/cascade proof :model/Pulse everything nil))
+      (collections.db/delete-timelines! (proof/cascade proof :model/Timeline everything nil))
+      (collections.db/delete-descendant-collections!
+       (proof/cascade proof :model/Collection (descendants-where collection) nil))
+      (collections.db/delete-collection! proof))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1829,33 +1959,6 @@
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
     (assert-valid-remote-synced-parent <>)))
 
-(defn- copy-collection-permissions!
-  "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
-  and write perms for every Group with write perms for the source Collection."
-  [source-collection-or-id dest-collections-or-ids]
-  ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (collections.db/group-ids-with-permission-object
-                                    (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (collections.db/group-ids-with-permission-object
-                                    (perms/collection-readwrite-path source-collection-or-id))]
-    ;; ...and insert corresponding rows for each destination Collection
-    (collections.db/insert-permissions!
-     (concat
-      ;; insert all the new read-perms records
-      (for [dest     dest-collections-or-ids
-            :let     [read-path (perms/collection-read-path dest)]
-            group-id group-ids-with-read-perms]
-        {:group_id group-id, :object read-path})
-      ;; ...and all the new write-perms records
-      (for [dest     dest-collections-or-ids
-            :let     [readwrite-path (perms/collection-readwrite-path dest)]
-            group-id group-ids-with-write-perms]
-        {:group_id group-id, :object readwrite-path})))
-    ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
-    ;; of the new permissions/collections.
-    (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
-                                              "Automatically updated permissions due to collection creation or move")))
-
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
   its parent can see it; and Groups who can 'curate' (write) its parent can 'curate' it, as a default state. (Of
@@ -1873,8 +1976,9 @@
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
                 (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
-      (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
-                                    [id]))))
+      (perms/copy-collection-permissions!
+       (or parent-collection-id (assoc root-collection :namespace collection-namespace))
+       [id]))))
 
 (t2/define-after-insert :model/Collection
   [collection]
@@ -1934,7 +2038,8 @@
   bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
   somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- LocationPath]
-  (copy-collection-permissions! (parent {:location new-location}) (map u/the-id (cons collection (descendants collection)))))
+  (perms/copy-collection-permissions! (parent {:location new-location})
+                                      (map u/the-id (cons collection (descendants collection)))))
 
 (mu/defn- revoke-perms-when-moving-into-personal-collection!
   "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
@@ -1943,10 +2048,7 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
-  (collections.db/delete-permissions-with-objects! (for [collection (cons collection (descendants collection))
-                                                         path-fn    [perms/collection-read-path
-                                                                     perms/collection-readwrite-path]]
-                                                     (path-fn (u/the-id collection)))))
+  (perms/revoke-all-collection-permissions! (map u/the-id (cons collection (descendants collection)))))
 
 (defn- update-perms-when-moving-across-personal-boundry!
   "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
@@ -2053,29 +2155,20 @@
   *allow-deleting-personal-collections*
   false)
 
+;;; Deleting a Collection's contents and descendants is the work of [[delete-collection!]], under proofs cascaded from
+;;; the Collection's own; a raw delete of the row does not cascade. The hook keeps the invariants that hold however
+;;; the row is deleted.
 (t2/define-before-delete :model/Collection
   [collection]
   ;; This should never happen, but just to make sure...
   (when (= (u/the-id collection) (trash-collection-id))
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
-  ;; delete all collection children
-  (collections.db/delete-collections-at-location! (children-location collection))
-  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
-        published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
-    (collections.db/unpublish-tables-in-collections! affected-collection-ids)
-    (unpublish-downstream-fk-tables! published-table-ids)
-    (collections.db/delete-cards-in-collections! affected-collection-ids)
-    (collections.db/delete-dashboards-in-collections! affected-collection-ids)
-    (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
-    (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
       (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
-  (collections.db/delete-permissions-with-objects! [(perms/collection-readwrite-path (u/the-id collection))
-                                                    (perms/collection-read-path (u/the-id collection))]))
+  (perms/revoke-all-collection-permissions! [(u/the-id collection)]))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 

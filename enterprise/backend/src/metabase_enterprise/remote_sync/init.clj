@@ -10,6 +10,7 @@
    [metabase-enterprise.remote-sync.task.import]
    [metabase-enterprise.remote-sync.task.table-cleanup]
    [metabase.collections.models.collection :as collection]
+   [metabase.proof.core :as proof]
    [metabase.startup.core :as startup]
    [metabase.util.log :as log])
   (:import
@@ -73,7 +74,8 @@
                                                                         {:branch branch :auto true} nil)))))))
     (when (collection/has-remote-synced-collection?)
       (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
-      (collection/clear-remote-synced-collection!))))
+      (collection/clear-remote-synced-collection!
+       (proof/serdes-load collection/clear-remote-synced-write)))))
 
 (SystemReader/setInstance (create-isolated-system-reader))
 

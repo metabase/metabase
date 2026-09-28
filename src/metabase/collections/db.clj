@@ -1,26 +1,22 @@
 (ns metabase.collections.db
-  "Application database queries for the collections module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods,
-  and transactions."
+  "Application database queries for the collections module. Every function here is a direct Toucan 2 call, with no
+  logic beyond verifying its proof, so the rest of the module only touches `toucan2.core` for model definitions,
+  hydration methods, and transactions.
+
+  The module is proof-gated, so the mutating functions take a proof from [[metabase.proof.core]] as their only
+  argument and write exactly the subject and change set it covers. The writes to a Collection's contents (its
+  descendant Collections and the Cards, Dashboards and so on inside them) take cascade proofs derived from the
+  Collection's own proof; their subject is a where-clause."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
+   [metabase.proof.core :as proof]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(def ^:private PermissionsRow
-  "The writable columns of a Permissions row (excluding `:id`)."
-  [:map {:closed true}
-   [:object      {:optional true} [:maybe :string]]
-   [:group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]
-   [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
 
 ;;; ---------------------------------------------- Single Collections ----------------------------------------------
 
@@ -225,11 +221,6 @@
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern] :archived false))
 
-(mu/defn not-yet-archived-collection-ids-with-location-like
-  "The IDs of the Collections whose location matches the SQL `pattern` and that are not marked archived."
-  [pattern :- :string]
-  (t2/select-pks-set :model/Collection :location [:like pattern] :archived [:not= true]))
-
 (mu/defn archived-collection-ids-in-operation-with-location-like
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
   the SQL `pattern`."
@@ -291,69 +282,80 @@
 
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
-(mu/defn insert-collection!
-  "Insert `collection` and return the new instance."
-  [collection :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/insert-returning-instance! :model/Collection collection))
+(defn insert-collection!
+  "Insert the Collection row that `proof` covers and return the new instance."
+  [proof]
+  (let [{:keys [changes]} (proof/verify proof {:model :model/Collection, :operation :create, :subject-kind :none})]
+    (t2/insert-returning-instance! :model/Collection changes)))
 
-(mu/defn update-collection!
-  "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
-  [collection-id :- ::lib.schema.id/collection
-   changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/update! :model/Collection collection-id changes))
+(def ^:private editable-collection-columns
+  "The columns a Collection's editors and its archive, unarchive and move operations write."
+  #{:name :description :authority_level :location :is_remote_synced :archive_operation_id :archived_directly :archived})
 
-(mu/defn clear-remote-synced-flags!
-  "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
-  []
-  (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false}))
+(defn update-collection!
+  "Apply the change set that `proof` covers, over [[editable-collection-columns]], to the Collection it names."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/Collection
+                                                       :operation    :update
+                                                       :subject-kind :id
+                                                       :columns      editable-collection-columns})]
+    (t2/update! :model/Collection subject changes)))
 
-(mu/defn archive-descendant-collections!
-  "Archive, as part of the archive operation with `archive-operation-id`, the unarchived Collections whose location
-  matches the SQL `pattern`, returning the number updated."
-  [pattern              :- :string
-   archive-operation-id :- :string]
-  (t2/query-one {:update :collection
-                 :set    {:archive_operation_id archive-operation-id
-                          :archived_directly    false
-                          :archived             true}
-                 :where  [:and
-                          [:like :location pattern]
-                          [:not :archived]]}))
+(defn- where->conditions
+  "The Toucan 2 conditions map for a cascade proof's where-clause: a conjunction of clauses on single columns, each
+  `[:= column value]` or `[operator column & args]`. Anything else is a programming error here, not a shape a
+  cascade proof from this module has."
+  [where]
+  (into {}
+        (map (fn [[op column & args :as clause]]
+               (when-not (and (keyword? op) (keyword? column) (seq args))
+                 (throw (ex-info (str "Cannot apply this where-clause as Toucan conditions: " (pr-str clause))
+                                 {:where where})))
+               [column (if (= op :=) (first args) (into [op] args))]))
+        (if (= (first where) :and)
+          (rest where)
+          [where])))
 
-(mu/defn unarchive-descendant-collections!
-  "Unarchive the Collections of the archive operation with `archive-operation-id` that were not archived directly,
-  moving them from `orig-children-location` to `new-children-location` and setting `remote-synced?`, returning the
-  number updated."
-  [orig-children-location :- :string
-   new-children-location  :- :string
-   remote-synced?         :- :boolean
-   archive-operation-id   :- :string]
-  (t2/query-one {:update :collection
-                 :set    {:location             [:replace :location orig-children-location new-children-location]
-                          :is_remote_synced     remote-synced?
-                          :archive_operation_id nil
-                          :archived_directly    nil
-                          :archived             false}
-                 :where  [:and
-                          [:like :location (str orig-children-location "%")]
-                          [:= :archive_operation_id archive-operation-id]
-                          [:not= :archived_directly true]]}))
+(defn clear-remote-synced-flags!
+  "Mark the Collections that `proof` names as not remote-synced, through the model's update hooks. The proof must
+  cover exactly that change set."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/Collection
+                                                       :operation    :update
+                                                       :subject-kind :where
+                                                       :columns      #{:is_remote_synced}})]
+    (when-not (= changes {:is_remote_synced false})
+      (throw (ex-info "Invalid proof: clear-remote-synced-flags! only clears the flag"
+                      {:status-code 500, :error :proof/invalid, :actual changes})))
+    (t2/update! :model/Collection (where->conditions subject) changes)))
 
-(mu/defn move-descendant-collections!
-  "Move the Collections under `orig-children-location` to `new-children-location` and set `remote-synced?`,
-  returning the number updated."
-  [orig-children-location :- :string
-   new-children-location  :- :string
-   remote-synced?         :- :boolean]
-  (t2/query-one {:update :collection
-                 :set    {:location         [:replace :location orig-children-location new-children-location]
-                          :is_remote_synced remote-synced?}
-                 :where  [:like :location (str orig-children-location "%")]}))
+(defn update-descendant-collections!
+  "Apply the change set that the cascade `proof` covers (a move, archive or unarchive of the subtree) to the descendant
+  Collections its where-clause names, as one SQL statement."
+  [proof]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        :model/Collection
+                                                       :operation    :update
+                                                       :subject-kind :where
+                                                       :columns      #{:location :is_remote_synced
+                                                                       :archive_operation_id :archived_directly
+                                                                       :archived}})]
+    ;; not `t2/update!`: the change set rewrites `location` with a SQL expression, which the model's update hooks
+    ;; could not validate
+    (t2/query-one {:update :collection
+                   :set    changes
+                   :where  subject})))
 
-(mu/defn delete-collections-at-location!
-  "Delete the Collections directly at `location`, returning the number deleted."
-  [location :- :string]
-  (t2/delete! :model/Collection :location location))
+(defn delete-collection!
+  "Delete the Collection that `proof` names."
+  [proof]
+  (let [{:keys [subject]} (proof/verify proof {:model :model/Collection, :operation :delete, :subject-kind :id})]
+    (t2/delete! :model/Collection :id subject)))
+
+(defn delete-descendant-collections!
+  "Delete the descendant Collections that the cascade `proof` names."
+  [proof]
+  (let [{:keys [subject]} (proof/verify proof {:model :model/Collection, :operation :delete, :subject-kind :where})]
+    (t2/delete! :model/Collection {:where subject})))
 
 ;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
 
@@ -377,77 +379,81 @@
                     {:where [:in (keyword (str (name (t2/table-name model)) ".id")) ids]
                      :join  [[:collection :c] [:= :collection_id :c.id]]}))
 
-(mu/defn set-pulse-archived-in-collections!
-  "Set `archived?` on the Pulses in the Collections with `collection-ids`, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids]} {:archived archived?}))
+(defn- update-contents!
+  "Apply the change set that the cascade `proof` covers, over `columns` only, to the `model` rows its where-clause
+  names, through the model's update hooks."
+  [proof model columns]
+  (let [{:keys [subject changes]} (proof/verify proof {:model        model
+                                                       :operation    :update
+                                                       :subject-kind :where
+                                                       :columns      columns})]
+    (t2/update! model (where->conditions subject) changes)))
 
-(mu/defn set-native-query-snippet-archived-in-collections!
-  "Set `archived?` on the NativeQuerySnippets in the Collections with `collection-ids`, returning the number
-  updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/NativeQuerySnippet {:collection_id [:in collection-ids]} {:archived archived?}))
+(defn- delete-contents!
+  "Delete the `model` rows that the cascade `proof` names."
+  [proof model]
+  (let [{:keys [subject]} (proof/verify proof {:model model, :operation :delete, :subject-kind :where})]
+    (t2/delete! model {:where subject})))
 
-(mu/defn set-timeline-archived-in-collections!
-  "Set `archived?` on the Timelines in the Collections with `collection-ids`, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
+(defn set-pulses-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Pulses it names."
+  [proof]
+  (update-contents! proof :model/Pulse #{:archived}))
 
-(mu/defn set-card-archived-in-collections-not-directly!
-  "Set `archived?` on the Cards in the Collections with `collection-ids` that were not archived directly, returning
-  the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Card {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+(defn set-native-query-snippets-archived!
+  "Apply the archived flag that the cascade `proof` covers to the NativeQuerySnippets it names."
+  [proof]
+  (update-contents! proof :model/NativeQuerySnippet #{:archived}))
 
-(mu/defn set-dashboard-archived-in-collections-not-directly!
-  "Set `archived?` on the Dashboards in the Collections with `collection-ids` that were not archived directly,
-  returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Dashboard {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+(defn set-timelines-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Timelines it names."
+  [proof]
+  (update-contents! proof :model/Timeline #{:archived}))
 
-(mu/defn set-document-archived-in-collections-not-directly!
-  "Set `archived?` on the Documents in the Collections with `collection-ids` that were not archived directly,
-  returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Document {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+(defn set-cards-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Cards it names."
+  [proof]
+  (update-contents! proof :model/Card #{:archived}))
 
-(mu/defn set-exploration-archived-in-collections-not-directly!
-  "Set `archived?` on the Explorations in the Collections with `collection-ids` that were not archived directly,
-  returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived?      :- :boolean]
-  (t2/update! :model/Exploration {:collection_id [:in collection-ids], :archived_directly false} {:archived archived?}))
+(defn set-dashboards-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Dashboards it names."
+  [proof]
+  (update-contents! proof :model/Dashboard #{:archived}))
 
-(mu/defn delete-cards-in-collections!
-  "Delete the Cards in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Card :collection_id [:in collection-ids]))
+(defn set-documents-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Documents it names."
+  [proof]
+  (update-contents! proof :model/Document #{:archived}))
 
-(mu/defn delete-dashboards-in-collections!
-  "Delete the Dashboards in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Dashboard :collection_id [:in collection-ids]))
+(defn set-explorations-archived!
+  "Apply the archived flag that the cascade `proof` covers to the Explorations it names."
+  [proof]
+  (update-contents! proof :model/Exploration #{:archived}))
 
-(mu/defn delete-native-query-snippets-in-collections!
-  "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
+(defn delete-cards!
+  "Delete the Cards that the cascade `proof` names."
+  [proof]
+  (delete-contents! proof :model/Card))
 
-(mu/defn delete-pulses-in-collections!
-  "Delete the Pulses in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Pulse :collection_id [:in collection-ids]))
+(defn delete-dashboards!
+  "Delete the Dashboards that the cascade `proof` names."
+  [proof]
+  (delete-contents! proof :model/Dashboard))
 
-(mu/defn delete-timelines-in-collections!
-  "Delete the Timelines in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
+(defn delete-native-query-snippets!
+  "Delete the NativeQuerySnippets that the cascade `proof` names."
+  [proof]
+  (delete-contents! proof :model/NativeQuerySnippet))
+
+(defn delete-pulses!
+  "Delete the Pulses that the cascade `proof` names."
+  [proof]
+  (delete-contents! proof :model/Pulse))
+
+(defn delete-timelines!
+  "Delete the Timelines that the cascade `proof` names."
+  [proof]
+  (delete-contents! proof :model/Timeline))
 
 (mu/defn dashboard-ids-in-collection
   "The IDs of the Dashboards in the ::collections.schema/collection with `collection-id` (nil for the root ::collections.schema/collection), excluding archived
@@ -515,16 +521,17 @@
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
   (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn unpublish-tables-in-collections!
-  "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
-  returning the number updated."
-  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (let [table-ids (published-table-ids-in-collections collection-ids)]
-    (when (seq table-ids)
-      (t2/update! :model/TableUserSettings :table_id [:in table-ids]
-                  {:collection_id nil, :is_published false}))
-    (t2/update! :model/Table {:collection_id [:in collection-ids]}
-                {:collection_id nil, :is_published false})))
+(defn unpublish-tables!
+  "Apply the unpublishing change set that the cascade `proof` covers (no Collection, not published) to the Tables it
+  names."
+  [proof]
+  (update-contents! proof :model/Table #{:collection_id :is_published}))
+
+(defn unpublish-table-user-settings!
+  "Apply the unpublishing change set that the cascade `proof` covers (no Collection, not published) to the
+  TableUserSettings it names: the per-user overlay of the Tables' published state."
+  [proof]
+  (update-contents! proof :model/TableUserSettings #{:collection_id :is_published}))
 
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
@@ -609,27 +616,6 @@
                                   :where  [:and
                                            [:= :pgm.user_id user-id]
                                            [:in :p.object objects]]}))
-
-(mu/defn group-ids-with-permission-object
-  "The set of group IDs holding a Permissions row for `object`."
-  [object :- :string]
-  (t2/select-fn-set :group_id :model/Permissions :object object))
-
-(mu/defn insert-permissions!
-  "Insert the Permissions `rows`, returning the number inserted."
-  [rows :- [:sequential PermissionsRow]]
-  (t2/insert! :model/Permissions rows))
-
-(mu/defn delete-permissions-for-collection!
-  "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Permissions :collection_id collection-id))
-
-(mu/defn delete-permissions-with-objects!
-  "Delete the Permissions rows for `objects`, returning the number deleted."
-  [objects :- [:sequential :string]]
-  (t2/query-one {:delete-from :permissions
-                 :where       [:in :object objects]}))
 
 ;;; ---------------------------------------------------- Users ----------------------------------------------------
 

@@ -592,6 +592,7 @@
 
   collections
   {:team "UX West"
+   :proof-gated true
    :api  #{metabase.collections.children
            metabase.collections.core
            metabase.collections.curation
@@ -610,6 +611,7 @@
            notification
            permissions
            premium-features
+           proof
            queries
            remote-sync
            request
@@ -624,7 +626,6 @@
    :model-exports #{:model/Collection}
    :model-imports #{:model/Card
                     :model/CollectionBookmark
-                    :model/CollectionPermissionGraphRevision
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -653,6 +654,7 @@
            models
            permissions
            premium-features
+           proof
            queries
            request
            util
@@ -767,6 +769,7 @@
            models
            parameters
            permissions
+           proof
            public-sharing
            pulse
            queries
@@ -881,6 +884,7 @@
            lib.schema
            models
            parameters
+           proof
            public-sharing
            queries
            query-permissions
@@ -1025,6 +1029,7 @@
            models
            mq
            permissions
+           proof
            queries
            query-permissions
            query-processor
@@ -1886,7 +1891,6 @@
            warehouses.schema
            enterprise/permissions}
    :model-exports #{:model/ApplicationPermissionsRevision
-                    :model/CollectionPermissionGraphRevision
                     :model/DataPermissions
                     :model/Permissions
                     :model/PermissionsGroup
@@ -2033,6 +2037,7 @@
            parameters
            permissions
            premium-features
+           proof
            query-processor
            request
            task
@@ -2085,6 +2090,7 @@
            parameters
            permissions
            premium-features
+           proof
            public-sharing
            pulse
            query-permissions
@@ -2841,6 +2847,7 @@
            events
            lib.schema
            models
+           proof
            util}
    :model-exports #{:model/Timeline :model/TimelineEvent}
    :model-imports #{:model/Collection :model/User}}
@@ -3279,6 +3286,7 @@
            parameters
            permissions
            premium-features
+           proof
            query-processor
            remote-sync
            search
@@ -4101,6 +4109,7 @@
            lib.schema
            models
            premium-features
+           proof
            search
            settings
            startup

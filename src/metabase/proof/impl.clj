@@ -10,9 +10,9 @@
 
   - the per-user checks [[authorize-create]], [[authorize-update]] and [[authorize-delete]];
   - [[cascade]], for a parent's children;
-  - the system issuers, [[test-only]] so far, for contexts in which no user is acting; their callers are enumerated
-    under `:metabase/proof-system-issuer` in `.clj-kondo/config.edn`, and that list is the residual ambient
-    authority.
+  - the system issuers [[serdes-load]], [[provisioning]] and [[test-only]], for contexts in which no user is acting;
+    their callers are enumerated under `:metabase/proof-system-issuer` in `.clj-kondo/config.edn`, and that list is
+    the residual ambient authority.
 
   Everything here is exported through `metabase.proof.core`, the `proof` module's API namespace. This namespace
   requires only `metabase.api.common` and utilities, so any module that writes rows can use it without a load-order
@@ -24,11 +24,13 @@
   transform. It is bound to the user it was issued for: [[verify]] refuses it under any other current user."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [pretty.core :as pretty]))
+   [pretty.core :as pretty]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -220,12 +222,16 @@
 ;;; ------------------------------------------------- Cascade proofs -------------------------------------------------
 
 (defmulti cascade-parents
-  "The models whose proof may be cascaded to rows of `model`, as a map of parent model to the column of `model` that
-  holds the parent's id. A module declares a model's cascade parents when it gates the model, e.g.
+  "The models whose proof may be cascaded to rows of `model`, as a map of parent model to the key that ties a row of
+  `model` to its parent: the column holding the parent's id, or `[:path column]` for a materialized-path column whose
+  value names the row's ancestors as `/id/` segments. A module declares a model's cascade parents when it gates the
+  model, e.g.
 
     (defmethod proof/cascade-parents :model/NativeQuerySnippet [_model] {:model/Collection :collection_id})
+    (defmethod proof/cascade-parents :model/Collection [_model] {:model/Collection [:path :location]})
 
-  By default a model has no cascade parents, so nothing cascades to it."
+  The second form declares that a collection's proof covers its descendant collections. By default a model has no
+  cascade parents, so nothing cascades to it."
   {:arglists '([model])}
   (fn [model] model))
 
@@ -233,21 +239,67 @@
   [_model]
   {})
 
+(defn- path-key? [key]
+  (and (vector? key) (= (first key) :path) (keyword? (second key))))
+
+(defn- path-pattern-under?
+  "Whether the SQL LIKE `pattern` names only rows under the row with `id` in a materialized path: it contains `/id/` as
+  a segment. Ids are unique, so any path containing the segment descends from that row."
+  [pattern id]
+  (and (string? pattern) (str/includes? pattern (str "/" id "/"))))
+
+(declare where-keyed-by?)
+
+(defn- parent-rows-where?
+  "Whether `where` names only the parent row with `id` of `parent-model`, or (when the model declares itself a cascade
+  parent by a path) its descendants: `[:= :id id]`, a `:like` on the declared path column keyed by `id`, an `:and`
+  with such a conjunct, or an `:or` of such clauses."
+  [where parent-model id]
+  (let [[op & args] where
+        self-key    (get (cascade-parents parent-model) parent-model)]
+    (case op
+      :=    (= [:id id] (vec args))
+      :like (boolean (and (path-key? self-key) (where-keyed-by? where self-key parent-model id)))
+      :and  (boolean (some #(parent-rows-where? % parent-model id) args))
+      :or   (boolean (and (seq args) (every? #(parent-rows-where? % parent-model id) args)))
+      false)))
+
+(defn- parent-rows-subquery?
+  "Whether `x` is a subquery selecting the ids of the `parent-model` rows that [[parent-rows-where?]] accepts, and
+  nothing else."
+  [x parent-model id]
+  (and (map? x)
+       (= (set (keys x)) #{:select :from :where})
+       (= (:select x) [:id])
+       (= (:from x) [(t2/table-name parent-model)])
+       (parent-rows-where? (:where x) parent-model id)))
+
 (defn- where-keyed-by?
-  "Whether `where` selects only rows whose `column` is `id`: it is `[:= column id]`, or an `:and` with such a clause
-  among its conjuncts."
-  [where column id]
+  "Whether `where` selects only rows of a child model tied by `cascade-key` (see [[cascade-parents]]) to the
+  `parent-model` row with `id`, or to the rows that row's own proof covers: for a column key, `[:= column id]` or
+  `[:in column subquery]` where the subquery selects the ids of the parent rows (see [[parent-rows-subquery?]]); for a
+  path key, `[:like column pattern]` with `/id/` in the pattern; an `:and` with such a clause among its conjuncts; or
+  an `:or` of such clauses."
+  [where cascade-key parent-model id]
   (let [[op & args] where]
     (case op
-      :=   (= [column id] (vec args))
-      :and (boolean (some #(where-keyed-by? % column id) args))
+      :=    (boolean (and (keyword? cascade-key) (= [cascade-key id] (vec args))))
+      :in   (let [[column subquery] args]
+              (boolean (and (keyword? cascade-key)
+                            (= column cascade-key)
+                            (parent-rows-subquery? subquery parent-model id))))
+      :like (let [[column pattern] args]
+              (boolean (and (path-key? cascade-key) (= column (second cascade-key)) (path-pattern-under? pattern id))))
+      :and  (boolean (some #(where-keyed-by? % cascade-key parent-model id) args))
+      :or   (boolean (and (seq args) (every? #(where-keyed-by? % cascade-key parent-model id) args)))
       false)))
 
 (mu/defn cascade
   "Derive from `parent-proof` a proof over the rows of `child-model` that `where` names, applying `changes` to them, or
   deleting them when `changes` is nil. Refuses unless `child-model` declares the parent proof's model in
-  [[cascade-parents]], the parent proof names one row by id, and `where` is keyed by that id in the declared
-  column. The derived proof's subject is `where`."
+  [[cascade-parents]], the parent proof names one row by id, and `where` is keyed to that id as the declaration says
+  (see [[where-keyed-by?]]): directly, by a materialized path, or through a subquery over the parent's table that is
+  itself keyed to the id. The derived proof's subject is `where`."
   [parent-proof :- ::proof
    child-model  :- :keyword
    where        :- ::where
@@ -255,16 +307,16 @@
   (let [parent       (ensure-proof! parent-proof)
         parent-model (.-model parent)
         parent-id    (.-subject parent)
-        column       (get (cascade-parents child-model) parent-model)]
+        cascade-key  (get (cascade-parents child-model) parent-model)]
     (when-not (= (subject-kind parent-id) :id)
       (invalid-proof! "only a proof for one row by id can be cascaded"
                       {:parent-model parent-model, :subject-kind (subject-kind parent-id)}))
-    (when-not column
+    (when-not cascade-key
       (invalid-proof! (format "%s does not declare %s as a cascade parent" child-model parent-model)
                       {:child-model child-model, :parent-model parent-model}))
-    (when-not (where-keyed-by? where column parent-id)
-      (invalid-proof! (format "the where-clause is not keyed by %s = the parent's id" column)
-                      {:child-model child-model, :parent-model parent-model, :column column}))
+    (when-not (where-keyed-by? where cascade-key parent-model parent-id)
+      (invalid-proof! (format "the where-clause is not keyed by %s to the parent's id" cascade-key)
+                      {:child-model child-model, :parent-model parent-model, :column cascade-key}))
     (->Proof child-model
              (if (nil? changes) :delete :update)
              where
@@ -278,6 +330,22 @@
 ;;; Each system issuer serves one context in which no user is acting or no user has editorial right to the row. It
 ;;; cannot verify its context at runtime, so its policy is the list of namespaces allowed to call it, enforced by
 ;;; the `:metabase/proof-system-issuer` lint. The proof records which issuer made it.
+
+(mu/defn serdes-load
+  "System issuer for serialization load: the import endpoint, the `import` command, boot-time loading of audit
+  content, and remote-sync pull. No user check applies because the content was authorized where it was exported and
+  the load runs either as an admin or with no user at all (command line, boot, background pull); running each
+  model's permission predicates per entity would be meaningless there."
+  [write :- ::write]
+  (issue `serdes-load write))
+
+(mu/defn provisioning
+  "System issuer for the collections the application provisions rather than a user creates: a User's Personal
+  Collection when the User is created (or on first use, for Users who predate personal collections), and the Library
+  collections. No user check applies because no user has editorial right over them; they are created for their owner
+  or for the system, with a fixed shape."
+  [write :- ::write]
+  (issue `provisioning write))
 
 (mu/defn test-only
   "System issuer for tests that set up or exercise state without going through an endpoint. No user check applies

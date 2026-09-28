@@ -296,6 +296,17 @@
   [rows :- [:sequential (mut/select-keys ::permissions.schema/permissions.update [:group_id :object])]]
   (t2/insert! :model/Permissions rows))
 
+(defn delete-permissions-with-objects!
+  "Delete the Permissions rows for `objects`, for every group."
+  [objects]
+  (t2/query-one {:delete-from :permissions
+                 :where       [:in :object objects]}))
+
+(defn delete-permissions-by-collection-id!
+  "Delete the Permissions rows whose `collection_id` is `collection-id`."
+  [collection-id]
+  (t2/delete! :model/Permissions :collection_id collection-id))
+
 (mu/defn permission-objects-for-user
   "The Permissions objects granted, via group membership, to the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
