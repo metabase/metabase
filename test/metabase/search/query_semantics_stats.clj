@@ -12,18 +12,18 @@
 
 (def engine-pairs
   "Ordered pairs; subset and superset counts are relative to the first engine."
-  (vec (for [left-index (range (count engines))
-             right-index (range (inc left-index) (count engines))]
-         [(engines left-index) (engines right-index)])))
+  (vec (for [[i left] (map-indexed vector engines)
+             right    (subvec engines (inc i))]
+         [left right])))
 
 (defn relation
-  "Classify two result sets. Disjoint nonempty sets are incomparable."
+  "Classify how two result sets relate: `:equal`, `:left-superset`, `:left-subset`, or `:incomparable`."
   [left right]
   (cond
     (= left right)             :equal
     (set/superset? left right) :left-superset
     (set/subset? left right)   :left-subset
-    :else                     :incomparable))
+    :else                      :incomparable))
 
 (defn matching-pair-count
   "Count engine pairs with identical result sets in one case."
@@ -33,7 +33,7 @@
 (defn conforming-engines
   "Engines whose results equal the correct result set, in engine order."
   [correct results]
-  (filterv (fn [engine] (= correct (results engine))) engines))
+  (filterv #(= correct (results %)) engines))
 
 (defn score
   "Precision, recall, and F1 against a correct result set.
@@ -53,80 +53,57 @@
 (defn scenario-rows
   "One identical-query result row per isolated scenario."
   [cases]
-  (mapv (fn [{:keys [id focus config query docs expect] :as case}]
-          {:id            id
-           :focus         focus
-           :config        config
-           :query         query
-           :docs          docs
-           :semantic-arms (:semantic expect)
-           :results       (into {} (map (fn [engine] [engine (fixtures/expected-hits case engine)])) engines)})
-        cases))
+  (for [case cases]
+    (assoc (select-keys case [:id :focus :config :query :docs])
+           :semantic-arms (get-in case [:expect :semantic])
+           :results       (zipmap engines (map #(fixtures/expected-hits case %) engines)))))
 
 (defn translation-rows
-  "One result row per nested comparison, with its declared correct result set."
+  "One result row per adapted-query comparison, with its correct result set."
   [cases]
-  (into []
-        (mapcat (fn [{:keys [id config docs comparisons] :as case}]
-                  (for [{:keys [focus correct] :as comparison} comparisons
-                        :let [specs (into {}
-                                          (map (fn [engine]
-                                                 [engine (fixtures/comparison-spec case comparison engine)]))
-                                          engines)]]
-                    {:scenario-id id
-                     :focus       focus
-                     :config      config
-                     :docs        docs
-                     :correct     (set correct)
-                     :specs       specs
-                     :results     (update-vals specs :hits)})))
-        cases))
+  (for [case       cases
+        comparison (:comparisons case)
+        :let [specs (zipmap engines (map #(fixtures/comparison-spec case comparison %) engines))]]
+    (assoc (select-keys case [:config :docs])
+           :scenario-id (:id case)
+           :focus       (:focus comparison)
+           :correct     (set (:correct comparison))
+           :specs       specs
+           :results     (update-vals specs :hits))))
 
 (defn- mean
-  [numbers]
-  (if (seq numbers)
-    (/ (reduce + numbers) (count numbers))
-    0))
+  ([xs]
+   (if (seq xs)
+     (/ (reduce + xs) (count xs))
+     0))
+  ([f xs]
+   (mean (map f xs))))
 
 (defn- membership-summary
   [rows]
-  {:count       (count rows)
-   :all-equal   (count (filter (fn [{:keys [results]}]
-                                 (apply = (map results engines)))
-                               rows))
-   :mean-hits   (into {}
-                      (map (fn [engine]
-                             [engine (mean (map (comp count engine :results) rows))]))
-                      engines)
-   :pairwise    (into {}
-                      (map (fn [[left right :as pair]]
-                             [pair (merge {:equal          0
-                                           :left-superset  0
-                                           :left-subset    0
-                                           :incomparable   0}
-                                          (frequencies
-                                           (map (fn [{:keys [results]}]
-                                                  (relation (results left) (results right)))
-                                                rows)))]))
-                      engine-pairs)})
+  (let [results (map :results rows)]
+    {:count     (count results)
+     :all-equal (count (filter #(apply = (map % engines)) results))
+     :mean-hits (zipmap engines (map #(mean (comp count %) results) engines))
+     :pairwise  (zipmap engine-pairs
+                        (for [[left right] engine-pairs]
+                          (merge {:equal 0, :left-superset 0, :left-subset 0, :incomparable 0}
+                                 (frequencies (map #(relation (% left) (% right)) results)))))}))
 
 (defn- engine-score-summary
   [rows engine]
-  (let [scores (map (fn [{:keys [correct results]}] (score correct (results engine))) rows)]
-    {:precision (mean (map :precision scores))
-     :recall    (mean (map :recall scores))
-     :f1        (mean (map :f1 scores))
-     :exact     (count (filter (fn [{:keys [correct results]}]
-                                 (= correct (results engine)))
-                               rows))}))
+  (let [pairs  (map (juxt :correct (comp engine :results)) rows)
+        scores (map #(apply score %) pairs)]
+    {:precision (mean :precision scores)
+     :recall    (mean :recall scores)
+     :f1        (mean :f1 scores)
+     :exact     (count (filter #(apply = %) pairs))}))
 
 (defn summary
-  "Calculate both corpuses' divergence and fidelity to the correct result sets from fixture cases."
+  "Summarize how the engines' results relate, for identical and adapted queries.
+  Adapted queries are also scored against their correct results."
   [cases]
-  (let [scenarios    (scenario-rows cases)
-        translations (translation-rows cases)]
-    {:same-query   (membership-summary scenarios)
+  (let [translations (translation-rows cases)]
+    {:same-query   (membership-summary (scenario-rows cases))
      :translations (assoc (membership-summary translations)
-                          :scores (into {}
-                                        (map (fn [engine] [engine (engine-score-summary translations engine)]))
-                                        engines))}))
+                          :scores (zipmap engines (map #(engine-score-summary translations %) engines)))}))

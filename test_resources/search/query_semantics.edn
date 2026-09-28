@@ -1,13 +1,10 @@
-;; Isolated search scenarios shared by in-place, app-db, and semantic tests.
-;; A comparison inherits the scenario query and hits unless an engine provides
-;; a complete alternative {:query ..., :hits ...} pair. Hits are compared as sets,
-;; not ranks. Comparisons belong here only when at least one engine uses a
-;; different query. `:correct` declares the intended result set, which no
-;; engine need achieve.
-;; Semantic search returns the union of a keyword arm, which follows the
-;; appdb/PostgreSQL rules, and a vector arm. Both are recorded, but comparisons
-;; and statistics treat semantic as the vector arm alone, since the keyword arm
-;; repeats PostgreSQL.
+;; Isolated search scenarios shared by the in-place, app-db, and semantic tests.
+;; Hits are compared as sets, not ranks.
+;; A comparison inherits the scenario query and hits unless an engine gives an alternative {:query, :hits}.
+;; Comparisons belong here only when at least one engine uses a different query.
+;; `:correct` declares the intended results, which no engine need achieve.
+;; Semantic search returns the union of a keyword arm, which follows the appdb/PostgreSQL rules, and a vector arm.
+;; Both arms are recorded, but comparisons and statistics count only the vector arm.
 [{:id     "multiword-defaults"
   :focus  "default multiword Boolean and cross-field matches"
   :config "simple"
@@ -17,8 +14,8 @@
            :C {:name "amber cobalt"}
            :D {:name "amber", :description "cobalt"}
            :E {:name "indigo"}}
-  ;; In-place's OR favors recall; app-db's AND favors precision. Neither
-  ;; default is universally better without knowing the user's intent.
+  ;; In-place's OR favors recall; app-db's AND favors precision.
+  ;; Neither default is universally better without knowing the user's intent.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:C :D]
            :appdb-postgres [:C :D]
@@ -41,8 +38,8 @@
            :B {:name "hatter"}
            :C {:name "top hat"}
            :D {:name "coat"}}
-  ;; Infix matching finds "hat" in "chatty"; lexeme-prefix matching avoids
-  ;; that likely false positive, but cannot serve arbitrary substring lookup.
+  ;; Infix matching finds "hat" in "chatty"; lexeme-prefix matching avoids that likely false positive, but
+  ;; cannot serve arbitrary substring lookup.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres [:B :C]
@@ -55,8 +52,8 @@
            :B {:name "hatter"}
            :C {:name "cherub"}
            :D {:name "hat cher"}}
-  ;; H2 requires both substrings, not two separate words. In-place needs only
-  ;; one substring; PostgreSQL's lexemes match only the separate-word card.
+  ;; H2 requires both substrings, not two separate words.
+  ;; In-place needs only one substring; PostgreSQL's lexemes match only the separate-word card.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A :D]
            :appdb-postgres [:D]
@@ -95,8 +92,8 @@
            :C {:name "amber cobalt"}
            :D {:name "amber or cobalt"}
            :E {:name "orbit"}}
-  ;; PostgreSQL parses `or` as an operator; H2 searches for the literal
-  ;; substring, and in-place matches any word, including "or" in "orbit".
+  ;; PostgreSQL parses `or` as an operator; H2 searches for the literal substring, and in-place matches any
+  ;; word, including "or" in "orbit".
   :expect {:in-place       [:A :B :C :D :E]
            :appdb-h2       [:D]
            :appdb-postgres [:A :B :C :D]
@@ -120,8 +117,8 @@
            :B {:name "amber cobalt"}
            :C {:name "cobalt"}
            :D {:name "amber -cobalt"}}
-  ;; Keyword negation excludes B, but it cannot veto the vector arm, which still
-  ;; retrieves it. This is a current-behavior contract, not approval.
+  ;; Keyword negation excludes B, but it cannot veto the vector arm, which still retrieves it.
+  ;; This is a current-behavior contract, not approval.
   :expect {:in-place       [:A :B :D]
            :appdb-h2       [:D]
            :appdb-postgres [:A]
@@ -165,8 +162,8 @@
            :appdb-postgres [:A :B :F]
            :semantic       {:keyword [:A :B :F], :vector [:A :B :C :D :F]}}
   :comparisons
-  ;; F defeats the phrase "amber and cobalt", which would otherwise conform
-  ;; only because no document orders the three words differently.
+  ;; F defeats the phrase "amber and cobalt", which would otherwise conform only because no document orders
+  ;; the three words differently.
   [{:focus   "`and` is a required word"
     :correct [:B :F]
     :alternatives
@@ -178,16 +175,16 @@
   :docs   {:A {:name "the widget"}
            :B {:name "widget"}
            :C {:name "the gadget"}}
-  ;; PostgreSQL's English dictionary drops "the". That generally helps a
-  ;; natural-language query, but not a search intended to find literal text.
+  ;; PostgreSQL's English dictionary drops "the".
+  ;; That generally helps a natural-language query, but not a search intended to find literal text.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A]
            :appdb-postgres [:A :B]
            :semantic       {:keyword [:A :B], :vector [:A :B :C]}}
   :comparisons
-  ;; A stopword the user typed is probably intentional, e.g. a band name. The
-  ;; English dictionary strips "the" from indexed documents too, so no
-  ;; PostgreSQL query, quoted or not, can require it.
+  ;; A stopword the user typed is probably intentional, e.g. a band name.
+  ;; The English dictionary strips "the" from indexed documents too, so no PostgreSQL query, quoted or not,
+  ;; can require it.
   [{:focus   "`the` is part of the intended match"
     :correct [:A]
     :alternatives
@@ -212,8 +209,8 @@
            :C {:name "runner gate"}
            :D {:name "running garden"}
            :E {:name "run meadow"}}
-  ;; English stemming includes "run gate" for "running gate". This improves
-  ;; recall for inflections while broadening beyond exact-word matching.
+  ;; English stemming includes "run gate" for "running gate".
+  ;; This improves recall for inflections while broadening beyond exact-word matching.
   :expect {:in-place       [:A :B :C :D]
            :appdb-h2       [:A]
            :appdb-postgres [:A :B]
@@ -257,8 +254,8 @@
            :B {:name "clients"}
            :C {:name "accounts"}
            :D {:name "amber"}}
-  ;; B shares no word with the query but falls within the vector distance
-  ;; cutoff. C is related too, but the model places it outside the cutoff.
+  ;; B shares no word with the query but falls within the vector distance cutoff.
+  ;; C is related too, but the model places it outside the cutoff.
   :expect {:in-place       [:A]
            :appdb-h2       [:A]
            :appdb-postgres [:A]
@@ -298,8 +295,8 @@
            :E {:name "barfoo"}
            :F {:name "foo-bar"}
            :G {:name "foopizza"}}
-  ;; PostgreSQL treats % as token punctuation; H2 and in-place require the
-  ;; literal character. Tokenization suits prose, literal matching code-like text.
+  ;; PostgreSQL treats % as token punctuation; H2 and in-place require the literal character.
+  ;; Tokenization suits prose, literal matching code-like text.
   :expect {:in-place       [:C]
            :appdb-h2       [:C]
            :appdb-postgres [:C :D :F]
@@ -344,8 +341,8 @@
            :appdb-postgres [:A :C :E]
            :semantic       {:keyword [:A :C :E], :vector [:A :B :C :D :E]}}
   :comparisons
-  ;; PostgreSQL keeps the stopword's position, so any word can fill it and C
-  ;; matches. Without phrase support, H2 cannot exclude D.
+  ;; PostgreSQL keeps the stopword's position, so any word can fill it and C matches.
+  ;; Without phrase support, H2 cannot exclude D.
   [{:focus   "English stopword inside a phrase"
     :correct [:A :E]
     :alternatives
@@ -449,8 +446,8 @@
            :C {:name "amber cobalt"}
            :D {:name "-cobalt"}
            :E {:name "indigo"}}
-  ;; PostgreSQL treats this as the complement of "cobalt", returning otherwise
-  ;; unrelated rows. That broad result is likely poor search UX, but is current.
+  ;; PostgreSQL treats this as the complement of "cobalt", returning otherwise unrelated rows.
+  ;; That broad result is likely poor search UX, but is current.
   :expect {:in-place       [:D]
            :appdb-h2       [:D]
            :appdb-postgres [:A :E]
@@ -475,22 +472,20 @@
            :B {:name "orbit"}
            :C {:name "north"}
            :D {:name "amber"}}
-  ;; PostgreSQL sees only an operator, so it has no searchable lexeme. Literal
-  ;; substring engines still find "or", including its occurrences inside words.
+  ;; PostgreSQL sees only an operator, so it has no searchable lexeme.
+  ;; Literal substring engines still find "or", including its occurrences inside words.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:A :B :C]
            :appdb-postgres []
            :semantic       {:keyword [], :vector [:A]}}
   :comparisons
-  ;; The intended match is the word or a word starting with it; "north" only
-  ;; contains it.
+  ;; The intended match is the word or a word starting with it; "north" only contains it.
   [{:focus   "quoting or recovers the word but not prefix matches"
     :correct [:A :B]
     :alternatives
     {:appdb-postgres {:query "\"or\"", :hits [:A]}}}]}
- ;; Controls: every engine can express these intents, some only by adapting
- ;; the query. No document contains the word inside a longer word; see
- ;; or-only-operator for that trap.
+ ;; Controls: every lexical engine can express these intents, some only by adapting the query.
+ ;; No document contains the word inside a longer word; see or-only-operator for that trap.
  {:id     "or-word-control"
   :focus  "control: or as a literal word"
   :config "simple"
@@ -590,8 +585,8 @@
            :B {:name "dogs"}
            :C {:name "cats dogs"}
            :D {:name "quarterly revenue"}}
-  ;; App-db needs both words in one row. Real Arctic Embed vectors retrieve
-  ;; each one-word row too; the semantic hybrid unions those vector hits with C.
+  ;; App-db needs both words in one row.
+  ;; The vector arm also retrieves each one-word row.
   :expect {:in-place       [:A :B :C]
            :appdb-h2       [:C]
            :appdb-postgres [:C]

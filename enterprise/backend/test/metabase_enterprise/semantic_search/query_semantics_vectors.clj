@@ -45,15 +45,15 @@
   (#'search.ingestion/embeddable-text {:model "card", :name name, :description description}))
 
 (defn query-text
-  "The text production embeds for `query` with the model's own query prefix.
-
-  The semantic tests clear `ee-embedding-query-prefix`, which would otherwise replace it."
+  "The text production embeds for `query`, with the model's own query prefix.
+  Matches production only while `ee-embedding-query-prefix` is unset, as in the semantic tests."
   [query]
   (str (#'semantic.embedding/default-query-prefix (:model metadata)) query))
 
-(defn- semantic-queries
-  [{:keys [query comparisons] :as case}]
-  (cons query (map #(:query (fixtures/comparison-spec case % :semantic)) comparisons)))
+(defn semantic-queries
+  "The scenario query and any query rewritten for the semantic engine."
+  [{:keys [query comparisons]}]
+  (cons query (keep #(get-in % [:alternatives :semantic :query]) comparisons)))
 
 (defn- embedding-inputs
   "Every text the semantic tests embed for `cases`."
@@ -71,11 +71,10 @@
       (throw (ex-info "Unexpected vector encoding" {:encoding encoding})))
     (update-vals vectors
                  (fn [^String encoded]
-                   (let [bytes (.decode (Base64/getDecoder) encoded)]
-                     (when-not (= (alength bytes) (* 4 dimensions))
-                       (throw (ex-info "Unexpected vector length" {:bytes (alength bytes)})))
-                     (let [buffer (ByteBuffer/wrap bytes)]
-                       (mapv (fn [_] (double (.getFloat buffer))) (range dimensions))))))))
+                   (let [buffer (ByteBuffer/wrap (.decode (Base64/getDecoder) encoded))]
+                     (when-not (= (.remaining buffer) (* 4 dimensions))
+                       (throw (ex-info "Unexpected vector length" {:bytes (.remaining buffer)})))
+                     (vec (repeatedly dimensions #(double (.getFloat buffer)))))))))
 
 (defn- encode
   [vector]
@@ -85,7 +84,7 @@
     (.encodeToString (Base64/getEncoder) (.array buffer))))
 
 (defn- check-model!
-  "Refuse to mix vectors from a different build of the model."
+  "Throw unless Ollama serves the model build the frozen vectors came from."
   [ollama-url]
   (let [models (-> (http/get (str ollama-url "/api/tags") {:as :string}) :body json/decode+kw :models)
         digest (some #(when (= ollama-model (:name %)) (:digest %)) models)]
@@ -94,8 +93,9 @@
                       {:model ollama-model, :expected (:ollama-model-id metadata), :digest digest})))))
 
 (defn- embed
-  "Embed one input at a time, as the existing vectors were, so batching cannot change the output."
+  "Embed `input` with Ollama."
   [ollama-url input]
+  ;; One input per request, so a vector cannot depend on what else shares its batch.
   (let [vector (-> (http/post (str ollama-url "/api/embed")
                               {:body         (json/encode {:model ollama-model, :input [input]})
                                :content-type :json
@@ -105,19 +105,25 @@
       (throw (ex-info "Unexpected vector length" {:input input, :dimensions (count vector)})))
     vector))
 
+(defn- file-contents
+  [entries]
+  (let [width (apply max (map (comp count str) (keys metadata)))
+        pad   #(format (str "%-" width "s") %)]
+    (str header "\n{"
+         (str/join "\n " (for [[k v] metadata]
+                           (str (pad k) " " (pr-str v))))
+         "\n :vectors\n {"
+         (str/join "\n  " (for [[input encoded] entries]
+                            (str (pr-str input) " " (pr-str encoded))))
+         "}}\n")))
+
 (defn freeze!
-  "Embed every corpus input with a local Ollama and rewrite the vectors file in test_resources."
+  "Embed every corpus input with a local Ollama and rewrite the vectors file in test_resources.
+  Returns the number of vectors written."
   [& {:keys [ollama-url] :or {ollama-url "http://localhost:11434"}}]
   (check-model! ollama-url)
-  (let [inputs  (vec (embedding-inputs fixtures/cases))
-        entries (sort-by first (map (fn [input] [input (encode (embed ollama-url input))]) inputs))]
-    (spit (io/file "test_resources" resource-path)
-          (str header "\n"
-               "{:model " (pr-str (:model metadata)) "\n"
-               " :ollama-model-id " (pr-str (:ollama-model-id metadata)) "\n"
-               " :dimensions " (:dimensions metadata) "\n"
-               " :encoding " (:encoding metadata) "\n"
-               " :vectors\n {"
-               (str/join "\n  " (map (fn [[input encoded]] (str (pr-str input) " " (pr-str encoded))) entries))
-               "}}\n"))
+  (let [entries (into (sorted-map)
+                      (for [input (embedding-inputs fixtures/cases)]
+                        [input (encode (embed ollama-url input))]))]
+    (spit (io/file "test_resources" resource-path) (file-contents entries))
     (count entries)))

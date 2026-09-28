@@ -6,7 +6,7 @@
    [clojure.set :as set]))
 
 (def cases
-  "Ordered, isolated search scenarios with their translated comparisons."
+  "The shared search scenarios, in fixture order, with their adapted-query comparisons."
   (-> "search/query_semantics.edn" io/resource slurp edn/read-string))
 
 (defn expected-hits
@@ -25,7 +25,8 @@
              (set (get-in case [:expect :semantic :vector]))))
 
 (defn comparison-spec
-  "Return an engine's paired query and hits, inheriting the scenario pair unless overridden."
+  "An engine's query and expected hits for `comparison`.
+  Engines without an alternative keep the scenario's query and hits."
   [case comparison engine]
   (let [spec (get-in comparison [:alternatives engine]
                      {:query (:query case), :hits (expected-hits case engine)})]

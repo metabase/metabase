@@ -5,6 +5,7 @@
   model retrieves without needing it at test time.
   The once fixture skips this suite when MB_PGVECTOR_DB_URL is not configured."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -21,7 +22,7 @@
 (use-fixtures :once #'semantic.tu/once-fixture)
 
 (defn- indexed-documents
-  "Preserve indexed lexical text and production card embedding text."
+  "Index rows for `docs`, with the searchable and embeddable text production would store for cards."
   [docs label->id]
   (for [[label {:keys [name description] :as doc}] docs
         :let [id (label->id label)]]
@@ -41,7 +42,7 @@
    :vector-search-strategy :brute-force})
 
 (defn- sql-arm-hits!
-  "Query one real pgvector SQL arm before the hybrid union."
+  "Labels returned by one arm of the semantic search query, `:keyword` or `:vector`, before the union."
   [index query-vector search-ctx id->label arm]
   (let [db        (semantic.env/get-pgvector-datasource!)
         query-map (case arm
@@ -60,24 +61,22 @@
                    (semantic.env/get-pgvector-datasource!) index (search-context query)))))
 
 (defn- frozen-embeddings
-  "Select the frozen vectors for these inputs, failing on any without one.
-
-  The mock provider would otherwise return a default vector for a missing input and skew the vector arm."
+  "Select the frozen vectors for `inputs`; throws if any is missing."
   [frozen inputs]
+  ;; The mock provider would otherwise return a default vector for a missing input and skew the vector arm.
   (let [missing (remove #(contains? frozen %) inputs)]
     (when (seq missing)
       (throw (ex-info "Missing frozen vectors; run query-semantics-vectors/freeze!" {:inputs (vec missing)})))
     (select-keys frozen inputs)))
 
 (defn- check-case!
-  "Replace the isolated index's rows, then check both arms and their hybrid result.
-
-  Comparisons treat semantic as the vector arm alone, so a semantic alternative is checked against that arm.
-  Temporary cards keep the semantic engine's read-permission checks live.
-  Automatic ingestion is disabled because the index is populated explicitly."
+  "Index `case`'s documents, then check the keyword arm, the vector arm, and their union.
+  A semantic rewrite in a comparison is checked against the vector arm alone."
   [{:keys [id config docs expect query comparisons] :as case} index frozen]
   (mt/with-temporary-setting-values [search-language config]
-    ;; `with-temp` needs fixed bindings; only the cards in :docs are indexed.
+    ;; Temporary cards keep the semantic engine's read-permission checks live.
+    ;; `with-temp` needs fixed bindings, so it creates all eight; only the cards in `:docs` get indexed.
+    ;; The test indexes them itself, so automatic ingestion stays off.
     (binding [search.ingestion/*disable-updates* true]
       (let [missing {:name (str "zzq-nonmatch-" (random-uuid))}]
         (mt/with-temp
@@ -89,15 +88,13 @@
            :model/Card {f :id} (get docs :F missing)
            :model/Card {g :id} (get docs :G missing)
            :model/Card {h :id} (get docs :H missing)]
-          (let [label->id  {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
-                id->label  (into {} (map (fn [[label db-id]] [db-id label])) label->id)
-                documents  (vec (indexed-documents docs label->id))
-                alternatives (keep #(when (get-in % [:alternatives :semantic])
-                                      [% (fixtures/comparison-spec case % :semantic)])
-                                   comparisons)
-                queries    (cons query (map (comp :query second) alternatives))
-                embeddings (frozen-embeddings frozen (concat (map :embeddable_text documents)
-                                                             (map vectors/query-text queries)))
+          (let [label->id    {:A a, :B b, :C c, :D d, :E e, :F f, :G g, :H h}
+                id->label    (set/map-invert label->id)
+                documents    (vec (indexed-documents docs label->id))
+                rewrites     (filter #(get-in % [:alternatives :semantic]) comparisons)
+                embeddings   (frozen-embeddings frozen (concat (map :embeddable_text documents)
+                                                               (map vectors/query-text
+                                                                    (vectors/semantic-queries case))))
                 query-vector (comp embeddings vectors/query-text)]
             (semantic.tu/with-mock-embeddings embeddings
               (jdbc/execute! (semantic.env/get-pgvector-datasource!)
@@ -110,7 +107,8 @@
               (testing (str id " hybrid")
                 (is (= (fixtures/expected-hybrid-hits case)
                        (hybrid-hits! index query id->label))))
-              (doseq [[comparison {:keys [query hits]}] alternatives]
+              (doseq [comparison rewrites
+                      :let [{:keys [query hits]} (fixtures/comparison-spec case comparison :semantic)]]
                 (testing (str id " / " (:focus comparison) " semantic vector arm")
                   (is (= hits (sql-arm-hits! index (query-vector query) (search-context query)
                                              id->label :vector))))))))))))
@@ -127,11 +125,12 @@
                   ;; The mock provider only looks up frozen real-model vectors;
                   ;; pgvector still performs the actual keyword and cosine queries.
                   embedding-model (semantic.tu/resolved-mock-embedding-model
-                                   :model-name model
+                                   :model-name        model
                                    :vector-dimensions dimensions)
-                  index (semantic.pgvector-api/init-semantic-search!
-                         (semantic.env/get-pgvector-datasource!)
-                         semantic.tu/mock-index-metadata embedding-model)
-                  frozen (vectors/read-vectors)]
+                  index           (semantic.pgvector-api/init-semantic-search!
+                                   (semantic.env/get-pgvector-datasource!)
+                                   semantic.tu/mock-index-metadata
+                                   embedding-model)
+                  frozen          (vectors/read-vectors)]
               (doseq [case fixtures/cases]
                 (check-case! case index frozen)))))))))
