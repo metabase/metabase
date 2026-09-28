@@ -99,6 +99,16 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select [:model/Card :id :dataset_query :card_schema] :id [:in card-ids]))
 
+(mu/defn mbql-model-cards
+  "The IDs, types, queries, and result metadata of the unarchived MBQL models that query the Database with
+  `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select [:model/Card :id :type :dataset_query :result_metadata :card_schema]
+             :database_id database-id
+             :type        :model
+             :query_type  :query
+             :archived    false))
+
 (mu/defn source-card-dependents
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
