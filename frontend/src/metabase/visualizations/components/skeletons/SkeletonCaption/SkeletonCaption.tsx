@@ -1,12 +1,10 @@
 import type { HTMLAttributes } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
-import { Ellipsified, Flex, Tooltip } from "metabase/ui";
-import {
-  LegendDescriptionIcon,
-  LegendRightContent,
-} from "metabase/visualizations/components/legend/LegendCaption/LegendCaption.styled";
+import { Box, Ellipsified, Flex, Icon, Tooltip } from "metabase/ui";
 import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
+
+import S from "./SkeletonCaption.module.css";
 
 export type SkeletonCaptionProps = HTMLAttributes<HTMLDivElement> &
   VisualizationSkeletonProps;
@@ -24,7 +22,7 @@ const SkeletonCaption = ({
           {name}
         </Ellipsified>
       )}
-      <LegendRightContent>
+      <Flex justify="flex-end" align="center" ml="auto">
         {description && (
           <Tooltip
             maw="22em"
@@ -34,15 +32,19 @@ const SkeletonCaption = ({
               </Markdown>
             }
           >
-            <LegendDescriptionIcon
+            <Box
+              component="span"
+              className={S.descriptionIcon}
+              mx="xxs"
               data-testid="skeleton-description-icon"
-              name="info"
-            />
+            >
+              <Icon name="info" />
+            </Box>
           </Tooltip>
         )}
 
         {actionMenu}
-      </LegendRightContent>
+      </Flex>
     </Flex>
   );
 };

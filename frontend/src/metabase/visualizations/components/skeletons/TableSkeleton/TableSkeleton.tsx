@@ -1,7 +1,6 @@
 import { useId } from "react";
 
-import { Box } from "metabase/ui";
-import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const COLUMN_WIDTHS = [110, 150, 96, 176, 132];
 const TILE_WIDTH = COLUMN_WIDTHS.reduce((sum, width) => sum + width, 0);
@@ -23,14 +22,7 @@ const TableSkeleton = (): JSX.Element => {
   const bodyPatternId = `table-skeleton-body-${id}`;
 
   return (
-    <Box
-      component="svg"
-      className={ChartSkeletonS.animated}
-      flex="1 1 0"
-      w="100%"
-      mt="xl"
-      xmlns="http://www.w3.org/2000/svg"
-    >
+    <ChartSkeletonImage w="100%" mt="xl">
       <defs>
         <pattern
           id={headerPatternId}
@@ -80,7 +72,7 @@ const TableSkeleton = (): JSX.Element => {
         height="100%"
         fill={`url(#${bodyPatternId})`}
       />
-    </Box>
+    </ChartSkeletonImage>
   );
 };
 

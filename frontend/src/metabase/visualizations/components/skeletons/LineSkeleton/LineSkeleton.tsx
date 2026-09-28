@@ -1,19 +1,13 @@
-import cx from "classnames";
-
-import { Box } from "metabase/ui";
-import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 import S from "./LineSkeleton.module.css";
 
 const LineSkeleton = (): JSX.Element => {
   return (
-    <Box
-      component="svg"
-      className={cx(ChartSkeletonS.animated, S.root)}
-      flex="1 1 0"
+    <ChartSkeletonImage
+      className={S.root}
       mt="lg"
       pb="sm"
-      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 371 113"
       fill="none"
       preserveAspectRatio="none"
@@ -23,7 +17,7 @@ const LineSkeleton = (): JSX.Element => {
         stroke="currentColor"
         strokeWidth="2"
       />
-    </Box>
+    </ChartSkeletonImage>
   );
 };
 

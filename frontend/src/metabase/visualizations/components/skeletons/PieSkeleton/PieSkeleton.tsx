@@ -1,14 +1,9 @@
-import { Box } from "metabase/ui";
-import ChartSkeletonS from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton.module.css";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const PieSkeleton = (): JSX.Element => {
   return (
-    <Box
-      component="svg"
-      className={ChartSkeletonS.animated}
-      flex="1 1 0"
+    <ChartSkeletonImage
       my="lg"
-      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 306 138"
       fill="none"
       preserveAspectRatio="xMidYMid"
@@ -22,7 +17,7 @@ const PieSkeleton = (): JSX.Element => {
         stroke="currentColor"
         strokeWidth="24"
       />
-    </Box>
+    </ChartSkeletonImage>
   );
 };
 
