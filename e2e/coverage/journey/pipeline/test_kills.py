@@ -1,6 +1,6 @@
 """Tests for kills.py.
 
-The verdict tests need the reach index of run 36089233978 and its rerun, and skip without it.
+The verdict tests need the reach index of run 36089233978 and its rerun, or of run 36482017221, and skip without one.
 Their test ids and locations come from the stranded culls' reach counts.
 The real-data test also needs the corpus kills file, the reach counts and the location prior,
 from the `local/` folder of this checkout or JOURNEY_LOCAL_DIR, and skips without them.
@@ -836,8 +836,14 @@ class BaselineReach(unittest.TestCase):
         self.assertEqual(set(boot["basis"].values()), {"baseline"})
         self.assertEqual(boot["by_basis"]["subtraction"]["reach"], [])
         self.assertEqual(boot["by_basis"]["baseline"]["reach"], boot["reach"])
-        # This index records no pages, so no load has a known kind.
-        self.assertEqual(set(boot["by_basis"]["baseline"]["load"].values()), {"unknown"})
+        loads = boot["by_basis"]["baseline"]["load"]
+        with open(os.path.join(INDEX, "tests.json")) as f:
+            records_pages = any("pages" in test for test in json.load(f))
+        if records_pages:
+            self.assertEqual(loads[REPRO_61741], "app")
+            self.assertLessEqual(set(loads.values()), {"app", "embed", "public", "other", "unknown"})
+        else:
+            self.assertEqual(set(loads.values()), {"unknown"})
         measured = lookup(L_UNIQUE)
         self.assertEqual((set(measured["basis"].values()), "by_basis" in measured), ({"subtraction"}, False))
 

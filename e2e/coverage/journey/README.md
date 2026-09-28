@@ -328,7 +328,7 @@ The top-level `accepted` key has:
 - `outcomes`: the number of unmeasured and accepted candidates with each outcome
 - `missing`: among the candidates with `missing fields`, the number missing each field
 
-The tests run a synthetic kills file through both this command and the pipeline's verdicts, and a synthetic location prior through the accepted verdict. They need the index of run 36089233978. One more test runs the stranded culls through the joint check, from the corpus kills file, `reach-counts.jsonl` and the location prior under `local/`, or under `JOURNEY_LOCAL_DIR`, and it skips without them:
+The tests run a synthetic kills file through both this command and the pipeline's verdicts, and a synthetic location prior through the accepted verdict. They need the index of run 36089233978 or 36482017221. One more test runs the stranded culls through the joint check, from the corpus kills file, `reach-counts.jsonl` and the location prior under `local/`, or under `JOURNEY_LOCAL_DIR`, and it skips without them:
 
 ```
 JOURNEY_LOOKUP_INDEX=<index dir> [JOURNEY_LOCAL_DIR=<local dir>] python3 e2e/coverage/journey/pipeline/test_kills.py
