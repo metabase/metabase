@@ -130,7 +130,10 @@
   (let [{:keys [frequency hour day-of-week day-of-month]} (u/normalize-map schedule)]
     {:schedule_type  (name frequency)
      :schedule_hour  hour
-     :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
+     :schedule_day   (or (some->> day-of-week
+                                  name
+                                  u/lower-case-en
+                                  (re-find #"^(?:mon|tue|wed|thu|fri|sat|sun)"))
                          (some->> day-of-month
                                   name
                                   u/lower-case-en
