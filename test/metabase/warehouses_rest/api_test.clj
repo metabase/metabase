@@ -90,7 +90,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults :model/Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version :default_schema
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
     {:engine                (u/qualified-name (:engine db))
      :settings              {}

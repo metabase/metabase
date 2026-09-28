@@ -245,16 +245,12 @@ function GoogleSheetsDisconnectModal({
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="lg">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={isDeletingFolderLink}
-            >
+            <Button onClick={onClose} disabled={isDeletingFolderLink}>
               {connectButtonText}
             </Button>
             <Button
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               loading={isDeletingFolderLink}
               onClick={onDelete}
             >

@@ -175,7 +175,7 @@
   `probe?` asks a type that can check more than its credentials to do so — vLLM exercises the tool calling and
   structured output the agent loop depends on against the model it will run on. Only [[verify-credentials!]] sets
   it: a probe generates, so it is far too slow for a plain listing. A probe reports whatever it determined about the
-  connection as `:learned-config`, passed through here for [[verify-credentials!]]'s callers to store on it."
+  connection as `:connection-info`, passed through here for [[verify-credentials!]]'s callers to store on it."
   [{conn-key :key :keys [type config]} config-override model probe?]
   (let [fixed (llm.provider/fixed-models type)]
     (if (llm.provider/managed-type? type)
@@ -194,7 +194,7 @@
                                                         model          (assoc :model model)
                                                         proposed-model (assoc :proposed-model proposed-model)
                                                         probe?         (assoc :probe? true)))]
-            (merge (select-keys listed [:learned-config])
+            (merge (select-keys listed [:connection-info])
                    {:models (or config-models (vec (:models listed)))}))
           (catch clojure.lang.ExceptionInfo e
             (if (provider-client-error? e)
@@ -274,7 +274,7 @@
   for a type that probes more than its credentials, by exercising the model it will run on. Throws a 400 carrying
   the provider's own message when the credentials are rejected.
 
-  Returns the model listing and `:learned-config`: whatever the probe determined about the connection, for the
+  Returns the model listing and `:connection-info`: whatever the probe determined about the connection, for the
   caller to store on it. A probe records the model it exercised as `:probed-model`."
   [conn config model]
   (when-not (llm.provider/managed-type? (:type conn))
@@ -438,14 +438,14 @@
                     :name   (or (not-empty name) (str (:label provider-type)))
                     :config config}]
       (llm.provider/validate-config! type config)
-      (let [{:keys [learned-config] :as listed} (verify-credentials! conn config model)
-            conn              (update conn :config merge learned-config)
+      (let [{:keys [connection-info] :as listed} (verify-credentials! conn config model)
+            conn              (update conn :config merge connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
         (when-not had-usable-model?
           ;; a type with no default model — vLLM, which serves whatever the operator loaded — starts on the model
           ;; the probe exercised, so connecting one leaves the instance working rather than model-less
-          (select-model-for-new-connection! conn (or model (:probed-model learned-config))))
+          (select-model-for-new-connection! conn (or model (:probed-model connection-info))))
         (seed-models-cache! conn listed)
         (connection-response (assoc conn :source :db))))))
 
@@ -486,10 +486,10 @@
     (llm.provider/assert-base-url-change-authorized! (:type merged) (:config live) effective config
                                                      (:env-fields live))
     (llm.provider/validate-config! (:type merged) effective)
-    (let [{:keys [learned-config] :as listed}
+    (let [{:keys [connection-info] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))
-          merged                   (update merged :config merge learned-config)
-          effective                (merge effective learned-config)]
+          merged                   (update merged :config merge connection-info)
+          effective                (merge effective connection-info)]
       (llm.provider/set-connections! (assoc stored idx merged))
       (follow-edited-connection-model! (assoc merged :config effective) model)
       (seed-models-cache! (assoc merged :config effective) listed)

@@ -117,7 +117,7 @@ const UserProfileForm = ({
             <FormSubmitButton
               label={t`Update`}
               disabled={!dirty}
-              variant="primary"
+              variant="filled"
             />
             <FormErrorMessage />
           </Form>

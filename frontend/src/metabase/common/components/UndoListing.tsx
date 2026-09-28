@@ -128,7 +128,7 @@ function UndoToast({
           }}
         />
       )}
-      <Flex align="flex-start" justify="space-between">
+      <Flex align="flex-start" justify="space-between" gap="sm">
         <Flex className={S.message} align="flex-start" maw="75ch">
           {undo.icon && (
             <Icon
@@ -151,9 +151,8 @@ function UndoToast({
           {undo.actions && undo.actions.length > 0 && (
             <Button
               className={S.actionButton}
-              variant="transparent"
-              color="text-secondary-inverse"
-              size="compact-md"
+              variant="default"
+              size="sm"
               onClick={onUndo}
             >
               {undo.actionLabel ?? t`Undo`}
@@ -162,9 +161,8 @@ function UndoToast({
           {undo.extraAction && (
             <Button
               className={S.actionButton}
-              variant="transparent"
-              color="text-secondary-inverse"
-              size="compact-md"
+              variant="default"
+              size="sm"
               onClick={() => {
                 undo.extraAction?.action();
                 if (undo.canDismiss) {
