@@ -1945,7 +1945,8 @@
         (mt/with-temp [:model/Dashboard {dash-id :id} {}
                        :model/Card      {blocked-id :id} {:database_id   (mt/id)
                                                           :table_id      (mt/id :venues)
-                                                          :dataset_query (mt/mbql-query venues)}]
+                                                          :dataset_query (lib/query (mt/metadata-provider)
+                                                                                    (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))}]
           (testing "adding a dashcard"
             (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
                                   {:dashcards [{:action "add" :card_id blocked-id}]})

@@ -1900,29 +1900,36 @@
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures! [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures!
    (fn [{:keys [dashboard-id card-id mappings]}]
-     (mt/with-temp [:model/DashboardCard dashboard-card {:dashboard_id       dashboard-id
-                                                         :card_id            card-id
-                                                         :parameter_mappings mappings}]
-       (let [dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
-             new-mappings      [{:parameter_id "_CATEGORY_ID_"
-                                 :target       [:dimension [:field (mt/id :venues :price) nil]]}]
-             new-dashcard-info (assoc dashcard-info :size_x 1000)]
-         (f {:dashboard-id           dashboard-id
-             :card-id                card-id
-             :original-mappings      mappings
-             :new-mappings           new-mappings
-             :original-dashcard-info dashcard-info
-             :new-dashcard-info      new-dashcard-info
-             :update-mappings!       (fn [expected-status-code]
-                                       (mt/user-http-request :rasta :put expected-status-code
-                                                             (format "dashboard/%d" dashboard-id)
-                                                             {:dashcards [(assoc dashcard-info :parameter_mappings new-mappings)]
-                                                              :tabs      []}))
-             :update-size!           (fn []
-                                       (mt/user-http-request :rasta :put 200
-                                                             (format "dashboard/%d" dashboard-id)
-                                                             {:dashcards [new-dashcard-info]
-                                                              :tabs      []}))}))))))
+     ;; setup, not a user action: callers may bind a user who can't run the Card, which would refuse the insert.
+     ;; Removed with the temp Dashboard.
+     (let [dashboard-card    (mt/as-admin
+                               (t2/insert-returning-instance! :model/DashboardCard {:dashboard_id       dashboard-id
+                                                                                    :card_id            card-id
+                                                                                    :parameter_mappings mappings
+                                                                                    :row                0
+                                                                                    :col                0
+                                                                                    :size_x             4
+                                                                                    :size_y             4}))
+           dashcard-info     (select-keys dashboard-card [:id :size_x :size_y :row :col :parameter_mappings])
+           new-mappings      [{:parameter_id "_CATEGORY_ID_"
+                               :target       [:dimension [:field (mt/id :venues :price) nil]]}]
+           new-dashcard-info (assoc dashcard-info :size_x 1000)]
+       (f {:dashboard-id           dashboard-id
+           :card-id                card-id
+           :original-mappings      mappings
+           :new-mappings           new-mappings
+           :original-dashcard-info dashcard-info
+           :new-dashcard-info      new-dashcard-info
+           :update-mappings!       (fn [expected-status-code]
+                                     (mt/user-http-request :rasta :put expected-status-code
+                                                           (format "dashboard/%d" dashboard-id)
+                                                           {:dashcards [(assoc dashcard-info :parameter_mappings new-mappings)]
+                                                            :tabs      []}))
+           :update-size!           (fn []
+                                     (mt/user-http-request :rasta :put 200
+                                                           (format "dashboard/%d" dashboard-id)
+                                                           {:dashcards [new-dashcard-info]
+                                                            :tabs      []}))})))))
 
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
