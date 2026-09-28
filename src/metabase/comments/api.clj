@@ -22,9 +22,8 @@
    [toucan2.core :as t2]))
 
 (def ^:private type->model
-  ;; While explorations are disabled, leaving the type out rejects exploration targets, since [[TargetType]] derives
-  ;; from these keys.
-  {"document" :model/Document})
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
 
 (def ^:private TargetType
   "Malli enum of valid comment target types, derived from [[type->model]]."
@@ -286,7 +285,7 @@
   "Toggle a reaction on a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
-   {:keys [emoji]} :- [:map {:closed true} [:emoji [:string {:min 1 :max 10}]]]]
+   {:keys [emoji]} :- [:map {:closed true} [:emoji ::comments.schema/reaction-emoji]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")

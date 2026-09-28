@@ -7,6 +7,12 @@ import "@testing-library/cypress/add-commands";
 import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
+
+import {
+  assertNoDataAppScopeDenials,
+  resetDataAppScopeGuard,
+} from "e2e/support/helpers/e2e-data-app-helpers";
+
 import "./commands";
 // Must stay imported after "@cypress/code-coverage/support": its afterEach
 // zeroes the window coverage counters after collecting each test's fires,
@@ -196,3 +202,8 @@ beforeEach(function () {
     }).as("globalIntercept");
   }
 });
+
+// A data app's scope rejections are recorded by the intercept H.openDataApp installs; see
+// e2e/support/helpers/e2e-data-app-helpers.ts.
+beforeEach(resetDataAppScopeGuard);
+afterEach(assertNoDataAppScopeDenials);

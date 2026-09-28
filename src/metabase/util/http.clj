@@ -197,6 +197,25 @@
     :allow-all            true
     (throw (ex-info (str "Unknown network policy: " (pr-str policy)) {:policy policy}))))
 
+(def configurable-network-policies
+  "The policies a deployment may ask for through an `*-allowed-networks` environment variable, strictest first."
+  [:external-only :allow-private :allow-all])
+
+(defn env-network-policy
+  "The network policy named by `raw-value`, the contents of an `*-allowed-networks` environment variable, or nil when
+  that variable is unset. Throws if raw-value is not a valid value."
+  [env-var-name raw-value]
+  (when-let [value (some-> raw-value str str/trim not-empty lower-case-en keyword)]
+    (if (some #{value} configurable-network-policies)
+      value
+      (throw (ex-info (format "Invalid %s: %s. Expected one of %s."
+                              env-var-name
+                              (pr-str raw-value)
+                              (str/join ", " (map name configurable-network-policies)))
+                      {:env-var  env-var-name
+                       :value    raw-value
+                       :expected (vec configurable-network-policies)})))))
+
 ;; one or more scheme segments, so nested schemes (`jdbc:postgresql://...`) are stripped too
 (def ^:private scheme-prefix-regex #"(?i)^(?:[a-z][a-z0-9+.-]*:)+//")
 

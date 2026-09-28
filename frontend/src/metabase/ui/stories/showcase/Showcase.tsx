@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Group, Paper, Stack, Text } from "metabase/ui";
 
+import { useStoryTextColor } from "./context";
+
 interface StoryShowcaseProps {
   title: string;
   children: ReactNode;
@@ -34,14 +36,10 @@ export function StorySection({
 }: StorySectionProps) {
   return (
     <Stack gap="sm">
-      <Text fw="bold" c="text-primary">
+      <Text fw="bold" c={useStoryTextColor("primary")}>
         {title}
       </Text>
-      {description != null && (
-        <Text size="sm" c="text-secondary">
-          {description}
-        </Text>
-      )}
+      {description != null && <StoryLabel>{description}</StoryLabel>}
       {children}
     </Stack>
   );
@@ -61,10 +59,20 @@ export function StoryRow({
 }: StoryRowProps) {
   return (
     <Group gap="lg" wrap="nowrap">
-      <Text size="sm" c="text-secondary" w={labelWidth}>
-        {label}
-      </Text>
+      <StoryLabel w={labelWidth}>{label}</StoryLabel>
       {children}
     </Group>
   );
 }
+
+interface StoryLabelProps {
+  w?: string | number;
+  children: ReactNode;
+}
+
+/** Secondary caption — row/column labels, section notes. */
+export const StoryLabel = ({ w, children }: StoryLabelProps) => (
+  <Text size="sm" c={useStoryTextColor("secondary")} w={w}>
+    {children}
+  </Text>
+);

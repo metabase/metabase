@@ -158,12 +158,18 @@
        (interface/replace-names-impl parser driver sql-string replacements opts)))))
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
-  "Given a driver and sql string, returns a sequence of {:schema <name> :table <name>} maps."
-  [driver :- :keyword
-   sql-str :- [:maybe :string]]
-  (let [parser (sql-tools.settings/current-parser-backend)]
-    (metrics/with-operation-timing [parser "referenced-tables-raw"]
-      (interface/referenced-tables-raw-impl parser driver sql-str))))
+  "Given a driver and SQL string, return table references. With `:fail-on-parse-error?`, propagate
+  SQLGlot parse errors instead of treating them as an empty set of references."
+  ([driver :- :keyword
+    sql-str :- [:maybe :string]]
+   (referenced-tables-raw driver sql-str {}))
+  ([driver :- :keyword
+    sql-str :- [:maybe :string]
+    opts :- [:map {:closed true}
+             [:fail-on-parse-error? {:optional true} :boolean]]]
+   (let [parser (sql-tools.settings/current-parser-backend)]
+     (metrics/with-operation-timing [parser "referenced-tables-raw"]
+       (interface/referenced-tables-raw-impl parser driver sql-str opts)))))
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
@@ -202,8 +208,8 @@
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
   Returns {:table table-id} or {:transform transform-id}, or nil."
-  [driver tables transforms spec]
-  (common/find-table-or-transform driver tables transforms spec))
+  [driver database tables transforms spec]
+  (common/find-table-or-transform driver database tables transforms spec))
 
 (defn resolve-field
   "Resolve a field reference to one or more actual database fields.

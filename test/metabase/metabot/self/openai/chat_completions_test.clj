@@ -428,12 +428,12 @@
          #"Mistral returned an unexpected model list response$"
          (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}} nil)))))
 
-(deftest ^:parallel models-catalog-error-is-tagged-api-error-without-status-test
-  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and carries no status"
-    ;; `metabase.metabot.api/provider-client-error?` renders any 4xx :api-error under the admin API-key
-    ;; field. A malformed catalog is not a credentials problem, so it must not claim a 4xx status.
+(deftest ^:parallel models-catalog-error-is-tagged-api-error-with-client-status-test
+  (testing "the thrown error is tagged :api-error so rethrow-api-error! passes it through, and 400 so the admin sees it"
+    ;; `metabase.llm.api.provider/provider-client-error?` only surfaces an :api-error carrying a 4xx; anything
+    ;; else escapes the Connect path as an unhandled 500, which `MB_HIDE_STACKTRACES=true` collapses to
+    ;; "Something went wrong". A malformed catalog is the admin's to fix, so it has to claim the 4xx.
     (let [data (try
                  (chat-completions/models-catalog "Mistral" {:status 200 :body {:object "list"}})
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))]
-      (is (= {:api-error true :error-code :malformed-model-catalog} data))
-      (is (not (contains? data :status))))))
+      (is (= {:api-error true :status-code 400 :error-code :malformed-model-catalog} data)))))

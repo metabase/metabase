@@ -343,11 +343,12 @@ To configure a dashboard using its URL, you can add the following optional keywo
 
 - `fullscreen`
 - `refresh`
+- `theme`
 
 Here's an example URL:
 
 ```
-https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
+https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&theme=night
 ```
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
