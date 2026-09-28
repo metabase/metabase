@@ -68,46 +68,46 @@
   (testing "breaking = requires MORE from the caller"
     (doseq [[label old-body new-body]
             [["new required field"
-       (obj {"a" {"type" "string"}})
-       (obj {"a" {"type" "string"} "req" {"type" "string"}} ["req"])]
-      ["existing field becomes required"
-       (obj {"a" {"type" "string"}})
-       (obj {"a" {"type" "string"}} ["a"])]
-      ["type narrowed"
-       (obj {"f" {"oneOf" [{"type" "boolean"} {"type" "object"}]}})
-       (obj {"f" {"type" "boolean"}})]
-      ["enum narrowed"
-       (obj {"f" {"enum" ["a" "b" "c"]}})
-       (obj {"f" {"enum" ["a" "b"]}})]
-      ["schema closed to undeclared keys"
-       (obj {"a" {"type" "string"}})
-       (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)]
-      ["field removed"
-       (obj {"a" {"type" "string"} "gone" {"type" "string"}})
-       (obj {"a" {"type" "string"}})]]]
+              (obj {"a" {"type" "string"}})
+              (obj {"a" {"type" "string"} "req" {"type" "string"}} ["req"])]
+             ["existing field becomes required"
+              (obj {"a" {"type" "string"}})
+              (obj {"a" {"type" "string"}} ["a"])]
+             ["type narrowed"
+              (obj {"f" {"oneOf" [{"type" "boolean"} {"type" "object"}]}})
+              (obj {"f" {"type" "boolean"}})]
+             ["enum narrowed"
+              (obj {"f" {"enum" ["a" "b" "c"]}})
+              (obj {"f" {"enum" ["a" "b"]}})]
+             ["schema closed to undeclared keys"
+              (obj {"a" {"type" "string"}})
+              (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)]
+             ["field removed"
+              (obj {"a" {"type" "string"} "gone" {"type" "string"}})
+              (obj {"a" {"type" "string"}})]]]
       (is (body-change-breaking? old-body new-body) label))))
 
 (deftest request-requires-less-is-additive-test
   (testing "not breaking = requires the same or LESS from the caller"
     (doseq [[label old-body new-body]
             [["new optional field"
-       (obj {"a" {"type" "string"}})
-       (obj {"a" {"type" "string"} "opt" {"type" "string"}})]
-      ["type widened"
-       (obj {"f" {"type" "boolean"}})
-       (obj {"f" {"oneOf" [{"type" "boolean"} {"type" "object"}]}})]
-      ["enum widened"
-       (obj {"f" {"enum" ["a" "b"]}})
-       (obj {"f" {"enum" ["a" "b" "c"]}})]
-      ["field made nullable"
-       (obj {"a" {"type" "string"}})
-       (obj {"a" {"oneOf" [{"type" "string"} {"type" "null"}]}})]
-      ["schema opened to undeclared keys"
-       (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)
-       (obj {"a" {"type" "string"}})]
-      ["field no longer required"
-       (obj {"a" {"type" "string"}} ["a"])
-       (obj {"a" {"type" "string"}})]]]
+              (obj {"a" {"type" "string"}})
+              (obj {"a" {"type" "string"} "opt" {"type" "string"}})]
+             ["type widened"
+              (obj {"f" {"type" "boolean"}})
+              (obj {"f" {"oneOf" [{"type" "boolean"} {"type" "object"}]}})]
+             ["enum widened"
+              (obj {"f" {"enum" ["a" "b"]}})
+              (obj {"f" {"enum" ["a" "b" "c"]}})]
+             ["field made nullable"
+              (obj {"a" {"type" "string"}})
+              (obj {"a" {"oneOf" [{"type" "string"} {"type" "null"}]}})]
+             ["schema opened to undeclared keys"
+              (assoc (obj {"a" {"type" "string"}}) "additionalProperties" false)
+              (obj {"a" {"type" "string"}})]
+             ["field no longer required"
+              (obj {"a" {"type" "string"}} ["a"])
+              (obj {"a" {"type" "string"}})]]]
       (is (not (body-change-breaking? old-body new-body)) label))))
 
 (deftest param-requiredness-is-directional-test
@@ -143,6 +143,29 @@
                         (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string"}}))}})))
         "a field that is never null now is a stronger guarantee")))
 
+(deftest nested-response-removal-is-breaking-test
+  (testing "a removed NESTED response field provides less, so it is breaking"
+    ;; Regression: response-lines compared only top-level properties and delegated deeper schemas
+    ;; to (widening? new old). Swapping those arguments inverts value-set semantics but not
+    ;; object-property semantics, so a dropped nested field read as additive.
+    (let [resp (fn [props] (op :response (obj {"a" (obj props)})))
+          old-spec (spec {"/api/x" {"get" (resp {"x" {"type" "string"} "y" {"type" "string"}})}})
+          new-spec (spec {"/api/x" {"get" (resp {"x" {"type" "string"}})}})]
+      (is (breaking? old-spec new-spec))))
+  (testing "a new nested response field provides more, so it is additive"
+    (let [resp (fn [props] (op :response (obj {"a" (obj props)})))
+          old-spec (spec {"/api/x" {"get" (resp {"x" {"type" "string"}})}})
+          new-spec (spec {"/api/x" {"get" (resp {"x" {"type" "string"} "extra" {"type" "string"}})}})]
+      (is (not (breaking? old-spec new-spec))))))
+
+(deftest description-change-is-doc-only-test
+  (testing "a description-only change surfaces as DOC_ONLY rather than vanishing"
+    (let [d (openapi-diff/diff (spec {"/api/x" {"get" (op :description "Old.")}})
+                               (spec {"/api/x" {"get" (op :description "New.")}}))]
+      (is (= 1 (count (:changed d))))
+      (is (= :doc-only (:severity (first (:changed d)))))
+      (is (zero? (get-in d [:counts :breaking]))))))
+
 (deftest nested-and-ref-test
   (testing "nested body properties are compared recursively"
     (let [nested (fn [reporter] (obj {"d" (obj {"reporter" reporter})}))
@@ -156,6 +179,22 @@
           new-spec (spec {"/api/x" {"post" (op :body (obj {"a" ref}))}} {"schemas" {"S" {"type" "integer"}}})]
       (is (seq (:changed (openapi-diff/diff old-spec new-spec))))
       (is (breaking? old-spec new-spec) "string -> integer narrows what the caller may send")))
+  (testing "a property literally named $ref is data, not a reference"
+    ;; SCIM schemas declare `{"properties": {"$ref": {...}}}`, where `$ref` is a real field name.
+    ;; Treating it as a pointer crashed ref resolution against the committed spec.
+    (let [scim (fn [t] (obj {"members" {"type" "array"
+                                        "items" (obj {"$ref" {"type" t} "value" {"type" "string"}})}}))
+          old-spec (spec {"/api/x" {"put" (op :body (scim "string"))}})
+          new-spec (spec {"/api/x" {"put" (op :body (scim "integer"))}})]
+      (is (map? (openapi-diff/diff old-spec old-spec)) "resolves without throwing")
+      (is (breaking? old-spec new-spec) "string -> integer under a $ref-named property still narrows")))
+  (testing "a deeply nested change is still compared, not collapsed to <deep>"
+    ;; The depth guard counts $ref hops, not nesting levels: 52 of 637 real operations hold a
+    ;; subtree deeper than 12 levels, and collapsing both sides to "<deep>" hid every change in them.
+    (let [nest (fn [leaf] (obj {"a" (obj {"b" (obj {"c" (obj {"d" (obj {"e" (obj {"f" leaf})})})})})}))
+          old-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a" "b" "c"]}))}})
+          new-spec (spec {"/api/x" {"post" (op :body (nest {"enum" ["a"]}))}})]
+      (is (breaking? old-spec new-spec) "a narrowed enum six levels down is breaking, not invisible")))
   (testing "a self-referential $ref terminates instead of blowing the stack"
     (let [s (spec {"/api/x" {"post" (op :body {"$ref" "#/components/schemas/R"})}}
                   {"schemas" {"R" {"type" "object" "properties" {"self" {"$ref" "#/components/schemas/R"}}}}})]
