@@ -138,6 +138,10 @@ KILLS = {
 }
 CANDIDATES = [UNIQUE, TWIN_MYSQL, TWIN_POSTGRES, UNREACHED, FAILED, UNIT, ERRORED, MISSING, PAIRED, BARE, ABSENT, BACKEND]
 
+def no_unique_kill(sampled):
+    return f"no unique kill among {sampled} qualifying mutants"
+
+
 COVER_KEEPS = "the kills-first cover keeps it for kills it shares only with other candidates"
 COVER_KEEPS_UNCONFIRMED = "the kills-first cover keeps it for unconfirmed kills it shares only with other candidates"
 NEEDS_BASELINE = "needs a baseline check"
@@ -145,7 +149,7 @@ EXPECTED = {
     UNIQUE: ("keep", "unique kills"),
     UNREACHED: ("unmeasured", "1 qualifying mutants, fewer than 2"),
     FAILED: ("unmeasured", "failed in the capture run, so its reached code is incomplete"),
-    UNIT: ("delete", "no unique kill"),
+    UNIT: ("delete", no_unique_kill(2)),
     ERRORED: ("unmeasured", "0 qualifying mutants, fewer than 2"),
     MISSING: ("unmeasured", "not in the capture run, so its reached code is unknown"),
     PAIRED: ("keep", f"{COVER_KEEPS}; missing-pair: not run by any remaining test"),
@@ -174,7 +178,7 @@ UNCONFIRMED_EXPECTED = {
     BOOKMARKS: ("unmeasured", NEEDS_BASELINE),
     UNIQUE: ("keep", "unique kills"),
     TWIN_POSTGRES: ("keep", COVER_KEEPS),
-    TWIN_MYSQL: ("delete", "no unique kill"),
+    TWIN_MYSQL: ("delete", no_unique_kill(2)),
 }
 
 
@@ -399,7 +403,7 @@ class Verdicts(unittest.TestCase):
 
     def test_one_twin_is_kept_for_the_kill_only_the_twins_share(self):
         twins = sorted((self.rows[t]["verdict"], self.rows[t]["reason"]) for t in (TWIN_MYSQL, TWIN_POSTGRES))
-        self.assertEqual(twins, [("delete", "no unique kill"), ("keep", COVER_KEEPS)])
+        self.assertEqual(twins, [("delete", no_unique_kill(2)), ("keep", COVER_KEEPS)])
         deleted = next(t for t in (TWIN_MYSQL, TWIN_POSTGRES) if self.rows[t]["verdict"] == "delete")
         self.assertEqual(self.rows[deleted]["qualifying_mutants"], {"wiring": 1, "logic": 1})
         kept = next(t for t in (TWIN_MYSQL, TWIN_POSTGRES) if self.rows[t]["verdict"] == "keep")
@@ -559,7 +563,7 @@ class UnconfirmedKills(unittest.TestCase):
             "twins-and-bookmarks": mutant("logic", twins, twins + [BOOKMARKS, REMAINING], unconfirmed_by=[BOOKMARKS]),
             "bookmarks": mutant("state", [], [BOOKMARKS, REMAINING], unconfirmed_by=[BOOKMARKS]),
         }, twins + [BOOKMARKS])
-        self.assertEqual(outcomes(result, twins), [("delete", "no unique kill"), ("keep", COVER_KEEPS)])
+        self.assertEqual(outcomes(result, twins), [("delete", no_unique_kill(1)), ("keep", COVER_KEEPS)])
         self.assertEqual(outcomes(result, [BOOKMARKS]), [("provisional-keep", "unconfirmed unique kills")])
         kept = next(t for t in twins if result["candidates"][t]["verdict"] == "keep")
         self.assertEqual({t: result["candidates"][t]["cover_kept_for"] for t in twins + [BOOKMARKS]},
@@ -824,20 +828,20 @@ class DeleteChecks(unittest.TestCase):
 
     def test_a_baseline_mutant_run_or_a_kill_passes_the_baseline_check(self):
         cases = {
-            "stratum_coarse baseline": UNIT_MISSES | {"boot": boot_mutant([UNIT])},
-            "stratum baseline": UNIT_MISSES | {"boot": boot_mutant([UNIT], stratum="baseline")},
-            "a kill": UNIT_MISSES | {"unit-1": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT)},
+            "stratum_coarse baseline": (UNIT_MISSES | {"boot": boot_mutant([UNIT])}, 5),
+            "stratum baseline": (UNIT_MISSES | {"boot": boot_mutant([UNIT], stratum="baseline")}, 5),
+            "a kill": (UNIT_MISSES | {"unit-1": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT)}, 4),
         }
-        for name, entries in cases.items():
+        for name, (entries, sampled) in cases.items():
             with self.subTest(name):
-                self.assertEqual(self.verdict(entries, 4, []), ("delete", "no unique kill"))
+                self.assertEqual(self.verdict(entries, 4, []), ("delete", no_unique_kill(sampled)))
 
     def test_required_strata_compare_the_coarse_stratum(self):
         logic = {"a": mutant("logic", [UNIT, JEST], [UNIT, JEST], L_UNIT)}
         cases = {
-            "finer wiring name": ({"stratum": "intra-frontend-wiring"}, ("delete", "no unique kill")),
+            "finer wiring name": ({"stratum": "intra-frontend-wiring"}, ("delete", no_unique_kill(2))),
             "finer state name": ({"stratum": "store-state"}, ("unmeasured", "no qualifying wiring mutant")),
-            "stratum_coarse over the finer name": ({"stratum": "store-state", "stratum_coarse": "wiring"}, ("delete", "no unique kill")),
+            "stratum_coarse over the finer name": ({"stratum": "store-state", "stratum_coarse": "wiring"}, ("delete", no_unique_kill(2))),
         }
         for name, (tags, expected) in cases.items():
             with self.subTest(name):
@@ -965,9 +969,9 @@ class JointDeletion(unittest.TestCase):
     def test_a_chain_of_three_candidates_depends_on_the_one_in_the_middle(self):
         first, middle, last = CHAIN
         self.assertEqual({c: (r["verdict"], r["reason"], r.get("depends_on")) for c, r in self.rows.items()}, {
-            first: ("delete", "no unique kill", {"logic": {"first-pair": [middle]}}),
+            first: ("delete", no_unique_kill(1), {"logic": {"first-pair": [middle]}}),
             middle: ("keep", COVER_KEEPS, None),
-            last: ("delete", "no unique kill", {"wiring": {"second-pair": [middle]}}),
+            last: ("delete", no_unique_kill(1), {"wiring": {"second-pair": [middle]}}),
         })
         self.assertEqual(self.result["joint_check"], "ok")
         pipeline = pipeline_verdicts(self.kills_file, CHAIN, 1, [])
@@ -1020,7 +1024,7 @@ SYMPTOM_CANDIDATES = [UNIQUE, PAIRED, UNIT, REPRO_69160, BACKEND]
 SYMPTOM_EXPECTED = {
     UNIQUE: ("keep", "unique kills, all symptom kills", True),
     PAIRED: ("keep", "unique kills", False),
-    UNIT: ("delete", "no unique kill", False),
+    UNIT: ("delete", no_unique_kill(2), False),
     REPRO_69160: ("provisional-keep", "unconfirmed unique kills, all symptom kills", True),
     BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2", False),
 }
@@ -1132,9 +1136,9 @@ class SymptomKills(unittest.TestCase):
         result = self.evaluate_entries(chain, CHAIN, 1, [])
         self.assertEqual({c: (r["verdict"], r["reason"], r.get("depends_on"), r.get("symptom_only_after_deletion"))
                           for c, r in result["candidates"].items()}, {
-            first: ("delete", "no unique kill", {"logic": {"first-pair": [middle]}}, {"logic": ["first-pair"]}),
+            first: ("delete", no_unique_kill(1), {"logic": {"first-pair": [middle]}}, {"logic": ["first-pair"]}),
             middle: ("keep", f"{COVER_KEEPS}, all symptom kills", None, None),
-            last: ("delete", "no unique kill", {"wiring": {"second-pair": [middle]}}, {"wiring": ["second-pair"]}),
+            last: ("delete", no_unique_kill(1), {"wiring": {"second-pair": [middle]}}, {"wiring": ["second-pair"]}),
         })
         self.assertEqual(result["joint_check"], "ok")
         with JointDeletion.middle_verdict("delete"):
@@ -1144,9 +1148,9 @@ class SymptomKills(unittest.TestCase):
         one = CHAIN_KILLS | {"first-pair": CHAIN_KILLS["first-pair"] | {"symptom_kills": [middle]}}
         rows = self.evaluate_entries(one, CHAIN, 1, [])["candidates"]
         self.assertEqual({c: (r["reason"], r.get("symptom_only_after_deletion")) for c, r in rows.items()}, {
-            first: ("no unique kill", {"logic": ["first-pair"]}),
+            first: (no_unique_kill(1), {"logic": ["first-pair"]}),
             middle: (COVER_KEEPS, None),
-            last: ("no unique kill", {}),
+            last: (no_unique_kill(1), {}),
         })
 
     def test_the_cover_keeps_the_twin_that_kills_with_an_assertion(self):
@@ -1402,7 +1406,7 @@ class CheckerKills(unittest.TestCase):
                 result = self.evaluate_entries({"checked": entry}, [UNIQUE])
                 row = result["candidates"][UNIQUE]
                 self.assertEqual((row["verdict"], row["reason"], row["unique_kills"], row["cover_kept_for"]),
-                                 ("delete", "no unique kill", {}, {}))
+                                 ("delete", no_unique_kill(1), {}, {}))
                 self.assertEqual((row["also_killed_by_checker"], row["depends_on"], row["symptom_only_after_deletion"]),
                                  ({"logic": {"checked": names}}, {}, {}))
                 self.assertEqual((result["joint_check"], result["kills_cover"]["kept"]), ("ok", []))
@@ -1878,7 +1882,7 @@ class DeleteGates(unittest.TestCase):
 
     def test_insufficient_sampling_never_earns_a_delete(self):
         enough = killed_by_candidate_too(shared_kills(3) | shared_kills(2, "intra-frontend-wiring"), "logic-1")
-        self.assertEqual(self.verdict(enough), ("delete", "no unique kill"))
+        self.assertEqual(self.verdict(enough), ("delete", no_unique_kill(5)))
         cases = {
             "four mutants": ((killed_by_candidate_too(shared_kills(3) | shared_kills(1, "intra-frontend-wiring"), "logic-1")),
                              "4 qualifying mutants, fewer than 5"),
@@ -1905,9 +1909,33 @@ class DeleteGates(unittest.TestCase):
                                                          jest_head=head_result([], [J1], unconfirmed_by=[J1]))}
         self.assertEqual(self.verdict(unique), ("keep", "unique kills"))
         self.assertEqual(self.verdict(unconfirmed), ("provisional-keep", "unconfirmed unique kills"))
-        self.assertEqual(self.verdict(remaining_confirmed), ("delete", "no unique kill"))
+        self.assertEqual(self.verdict(remaining_confirmed), ("delete", no_unique_kill(6)))
         self.assertEqual(self.verdict(remaining_unconfirmed),
                          ("keep", "unique kills; own: no result from the remaining tests at the head, 1 unconfirmed"))
+
+
+class DeleteReasons(unittest.TestCase):
+    ENTRIES = {
+        **{f"logic-{i}": pr_mutant("logic", e2e_base=layer_result([], [D5, D6]), jest_head=head_result([J1], [J1])) for i in (1, 2, 3)},
+        **{f"wiring-{i}": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([], [D5, D6]), jest_head=head_result([J1], [J1]))
+           for i in (1, 2)},
+        "shared": pr_mutant("logic", e2e_base=layer_result([D5, D6], [D5, D6]),
+                            e2e_head=head_result(ran=[H1], scope="selected", selected=[H1])),
+    }
+
+    def test_a_delete_names_its_sample(self):
+        rows = evaluate_pr(format_2(self.ENTRIES), [D5, D6])["candidates"]
+        self.assertEqual(sorted((r["verdict"], r["scope"], r["reason"]) for r in rows.values()), [
+            ("delete", None, "no unique kill among 6 qualifying mutants"),
+            ("keep", "selected", f"{COVER_KEEPS}; shared: missed by 1 selected remaining tests (e2e_head 1)"),
+        ])
+
+    def test_a_delete_whose_lost_kill_was_missed_at_a_selected_scope_names_the_scope(self):
+        with mock.patch.object(kills, "cover_kills", lambda *args: ([], 0)):
+            result = evaluate_pr(format_2(self.ENTRIES), [D5, D6])
+        self.assertEqual({c: (r["verdict"], r["scope"], r["reason"]) for c, r in result["candidates"].items()}, {
+            c: ("delete", "selected", "no unique kill among 6 qualifying mutants, remaining scope selected") for c in (D5, D6)})
+        self.assertEqual(result["joint_check"], {"logic": {"shared": [D5, D6]}})
 
 
 SUSPECT_PRIOR = {"files": {PR_FILE: {"module": "fe:documents", "score": 0.1}}}
@@ -2228,7 +2256,7 @@ class SurvivorWording(unittest.TestCase):
         self.assertEqual(self.reason(extreme_kills(2)),
                          ("unmeasured", "2 qualifying mutants, fewer than 5, no kill among the sampled extreme mutants"))
         self.assertEqual(self.reason(extreme_kills(3) | shared_kills(2, "intra-frontend-wiring") | BASELINE_KILL),
-                         ("delete", f"no unique kill, {NO_KILL_READING}"))
+                         ("delete", f"{no_unique_kill(6)}, {NO_KILL_READING}"))
 
     def test_a_kill_among_the_sample_or_no_extreme_mutant_gives_no_such_reading(self):
         self.assertEqual(self.reason(killed_by_candidate_too(extreme_kills(2), "extreme-1") | BASELINE_KILL),
@@ -2254,6 +2282,12 @@ class LedgerSurvivorWording(unittest.TestCase):
         run = ledger_run(entries | {"boot": boot_mutant([UNIT])}, [UNIT], 5, [])
         self.assertEqual(run.check.returncode, 0, run.check.stdout)
         self.assertEqual(run.result["candidates"][UNIT]["reason"], f"3 qualifying mutants, fewer than 5, {NO_KILL_READING}")
+
+    def test_the_ledger_gives_a_delete_the_same_reason(self):
+        entries = {f"extreme-{i}": mutant("extreme", [JEST], [UNIT, JEST], L_UNIT) | {"stratum_coarse": "logic"} for i in (1, 2, 3, 4)}
+        run = ledger_run(entries | {"boot": boot_mutant([UNIT])}, [UNIT], 5, [])
+        self.assertEqual(run.check.returncode, 0, run.check.stdout)
+        self.assertEqual(run.result["candidates"][UNIT]["reason"], f"no unique kill among 5 qualifying mutants, {NO_KILL_READING}")
 
 
 OTHER_BASE = "0123456789abcdef0123456789abcdef01234567"

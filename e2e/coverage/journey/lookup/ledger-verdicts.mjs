@@ -397,6 +397,7 @@ export function verdictsFromLedger(
   );
 
   const results = {};
+  const deleteClauses = new Map();
   const uniqueAlsoCheckerKilled = {};
   for (const t of candidates) {
     const cover = by.cover[t.i];
@@ -554,7 +555,10 @@ export function verdictsFromLedger(
     ) {
       [verdict, reason] = ["unmeasured", "needs a baseline check"];
     } else {
-      [verdict, reason] = ["delete", "no unique kill"];
+      [verdict, reason] = [
+        "delete",
+        `no unique kill among ${qualifying.length} qualifying mutants`,
+      ];
     }
     let grounds = [];
     if (verdict === "keep") {
@@ -573,8 +577,9 @@ export function verdictsFromLedger(
         : mutants[mid].symptom_unconfirmed_by
       ).has(t.i);
     const symptomOnly = grounds.length > 0 && grounds.every(symptomKill);
+    const clauses = [reason];
     if (symptomOnly) {
-      reason = `${reason}, ${SYMPTOM_ONLY}`;
+      clauses.push(SYMPTOM_ONLY);
     }
     const reading = sampleReading(
       qualifying,
@@ -583,7 +588,11 @@ export function verdictsFromLedger(
       mutants,
     );
     if (reading && !KEPT.includes(verdict)) {
-      reason = `${reason}, ${reading}`;
+      clauses.push(reading);
+    }
+    reason = clauses.join(", ");
+    if (verdict === "delete") {
+      deleteClauses.set(t.i, clauses);
     }
     const [scope, scopeText] = readingScope(sorted(grounds), mutants);
     if (scopeText) {
@@ -626,6 +635,15 @@ export function verdictsFromLedger(
         ![...mutants[mid].killed_by].some((i) => kept.has(i)),
     );
     results[t.id].scope = readingScope(sorted(lost), mutants)[0];
+    if (
+      results[t.id].verdict === "delete" &&
+      results[t.id].scope === "selected"
+    ) {
+      const [first, ...rest] = deleteClauses.get(t.i);
+      results[t.id].reason = [first, "remaining scope selected", ...rest].join(
+        ", ",
+      );
+    }
   }
 
   const candidatesReaching = Object.fromEntries(

@@ -82,6 +82,7 @@ A qualifying mutant sits in the candidate's reached code, the candidate ran agai
 at least one other test ran against it, and it isn't a suspected equivalent mutant with no confirmed kill.
 A candidate passes the baseline check with a confirmed kill among its qualifying mutants or a run against a baseline mutant,
 because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
+A delete's reason is "no unique kill among <n> qualifying mutants", followed by ", remaining scope selected" when its scope is selected.
 A delete or unmeasured candidate that killed none of its qualifying mutants, with extreme mutants among them,
 has a reason ending in "no kill among the sampled extreme mutants",
 or "no kill among the sampled extreme and baseline mutants" when it also ran baseline mutants and killed none of them.
@@ -861,6 +862,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
 
     out = {}
     evidence = {}
+    delete_clauses = {}
     for t in tests:
         if kills is None:
             out[t.key] = {"verdict": "unmeasured", "reason": "no kill matrix"}
@@ -948,14 +950,18 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         elif not passes_baseline_check(evidence[t.key]):
             verdict, reason = "unmeasured", "needs a baseline check"
         else:
-            verdict, reason = "delete", "no unique kill"
+            verdict, reason = "delete", f"no unique kill among {len(qualifying)} qualifying mutants"
+        clauses = [reason]
         symptom_only = rests_only_on_symptom_kills(t.id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
         if symptom_only:
-            reason = f"{reason}, {SYMPTOM_ONLY}"
+            clauses.append(SYMPTOM_ONLY)
         reading = sample_reading(qualifying, ran_by_test[t.id] - errored_by_test[t.id],
                                  killed_by_test[t.id] | unconfirmed_by_test[t.id], mutants)
         if reading and verdict not in KEPT:
-            reason = f"{reason}, {reading}"
+            clauses.append(reading)
+        reason = ", ".join(clauses)
+        if verdict == "delete":
+            delete_clauses[t.key] = clauses
         grounds = reading_grounds(verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
         scope, scope_text = reading_scope(grounds, mutants)
         if scope_text:
@@ -985,6 +991,9 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         out[t.key]["symptom_only_after_deletion"] = dict(after_deletion)
         lost = [mid for mids in depends_on.values() for mid, stay in mids.items() if not stay]
         out[t.key]["scope"] = reading_scope(lost, mutants)[0]
+        if out[t.key]["verdict"] == "delete" and out[t.key]["scope"] == "selected":
+            first, *rest = delete_clauses[t.key]
+            out[t.key]["reason"] = ", ".join([first, "remaining scope selected", *rest])
     return out
 
 
@@ -1835,7 +1844,7 @@ def report(result):
             elif verdict != "delete":
                 why = r["reason"].split("; ", 1)[0]
             else:
-                why = f"no unique kill, qualifying mutants: {by_stratum(r['qualifying_mutants'])}"
+                why = f"{r['reason'].split(', ', 1)[0]}: {by_stratum(r['qualifying_mutants'])}"
             lines += [f"  {cid}", f"      {why}"]
             if scope_suffix(r):
                 lines.append(f"      scope {r['scope']}: {scope_suffix(r)}")
