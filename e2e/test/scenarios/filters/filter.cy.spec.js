@@ -35,6 +35,13 @@ describe("scenarios > question > filter", () => {
     H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
+
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    H.queryBuilderMain()
+      .findByTestId("scalar-value")
+      .should("have.text", "13,976");
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
