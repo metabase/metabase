@@ -2,7 +2,7 @@
 id: construct-notebook-query-advanced
 title: Construct notebook query — advanced
 description: Joins (explicit and implicit), multi-stage queries, querying saved questions/models with source-card, metrics, measures, segments, expressions, and aggregation references in construct_notebook_query — load when a query needs any of these.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 50
 ---
 # Construct Query Reference — Advanced

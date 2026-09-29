@@ -227,6 +227,7 @@
 
 (defmethod driver/validate-db-details! :mysql
   [_driver details]
+  (sql-jdbc/reject-dangerous-additional-options! details)
   (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
     (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
 

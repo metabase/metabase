@@ -141,6 +141,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
   (constantly nil))
@@ -653,6 +654,7 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-byte-budget*
   "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
   `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
@@ -660,6 +662,7 @@
  stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-page-byte-budget*
   "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
   because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
@@ -819,6 +822,7 @@
 ;;; 1. The initial query done by `execute-bigquery` where the `.query` call can be shortcircuited by `cancel-chan`.
 ;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (falls back to [[initial-page-rows]] for the first
   page, then adaptive sizing) by default, but override for testing."
@@ -1059,6 +1063,7 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
   [respond     :- fn?
    database    :- :metabase.warehouses.schema/database-or-metadata
