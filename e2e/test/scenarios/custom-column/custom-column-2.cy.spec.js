@@ -2,7 +2,7 @@ const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe(
   "scenarios > question > custom column > data type",
@@ -97,38 +97,27 @@ describe(
       });
     });
 
-    it("should relay the type of a date field", () => {
-      openCustomColumnInTable(PEOPLE_ID);
+    it("should relay the type of a date field, directly and through COALESCE", () => {
+      H.openTable({ table: ORDERS_ID, mode: "notebook" });
+      addCustomColumns([
+        { name: "DoB", formula: "[User → Birth Date]" },
+        {
+          name: "MiscDate",
+          formula: "COALESCE([Product → Created At], [Created At])",
+        },
+      ]);
 
-      H.enterCustomColumnDetails({ formula: "[Birth Date]", name: "DoB" });
-      cy.button("Done").click();
-
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText("DoB").click();
-        cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative date range…").click();
-        cy.findByText("Previous").click();
-        cy.findByDisplayValue("days").should("be.visible");
-      });
-    });
-
-    it("should handle COALESCE", () => {
-      openCustomColumnInTable(ORDERS_ID);
-
-      H.enterCustomColumnDetails({
-        formula: "COALESCE([Product → Created At], [Created At])",
-        name: "MiscDate",
-      });
-      cy.button("Done").click();
-
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText("MiscDate").click();
-        cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative date range…").click();
-        cy.findByText("Previous").click();
-        cy.findByDisplayValue("days").should("be.visible");
+      ["DoB", "MiscDate"].forEach((name) => {
+        H.filter({ mode: "notebook" });
+        H.popover().within(() => {
+          cy.findByText(name).click();
+          cy.findByPlaceholderText("Enter a number").should("not.exist");
+          cy.findByText("Relative date range…").click();
+          cy.findByText("Previous").click();
+          cy.findByDisplayValue("days").should("be.visible");
+        });
+        cy.realPress("Escape");
+        cy.get(H.POPOVER_ELEMENT).should("not.exist");
       });
     });
   },
@@ -154,11 +143,17 @@ describe("scenarios > question > custom column > expression editor", () => {
     cy.button("Done").should("not.be.disabled");
   });
 
-  it("should not accidentally delete Custom Column formula value and/or Custom Column name (metabase#15734)", () => {
+  it("should not erase Custom Column formula and Custom Column name on cursor moves or window resize (metabase#15734, metabase#16127)", () => {
     H.CustomExpressionEditor.type(
       "{movetoend}{leftarrow}{movetostart}{rightarrow}{rightarrow}",
     );
     cy.findByDisplayValue("Math").focus();
+    cy.button("Done").should("not.be.disabled");
+    H.CustomExpressionEditor.value().should("equal", "1+1");
+
+    cy.viewport(1260, 800);
+    cy.findByDisplayValue("Math");
+    H.CustomExpressionEditor.value().should("equal", "1+1");
     cy.button("Done").should("not.be.disabled");
   });
 
@@ -168,12 +163,6 @@ describe("scenarios > question > custom column > expression editor", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Expected expression");
     cy.button("Done").should("be.disabled");
-  });
-
-  it("should not erase Custom Column formula and Custom Column name on window resize (metabase#16127)", () => {
-    cy.viewport(1260, 800);
-    cy.findByDisplayValue("Math");
-    cy.button("Done").should("not.be.disabled");
   });
 });
 
@@ -187,15 +176,14 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("Custom column").click();
   });
 
-  it("should appear after a field reference", () => {
+  it("should appear after a field reference and disappear outside the function", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
       .should("be.visible")
       .should("contain", "lower(value)");
-  });
 
-  it("should not appear while outside a function", () => {
-    H.enterCustomColumnDetails({ formula: "lower([Category])", blur: false });
+    H.CustomExpressionEditor.type(")", { focus: false });
+    H.CustomExpressionEditor.value().should("equal", "lower([Category])");
     H.CustomExpressionEditor.helpTextHeader().should("not.exist");
   });
 
@@ -334,19 +322,15 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     cy.findByText("Custom column").click();
   });
 
-  it("should be possible to close the custom expression editor by pressing Escape when it is empty", () => {
-    // The editor loads lazily. Escape sent before it takes focus does not reach the popover.
-    H.CustomExpressionEditor.get()
-      .get(".cm-editor")
-      .should("have.class", "cm-focused");
-    cy.realPress("Escape");
-    H.CustomExpressionEditor.get().should("not.exist");
-  });
-
-  it("should not be possible to close the custom expression editor by pressing Escape when it is not empty", () => {
+  it("should only be possible to close the custom expression editor by pressing Escape when it is empty", () => {
     H.CustomExpressionEditor.type("count(");
     cy.realPress("Escape");
     H.CustomExpressionEditor.get().should("be.visible");
+
+    H.CustomExpressionEditor.clear();
+    H.CustomExpressionEditor.value().should("equal", "");
+    cy.realPress("Escape");
+    H.CustomExpressionEditor.get().should("not.exist");
   });
 
   it("should be possible to exit the editor by clicking outside of it when there is no text, by clicking an interactive element", () => {
@@ -356,7 +340,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Select all").should("be.visible");
   });
 
-  it("should not be possible to exit the editor by clicking outside of it when there is an unsaved expression", () => {
+  it("should ask to keep editing or discard changes when clicking outside of the editor with an unsaved expression", () => {
     H.enterCustomColumnDetails({ formula: "1+1", blur: false });
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").should("not.exist");
@@ -372,10 +356,9 @@ describe("scenarios > question > custom column > exiting the editor", () => {
 
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("exist");
-  });
+    H.CustomExpressionEditor.value().should("equal", "1+1");
 
-  it("should be possible to discard changes when clicking outside of the editor", () => {
-    H.enterCustomColumnDetails({ formula: "1+1", blur: false });
+    cy.log("Discard changes");
     H.getNotebookStep("data").button("Pick columns").click();
     H.expressionEditorWidget().should("exist");
     H.popover().findByText("Select all").should("not.exist");

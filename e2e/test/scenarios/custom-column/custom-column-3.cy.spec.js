@@ -150,6 +150,14 @@ describe("scenarios > question > custom column > function browser", () => {
       "equal",
       'datetimeAdd(day("foo"), day())',
     );
+
+    cy.log("parens are inserted even when the clause has no arguments");
+    H.CustomExpressionEditor.clear();
+    H.CustomExpressionEditor.functionBrowser().within(() => {
+      cy.findByPlaceholderText("Search functions…").type("now");
+      cy.findByText("now").click();
+    });
+    H.CustomExpressionEditor.value().should("equal", "now()");
   });
 
   it("should be possible to replace text when inserting functions", () => {
@@ -179,14 +187,15 @@ describe("scenarios > question > custom column > function browser", () => {
       //
       cy.findByPlaceholderText("Search functions…").clear();
       cy.findByText("datetimeAdd").should("exist");
-    });
-  });
 
-  it("should not show functions that are not supported by the current database", () => {
-    H.expressionEditorWidget().button("Function browser").click();
+      cy.log("show a message when no functions match the filter");
+      cy.findByPlaceholderText("Search functions…").type("foobar");
+      cy.findByText("Didn't find any results").should("be.visible");
 
-    H.CustomExpressionEditor.functionBrowser().within(() => {
-      cy.findByPlaceholderText("Search functions…").type("convertTimezone");
+      cy.log("functions unsupported by the current database are hidden");
+      cy.findByPlaceholderText("Search functions…")
+        .clear()
+        .type("convertTimezone");
       cy.findByText("convertTimezone").should("not.exist");
     });
   });
@@ -207,23 +216,6 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByPlaceholderText("Search aggregations…").type("Count");
       cy.findByText("Count").should("be.visible");
     });
-  });
-
-  it("show a message when no functions match the filter", () => {
-    H.expressionEditorWidget().button("Function browser").click();
-    H.CustomExpressionEditor.functionBrowser().within(() => {
-      cy.findByPlaceholderText("Search functions…").type("foobar");
-      cy.findByText("Didn't find any results").should("be.visible");
-    });
-  });
-
-  it("should insert parens even when the clause has no arguments", () => {
-    H.expressionEditorWidget().button("Function browser").click();
-    H.CustomExpressionEditor.functionBrowser().within(() => {
-      cy.findByPlaceholderText("Search functions…").type("now");
-      cy.findByText("now").click();
-    });
-    H.CustomExpressionEditor.value().should("equal", "now()");
   });
 });
 
@@ -258,6 +250,14 @@ describe("scenarios > question > custom column > splitPart", () => {
   it("should be possible to split a custom column", () => {
     const CC_NAME = "Split Title";
 
+    cy.log("index below 1 is invalid");
+    H.enterCustomColumnDetails({
+      formula: "splitPart([Name], ' ', 0)",
+      name: CC_NAME,
+    });
+    H.popover().button("Done").should("be.disabled");
+    H.popover().should("contain", "Expected positive integer but found 0");
+
     H.enterCustomColumnDetails({
       formula: "splitPart([Name], ' ', 1)",
       name: CC_NAME,
@@ -271,15 +271,6 @@ describe("scenarios > question > custom column > splitPart", () => {
 
     H.tableInteractiveScrollContainer().scrollTo("right");
     assertTableData({ title: CC_NAME, value: "Hudson" });
-  });
-
-  it("should show a message when index is below 1", () => {
-    H.enterCustomColumnDetails({
-      formula: "splitPart([Name], ' ', 0)",
-    });
-
-    H.popover().button("Done").should("be.disabled");
-    H.popover().should("contain", "Expected positive integer but found 0");
   });
 });
 

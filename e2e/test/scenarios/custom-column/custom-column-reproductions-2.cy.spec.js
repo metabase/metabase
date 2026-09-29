@@ -94,36 +94,27 @@ describe("issue #55984", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should not overflow the suggestion tooltip when a suggestion name is too long (metabase#55984)", () => {
+  it("should not overflow the suggestion tooltip when a suggestion name is too long, with or without spaces (metabase#55984)", () => {
+    const longName =
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt";
+    const longNameWithoutSpaces = longName.replaceAll(" ", "_");
+
     H.addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "[Total]", name: longName });
+    cy.button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: "[Total]",
-      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt",
+      name: longNameWithoutSpaces,
     });
     cy.button("Done").click();
 
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.type("[lo");
-    H.CustomExpressionEditor.completions().should(($el) => {
-      expect(H.isScrollableHorizontally($el[0])).to.be.false;
-    });
-  });
-
-  it("should not overflow the suggestion tooltip when a suggestion name is too long and has no spaces (metabase#55984)", () => {
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({
-      formula: "[Total]",
-      name: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt".replaceAll(
-        " ",
-        "_",
-      ),
-    });
-    cy.button("Done").click();
-
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
-    H.CustomExpressionEditor.type("[lo");
+    H.CustomExpressionEditor.completion(longName).should("exist");
+    H.CustomExpressionEditor.completion(longNameWithoutSpaces).should("exist");
     H.CustomExpressionEditor.completions().should(($el) => {
       expect(H.isScrollableHorizontally($el[0])).to.be.false;
     });
@@ -517,25 +508,35 @@ describe("Issue 12938", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({
       formula: "concat(floor([Rating]), [Title])",
-      name: "MyCustom",
+      name: "RatingTitle",
       clickDone: true,
     });
 
-    H.visualize();
-    cy.get("main")
-      .findByText("There was a problem with your question")
-      .should("not.exist");
-  });
-
-  it("should be possible to concat number with string (metabase#12938)", () => {
-    H.addCustomColumn();
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: 'concat(hour([Created At]), ":", minute([Created At]))',
-      name: "MyCustom",
+      name: "HourMinute",
       clickDone: true,
     });
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+
+      const columnNames = body.data.cols.map((col) => col.display_name);
+      const ratingIndex = columnNames.indexOf("Rating");
+      const titleIndex = columnNames.indexOf("Title");
+      const ratingTitleIndex = columnNames.indexOf("RatingTitle");
+      const hourMinuteIndex = columnNames.indexOf("HourMinute");
+      body.data.rows.forEach((row) => {
+        const ratingTitle = row[ratingTitleIndex];
+        const title = row[titleIndex];
+        expect(ratingTitle.endsWith(title)).to.be.true;
+        expect(ratingTitle.slice(0, -title.length)).to.match(
+          new RegExp(`^${Math.floor(row[ratingIndex])}(\\.0+)?$`),
+        );
+        expect(row[hourMinuteIndex]).to.match(/^\d{1,2}:\d{1,2}$/);
+      });
+    });
     cy.get("main")
       .findByText("There was a problem with your question")
       .should("not.exist");

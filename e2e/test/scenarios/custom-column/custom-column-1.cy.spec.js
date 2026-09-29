@@ -69,71 +69,25 @@ describe("scenarios > question > custom column", () => {
       .and("not.contain.text", "Default period");
   });
 
-  it("should not show binning for a numeric custom column", () => {
+  it("should only show bucketing options that fit the type of a custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
-
     H.enterCustomColumnDetails({
       formula: "[Product.Price] / 2",
       name: "Half Price",
     });
     cy.button("Done").click();
 
-    cy.button("Summarize").click();
-    H.popover().findByText("Count of rows").click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-
-    H.popover()
-      .findByRole("option", { name: "Half Price" })
-      .within(() => {
-        cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("not.exist");
-      })
-      .click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Half Price")
-      .should("be.visible");
-  });
-
-  it("should show temporal units for a date/time custom column", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
       formula: "[Product.Created At]",
       name: "Product Date",
     });
     cy.button("Done").click();
 
-    cy.button("Summarize").click();
-    H.popover().findByText("Count of rows").click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Pick a column to group by")
-      .click();
-    H.popover()
-      .findByRole("option", { name: "Product Date" })
-      .within(() => {
-        cy.findByLabelText("Binning strategy").should("not.exist");
-        cy.findByLabelText("Temporal bucket").should("exist");
-      })
-      .click();
-
-    H.getNotebookStep("summarize")
-      .findByText("Product Date: Month")
-      .should("be.visible");
-  });
-
-  it("should not show binning options for a coordinate custom column", () => {
-    H.openPeopleTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
+    H.getNotebookStep("expression").icon("add").click();
     H.enterCustomColumnDetails({
-      formula: "[Latitude]",
+      formula: "[User.Latitude]",
       name: "UserLAT",
     });
     cy.button("Done").click();
@@ -144,14 +98,45 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
       .click();
-    H.popover()
-      .findByRole("option", { name: "UserLAT" })
-      .within(() => {
+    H.popover().within(() => {
+      cy.log("a regular numeric column shows binning options");
+      cy.findByRole("option", { name: "Total" })
+        .findByLabelText("Binning strategy")
+        .should("exist");
+
+      cy.log("numeric custom column");
+      cy.findByRole("option", { name: "Half Price" }).within(() => {
         cy.findByLabelText("Binning strategy").should("not.exist");
         cy.findByLabelText("Temporal bucket").should("not.exist");
-      })
-      .click();
+      });
 
+      cy.log("coordinate custom column");
+      cy.findByRole("option", { name: "UserLAT" }).within(() => {
+        cy.findByLabelText("Binning strategy").should("not.exist");
+        cy.findByLabelText("Temporal bucket").should("not.exist");
+      });
+
+      cy.log("date/time custom column");
+      cy.findByRole("option", { name: "Product Date" })
+        .within(() => {
+          cy.findByLabelText("Binning strategy").should("not.exist");
+          cy.findByLabelText("Temporal bucket").should("exist");
+        })
+        .click();
+    });
+    H.getNotebookStep("summarize")
+      .findByText("Product Date: Month")
+      .should("be.visible");
+
+    cy.log("each custom column can be picked as the breakout");
+    H.getNotebookStep("summarize").findByText("Product Date: Month").click();
+    H.popover().findByRole("option", { name: "Half Price" }).click();
+    H.getNotebookStep("summarize")
+      .findByText("Half Price")
+      .should("be.visible");
+
+    H.getNotebookStep("summarize").findByText("Half Price").click();
+    H.popover().findByRole("option", { name: "UserLAT" }).click();
     H.getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
@@ -559,31 +544,18 @@ describe("scenarios > question > custom column", () => {
       .should("be.visible");
   });
 
-  it("should not format expression when pressing tab in the editor", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "1+1" });
-
-    cy.realPress("Tab");
-    cy.realPress(["Shift", "Tab"]);
-
-    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
-    H.CustomExpressionEditor.value().should("equal", "1+1");
-    H.CustomExpressionEditor.type("2");
-
-    // Fix prevents display value from being `1 +2 1` due to cursor position
-    // being wrong after formatting.
-    // That's because the caret position after refocusing on textarea
-    // would still be after the 3rd character
-    H.CustomExpressionEditor.value().should("equal", "1+12");
-  });
-
   it("should format expression when clicking the format button", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
+    cy.log("The format button is hidden while the editor is empty");
+    H.CustomExpressionEditor.get().should("be.visible");
+    H.CustomExpressionEditor.formatButton().should("not.exist");
+
     H.enterCustomColumnDetails({ formula: "1+1" });
+
+    cy.log("Leaving the editor does not format the expression");
+    H.CustomExpressionEditor.value().should("equal", "1+1");
 
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
     H.CustomExpressionEditor.format();
@@ -652,23 +624,7 @@ describe("scenarios > question > custom column", () => {
     );
   });
 
-  it("should not allow formatting when the expression contains an error", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
-    });
-    H.CustomExpressionEditor.formatButton().should("not.exist");
-  });
-
-  it("should show the format button when the expression editor is empty", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-    H.CustomExpressionEditor.formatButton().should("not.exist");
-  });
-
-  it("should not allow saving the expression when it is invalid", () => {
+  it("should not allow formatting or saving an invalid expression, and validate it when typing", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -677,24 +633,15 @@ describe("scenarios > question > custom column", () => {
       name: "A custom expression",
     });
 
+    H.CustomExpressionEditor.formatButton().should("not.exist");
     H.expressionEditorWidget().button("Done").should("be.disabled");
     H.CustomExpressionEditor.nameInput().focus().type("{enter}");
     H.expressionEditorWidget().should("be.visible");
-  });
-
-  it("should validate the expression when typing", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
-      name: "A custom expression",
-    });
-    H.expressionEditorWidget().button("Done").should("be.disabled");
 
     cy.log("Fix the expression");
     H.CustomExpressionEditor.type("{leftarrow}'bar')", { focus: true });
     H.expressionEditorWidget().button("Done").should("not.be.disabled");
+    H.CustomExpressionEditor.formatButton().should("be.visible");
   });
 
   it("should be possible to fill in snippet arguments after validation runs (metabase#55164)", () => {

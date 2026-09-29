@@ -53,10 +53,8 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       "equal",
       "between(column, start, end)",
     );
-  });
 
-  it("should correctly insert function suggestion with the template when it has no arguments", () => {
-    addCustomColumn();
+    cy.log("function without arguments");
     H.enterCustomColumnDetails({ formula: "now", blur: false });
     H.CustomExpressionEditor.acceptCompletion();
     H.CustomExpressionEditor.value().should("equal", "now()");
