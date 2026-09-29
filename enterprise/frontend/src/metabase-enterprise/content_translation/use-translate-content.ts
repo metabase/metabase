@@ -10,7 +10,7 @@ import { translateContentString } from "./utils";
 
 /** When there are no translations, the content-translation function simply
  * returns the provided string, untranslated */
-export const leaveUntranslated: ContentTranslationFunction = (msgid) => msgid;
+export const leaveUntranslated: ContentTranslationFunction = (msgid) => undefined;
 
 /** Returns true if the content-translation function is doing more than just
  * returning the provided string, untranslated */
