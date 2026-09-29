@@ -14,8 +14,19 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
   it("should not suggest arithmetic operators", () => {
     addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "[Price] " });
-    cy.findByTestId("expression-suggestions-list").should("not.exist");
+    H.enterCustomColumnDetails({ formula: "[Pri", blur: false });
+    H.CustomExpressionEditor.completion("Price").should("be.visible");
+
+    H.CustomExpressionEditor.type("ce] ", { focus: false });
+    cy.get("body").should(($body) => {
+      const labels = $body
+        .find(".cm-completionLabel")
+        .toArray()
+        .map((label) => label.textContent);
+      ["+", "-", "*", "/"].forEach((operator) => {
+        expect(labels).not.to.include(operator);
+      });
+    });
   });
 
   it("should correctly accept the chosen field suggestion", () => {

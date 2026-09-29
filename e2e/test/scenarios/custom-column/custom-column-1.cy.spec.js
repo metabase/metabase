@@ -31,14 +31,23 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
+    cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+
     H.cartesianChartCircle().eq(5).click();
     H.popover()
       .findByText(/Automatic Insights/i)
       .click();
-    H.popover().findByText(/X-ray/i);
+    H.popover().findByText(/X-ray/i).should("be.visible");
     H.popover()
       .findByText(/Compare to the rest/i)
       .click();
+
+    cy.wait("@xray").then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
+      expect(response.body.cause).not.to.exist;
+    });
+    cy.location("pathname").should("match", /^\/auto\/dashboard\//);
+    cy.findAllByTestId("dashcard-container").should("have.length.gt", 0);
   });
 
   it("should not show default period in date column name (metabase#36631)", () => {
@@ -669,11 +678,16 @@ describe("scenarios > question > custom column", () => {
     H.expressionEditorWidget().button("Done").should("not.be.disabled");
   });
 
-  it("should be possible to use the suggestion templates", () => {
+  it("should be possible to fill in snippet arguments after validation runs (metabase#55164)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
 
     H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
+
+    // Let the debounced validation (DEBOUNCE_VALIDATION_MS = 1000) run while the
+    // snippet is active; it must not break the snippet's argument placeholders.
+    // The error is hidden while the snippet is active, so there's nothing to wait on.
+    cy.wait(1300);
 
     H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
       focus: false,

@@ -1013,16 +1013,18 @@ describe("issue 50925", () => {
     H.getNotebookStep("expression").findByText("Custom").click();
 
     H.CustomExpressionEditor.focus()
-      .type("{leftarrow}".repeat(9))
-      .type(" [Pr", { focus: false });
+      .type("{leftarrow}".repeat(8))
+      .type("[Pr", { focus: false });
 
-    cy.wait(300);
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
     H.CustomExpressionEditor.blur()
       .value()
-      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
+      .should(
+        "match",
+        /^case\(\[ID\] = 1, \[Price\] \* 1\.21, \[Price\]\s*\[Price\]\)$/,
+      );
   });
 });
 

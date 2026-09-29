@@ -59,7 +59,7 @@ describe(
         cy.findByText("Orders").click();
       });
 
-      addCustomColumns([
+      const dateColumns = [
         { name: "Year", formula: "year([Created At])" },
         { name: "Quarter", formula: "quarter([Created At])" },
         { name: "Month", formula: "month([Created At])" },
@@ -78,16 +78,23 @@ describe(
           formula: 'datetimeSubtract([Created At], 1, "month")',
         },
         {
-          name: "ConvertTimezone 3 args",
+          // Created At has no timezone on this database, so the source timezone is required
+          name: "ConvertTimezone",
           formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh", "UTC")',
         },
-        {
-          name: "ConvertTimezone 2 args",
-          formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
-        },
-      ]);
+      ];
+      addCustomColumns(dateColumns);
 
-      H.visualize();
+      H.visualize(({ body }) => {
+        expect(body.error).to.not.exist;
+
+        const columnNames = body.data.cols.map((col) => col.display_name);
+        const [firstRow] = body.data.rows;
+        dateColumns.forEach(({ name }) => {
+          expect(columnNames).to.include(name);
+          expect(firstRow[columnNames.indexOf(name)]).to.not.be.null;
+        });
+      });
     });
 
     it("should relay the type of a date field", () => {
@@ -396,16 +403,17 @@ describe("scenarios > question > custom column > exiting the editor", () => {
   it("should be possible to close the popover when navigating away from the expression editor", () => {
     H.expressionEditorWidget().button("Cancel").click();
     cy.button("Summarize").click();
-    H.popover().as("popover").findByText("Custom Expression").click();
+    H.popover().findByText("Custom Expression").click();
     H.enterCustomColumnDetails({ formula: "1+1" });
 
     cy.log("Go back to summarize modal");
     H.popover().findByText("Custom Expression").click();
+    H.popover().findByText("Count of rows").should("be.visible");
 
     cy.log("Close summarize modal by clicking outside");
     cy.findByLabelText("View SQL").click();
 
     H.modal().should("not.exist");
-    cy.get("popover").should("not.exist");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
   });
 });
