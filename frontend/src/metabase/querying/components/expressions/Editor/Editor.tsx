@@ -161,7 +161,7 @@ export function Editor(props: EditorProps) {
 
   const [isSnippetActive, setIsSnippetActive] = useState(false);
   const handleUpdate = useCallback((update: ViewUpdate) => {
-    setIsSnippetActive(hasActiveSnippet(update.state));
+    return;
   }, []);
 
   return (
