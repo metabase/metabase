@@ -13,25 +13,21 @@ const STARTING_FROM_UNITS = [
 ];
 
 describe("scenarios > question > relative-datetime", () => {
-  const now = dayjs().utc();
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
   describe("starting from", () => {
-    const date = (values) =>
-      values.reduce((val, [num, unit]) => val.add(num, unit), now.clone());
-
     STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Past filters (${unit} ago)`, () => {
+        const now = dayjs().utc();
         nativeSQL([
           now,
-          date([[-1, unit]]),
-          date([[-14, unit]]),
-          date([[-15, unit]]),
-          date([[-30, unit]]),
+          now.add(-1, unit),
+          now.add(-14, unit),
+          now.add(-15, unit),
+          now.add(-30, unit),
         ]);
         withStartingFrom("Previous", [10, unit], [10, unit]);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -41,12 +37,13 @@ describe("scenarios > question > relative-datetime", () => {
 
     STARTING_FROM_UNITS.forEach((unit) =>
       it(`should work with Next filters (${unit} from now)`, () => {
+        const now = dayjs().utc();
         nativeSQL([
           now,
-          date([[1, unit]]),
-          date([[14, unit]]),
-          date([[15, unit]]),
-          date([[30, unit]]),
+          now.add(1, unit),
+          now.add(14, unit),
+          now.add(15, unit),
+          now.add(30, unit),
         ]);
         withStartingFrom("Next", [10, unit], [10, unit]);
         // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
