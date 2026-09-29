@@ -31,6 +31,7 @@
 (deftest partitions-to-drop-test
   (let [existing (partitions-for-months 4 5 6 7)]
     (is (= [] (partitions/partitions-to-drop existing now 0)))
+    (is (= [] (partitions/partitions-to-drop existing now ##Inf)))
     (is (= (partitions-for-months 4 5)
            (set (partitions/partitions-to-drop existing now 7))))
     (is (= (partitions-for-months 4 5 6)

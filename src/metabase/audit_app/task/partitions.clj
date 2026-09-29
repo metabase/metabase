@@ -48,7 +48,7 @@
 (defn partitions-to-drop
   "Given current partitions, time and retention days, which are due to be dropped?"
   [partitions now retention-days]
-  (if (or (nil? retention-days) (zero? retention-days))
+  (if (or (nil? retention-days) (zero? retention-days) (infinite? retention-days))
     []
     (let [retention-earliest (t/minus now (t/days retention-days))]
       (remove (partial keep? retention-earliest) partitions))))
