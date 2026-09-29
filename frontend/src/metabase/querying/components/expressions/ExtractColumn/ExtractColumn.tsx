@@ -143,37 +143,7 @@ function ExtractionPicker({
   ) => void;
   onCancel: () => void;
 }) {
-  const info = Lib.displayInfo(query, stageIndex, column);
-
-  const extractions = useMemo(
-    () =>
-      Lib.columnExtractions(query, column).map((extraction) => ({
-        extraction,
-        info: Lib.displayInfo(query, stageIndex, extraction),
-      })),
-    [query, stageIndex, column],
-  );
-
-  return (
-    <>
-      <ExpressionWidgetHeader
-        title={t`Select part of '${info.longDisplayName}' to extract`}
-        onBack={onCancel}
-      />
-      <Box p="sm">
-        <Stack gap={0}>
-          {extractions.map((extraction) => (
-            <ExtractColumnButton
-              key={extraction.info.tag}
-              title={extraction.info.displayName}
-              example={getExample(extraction.info) ?? ""}
-              onClick={() => onSelect(extraction.info, extraction.extraction)}
-            />
-          ))}
-        </Stack>
-      </Box>
-    </>
-  );
+  return null;
 }
 
 function ExtractColumnButton({
