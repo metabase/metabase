@@ -30,6 +30,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
+   [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
@@ -48,7 +49,8 @@
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.jdbc.query :as t2.jdbc.query])
   (:import
    (java.sql Connection)
    (java.util.concurrent CountDownLatch Executors)
@@ -74,7 +76,7 @@
 
 (defmethod driver/dbms-version ::test-driver
   [_ _]
-  "1.0")
+  {:version "1.0"})
 
 (defmethod driver/describe-database* ::test-driver
   [_ _]
@@ -89,7 +91,7 @@
   ([{driver :engine, :as db}]
    (merge
     (mt/object-defaults :model/Database)
-    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version
+    (select-keys db [:created_at :id :details :updated_at :timezone :name :dbms_version :default_schema
                      :metadata_sync_schedule :cache_field_values_schedule :uploads_enabled :uploads_schema_name])
     {:engine                (u/qualified-name (:engine db))
      :settings              {}
@@ -373,7 +375,7 @@
 
 (defn- sync-and-analyze-trigger-name
   [db]
-  (.getName ^TriggerKey (#'task.sync-databases/trigger-key db @#'task.sync-databases/sync-analyze-task-info)))
+  (.getName ^TriggerKey (#'sync-databases-trigger/trigger-key db sync-databases-trigger/sync-analyze-task-info)))
 
 (defmacro with-test-driver-available!
   [& body]
@@ -578,14 +580,14 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [:model/Database :id :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
-                     (into {} curr-db)))))))))))
+                     (dissoc (into {} curr-db) :id)))))))))))
 
 (deftest update-database-test-2
   (testing "PUT /api/database/:id"
@@ -1005,6 +1007,52 @@
                          first)]
           (is (not (contains? table :fields))))))))
 
+(deftest oss-include-editable-data-model-fails-closed-test
+  (testing "without the advanced-permissions feature, include_editable_data_model must not bypass the read check"
+    ;; `include_editable_data_model=true` tells the API to skip the query-access check and run the
+    ;; data-model-perms check instead. Only EE with an advanced-permissions token grants non-admins any
+    ;; data-model perms; every other build (OSS, or EE without the token) runs the OSS `defenterprise`
+    ;; implementation, which has to fail closed -- admins only.
+    (mt/with-premium-features #{}
+      (mt/with-no-data-perms-for-all-users!
+        (testing "non-admin"
+          (testing "GET /api/database"
+            (is (empty? (filter #(= (mt/id) (:id %))
+                                (:data (mt/user-http-request :rasta :get 200
+                                                             "database?include_editable_data_model=true"))))))
+          (testing "GET /api/database/:id"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d?include_editable_data_model=true" (mt/id))))
+          (testing "GET /api/database/:id/metadata"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d/metadata?include_editable_data_model=true&include_hidden=true"
+                                          (mt/id))))
+          (testing "GET /api/database/:id/schemas"
+            (is (= [] (mt/user-http-request :rasta :get 200
+                                            (format "database/%d/schemas?include_editable_data_model=true" (mt/id))))))
+          (testing "GET /api/database/:id/schema/:schema"
+            (mt/user-http-request :rasta :get 404
+                                  (format "database/%d/schema/PUBLIC?include_editable_data_model=true" (mt/id))))
+          (testing "GET /api/database/:id/idfields"
+            (mt/user-http-request :rasta :get 403
+                                  (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))
+        (testing "admins are unaffected"
+          (is (some #(= (mt/id) (:id %))
+                    (:data (mt/user-http-request :crowberto :get 200
+                                                 "database?include_editable_data_model=true"))))
+          (is (seq (:tables (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/metadata?include_editable_data_model=true"
+                                                          (mt/id))))))
+          (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200
+                                                  (format "database/%d/schemas?include_editable_data_model=true"
+                                                          (mt/id)))))
+          (is (seq (mt/user-http-request :crowberto :get 200
+                                         (format "database/%d/schema/PUBLIC?include_editable_data_model=true"
+                                                 (mt/id)))))
+          (is (seq (mt/user-http-request :crowberto :get 200
+                                         (format "database/%d/idfields?include_editable_data_model=true"
+                                                 (mt/id))))))))))
+
 (deftest ^:parallel autocomplete-suggestions-test
   (let [prefix-fn (fn [db-id prefix]
                     (mt/user-http-request :rasta :get 200
@@ -1027,6 +1075,23 @@
                                         ["CATEGORY" "PRODUCTS :type/Text :type/Category"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
         (is (= expected (prefix-fn (mt/id) prefix)))))))
+
+(deftest autocomplete-suggestions-honors-user-set-semantic-type-and-visibility-test
+  (testing "GET /api/database/:id/autocomplete_suggestions honors the user's semantic_type/visibility_type"
+    (let [field-id  (mt/id :venues :price)
+          base-type (t2/select-one-fn :base_type :model/Field field-id)
+          venues-row (fn [] (first (filter (fn [[_ desc]] (str/starts-with? desc "VENUES "))
+                                           (mt/user-http-request :rasta :get 200
+                                                                 (format "database/%d/autocomplete_suggestions" (mt/id))
+                                                                 :prefix "price"))))]
+      (testing "a user-set semantic_type replaces the sync value"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id          field-id
+                                                   :semantic_type     :type/Currency
+                                                   :semantic_type_set true}]
+          (is (= ["PRICE" (str "VENUES " base-type " :type/Currency")] (venues-row)))))
+      (testing "a user-set sensitive visibility_type hides the Field"
+        (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :visibility_type :sensitive}]
+          (is (nil? (venues-row))))))))
 
 (deftest ^:parallel autocomplete-suggestions-test-2
   (testing "GET /api/database/:id/autocomplete_suggestions"
@@ -1701,9 +1766,9 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
           ;; redefine quick-task/submit-task! so as not to depend on the capacity of the quick-task executor.
           ;; The Sync-now endpoint dispatches to the *explicit* sync fns (which bypass disable-auto-sync).
-          (with-redefs [quick-task/submit-task!                   future-call
-                        sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
-                        analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task!                   future-call
+                                      sync-metadata/sync-db-metadata-explicit! (deliver-when-db sync-called? db-id)
+                                      analyze/analyze-db-explicit!             (deliver-when-db analyze-called? db-id)]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
@@ -1738,15 +1803,53 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine              "h2"
                                                     :details             details
                                                     :initial_sync_status "incomplete"}]
-          (with-redefs [quick-task/submit-task! (fn [f]
-                                                  (binding [driver.settings/*allow-testing-h2-connections* true]
-                                                    (f)))]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                  (f)))]
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
           (testing "the explicit sync actually ran, not merely dispatched"
             (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id db-id))
                 "Sync-now must complete the sync even when disable-auto-sync is on")
             (is (pos? (t2/count :model/Table :db_id db-id))
                 "Sync-now must populate tables even when disable-auto-sync is on")))))))
+
+(deftest sync-schema-does-not-refetch-database-per-field-test
+  (testing (str "GHY-3289: POST /api/database/:id/sync_schema must not read the Database row from the app DB once "
+                "per column. The Database does not change during a sync, so the number of reads should not grow "
+                "with the number of columns.")
+    (mt/test-drivers #{:h2 :postgres}
+      (mt/dataset (mt/dataset-definition "ghy_3289_wide"
+                                         [["wide_table"
+                                           (for [i (range 60)]
+                                             {:field-name (str "col_" i) :base-type :type/Integer})
+                                           [(vec (range 60))]]])
+        ;; `mt/dataset` syncs the dataset's own Database when it loads. Sync a new Database row that points at the
+        ;; same warehouse instead, so its Fields exist only if the sync_schema request really ran.
+        (let [details (:details (mt/db))]
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (mt/with-temp [:model/Database {db-id :id} {:engine (tx/driver) :details details}]
+              (let [db-reads  (atom 0)
+                    run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
+                (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f]
+                                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                                  (f)))
+                                            t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                                (swap! db-reads inc))
+                                                                              (run-query rf init conn model sql-args opts))]
+                  (t2/select-one :model/Database :id db-id)
+                  (testing "the counter sees a Database read on this app DB"
+                    (is (= 1 @db-reads)))
+                  (reset! db-reads 0)
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                (let [fields (->> (mt/user-http-request :crowberto :get 200 (format "database/%d/metadata" db-id))
+                                  :tables
+                                  (mapcat :fields))]
+                  (testing "the sync ran and created a field for every column"
+                    (is (<= 60 (count fields))))
+                  (testing "the Database row is read a few times per sync, not once per column"
+                    (is (< @db-reads 30))))))))))))
 
 (deftest sync-schema-labels-data-sensitivity-test
   (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
@@ -1769,6 +1872,34 @@
             (is (= :PII (label "PEOPLE" "EMAIL")))
             (is (= :SEC_KEY (label "PEOPLE" "PASSWORD")))
             (is (= :PUBLIC (label "ORDERS" "TOTAL")))))))))
+
+(deftest initial-sync-skips-field-values-scan-test
+  (testing (str "GHY-3274: the initial sync of a new Database must not scan FieldValues. A new Database has no "
+                "FieldValues (they are made on demand by the `/values` endpoints), so the scan can only issue a "
+                "useless per-Field clear/update attempt for every Field.")
+    (let [details (:details (mt/db))]
+      (mt/with-model-cleanup [:model/Database]
+        (let [db-id (binding [driver.settings/*allow-testing-h2-connections* true]
+                      (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                            (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                              (f)))]
+                        (:id (mt/user-http-request :crowberto :post 200 "database"
+                                                   {:name         (mt/random-name)
+                                                    :engine       "h2"
+                                                    :details      details
+                                                    :is_full_sync true}))))
+              task-runs (fn [task-name]
+                          (->> (mt/user-http-request :crowberto :get 200 "task/" :task task-name :limit 1000)
+                               :data
+                               (filter #(= db-id (:db_id %)))))]
+          (testing "the initial sync ran"
+            (is (= "complete" (:initial_sync_status (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id)))))
+            (is (seq (task-runs "sync-fields")))
+            (is (seq (task-runs "fingerprint-fields"))))
+          (testing "the initial sync did not scan FieldValues"
+            (is (empty? (task-runs "field values scanning")))
+            (is (empty? (task-runs "update-field-values")))
+            (is (empty? (task-runs "delete-expired-advanced-field-values")))))))))
 
 (deftest sync-schema-executes-when-executor-busy-test
   (testing "POST /api/database/:id/sync_schema should execute sync even when quick-task executor is busy (GHY-3254)"

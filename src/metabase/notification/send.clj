@@ -453,9 +453,10 @@
   nil)
 
 (def ^:private Options
-  [:map
+  [:map {:closed true}
    [:notification/sync? :boolean]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *default-options*
   "The default options for sending a notification."
   {:notification/sync? false})
@@ -484,7 +485,8 @@
 
 (mu/defn send-notification!
   "The function to send a notification. Defaults to `notification.send/send-notification-async!`."
-  [notification & {:keys [] :as options} :- [:maybe Options]]
+  [notification :- ::notification.payload/Notification
+   & {:keys [] :as options} :- [:maybe Options]]
   (let [options (merge *default-options* options)
         sync?   (:notification/sync? options)]
     ;; with-task-run is a no-op if already nested (e.g., from scheduler)

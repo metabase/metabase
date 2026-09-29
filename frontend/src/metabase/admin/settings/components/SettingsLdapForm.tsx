@@ -1,17 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
-import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
 import {
-  SETTINGS_CARD_STACK_PROPS,
-  SETTINGS_CARD_TITLE_PROPS,
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
-import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+  getDefaultPlaceholder,
+  getExtraFormFieldProps,
+} from "metabase/admin/settings/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -22,14 +17,29 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
 } from "metabase/settings";
-import { Box, Flex, Group, Radio, Stack } from "metabase/ui";
-import type { EnterpriseSettings, Settings } from "metabase-types/api";
+import {
+  CollapsibleSettingsSection,
+  SETTINGS_CARD_STACK_PROPS,
+  SETTINGS_CARD_TITLE_PROPS,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
+import { Box, Flex, Radio, Stack } from "metabase/ui";
+import type {
+  EnterpriseSettings,
+  SettingDefinition,
+  SettingDefinitionMap,
+} from "metabase-types/api";
 
 import { useUpdateLdapMutation } from "../api/ldap";
+
+import { LdapGroupMappingSection } from "./LdapGroupMappingSection";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -38,15 +48,23 @@ const testParentheses: TestConfig<string | null | undefined> = {
     (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
 };
 
-const LDAP_SCHEMA = Yup.object({
-  "ldap-port": Yup.number().integer().nullable(),
-  "ldap-user-filter": Yup.string().nullable().test(testParentheses),
-  "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
-});
+// the membership filter is hidden while group mapping is off, so its check must not block the page then
+const getLdapSchema = (isGroupMappingOn: boolean) =>
+  Yup.object({
+    "ldap-port": Yup.number().integer().nullable(),
+    "ldap-user-filter": Yup.string().nullable().test(testParentheses),
+    "ldap-group-membership-filter": isGroupMappingOn
+      ? Yup.string().nullable().test(testParentheses)
+      : Yup.string().nullable(),
+  });
 
-export type LdapSettings = Pick<
+// an empty port means the default, so the form allows null where the setting does not
+export type LdapFormValues = Omit<LdapSettingValues, "ldap-port"> & {
+  "ldap-port": number | null;
+};
+
+type LdapSettingValues = Pick<
   EnterpriseSettings,
-  | "ldap-enabled"
   | "ldap-host"
   | "ldap-port"
   | "ldap-security"
@@ -61,34 +79,80 @@ export type LdapSettings = Pick<
   | "ldap-group-membership-filter"
 >;
 
+type LdapTextKey = Exclude<keyof LdapFormValues, "ldap-port" | "ldap-security">;
+
+// the connection test needs a port spelled out, so an empty field falls back to the backend default
+const FALLBACK_LDAP_PORT = 389;
+
+const LDAP_ATTRIBUTE_KEYS = [
+  "ldap-attribute-email",
+  "ldap-attribute-firstname",
+  "ldap-attribute-lastname",
+] as const;
+
+// the backend copy for a few fields predates the design, so the page supplies its own description
+const withDescription = (
+  setting: SettingDefinition | undefined,
+  description: string,
+) => {
+  const fieldProps = getExtraFormFieldProps(setting);
+  return setting?.is_env_setting ? fieldProps : { ...fieldProps, description };
+};
+
+const getAttributeFieldProps = (setting: SettingDefinition | undefined) =>
+  setting?.is_env_setting
+    ? getExtraFormFieldProps(setting)
+    : { placeholder: getDefaultPlaceholder(setting) };
+
 export const SettingsLdapForm = () => {
-  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
-  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingDetails, isLoading: isLoadingDetails } =
+    useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
   const [updateLdapSettings] = useUpdateLdapMutation();
+  const applicationName = useSelector(getApplicationName);
   const isEnabled = settingValues?.["ldap-enabled"];
+  const isConfigured = settingValues?.["ldap-configured?"] ?? false;
+  const isGroupMappingOn = settingValues?.["ldap-group-sync"] ?? false;
+  const schema = useMemo(
+    () => getLdapSchema(isGroupMappingOn),
+    [isGroupMappingOn],
+  );
+  const defaultPort =
+    settingDetails?.["ldap-port"]?.default ?? FALLBACK_LDAP_PORT;
 
   const handleSubmit = useCallback(
-    (values: Partial<LdapSettings>) => {
+    (values: LdapFormValues) => {
       return updateLdapSettings({
         ...values,
-        "ldap-port": Number(values["ldap-port"]),
+        "ldap-port": Number(values["ldap-port"] ?? defaultPort),
         "ldap-enabled": true,
       }).unwrap();
     },
-    [updateLdapSettings],
+    [updateLdapSettings, defaultPort],
   );
 
-  if (!settingValues) {
+  if (isLoadingDetails || isLoadingValues) {
     return <LoadingAndErrorWrapper loading />;
   }
 
+  if (!settingDetails || !settingValues) {
+    return (
+      <LoadingAndErrorWrapper error={t`Error loading LDAP configuration`} />
+    );
+  }
+
+  const hasCustomAttributes = LDAP_ATTRIBUTE_KEYS.some((key) => {
+    const setting = settingDetails[key];
+    return setting?.value != null || (setting?.is_env_setting ?? false);
+  });
+
   return (
     <SettingsPageWrapper title={t`LDAP`}>
-      <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
       <FormProvider
-        initialValues={getFormValues(settingValues)}
+        initialValues={getFormValues(settingDetails, settingValues)}
         onSubmit={handleSubmit}
-        validationSchema={LDAP_SCHEMA}
+        validationSchema={schema}
         enableReinitialize
       >
         {({ dirty }) => (
@@ -106,49 +170,45 @@ export const SettingsLdapForm = () => {
                     placeholder="ldap.yourdomain.org"
                     required
                     autoFocus
-                    {...getExtraFormFieldProps(settingDetails?.["ldap-host"])}
+                    {...getExtraFormFieldProps(settingDetails["ldap-host"])}
                   />
                   <FormTextInput
                     name="ldap-port"
                     label={t`LDAP port`}
-                    placeholder="389"
-                    required
+                    placeholder={String(defaultPort)}
                     type="number"
-                    {...getExtraFormFieldProps(settingDetails?.["ldap-port"])}
+                    nullable
+                    {...getExtraFormFieldProps(settingDetails["ldap-port"])}
                   />
                   <FormRadioGroup
                     name="ldap-security"
                     label={t`LDAP security`}
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-security"],
-                    )}
+                    {...getExtraFormFieldProps(settingDetails["ldap-security"])}
                     description={null}
                   >
-                    <Group mt={"xxs"}>
+                    <Stack mt="xxs" gap="sm">
                       <Radio value="none" label={t`None`} />
                       <Radio
                         value="ssl"
                         label={c("short for 'Secure Sockets Layer'").t`SSL`}
                       />
                       <Radio value="starttls" label={t`StartTLS`} />
-                    </Group>
+                    </Stack>
                   </FormRadioGroup>
                   <FormTextInput
                     name="ldap-bind-dn"
                     label={t`Username or DN`}
+                    placeholder="cn=admin,dc=company,dc=com"
                     nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-bind-dn"],
-                    )}
+                    {...getExtraFormFieldProps(settingDetails["ldap-bind-dn"])}
                   />
                   <FormTextInput
                     name="ldap-password"
                     label={t`Password`}
                     type="password"
+                    placeholder={t`Shh...`}
                     nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-password"],
-                    )}
+                    {...getExtraFormFieldProps(settingDetails["ldap-password"])}
                   />
                 </Stack>
               </SettingsSection>
@@ -160,83 +220,81 @@ export const SettingsLdapForm = () => {
                 <Stack gap="lg">
                   <FormTextInput
                     name="ldap-user-base"
-                    placeholder="ou=users,dc=example,dc=org"
                     label={t`User search base`}
+                    placeholder="ou=users,dc=example,dc=org"
                     required
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-user-base"],
+                    {...withDescription(
+                      settingDetails["ldap-user-base"],
+                      t`The distinguished name (DN) of the entry in your LDAP server that ${applicationName} should use as the starting point when searching for users`,
                     )}
                   />
                   <FormTextInput
                     name="ldap-user-filter"
                     label={t`User filter`}
+                    placeholder={getDefaultPlaceholder(
+                      settingDetails["ldap-user-filter"],
+                    )}
                     nullable
                     {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-user-filter"],
+                      settingDetails["ldap-user-filter"],
                     )}
                   />
                 </Stack>
               </SettingsSection>
-              <SettingsSection
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning
+                disabled={!isConfigured}
+              />
+              <CollapsibleSettingsSection
                 title={t`Attributes`}
-                titleProps={SETTINGS_CARD_TITLE_PROPS}
-                stackProps={SETTINGS_CARD_STACK_PROPS}
+                description={t`Map LDAP attributes to the email, first name, and last name fields in ${applicationName}`}
+                defaultOpened={hasCustomAttributes}
+                disabled={!isConfigured}
               >
                 <Stack gap="lg">
                   <FormTextInput
                     name="ldap-attribute-email"
-                    label={t`Email attribute`}
+                    label={t`Email attribute key`}
                     nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-attribute-email"],
+                    {...getAttributeFieldProps(
+                      settingDetails["ldap-attribute-email"],
                     )}
                   />
                   <FormTextInput
                     name="ldap-attribute-firstname"
-                    label={t`First name attribute`}
+                    label={t`First name attribute key`}
                     nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-attribute-firstname"],
+                    {...getAttributeFieldProps(
+                      settingDetails["ldap-attribute-firstname"],
                     )}
                   />
                   <FormTextInput
                     name="ldap-attribute-lastname"
-                    label={t`Last name attribute`}
+                    label={t`Last name attribute key`}
                     nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-attribute-lastname"],
+                    {...getAttributeFieldProps(
+                      settingDetails["ldap-attribute-lastname"],
                     )}
                   />
                 </Stack>
-              </SettingsSection>
-              <SettingsSection
-                title={t`Group mapping`}
-                titleProps={SETTINGS_CARD_TITLE_PROPS}
-                stackProps={SETTINGS_CARD_STACK_PROPS}
+              </CollapsibleSettingsSection>
+              <LdapGroupMappingSection
+                data-testid="ldap-group-mapping-section"
+                disabled={!isConfigured}
               >
-                <Stack gap="lg">
-                  <GroupMappingsWidget
-                    isFormik
-                    setting={{ key: "ldap-group-sync" }}
-                    onChange={handleSubmit}
-                    settingValues={settingValues}
-                    mappingSetting="ldap-group-mappings"
-                    groupHeading={t`Group name`}
-                    groupPlaceholder={t`Group name`}
-                  />
-                  <FormTextInput
-                    name="ldap-group-base"
-                    label={t`Group search base`}
-                    placeholder="ou=groups,dc=example,dc=org"
-                    nullable
-                    {...getExtraFormFieldProps(
-                      settingDetails?.["ldap-group-base"],
-                    )}
-                  />
-                  <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
-                </Stack>
-              </SettingsSection>
-              <Flex justify="end" gap="1rem">
+                <FormTextInput
+                  name="ldap-group-base"
+                  label={t`Group search base`}
+                  placeholder="ou=groups,dc=example,dc=org"
+                  nullable
+                  {...withDescription(
+                    settingDetails["ldap-group-base"],
+                    t`Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively.`,
+                  )}
+                />
+                <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
+              </LdapGroupMappingSection>
+              <Flex justify="end" gap="md">
                 <Box>
                   <FormErrorMessage />
                 </Box>
@@ -254,22 +312,40 @@ export const SettingsLdapForm = () => {
   );
 };
 
-export const getFormValues = (allSettings: Partial<Settings>) => {
-  const ldapSettings = _.pick(allSettings, [
-    "ldap-host",
-    "ldap-port",
-    "ldap-security",
-    "ldap-bind-dn",
-    "ldap-password",
-    "ldap-user-base",
-    "ldap-user-filter",
-    "ldap-attribute-email",
-    "ldap-attribute-firstname",
-    "ldap-attribute-lastname",
-    "ldap-group-sync",
-    "ldap-group-base",
-    "ldap-group-membership-filter",
-  ]);
+export const getFormValues = (
+  settingDetails: SettingDefinitionMap,
+  settingValues: EnterpriseSettings,
+): LdapFormValues => {
+  // unset fields stay empty so the default shows as the placeholder; env-locked ones show the env value
+  const storedValue = (key: LdapTextKey): string | null => {
+    const setting = settingDetails[key];
+    if (setting?.is_env_setting) {
+      return settingValues[key] ?? null;
+    }
+    return setting?.value ?? null;
+  };
 
-  return ldapSettings;
+  const portSetting = settingDetails["ldap-port"];
+  const values: LdapFormValues = {
+    "ldap-host": storedValue("ldap-host"),
+    "ldap-port": portSetting?.is_env_setting
+      ? settingValues["ldap-port"]
+      : (portSetting?.value ?? null),
+    "ldap-security": settingValues["ldap-security"] ?? "none",
+    "ldap-bind-dn": storedValue("ldap-bind-dn"),
+    "ldap-password": storedValue("ldap-password"),
+    "ldap-user-base": storedValue("ldap-user-base"),
+    "ldap-user-filter": storedValue("ldap-user-filter"),
+    "ldap-attribute-email": storedValue("ldap-attribute-email"),
+    "ldap-attribute-firstname": storedValue("ldap-attribute-firstname"),
+    "ldap-attribute-lastname": storedValue("ldap-attribute-lastname"),
+    "ldap-group-base": storedValue("ldap-group-base"),
+  };
+  // OSS builds have no membership filter setting, so the key stays out of the write
+  if (settingDetails["ldap-group-membership-filter"] != null) {
+    values["ldap-group-membership-filter"] = storedValue(
+      "ldap-group-membership-filter",
+    );
+  }
+  return values;
 };

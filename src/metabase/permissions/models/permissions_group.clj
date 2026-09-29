@@ -92,6 +92,7 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *allow-modifying-magic-groups*
   "Dynamic var that, when bound to true, allows modifying magic groups. Used by [[sync-data-analyst-group-for-oss!]]."
   false)
@@ -156,8 +157,7 @@
    groups k
    ;; `user_id` in the result is for legacy reasons, we should remove it
    #(group-by :group_id (permissions.db/group-members (map :id groups)
-                                                      (when (premium-features/enable-advanced-permissions?)
-                                                        [:pgm.is_group_manager :is_group_manager])))
+                                                      (boolean (premium-features/enable-advanced-permissions?))))
    :id
    {:default []}))
 

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver]
-   [metabase.indexes.reconcile :as reconcile]))
+   [metabase.indexes.reconcile :as reconcile]
+   [metabase.test :as mt]))
 
 (def ^:private managed-btree
   {:id 1 :transform_id 7 :index_name "by_cat"
@@ -130,10 +131,19 @@
   (testing "delegates to the driver method"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [_driver _db _schema _table] [wh-btree])]
       (is (= [wh-btree]
-             (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t")))))
+             (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
   (testing "preserves a successful empty warehouse response"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] [])]
-      (is (= [] (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t")))))
-  (testing "swallows driver/connection errors and returns nil"
+      (is (= [] (reconcile/fetch-warehouse-indexes (mt/db) "public" "t")))))
+  (testing "lets driver/connection errors through, so callers can report the reason"
     (with-redefs [metabase.driver/fetch-table-indexes (fn [& _] (throw (ex-info "boom" {})))]
-      (is (nil? (reconcile/fetch-warehouse-indexes {:engine :postgres} "public" "t"))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (reconcile/fetch-warehouse-indexes (mt/db) "public" "t"))))))
+
+(deftest ^:parallel driver-error-message-test
+  (testing "a driver with no trimming of its own passes the message through"
+    (is (= "Connection refused" (reconcile/driver-error-message :h2 (ex-info "Connection refused" {})))))
+  (testing "a long message is capped for readability"
+    (is (= 500 (count (reconcile/driver-error-message :h2 (ex-info (apply str (repeat 900 "x")) {}))))))
+  (testing "an exception with no message still yields text"
+    (is (seq (reconcile/driver-error-message :h2 (java.sql.SQLException.))))))

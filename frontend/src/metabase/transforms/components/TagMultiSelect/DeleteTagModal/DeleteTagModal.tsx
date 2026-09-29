@@ -61,7 +61,7 @@ function DeleteTagForm({ tag, onDelete, onClose }: DeleteTagFormProps) {
             <FormSubmitButton
               label={t`Delete tag`}
               variant="filled"
-              color="feedback-negative"
+              color="negative"
             />
           </Group>
         </Stack>

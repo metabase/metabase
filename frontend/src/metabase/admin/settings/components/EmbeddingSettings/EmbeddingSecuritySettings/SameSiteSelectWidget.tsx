@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/settings";
-import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
+import {
+  SetByEnvVarWrapper,
+  SettingHeader,
+} from "metabase/settings-components";
+import { Box, Button, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
 import { EmbeddingAppSameSiteCookieDescription } from "./EmbeddingAppSameSiteCookieDescription";
@@ -73,11 +75,12 @@ export function SameSiteSelectWidget() {
             shadow="sm"
           >
             <Menu.Target>
-              <Button variant={opened ? "outline" : "default"}>
-                <Group justify="space-between" miw="10rem">
-                  <span>{selectedOption?.name}</span>
-                  <Icon name="chevrondown" size="12" />
-                </Group>
+              <Button
+                justify="space-between"
+                miw="10rem"
+                rightSection={<Icon name="chevrondown" size="12" />}
+              >
+                {selectedOption?.name}
               </Button>
             </Menu.Target>
 

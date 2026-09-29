@@ -8,9 +8,9 @@ import type {
   SdkQuestionState,
 } from "embedding-sdk-bundle/types/question";
 import {
-  getMetadata,
   paramFieldsFetched,
   selectQuestionFromCard,
+  selectQuestionFromCardBuilder,
 } from "metabase/metadata-store";
 import {
   getParameterValuesForQuestion,
@@ -83,9 +83,7 @@ export const loadQuestionSdk =
 
     const parameterValues = getParameterValuesForQuestion({
       card,
-      // getParameterValuesForQuestion reaches getCardUiParameters, which still
-      // takes the Metadata object. It migrates when that utility does.
-      metadata: getMetadata(getState()),
+      buildQuestion: selectQuestionFromCardBuilder(getState()),
       queryParams: initialSqlParameters,
     });
 

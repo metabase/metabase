@@ -7,7 +7,7 @@ summary: Trigger Metabase actions from your embedded application with the `useAc
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
-With the `useAction` hook, you can trigger an [action](../../actions/introduction.md) when someone clicks a button or submits a form in your app.
+With the `useAction` hook, you can trigger an [action](../../data-modeling/models/actions/introduction.md) when someone clicks a button or submits a form in your app.
 
 The hook handles the HTTP request, exposes loading and error state as React state, and types the parameters the action expects. Basic CRUD and custom SQL actions are supported; HTTP-type actions are not. Always trigger actions through `useAction` — calling `POST /api/action/:id/execute` directly with `fetch` may be blocked in sandboxed embedding contexts.
 
@@ -161,4 +161,4 @@ Display the error message verbatim. Don't replace the message with a generic "So
 
 ## Related
 
-- [Actions documentation](../../actions/introduction.md)
+- [Actions documentation](../../data-modeling/models/actions/introduction.md)

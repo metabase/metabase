@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockField,
@@ -51,8 +52,7 @@ describe("parameters/utils/cards", () => {
         });
 
         const [dateUiParameter, variableUiParameter] = getCardUiParameters(
-          card,
-          createMockMetadata({}),
+          new Question(card, createMockMetadata({})),
         );
 
         expect(dateUiParameter).toMatchObject({
@@ -78,8 +78,7 @@ describe("parameters/utils/cards", () => {
         });
 
         const [dateUiParameter] = getCardUiParameters(
-          card,
-          createMockMetadata({ fields: [] }),
+          new Question(card, createMockMetadata({ fields: [] })),
         );
 
         expect(dateUiParameter).toMatchObject({
@@ -98,8 +97,7 @@ describe("parameters/utils/cards", () => {
         });
 
         const [quantityUiParameter] = getCardUiParameters(
-          card,
-          SAMPLE_METADATA,
+          new Question(card, SAMPLE_METADATA),
         );
 
         expect(quantityUiParameter).toMatchObject({
@@ -117,9 +115,10 @@ describe("parameters/utils/cards", () => {
           param_fields: {},
         });
 
-        const [dateUiParameter] = getCardUiParameters(card, metadata, {
-          [dateParameter.id]: "2026-01-01",
-        });
+        const [dateUiParameter] = getCardUiParameters(
+          new Question(card, metadata),
+          { [dateParameter.id]: "2026-01-01" },
+        );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
@@ -139,8 +138,7 @@ describe("parameters/utils/cards", () => {
         });
 
         const [quantityUiParameter] = getCardUiParameters(
-          card,
-          SAMPLE_METADATA,
+          new Question(card, SAMPLE_METADATA),
         );
 
         expect(quantityUiParameter).toMatchObject({
@@ -160,8 +158,7 @@ describe("parameters/utils/cards", () => {
         });
 
         const [quantityUiParameter] = getCardUiParameters(
-          card,
-          SAMPLE_METADATA,
+          new Question(card, SAMPLE_METADATA),
         );
 
         expect(quantityUiParameter).toMatchObject({
@@ -183,7 +180,9 @@ describe("parameters/utils/cards", () => {
           },
         });
 
-        const [dateUiParameter] = getCardUiParameters(card, metadata);
+        const [dateUiParameter] = getCardUiParameters(
+          new Question(card, metadata),
+        );
 
         expect(dateUiParameter).toMatchObject({
           id: dateParameter.id,
@@ -197,7 +196,40 @@ describe("parameters/utils/cards", () => {
       const metadata = createMockMetadata({});
       const card = createMockCard({ parameters: undefined });
 
-      expect(getCardUiParameters(card, metadata)).toEqual([]);
+      expect(getCardUiParameters(new Question(card, metadata))).toEqual([]);
+    });
+
+    // Callers that hold a Question read its `parameters()` rather than calling
+    // this directly. The two agree, including when a caller passes the result
+    // of a first pass back in as the `parameters` argument.
+    describe("agreement with Question.parameters()", () => {
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "Quantity",
+        slug: "quantity",
+        type: "number/=",
+        target: ["dimension", ["template-tag", "quantity"]],
+      });
+
+      it.each([
+        ["a saved card", 5],
+        ["an unsaved card", undefined],
+      ])("matches on %s", (_name, id) => {
+        const card = createMockCard({
+          id,
+          dataset_query: quantityTagQuery,
+          parameters: [parameter],
+        });
+        const question = new Question(card, SAMPLE_METADATA);
+        const values = { [parameter.id]: 7 };
+
+        const viaQuestion = question.setParameterValues(values).parameters();
+        // Guards the comparison below: two empty arrays would also match.
+        expect(viaQuestion).toHaveLength(1);
+        expect(
+          getCardUiParameters(question, values, question.parameters()),
+        ).toEqual(viaQuestion);
+      });
     });
   });
 });

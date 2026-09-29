@@ -5,6 +5,7 @@
    [metabase.events.core :as events]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -19,11 +20,13 @@
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-changing-all-users-group-members*
   "Should we allow people to be added to or removed from the All Users permissions group? By default, this is `false`,
   but enable it when adding or deleting users."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-changing-all-external-users-group-members*
   "Should we allow people to be added to or removed from the All tenant users permissions group? By default, this is
   `false`, but enable it when adding or deleting users."
@@ -68,8 +71,10 @@
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *update-user-when-added-to-admin-group?* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-direct-deletion*
   "Should we allow direct `t2/delete!` calls on PermissionsGroupMembership? By default this is `false`; only the
   blessed helper functions like `remove-user-from-group!` bind this to `true`."
@@ -119,13 +124,11 @@
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
-            [:map
+            [:map {:closed true}
              [:group [:or
                       pos-int?
-                      [:map [:id pos-int?]]]]
-             [:user [:or
-                     pos-int?
-                     [:map [:id pos-int?]]]]
+                      ::permissions.schema/permissions-group]]
+             [:user [:or pos-int? :metabase.users.schema/user]]
              [:is-group-manager? {:optional true}
               :boolean]]]]
   (when (seq pgms)

@@ -68,7 +68,7 @@
    [:edges [:sequential ::erd-edge]]])
 
 (mr/def ::erd-request
-  [:map
+  [:map {:closed true}
    [:database-id ms/PositiveInt]
    [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
    [:schema {:optional true} [:maybe :string]]])

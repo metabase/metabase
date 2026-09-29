@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -17,12 +18,13 @@
    [toucan2.model :as t2.model]))
 
 (def ^:private entity->model
-  {"card"      :model/Card
-   "dashboard" :model/Dashboard
-   "document"  :model/Document
-   "measure"   :model/Measure
-   "segment"   :model/Segment
-   "transform" :model/Transform})
+  (cond-> {"card"      :model/Card
+           "dashboard" :model/Dashboard
+           "document"  :model/Document
+           "measure"   :model/Measure
+           "segment"   :model/Segment
+           "transform" :model/Transform}
+    config/ee-available? (assoc "transform-test" :model/TransformTest)))
 
 (def ^:private Entity
   "Schema for a valid revisionable entity name."
@@ -44,7 +46,7 @@
 (api.macros/defendpoint :get "/"
   "Get revisions of an object."
   [_route-params
-   {:keys [entity id]} :- [:map
+   {:keys [entity id]} :- [:map {:closed true}
                            [:id     ms/PositiveInt]
                            [:entity Entity]]]
   (let [[model instance] (model-and-instance entity id)]
@@ -112,7 +114,7 @@
   "Revert an object to a prior revision."
   [_route-params
    _query-params
-   {:keys [entity id], revision-id :revision_id} :- [:map
+   {:keys [entity id], revision-id :revision_id} :- [:map {:closed true}
                                                      [:id          ms/PositiveInt]
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
@@ -124,7 +126,7 @@
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
       (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
-    (when (= model :model/Transform)
+    (when (contains? #{:model/Transform :model/TransformTest} model)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition
     ;; specifies a source table, check write perms against that table rather than the revision's stored `table_id`
@@ -137,7 +139,7 @@
                                         table-id (assoc :table_id table-id))))))
     (when (contains? #{:model/Dashboard :model/Card} model)
       (collection/check-allowed-to-change-collection instance (:object revision))
-      (when (api/column-will-change? :dashboard_id instance (:object revision))
+      (when (api/column-will-change? (:dashboard_id instance) (get (:object revision) :dashboard_id ::api/not-provided))
         (doseq [dashboard-id (keep identity [(:dashboard_id instance)
                                              (:dashboard_id (:object revision))])]
           (api/write-check :model/Dashboard dashboard-id)))
@@ -155,7 +157,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:entity/:id"
   "Fetch `Revisions` for an object with ID."
-  [{:keys [id entity]} :- [:map
+  [{:keys [id entity]} :- [:map {:closed true}
                            [:entity Entity]
                            [:id     ms/PositiveInt]]]
   (let [model (entity->model entity)]

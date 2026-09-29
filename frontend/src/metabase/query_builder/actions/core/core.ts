@@ -12,7 +12,10 @@ import {
   cardIsEquivalent,
   cardQueryIsEquivalent,
 } from "metabase/common/utils/card";
-import { getMetadata } from "metabase/metadata-store";
+import {
+  getShallowDatabases,
+  selectQuestionFromCard,
+} from "metabase/metadata-store";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
@@ -241,8 +244,8 @@ export const apiCreateQuestion = (
       options,
     );
 
-    const databases = getMetadata(getState()).databasesList();
-    if (databases && !databases.some((d) => d.is_saved_questions)) {
+    const databases = Object.values(getShallowDatabases(getState()));
+    if (!databases.some((database) => database.is_saved_questions)) {
       dispatch(databaseApi.util.invalidateTags([listTag("database")]));
     }
 
@@ -258,9 +261,9 @@ export const apiCreateQuestion = (
     dispatch({ type: API_CREATE_QUESTION, payload: createdCard });
 
     await dispatch(loadMetadataForCard(createdCard));
-    const createdQuestionWithMetadata = new Question(
+    const createdQuestionWithMetadata = selectQuestionFromCard(
+      getState(),
       createdCard,
-      getMetadata(getState()),
     );
 
     const isModel = question.type() === "model";

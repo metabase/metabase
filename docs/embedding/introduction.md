@@ -57,9 +57,9 @@ All SSO options require a Pro or Enterprise plan.
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
 | [Locked filters](./guest-embedding.md#locked-parameters)\*\*\*                            | ❌  | ✅    |
 
-\* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
+\* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
 
-\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan with either authentication method.
+\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing) plan with either authentication method.
 
 \*\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
 
@@ -121,8 +121,6 @@ For information about the anonymous usage data Metabase collects from embedded c
 
 ## Further reading
 
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
-- [Multi-tenant self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+- [Tenants](./tenants.md).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Securing embedded Metabase](./securing-embeds.md).

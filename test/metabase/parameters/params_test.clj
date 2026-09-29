@@ -22,9 +22,11 @@
                             :name               "NAME"
                             :display_name       "Name"
                             :base_type          :type/Text
+                            :effective_type     :type/Text
                             :semantic_type      :type/Name
                             :has_field_values   :list
-                            :fk_target_field_id nil}}
+                            :fk_target_field_id nil
+                            :settings           nil}}
            (-> (t2/select-one [:model/Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (t2/hydrate :name_field)
                mt/derecordize))))
@@ -98,18 +100,22 @@
                            :display_name       "ID"
                            :name               "ID"
                            :base_type          :type/BigInteger
+                           :effective_type     :type/BigInteger
                            :semantic_type      :type/PK
                            :has_field_values   :none
                            :fk_target_field_id nil
+                           :settings           nil
                            :target nil
                            :name_field         {:id                (mt/id :venues :name)
                                                 :table_id          (mt/id :venues)
                                                 :display_name      "Name"
                                                 :name              "NAME"
                                                 :base_type         :type/Text
+                                                :effective_type    :type/Text
                                                 :semantic_type     :type/Name
                                                 :has_field_values  :list
-                                                :fk_target_field_id nil}
+                                                :fk_target_field_id nil
+                                                :settings          nil}
                            :dimensions         []}]}
              (-> (t2/hydrate card :param_fields)
                  :param_fields
@@ -132,9 +138,11 @@
                                                                :display_name      "Name"
                                                                :name              "NAME"
                                                                :base_type         :type/Text
+                                                               :effective_type    :type/Text
                                                                :semantic_type     :type/Name
                                                                :has_field_values  :list
-                                                               :fk_target_field_id nil}
+                                                               :fk_target_field_id nil
+                                                               :settings          nil}
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
@@ -202,19 +210,20 @@
           (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
-  (let [card {:dataset_query (mt/native-query {:query         "SELECT *"
-                                               :template-tags {"id"   {:name         "id"
-                                                                       :display-name "ID"
-                                                                       :id           "11111111"
-                                                                       :type         :dimension
-                                                                       :widget-type  :number
-                                                                       :dimension    [:field (mt/id :venues :id) nil]}
-                                                               "name" {:name         "name"
-                                                                       :display-name "Name"
-                                                                       :id           "aaaaaaaa"
-                                                                       :type         :dimension
-                                                                       :widget-type  :number
-                                                                       :dimension    [:field "name" {:base-type :type/Text}]}}})}]
+  (let [card {:dataset_query (lib-be/normalize-query
+                              (mt/native-query {:query         "SELECT *"
+                                                :template-tags {"id"   {:name         "id"
+                                                                        :display-name "ID"
+                                                                        :id           "11111111"
+                                                                        :type         :dimension
+                                                                        :widget-type  :number
+                                                                        :dimension    [:field (mt/id :venues :id) nil]}
+                                                                "name" {:name         "name"
+                                                                        :display-name "Name"
+                                                                        :id           "aaaaaaaa"
+                                                                        :type         :dimension
+                                                                        :widget-type  :number
+                                                                        :dimension    [:field "name" {:base-type :type/Text}]}}}))}]
     (testing "card->template-tag-param-id->field-ids"
       (is (= {"11111111" #{(mt/id :venues :id)}
               "aaaaaaaa" #{}}
@@ -226,20 +235,21 @@
 (deftest ^:parallel duplicate-column-names-test
   (testing "columns with duplicated names get mapped correctly to parameters"
     (testing "native queries"
-      (let [card {:dataset_query (mt/native-query {:query "SELECT *"
-                                                   :template-tags
-                                                   {"tag1" {:name         "tag1"
-                                                            :display-name "Tag 1"
-                                                            :id           "11111111"
-                                                            :type         :dimension
-                                                            :widget-type  :number
-                                                            :dimension    [:field (mt/id :orders :id) nil]}
-                                                    "tag2" {:name         "tag2"
-                                                            :display-name "Tag 2"
-                                                            :id           "aaaaaaaa"
-                                                            :type         :dimension
-                                                            :widget-type  :number
-                                                            :dimension    [:field (mt/id :products :id) nil]}}})}]
+      (let [card {:dataset_query (lib-be/normalize-query
+                                  (mt/native-query {:query "SELECT *"
+                                                    :template-tags
+                                                    {"tag1" {:name         "tag1"
+                                                             :display-name "Tag 1"
+                                                             :id           "11111111"
+                                                             :type         :dimension
+                                                             :widget-type  :number
+                                                             :dimension    [:field (mt/id :orders :id) nil]}
+                                                     "tag2" {:name         "tag2"
+                                                             :display-name "Tag 2"
+                                                             :id           "aaaaaaaa"
+                                                             :type         :dimension
+                                                             :widget-type  :number
+                                                             :dimension    [:field (mt/id :products :id) nil]}}}))}]
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}
                   "aaaaaaaa" #{(mt/id :products :id)}}

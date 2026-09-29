@@ -115,16 +115,10 @@
 
 (mr/def ::source-dimension-daily
   "A SourceDimensionDaily as selected from the app DB: every column of `:source_dimension_daily`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:source_type    [:or :keyword :string]]
-   [:source_id      ms/PositiveInt]
-   [:ownership_mode [:or :keyword :string]]
-   [:field_id       ::lib.schema.id/field]
-   [:temporal_unit  [:maybe [:or :keyword :string]]]
-   [:binning        [:maybe :string]]
-   [:bucket_date    ms/TemporalInstant]
-   [:count          :int]])
+  [:merge
+   ::source-dimension-daily.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::source-dimension-daily.update
   "What an update (or insert) of a SourceDimensionDaily accepts: every column of `:source_dimension_daily` except `id`, all optional."
@@ -140,16 +134,10 @@
 
 (mr/def ::source-dimension-profile-daily
   "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:source_type       [:or :keyword :string]]
-   [:source_id         ms/PositiveInt]
-   [:field_id          ::lib.schema.id/field]
-   [:source_basis      [:or :keyword :string]]
-   [:observation_type  [:or :keyword :string]]
-   [:observation_value [:maybe :string]]
-   [:bucket_date       ms/TemporalInstant]
-   [:count             :int]])
+  [:merge
+   ::source-dimension-profile-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::source-dimension-profile-daily.update
   "What an update (or insert) of a SourceDimensionProfileDaily accepts: every column of `:source_dimension_profile_daily` except `id`, all optional."
@@ -165,17 +153,10 @@
 
 (mr/def ::source-metric-daily
   "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:source_type       [:maybe [:or :keyword :string]]]
-   [:source_id         [:maybe ms/PositiveInt]]
-   [:ownership_mode    [:or :keyword :string]]
-   [:agg_type          [:or :keyword :string]]
-   [:agg_field_id      [:maybe ::lib.schema.id/field]]
-   [:temporal_field_id [:maybe ::lib.schema.id/field]]
-   [:temporal_unit     [:maybe [:or :keyword :string]]]
-   [:bucket_date       ms/TemporalInstant]
-   [:count             :int]])
+  [:merge
+   ::source-metric-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::source-metric-daily.update
   "What an update (or insert) of a SourceMetricDaily accepts: every column of `:source_metric_daily` except `id`, all optional."
@@ -192,16 +173,10 @@
 
 (mr/def ::source-segment-composite-daily
   "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
-  [:map {:closed true}
-   [:id                ms/PositiveInt]
-   [:source_type       [:maybe [:or :keyword :string]]]
-   [:source_id         [:maybe ms/PositiveInt]]
-   [:ownership_mode    [:or :keyword :string]]
-   [:clause            :string]
-   [:atom_fingerprints :string]
-   [:atom_count        :int]
-   [:bucket_date       ms/TemporalInstant]
-   [:count             :int]])
+  [:merge
+   ::source-segment-composite-daily.update
+   [:map {:closed true}
+    [:id                ms/PositiveInt]]])
 
 (mr/def ::source-segment-composite-daily.update
   "What an update (or insert) of a SourceSegmentCompositeDaily accepts: every column of `:source_segment_composite_daily` except `id`, all optional."
@@ -217,15 +192,10 @@
 
 (mr/def ::source-segment-daily
   "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
-  [:map {:closed true}
-   [:id             ms/PositiveInt]
-   [:source_type    [:maybe [:or :keyword :string]]]
-   [:source_id      [:maybe ms/PositiveInt]]
-   [:ownership_mode [:or :keyword :string]]
-   [:field_id       [:maybe ::lib.schema.id/field]]
-   [:predicate      :string]
-   [:bucket_date    ms/TemporalInstant]
-   [:count          :int]])
+  [:merge
+   ::source-segment-daily.update
+   [:map {:closed true}
+    [:id             ms/PositiveInt]]])
 
 (mr/def ::source-segment-daily.update
   "What an update (or insert) of a SourceSegmentDaily accepts: every column of `:source_segment_daily` except `id`, all optional."

@@ -24,7 +24,7 @@
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map
+   :- [:map {:closed true}
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -43,7 +43,7 @@
   [_route-params
    _query-params
    {:keys [source_entity_id source_entity_type target_entity_id target_entity_type]}
-   :- [:map
+   :- [:map {:closed true}
        [:source_entity_id   ::replacement.schema/source-entity-id]
        [:source_entity_type ::replacement.schema/source-entity-type]
        [:target_entity_id   ::replacement.schema/source-entity-id]
@@ -95,7 +95,7 @@
   [_route-params
    _query-params
    {:keys [card_id transform_name transform_target target_collection_id transform_tag_ids]}
-   :- [:map
+   :- [:map {:closed true}
        [:card_id              ::replacement.schema/source-entity-id]
        [:transform_name       :string]
        [:transform_target     ::transforms.schema/transform-target]
@@ -138,20 +138,20 @@
 (api.macros/defendpoint :get "/runs" :- [:sequential ::replacement.schema/run]
   "List replacement runs, optionally filtered by is-active."
   [_route-params
-   {:keys [is-active]} :- [:map [:is-active {:optional true} [:maybe :boolean]]]]
+   {:keys [is-active]} :- [:map {:closed true} [:is-active {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (replacement.db/runs is-active))
 
 (api.macros/defendpoint :get "/runs/:id" :- ::replacement.schema/run
   "Get the status of a source replacement run."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (or (replacement.db/run id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
-  [{:keys [id]} :- [:map [:id ::replacement.schema/run-id]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
   (let [run (replacement.db/run id)]
     (when-not run

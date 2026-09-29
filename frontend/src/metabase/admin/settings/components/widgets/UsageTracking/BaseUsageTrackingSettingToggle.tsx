@@ -1,11 +1,12 @@
-import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useAdminSetting } from "metabase/settings";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+  isSettingSetFromEnvVar,
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
-
-import { SettingHeader } from "../../SettingHeader";
-import { BasicAdminSettingInput } from "../AdminSettingInput";
 
 interface BaseUsageTrackingSettingToggleProps {
   settingName: keyof Settings;

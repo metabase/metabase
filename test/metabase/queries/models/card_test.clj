@@ -13,9 +13,12 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.ingestion :as search.ingestion]
@@ -351,7 +354,7 @@
                :slug "date"
                :default nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-2
   (testing "Card with a non-Field-filter parameter"
@@ -363,7 +366,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-test-3
   (testing "Should ignore native query snippets and source card IDs"
@@ -375,7 +378,7 @@
                :slug "id"
                :default "1"
                :required true}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
@@ -402,7 +405,7 @@
                :slug     "name"
                :default  "Alice"
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-boolean-tag-test
   (testing ":boolean template tag without widget-type produces :boolean/= parameter type (QUE2-326)"
@@ -420,7 +423,7 @@
                :slug     "active"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest ^:parallel template-tag-parameters-dimension-category-widget-test
   (testing ":dimension template tag with :category widget-type passes through widget-type (QUE2-326)"
@@ -440,7 +443,7 @@
                :slug     "cat"
                :default  nil
                :required false}]
-             (card/template-tag-parameters card))))))
+             (qp.card/template-tag-parameters card))))))
 
 (deftest validate-template-tag-field-ids-test
   (testing "Disallow saving a Card with native query Field filter template tags referencing a different Database (#14145)"
@@ -818,6 +821,31 @@
             "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
+
+(deftest serdes-load-legacy-query-integer-literals-test
+  (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
+    (let [db-name  (t2/select-one-fn :name :model/Database (mt/id))
+          price-id (mt/id :venues :price)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              ;; `price-id` is the Field ID of VENUES.PRICE, so coercing it would silently filter on that column
+              legacy    {:database db-name
+                         :type     "query"
+                         :query    {:source-table [db-name "PUBLIC" "VENUES"]
+                                    :aggregation  [["count"]]
+                                    :filter       ["=" price-id price-id]
+                                    :joins        [{:source-table [db-name "PUBLIC" "CATEGORIES"]
+                                                    :alias        "C"
+                                                    :strategy     "left-join"
+                                                    :condition    ["=" 1 1]}]}}]
+          (serdes/load-one! (assoc extracted :dataset_query legacy)
+                            (t2/select-one :model/Card :id card-id))
+          (let [query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (=? {:stages [{:filters [[:= {} price-id price-id]]
+                               :joins   [{:conditions [[:= {} 1 1]]}]}]}
+                    query))
+            (is (= [[(* 100 75)]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -1294,7 +1322,7 @@
 
 (deftest assert-no-source-card-id-for-native-query-test
   (testing "assertion fires if native query has source_card_id set"
-    (with-redefs [card/populate-query-fields identity]
+    (mt/with-dynamic-fn-redefs [card/populate-query-fields identity]
       (is (thrown-with-msg? Exception #"Assert failed"
                             (t2/insert! :model/Card
                                         {:name "Bad Card"
@@ -1459,7 +1487,6 @@
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
                                                 :name "test-param"
-                                                :display_param "test param"
                                                 :type :category
                                                 :values_source_type "card"
                                                 :values_source_config {:card_id remote-synced-card-id}}]}]
@@ -1685,16 +1712,19 @@
                    :model/Card     question3    (dependent-card db1-id question1)
                    :model/Card     question4    (dependent-card db1-id question2)
                    :model/Card     question5    (dependent-card db1-id question4)]
-      (mt/with-test-user :crowberto
-        (card/update-card! {:card-before-update model
-                            :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                 :database db2-id
-                                                                 :stages   [{:lib/type :mbql.stage/native
-                                                                             :native   "SELECT 1"}]}}}))
+      ;; H2 returns these rows source-first. Reverse them to cover a valid result order from PostgreSQL.
+      (mt/with-dynamic-fn-redefs [queries.db/card-queries
+                                  (comp reverse (mt/original-fn #'queries.db/card-queries))]
+        (mt/with-test-user :crowberto
+          (card/update-card! {:card-before-update model
+                              :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                   :database db2-id
+                                                                   :stages   [{:lib/type :mbql.stage/native
+                                                                               :native   "SELECT 1"}]}}})))
       (doseq [question [question1 question2 question3 question4 question5]]
-        (let [updated-card (t2/select-one :model/Card :id (:id question))]
-          (is (= db2-id (get-in updated-card [:dataset_query :database])))
-          (is (= db2-id (:database_id updated-card))))))))
+        (is (=? {:database_id   db2-id
+                 :dataset_query {:database db2-id}}
+                (t2/select-one :model/Card :id (:id question))))))))
 
 (deftest find-stale-query-test
   (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
@@ -1764,7 +1794,8 @@
       (let [eid       #(t2/select-one-fn :entity_id :model/Card :id %)
             extracted (into #{}
                             (map :entity_id)
-                            (serdes/extract-all "Card" {:where [:in :id [plain-card doc-card summary-card]]}))]
+                            (serdes/extract-all "Card" {:filter-column :id
+                                                        :filter-ids    [plain-card doc-card summary-card]}))]
         (is (contains? extracted (eid plain-card))
             "an ordinary card is still exported")
         (is (contains? extracted (eid doc-card))

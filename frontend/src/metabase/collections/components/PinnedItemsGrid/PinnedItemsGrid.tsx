@@ -58,9 +58,9 @@ export function PinnedItemsGrid({
     showPinnedItems
       ? {
           id: collectionId,
-          pinned_state: "is_pinned",
-          sort_column: "name",
-          sort_direction: "asc",
+          "pinned-state": "is_pinned",
+          "sort-column": "name",
+          "sort-direction": "asc",
         }
       : skipToken,
   );

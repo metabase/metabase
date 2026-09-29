@@ -254,8 +254,8 @@
 (deftest breakout-query-test
   (testing "the appropriate lat/lon fields are selected from the results, if the query contains a :breakout clause (#20182)"
     (mt/dataset test-data
-      (with-redefs [api.tiles/create-tile (fn [_ points] points)
-                    api.tiles/tile->byte-array identity]
+      (mt/with-dynamic-fn-redefs [api.tiles/create-tile (fn [_ points] points)
+                                  api.tiles/tile->byte-array identity]
         (let [result (mt/user-http-request
                       :crowberto :get 200 "tiles/7/30/49"
                       :latField (encoded-lat-field-ref :mbql)
@@ -326,16 +326,15 @@
                      :status-code))))))
 
 (deftest ^:parallel query-schema-strips-extra-keys-test
-  (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips undeclared properties"
+  (testing "the ad-hoc tile query schema decodes a JSON query, validates it, and strips the query processor's internal keys"
     (let [decoded (api.macros/decode-and-validate-params
                    :query ::api.tiles/query
-                   (json/encode {:database (mt/id)
-                                 :type     "query"
-                                 :query    {:source-table (mt/id :people)
-                                            :a            1
-                                            :a/b          2}}))]
+                   (json/encode {:database          (mt/id)
+                                 :type              "query"
+                                 :qp/source-card-id 1
+                                 :query             {:source-table             (mt/id :people)
+                                                     :qp/stage-had-source-card 1}}))]
       (is (= :mbql/query (:lib/type decoded)))
-      (is (not (contains? decoded :a)))
-      (is (not (contains? decoded :a/b)))
-      (is (every? (fn [stage] (not (some #(contains? stage %) [:a :a/b]))) (:stages decoded))
-          "undeclared properties are stripped from every stage"))))
+      (is (not (contains? decoded :qp/source-card-id)))
+      (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages decoded))
+          "internal keys are stripped from every stage"))))

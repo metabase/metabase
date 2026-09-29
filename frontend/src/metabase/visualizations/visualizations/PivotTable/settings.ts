@@ -32,7 +32,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { getPartitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -90,7 +90,7 @@ export const settings = {
         settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
         data?.cols ?? [],
       ),
-      partitions,
+      partitions: getPartitions(),
       columns: data == null ? [] : data.cols,
       settings,
       getColumnTitle: (column: DatasetColumn) => {

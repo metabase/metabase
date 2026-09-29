@@ -3,6 +3,7 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
@@ -15,15 +16,14 @@
   [row :- (mut/select-keys ::timeline.schema/timeline.update [:name :creator_id :default :description :icon :collection_id :archived])]
   (t2/insert-returning-instance! :model/Timeline row))
 
-(mu/defn timelines-in-collections
-  "The Timelines whose archived flag is `archived` in the Collections matching the Honey SQL `collection-clause`, in
+(mu/defn timelines-in-visible-collections
+  "The Timelines whose archived flag is `archived` in the Collections visible to the current user, in
   case-insensitive name order."
-  [archived          :- :boolean
-   collection-clause :- [:maybe vector?]]
+  [archived :- :boolean]
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         collection-clause]
+                         (collection/visible-collection-filter-clause)]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline

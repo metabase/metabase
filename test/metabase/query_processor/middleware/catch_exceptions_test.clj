@@ -171,16 +171,16 @@
     (testing "Should include info from QueryExecution if added to the thrown/raised Exception"
       (binding [qp.pipeline/*run* (fn [_query _rff]
                                     (throw (ex-info "Something went wrong."
-                                                    {:query-execution {:a            100
-                                                                       :b            200
+                                                    {:query-execution {:context      :ad-hoc
+                                                                       :lens_id      "lens"
                                                                        :card_id      300
                                                                        ;; these keys should all get removed
                                                                        :result_rows  400
-                                                                       :hash         500
+                                                                       :hash         (byte-array [5])
                                                                        :executor_id  500
                                                                        :dashboard_id 700
                                                                        :pulse_id     800
-                                                                       :native       900}}
+                                                                       :native       true}}
                                                     (Exception. "Something went wrong"))))]
         (is (=? {:status     :failed
                  :class      (partial = java.lang.Exception)
@@ -190,8 +190,8 @@
                  :json_query {}
                  :row_count  0
                  :data       {:cols []}
-                 :a          100
-                 :b          200}
+                 :context    :ad-hoc
+                 :lens_id    "lens"}
                 (catch-exceptions (fn run []) {})))))))
 
 (deftest ^:parallel catch-exceptions-test-2

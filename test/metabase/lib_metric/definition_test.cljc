@@ -6,6 +6,8 @@
    [metabase.lib-metric.measures :as lib-metric.measures]
    [metabase.lib-metric.metrics :as lib-metric.metrics]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.util.malli.registry :as mr]))
 
 ;; Ensure multimethod implementations are loaded
@@ -32,6 +34,8 @@
   {:lib/type           :metadata/metric
    :id                 42
    :name               "Total Revenue"
+   :type               :metric
+   :database-id        1
    :dimensions         sample-dimensions
    :dimension-mappings sample-mappings
    :dataset-query      {:database 1 :type :query :query {:source-table 1}}})
@@ -40,13 +44,14 @@
   {:lib/type           :metadata/measure
    :id                 99
    :name               "Average Order Value"
+   :table-id           2
    :dimensions         sample-dimensions
    :dimension-mappings sample-mappings
-   :definition         {:database 1 :type :query :query {:source-table 2}}})
+   :definition         (lib/query meta/metadata-provider (meta/table-metadata :orders))})
 
 (def ^:private mock-provider
-  "A mock metadata provider for testing."
-  :mock-provider)
+  "A metadata provider for testing."
+  meta/metadata-provider)
 
 ;;; -------------------------------------------------- from-metric-metadata --------------------------------------------------
 

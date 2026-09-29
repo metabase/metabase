@@ -7,7 +7,7 @@ import type {
   ColumnSingleFormattingSetting,
 } from "metabase-types/api";
 
-import { ALL_OPERATOR_NAMES } from "./get-operators-for-columns";
+import { getAllOperatorNames } from "./get-operators-for-columns";
 
 export const getValueForDescription = (rule: ColumnSingleFormattingSetting) =>
   ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
@@ -29,7 +29,7 @@ export const RuleDescription = ({
           (singleRule) =>
             jt`When a cell in these columns ${(
               <Text component="span" key="bold" fw="bold" lh="normal">
-                {ALL_OPERATOR_NAMES[singleRule.operator]}
+                {getAllOperatorNames()[singleRule.operator]}
                 {getValueForDescription(singleRule)}
               </Text>
             )} it will be tinted this color.`,

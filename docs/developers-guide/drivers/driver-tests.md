@@ -228,11 +228,11 @@ be-tests-postgres-latest-ee:
         POSTGRES_DB: circle_test
         POSTGRES_HOST_AUTH_METHOD: trust
   steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Test Postgres driver (latest)
       uses: ./.github/actions/test-driver
       with:
         junit-name: "be-tests-postgres-latest-ee"
 ```
 
-For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions).
+For more on what it is you're doing here and how all this works, see [Workflow syntax for GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).

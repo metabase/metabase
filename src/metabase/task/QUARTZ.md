@@ -84,7 +84,7 @@ These tasks run on a recurring schedule defined by a cron expression.
 
 Notice in the example above that we set the timezone explicitly with `(cron/in-time-zone "UTC")`. By default, Quartz schedules are interpreted in the JVM's default timezone, but in Metabase we usually set the timezone to `report-timezone` .
 
-**Important Note:** If your tasks are timezone sensitive, you'll need to rebuild the triggers when `driver/report-timezone` changes. See [[metabase.notification.task.send/update-send-notification-triggers-timezone!]] as an example of how we handle rescheduling.
+**Important Note:** If your tasks are timezone sensitive, you'll need to rebuild the triggers when `driver/report-timezone` changes. See [[metabase.notification.task.send-trigger/update-send-notification-triggers-timezone!]] as an example of how we handle rescheduling.
 
 ### 3. Tasks that run once like a migration
 

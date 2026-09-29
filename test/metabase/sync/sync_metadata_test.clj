@@ -42,7 +42,7 @@
   (testing "When fetching DB metadata throws (e.g. Athena lacking glue:GetDatabases, GHY-3534),"
     (testing "the initial sync status is marked aborted instead of left stuck at \"incomplete\""
       (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]
-        (with-redefs [fetch-metadata/db-metadata (fn [_] (throw (ex-info "boom" {})))]
+        (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (fn [_] (throw (ex-info "boom" {})))]
           (is (thrown? Throwable
                        (#'sync-metadata/sync-db-metadata!* db))))
         (is (= "aborted"
@@ -54,11 +54,11 @@
       (testing "the initial sync status is marked aborted instead of falsely reporting \"complete\""
         (mt/with-temp-copy-of-db
           (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
-          (with-redefs [fetch-metadata/fields-metadata
-                        (fn [& _]
-                          (throw (doto (java.sql.SQLSyntaxErrorException.
-                                        "Unknown column 'generation_expression' in 'field list'")
-                                   (.setStackTrace (into-array StackTraceElement [])))))]
+          (mt/with-dynamic-fn-redefs [fetch-metadata/fields-metadata
+                                      (fn [& _]
+                                        (throw (doto (java.sql.SQLSyntaxErrorException.
+                                                      "Unknown column 'generation_expression' in 'field list'")
+                                                 (.setStackTrace (into-array StackTraceElement [])))))]
             (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
           (is (= "aborted"
                  (t2/select-one-fn :initial_sync_status :model/Database (mt/id)))))))))

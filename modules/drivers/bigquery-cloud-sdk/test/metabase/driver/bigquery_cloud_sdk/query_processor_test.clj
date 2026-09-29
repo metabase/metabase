@@ -158,7 +158,7 @@
                              "  `avg` ASC,"
                              "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
-                :table-name "venues"
+                :qp/table-name "venues"
                 :mbql?      true})
              (-> (mt/mbql-query venues
                    {:aggregation [[:avg $category_id]]
@@ -345,7 +345,8 @@
               (is (= [:=
                       [::bigquery.qp/extract :dayofweek expected-identifier nil]
                       [:inline 1]]
-                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:temporal-unit     :day-of-week
+                     (sql.qp/->honeysql :bigquery-cloud-sdk [:= {} [:field {:lib/uuid          (str (random-uuid))
+                                                                            :temporal-unit     :day-of-week
                                                                             ::add/source-table "ABC"} (:id field)] 1]))))))))))
 
 (deftest reconcile-unix-timestamps-test
@@ -487,7 +488,7 @@
                                                                         [:=
                                                                          {}
                                                                          t
-                                                                         [:relative-datetime {} -1 :year]])]
+                                                                         [:relative-datetime {:lib/uuid (str (random-uuid))} -1 :year]])]
               (testing (format "\nclause = %s" (pr-str clause))
                 (is (= expected-type
                        (#'bigquery.qp/temporal-type relative-datetime)))))))))))
@@ -502,7 +503,8 @@
                   :bigquery-cloud-sdk
                   (sql.qp/->honeysql
                    :bigquery-cloud-sdk
-                   [:field {:temporal-unit      :week
+                   [:field {:lib/uuid           (str (random-uuid))
+                            :temporal-unit      :week
                             :base-type          :type/Date
                             ::add/source-table  ::add/source
                             ::add/source-alias  "date"
@@ -549,7 +551,7 @@
               (is (= expected
                      (between->sql [:between
                                     {}
-                                    [:field {::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
+                                    [:field {:lib/uuid (str (random-uuid)), ::add/source-table (mt/id :checkins)} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
             (testing "Should be able to get temporal type from a `:field` with `:temporal-unit`"
@@ -557,7 +559,8 @@
                            (rest expected))
                      (between->sql [:between
                                     {}
-                                    [:field {::add/source-table (mt/id :checkins)
+                                    [:field {:lib/uuid          (str (random-uuid))
+                                             ::add/source-table (mt/id :checkins)
                                              :temporal-unit     :day} (mt/id :checkins :date)]
                                     (t/local-date "2019-11-11")
                                     (t/local-date "2019-11-12")]))))
@@ -565,9 +568,29 @@
               (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
                      (between->sql [:between
                                     {}
-                                    [:field {:base-type :type/Date} "date"]
+                                    [:field {:lib/uuid (str (random-uuid)), :base-type :type/Date} "date"]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
+
+(deftest datetime-diff-day-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/with-report-timezone-id! "America/Los_Angeles"
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                      (lib/join (lib/join-clause
+                                 (lib.metadata/table mp (mt/id :orders))
+                                 [(lib/= (lib.metadata/field mp (mt/id :products :id))
+                                         (lib.metadata/field mp (mt/id :orders :product_id)))]))
+                      (lib/expression "daydiff"
+                                      (lib/expression-clause
+                                       :datetime-diff
+                                       [(lib.metadata/field mp (mt/id :products :created_at))
+                                        (lib.metadata/field mp (mt/id :orders :created_at))
+                                        :day]
+                                       nil)))
+            query (lib/aggregate query (lib/sum (lib/expression-ref query "daydiff")))]
+        (is (= [[7555207]]
+               (mt/formatted-rows [int] (qp/process-query query))))))))
 
 (defn- do-with-datetime-timestamp-table [f]
   (driver/with-driver :bigquery-cloud-sdk
@@ -827,9 +850,10 @@
                                           :bigquery-cloud-sdk
                                           [:=
                                            {}
-                                           [:field {:temporal-unit     unit
+                                           [:field {:lib/uuid          (str (random-uuid))
+                                                    :temporal-unit     unit
                                                     ::add/source-table "ABC"} 1]
-                                           [:relative-datetime {} -1 unit]])}
+                                           [:relative-datetime {:lib/uuid (str (random-uuid))} -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
 
 (deftest filter-by-relative-date-ranges-test-2
@@ -852,9 +876,10 @@
                                                        :bigquery-cloud-sdk
                                                        [:=
                                                         {}
-                                                        [:field {:temporal-unit     unit
+                                                        [:field {:lib/uuid          (str (random-uuid))
+                                                                 :temporal-unit     unit
                                                                  ::add/source-table "ABC"} 1]
-                                                        [:relative-datetime {} -1 unit]])}
+                                                        [:relative-datetime {:lib/uuid (str (random-uuid))} -1 unit]])}
                                               {:dialect ::h2x/unquoted-dialect})]
                         (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))))]
             (are [field-type unit expected-sql] (= (for [line expected-sql]
@@ -1101,7 +1126,7 @@
                                  "LIMIT"
                                  "  1"]
                     :params     nil
-                    :table-name "checkins"
+                    :qp/table-name "checkins"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
@@ -1171,7 +1196,7 @@
                                  "LIMIT"
                                  "  2"]
                     :params     nil
-                    :table-name "__mb_source"
+                    :qp/table-name "__mb_source"
                     :mbql?      true})
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))
@@ -1185,7 +1210,7 @@
       (testing "Arguments to custom aggregation expression functions have backticks applied properly"
         (is (= {:mbql?      true
                 :params     nil
-                :table-name "orders"
+                :qp/table-name "orders"
                 :query      (for [line ["SELECT"
                                         "  APPROX_QUANTILES("
                                         "    `v4_sample_dataset.orders`.`quantity`,"
@@ -1225,7 +1250,7 @@
                              "ORDER BY"
                              "  `source` ASC"]
                 :params     nil
-                :table-name "__mb_source"
+                :qp/table-name "__mb_source"
                 :mbql?      true}
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))

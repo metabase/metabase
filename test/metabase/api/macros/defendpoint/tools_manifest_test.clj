@@ -340,7 +340,7 @@
 (api.macros/defendpoint :get "/v1/test/:id"
   "A test endpoint for tools manifest generation."
   {:tool {:name "test_get_thing"}}
-  [{:keys [id]} :- [:map [:id :int]]]
+  [{:keys [id]} :- [:map {:closed true} [:id :int]]]
   {:id id})
 
 ;; 2. POST with body params and annotation override
@@ -350,7 +350,7 @@
           :annotations {:read-only? true}}}
   [_route-params
    _query-params
-   body :- [:map [:name :string]]]
+   body :- [:map {:closed true} [:name :string]]]
   body)
 
 ;; 3. DELETE — tests DELETE annotations
@@ -359,7 +359,7 @@
   {:tool {:name "delete_test"}}
   ;; binding exists only to carry the param schema into the generated tool manifest
   [#_{:clj-kondo/ignore [:unused-binding]}
-   {:keys [id]} :- [:map [:id :int]]]
+   {:keys [id]} :- [:map {:closed true} [:id :int]]]
   nil)
 
 ;; 4. GET with query params (including tool/description) and response schema
@@ -370,7 +370,7 @@
   [_route-params
    ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
-   {:keys [q limit]} :- [:map
+   {:keys [q limit]} :- [:map {:closed true}
                          [:q :string]
                          [:limit {:optional true}
                           [:maybe [:int {:description      "Max results"
@@ -384,22 +384,22 @@
   {:tool {:name "test_resource_action"
           :annotations {:read-only? true}
           :task-support :parallel}}
-  [{:keys [id]} :- [:map [:id :int]]
+  [{:keys [id]} :- [:map {:closed true} [:id :int]]
    _query-params
    ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
-   body :- [:map [:action :string]]]
+   body :- [:map {:closed true} [:action :string]]]
   {:id id :status "active"})
 
 ;; 6. PUT with route + query + body params — tests PUT annotations + 3-way merge
 (api.macros/defendpoint :put "/v1/test-resource/:id"
   "Update a test resource."
   {:tool {:name "test_resource"}}
-  [{:keys [id]} :- [:map [:id :int]]
+  [{:keys [id]} :- [:map {:closed true} [:id :int]]
    ;; binding exists only to carry the param schema into the generated tool manifest
    #_{:clj-kondo/ignore [:unused-binding]}
-   {:keys [dry-run]} :- [:map [:dry-run {:optional true} [:maybe :boolean]]]
-   body :- [:map [:name :string]]]
+   {:keys [dry-run]} :- [:map {:closed true} [:dry-run {:optional true} [:maybe :boolean]]]
+   body :- [:map {:closed true} [:name :string]]]
   {:id id :name (:name body)})
 
 (deftest ^:parallel check-tool-uniqueness-test

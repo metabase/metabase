@@ -18,12 +18,13 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
-   [metabase.warehouse-schema.models.table :as table]))
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
 
 (set! *warn-on-reflection* true)
 
 (mr/def ::table-selectors
-  [:map
+  [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]
@@ -177,7 +178,7 @@
         table-ids       (set (map :id existing-tables))
         set-map         (select-keys body set-ks)]
     (when (seq set-map)
-      (data-studio.db/update-tables! table-ids set-map)
+      (schema.table-user-settings/upsert-user-settings-for-tables! table-ids set-map)
       (maybe-sync-unhidden-tables! existing-tables set-map)
       ;; Publish update events for remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids)]

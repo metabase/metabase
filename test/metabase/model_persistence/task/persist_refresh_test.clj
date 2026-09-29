@@ -273,9 +273,9 @@
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
                                                    (fn []
-                                                     {:foo "bar"}))
+                                                     {:success 1 :error 0}))
         (is (=? {:task         task-name
-                 :task_details {:foo "bar"}
+                 :task_details {:success 1 :error 0}
                  :status       :success}
                 (t2/select-one :model/TaskHistory :task task-name)))))))
 
@@ -285,9 +285,11 @@
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
                                                    (fn []
-                                                     {:error-details ["some-error"]}))
+                                                     {:success       0
+                                                      :error         1
+                                                      :error-details [{:persisted-info-id 1 :error "some-error"}]}))
         (is (=? {:task         task-name
-                 :task_details {:error-details ["some-error"]}
+                 :task_details {:error-details [{:persisted-info-id 1 :error "some-error"}]}
                  :status       :failed}
                 (t2/select-one :model/TaskHistory :task task-name)))))))
 
@@ -300,11 +302,13 @@
                                                                                         (reset! email-sent true))]
           (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
                                                      (fn []
-                                                       {:error-details ["some-error"]}))
+                                                       {:success       0
+                                                        :error         1
+                                                        :error-details [{:persisted-info-id 1 :error "some-error"}]}))
           (is (true? @email-sent)))))))
 
 (deftest persisted-model-refresh-error-event-accepts-quartz-trigger-test
-  (with-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
+  (mt/with-dynamic-fn-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
     (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/8 * * ? *")]
       (is (identical?
            trigger
@@ -320,11 +324,18 @@
 (deftest publish-refresh-error-event-sends-admin-email-test
   (mt/with-fake-inbox
     (mt/with-model-cleanup [:model/TaskHistory]
-      (mt/with-temp [:model/Database       db             {:settings {:persist-models-enabled true}}
+      (mt/with-temp [:model/User           admin          {:is_superuser true
+                                                           :email        "persist-refresh-admin@example.com"}
+                     :model/Database       db             {:settings {:persist-models-enabled true}}
                      :model/Card           model          {:type :model :database_id (u/the-id db)}
                      :model/PersistedInfo  persisted-info {:card_id     (u/the-id model)
                                                            :database_id (u/the-id db)
                                                            :state       "persisted"}]
+        ;; The failure email only reaches admins who have logged in at least once --
+        ;; [[metabase.channel.db/accepted-admin-emails]] filters on `last_login`. Record a login for our own
+        ;; admin rather than relying on a shared test user, whose `last_login` is only set as a side effect of
+        ;; some earlier test creating a session for them, and is therefore a matter of test ordering.
+        (t2/update! :model/User (:id admin) {:last_login :%now})
         (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger db "0 0 0/8 * * ? *")]
           (#'task.persist-refresh/save-task-history!
            "persist-refresh" (u/the-id db)
@@ -334,7 +345,7 @@
               :trigger       trigger
               :error-details [{:persisted-info-id (u/the-id persisted-info)
                                :error             "simulated refresh failure"}]})))
-        (let [msgs (get @mt/inbox "crowberto@metabase.com")
+        (let [msgs (get @mt/inbox (:email admin))
               body (-> msgs first :body first :content str)]
           (is (= 1 (count msgs)))
           (is (re-find #"Model cache refresh failed" (str (:subject (first msgs)))))

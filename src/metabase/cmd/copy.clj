@@ -65,6 +65,7 @@
     :model/Field
     :model/FieldValues
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/Segment
     :model/ModerationReview
     :model/Revision
@@ -152,14 +153,27 @@
     :model/ExplorationQuery
     :model/ExplorationBookmark
     ;; 63+
-    :model/McpFeedback]
+    :model/McpFeedback
+    ;; Not in dependency order, and cannot be: `transform.target_table_id` and `metabase_table.transform_id`
+    ;; point at each other. Order does not matter -- `copy!` defers or disables FK checks for the whole load.
+    :model/Transform
+    :model/TransformTag
+    :model/TransformTransformTag
+    :model/TransformJob
+    :model/TransformJobTransformTag
+    :model/TransformJobRun
+    :model/TransformRun
+    :model/TransformRunCancelation
+    :model/TransformDagRun]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
       :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation
-      :model/CustomVizPlugin])))
+      :model/CustomVizPlugin
+      :model/TransformTest
+      :model/TransformTestRun])))
 
 (defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -189,6 +203,7 @@
       (log/errorf "Error inserting chunk: %s" (ex-message e))
       (throw e))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-h2-database-details*
   "Whether [[copy-data!]] (and thus [[metabase.cmd.load-from-h2/load-from-h2!]]) should copy connection details for H2
   Databases from the source application database. Normally disabled for security reasons. This is only here so we can
@@ -396,10 +411,13 @@
     :model/ImplicitAction
     :model/HTTPAction
     :model/FieldUserSettings
+    :model/TableUserSettings
     :model/QueryAction
     :model/MetabotConversation
     :model/ModelIndexValue
-    :model/OsiAiContext})
+    :model/OsiAiContext
+    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
+    :model/TransformRunCancelation})
 
 (defmulti ^:private postgres-id-sequence-name
   {:arglists '([model])}

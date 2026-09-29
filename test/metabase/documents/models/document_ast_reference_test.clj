@@ -24,7 +24,7 @@
                                                :document (ast-with {:model "card" :entityId non-integer-id})}]
     (let [doc (t2/select-one :model/Document :id doc-id)]
       (testing "the stored value round-trips unchanged — the precondition for the rest of the test"
-        (is (= non-integer-id (-> doc :document :content first :content first :attrs :entityId))))
+        (is (= non-integer-id (get-in doc [:document :content 0 :content 0 :attrs "entityId"]))))
       (testing "the export transform performs no lookup for the malformed reference"
         (let [lookups (atom [])]
           (with-redefs [t2/select-one (fn [& args] (swap! lookups conj args) nil)]

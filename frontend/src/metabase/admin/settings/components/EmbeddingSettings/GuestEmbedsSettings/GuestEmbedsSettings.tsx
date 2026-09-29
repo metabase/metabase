@@ -4,8 +4,8 @@ import {
   RelatedSettingsSection,
   getGuestEmbedsRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { SharedCombinedEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings";
+import { SettingsPageWrapper } from "metabase/settings-components";
 
 export function GuestEmbedsSettings() {
   return (

@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
@@ -148,7 +150,8 @@ export const selectQuestionFromCard = (
   state: State,
   card: UnsavedCard,
   parameterValues?: ParameterValuesMap,
-): Question => new Question(card, getMetadata(state), parameterValues);
+  opts?: MetadataSelectorOpts,
+): Question => new Question(card, getMetadata(state, opts), parameterValues);
 
 /**
  * A v1 `Question` for a draft that has no card yet, such as an ad-hoc query.
@@ -180,8 +183,9 @@ const cardQuestionBuilders = new WeakMap<Lib.Metadata, CardQuestionBuilder>();
  */
 export const selectQuestionFromCardBuilder = (
   state: State,
+  opts?: MetadataSelectorOpts,
 ): CardQuestionBuilder => {
-  const metadata = getMetadata(state);
+  const metadata = getMetadata(state, opts);
   const cached = cardQuestionBuilders.get(metadata);
 
   if (cached) {
@@ -195,8 +199,40 @@ export const selectQuestionFromCardBuilder = (
   return build;
 };
 
-export const useQuestionFromCard = (): CardQuestionBuilder =>
-  useSelector(selectQuestionFromCardBuilder);
+/**
+ * `selectQuestionFromCardBuilder` for components that build at call time: in a
+ * callback, in an effect, or once per item in a list. A component that wants
+ * one question for one card takes `useQuestionFromCard` instead.
+ */
+export const useQuestionFromCardBuilder = (
+  opts?: MetadataSelectorOpts,
+): CardQuestionBuilder =>
+  useSelector((state) => selectQuestionFromCardBuilder(state, opts));
+
+/**
+ * The `Question` for a card, or `undefined` when there is no card to build
+ * from. Memoised on the card and on the metadata behind it, so the result
+ * holds one reference for as long as both do.
+ */
+export function useQuestionFromCard(
+  card: UnsavedCard,
+  opts?: MetadataSelectorOpts,
+): Question;
+export function useQuestionFromCard(
+  card: UnsavedCard | null | undefined,
+  opts?: MetadataSelectorOpts,
+): Question | undefined;
+export function useQuestionFromCard(
+  card: UnsavedCard | null | undefined,
+  opts?: MetadataSelectorOpts,
+): Question | undefined {
+  const buildQuestion = useQuestionFromCardBuilder(opts);
+
+  return useMemo(
+    () => (card == null ? undefined : buildQuestion(card)),
+    [buildQuestion, card],
+  );
+}
 
 export type DraftQuestionBuilder = (
   opts: Omit<QuestionCreatorOpts, "metadata">,
@@ -225,5 +261,9 @@ export const selectQuestionFromOptsBuilder = (
   return build;
 };
 
-export const useQuestionFromOpts = (): DraftQuestionBuilder =>
+/**
+ * `selectQuestionFromOptsBuilder` for components. A builder rather than a
+ * question, because a draft's options are assembled at call time.
+ */
+export const useQuestionFromOptsBuilder = (): DraftQuestionBuilder =>
   useSelector(selectQuestionFromOptsBuilder);

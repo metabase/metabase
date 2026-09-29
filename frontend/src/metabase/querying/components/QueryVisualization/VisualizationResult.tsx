@@ -71,7 +71,6 @@ export function VisualizationResult(props: QueryVisualizationProps) {
 
               {supportsBackToPreviousResult && (
                 <Button
-                  variant="default"
                   onClick={() =>
                     onNavigateBack ? onNavigateBack() : window.history.back()
                   }
@@ -105,7 +104,6 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       queryBuilderMode={queryBuilderMode}
       showTitle={false}
       canToggleSeriesVisibility
-      metadata={question.metadata()}
       timelineEvents={timelineEvents}
       selectedTimelineEventIds={selectedTimelineEventIds}
       getExtraDataForClick={getExtraDataForClick}

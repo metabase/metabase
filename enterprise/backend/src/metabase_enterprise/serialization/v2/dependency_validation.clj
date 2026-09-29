@@ -62,7 +62,8 @@
       (mapcat resize-batch)
       (mapcat (fn [[model batch]]
                 (serdes/extract-query model (merge opts {:collection-set coll-set
-                                                         :where          [:in :id batch]}))))
+                                                         :filter-column  :id
+                                                         :filter-ids     batch}))))
       (map entity-deps))
      merge-entity-deps
      by-model)))
