@@ -113,10 +113,9 @@ describe("issue #55984", () => {
     H.summarize({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
     H.CustomExpressionEditor.type("[lo");
-    H.CustomExpressionEditor.completion(longName).should("be.visible");
-    H.CustomExpressionEditor.completion(longNameWithoutSpaces).should(
-      "be.visible",
-    );
+    // The list scrolls vertically, so the second long suggestion can be out of view
+    H.CustomExpressionEditor.completion(longName).should("exist");
+    H.CustomExpressionEditor.completion(longNameWithoutSpaces).should("exist");
     H.CustomExpressionEditor.completions().should(($el) => {
       expect(H.isScrollableHorizontally($el[0])).to.be.false;
     });
