@@ -89,6 +89,7 @@ describe("EmbeddingToggle", () => {
   describe("when clicking on the switch", () => {
     it("should send a PUT request with value=true when setting is off", async () => {
       await setup({ value: false });
+      await settlePendingUpdates();
 
       expect(screen.getByRole("switch")).not.toBeChecked();
       await userEvent.click(screen.getByRole("switch"));
@@ -97,8 +98,6 @@ describe("EmbeddingToggle", () => {
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
       expect(body).toEqual({ "enable-embedding-modular": true });
-
-      await settlePendingUpdates();
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
