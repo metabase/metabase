@@ -49,6 +49,16 @@
         (is (=? [{:data {"hashed_metabase_license_token" "my-custom-hash"}}]
                 (snowplow-test/pop-event-data-and-user-id!)))))))
 
+(defn- schema-violation
+  [event-data]
+  (let [path   (str "snowplow/iglu-client-embedded/schemas/com.metabase/token_usage/jsonschema/"
+                    (#'snowplow/schema->version :snowplow/token_usage))
+        ;; Otherwise the loader would fetch the meta-schema that `$schema` names over the network
+        schema (-> (json/decode (slurp path)) (dissoc "$schema") json/encode)]
+    (.validate (Validator/create (.load (SchemaLoader. schema))
+                                 (ValidatorConfig. FormatValidationPolicy/ALWAYS))
+               (.parse (JsonParser. (json/encode event-data))))))
+
 (deftest track-snowplow!-all-fields-test
   (testing "all Snowplow event fields are present and correct"
     (mt/with-temporary-setting-values [premium-embedding-token nil
@@ -70,57 +80,38 @@
                                           :tag                   "oss-sqlgen"
                                           :session-id            "session-abc"
                                           :profile               "internal"})
-        (is (=? [{:user-id "42"
-                  :data    {"hashed_metabase_license_token" "oss__uuid-for-test"
-                            "request_id"                   "deadbeef00"
-                            "model_id"                     "openai/gpt-4"
-                            "provider"                     "openai"
-                            "model_name"                   "gpt-4"
-                            "total_tokens"                 300
-                            "prompt_tokens"                200
-                            "completion_tokens"            100
-                            "cache_creation_tokens"        250
-                            "cache_read_tokens"            900
-                            "estimated_costs_usd"          0.0
-                            "duration_ms"                  1234
-                            "source"                       "oss_metabot"
-                            "tag"                          "oss-sqlgen"
-                            "session_id"                   "session-abc"
-                            "profile"                      "internal"}}]
-                (snowplow-test/pop-event-data-and-user-id!)))))))
-
-(defn- schema-violation
-  [event-data]
-  (let [path   (str "snowplow/iglu-client-embedded/schemas/com.metabase/token_usage/jsonschema/"
-                    (#'snowplow/schema->version :snowplow/token_usage))
-        ;; Otherwise the loader would fetch the meta-schema that `$schema` names over the network
-        schema (-> (json/decode (slurp path)) (dissoc "$schema") json/encode)]
-    (.validate (Validator/create (.load (SchemaLoader. ^String schema))
-                                 (ValidatorConfig. FormatValidationPolicy/ALWAYS))
-               (.parse (JsonParser. ^String (json/encode event-data))))))
+        (let [events (snowplow-test/pop-event-data-and-user-id!)]
+          (is (=? [{:user-id "42"
+                    :data    {"hashed_metabase_license_token" "oss__uuid-for-test"
+                              "request_id"                   "deadbeef00"
+                              "model_id"                     "openai/gpt-4"
+                              "provider"                     "openai"
+                              "model_name"                   "gpt-4"
+                              "total_tokens"                 300
+                              "prompt_tokens"                200
+                              "completion_tokens"            100
+                              "cache_creation_tokens"        250
+                              "cache_read_tokens"            900
+                              "estimated_costs_usd"          0.0
+                              "duration_ms"                  1234
+                              "source"                       "oss_metabot"
+                              "tag"                          "oss-sqlgen"
+                              "session_id"                   "session-abc"
+                              "profile"                      "internal"}}]
+                  events))
+          (testing "and it validates against its schema"
+            (is (nil? (schema-violation (:data (first events)))))))))))
 
 (deftest track-snowplow!-matches-schema-test
-  (testing "the event validates against its schema, with every optional field set and with none of them"
+  (testing "an event without any optional field validates against its schema"
     (snowplow-test/with-fake-snowplow-collector
-      (llm-token-usage/track-snowplow! (merge base-usage {:provider              "openrouter"
-                                                          :model-name            "anthropic/claude-haiku-4.5"
-                                                          :cache-creation-tokens 250
-                                                          :cache-read-tokens     900
-                                                          :user-id               42
-                                                          :duration-ms           1234
-                                                          :source                "metabot_agent"
-                                                          :tag                   "agent"
-                                                          :session-id            "session-abc"
-                                                          :profile               "internal"}))
       (llm-token-usage/track-snowplow! base-usage)
-      (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
-                        (map :data)
-                        (filter #(contains? % "total_tokens")))]
-        (is (= 2 (count events)))
-        (doseq [event events]
-          (is (nil? (schema-violation event))))
+      (let [event (->> (snowplow-test/pop-event-data-and-user-id!)
+                       (map :data)
+                       (some #(when (contains? % "total_tokens") %)))]
+        (is (nil? (schema-violation event)))
         (testing "and the schema rejects a field it does not declare"
-          (is (some? (schema-violation (assoc (first events) "cost" 0.0125)))))))))
+          (is (some? (schema-violation (assoc event "undeclared_field" "value")))))))))
 
 ;;; ------------------------------------------- track-prometheus! -------------------------------------------
 
@@ -210,6 +201,7 @@
           (testing "Snowplow event fired"
             (is (=? [{:data {"request_id"    "req-123"
                              "model_id"      "anthropic/claude-haiku-4-5"
+                             "provider"      "anthropic"
                              "total_tokens"  150
                              "prompt_tokens" 100}}]
                     (snowplow-test/pop-event-data-and-user-id!))))

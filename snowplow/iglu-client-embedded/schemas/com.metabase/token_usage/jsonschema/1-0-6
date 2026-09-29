@@ -46,7 +46,7 @@
                 "string",
                 "null"
             ],
-            "description": "The type of the connection the call went through: for Metabot, the connection's provider type, e.g. 'anthropic' or 'openrouter', or 'metabase' for the Metabase AI service; 'anthropic' for SQL generation; 'ai-service' for embeddings served by ai-service. Unlike the connection key at the start of a Metabot model_id, it is never a name an admin chose.",
+            "description": "The type of the connection the call went through: for Metabot, the connection's provider type, e.g. 'anthropic' or 'openrouter', or 'metabase' for the Metabase AI service; 'anthropic' for SQL generation; 'ai-service' for semantic search embeddings, whichever OpenAI-compatible endpoint serves them. Unlike the connection key at the start of a Metabot model_id, it is never a name an admin chose.",
             "maxLength": 255
         },
         "model_name": {
@@ -54,7 +54,7 @@
                 "string",
                 "null"
             ],
-            "description": "The model Metabase asked the provider for, without the connection key at the start of a Metabot model_id: e.g. 'claude-sonnet-4-6' (also for the Metabase AI service), 'anthropic/claude-sonnet-4.6' on OpenRouter, or on Azure the model family plus the deployment name, e.g. 'openai/my-deployment'.",
+            "description": "The model Metabase asked the provider for. For Metabot it is model_id without the connection key at its start, and for the Metabase AI service without the 'anthropic/' after the key too: e.g. 'claude-sonnet-4-6', 'anthropic/claude-sonnet-4.6' on OpenRouter, or on Azure the model family plus the deployment name, e.g. 'openai/my-deployment'. For SQL generation and embeddings it equals model_id.",
             "maxLength": 255
         },
         "total_tokens": {
@@ -80,7 +80,7 @@
                 "integer",
                 "null"
             ],
-            "description": "Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Null or absent for providers that do not report cache usage.",
+            "description": "Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Metabot sends 0 when the provider reports no cache usage; SQL generation and embeddings send null.",
             "minimum": 0,
             "maximum": 2147483647
         },
@@ -89,13 +89,13 @@
                 "integer",
                 "null"
             ],
-            "description": "Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Null or absent for providers that do not report cache usage.",
+            "description": "Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Metabot sends 0 when the provider reports no cache usage; SQL generation and embeddings send null.",
             "minimum": 0,
             "maximum": 2147483647
         },
         "estimated_costs_usd": {
             "type": "number",
-            "description": "The estimated cost of for the tokens in USD",
+            "description": "Always 0 from the Metabase app, which does not estimate costs.",
             "minimum": 0,
             "maximum": 2147483647
         },

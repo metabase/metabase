@@ -1722,8 +1722,6 @@
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
 
-;;; ===================== Usage Log Tests =====================
-
 (deftest call-llm-provider-and-model-test
   (testing (str "call-llm and call-llm-structured log the provider type and the model as the provider names it, "
                 "in ai_usage_log and on the token_usage event")
