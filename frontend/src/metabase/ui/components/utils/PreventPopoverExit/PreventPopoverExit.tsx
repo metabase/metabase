@@ -23,8 +23,7 @@ export function usePreventPopoverExit({
 }) {
   const { setAllowPopoverExit } = useContext(context);
   useEffect(() => {
-    setAllowPopoverExit(popoverIsExitable);
-    return () => setAllowPopoverExit(true);
+    return () => {};
   }, [popoverIsExitable, setAllowPopoverExit]);
 }
 
