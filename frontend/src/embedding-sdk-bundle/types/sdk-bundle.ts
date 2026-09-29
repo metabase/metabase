@@ -1,4 +1,4 @@
-import type { ComponentProps, JSXElementConstructor } from "react";
+import type { JSXElementConstructor } from "react";
 
 import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
 import type { SdkThemeProviderWithStore } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -126,9 +126,6 @@ type DateFormattingExports = {
 };
 
 type InternalComponentExports = {
-  // On an unsupported host React, the bundle swaps in one that renders nothing.
-  MetabotSubscriber: JSXElementConstructor<
-    ComponentProps<typeof MetabotSubscriber>
-  >;
+  MetabotSubscriber: typeof MetabotSubscriber;
   SdkThemeProviderWithStore: typeof SdkThemeProviderWithStore;
 };

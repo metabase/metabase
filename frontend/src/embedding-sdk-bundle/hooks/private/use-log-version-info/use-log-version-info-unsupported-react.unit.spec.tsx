@@ -2,9 +2,9 @@ import { renderHook } from "@testing-library/react";
 
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
-import { sdkBundleExports } from "./sdk-bundle-exports";
+import { useLogVersionInfo } from "./use-log-version-info";
 
-// The exports are built when this module loads, so the check is faked rather
+// The hook is picked when its module loads, so the check is faked rather
 // than the React version: the real module cannot be re-loaded per test.
 jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
   ...jest.requireActual("embedding-sdk-bundle/lib/host-react-version"),
@@ -18,7 +18,7 @@ jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
 const UNSUPPORTED_REACT_MESSAGE_START =
   "The Metabase modular embedding SDK requires React";
 
-describe("sdkBundleExports on an unsupported host React", () => {
+describe("useLogVersionInfo on an unsupported host React", () => {
   let consoleWarnSpy: jest.SpyInstance;
   let consoleErrorSpy: jest.SpyInstance;
 
@@ -38,8 +38,8 @@ describe("sdkBundleExports on an unsupported host React", () => {
     jest.restoreAllMocks();
   });
 
-  it("publishes a useLogVersionInfo that reports the React version instead of the SDK versions", () => {
-    renderHook(() => sdkBundleExports.useLogVersionInfo());
+  it("reports the React version instead of the SDK versions", () => {
+    renderHook(() => useLogVersionInfo());
 
     expect(consoleWarnSpy).not.toHaveBeenCalled();
     expect(consoleErrorSpy).toHaveBeenCalledWith(

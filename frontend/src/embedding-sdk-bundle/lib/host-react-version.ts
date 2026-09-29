@@ -1,4 +1,4 @@
-import { version as reactVersion } from "react";
+import { version as reactVersion, useEffect } from "react";
 
 // Raise this when the SDK bundle starts to need a newer React major.
 const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = 18;
@@ -37,4 +37,12 @@ export function logUnsupportedReactVersionOnce() {
 
   console.error(getUnsupportedReactVersionMessage());
   hasLoggedUnsupportedReactVersion = true;
+}
+
+// Stands in for the SDK hooks the package calls outside ComponentProvider,
+// where there is no error box to show.
+export function useLogUnsupportedReactVersion() {
+  useEffect(() => {
+    logUnsupportedReactVersionOnce();
+  }, []);
 }
