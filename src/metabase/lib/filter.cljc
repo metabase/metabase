@@ -367,6 +367,15 @@
   [_query _stage-number [_tag _opts n unit] _style]
   (lib.temporal-bucket/describe-temporal-interval n unit))
 
+(defmethod lib.metadata.calculation/display-name-method :absolute-datetime
+  [_query _stage-number [_tag _opts value unit] _style]
+  (cond
+    (clojure.core/= value :current) (if (clojure.core/= unit :default)
+                                     (i18n/tru "now")
+                                     (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval 0 unit)))
+    (clojure.core/= unit :default) (u.time/format-unit value nil)
+    :else                          (u.time/format-relative-date-range value 1 unit -1 unit {})))
+
 (defmethod lib.metadata.calculation/display-name-method :interval
   [_query _stage-number [_tag opts n unit] _style]
   (lib.temporal-bucket/describe-temporal-interval n unit opts))
