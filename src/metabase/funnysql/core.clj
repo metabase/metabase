@@ -8,26 +8,26 @@
 (set! *warn-on-reflection* true)
 
 (defprotocol ^:private Context
-  (^:private -append-sql! [this s])
-  (^:private -append-arg! [this arg])
-  (^:private -engine [this])
-  (^:private -result! [this]))
+  (^:private append-sql! [this s])
+  (^:private append-arg! [this arg])
+  (^:private engine [this])
+  (^:private result! [this]))
 
 (defprotocol Compile
-  (^:private -compile [x context]))
+  (^:private compile! [x context]))
 
 ;; TODO -- should `context` always be the first arg, for consistency!
 
-(defn- -object [x context]
+(defn- object! [x context]
   (assert (not (instance? Character x))) ; NOCOMMIT
-  (-append-sql! context "?")
-  (-append-arg! context x))
+  (append-sql! context "?")
+  (append-arg! context x))
 
-(defn- -null [_x context]
-  (-append-sql! context "NULL"))
+(defn- null! [_x context]
+  (append-sql! context "NULL"))
 
-(defn- -integer [n context]
-  (-append-sql! context (str n)))
+(defn- integer! [n context]
+  (append-sql! context (str n)))
 
 (defn- interpose-fn
   "Iterate all elements in `xs`. Execute
@@ -46,79 +46,192 @@
       (separator-fn)
       (recur more))))
 
-(defn- -interpose
+(defn- -interpose!
   "Compile all the forms in `xs` and interpose the `separator` string between them."
   [separator xs context]
   (assert (string? separator)) ; NOCOMMIT
   (assert (not (string? xs))) ; NOCOMMIT
-  (interpose-fn
-   xs
-   #(-compile % context)
-   #(-append-sql! context separator)))
+  (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
 
-(defn- -commas
+(defn- -commas!
   "Compile all the forms in `xs` with commas between each item."
   [xs context]
-  (-interpose ", " xs context))
+  (-interpose! ", " xs context))
 
-(defn- -parens
+(defn- -parens!
   "Compile `x` with parentheses before and after it."
   [x context]
-  (-append-sql! context "(")
-  (-compile x context)
-  (-append-sql! context ")"))
+  (append-sql! context "(")
+  (compile! x context)
+  (append-sql! context ")"))
 
-(defn- -list
+(defn- -list!
   "Compile a list form (combines behavior of [[-parens]] and [[-commas]])."
   [xs context]
-  (-append-sql! context "(")
-  (-commas xs context)
-  (-append-sql! context ")"))
+  (append-sql! context "(")
+  (-commas! xs context)
+  (append-sql! context ")"))
 
-(defn- -identifier-with-optional-as
+(defn- -identifier-with-optional-as!
   "Handle an identifier form as seen in `:select`, `:from`, etc.; unwrapped or a vector with one element will act an
   unaliased identifier while a vector with two elements will emit `<x> AS <y>`."
   [identifier context]
   (let [[lhs rhs] (if (vector? identifier)
                     identifier
                     [identifier])]
-    (-compile lhs context)
+    (compile! lhs context)
     (when rhs
-      (-append-sql! context " AS ")
-      (-compile rhs context)))
+      (append-sql! context " AS ")
+      (compile! rhs context)))
   nil)
 
-(defn- -select
-  "Emit a `SELECT` clause."
-  [cols context]
-  (-append-sql! context "SELECT ")
-  (interpose-fn
-   cols
-   #(-identifier-with-optional-as % context)
-   #(-append-sql! context ", ")))
+(declare equals!)
 
-(defn- -from
-  "Emit a `FROM` clause."
-  [from context]
-  (-append-sql! context "FROM ")
+(defn- -kvs-map! [kvs context]
+  (interpose-fn kvs #(equals! % context) #(append-sql! context ", ")))
+
+(defn- unwrap-identifier [identifier]
+  (if (vector? identifier)
+    (recur (first identifier))
+    identifier))
+
+(declare map!)
+
+(defn- -with! [sql ctes context]
+  (append-sql! context sql)
+  (letfn [(-cte [[identifier subquery]]
+            (compile! identifier context)
+            (append-sql! context " AS (")
+            (map! subquery context)
+            (append-sql! context ")"))]
+    (interpose-fn ctes -cte #(append-sql! context ", "))))
+
+(defn- with!           [ctes context] (-with! "WITH "           ctes context))
+(defn- with-recursive! [ctes context] (-with! "WITH RECURSIVE " ctes context))
+
+(defn- insert-into! [identifier context]
+  (append-sql! context "INSERT INTO ")
+  (compile! (unwrap-identifier identifier) context))
+
+(defn- values! [rows context]
+  (let [columns (keys (first rows))]
+    (-list! columns context))
+  (append-sql! context " VALUES ")
+  (interpose-fn rows #(-list! (vals %) context) #(append-sql! context ", ")))
+
+(defn- update! [identifier context]
+  (append-sql! context "UPDATE ")
+  (compile! (unwrap-identifier identifier) context))
+
+(defn- set! [kvs context]
+  (append-sql! context "SET ")
+  (-kvs-map! kvs context))
+
+(defn- delete-from! [identifier context]
+  (append-sql! context "DELETE FROM ")
+  (compile! (unwrap-identifier identifier) context))
+
+(defn- -select! [sql cols context]
+  (append-sql! context sql)
+  (interpose-fn cols #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))
+
+(defn- select! [cols context]
+  (-select! "SELECT " cols context))
+
+(defn- select-distinct! [cols context]
+  (-select! "SELECT DISTINCT " cols context))
+
+(defn- from! [from context]
+  (append-sql! context "FROM ")
   (if (keyword? from)
-    (-identifier-with-optional-as from context)
-    (interpose-fn
-     from
-     #(-identifier-with-optional-as % context)
-     #(-append-sql! context ", "))))
+    (-identifier-with-optional-as! from context)
+    (interpose-fn from #(-identifier-with-optional-as! % context) #(append-sql! context ", "))))
 
-(defn- -where
-  "Emit a `WHERE` clause."
-  [condition context]
-  (-append-sql! context "WHERE ")
-  (-compile condition context))
+(defn- join!
+  [join-type joins context]
+  (let [join-type-sql (case join-type
+                        :join  "JOIN "
+                        :left  "LEFT JOIN "
+                        :right "RIGHT JOIN "
+                        :inner "INNER JOIN ")]
+    (loop [[thing-to-join condition & more] joins]
+      (append-sql! context join-type-sql)
+      ;; TODO -- handle subqueries?
+      (-identifier-with-optional-as! thing-to-join context)
+      (append-sql! context " ON ")
+      (compile! condition context)
+      (when (seq more)
+        (append-sql! context \space)
+        (recur more)))))
 
-(defn- -map
-  "Compile a map. This is normally only allowed by [[compile]] but not by [[-compile]] to avoid accidentally compiling
+(defn- where! [condition context]
+  (append-sql! context "WHERE ")
+  (compile! condition context))
+
+(defn- group-by! [cols context]
+  (append-sql! context "GROUP BY ")
+  (interpose-fn cols #(compile! % context) #(append-sql! context ", ")))
+
+(defn- having! [condition context]
+  (append-sql! context "HAVING ")
+  (compile! condition context))
+
+(defn- order-by! [subclauses context]
+  (append-sql! context "ORDER BY ")
+  (letfn [(subclause! [subclause]
+            (let [[expr direction] (if (vector? subclause)
+                                     subclause
+                                     [subclause :asc])]
+              (compile! expr context)
+              (append-sql! context (case direction
+                                     :asc " ASC"
+                                     :desc " DESC"))))]
+    (interpose-fn subclauses subclause! #(append-sql! context ", "))))
+
+(defn- limit!
+  [n context]
+  (assert (nat-int? n))
+  (append-sql! context "LIMIT ")
+  (compile! n context))
+
+(defn- offset!
+  [n context]
+  (assert (nat-int? n))
+  (append-sql! context "OFFSET ")
+  (compile! n context))
+
+(defn- for!
+  [what context]
+  (append-sql! context "FOR ")
+  (append-sql! context (case what
+                          :update "UPDATE")))
+
+(defn- on-conflict!
+  [columns context]
+  (append-sql! context "ON CONFLICT ")
+  (-list! columns context))
+
+(defn- do-update-set!
+  [kvs context]
+  (append-sql! context "DO UPDATE SET ")
+  (-kvs-map! kvs context))
+
+(defn- returning! [cols context]
+  (append-sql! context "RETURNING ")
+  (-commas! cols context))
+
+(defn- union! [subqueries context]
+  (interpose-fn subqueries #(map! % context) #(append-sql! context " UNION ")))
+
+(defn- union-all! [subqueries context]
+  (interpose-fn subqueries #(map! % context) #(append-sql! context " UNION ALL ")))
+
+(defn- map!
+  "Compile a map. This is normally only allowed by [[compile]] but not by [[compile!]] to avoid accidentally compiling
   subqueries where unintended."
   [m context]
-  ;; TODO -- ICK
+  ;; TODO -- ICK. It seems like it would be faster to just iterate the keys in the map and then do things in the
+  ;; appropriate order rather than iterate all the known keys even tho 99% of maps don't have them
   (transduce
    (comp (keep (fn [[k f]]
                  (when-let [v (k m)]
@@ -126,158 +239,200 @@
          (interpose ::space)
          (map (fn [x]
                 (if (= x ::space)
-                  (-append-sql! context " ")
+                  (append-sql! context " ")
                   (let [[f v] x]
                     (f v context))))))
    (constantly nil)
    nil
-   [[:select -select]
-    [:from   -from]
-    [:where  -where]]))
+   [[:with            with!]
+    [:with-recursive  with-recursive!]
+    [:insert-into     insert-into!]
+    [:values          values!]
+    [:update          update!]
+    [:set             set!]
+    [:delete-from     delete-from!]
+    [:select          select!]
+    [:select-distinct select-distinct!]
+    [:from            from!]
+    [:join            (partial join! :join)]
+    [:left-join       (partial join! :left)]
+    [:right-join      (partial join! :right)]
+    [:inner-join      (partial join! :inner)]
+    [:where           where!]
+    [:group-by        group-by!]
+    [:having          having!]
+    [:order-by        order-by!]
+    [:limit           limit!]
+    [:offset          offset!]
+    [:for             for!]
+    [:on-conflict     on-conflict!]
+    [:do-update-set   do-update-set!]
+    [:returning       returning!]
+    [:union           union!]
+    [:union-all       union-all!]
+    ;; TODO -- this should error on unknown keys
+    ]))
 
 ;; TODO -- escape identifier
-(defn- -identifier-component
+(defn- -identifier-component!
   "Emit a single quoted and escaped identifier part."
   [part context]
-  (let [engine     (-engine context)
+  (let [engine     (engine context)
         quote-char (case engine
                      :mysql "`"
                      "\"")]
-    (-append-sql! context quote-char)
-    (-append-sql! context (case engine
+    (append-sql! context quote-char)
+    (append-sql! context (case engine
                             :h2 (u/upper-case-en part)
                             part))
-    (-append-sql! context quote-char)))
+    (append-sql! context quote-char)))
 
-(defn -indentifier
+(defn -identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-component]]s."
   [s context]
   (interpose-fn
    (str/split s #"\.")
-   #(-identifier-component % context)
-   #(-append-sql! context ".")))
+   #(-identifier-component! % context)
+   #(append-sql! context ".")))
 
-(defn- -keyword
+(defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
   [k context]
   (when (qualified-keyword? k)
-    (-indentifier (namespace k) context)
-    (-append-sql! context "."))
+    (-identifier! (namespace k) context)
+    (append-sql! context "."))
   (if (= (name k) "*")
-    (-append-sql! context "*")
-    (-indentifier (name k) context)))
+    (append-sql! context "*")
+    (-identifier! (name k) context)))
 
-(defn- -equals [[x y] context]
-  (-compile x context)
+(defn- -equals! [sql nil-sql [x y] context]
+  (compile! x context)
   (if (some? y)
     (do
-      (-append-sql! context " = ")
-      (-compile y context))
-    (-append-sql! context " IS NULL")))
+      (append-sql! context sql)
+      (compile! y context))
+    (append-sql! context nil-sql)))
 
-(defn- -not-equals [[x y] context]
-  (-compile x context)
-  (if (some? y)
-    (do
-      (-append-sql! context " <> ")
-      (-compile y context))
-    (-append-sql! context " IS NOT NULL")))
+(defn- equals!     [args context] (-equals! " = "  " IS NULL"     args context))
+(defn- not-equals! [args context] (-equals! " <> " " IS NOT NULL" args context))
 
-(defn- -and [xs context]
-  (interpose-fn
-   xs
-   #(-parens % context)
-   #(-append-sql! context " AND ")))
+(defn- -compound! [sql xs context]
+  (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))
 
-(defn- -or [xs context]
-  (interpose-fn
-   xs
-   #(-parens % context)
-   #(-append-sql! context " OR ")))
+(defn- and! [xs context] (-compound! " AND " xs context))
+(defn- or!  [xs context] (-compound! " OR "  xs context))
 
-(defn- -in [[lhs vs] context]
-  (-compile lhs context)
-  (-append-sql! context " IN ")
-  (-list vs context))
+(defn- not! [[x] context]
+  (append-sql! context "NOT ")
+  (-parens! x context))
 
-(defn- -between [[x y z] context]
-  (-compile x context)
-  (-append-sql! context " BETWEEN ")
-  (-compile y context)
-  (-append-sql! context " AND ")
-  (-compile z context))
+(defn- -in! [sql [lhs vs] context]
+  (compile! lhs context)
+  (append-sql! context sql)
+  (-list! vs context))
 
-(defn- -binary-operator [f fn-args context]
+(defn- in!     [args context] (-in! " IN "     args context))
+(defn- not-in! [args context] (-in! " NOT IN " args context))
+
+(defn- between! [[x y z] context]
+  (compile! x context)
+  (append-sql! context " BETWEEN ")
+  (compile! y context)
+  (append-sql! context " AND ")
+  (compile! z context))
+
+(defn- cast! [[x tyype] context]
+  (append-sql! context "CAST(")
+  (compile! x context)
+  (append-sql! context " AS ")
+  (let [tyype (name tyype)]
+    (assert (re-matches #"^[()\w_-]+$" tyype)
+            "Invalid type!")
+    (append-sql! context tyype)
+    (append-sql! context ")")))
+
+(defn- case! [args context]
+  (append-sql! context "CASE ")
+  (loop [[condition expr & more] args]
+    (if-not (= condition :else)
+      (do
+        (append-sql! context "WHEN ")
+        (compile! condition context)
+        (append-sql! context " THEN ")
+        (compile! expr context))
+      (do
+        (append-sql! context "ELSE ")
+        (compile! expr context)))
+    (when (seq more)
+      (append-sql! context \space)
+      (recur more)))
+  (append-sql! context " END"))
+
+(defn- -exists! [sql subquery context]
+  (append-sql! context sql)
+  (append-sql! context "(")
+  (map! subquery context)
+  (append-sql! context ")"))
+
+(defn- exists!     [subquery context] (-exists! "EXISTS "     subquery context))
+(defn- not-exists! [subquery context] (-exists! "NOT EXISTS " subquery context))
+
+(defn- -binary-operator! [f args context]
   (let [f-str (case f
-                :<        " < "
-                :<=       " <= "
-                :>        " > "
-                :>=       " >= "
                 :like     " LIKE "
-                :not-like " NOT LIKE ")]
-    (-interpose f-str (take 2 fn-args) context)))
+                :not-like " NOT LIKE "
+                (str \space (name f) \space))]
+    (-interpose! f-str (take 2 args) context)))
 
-(defn- -simple-fn [f fn-args context]
+(defn- -simple-fn! [f args context]
   (let [f (name f)]
-    (-append-sql! context f)
-    (-list fn-args context)))
+    (append-sql! context f)
+    (-list! args context)))
 
-(defn- -fn-call [[f & fn-args] context]
+(defn- -fn-call! [[f & args] context]
   (case f
-    :=              (-equals fn-args context)
-    (:<> :!= :not=) (-not-equals fn-args context)
-    :and            (-and fn-args context)
-    :or             (-or fn-args context)
-    :in             (-in fn-args context)
-    :between        (-between fn-args context)
+    (:= :is)                (equals!     args context)
+    (:<> :!= :not= :is-not) (not-equals! args context)
+    :and                    (and!        args context)
+    :or                     (or!         args context)
+    :not                    (not!        args context)
+    :in                     (in!         args context)
+    :not-in                 (not-in!     args context)
+    :between                (between!    args context)
+    :cast                   (cast!       args context)
+    :case                   (case!       args context)
+    :exists                 (exists!     (first args) context)
+    :not-exists             (not-exists! (first args) context)
 
     (:< :<= :> :>= :like :not-like)
-    (-binary-operator f fn-args context)
+    (-binary-operator! f args context)
 
-    (:lower :upper :concat :coalesce)
-    (-simple-fn f fn-args context)))
+    (:lower :upper :concat :coalesce :count :sum :avg :min :max :distinct)
+    (-simple-fn! f args context)))
 
-(defn- -vector [xs context]
+(defn- vector! [xs context]
   (if (keyword? (first xs))
-    (-fn-call xs context)
-    (-commas xs context)))
+    (-fn-call! xs context)
+    (-commas! xs context)))
 
 ;; note that `clojure.lang.IPersistentMap` is not supported here; this is intentional, as we don't want to
 ;; accidentally support nested query injection. Treat maps as normal objects (i.e., parameterized with `?`) unless
 ;; explicitly passed to the top-level entry point, [[compile]].
 (extend-protocol Compile
-  Object
-  (-compile [this context]
-    (-object this context))
-
-  nil
-  (-compile [this context]
-    (-null this context))
-
-  Long
-  (-compile [this context]
-    (-integer this context))
-
-  clojure.lang.Keyword
-  (-compile [this context]
-    (-keyword this context))
-
-  clojure.lang.IPersistentVector
-  (-compile [this context]
-    (-vector this context)))
+  Object                         (compile! [this context] (object! this context))
+  nil                            (compile! [this context] (null! this context))
+  Long                           (compile! [this context] (integer! this context))
+  clojure.lang.Keyword           (compile! [this context] (keyword! this context))
+  clojure.lang.IPersistentVector (compile! [this context] (vector! this context)))
 
 (defn- default-context [engine]
   (let [sb   (StringBuilder.)
         args (volatile! (transient []))]
     (reify Context
-      (-append-sql! [_this s]
-        (.append sb s))
-      (-append-arg! [_this arg]
-        (vswap! args conj! arg))
-      (-engine [_this]
-        engine)
-      (-result! [_this]
-        (into [(str sb)] (persistent! @args))))))
+      (append-sql! [_this s]   (.append sb s))
+      (append-arg! [_this arg] (vswap! args conj! arg))
+      (engine      [_this]     engine)
+      (result!     [_this]     (into [(str sb)] (persistent! @args))))))
 
 (mu/defn compile :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
@@ -286,6 +441,6 @@
   (let [context (default-context engine)]
     ;; don't support compiling maps recursively
     (if (map? honeysql-form)
-      (-map honeysql-form context)
-      (-compile honeysql-form context))
-    (-result! context)))
+      (map! honeysql-form context)
+      (compile! honeysql-form context))
+    (result! context)))
