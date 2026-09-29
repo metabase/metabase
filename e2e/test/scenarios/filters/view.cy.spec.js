@@ -61,7 +61,7 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
+    it("should be able to filter Q by Vendor and Category as no data user (from Q link) (metabase#12654)", () => {
       cy.log("admin sees filters by search for Vendor");
       H.visitQuestion("@questionId");
       cy.findAllByText("VENDOR").first().click();
@@ -101,7 +101,7 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should be able to filter Q by Vendor as user (from Dashboard) (metabase#12654)", () => {
+    it("should be able to filter Q by Vendor and Category as no data user (from Dashboard) (metabase#12654)", () => {
       // Navigate to Q from Dashboard
       cy.signIn("nodata");
       H.visitDashboard("@dashboardId");

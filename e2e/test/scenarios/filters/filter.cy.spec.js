@@ -495,7 +495,7 @@ describe("scenarios > question > filter", () => {
     // Finish to complete a valid expression, i.e. [Tax] > 42
     H.CustomExpressionEditor.type("> 42");
 
-    // Tab switches the focus to the "Cancel" button
+    // Tab indents instead of moving the focus
     cy.realPress("Tab");
 
     cy.focused().should("have.attr", "role", "textbox");

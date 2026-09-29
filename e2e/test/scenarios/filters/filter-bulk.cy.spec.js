@@ -173,7 +173,6 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should remove an existing filter", () => {
     H.visitQuestionAdhoc(filteredQuestionDetails);
-    H.filter();
     H.queryBuilderFiltersPanel()
       .findByText("Quantity is less than 30")
       .icon("close")
