@@ -115,8 +115,6 @@ function UndoToast({
   };
 
   const dark = undo.dark ?? true;
-  const hasActionButton =
-    (undo.actions != null && undo.actions.length > 0) || !!undo.extraAction;
   const noBorder = undo.showProgress;
 
   return (
@@ -163,12 +161,8 @@ function UndoToast({
           }}
         />
       )}
-      <Flex
-        align={hasActionButton ? "baseline" : "flex-start"}
-        justify="space-between"
-        gap="sm"
-      >
-        <Flex className={S.message} align="baseline" maw="75ch">
+      <Flex align="flex-start" justify="space-between" gap="sm">
+        <Flex className={S.message} align="flex-start" maw="75ch">
           {undo.icon && (
             <Icon
               className={S.messageIcon}
