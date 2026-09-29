@@ -2,6 +2,9 @@ import type { UserId } from "./user";
 
 export type GroupId = number;
 
+// an identity provider's group name to the Metabase group ids it maps to
+export type GroupMappings = Record<string, GroupId[]>;
+
 export type Membership = {
   user_id: UserId;
   group_id: GroupId;

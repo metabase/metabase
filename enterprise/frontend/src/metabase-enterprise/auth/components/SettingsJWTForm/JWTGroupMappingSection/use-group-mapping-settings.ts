@@ -4,7 +4,6 @@ import { t } from "ttag";
 import {
   EMPTY_MAPPINGS,
   type GroupMappingsSaveResult,
-  type MappingsType,
   type SaveOptions,
 } from "metabase/admin/settings/auth/components/GroupMappings";
 import { getErrorMessage } from "metabase/api/utils/errors";
@@ -16,7 +15,7 @@ import {
   useSetting,
   useUpdateSettingsMutation,
 } from "metabase/settings";
-import type { EnterpriseSettings } from "metabase-types/api";
+import type { EnterpriseSettings, GroupMappings } from "metabase-types/api";
 
 export type GroupMappingSettings = Partial<
   Pick<EnterpriseSettings, "jwt-group-sync" | "jwt-group-mappings">
@@ -24,7 +23,7 @@ export type GroupMappingSettings = Partial<
 
 export type GroupMappingSettingsState = {
   syncEnabled: boolean;
-  mappings: MappingsType;
+  mappings: GroupMappings;
   isSaving: boolean;
   isAdminSettingsFetching: boolean;
   saveSettings: (

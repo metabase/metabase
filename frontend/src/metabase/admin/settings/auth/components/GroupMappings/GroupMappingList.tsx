@@ -2,17 +2,17 @@ import { t } from "ttag";
 
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { Stack, Text } from "metabase/ui";
+import type { GroupMappings } from "metabase-types/api";
 
 import { DeleteGroupMappingModal } from "./DeleteGroupMappingModal";
 import { MappingEditorRow } from "./MappingEditorRow";
 import { MappingRow } from "./MappingRow";
-import type { MappingsType } from "./types";
 import type { MappingDeletionState } from "./use-mapping-deletion";
 import type { MappingEditorState } from "./use-mapping-editor";
 import type { GroupLookup } from "./utils";
 
 type GroupMappingListProps = {
-  mappings: MappingsType;
+  mappings: GroupMappings;
   groupLookup: GroupLookup;
   editor: MappingEditorState;
   deletion: MappingDeletionState;

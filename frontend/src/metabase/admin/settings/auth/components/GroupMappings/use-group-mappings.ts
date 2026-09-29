@@ -8,8 +8,8 @@ import {
   useSetting,
   useUpdateSettingsMutation,
 } from "metabase/settings";
+import type { GroupMappings } from "metabase-types/api";
 
-import type { MappingsType } from "./types";
 import { EMPTY_MAPPINGS } from "./utils";
 
 export type GroupMappingsSettingKey =
@@ -27,9 +27,9 @@ export type SaveOptions = {
 };
 
 export type GroupMappingsState = {
-  mappings: MappingsType;
+  mappings: GroupMappings;
   saveMappings: (
-    mappings: MappingsType,
+    mappings: GroupMappings,
     options?: SaveOptions,
   ) => Promise<GroupMappingsSaveResult>;
 };
@@ -45,7 +45,7 @@ export function useGroupMappings({
   const mappings = useSetting(settingKey) ?? EMPTY_MAPPINGS;
 
   const saveMappings = async (
-    nextMappings: MappingsType,
+    nextMappings: GroupMappings,
     { successMessage, showErrorToast = true }: SaveOptions = {},
   ): Promise<GroupMappingsSaveResult> => {
     const response = await updateSettings({ [settingKey]: nextMappings });

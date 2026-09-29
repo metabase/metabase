@@ -4,19 +4,23 @@ import {
   isDefaultGroup,
   isDefaultTenantGroup,
 } from "metabase/common/utils/groups";
-import type { GroupId, GroupListQuery } from "metabase-types/api";
+import type {
+  GroupId,
+  GroupListQuery,
+  GroupMappings,
+} from "metabase-types/api";
 
-import type { CascadeValue, MappingsType } from "./types";
+import type { CascadeValue } from "./types";
 
-export const EMPTY_MAPPINGS: MappingsType = {};
+export const EMPTY_MAPPINGS: GroupMappings = {};
 
 /** Rebuilds in place so a renamed mapping keeps its position in the list */
 export function withMappingEntry(
-  mappings: MappingsType,
+  mappings: GroupMappings,
   originalName: string | null,
   name: string,
   groupIds: GroupId[],
-): MappingsType {
+): GroupMappings {
   const entries = Object.entries(mappings).map(
     ([mappingName, ids]): [string, GroupId[]] =>
       mappingName === originalName ? [name, groupIds] : [mappingName, ids],
@@ -29,9 +33,9 @@ export function withMappingEntry(
 }
 
 export function withoutMapping(
-  mappings: MappingsType,
+  mappings: GroupMappings,
   name: string,
-): MappingsType {
+): GroupMappings {
   return Object.fromEntries(
     Object.entries(mappings).filter(([mappingName]) => mappingName !== name),
   );
@@ -39,9 +43,9 @@ export function withoutMapping(
 
 /** Scrubs group ids from every mapping, since the backend keeps the ids of deleted groups in them */
 export function withoutGroups(
-  mappings: MappingsType,
+  mappings: GroupMappings,
   groupIds: GroupId[],
-): MappingsType {
+): GroupMappings {
   const removed = new Set(groupIds);
   return Object.fromEntries(
     Object.entries(mappings).map(([mappingName, ids]): [string, GroupId[]] => [
