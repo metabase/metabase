@@ -61,6 +61,12 @@ notes: "..."
 - `witness.patch`, when there is one, adds the hint test, which isn't on master. Apply it before both the clean and the mutated run.
 - `notes.md` explains where the code moved since the fix, why the mutant has its shape, what the clean and mutated runs printed, and anything that could trip up the next person.
 
+## Adding an entry
+
+`scripts/make-entry.sh <issue> <fix commit>` starts a `method: inverse` entry from a fix commit. It saves the fix's diff without its test files as `bugs/<issue>/inverse.patch`, writes `record.yaml` next to it and adds the entry's line to `bugs/INDEX.jsonl`. `base_commit` is the `HEAD` of `CORPUS_WORKTREE`. The status is `pending` when the patch applies there with `git apply -R`, and `stale` when it doesn't.
+
+The script can't work out `fix_tests`, the `bug` fields or the `hint`, so it writes `TODO` in them, in the record and in its index line. Fill them in, then verify the entry as below before setting the status to `live`.
+
 ## Verifying an entry
 
 Check out `mutant.base_commit` in a separate worktree and run the hint test there twice, once clean and once with the mutant applied:

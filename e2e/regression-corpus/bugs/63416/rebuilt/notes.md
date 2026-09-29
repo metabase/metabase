@@ -1,6 +1,6 @@
 # 63416: visualizer dashcard download ignores dashboard filters
 
-Status: **retired, masked by a later fix** (the agent reported `live` with a width caveat; metabase-44 reclassified). Base `8317274709c`. The two-line pre-fix restoration is kept as a wiring mutant for the kill matrix, not as this regression.
+Status: **retired, masked by a later fix**. The entry was reclassified from `live` to retired: the two-line mutant fails the hint test, but only because it also undoes #75720's change to the download menu, which brings back #71638 and #64333 too. Base `8317274709c`. The two-line pre-fix restoration is kept as a wiring mutant for the kill matrix, not as this regression.
 
 ## Where the code is now
 The fix (92cea5d4f55, #64754) added `json_query: rawSeries[0].json_query` to the series `DashCardVisualization` builds for visualizer dashcards, because the dashcard menu passed `series[0]` as the download `result` and `getInternalDashcardParams` reads `result.json_query.parameters`. The line is still there (`DashCardVisualization.tsx:323`).

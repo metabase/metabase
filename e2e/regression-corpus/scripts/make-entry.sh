@@ -1,13 +1,11 @@
 #!/bin/bash
 # Generate a corpus entry from a fix commit.
 # Usage: make-entry.sh <issue> <fix-commit-sha>
-# Creates bugs/<issue>/{config.yaml,inverse.patch}. The patch is the fix's product-code
-# diff (test files excluded); applying it in reverse reintroduces the bug.
+# Creates bugs/<issue>/{record.yaml,inverse.patch} and adds the entry's line to bugs/INDEX.jsonl.
+# The patch is the fix's diff without its test files, and applying it in reverse reintroduces the bug.
 set -eu
 REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
-CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
 BUGS="$REPO_ROOT/e2e/regression-corpus/bugs"
-DATA="$CORPUS_OUT/july-corpus"
 cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
 ISSUE="$1"; COMMIT="$2"
 DIR="$BUGS/$ISSUE"
@@ -22,49 +20,41 @@ EXCLUDES=(':(exclude)e2e/*' ':(exclude)test/*' ':(exclude)enterprise/backend/tes
 git diff "$COMMIT^" "$COMMIT" -- "${EXCLUDES[@]}" > "$DIR/inverse.patch"
 [ -s "$DIR/inverse.patch" ] || { echo "ERROR: product diff empty (test-only commit)"; exit 1; }
 
-applies=false
-git apply -R --check "$DIR/inverse.patch" 2>/dev/null && applies=true
-base_sha=$(git rev-parse HEAD)
-subject=$(git log -1 --format='%s' "$COMMIT")
-fix_pr=$(printf '%s' "$subject" | grep -oE '#[0-9]+\)?$' | grep -oE '[0-9]+' || echo null)
+status=stale
+git apply -R --check "$DIR/inverse.patch" 2>/dev/null && status=pending
+fix_commit=$(git rev-parse "$COMMIT^{commit}")
+base_commit=$(git rev-parse --short=11 HEAD)
 
-# repro tests currently guarding this issue
-node -e '
-const fs=require("fs");
-const issue=+process.argv[1];
-const rows=fs.readFileSync(process.argv[3],"utf8").trim().split("\n").map(JSON.parse);
-const mine=rows.filter(r=>r.issues.includes(issue));
-const yaml=mine.map(r=>`    - spec: ${r.spec}\n      line: ${r.line}\n      kind: ${r.kind}\n      title: ${JSON.stringify(r.title)}`).join("\n");
-fs.writeFileSync(process.argv[2], yaml+"\n");
-' "$ISSUE" "$DIR/.repro_tests.yaml" "$DATA/repro-tests.jsonl"
-
-cat > "$DIR/config.yaml" <<EOF
-issue: $ISSUE
-issue_url: https://github.com/metabase/metabase/issues/$ISSUE
-fix_commits: ["$COMMIT"]
-fix_pr: $fix_pr
-fix_subject: $(printf '%s' "$subject" | sed 's/\\/\\\\/g; s/"/\\"/g' | sed 's/^/"/;s/$/"/')
-area: null
-fe_be_boundary: null
-
-mutation:
-  kind: patch
-  patch_file: inverse.patch
-  notes: null
-  base_sha: "$base_sha"
-  applies_cleanly: $applies
-  breaks_compile: null
-
-validation:
-  repro_tests:
-$(cat "$DIR/.repro_tests.yaml")
-  green_baseline: untested
-  repro_confirmed: null
-
-coverage:
-  be_unit: {status: untested, killed_by: []}
-  fe_unit: {status: untested, killed_by: []}
-  notes: null
+cat > "$DIR/record.yaml" <<EOF
+id: reg-$ISSUE
+origin:
+  kind: regression
+  issue: $ISSUE
+  fix_commit: $fix_commit
+  fix_tests:
+    - "TODO"
+bug:
+  statement: "TODO"
+  odc: {type: TODO, qualifier: TODO}
+  module: TODO
+  lowest_level: TODO
+  stratum: TODO
+  fe_be_boundary: TODO
+mutant:
+  base_commit: "$base_commit"
+  patch: inverse.patch
+  method: inverse
+  status: $status
+  retired_reason: null
+hint:
+  test: "TODO"
+  expected_failure: "TODO"
+notes: "inverse.patch is the fix diff without its test files; apply it with \`git apply -R\` to reintroduce the bug"
 EOF
-rm "$DIR/.repro_tests.yaml"
-echo "created $DIR (applies_cleanly=$applies)"
+
+INDEX="$BUGS/INDEX.jsonl"
+{ grep -v "\"issue\": $ISSUE," "$INDEX" || true
+  echo "{\"id\": \"reg-$ISSUE\", \"issue\": $ISSUE, \"module\": \"TODO\", \"stratum\": \"TODO\", \"lowest_level\": \"TODO\", \"fe_be_boundary\": \"TODO\", \"patch\": \"inverse.patch\", \"hint_kind\": \"TODO\", \"alias_of\": null}"
+} | sort -t: -k3,3n > "$INDEX.tmp"
+mv "$INDEX.tmp" "$INDEX"
+echo "created $DIR (status: $status), fill in the TODO fields in record.yaml and its INDEX.jsonl line"

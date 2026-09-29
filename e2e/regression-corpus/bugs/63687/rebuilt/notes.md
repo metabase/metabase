@@ -54,6 +54,6 @@ Mutant:
 ## Things that could trip the next person
 - Every existing tile test in embed_test.clj uses a `:crowberto` or `:rasta` session. Rasta has data
   perms in the test DB, so neither session can see a missing as-admin. Only an anonymous request can.
-- Other agents keep starting backend JVMs. My runner polled `pgrep -f bin/test-agent` every second and lost
+- Other test runs on the same machine can start backend JVMs. My runner polled `pgrep -f bin/test-agent` every second and lost
   a race once with a 10s poll.
 - Dropping the require is optional. It compiles either way; keeping it only adds an unused-alias warning.

@@ -53,4 +53,4 @@ so the test covers both which label gets measured and how much width is reserved
   `measureText` stub would NOT catch the mutant. The string-keyed stub is what gives the
   test its power.
 - No `.cljc` touched and no cljs rebuild needed. The worktree's `target` is still a symlink.
-- Jest ran quickly here (about 3 to 11 s per run) even with other agents on the machine.
+- Jest ran quickly here (about 3 to 11 s per run) even with other test runs on the machine.

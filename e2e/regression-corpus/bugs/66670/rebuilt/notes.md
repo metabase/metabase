@@ -26,4 +26,4 @@ The archived test fails on assertions, not a crash: the revert completes and the
 ## Gotchas
 - The fix-era test name tags `metabase#UXW-2494`, not 66670.
 - `(:parameters serialized-dashboard)` inside the `let` is already the cleaned list because of shadowing; a variant using it is equivalent.
-- A test-agent run takes about a minute; most of the 42 minutes went to waiting for other agents' JVMs.
+- A test-agent run takes about a minute; most of the 42 minutes went to waiting for other JVMs on the same machine.
