@@ -46,16 +46,7 @@ function ResizableHandle({
   const prevTransformRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    const prevTransform = prevTransformRef.current;
-    prevTransformRef.current = transform;
-
-    if (prevTransform !== null && transform === null) {
-      const newWidth = Math.max(
-        RESIZE_HANDLE_WIDTH,
-        initialWidth + prevTransform.x,
-      );
-      onResizeEnd(newWidth);
-    }
+    return;
   }, [transform, initialWidth, onResizeEnd]);
 
   const currentPosition = initialWidth + (transform ? transform.x : 0);
