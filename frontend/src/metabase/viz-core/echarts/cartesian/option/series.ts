@@ -895,12 +895,14 @@ function getStackedDataLabelFormatter(
   chartDataDensity: ComboChartDataDensity,
   chartWidth: number,
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ) {
   const getShowStackedLabel = getShowStackedLabelFn(
     chartWidth,
     stackName,
     chartDataDensity,
     settings,
+    isRowChart,
   );
 
   return (params: CallbackDataParams) => {
@@ -934,8 +936,14 @@ function getShowStackedLabelFn(
   stackName: string | undefined,
   chartDataDensity: ComboChartDataDensity,
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ): (params: CallbackDataParams) => boolean {
   if (!settings || !chartDataDensity) {
+    return () => true;
+  }
+  // Same reason as `getShowLabelFn`: rotated totals stack one per row, so
+  // thinning by chart width is the wrong axis.
+  if (isRowChart) {
     return () => true;
   }
   if (settings["graph.label_value_frequency"] === "all") {
@@ -1009,6 +1017,7 @@ export const getStackTotalsSeries = (
   chartWidth: number,
   seriesOptions: (LineSeriesOption | BarSeriesOption)[],
   renderingContext: RenderingContext,
+  isRowChart = false,
 ) => {
   const seriesByStackName = _.groupBy(
     seriesOptions.filter((s) => s.stack != null),
@@ -1050,6 +1059,7 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            isRowChart,
           ),
         "top",
         renderingContext,
@@ -1069,6 +1079,7 @@ export const getStackTotalsSeries = (
             chartModel.dataDensity,
             chartWidth,
             settings,
+            isRowChart,
           ),
         "bottom",
         renderingContext,
@@ -1217,6 +1228,7 @@ export const buildEChartsSeries = (
         chartWidth,
         series,
         renderingContext,
+        chartLayout.isRowChart,
       ),
     );
   }
