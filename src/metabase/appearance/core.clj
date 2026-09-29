@@ -26,6 +26,7 @@
   loading-message
   login-page-illustration
   login-page-illustration-custom
+  login-page-illustration-image
   no-data-illustration
   no-data-illustration-custom
   no-object-illustration

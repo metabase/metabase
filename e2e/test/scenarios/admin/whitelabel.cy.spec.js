@@ -13,6 +13,19 @@ function checkLogo() {
   });
 }
 
+function checkLoginPageIllustration(testId, imageBase64) {
+  cy.findByTestId(testId)
+    .should("have.css", "background-image")
+    .and("match", /api\/session\/login-page-illustration\?v=[0-9a-f]{16}/)
+    .then((backgroundImage) => {
+      const url = String(backgroundImage).match(/url\("(.+)"\)/)[1];
+      cy.request({ url, encoding: "base64" }).then((response) => {
+        expect(response.headers["content-type"]).to.eq("image/jpeg");
+        expect(response.body).to.eq(imageBase64);
+      });
+    });
+}
+
 const MB = 1024 * 1024;
 
 describe("formatting > whitelabel", { tags: "@EE" }, () => {
@@ -268,22 +281,21 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
             cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
               (logo_data) => {
-                const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
                 cy.signOut();
+                cy.log("the login page loads the image from its URL");
                 cy.visit("/");
-                cy.findByTestId("login-page-illustration").should(
-                  "have.css",
-                  "background-image",
-                  backgroundImage,
+                checkLoginPageIllustration(
+                  "login-page-illustration",
+                  logo_data,
                 );
 
+                cy.log("the unsubscribe page loads the image from its URL");
                 cy.visit(
                   "/unsubscribe?hash=hash&email=email&pulse-id=pulse-id",
                 );
-                cy.findByTestId("unsubscribe-page-illustration").should(
-                  "have.css",
-                  "background-image",
-                  backgroundImage,
+                checkLoginPageIllustration(
+                  "unsubscribe-page-illustration",
+                  logo_data,
                 );
               },
             );

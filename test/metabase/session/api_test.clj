@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
    [metabase.login-history.db :as login-history.db]
@@ -22,6 +23,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [toucan2.core :as t2]))
@@ -624,6 +626,60 @@
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
                    :test-session-api-setting)))))))
+
+(defn- image-data-uri [content-type content]
+  (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
+
+(defn- fetch-login-page-illustration [expected-status & args]
+  (apply client/client-full-response :get expected-status "session/login-page-illustration" args))
+
+(deftest login-page-illustration-test
+  (mt/with-premium-features #{:whitelabel}
+    (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+      (let [image-hash (second (re-find #"v=(.+)$" (appearance/login-page-illustration-custom)))
+            etag       (format "\"%s\"" image-hash)
+            cached     "private, max-age=31536000, immutable"]
+        (testing "anonymous users get the image"
+          (let [{:keys [body headers]} (fetch-login-page-illustration 200)]
+            (is (= "png bytes" body))
+            (is (= "image/png" (get headers "Content-Type")))
+            (is (= etag (get headers "ETag")))
+            (is (= "private, no-cache" (get headers "Cache-Control")))
+            (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))))
+        (testing "the URL with the current hash is cached"
+          (is (= cached (get-in (fetch-login-page-illustration 200 :v image-hash) [:headers "Cache-Control"]))))
+        (testing "a URL with another hash is not cached"
+          (is (= "private, no-cache"
+                 (get-in (fetch-login-page-illustration 200 :v "0000000000000000") [:headers "Cache-Control"]))))
+        (testing "304 when the ETag matches"
+          (doseq [if-none-match [etag (str "W/" etag) (str "\"other\", " etag) "*"]]
+            (testing if-none-match
+              (let [{:keys [headers]} (fetch-login-page-illustration
+                                       304 {:request-options {:headers {"if-none-match" if-none-match}}} :v image-hash)]
+                (is (= etag (get headers "ETag")))
+                (is (= cached (get headers "Cache-Control")))
+                (is (= "image/png" (get headers "Content-Type")))))))
+        (testing "200 when the ETag does not match"
+          (fetch-login-page-illustration 200 {:request-options {:headers {"if-none-match" "\"other\""}}}))
+        (testing "session properties contain the URL, not the image"
+          (is (= (str "api/session/login-page-illustration?v=" image-hash)
+                 (:login-page-illustration-custom (mt/client :get 200 "session/properties")))))))
+    (testing "SVG images get a sandbox CSP"
+      (doseq [content-type ["image/svg+xml" "image/svg+xml;charset=iso-8859-1"]]
+        (testing (str "Content-Type = " content-type)
+          (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri content-type "<svg/>")]
+            (let [{:keys [headers]} (fetch-login-page-illustration 200)]
+              (is (= content-type (get headers "Content-Type")))
+              (is (= "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+                     (get headers "Content-Security-Policy"))))))))
+    (testing "404 when there is no uploaded image"
+      (doseq [value [nil "https://example.com/login.png"]]
+        (mt/with-temporary-raw-setting-values [login-page-illustration-custom value]
+          (fetch-login-page-illustration 404)))))
+  (testing "404 without the whitelabel feature"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (fetch-login-page-illustration 404)))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"

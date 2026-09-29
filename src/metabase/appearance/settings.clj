@@ -1,12 +1,15 @@
 (ns metabase.appearance.settings
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.appearance.db :as appearance.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n :refer [deferred-tru tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
 
@@ -223,6 +226,36 @@ See [fonts](../configuring-metabase/fonts.md).")
   :feature    :whitelabel
   :default    "default")
 
+(def ^:private image-data-uri-header
+  ;; possessive `*+`: a plain `*` recurses per parameter and overflows the stack on long headers
+  #"(?i)(image/[\w.+-]+)((?:;[\w.+-]+=[\w.+-]+)*+);base64")
+
+(defn- parse-image-data-uri
+  "Parse a base64 `data:image/...` URI into `{:content-type :media-type :bytes :hash}`, or nil if `s` is not one."
+  [^String s]
+  (when-let [comma (and (str/starts-with? s "data:") (str/index-of s ","))]
+    (when-let [[_ media-type params] (re-matches image-data-uri-header (subs s 5 comma))]
+      (try
+        {:content-type (str (u/lower-case-en media-type) params)
+         :media-type   (u/lower-case-en media-type)
+         :bytes        (u.jvm/decode-base64-to-bytes (subs s (inc comma)))
+         :hash         (subs (codecs/bytes->hex (buddy-hash/sha256 s)) 0 16)}
+        (catch IllegalArgumentException _
+          nil)))))
+
+(def ^:private parsed-login-page-illustration-cache
+  "The last raw value of `login-page-illustration-custom` and its parsed image, as `[raw parsed]`."
+  (atom nil))
+
+(defn- parsed-login-page-illustration
+  [raw]
+  (let [[cached-raw parsed] @parsed-login-page-illustration-cache]
+    (if (identical? raw cached-raw)
+      parsed
+      (let [parsed (some-> raw parse-image-data-uri)]
+        (reset! parsed-login-page-illustration-cache [raw parsed])
+        parsed))))
+
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
   :encryption :no
@@ -230,7 +263,20 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  ;; keep uploaded images out of the bootstrap and session properties, they are served by
+  ;; `GET /api/session/login-page-illustration`
+  :getter     (fn []
+                (let [raw (setting/get-value-of-type :string :login-page-illustration-custom)]
+                  (if-let [{image-hash :hash} (parsed-login-page-illustration raw)]
+                    (str "api/session/login-page-illustration?v=" image-hash)
+                    raw))))
+
+(defn login-page-illustration-image
+  "The uploaded custom login page illustration as `{:content-type :bytes :hash}`, or nil if there is none."
+  []
+  (when (login-page-illustration-custom)
+    (parsed-login-page-illustration (setting/get-value-of-type :string :login-page-illustration-custom))))
 
 (defsetting landing-page-illustration
   (deferred-tru "Options for displaying the illustration on the landing page.")
