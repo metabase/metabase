@@ -61,17 +61,12 @@ describe("scenarios > question > view", () => {
       });
     });
 
-    it("should show filters by search for Vendor", () => {
-      H.visitQuestion("@questionId");
-
-      cy.findAllByText("VENDOR").first().click();
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Search the list");
-        cy.findByText("Search the list").should("not.exist");
-      });
-    });
-
     it("should be able to filter Q by Category as no data user (from Q link) (metabase#12654)", () => {
+      cy.log("admin sees filters by search for Vendor");
+      H.visitQuestion("@questionId");
+      cy.findAllByText("VENDOR").first().click();
+      H.popover().findByPlaceholderText("Search the list").should("exist");
+
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
 

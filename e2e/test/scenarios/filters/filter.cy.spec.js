@@ -158,24 +158,12 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Rating is greater than 2").should("not.exist");
   });
 
-  it("should offer case expression in the auto-complete suggestions", () => {
+  it("should offer case in the suggestions and highlight them with keyboard up and down arrows (metabase#16210)", () => {
     openExpressionEditorFromFreshlyLoadedPage();
 
     H.enterCustomColumnDetails({ formula: "c", blur: false });
 
     H.CustomExpressionEditor.completions().should("contain", "case");
-
-    H.CustomExpressionEditor.type("a");
-
-    // "case" is still there after typing a bit
-    H.CustomExpressionEditor.completions().should("contain", "case");
-  });
-
-  it("should enable highlighting suggestions with keyboard up and down arrows (metabase#16210)", () => {
-    openExpressionEditorFromFreshlyLoadedPage();
-
-    H.enterCustomColumnDetails({ formula: "c", blur: false });
-
     H.CustomExpressionEditor.completion("case")
       .parent()
       .should("have.attr", "aria-selected", "true");
@@ -192,6 +180,11 @@ describe("scenarios > question > filter", () => {
     H.CustomExpressionEditor.completion("case")
       .parent()
       .should("have.attr", "aria-selected", "false");
+
+    H.CustomExpressionEditor.type("a");
+
+    // "case" is still there after typing a bit
+    H.CustomExpressionEditor.completions().should("contain", "case");
   });
 
   it("should highlight the correct matching for suggestions", () => {
@@ -417,7 +410,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("wilma-muller");
   });
 
-  it("should reject a number literal", () => {
+  it("should reject number and string literals", () => {
     H.openProductsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
     H.popover().findByText("Custom Expression").click();
@@ -426,12 +419,13 @@ describe("scenarios > question > filter", () => {
       cy.button("Done").should("be.disabled");
       cy.findByText("Types are incompatible.").should("be.visible");
     });
-  });
 
-  it("should reject a string literal", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({ formula: "[Price] > 1" });
+    H.popover().within(() => {
+      cy.button("Done").should("be.enabled");
+      cy.findByText("Types are incompatible.").should("not.exist");
+    });
+
     H.enterCustomColumnDetails({ formula: '"TheAnswer"' });
     H.popover().within(() => {
       cy.button("Done").should("be.disabled");
@@ -454,7 +448,7 @@ describe("scenarios > question > filter", () => {
       .should("be.visible");
   });
 
-  it("custom expression filter should allow the use of parentheses in combination with logical operators (metabase#15754)", () => {
+  it("custom expression filter should allow parentheses with logical operators and refuse a numeric value before an operator (metabase#15754, metabase#15893)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.filter({ mode: "notebook" });
@@ -469,16 +463,9 @@ describe("scenarios > question > filter", () => {
       .should("not.exist");
 
     H.expressionEditorWidget().button("Done").should("not.be.disabled");
-  });
 
-  it("custom expression filter should refuse to work with numeric value before an operator (metabase#15893)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.filter({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
-
+    cy.log("should refuse a numeric value before an operator (metabase#15893)");
+    H.CustomExpressionEditor.clear();
     H.CustomExpressionEditor.focus().type("0 < [ID]").blur();
 
     H.expressionEditorWidget()

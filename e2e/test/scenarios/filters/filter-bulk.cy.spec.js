@@ -576,7 +576,7 @@ describe("scenarios > filters > bulk filtering", () => {
       H.filter();
     });
 
-    it("can search for a column", () => {
+    it("can search for a column and apply a filter from it", () => {
       H.popover().within(() => {
         cy.findByText("Category").should("be.visible");
         cy.findByText("Vendor").should("be.visible");
@@ -584,12 +584,8 @@ describe("scenarios > filters > bulk filtering", () => {
         cy.findByPlaceholderText("Find...").type("vend");
         cy.findByText("Category").should("not.exist");
         cy.findByText("Vendor").should("be.visible");
-      });
-    });
 
-    it("can apply a filter from a searched column", () => {
-      H.popover().within(() => {
-        cy.findByPlaceholderText("Find...").type("price");
+        cy.findByPlaceholderText("Find...").clear().type("price");
         cy.findByText("Category").should("not.exist");
         cy.findByText("Price").click();
       });
