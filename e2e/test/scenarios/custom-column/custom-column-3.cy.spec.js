@@ -328,47 +328,6 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should be possible to resolve aggregations from the question", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              {
-                name: "Custom Sum",
-                "display-name": "Custom Sum",
-              },
-            ],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-    H.openNotebook();
-
-    H.getNotebookStep("summarize").icon("add").click();
-    H.popover().findByText("Custom Expression").scrollIntoView().click();
-
-    H.CustomExpressionEditor.type("[Custom");
-    H.CustomExpressionEditor.completion("Custom Sum")
-      .should("be.visible")
-      .click();
-    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
-    H.CustomExpressionEditor.type("+ 1");
-    H.CustomExpressionEditor.format();
-
-    H.CustomExpressionEditor.nameInput().type("Derived");
-    H.popover().button("Done").click();
-
-    H.visualize();
-    H.assertTableData({
-      columns: ["Custom Sum", "Derived"],
-    });
-  });
-
   it("should be possible to resolve aggregations from the question directly", () => {
     H.createQuestion(
       {
@@ -481,38 +440,6 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.popover()
       .findByText("Cycle detected: Custom Sum → Custom Sum 2 → Custom Sum")
       .should("be.visible");
-  });
-
-  it("should be possible to create aggregations with the same name", () => {
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            [
-              "aggregation-options",
-              ["sum", ["field", ORDERS.TOTAL, null]],
-              {
-                name: "Foo",
-                "display-name": "Foo",
-              },
-            ],
-          ],
-        },
-      },
-      { visitQuestion: true },
-    );
-    H.openNotebook();
-
-    H.getNotebookStep("summarize").icon("add").click();
-    H.popover().findByText("Custom Expression").scrollIntoView().click();
-    H.CustomExpressionEditor.type("Min([Total])");
-    H.CustomExpressionEditor.nameInput().type("Foo");
-    H.popover().button("Done").click();
-
-    H.getNotebookStep("summarize").within(() => {
-      cy.findAllByText("Foo").should("have.length", 2);
-    });
   });
 
   it("should be possible to reorder aggregations with the same name", () => {

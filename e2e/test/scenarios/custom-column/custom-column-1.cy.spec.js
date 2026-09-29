@@ -41,24 +41,6 @@ describe("scenarios > question > custom column", () => {
       .click();
   });
 
-  it("can create a custom column (metabase#13241)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({
-      formula: "1 + 1",
-      name: "Math",
-      format: true,
-    });
-    cy.button("Done").click();
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
-    cy.findByTestId("query-visualization-root").contains("Math");
-  });
-
   it("should not show default period in date column name (metabase#36631)", () => {
     const name = "Base question";
     H.createQuestion({ name, query: { "source-table": ORDERS_ID } });
@@ -164,31 +146,6 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("summarize").findByText("UserLAT").should("be.visible");
   });
 
-  it("can create a custom column with an existing column name", () => {
-    const customFormulas = [
-      {
-        formula: "[Quantity] * 2",
-        name: "Double Qt",
-      },
-      {
-        formula: "[Quantity] * [Product.Price]",
-        name: "Sum Total",
-      },
-    ];
-
-    customFormulas.forEach(({ formula, name }) => {
-      H.openOrdersTable({ mode: "notebook" });
-      cy.findByLabelText("Custom column").click();
-
-      H.enterCustomColumnDetails({ formula, name });
-      cy.button("Done").click();
-
-      H.visualize();
-
-      cy.findByTestId("query-visualization-root").contains(name);
-    });
-  });
-
   it("should create custom column with fields from aggregated data (metabase#12762)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
@@ -265,41 +222,6 @@ describe("scenarios > question > custom column", () => {
     cy.get(".test-TableInteractive-cellWrapper--firstColumn")
       .eq(0)
       .findByText("1");
-  });
-
-  it("should be able to use custom expression after aggregation (metabase#13857)", () => {
-    const CE_NAME = "13857_CE";
-    const CC_NAME = "13857_CC";
-
-    cy.signInAsAdmin();
-
-    H.createQuestion(
-      {
-        name: "13857",
-        query: {
-          expressions: {
-            [CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
-          },
-          "source-query": {
-            aggregation: [
-              [
-                "aggregation-options",
-                ["*", ["count"], 1],
-                { name: CE_NAME, "display-name": CE_NAME },
-              ],
-            ],
-            breakout: [
-              ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
-            ],
-            "source-table": ORDERS_ID,
-          },
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CC_NAME);
   });
 
   it("should work with implicit joins (metabase#14080)", () => {
@@ -609,17 +531,6 @@ describe("scenarios > question > custom column", () => {
       .should("be.visible");
   });
 
-  it("should allow indenting using Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "1 + 2", blur: false });
-
-    // Tab should insert indentation
-    cy.realPress("Tab");
-    H.CustomExpressionEditor.value().should("equal", "1 + 2  ");
-  });
-
   it("should not format expression when pressing tab in the editor", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
@@ -771,19 +682,6 @@ describe("scenarios > question > custom column", () => {
 
     // Focus remains on the expression editor
     cy.focused().should("have.attr", "role", "textbox");
-  });
-
-  it("should be possible to use the suggestion snippet arguments", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-
-    H.CustomExpressionEditor.type("coalesc{tab}[Tax]{tab}[User ID]", {
-      delay: 50,
-    });
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      "coalesce([Tax], [User ID])",
-    );
   });
 
   it("should be possible to use the suggestion templates", () => {

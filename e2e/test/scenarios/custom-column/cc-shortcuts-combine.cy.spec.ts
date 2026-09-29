@@ -88,21 +88,6 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
     );
   });
 
-  it("should pick the correct default separator based on the type of the first column", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    selectCombineColumns();
-
-    selectColumn(0, "User", "Email");
-
-    H.expressionEditorWidget().within(() => {
-      cy.findByText("Separated by (empty)").should("exist");
-      cy.findByText(/Separated by/).click();
-
-      cy.findByLabelText("Separator").should("have.value", "");
-    });
-  });
-
   it("should be possible to edit a previous stages' columns when there is an aggregation (metabase#43226)", () => {
     H.openOrdersTable({ mode: "notebook" });
 

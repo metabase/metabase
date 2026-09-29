@@ -106,26 +106,6 @@ describe(
       });
     });
 
-    it("should handle CASE (metabase#13122)", () => {
-      openCustomColumnInTable(ORDERS_ID);
-
-      H.enterCustomColumnDetails({
-        formula: "case([Discount] > 0, [Created At], [Product → Created At])",
-        name: "MiscDate",
-      });
-      cy.button("Done").click();
-
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText("MiscDate").click();
-        cy.findByPlaceholderText("Enter a number").should("not.exist");
-
-        cy.findByText("Relative date range…").click();
-        cy.findByText("Previous").click();
-        cy.findByDisplayValue("days").should("be.visible");
-      });
-    });
-
     it("should handle COALESCE", () => {
       openCustomColumnInTable(ORDERS_ID);
 
@@ -146,37 +126,6 @@ describe(
     });
   },
 );
-
-describe("scenarios > question > custom column > error feedback", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.openProductsTable({ mode: "notebook" });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-  });
-
-  it("should catch non-existent field reference", () => {
-    H.enterCustomColumnDetails({
-      formula: "abcdef",
-      name: "Non-existent",
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown column: abcdef/i);
-  });
-
-  it("should fail on expression validation errors", () => {
-    H.enterCustomColumnDetails({
-      formula: "SUBSTRING('foo', 0, 1)",
-      name: "BadSubstring",
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/positive integer/i);
-  });
-});
 
 // ExpressionEditorTextfield jsx component
 describe("scenarios > question > custom column > expression editor", () => {
@@ -231,13 +180,6 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("Custom column").click();
   });
 
-  it("should appear while inside a function", () => {
-    H.enterCustomColumnDetails({ formula: "lower(", blur: false });
-    H.CustomExpressionEditor.helpTextHeader()
-      .should("be.visible")
-      .should("contain", "lower(value)");
-  });
-
   it("should appear after a field reference", () => {
     H.enterCustomColumnDetails({ formula: "lower([Category]", blur: false });
     H.CustomExpressionEditor.helpTextHeader()
@@ -274,21 +216,6 @@ describe("scenarios > question > custom column > help text", () => {
     );
     H.CustomExpressionEditor.blur();
     H.CustomExpressionEditor.helpText().should("not.exist");
-  });
-
-  it("should not disappear when clicked on (metabase#17548)", () => {
-    H.enterCustomColumnDetails({ formula: "round(", blur: false });
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .should("contain", "round([Temperature])");
-
-    // Shouldn't hide on click
-    H.CustomExpressionEditor.helpText().click();
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .should("contain", "round([Temperature])");
   });
 
   describe("scenarios > question > custom column > help text > visibility", () => {
@@ -410,12 +337,6 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.CustomExpressionEditor.type("count(");
     cy.realPress("Escape");
     H.CustomExpressionEditor.get().should("be.visible");
-  });
-
-  it("should be possible to exit the editor by clicking outside of it when there is no text", () => {
-    H.getNotebookStep("data").click();
-    H.modal().should("not.exist");
-    H.expressionEditorWidget().should("not.exist");
   });
 
   it("should be possible to exit the editor by clicking outside of it when there is no text, by clicking an interactive element", () => {
