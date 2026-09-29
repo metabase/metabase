@@ -282,41 +282,89 @@ function testedLayers(entry) {
   };
 }
 
-const EQUIVALENCE_RECORDS = {
-  equivalence: ["reviewed_by", "date", "reason"],
-  scope_decision: ["by", "date", "reason"],
+const RESOLUTION_NEEDS = {
+  equivalence: [
+    "approved_by",
+    "date",
+    "reason",
+    "reviewed_sha",
+    "patch_sha256",
+  ],
+  scope_decision: [
+    "approved_by",
+    "date",
+    "reason",
+    "reviewed_sha",
+    "patch_sha256",
+  ],
+  not_equivalent: ["approved_by", "date", "reason", "patch_sha256"],
 };
 const EQUIVALENCE_RESOLVED = {
   equivalence: "reviewed equivalence",
   scope_decision: "scope decision",
+  not_equivalent: "not equivalent",
 };
 
-/** How a suspected equivalent mutant stands, as kills.py's equivalence_state() gives it, with each record missing a field. */
-function equivalenceState(entry, killed) {
+/**
+ * How a suspected equivalent mutant stands, with its resolution record and anything wrong with it, as kills.py's
+ * equivalence_resolution() gives them, or null for any other mutant.
+ */
+function equivalenceResolution(entry, killed, base) {
   if (entry.equivalent_suspect !== true) {
-    return { state: null, incomplete: [] };
+    return null;
   }
-  if (killed) {
-    return { state: "killed", incomplete: [] };
-  }
-  const incomplete = [];
-  for (const [field, keys] of Object.entries(EQUIVALENCE_RECORDS)) {
-    const record = entry[field];
-    if (record == null) {
-      continue;
-    }
-    const missing = keys.filter(
-      (k) => !(record && typeof record === "object" && record[k]),
+  const found = {
+    state: killed ? "killed" : "unresolved",
+    record: null,
+    resolution: null,
+    incomplete: false,
+    resolution_stale: false,
+    resolution_rev_differs: false,
+    problems: [],
+  };
+  const records = Object.keys(RESOLUTION_NEEDS).filter(
+    (field) => field in entry,
+  );
+  if (records.length > 1) {
+    found.problems.push(
+      `it has more than one of ${records.join(", ")}, so none of them counts`,
     );
-    if (missing.length === 0) {
-      return { state: EQUIVALENCE_RESOLVED[field], incomplete };
-    }
-    incomplete.push(`\`${field}\` has no ${missing.join(", ")}`);
   }
-  return { state: "unresolved", incomplete };
+  if (records.length !== 1) {
+    return found;
+  }
+  const [field] = records;
+  const resolution =
+    entry[field] && typeof entry[field] === "object" ? { ...entry[field] } : {};
+  if (!resolution.approved_by && resolution.by) {
+    resolution.approved_by = resolution.by;
+    delete resolution.by;
+  }
+  found.record = field;
+  found.resolution = resolution;
+  const missing = RESOLUTION_NEEDS[field].filter((k) => !resolution[k]);
+  if (missing.length) {
+    found.incomplete = true;
+    found.problems.push(`\`${field}\` has no ${missing.join(", ")}`);
+  } else if (resolution.patch_sha256 !== entry.patch_sha256) {
+    found.resolution_stale = true;
+    found.problems.push(
+      `\`${field}\` is for the patch ${short(resolution.patch_sha256)}, and the mutant's patch is ${short(entry.patch_sha256)}`,
+    );
+  } else if (!killed) {
+    found.state = EQUIVALENCE_RESOLVED[field];
+  }
+  if (
+    resolution.reviewed_sha &&
+    base &&
+    !sameRevision(resolution.reviewed_sha, base)
+  ) {
+    found.resolution_rev_differs = true;
+  }
+  return found;
 }
 
-export function mutantFacts(mid, raw, sidecar) {
+export function mutantFacts(mid, raw, sidecar, base = null) {
   const entry = Array.isArray(raw) ? { killed_by: raw } : raw;
   const killed = byLayer(entry.killed_by);
   const unconfirmed = byLayer(entry.unconfirmed_by);
@@ -359,9 +407,10 @@ export function mutantFacts(mid, raw, sidecar) {
       killed[layer] ??= [layer];
     }
   }
-  const equivalence = equivalenceState(
+  const equivalence = equivalenceResolution(
     entry,
     (entry.killed_by ?? []).length > 0 || checkers.names.length > 0,
+    base,
   );
   const recomputed = firstLayer(killed);
   const recorded = recordedLayer(mid, entry);
@@ -384,20 +433,24 @@ export function mutantFacts(mid, raw, sidecar) {
     origin: entry.origin ?? null,
     ...(entry.set ? { set: entry.set } : {}),
     ...(entry.alias_of ? { alias_of: entry.alias_of } : {}),
-    ...(entry.equivalent_suspect === true ? { equivalent_suspect: true } : {}),
+    ...(equivalence && equivalence.state !== "not equivalent"
+      ? { equivalent_suspect: true }
+      : {}),
     ...(entry.patch_sha256 ? { patch_sha256: entry.patch_sha256 } : {}),
-    ...(equivalence.state
+    ...(equivalence
       ? {
           equivalence_state: equivalence.state,
-          ...Object.fromEntries(
-            Object.keys(EQUIVALENCE_RECORDS)
-              .filter((field) => field in entry)
-              .map((field) => [field, entry[field]]),
-          ),
+          equivalence: {
+            record: equivalence.record,
+            resolution: equivalence.resolution,
+            incomplete: equivalence.incomplete,
+            resolution_stale: equivalence.resolution_stale,
+            resolution_rev_differs: equivalence.resolution_rev_differs,
+          },
         }
       : {}),
-    ...(equivalence.incomplete.length
-      ? { incomplete_equivalence_records: equivalence.incomplete }
+    ...(equivalence?.problems.length
+      ? { equivalence_problems: equivalence.problems }
       : {}),
     ...(sidecar?.description ? { description: sidecar.description } : {}),
     locations: mutantLocations(entry),
@@ -833,7 +886,7 @@ export function buildLedger({
   const mutants = {};
   const unlocated = [];
   for (const [mid, raw] of Object.entries(kills)) {
-    const facts = mutantFacts(mid, raw, sidecars[mid]);
+    const facts = mutantFacts(mid, raw, sidecars[mid], provenance.kills.base);
     mutants[mid] = facts;
     if (facts.locations.length === 0) {
       unlocated.push(mid);
@@ -1227,21 +1280,27 @@ function suspectStateLine(mutants) {
   }
   Object.values(byState).forEach((mids) => mids.sort());
   const unresolved = byState.unresolved ?? [];
+  const flagged = (flag) =>
+    unresolved.filter((mid) => mutants[mid].equivalence[flag]).length;
   const resolved = ["reviewed equivalence", "scope decision"]
     .filter((s) => byState[s])
     .map((s) => `${byState[s].length} by ${s} (${byState[s].join(", ")})`);
-  const incomplete = Object.entries(mutants)
-    .filter(([, m]) => m.incomplete_equivalence_records)
-    .map(
-      ([mid, m]) => `${mid}: ${m.incomplete_equivalence_records.join("; ")}`,
-    );
+  const notEquivalent = byState["not equivalent"] ?? [];
+  const problems = Object.entries(mutants)
+    .filter(([, m]) => m.equivalence_problems)
+    .map(([mid, m]) => `${mid}: ${m.equivalence_problems.join("; ")}`);
   return [
-    `Among the ones with no confirmed kill, ${unresolved.length} are unresolved${unresolved.length ? ` (${unresolved.join(", ")})` : ""}: they get no sample credit in the verdicts, and they block eligibility until a reviewed equivalence or a scope decision is recorded on them.`,
+    `Among the ones with no confirmed kill, ${unresolved.length} are unresolved${unresolved.length ? ` (${unresolved.join(", ")}), ${flagged("resolution_stale")} of them with a stale record and ${flagged("incomplete")} with an incomplete one` : ""}: they get no sample credit in the verdicts, and they block eligibility until an approved record for their current patch resolves them.`,
     resolved.length
-      ? `${resolved.join(", ")} are resolved, with no sample credit and no longer blockers.`
+      ? `${resolved.join(", ")} are resolved, with no sample credit and no longer blockers. A scope decision takes a mutant out of the functional comparison only, which never means a performance guard can be deleted.`
       : "None is resolved.",
-    ...(incomplete.length
-      ? [`Records missing a field, so ignored: ${incomplete.join(", ")}.`]
+    ...(notEquivalent.length
+      ? [
+          `${notEquivalent.length} were reviewed and found not equivalent (${notEquivalent.join(", ")}), so they're ordinary mutants here, on the demand list when nothing kills them.`,
+        ]
+      : []),
+    ...(problems.length
+      ? [`Records that resolve nothing: ${problems.join(", ")}.`]
       : []),
   ].join(" ");
 }
@@ -1338,7 +1397,9 @@ export function summarize(ledger, derived, inputs) {
     Object.values(groups).flatMap((g) => g.mutants);
   const suspectsUnkilled = suspectIds(derived.equivalent_suspect);
   const suspectsKilled = suspectIds(derived.equivalent_suspect_killed);
-  const hasSuspects = suspectsUnkilled.length + suspectsKilled.length > 0;
+  const hasSuspects =
+    suspectsUnkilled.length + suspectsKilled.length > 0 ||
+    Object.values(mutants).some((m) => m.equivalence_state);
   const lines = [
     ...(ledger.provenance.banner ? [ledger.provenance.banner, ""] : []),
     "# Location ledger",

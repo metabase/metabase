@@ -41,9 +41,11 @@ A mutant's states are among four: caught by a removed test, missed by the select
 and unmeasured at the head.
 
 A mutant with `equivalent_suspect: true` and no confirmed kill earns no sample credit, so it isn't a qualifying mutant.
-It stays unresolved, and counts as a survivor that blocks acceptance,
-until it records a reviewed equivalence, `equivalence: {reviewed_by, date, reason}`, or a scope decision, `scope_decision: {by, date, reason}`.
-A record missing a field is ignored and listed.
+It stays unresolved, and counts as a survivor that blocks acceptance, until one of its records resolves it:
+`equivalence` or `scope_decision`, which leave it with no sample credit and no longer a blocker,
+or `not_equivalent`, which makes it an ordinary mutant.
+A record resolves it only with approved_by, date, reason, reviewed_sha (except not_equivalent) and a patch_sha256 equal to the mutant's.
+One missing a field is incomplete, one for another patch is stale, and neither resolves it.
 A suspect with a confirmed kill counts as any killed mutant does.
 
 The type checker and the contract checker kill a mutant when `killed_at_layer` names their layer, "tsc" or "contract",
@@ -203,9 +205,14 @@ MUTANT_STATES = {
     "unmeasured at the head": "unmeasured at the head",
 }
 SCOPES = ("full", "selected", "unmeasured")
-EQUIVALENCE_RECORDS = {"equivalence": ("reviewed_by", "date", "reason"), "scope_decision": ("by", "date", "reason")}
-EQUIVALENCE_RESOLVED = {"equivalence": "reviewed equivalence", "scope_decision": "scope decision"}
-EQUIVALENCE_STATES = ("unresolved", "reviewed equivalence", "scope decision", "killed")
+RESOLUTION_NEEDS = {
+    "equivalence": ("approved_by", "date", "reason", "reviewed_sha", "patch_sha256"),
+    "scope_decision": ("approved_by", "date", "reason", "reviewed_sha", "patch_sha256"),
+    "not_equivalent": ("approved_by", "date", "reason", "patch_sha256"),
+}
+EQUIVALENCE_RESOLVED = {"equivalence": "reviewed equivalence", "scope_decision": "scope decision", "not_equivalent": "not equivalent"}
+EQUIVALENCE_STATES = ("unresolved", "reviewed equivalence", "scope decision", "not equivalent", "killed")
+SCOPE_DECISION_NOTE = "out of the functional comparison only, which never means a performance guard can be deleted"
 NO_CREDIT = ("unresolved", "reviewed equivalence", "scope decision")
 SUSPECT_IN_SAMPLE = "unresolved suspected equivalent mutant in sample"
 RAN_BASIS = "ran"
@@ -429,22 +436,39 @@ def by_state(states):
     return groups
 
 
-def equivalence_state(entry, killed):
-    """How a mutant's equivalence suspicion stands, None for a mutant not suspected, and each record missing a field."""
+def equivalence_resolution(entry, killed, base):
+    """How a suspected equivalent mutant stands, with its resolution record and anything wrong with it, or None for any other mutant.
+
+    A record resolves the suspicion only when it has every field RESOLUTION_NEEDS names
+    and its patch_sha256 is the mutant's own, and a short record's `by` is read as `approved_by`.
+    """
     if entry.get("equivalent_suspect") is not True:
-        return None, []
-    if killed:
-        return "killed", []
-    incomplete = []
-    for field, keys in EQUIVALENCE_RECORDS.items():
-        record = entry.get(field)
-        if record is None:
-            continue
-        missing = [k for k in keys if not (isinstance(record, dict) and record.get(k))]
-        if not missing:
-            return EQUIVALENCE_RESOLVED[field], incomplete
-        incomplete.append(f"`{field}` has no {', '.join(missing)}")
-    return "unresolved", incomplete
+        return None
+    found = {"state": "killed" if killed else "unresolved", "record": None, "resolution": None,
+             "incomplete": False, "resolution_stale": False, "resolution_rev_differs": False, "problems": []}
+    records = [field for field in RESOLUTION_NEEDS if field in entry]
+    if len(records) > 1:
+        found["problems"].append(f"it has more than one of {', '.join(records)}, so none of them counts")
+    if len(records) != 1:
+        return found
+    field = records[0]
+    resolution = dict(entry[field]) if isinstance(entry[field], dict) else {}
+    if not resolution.get("approved_by") and resolution.get("by"):
+        resolution["approved_by"] = resolution.pop("by")
+    found.update(record=field, resolution=resolution)
+    missing = [k for k in RESOLUTION_NEEDS[field] if not resolution.get(k)]
+    if missing:
+        found["incomplete"] = True
+        found["problems"].append(f"`{field}` has no {', '.join(missing)}")
+    elif resolution["patch_sha256"] != entry.get("patch_sha256"):
+        found["resolution_stale"] = True
+        found["problems"].append(f"`{field}` is for the patch {short(resolution['patch_sha256'])}, "
+                                 f"and the mutant's patch is {short(entry.get('patch_sha256'))}")
+    elif not killed:
+        found["state"] = EQUIVALENCE_RESOLVED[field]
+    if resolution.get("reviewed_sha") and base and not same_revision(resolution["reviewed_sha"], base):
+        found["resolution_rev_differs"] = True
+    return found
 
 
 def load(path, run):
@@ -466,7 +490,7 @@ def load(path, run):
     checkers = collections.Counter()
     disagreements = []
     off_side = collections.Counter()
-    incomplete_records = {}
+    record_problems = {}
     for mid, entry in entries.items():
         if isinstance(entry, list):
             entry = {"killed_by": entry}
@@ -503,11 +527,10 @@ def load(path, run):
         symptom["unconfirmed_kills"] += len(listed["unconfirmed_by"])
         symptom["unconfirmed_symptom_kills"] += len(listed["symptom_unconfirmed_by"])
         symptom["mutants_resting_only_on_symptom_kills"] += bool(killers) and killers <= marked
-        m["suspect"], incomplete = equivalence_state(entry, bool(confirmed))
-        if incomplete:
-            incomplete_records[str(mid)] = incomplete
-        if m["suspect"] is not None:
-            m["equivalence_records"] = {field: entry[field] for field in EQUIVALENCE_RECORDS if field in entry}
+        m["equivalence"] = equivalence_resolution(entry, bool(confirmed), kills_file["meta"].get("base"))
+        m["suspect"] = m["equivalence"]["state"] if m["equivalence"] else None
+        if m["equivalence"] and m["equivalence"]["problems"]:
+            record_problems[str(mid)] = m["equivalence"]["problems"]
         for field, test_ids in listed.items():
             ids, others = set(), set()
             for test_id in test_ids:
@@ -550,7 +573,7 @@ def load(path, run):
             "candidates in a remaining layer": off_side["remaining"], "other tests in a removed layer": off_side["removed"],
         },
         "equivalent_suspects": {state: suspects[state] for state in EQUIVALENCE_STATES},
-        "incomplete_equivalence_records": incomplete_records,
+        "equivalence_record_problems": record_problems,
     }
 
 
@@ -1466,10 +1489,15 @@ def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, req
         entry = kills_file["entries"][mid]
         if kills_file["format"] == 2 and isinstance(entry, dict):
             mutants[mid].update(patch_sha256=entry.get("patch_sha256"), provenance=layer_provenance(entry, kills_file["meta"]))
-        if m["suspect"]:
+        if m["equivalence"]:
             changes = m.get("dismissal_changes") or []
-            mutants[mid]["equivalent_suspect"] = {"state": m["suspect"], **m["equivalence_records"],
-                                                  "deletion_depends_on_dismissing": bool(changes), "candidates": changes}
+            found = m["equivalence"]
+            mutants[mid]["equivalent_suspect"] = {
+                **{k: found[k] for k in ("state", "record", "resolution", "incomplete", "resolution_stale", "resolution_rev_differs")},
+                **({"limits": found["resolution"].get("limits"), "note": SCOPE_DECISION_NOTE}
+                   if found["record"] == "scope_decision" else {}),
+                "deletion_depends_on_dismissing": bool(changes), "candidates": changes,
+            }
     by_reach = collections.Counter(m["reach"] for m in mutants.values())
     return {
         "joint_check": joint_check(candidates, kills["mutants"], results),
@@ -1489,7 +1517,7 @@ def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, req
             "checker_disagreements": kills["checker_disagreements"],
             "results_on_the_other_side": kills["results_on_the_other_side"],
             "equivalent_suspects": kills["equivalent_suspects"],
-            "incomplete_equivalence_records": kills["incomplete_equivalence_records"],
+            "equivalence_record_problems": kills["equivalence_record_problems"],
         },
         "min_mutants": min_mutants,
         "required_strata": required_strata,
@@ -1658,6 +1686,15 @@ def states_report(result):
     return lines
 
 
+def resolution_text(s):
+    """Who analysed and who approved a suspect's resolution, kept apart, and when."""
+    r = s["resolution"] or {}
+    analysis = f"analysis by {r['reviewed_by']}" if r.get("reviewed_by") else "no analysis recorded"
+    approval = f"approved by {r['approved_by']} on {r.get('date')}" if r.get("approved_by") else "no approval recorded"
+    reviewed_at = f", reviewed at {short(r['reviewed_sha'])}, not the kills file's base" if s["resolution_rev_differs"] else ""
+    return f"{analysis}, {approval}{reviewed_at}"
+
+
 def suspects_report(result):
     suspects = {mid: m["equivalent_suspect"] for mid, m in result["mutants"].items() if "equivalent_suspect" in m}
     if not suspects:
@@ -1667,15 +1704,20 @@ def suspects_report(result):
         if s["state"] == "unresolved":
             depends = (f"a deletion depends on dismissing it: {', '.join(s['candidates'])}" if s["deletion_depends_on_dismissing"]
                        else "no deletion depends on dismissing it")
-            lines.append(f"  {mid}: unresolved, no sample credit and a blocker, {depends}")
+            why = (f", its `{s['record']}` is stale" if s["resolution_stale"]
+                   else f", its `{s['record']}` is incomplete" if s["incomplete"] else "")
+            lines.append(f"  {mid}: unresolved{why}, no sample credit and a blocker, {depends}")
         elif s["state"] == "killed":
             lines.append(f"  {mid}: killed, so not equivalent, and it counts as any killed mutant does")
+        elif s["state"] == "not equivalent":
+            lines.append(f"  {mid}: not equivalent, {resolution_text(s)}, so an ordinary mutant")
+        elif s["state"] == "scope decision":
+            lines += [f"  {mid}: scope decision, {resolution_text(s)}, {SCOPE_DECISION_NOTE}, no sample credit and not a blocker",
+                      f"      limits: {s['limits'] or 'none recorded'}"]
         else:
-            record = s.get("equivalence") or s.get("scope_decision")
-            by = record.get("reviewed_by") or record.get("by")
-            lines.append(f"  {mid}: {s['state']} by {by} on {record['date']}, no sample credit and not a blocker")
-    for mid, problems in sorted(result["kills"]["incomplete_equivalence_records"].items()):
-        lines.append(f"  {mid}: {'; '.join(problems)}, so the record is ignored")
+            lines.append(f"  {mid}: reviewed equivalence, {resolution_text(s)}, no sample credit and not a blocker")
+    for mid, problems in sorted(result["kills"]["equivalence_record_problems"].items()):
+        lines.append(f"  {mid}: {'; '.join(problems)}")
     return lines
 
 

@@ -1828,14 +1828,33 @@ class DeleteGates(unittest.TestCase):
 SUSPECT_PRIOR = {"files": {PR_FILE: {"module": "fe:documents", "score": 0.1}}}
 
 
+PATCH, OTHER_PATCH = "ab" * 32, "ef" * 32
+
+
 def suspect_kills(**marks):
     entries = killed_by_candidate_too(shared_kills(3) | shared_kills(1, "intra-frontend-wiring"), "logic-1")
-    return entries | {"suspect": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([], [D5]),
-                                           jest_head=head_result([], [J1])) | {"equivalent_suspect": True} | marks}
+    return entries | {"suspect": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([], [D5]), jest_head=head_result([], [J1]))
+                      | {"equivalent_suspect": True, "patch_sha256": PATCH} | marks}
 
 
-REVIEWED = {"equivalence": {"reviewed_by": "fraser", "date": "2026-09-29", "reason": "drops a cleanup after the promise settles"}}
-SCOPED = {"scope_decision": {"by": "fraser", "date": "2026-09-29", "reason": "print timing is out of this PR's scope"}}
+def resolution(**changes):
+    return {"reason": "drops a listener cleanup that runs after the promise has resolved", "limits": "read on the document page only",
+            "reviewed_by": "metabase-44", "approved_by": "fraser", "date": "2026-09-29", "reviewed_sha": PR_BASE,
+            "patch_sha256": PATCH, "observation_scope": "functional", "code_refs": ["frontend/src/metabase/documents/print.ts:40"]} | changes
+
+
+REVIEWED = {"equivalence": resolution()}
+SCOPED = {"scope_decision": resolution(decision="out of the functional comparison", limits="the print timeout is a performance guard")}
+NOT_EQUIVALENT = {"not_equivalent": {"reason": "a later abort still reads the cleared timeout", "approved_by": "fraser",
+                                     "date": "2026-09-29", "patch_sha256": PATCH}}
+SHORT_REVIEWED = {"equivalence": {"reviewed_by": "fraser", "date": "2026-09-29", "reason": "drops a cleanup"}}
+SHORT_SCOPED = {"scope_decision": {"by": "fraser", "date": "2026-09-29", "reason": "print timing is out of this PR's scope"}}
+
+
+def suspect_block(state, record=None, resolved=None, **flags):
+    block = {"state": state, "record": record, "resolution": resolved, "incomplete": False, "resolution_stale": False,
+             "resolution_rev_differs": False}
+    return block | flags
 
 
 class EquivalenceSuspects(unittest.TestCase):
@@ -1855,9 +1874,9 @@ class EquivalenceSuspects(unittest.TestCase):
         self.assertEqual((row["eligibility"]["sampled"], row["eligibility"]["survivors"], row["eligibility"]["outcome"]),
                          (4, ["suspect"], "unresolved suspected equivalent mutant in sample"))
         self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
-                         {"state": "unresolved", "deletion_depends_on_dismissing": True, "candidates": [D5]})
+                         suspect_block("unresolved", deletion_depends_on_dismissing=True, candidates=[D5]))
         self.assertEqual(result["kills"]["equivalent_suspects"],
-                         {"unresolved": 1, "reviewed equivalence": 0, "scope decision": 0, "killed": 0})
+                         {"unresolved": 1, "reviewed equivalence": 0, "scope decision": 0, "not equivalent": 0, "killed": 0})
         self.assertIn(f"  suspect: unresolved, no sample credit and a blocker, a deletion depends on dismissing it: {D5}",
                       kills.report(result))
 
@@ -1873,23 +1892,80 @@ class EquivalenceSuspects(unittest.TestCase):
         self.assertEqual({mid: result["mutants"][mid]["equivalent_suspect"]["deletion_depends_on_dismissing"]
                           for mid in ("suspect", "suspect-2")}, {"suspect": False, "suspect-2": False})
 
-    def test_a_reviewed_equivalence_or_a_scope_decision_leaves_the_blocker_count(self):
-        for name, marks, state in (("reviewed", REVIEWED, "reviewed equivalence"), ("scoped", SCOPED, "scope decision")):
+    def test_an_approved_equivalence_or_scope_decision_for_the_current_patch_leaves_the_blocker_count(self):
+        for name, marks, state in (("equivalence", REVIEWED, "reviewed equivalence"), ("scope_decision", SCOPED, "scope decision")):
             with self.subTest(name):
                 result = self.evaluate(suspect_kills(**marks))
                 row = result["candidates"][D5]
                 self.assertEqual((row["verdict"], row["equivalent_suspects"], row["eligibility"]["sampled"]),
                                  (ELIGIBLE, {"suspect": state}, 4))
                 self.assertEqual(row["eligibility"]["survivors"], [])
+                scoped = {"limits": marks[name]["limits"], "note": kills.SCOPE_DECISION_NOTE} if name == "scope_decision" else {}
                 self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
-                                 {"state": state, **marks, "deletion_depends_on_dismissing": False, "candidates": []})
+                                 suspect_block(state, name, marks[name], **scoped, deletion_depends_on_dismissing=False, candidates=[]))
 
-    def test_a_record_missing_a_field_leaves_the_suspect_unresolved(self):
-        incomplete = {"equivalence": {"reviewed_by": "fraser", "date": "2026-09-29"}}
-        result = self.evaluate(suspect_kills(**incomplete))
+    def test_the_analysis_and_the_approval_stay_apart(self):
+        text = kills.report(self.evaluate(suspect_kills(**REVIEWED)))
+        self.assertIn("  suspect: reviewed equivalence, analysis by metabase-44, approved by fraser on 2026-09-29, "
+                      "no sample credit and not a blocker\n", text)
+        short = self.evaluate(suspect_kills(**SHORT_SCOPED))["mutants"]["suspect"]["equivalent_suspect"]
+        self.assertEqual(short["resolution"], {"approved_by": "fraser", "date": "2026-09-29", "reason": "print timing is out of this PR's scope"})
+
+    def test_a_scope_decision_carries_its_limits_and_never_clears_a_performance_guard(self):
+        result = self.evaluate(suspect_kills(**SCOPED))
+        block = result["mutants"]["suspect"]["equivalent_suspect"]
+        self.assertEqual((block["limits"], block["note"]),
+                         ("the print timeout is a performance guard",
+                          "out of the functional comparison only, which never means a performance guard can be deleted"))
+        self.assertIn("  suspect: scope decision, analysis by metabase-44, approved by fraser on 2026-09-29, out of the functional "
+                      "comparison only, which never means a performance guard can be deleted, no sample credit and not a blocker\n"
+                      "      limits: the print timeout is a performance guard\n", kills.report(result))
+
+    def test_a_record_for_another_patch_is_stale_and_resolves_nothing(self):
+        result = self.evaluate(suspect_kills(equivalence=resolution(patch_sha256=OTHER_PATCH)))
+        self.assertEqual(result["candidates"][D5]["verdict"], "unmeasured")
+        block = result["mutants"]["suspect"]["equivalent_suspect"]
+        self.assertEqual((block["state"], block["resolution_stale"], block["incomplete"]), ("unresolved", True, False))
+        self.assertEqual(result["kills"]["equivalence_record_problems"],
+                         {"suspect": [f"`equivalence` is for the patch {OTHER_PATCH[:11]}, and the mutant's patch is {PATCH[:11]}"]})
+        self.assertIn("  suspect: unresolved, its `equivalence` is stale, no sample credit and a blocker", kills.report(result))
+
+    def test_a_record_reviewed_at_another_revision_still_resolves_and_is_marked(self):
+        result = self.evaluate(suspect_kills(equivalence=resolution(reviewed_sha=OTHER_BASE)))
+        block = result["mutants"]["suspect"]["equivalent_suspect"]
+        self.assertEqual((block["state"], block["resolution_rev_differs"]), ("reviewed equivalence", True))
+        self.assertEqual(result["candidates"][D5]["verdict"], ELIGIBLE)
+        self.assertIn(f"approved by fraser on 2026-09-29, reviewed at {OTHER_BASE[:11]}, not the kills file's base,", kills.report(result))
+
+    def test_a_short_or_incomplete_record_is_shown_as_incomplete_and_resolves_nothing(self):
+        cases = {
+            "short equivalence": (SHORT_REVIEWED, "`equivalence` has no approved_by, reviewed_sha, patch_sha256"),
+            "short scope decision": (SHORT_SCOPED, "`scope_decision` has no reviewed_sha, patch_sha256"),
+            "no patch digest": ({"not_equivalent": {k: v for k, v in NOT_EQUIVALENT["not_equivalent"].items() if k != "patch_sha256"}},
+                                "`not_equivalent` has no patch_sha256"),
+        }
+        for name, (marks, problem) in cases.items():
+            with self.subTest(name):
+                result = self.evaluate(suspect_kills(**marks))
+                block = result["mutants"]["suspect"]["equivalent_suspect"]
+                self.assertEqual((block["state"], block["incomplete"], block["record"]), ("unresolved", True, next(iter(marks))))
+                self.assertEqual(result["kills"]["equivalence_record_problems"], {"suspect": [problem]})
+                self.assertEqual(result["candidates"][D5]["verdict"], "unmeasured")
+
+    def test_not_equivalent_makes_it_an_ordinary_mutant(self):
+        marked = self.evaluate(suspect_kills(**NOT_EQUIVALENT))
+        ordinary = self.evaluate({mid: {k: v for k, v in m.items() if k != "equivalent_suspect"} for mid, m in suspect_kills().items()})
+        self.assertEqual(marked["candidates"], ordinary["candidates"])
+        self.assertEqual((marked["candidates"][D5]["verdict"], marked["candidates"][D5]["equivalent_suspects"]), ("delete", {}))
+        self.assertEqual(marked["mutants"]["suspect"]["equivalent_suspect"]["state"], "not equivalent")
+        self.assertIn("  suspect: not equivalent, no analysis recorded, approved by fraser on 2026-09-29, so an ordinary mutant",
+                      kills.report(marked))
+
+    def test_more_than_one_record_resolves_nothing(self):
+        result = self.evaluate(suspect_kills(**REVIEWED, **NOT_EQUIVALENT))
         self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"]["state"], "unresolved")
-        self.assertEqual(result["kills"]["incomplete_equivalence_records"], {"suspect": ["`equivalence` has no reason"]})
-        self.assertIn("  suspect: `equivalence` has no reason, so the record is ignored", kills.report(result))
+        self.assertEqual(result["kills"]["equivalence_record_problems"],
+                         {"suspect": ["it has more than one of equivalence, not_equivalent, so none of them counts"]})
 
     def test_a_suspect_a_test_kills_counts_as_killed(self):
         entries = suspect_kills()
@@ -1899,7 +1975,7 @@ class EquivalenceSuspects(unittest.TestCase):
         self.assertEqual((row["verdict"], row["equivalent_suspects"], row["qualifying_mutants"]),
                          ("delete", {}, {"logic": 3, "intra-frontend-wiring": 2}))
         self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
-                         {"state": "killed", "deletion_depends_on_dismissing": False, "candidates": []})
+                         suspect_block("killed", deletion_depends_on_dismissing=False, candidates=[]))
 
 
 def index_meta():
@@ -1914,9 +1990,12 @@ LEDGER_SCOPE_KILLS = format_2({
         "scope": "selected", "selected": [PAIRED, REMAINING, BOOKMARK_MODEL],
         "excluded": [{"test": BOOKMARK_COLLECTION, "reason": "reaches no collection page"}]}}},
     "suspect-unresolved": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)),
-    "suspect-reviewed": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | REVIEWED,
-    "suspect-scoped": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | SCOPED,
+    "suspect-reviewed": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"patch_sha256": PATCH} | REVIEWED,
+    "suspect-scoped": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"patch_sha256": PATCH} | SCOPED,
     "suspect-incomplete": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"scope_decision": {"by": "fraser"}},
+    "suspect-short": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | SHORT_REVIEWED,
+    "suspect-stale": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"patch_sha256": OTHER_PATCH} | REVIEWED,
+    "suspect-not-equivalent": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"patch_sha256": PATCH} | NOT_EQUIVALENT,
     "suspect-killed": suspect(mutant("logic", [JEST], [UNIT, JEST], L_UNIT)),
 }, roles=None)
 
@@ -1940,21 +2019,33 @@ class LedgerScopeAndSuspects(unittest.TestCase):
         })
         self.assertEqual(rows[UNIT]["equivalent_suspects"], {
             "suspect-incomplete": "unresolved", "suspect-reviewed": "reviewed equivalence", "suspect-scoped": "scope decision",
-            "suspect-unresolved": "unresolved"})
-        self.assertEqual(rows[UNIT]["qualifying_basis"], {"subtraction": ["suspect-killed"]})
+            "suspect-short": "unresolved", "suspect-stale": "unresolved", "suspect-unresolved": "unresolved"})
+        self.assertEqual(rows[UNIT]["qualifying_basis"], {"subtraction": ["suspect-killed", "suspect-not-equivalent"]})
 
     def test_the_ledger_shows_how_each_suspect_stands(self):
-        states = {mid: m.get("equivalence_state") for mid, m in self.joined.ledger["mutants"].items() if m.get("equivalent_suspect")}
-        self.assertEqual(states, {"suspect-unresolved": "unresolved", "suspect-reviewed": "reviewed equivalence",
-                                  "suspect-scoped": "scope decision", "suspect-incomplete": "unresolved", "suspect-killed": "killed"})
-        self.assertIn("Among the ones with no confirmed kill, 2 are unresolved (suspect-incomplete, suspect-unresolved): they get no "
-                      "sample credit in the verdicts, and they block eligibility until a reviewed equivalence or a scope decision is "
-                      "recorded on them. 1 by reviewed equivalence (suspect-reviewed), 1 by scope decision (suspect-scoped) are "
-                      "resolved, with no sample credit and no longer blockers. Records missing a field, so ignored: "
-                      "suspect-incomplete: `scope_decision` has no date, reason.", self.joined.summary)
-        self.assertEqual({r["mutant"]: r["equivalence_state"] for r in self.joined.csv if r["mutant"].startswith("suspect-")}, {
+        mutants = self.joined.ledger["mutants"]
+        states = {mid: m.get("equivalence_state") for mid, m in mutants.items() if m.get("equivalence_state")}
+        self.assertEqual(states, {
             "suspect-unresolved": "unresolved", "suspect-reviewed": "reviewed equivalence", "suspect-scoped": "scope decision",
-            "suspect-incomplete": "unresolved", "suspect-killed": "killed"})
+            "suspect-incomplete": "unresolved", "suspect-short": "unresolved", "suspect-stale": "unresolved",
+            "suspect-not-equivalent": "not equivalent", "suspect-killed": "killed"})
+        self.assertNotIn("equivalent_suspect", mutants["suspect-not-equivalent"])
+        self.assertIn("suspect-not-equivalent", self.joined.ledger["demand"]["logic"]["mutants"])
+        self.assertEqual({mid: {k: v for k, v in mutants[mid]["equivalence"].items() if k != "resolution"}
+                          for mid in ("suspect-reviewed", "suspect-stale", "suspect-short")}, {
+            "suspect-reviewed": {"record": "equivalence", "incomplete": False, "resolution_stale": False, "resolution_rev_differs": True},
+            "suspect-stale": {"record": "equivalence", "incomplete": False, "resolution_stale": True, "resolution_rev_differs": True},
+            "suspect-short": {"record": "equivalence", "incomplete": True, "resolution_stale": False, "resolution_rev_differs": False},
+        })
+        self.assertIn("Among the ones with no confirmed kill, 4 are unresolved (suspect-incomplete, suspect-short, suspect-stale, "
+                      "suspect-unresolved), 1 of them with a stale record and 2 with an incomplete one: they get no sample credit in the "
+                      "verdicts, and they block eligibility until an approved record for their current patch resolves them. "
+                      "1 by reviewed equivalence (suspect-reviewed), 1 by scope decision (suspect-scoped) are resolved, with no sample "
+                      "credit and no longer blockers. A scope decision takes a mutant out of the functional comparison only, which "
+                      "never means a performance guard can be deleted. 1 were reviewed and found not equivalent "
+                      "(suspect-not-equivalent), so they're ordinary mutants here, on the demand list when nothing kills them.",
+                      self.joined.summary)
+        self.assertEqual({r["mutant"]: r["equivalence_state"] for r in self.joined.csv if r["mutant"].startswith("suspect-")}, states)
 
     def test_misses_leave_out_unconfirmed_results(self):
         self.assertEqual(self.joined.ledger["mutants"]["unconfirmed-remaining"]["misses"], 0)
