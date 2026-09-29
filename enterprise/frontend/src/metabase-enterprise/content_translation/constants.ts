@@ -12,8 +12,7 @@ const listeners = new Set<Listener>();
 export const dictionaryEndpointStore = {
   getSnapshot: () => contentTranslationEndpoints.getDictionary,
   subscribe: (listener: Listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
+    return () => false;
   },
   setEndpoint: (endpoint: string | null) => {
     if (contentTranslationEndpoints.getDictionary !== endpoint) {
