@@ -34,7 +34,7 @@ export function JoinTableColumnPicker({
   };
 
   const handleToggleColumns = (
-    targetColumns: Lib.ColumnMetadata[],
+    toggledColumns: Lib.ColumnMetadata[],
     isSelected: boolean,
   ) => {
     const selectedColumns = columns.filter(
@@ -43,7 +43,7 @@ export function JoinTableColumnPicker({
     const nextColumns = getNextSelectedColumns({
       columns,
       selectedColumns,
-      targetColumns,
+      toggledColumns,
       isSelected,
     });
     const newJoin = Lib.withJoinFields(

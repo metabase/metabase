@@ -37,14 +37,14 @@ export function JoinTableColumnDraftPicker({
   };
 
   const handleToggleColumns = (
-    targetColumns: Lib.ColumnMetadata[],
+    toggledColumns: Lib.ColumnMetadata[],
     isSelected: boolean,
   ) => {
     onChange(
       getNextSelectedColumns({
         columns,
         selectedColumns,
-        targetColumns,
+        toggledColumns,
         isSelected,
       }),
     );

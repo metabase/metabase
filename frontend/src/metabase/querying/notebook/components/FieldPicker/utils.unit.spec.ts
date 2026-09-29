@@ -8,7 +8,7 @@ describe("getNextSelectedColumns", () => {
       getNextSelectedColumns({
         columns: COLUMNS,
         selectedColumns: ["c"],
-        targetColumns: ["d", "a"],
+        toggledColumns: ["d", "a"],
         isSelected: true,
       }),
     ).toEqual(["a", "c", "d"]);
@@ -19,7 +19,7 @@ describe("getNextSelectedColumns", () => {
       getNextSelectedColumns({
         columns: COLUMNS,
         selectedColumns: ["a", "b", "c"],
-        targetColumns: ["b"],
+        toggledColumns: ["b"],
         isSelected: false,
       }),
     ).toEqual(["a", "c"]);
@@ -30,7 +30,7 @@ describe("getNextSelectedColumns", () => {
       getNextSelectedColumns({
         columns: COLUMNS,
         selectedColumns: ["a", "b"],
-        targetColumns: ["a", "b"],
+        toggledColumns: ["a", "b"],
         isSelected: false,
       }),
     ).toEqual([]);

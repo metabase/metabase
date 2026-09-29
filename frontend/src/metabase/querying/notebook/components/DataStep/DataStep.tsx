@@ -186,7 +186,7 @@ function DataFieldPicker({
   };
 
   const handleToggleColumns = (
-    targetColumns: Lib.ColumnMetadata[],
+    toggledColumns: Lib.ColumnMetadata[],
     isSelected: boolean,
   ) => {
     const selectedColumns = columns.filter(
@@ -195,14 +195,14 @@ function DataFieldPicker({
     const nextColumns = getNextSelectedColumns({
       columns,
       selectedColumns,
-      targetColumns,
+      toggledColumns,
       isSelected,
     });
     // An empty field list means "every column", so a deselect that would
     // empty it keeps the first target instead (mirroring the the logic
     // to disable the the final selected column).
     const fields =
-      nextColumns.length > 0 ? nextColumns : targetColumns.slice(0, 1);
+      nextColumns.length > 0 ? nextColumns : toggledColumns.slice(0, 1);
     const isEveryColumn = fields.length === columns.length;
     updateQuery(Lib.withFields(query, stageIndex, isEveryColumn ? [] : fields));
   };
