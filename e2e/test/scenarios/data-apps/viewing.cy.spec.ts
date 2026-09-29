@@ -61,7 +61,10 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("shows unpublished app error when opening an app without a resource collection", () => {
-      cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
+      const slug = "good";
+
+      H.pullExampleDataApps();
+      cy.request<DataApp>(`/api/apps/${slug}`)
         .its("body.resource_collection_id")
         .as("resourceCollectionId");
 
@@ -76,14 +79,14 @@ describe("scenarios > data apps > viewing & routing", () => {
 
       cy.log("fetching bundle should return 409 error");
       cy.request({
-        url: `/api/apps/${APP_NAME}/bundle`,
+        url: `/api/apps/${slug}/bundle`,
         failOnStatusCode: false,
       })
         .its("status")
         .should("eq", 409);
 
-      cy.intercept("GET", `/api/apps/${APP_NAME}`).as("getUnpublishedApp");
-      H.openDataApp(APP_NAME);
+      cy.intercept("GET", `/api/apps/${slug}`).as("getUnpublishedApp");
+      H.openDataApp(slug);
 
       cy.log("fetching data app metadata should return 409 error");
       cy.wait("@getUnpublishedApp")

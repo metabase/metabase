@@ -3741,7 +3741,6 @@
            collections
            events
            lib
-           lib.be
            lib.schema
            models
            permissions
@@ -3750,8 +3749,7 @@
            settings
            util
            warehouse-schema-overlay}
-   :model-imports #{:model/Card
-                    :model/Collection
+   :model-imports #{:model/Collection
                     :model/DataPermissions
                     :model/Database
                     :model/Permissions

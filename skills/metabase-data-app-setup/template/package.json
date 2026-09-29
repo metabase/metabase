@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5174",
-    "build": "npm run sync-resources && vite build",
-    "sync-resources": "embedding-sdk-react data-apps sync-resources",
+    "build": "vite build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

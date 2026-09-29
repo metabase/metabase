@@ -430,7 +430,6 @@ describe("dynamic query clauses", () => {
       useMetabaseQuery(
         defineQuery({
           source: TEST_SCHEMA.tables.orders,
-          savedQuestionSourceId: 41,
         }),
         {
           filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "x")],
