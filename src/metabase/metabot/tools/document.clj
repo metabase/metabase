@@ -9,7 +9,6 @@
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.query-processor.core :as qp]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouses.core :as warehouses]))
 
@@ -124,8 +123,7 @@
            :structured-output {:database_id database-id
                                :sql_engine  (:engine db)}})))
     (catch Exception e
-      (log/errorf "Error collecting document schema: %s" (ex-message e))
-      {:output (str "Failed to collect schema: " (or (ex-message e) "Unknown error"))})))
+      (metabot.tools.u/handle-agent-or-api-error e))))
 
 (def ^:private sql-chart-schema
   [:map {:closed true}
@@ -175,10 +173,7 @@
             {:output "Draft chart payload generated from SQL query."
              :structured-output structured}))))
     (catch Exception e
-      (log/errorf "Error constructing SQL chart draft: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
 
 (def ^:private model-chart-schema
   "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
@@ -222,7 +217,4 @@
         (or result
             {:output "Failed to construct model chart draft."})))
     (catch Exception e
-      (log/errorf "Error constructing model chart draft: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        (metabot.tools.u/handle-agent-error e)
-        {:output (str "Failed to construct model chart draft: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))
