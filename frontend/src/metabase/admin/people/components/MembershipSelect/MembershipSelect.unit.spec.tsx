@@ -66,7 +66,7 @@ const setup = ({
 const openPicker = () =>
   userEvent.click(screen.getByLabelText("group-summary"));
 
-const getGroupItem = (name: string) => screen.getByRole("listitem", { name });
+const getGroupItem = (name: string) => screen.getByRole("button", { name });
 
 describe("MembershipSelect", () => {
   describe("without the advanced-permissions feature", () => {
@@ -80,6 +80,22 @@ describe("MembershipSelect", () => {
       await userEvent.hover(getGroupItem("Data Analysts"));
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
         ADD_DISABLED_MESSAGE,
+      );
+    });
+
+    it("exposes each row as a toggle button with its membership and gating state", async () => {
+      setup({ memberGroupIds: [ALL_USERS.id, MARKETING.id] });
+      await openPicker();
+
+      expect(getGroupItem("Marketing")).toHaveAttribute("aria-pressed", "true");
+      expect(getGroupItem("Marketing")).not.toHaveAttribute("aria-disabled");
+      expect(getGroupItem("Data Analysts")).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      expect(getGroupItem("Data Analysts")).toHaveAttribute(
+        "aria-disabled",
+        "true",
       );
     });
 
@@ -111,10 +127,10 @@ describe("MembershipSelect", () => {
 
       const lists = screen.getAllByRole("list");
       expect(
-        within(lists[0]).getByRole("listitem", { name: "Data Analysts" }),
+        within(lists[0]).getByRole("button", { name: "Data Analysts" }),
       ).toBeInTheDocument();
       expect(
-        within(lists[1]).getByRole("listitem", { name: "Marketing" }),
+        within(lists[1]).getByRole("button", { name: "Marketing" }),
       ).toBeInTheDocument();
     });
   });
@@ -139,10 +155,10 @@ describe("MembershipSelect", () => {
 
       const lists = screen.getAllByRole("list");
       expect(
-        within(lists[0]).getByRole("listitem", { name: "Data Analysts" }),
+        within(lists[0]).getByRole("button", { name: "Data Analysts" }),
       ).toBeInTheDocument();
       expect(
-        within(lists[1]).getByRole("listitem", { name: "Marketing" }),
+        within(lists[1]).getByRole("button", { name: "Marketing" }),
       ).toBeInTheDocument();
     });
   });

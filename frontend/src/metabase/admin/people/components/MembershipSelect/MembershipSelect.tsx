@@ -105,44 +105,44 @@ export const MembershipSelect = ({
       !PLUGIN_TENANTS.isTenantGroup(group) &&
       !isAdminGroup(group);
 
+    // The group-manager toggle is a button of its own, so it sits beside the
+    // membership button rather than inside it. aria-disabled instead of
+    // disabled keeps the row focusable and hoverable, so the tooltip can
+    // explain why it can't be toggled.
     return (
-      <Tooltip
-        key={group.id}
-        label={addDisabledReason}
-        disabled={addDisabledReason == null}
-      >
-        <li
-          className={S.membershipSelectItem}
-          aria-label={group.name}
-          aria-disabled={isDisabled || undefined}
-          onClick={() =>
-            isDisabled ? undefined : handleToggleMembership(group.id)
-          }
-          style={{ cursor: isDisabled ? "not-allowed" : "pointer" }}
-        >
-          <span>{getGroupNameLocalized(group)}</span>
-          <Flex pl="lg" align="center" justify="end">
-            {canEditMembershipType && (
-              <PLUGIN_GROUP_MANAGERS.UserTypeToggle
-                tooltipPlacement="bottom"
-                isManager={memberships.get(group.id)?.is_group_manager}
-                onChange={(is_group_manager: boolean) =>
-                  handleChangeMembership(group.id, {
-                    is_group_manager,
-                  })
-                }
-              />
-            )}
-            <span
-              style={{
-                visibility: isMember ? "visible" : "hidden",
-              }}
-            >
-              <Icon name="check" />
-            </span>
-          </Flex>
-        </li>
-      </Tooltip>
+      <li key={group.id} className={S.membershipSelectItem}>
+        <Tooltip label={addDisabledReason} disabled={addDisabledReason == null}>
+          <button
+            type="button"
+            className={S.membershipToggle}
+            aria-label={group.name}
+            aria-pressed={isMember}
+            aria-disabled={isDisabled || undefined}
+            onClick={() => {
+              if (!isDisabled) {
+                handleToggleMembership(group.id);
+              }
+            }}
+          >
+            <span>{getGroupNameLocalized(group)}</span>
+            <Icon
+              name="check"
+              style={{ visibility: isMember ? "visible" : "hidden" }}
+            />
+          </button>
+        </Tooltip>
+        {canEditMembershipType && (
+          <PLUGIN_GROUP_MANAGERS.UserTypeToggle
+            tooltipPlacement="bottom"
+            isManager={memberships.get(group.id)?.is_group_manager}
+            onChange={(is_group_manager: boolean) =>
+              handleChangeMembership(group.id, {
+                is_group_manager,
+              })
+            }
+          />
+        )}
+      </li>
     );
   };
 
