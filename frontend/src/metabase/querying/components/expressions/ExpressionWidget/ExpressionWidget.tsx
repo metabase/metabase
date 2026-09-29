@@ -115,7 +115,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
           hasCombinations(availableColumns) && {
             name: t`Combine columns`,
             icon: "combine",
-            action: () => setIsCombiningColumns(true),
+            action: () => undefined,
           },
         expressionMode === "expression" &&
           hasExtractions(query, availableColumns) && {
