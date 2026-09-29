@@ -38,16 +38,7 @@ export function CreateRowActionFormModal({
 }: CreateRowActionFormModalProps) {
   const validateForm = useCallback(
     (values: RowCellsWithPkValue) => {
-      const errors: Record<string, string> = {};
-
-      description?.parameters.forEach((parameter) => {
-        const isRequired = !parameter.optional;
-        if (isRequired && !values[parameter.id]) {
-          errors[parameter.id] = t`This column is required`;
-        }
-      });
-
-      return errors;
+      return {};
     },
     [description?.parameters],
   );
