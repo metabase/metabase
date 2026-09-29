@@ -9,6 +9,7 @@ from the `local/` folder of this checkout or JOURNEY_LOCAL_DIR, and skips withou
 """
 
 import contextlib
+import copy
 import csv
 import io
 import json
@@ -232,6 +233,15 @@ CI_HISTORY = {"tests": {UNIQUE: {"failures": 4, "real": 0, "flakes": 4}, TWIN_PO
 ACCEPTED_HEADING = "\nAccepted, on a stated risk and not a measured delete\n"
 
 
+FLAT_BANNER = "Base unknown: the kills file is in the flat format, which records no revisions"
+
+
+def without_banner(text):
+    """The report after its first line when that is the flat format's provenance banner, which every flat kills file gets."""
+    first, _, rest = text.partition("\n")
+    return rest if first == FLAT_BANNER else text
+
+
 def outcomes(result, candidate_ids):
     """The candidates' verdicts and reasons, sorted because which of them the cover keeps is a tie-break."""
     return sorted((result["candidates"][c]["verdict"], result["candidates"][c]["reason"]) for c in candidate_ids)
@@ -405,7 +415,7 @@ class Verdicts(unittest.TestCase):
         })
         self.assertEqual({cid for cid, r in self.rows.items() if "depends_on" not in r}, {UNIQUE, PAIRED, kept})
         self.assertEqual(self.result["joint_check"], "ok")
-        text = kills.report(self.result)
+        text = without_banner(kills.report(self.result))
         self.assertTrue(text.startswith("Joint check: ok\n"))
         self.assertIn(f"{SHARED_KILLS_HEADING}  {deleted}\n      delete, safe only while {kept} stay, for wiring twin\n"
                       f"  {MISSING}\n      unmeasured, safe only while {PAIRED} stay, for wiring missing-pair\n", text)
@@ -980,18 +990,18 @@ class JointDeletion(unittest.TestCase):
                 with self.middle_verdict(verdict):
                     result = kills.evaluate(INDEX, self.kills_file, CHAIN, 1, [])
                 self.assertEqual(result["joint_check"], failures)
-                self.assertTrue(kills.report(result).startswith(
+                self.assertTrue(without_banner(kills.report(result)).startswith(
                     "Joint check: failed, 2 mutants killed by delete or accepted candidates and by no remaining test or kept candidate\n"
                     f"  logic first-pair\n      {failures['logic']['first-pair'][0]}\n"))
 
     def test_the_command_exits_with_code_1_on_a_failed_joint_check_unless_it_only_reports(self):
         code, text, written = self.command()
         self.assertEqual(code, "the joint check failed, which is a bug in the verdict rules: see the top of the report")
-        self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
+        self.assertTrue(without_banner(text).startswith("Joint check: failed, 2 mutants"))
         self.assertEqual(set(written["joint_check"]), {"logic", "wiring"})
         code, text, written = self.command("--joint-check-report-only")
         self.assertEqual((code, set(written["joint_check"])), (0, {"logic", "wiring"}))
-        self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
+        self.assertTrue(without_banner(text).startswith("Joint check: failed, 2 mutants"))
 
 
 SYMPTOM_KILLS = {
@@ -1184,11 +1194,9 @@ UNCOUNTED_CASES = {
 }
 
 
-def ledger_run(entries, candidate_ids, min_mutants, strata):
+def ledger_run(entries, candidate_ids, min_mutants, strata, *options):
     """The ledger of a kills file of these entries, and ledger-verdicts.mjs's check of it against kills.py's verdicts."""
     lookup = os.path.join(HERE, "..", "lookup")
-    with open(os.path.join(INDEX, "meta.json")) as f:
-        meta = json.load(f)
     with tempfile.TemporaryDirectory() as d:
         kills_file, candidates, verdicts, out = (os.path.join(d, n) for n in ("kills.json", "candidates.txt", "verdicts.json", "ledger"))
         with open(kills_file, "w") as f:
@@ -1197,12 +1205,12 @@ def ledger_run(entries, candidate_ids, min_mutants, strata):
             f.write("\n".join(candidate_ids) + "\n")
         subprocess.run(
             [sys.executable, kills.__file__, "--index", INDEX, "--kills", kills_file, "--candidates", candidates,
-             "--min-mutants", str(min_mutants), "--require-strata", ",".join(strata), "--out", verdicts],
+             "--min-mutants", str(min_mutants), "--require-strata", ",".join(strata), "--out", verdicts, *options],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True,
         )
         subprocess.run(
             ["node", os.path.join(lookup, "ledger.mjs"), "--index", INDEX, "--kills", kills_file,
-             "--kills-base", meta.get("appBase") or meta["sha"], "--candidates", candidates, "--out", out],
+             "--candidates", candidates, "--out", out, *options],
             stdout=subprocess.DEVNULL, check=True,
         )
         check = subprocess.run(
@@ -1588,7 +1596,8 @@ def pr_mutant(stratum, **layer_results):
 
 
 def format_2(mutants, roles=PR_ROLES, **meta):
-    return {"meta": {"format": 2, "base": PR_BASE, **({"layer_roles": roles} if roles else {}), **meta}, "mutants": mutants}
+    return {"meta": {"format": 2, "base": PR_BASE, **({"layer_roles": roles} if roles else {}), **meta},
+            "mutants": copy.deepcopy(mutants)}
 
 
 PR_KILLS = {
@@ -1730,9 +1739,12 @@ class PullRequestKills(unittest.TestCase):
         self.assertEqual(written["candidates_file"], {"file": candidates, "removed_at": PR_BASE, "head": PR_HEAD})
         self.assertEqual(written["candidates"], json.loads(json.dumps(self.rows)))
         lines = done.stdout.splitlines()
+        self.assertEqual(lines[0], "Joint check: ok")
         self.assertIn(f"for the candidates in {candidates}, removed at {PR_BASE[:11]} and head {PR_HEAD[:11]}, "
                       "with no index, so a candidate reaches every mutant it ran", lines[1])
-        self.assertEqual(lines[2], "Kills file format 2, layer roles: e2e_base removed, e2e_head remaining, jest_base reference, "
+        self.assertTrue(lines[2].startswith(f"Provenance match, against the removed-at revision {PR_BASE[:11]} and the head "
+                                            f"revision {PR_HEAD[:11]}: 21 layer results match, kills file sha256 "), lines[2])
+        self.assertEqual(lines[3], "Kills file format 2, layer roles: e2e_base removed, e2e_head remaining, jest_base reference, "
                                    "jest_head remaining")
         self.assertIn(f"\n  {D1}\n      unique kills: logic 2\n      scope selected: head-unmeasured: not run by any remaining test; ",
                       done.stdout)
@@ -1889,6 +1901,11 @@ class EquivalenceSuspects(unittest.TestCase):
                          {"state": "killed", "deletion_depends_on_dismissing": False, "candidates": []})
 
 
+def index_meta():
+    with open(os.path.join(INDEX, "meta.json")) as f:
+        return json.load(f)
+
+
 LEDGER_SCOPE_KILLS = format_2({
     "errored-remaining": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, errored=[REMAINING]),
     "unconfirmed-remaining": mutant("intra-frontend-wiring", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]),
@@ -1907,7 +1924,9 @@ LEDGER_SCOPE_KILLS = format_2({
 class LedgerScopeAndSuspects(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.joined = ledger_run(LEDGER_SCOPE_KILLS, [UNIQUE, PAIRED, UNIT], 1, [])
+        meta = index_meta()
+        on_the_index = LEDGER_SCOPE_KILLS | {"meta": LEDGER_SCOPE_KILLS["meta"] | {"base": meta["appBase"]}}
+        cls.joined = ledger_run(on_the_index, [UNIQUE, PAIRED, UNIT], 1, [])
 
     def test_the_ledger_gives_the_same_scopes_reasons_and_suspect_credit(self):
         self.assertEqual(self.joined.check.returncode, 0, self.joined.check.stdout)
@@ -1939,6 +1958,200 @@ class LedgerScopeAndSuspects(unittest.TestCase):
     def test_misses_leave_out_unconfirmed_results(self):
         self.assertEqual(self.joined.ledger["mutants"]["unconfirmed-remaining"]["misses"], 0)
         self.assertEqual(self.joined.ledger["mutants"]["selected"]["misses"], 1)
+
+
+OTHER_BASE = "0123456789abcdef0123456789abcdef01234567"
+
+
+def write_kills(d, entries, name="kills.json"):
+    path = os.path.join(d, name)
+    with open(path, "w") as f:
+        json.dump(entries, f)
+    return path
+
+
+class CandidatesFileProvenance(unittest.TestCase):
+    def evaluate(self, entries, removed_at=PR_BASE, head=PR_HEAD, allow=False):
+        with tempfile.TemporaryDirectory() as d:
+            candidates = kills.read_candidates_file(write_candidates_file(d, PR_CANDIDATES, removed_at, head))
+            return kills.evaluate_candidates_file(write_kills(d, entries), candidates, allow_provenance_mismatch=allow)
+
+    def command(self, entries, *options, removed_at=PR_BASE):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "verdicts.json")
+            done = subprocess.run(
+                [sys.executable, kills.__file__, "--kills", write_kills(d, entries), "--candidates",
+                 write_candidates_file(d, PR_CANDIDATES, removed_at), "--out", out, *options],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            written = None
+            if os.path.isfile(out):
+                with open(out) as f:
+                    written = json.load(f)
+        return done, written
+
+    def test_bases_that_differ_by_layer_match_the_removed_at_and_head_revisions(self):
+        p = self.evaluate(format_2(PR_KILLS))["provenance"]
+        self.assertEqual((p["status"], p["banner"], p["mismatches"], p["unknown"]), ("match", None, [], []))
+        self.assertEqual({(c["layer"], c["found"], tuple(c["expected"]), c["result"]) for c in p["checks"]}, {
+            ("e2e_base", PR_BASE, (PR_BASE,), "match"), ("jest_base", PR_BASE, (PR_BASE,), "match"),
+            ("e2e_head", PR_HEAD, (PR_HEAD,), "match"), ("jest_head", PR_HEAD, (PR_HEAD,), "match"),
+        })
+        self.assertEqual(p["against"], {"removed_at": PR_BASE, "head": PR_HEAD})
+        self.assertEqual(p["mutants_without_patch_sha256"], len(PR_KILLS))
+
+    def test_a_mismatch_is_refused(self):
+        with self.assertRaisesRegex(kills.ProvenanceMismatch, re.escape(
+                f"the production revision of e2e_base is {PR_BASE[:11]} on 10 mutants, where {OTHER_BASE[:11]} was expected")):
+            self.evaluate(format_2(PR_KILLS), removed_at=OTHER_BASE)
+        done, written = self.command(format_2(PR_KILLS), removed_at=OTHER_BASE)
+        self.assertEqual((done.returncode, written), (2, None))
+        self.assertTrue(done.stderr.startswith("Refusing to give verdicts: the production revision of e2e_base is "), done.stderr)
+        self.assertIn("Pass --allow-provenance-mismatch to give verdicts anyway, with every output stamped.", done.stderr)
+
+    def test_an_override_stamps_the_json_and_the_first_line(self):
+        done, written = self.command(format_2(PR_KILLS), "--allow-provenance-mismatch", removed_at=OTHER_BASE)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        p = written["provenance"]
+        self.assertEqual((p["status"], p["overridden"]), ("mismatch", True))
+        banner = ("Provenance mismatch, overridden by --allow-provenance-mismatch: the production revision of e2e_base is "
+                  f"{PR_BASE[:11]} on 10 mutants, where {OTHER_BASE[:11]} was expected; the production revision of jest_base is "
+                  f"{PR_BASE[:11]} on 2 mutants, where {OTHER_BASE[:11]} was expected")
+        self.assertEqual((p["banner"], done.stdout.splitlines()[0]), (banner, banner))
+        self.assertEqual(done.stdout.splitlines()[1], "Joint check: ok")
+
+    def test_one_layer_off_its_revision_within_a_mutant_is_a_mismatch(self):
+        entries = format_2(PR_KILLS)
+        entries["mutants"]["jest-kill"]["layer_results"]["jest_head"]["base"] = OTHER_BASE
+        with self.assertRaisesRegex(kills.ProvenanceMismatch, re.escape(
+                f"the production revision of jest_head is {OTHER_BASE[:11]} on 1 mutants, where {PR_HEAD[:11]} was expected")):
+            self.evaluate(entries)
+
+    def test_head_layers_go_unchecked_when_the_candidates_file_names_no_head(self):
+        result = self.evaluate(format_2(PR_KILLS), head=None)
+        p = result["provenance"]
+        self.assertEqual(p["status"], "match")
+        self.assertEqual({c["result"] for c in p["checks"] if c["layer"].endswith("_head")}, {"not checked"})
+        self.assertIn(f"against the removed-at revision {PR_BASE[:11]}, with no head revision to check against: 12 layer results match",
+                      kills.report(result))
+
+    def test_the_flat_format_reads_as_base_unknown(self):
+        flat = {mid: {k: v for k, v in e.items() if k != "layer_results"} | {"killed_by": [D1], "ran": [D1]}
+                for mid, e in PR_KILLS.items()}
+        result = self.evaluate(flat)
+        p = result["provenance"]
+        self.assertEqual((p["status"], p["kills"]["format"], p["banner"]), ("unknown", "flat", FLAT_BANNER))
+        self.assertTrue(kills.report(result).startswith(f"{FLAT_BANNER}\nJoint check: ok\n"))
+
+    def test_each_mutant_carries_its_patch_digest_and_the_revisions_of_its_layers(self):
+        entries = format_2(PR_KILLS)
+        entries["mutants"]["selected-miss"] |= {"patch_sha256": "ab" * 32}
+        entries["mutants"]["selected-miss"]["layer_results"]["e2e_head"] |= {
+            "tests_rev": PR_HEAD, "runner": {"workflow": "e2e-kills.yml", "lockfile_sha256": "cd" * 32}}
+        result = self.evaluate(entries)
+        m = result["mutants"]["selected-miss"]
+        self.assertEqual((m["patch_sha256"], m["provenance"]["e2e_head"]), (
+            "ab" * 32, {"base": PR_HEAD, "tests_rev": PR_HEAD, "runner": {"workflow": "e2e-kills.yml", "lockfile_sha256": "cd" * 32}}))
+        self.assertEqual(m["provenance"]["e2e_base"], {"base": PR_BASE, "tests_rev": None, "runner": None})
+        self.assertEqual(result["provenance"]["runners"], {"e2e_head": {"workflow": ["e2e-kills.yml"], "lockfile_sha256": ["cd" * 32]}})
+
+
+INDEX_AGAINST = {"index_sha": "cc9a02ff3da204781106a4f28b204ca5ef6de2b3", "index_app_base": "8317274709c"}
+
+
+class IndexProvenance(unittest.TestCase):
+    @staticmethod
+    def check(entries, against=INDEX_AGAINST, allow=False):
+        with tempfile.TemporaryDirectory() as d:
+            path = write_kills(d, entries)
+            return kills.provenance(path, kills.read_kills_file(path), against, allow)
+
+    def entries(self, e2e=None, jest=None, base="8317274709cdeadbeef"):
+        e2e = {"base": None, "tests_rev": INDEX_AGAINST["index_sha"]} | (e2e or {})
+        jest = {"base": None} | (jest or {})
+        return format_2({"m": {"stratum": "logic", "layer_results": {
+            "e2e": {k: v for k, v in e2e.items() if v}, "jest": {k: v for k, v in jest.items() if v}}}}, roles=None, base=base)
+
+    def test_the_app_commit_or_the_captured_commit_match(self):
+        for base in ("8317274709c", INDEX_AGAINST["index_sha"]):
+            with self.subTest(base):
+                self.assertEqual(self.check(self.entries(base=base))["status"], "match")
+
+    def test_a_layer_whose_base_differs_from_the_others_is_a_mismatch(self):
+        entries = self.entries(jest={"base": OTHER_BASE})
+        with self.assertRaisesRegex(kills.ProvenanceMismatch, re.escape(
+                f"the production revision of jest is {OTHER_BASE[:11]} on 1 mutants, where 8317274709c or cc9a02ff3da was expected")):
+            self.check(entries)
+        p = self.check(entries, allow=True)
+        self.assertEqual((p["status"], p["overridden"], [c["result"] for c in p["checks"]]),
+                         ("mismatch", True, ["match", "mismatch", "match"]))
+
+    def test_an_e2e_layer_run_on_other_tests_than_the_capture_is_a_mismatch(self):
+        with self.assertRaisesRegex(kills.ProvenanceMismatch, "the test revision of e2e is 0123456789a on 1 mutants"):
+            self.check(self.entries(e2e={"tests_rev": OTHER_BASE}))
+
+    def test_a_missing_revision_is_unknown(self):
+        p = self.check(self.entries(e2e={"tests_rev": None}))
+        self.assertEqual((p["status"], p["banner"]), ("unknown", "Provenance unknown: 1 mutants' e2e results record no tests_rev"))
+        p = self.check(self.entries(), against={"index_sha": None, "index_app_base": None})
+        self.assertEqual(p["status"], "unknown")
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class LedgerProvenance(unittest.TestCase):
+    def ledger(self, entries, *options):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "ledger")
+            done = subprocess.run(["node", os.path.join(HERE, "..", "lookup", "ledger.mjs"), "--index", INDEX, "--kills",
+                                   write_kills(d, entries), "--candidates", UNIQUE, "--out", out, *options],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if done.returncode:
+                return done, None, None, None
+            with open(os.path.join(out, "ledger.json")) as f:
+                ledger = json.load(f)
+            with open(os.path.join(out, "ledger.csv")) as f:
+                rows = list(csv.DictReader(f))
+            with open(os.path.join(out, "summary.md")) as f:
+                summary = f.read()
+        return done, ledger, rows, summary
+
+    def entries(self, base=None, tests_rev=None):
+        meta = index_meta()
+        entry = mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE) | {"layer_results": {"e2e": {
+            "tests_rev": tests_rev or meta["sha"]}}}
+        return format_2({"m": entry}, roles=None, base=base or meta["appBase"])
+
+    def test_a_match_on_the_app_commit_marks_rows_in_files_the_capture_branch_changes(self):
+        done, ledger, rows, summary = self.ledger(self.entries())
+        self.assertEqual(done.returncode, 0, done.stderr)
+        p = ledger["provenance"]
+        self.assertEqual((p["status"], p["banner"], p["mixed_rows"]), ("match", None, 0))
+        self.assertTrue(summary.startswith("# Location ledger\n\nProvenance: match. Kills base 8317274709c, index cc9a02ff3da "
+                                           "(app commit 8317274709c), kills file sha256 "), summary[:300])
+        self.assertEqual({r["base"] for r in rows}, {"match"})
+
+    def test_a_mismatch_is_refused_and_an_override_stamps_every_output(self):
+        done, *_ = self.ledger(self.entries(base=OTHER_BASE))
+        self.assertEqual(done.returncode, 2)
+        self.assertIn("Refusing to join: the production revision of e2e is 0123456789a on 1 mutants", done.stderr)
+        done, ledger, rows, summary = self.ledger(self.entries(base=OTHER_BASE), "--allow-provenance-mismatch")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((ledger["provenance"]["status"], ledger["provenance"]["overridden"]), ("mismatch", True))
+        self.assertTrue(summary.startswith("Provenance mismatch, overridden by --allow-provenance-mismatch: the production revision "
+                                           "of e2e is 0123456789a on 1 mutants"), summary[:200])
+        self.assertEqual({r["base"] for r in rows}, {"mismatch"})
+
+    def test_the_flat_format_reads_as_base_unknown(self):
+        done, ledger, rows, summary = self.ledger({"m": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE)})
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((ledger["provenance"]["status"], ledger["provenance"]["banner"]), ("unknown", FLAT_BANNER))
+        self.assertTrue(summary.startswith(f"{FLAT_BANNER}\n\n# Location ledger\n\nProvenance: unknown, the kills file is in the flat "
+                                           "format, which records no revisions."), summary[:300])
+        self.assertEqual({r["base"] for r in rows}, {"unknown"})
+
+    def test_a_file_with_layer_roles_is_for_kills_py(self):
+        done, *_ = self.ledger(format_2(PR_KILLS))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("read this one with kills.py --candidates <candidates file>", done.stderr)
 
 
 if __name__ == "__main__":

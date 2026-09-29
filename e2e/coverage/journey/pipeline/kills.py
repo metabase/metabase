@@ -130,13 +130,16 @@ As a command, it takes the candidates' reached code from a reach index instead o
   python3 kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
                    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>]
                    [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
-                   [--joint-check-report-only]
+                   [--joint-check-report-only] [--allow-provenance-mismatch]
 
 or from a candidates file, with no index, when the only --candidates is a JSON object:
 
   {"removed_at": "<commit>", "head": "<commit>", "tests": ["<test id>", ...]}
 
 `head` is optional. A candidate then reaches every mutant it ran, with basis ran, and has no capture state.
+
+Before any verdict, provenance() checks the revisions a format 2 kills file records against the index or the candidates file,
+and refuses a mismatch unless --allow-provenance-mismatch is given, which stamps every output with it.
 
 The index keys the nth test of a spec with a repeated title `<spec>::<title> [n]`, and the kill matrix only knows `<spec>::<title>`,
 so a candidate id stands for every index test with its spec and title. Its reach is the union of theirs,
@@ -152,6 +155,7 @@ The pipeline takes no location prior, so it never gives accepted.
 
 import argparse
 import collections
+import hashlib
 import heapq
 import json
 import os
@@ -195,6 +199,7 @@ EQUIVALENCE_STATES = ("unresolved", "reviewed equivalence", "scope decision", "k
 NO_CREDIT = ("unresolved", "reviewed equivalence", "scope decision")
 SUSPECT_IN_SAMPLE = "unresolved suspected equivalent mutant in sample"
 RAN_BASIS = "ran"
+CHECK_FIELDS = {"production revision": "base", "test revision": "tests_rev"}
 RAN_REACH = "reach taken from `ran`, since a candidates file reads no index"
 SYMPTOM_ONLY = "all symptom kills"
 COARSE_STRATA = {
@@ -242,6 +247,106 @@ def read_kills_file(path):
             raise ValueError(f"{path} has a `meta` with format {meta.get('format')!r}, and kills.py reads format 2 and the flat format")
         return {"format": 2, "meta": meta, "entries": raw["mutants"]}
     return {"format": "flat", "meta": {}, "entries": raw}
+
+
+class ProvenanceMismatch(ValueError):
+    pass
+
+
+def same_revision(a, b):
+    """Whether two commits are the same, when either may be abbreviated to 7 or more characters."""
+    if not (isinstance(a, str) and isinstance(b, str)) or min(len(a), len(b)) < 7:
+        return False
+    a, b = a.lower(), b.lower()
+    return a.startswith(b) or b.startswith(a)
+
+
+def short(revision):
+    return revision[:11] if isinstance(revision, str) else str(revision)
+
+
+def layer_provenance(entry, meta):
+    """Each layer result's production revision, test revision and runner, or one layer, `all`, when the entry has none."""
+    results = {name: r for name, r in (entry.get("layer_results") or {}).items() if isinstance(r, dict)}
+    return {name: {"base": r.get("base") or meta.get("base"), "tests_rev": r.get("tests_rev"), "runner": r.get("runner")}
+            for name, r in sorted((results or {ALL_LAYERS: {}}).items())}
+
+
+def provenance(path, kills_file, against, allow_mismatch=False):
+    """What the kills file's observations rest on, checked against the index or the candidates file.
+
+    The production revision of each layer result must be the index's app commit or its captured commit,
+    and over a candidates file the removed-at revision, or the head revision for a `*_head` layer when the file names one.
+    Over the index, the test revision of each e2e layer must be the captured commit or its app commit.
+    A mismatch raises ProvenanceMismatch unless `allow_mismatch`, and then the result is stamped with it.
+    A flat kills file records no revisions, so its base is unknown.
+    """
+    with open(path, "rb") as f:
+        digest = hashlib.sha256(f.read()).hexdigest()
+    meta = kills_file["meta"]
+    block = {
+        "status": None, "overridden": False, "banner": None,
+        "kills": {"file": path, "sha256": digest, "format": kills_file["format"],
+                  **{k: meta.get(k) for k in ("base", "emitted_at", "emitter")}},
+        "against": against, "checks": [], "mismatches": [], "unknown": [], "runners": {},
+    }
+    if kills_file["format"] == "flat":
+        block["unknown"].append("the kills file is in the flat format, which records no revisions")
+        block["status"], block["banner"] = "unknown", f"Base unknown: {block['unknown'][0]}"
+        return block
+    checks = collections.Counter()
+    runners = collections.defaultdict(lambda: {"workflow": set(), "lockfile_sha256": set()})
+    entries = {mid: e for mid, e in kills_file["entries"].items() if isinstance(e, dict)}
+    for entry in entries.values():
+        for layer, p in layer_provenance(entry, meta).items():
+            for check, found, expected in revision_checks(layer, p, against):
+                checks[(check, layer, found, tuple(expected) if expected is not None else None)] += 1
+            for field in ("workflow", "lockfile_sha256"):
+                if (p["runner"] or {}).get(field):
+                    runners[layer][field].add(p["runner"][field])
+    for (check, layer, found, expected), n in sorted(checks.items(), key=lambda x: tuple(map(str, x[0]))):
+        if expected is None:
+            result = "not checked"
+        elif not expected:
+            result = "unknown"
+            block["unknown"].append(f"the index records no commit to check {n} mutants' {layer} {check} against")
+        elif found is None:
+            result = "unknown"
+            block["unknown"].append(f"{n} mutants' {layer} results record no {CHECK_FIELDS[check]}")
+        elif any(same_revision(found, e) for e in expected):
+            result = "match"
+        else:
+            result = "mismatch"
+            block["mismatches"].append(f"the {check} of {layer} is {short(found)} on {n} mutants, where "
+                                       f"{' or '.join(short(e) for e in expected)} was expected")
+        block["checks"].append({"check": check, "layer": layer, "found": found, "expected": list(expected or []),
+                                "mutants": n, "result": result})
+    block["runners"] = {layer: {k: sorted(v) for k, v in r.items()} for layer, r in sorted(runners.items())}
+    block["mutants_without_patch_sha256"] = sum(1 for e in entries.values() if not e.get("patch_sha256"))
+    if block["mismatches"]:
+        if not allow_mismatch:
+            raise ProvenanceMismatch(f"{'; '.join(block['mismatches'])}. Pass --allow-provenance-mismatch to give verdicts anyway, "
+                                     "with every output stamped")
+        block["status"], block["overridden"] = "mismatch", True
+        block["banner"] = f"Provenance mismatch, overridden by --allow-provenance-mismatch: {'; '.join(block['mismatches'])}"
+    elif block["unknown"]:
+        block["status"], block["banner"] = "unknown", f"Provenance unknown: {'; '.join(block['unknown'])}"
+    else:
+        block["status"] = "match"
+    return block
+
+
+def revision_checks(layer, p, against):
+    """Each check on one layer result: what it checks, the revision found, and the revisions it may be, or None when unchecked."""
+    if "index_sha" in against:
+        index = [r for r in (against["index_app_base"], against["index_sha"]) if r]
+        yield "production revision", p["base"], index
+        if layer == "e2e" or layer.startswith("e2e_"):
+            yield "test revision", p["tests_rev"], index
+    elif layer.endswith("_head"):
+        yield "production revision", p["base"], [against["head"]] if against["head"] else None
+    else:
+        yield "production revision", p["base"], [against["removed_at"]]
 
 
 def read_layer_roles(meta, entries):
@@ -1190,10 +1295,18 @@ def read_candidates_file(path):
 
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
              repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR,
-             callers_path=None):
+             callers_path=None, allow_provenance_mismatch=False):
+    kills_file = read_kills_file(kills_path)
+    index_meta_path = os.path.join(index_dir, "meta.json")
+    index_meta = {}
+    if os.path.isfile(index_meta_path):
+        with open(index_meta_path) as f:
+            index_meta = json.load(f)
+    checked = provenance(kills_path, kills_file, {"index_sha": index_meta.get("sha"), "index_app_base": index_meta.get("appBase")},
+                         allow_provenance_mismatch)
     accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
     candidate_ids = list(dict.fromkeys(candidate_ids))
-    entries = read_kills_file(kills_path)["entries"]
+    entries = kills_file["entries"]
     with open(os.path.join(index_dir, "tests.json")) as f:
         index_tests = json.load(f)
     members = ordinal_members(index_tests, candidate_ids)
@@ -1242,7 +1355,8 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     index_ids = {t["id"] for t in index_tests}
     return {
         **judge(candidates, kills, mutants, secondary, lambda t: lambda m: m["reach_bases"].get(t.id), accept,
-                min_mutants, required_strata, lambda i: i not in index_ids),
+                min_mutants, required_strata, lambda i: i not in index_ids, kills_file),
+        "provenance": checked,
         "mode": "index",
         "index": {"dir": index_dir, "sha": reach["sha"], "runs": reach["runs"]},
         "candidates_file": None,
@@ -1252,13 +1366,16 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
 
 
 def evaluate_candidates_file(kills_path, candidates_file, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
-                             prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None):
+                             prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None,
+                             allow_provenance_mismatch=False):
     """Verdicts for the tests of a candidates file, with no index: every mutant counts as reached by the candidates that ran it."""
+    kills_file = read_kills_file(kills_path)
+    checked = provenance(kills_path, kills_file, {k: candidates_file[k] for k in ("removed_at", "head")}, allow_provenance_mismatch)
     accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
     candidates = [types.SimpleNamespace(id=i, key=cid, base_key=cid, state=None, captured=False)
                   for i, cid in enumerate(candidates_file["tests"])]
     kills = load(kills_path, types.SimpleNamespace(tests=candidates))
-    entries = read_kills_file(kills_path)["entries"]
+    entries = kills_file["entries"]
     mutants = {}
     for mid, m in kills["mutants"].items():
         entry = entries[mid] if isinstance(entries[mid], dict) else {}
@@ -1268,14 +1385,15 @@ def evaluate_candidates_file(kills_path, candidates_file, min_mutants=MIN_MUTANT
                         "candidates_reaching": len(m["ran"] | m["killed_by"] | m["errored"])}
     return {
         **judge(candidates, kills, mutants, [set() for _ in candidates], lambda t: lambda m: [RAN_BASIS], accept,
-                min_mutants, required_strata, None),
+                min_mutants, required_strata, None, kills_file),
+        "provenance": checked,
         "mode": "candidates file",
         "index": None,
         "candidates_file": {k: candidates_file[k] for k in ("file", "removed_at", "head")},
     }
 
 
-def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, required_strata, not_in_index):
+def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, required_strata, not_in_index, kills_file):
     """The verdicts and the result keys both kinds of evaluation share, with each mutant's two sides and states added to `mutants`."""
     run = types.SimpleNamespace(tests=candidates)
     kept, universe = cover_kills(candidates, kills["mutants"], secondary, [1] * len(candidates))
@@ -1284,6 +1402,9 @@ def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, req
     for mid, m in kills["mutants"].items():
         removed = removed_side(m, key_of)
         mutants[mid].update(removed=removed, remaining=m["remaining"], states=mutant_states(removed, m["remaining"]))
+        entry = kills_file["entries"][mid]
+        if kills_file["format"] == 2 and isinstance(entry, dict):
+            mutants[mid].update(patch_sha256=entry.get("patch_sha256"), provenance=layer_provenance(entry, kills_file["meta"]))
         if m["suspect"]:
             changes = m.get("dismissal_changes") or []
             mutants[mid]["equivalent_suspect"] = {"state": m["suspect"], **m["equivalence_records"],
@@ -1488,12 +1609,25 @@ def suspects_report(result):
     return lines
 
 
+def provenance_line(p):
+    against = p["against"]
+    if "index_sha" in against:
+        where = f"the index's captured commit {short(against['index_sha'])} and its app commit {short(against['index_app_base'])}"
+    else:
+        where = f"the removed-at revision {short(against['removed_at'])}" + (
+            f" and the head revision {short(against['head'])}" if against["head"] else ", with no head revision to check against")
+    checked = sum(c["mutants"] for c in p["checks"] if c["result"] == "match")
+    return f"Provenance {p['status']}, against {where}: {checked} layer results match, kills file sha256 {p['kills']['sha256'][:12]}"
+
+
 def report(result):
     k, s = result["kills"], result["summary"]
     in_index = (f", {len(result['candidates_not_in_index'])} of them not in the index" if result["mode"] == "index" else "")
     lines = [
+        *([result["provenance"]["banner"]] if result["provenance"]["banner"] else []),
         *joint_check_report(result["joint_check"]),
         source_line(result),
+        provenance_line(result["provenance"]),
         roles_line(k),
         f"{k['mutants']} mutants: {by_stratum(k['strata'])}",
         *([f"  {', '.join(f'{n} killed by the {name}' for name, n in k['checker_kills'].items())}, which count as remaining tests"]
@@ -1607,19 +1741,27 @@ def main():
     parser.add_argument("--sha", help="read source at this commit instead of the captured one")
     parser.add_argument("--joint-check-report-only", action="store_true",
                         help="report a failed joint check without exiting with code 1")
+    parser.add_argument("--allow-provenance-mismatch", action="store_true",
+                        help="give verdicts when the kills file's revisions don't match, with every output stamped")
     args = parser.parse_args()
     required = [x for x in args.require_strata.split(",") if x]
     candidates_files = [c for c in map(read_candidates_file, args.candidates) if c]
-    if candidates_files:
-        if len(args.candidates) > 1:
-            parser.error("a candidates file with `removed_at` must be the only --candidates")
-        result = evaluate_candidates_file(args.kills, candidates_files[0], args.min_mutants, required,
-                                          args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
-    else:
-        if not args.index:
-            parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
-        result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha,
-                          args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
+    try:
+        if candidates_files:
+            if len(args.candidates) > 1:
+                parser.error("a candidates file with `removed_at` must be the only --candidates")
+            result = evaluate_candidates_file(args.kills, candidates_files[0], args.min_mutants, required,
+                                              args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers,
+                                              args.allow_provenance_mismatch)
+        else:
+            if not args.index:
+                parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
+            result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo,
+                              args.sha, args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers,
+                              args.allow_provenance_mismatch)
+    except ProvenanceMismatch as e:
+        print(f"Refusing to give verdicts: {e}.", file=sys.stderr)
+        sys.exit(2)
     if args.out:
         with open(args.out, "w") as f:
             json.dump(result, f, indent=1)

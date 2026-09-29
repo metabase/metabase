@@ -638,6 +638,22 @@ function main() {
   );
 
   const differences = [];
+  const provenance = ledger.provenance;
+  if (provenance) {
+    console.log(
+      provenance.banner ??
+        `Provenance ${provenance.status}, kills file sha256 ${provenance.kills.sha256.slice(0, 12)}`,
+    );
+  }
+  const readBoth = [
+    provenance?.kills?.sha256,
+    expected.provenance?.kills?.sha256,
+  ];
+  if (readBoth.every(Boolean) && readBoth[0] !== readBoth[1]) {
+    differences.push(
+      `the ledger read the kills file with sha256 ${readBoth[0].slice(0, 12)}, and the verdicts file one with ${readBoth[1].slice(0, 12)}`,
+    );
+  }
   if (got.withoutKeys.length) {
     differences.push(
       `${got.withoutKeys.length} candidates in the index have no reached keys in the ledger, so the kills-first cover can't break ties as kills.py does. Pass the same --candidates to ledger.mjs`,

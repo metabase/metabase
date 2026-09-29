@@ -1,8 +1,8 @@
 // Joins a reach index and a kills file into one row per code location: the e2e tests that reach it and assert after,
 // the mutants planted there, their confirmed killers per layer, and the cheapest layer that kills each.
-//   node ledger.mjs --index <index dir> --kills <kills file> --kills-base <commit> --out <dir>
+//   node ledger.mjs --index <index dir> --kills <kills file> --out <dir>
 //                   [--locations <reach-counts.jsonl>] [--candidates <file or test id> ...] [--mutants-dir <dir>]
-//                   [--allow-mixed] [--repo <path>]
+//                   [--allow-provenance-mismatch] [--repo <path>]
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
@@ -385,6 +385,7 @@ export function mutantFacts(mid, raw, sidecar) {
     ...(entry.set ? { set: entry.set } : {}),
     ...(entry.alias_of ? { alias_of: entry.alias_of } : {}),
     ...(entry.equivalent_suspect === true ? { equivalent_suspect: true } : {}),
+    ...(entry.patch_sha256 ? { patch_sha256: entry.patch_sha256 } : {}),
     ...(equivalence.state
       ? {
           equivalence_state: equivalence.state,
@@ -497,49 +498,170 @@ const revParse = (repo, rev) =>
     ? git(repo, ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`])
     : null;
 
+const sameRevision = (a, b) =>
+  typeof a === "string" &&
+  typeof b === "string" &&
+  Math.min(a.length, b.length) >= 7 &&
+  (a.toLowerCase().startsWith(b.toLowerCase()) ||
+    b.toLowerCase().startsWith(a.toLowerCase()));
+
+const short = (revision) =>
+  typeof revision === "string" ? revision.slice(0, 11) : String(revision);
+
+/** Each layer result's production revision, test revision and runner, or one layer, `all`, when the entry has none, as kills.py reads them. */
+function layerProvenance(entry, meta) {
+  const results = Object.entries(entry.layer_results ?? {}).filter(
+    ([, r]) => r && typeof r === "object" && !Array.isArray(r),
+  );
+  return Object.fromEntries(
+    (results.length ? results : [["all", {}]])
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([name, r]) => [
+        name,
+        {
+          base: r.base || meta.base || null,
+          tests_rev: r.tests_rev ?? null,
+          runner: r.runner ?? null,
+        },
+      ]),
+  );
+}
+
 /**
- * The index and the kills file share a base when the kills base is the captured commit, or the app commit the capture branch sits on.
- * In the second case the files the capture branch changes are listed, and rows in them are marked mixed.
+ * What the kills file's observations rest on, checked against the index as kills.py checks them.
+ * Each layer result's production revision must be the index's app commit or its captured commit,
+ * and each e2e layer's test revision the captured commit or its app commit.
+ * When a production revision is the app commit, the files the capture branch changes are listed, so rows in them can be marked mixed.
  */
-function checkBase(repo, killsBase, meta) {
-  const kills = revParse(repo, killsBase);
-  const indexSha = revParse(repo, meta.sha);
-  const appBase = revParse(repo, meta.appBase);
-  const base = {
-    kills_base: kills ?? killsBase,
-    index_sha: indexSha ?? meta.sha,
-    index_app_base: appBase ?? meta.appBase ?? null,
+export function checkProvenance({ repo, killsFile, file, digest, indexMeta }) {
+  const meta = killsFile.meta;
+  const block = {
+    status: null,
+    overridden: false,
+    banner: null,
+    kills: {
+      file,
+      sha256: digest,
+      format: killsFile.format,
+      base: meta.base ?? null,
+      emitted_at: meta.emitted_at ?? null,
+      emitter: meta.emitter ?? null,
+    },
+    against: {
+      index_sha: indexMeta.sha ?? null,
+      index_app_base: indexMeta.appBase ?? null,
+    },
+    checks: [],
+    mismatches: [],
+    unknown: [],
+    runners: {},
     changed_between: [],
   };
-  if (!kills || !indexSha) {
-    return {
-      ...base,
-      status: "mixed",
-      reason: `can't resolve ${kills ? meta.sha : killsBase} in ${repo}`,
-    };
+  if (killsFile.format === "flat") {
+    block.unknown.push(
+      "the kills file is in the flat format, which records no revisions",
+    );
+    block.status = "unknown";
+    block.banner = `Base unknown: ${block.unknown[0]}`;
+    return block;
   }
-  if (kills === indexSha) {
-    return {
-      ...base,
-      status: "same",
-      reason: "the kills base is the captured commit",
-    };
+  const index = [indexMeta.appBase, indexMeta.sha].filter(Boolean);
+  const counts = new Map();
+  const runners = {};
+  const entries = Object.values(killsFile.entries).filter(
+    (e) => e && typeof e === "object" && !Array.isArray(e),
+  );
+  for (const entry of entries) {
+    for (const [layer, p] of Object.entries(layerProvenance(entry, meta))) {
+      const checks = [["production revision", p.base]];
+      if (layer === "e2e" || layer.startsWith("e2e_")) {
+        checks.push(["test revision", p.tests_rev]);
+      }
+      for (const [check, found] of checks) {
+        const key = JSON.stringify([check, layer, found]);
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+      for (const field of ["workflow", "lockfile_sha256"]) {
+        if (p.runner?.[field]) {
+          runners[layer] ??= {
+            workflow: new Set(),
+            lockfile_sha256: new Set(),
+          };
+          runners[layer][field].add(p.runner[field]);
+        }
+      }
+    }
   }
-  if (kills === appBase) {
-    const changed = git(repo, ["diff", "--name-only", kills, indexSha]);
-    return {
-      ...base,
-      status: "same",
-      reason:
-        "the kills base is the app commit the capture branch sits on. Rows in files the capture branch changes are marked mixed",
-      changed_between: changed ? changed.split("\n") : [],
-    };
+  let onAppBase = false;
+  for (const [key, n] of [...counts.entries()].sort(([a], [b]) =>
+    a < b ? -1 : 1,
+  )) {
+    const [check, layer, found] = JSON.parse(key);
+    const field = check === "production revision" ? "base" : "tests_rev";
+    let result;
+    if (index.length === 0) {
+      result = "unknown";
+      block.unknown.push(
+        `the index records no commit to check ${n} mutants' ${layer} ${check} against`,
+      );
+    } else if (found == null) {
+      result = "unknown";
+      block.unknown.push(`${n} mutants' ${layer} results record no ${field}`);
+    } else if (index.some((r) => sameRevision(found, r))) {
+      result = "match";
+      onAppBase ||=
+        check === "production revision" && !sameRevision(found, indexMeta.sha);
+    } else {
+      result = "mismatch";
+      block.mismatches.push(
+        `the ${check} of ${layer} is ${short(found)} on ${n} mutants, where ${index.map(short).join(" or ")} was expected`,
+      );
+    }
+    block.checks.push({
+      check,
+      layer,
+      found,
+      expected: index,
+      mutants: n,
+      result,
+    });
   }
-  return {
-    ...base,
-    status: "mixed",
-    reason: "the kills base is neither the captured commit nor its app commit",
-  };
+  block.runners = Object.fromEntries(
+    Object.entries(runners).map(([layer, r]) => [
+      layer,
+      {
+        workflow: [...r.workflow].sort(),
+        lockfile_sha256: [...r.lockfile_sha256].sort(),
+      },
+    ]),
+  );
+  block.mutants_without_patch_sha256 = entries.filter(
+    (e) => !e.patch_sha256,
+  ).length;
+  if (onAppBase && block.mismatches.length === 0) {
+    const appBase = revParse(repo, indexMeta.appBase);
+    const indexSha = revParse(repo, indexMeta.sha);
+    const changed =
+      appBase && indexSha
+        ? git(repo, ["diff", "--name-only", appBase, indexSha])
+        : null;
+    if (changed == null) {
+      block.mismatches.push(
+        `the kills file's production revision is the index's app commit, and the files the capture branch changes can't be listed, because ${appBase ? indexMeta.sha : indexMeta.appBase} isn't in ${repo}`,
+      );
+    } else {
+      block.changed_between = changed ? changed.split("\n") : [];
+    }
+  }
+  if (block.mismatches.length) {
+    block.status = "mismatch";
+  } else if (block.unknown.length) {
+    block.status = "unknown";
+    block.banner = `Provenance unknown: ${block.unknown.join("; ")}`;
+  } else {
+    block.status = "match";
+  }
+  return block;
 }
 
 const isAnonymous = (name) => /^\(anonymous/.test(name ?? "");
@@ -653,7 +775,7 @@ export function buildLedger({
   index,
   ctx,
   kills,
-  base,
+  provenance,
   reachCounts = [],
   candidates = [],
   sidecars = {},
@@ -728,8 +850,13 @@ export function buildLedger({
 
   const testIndex = new Map(index.tests.map((t, i) => [t.id, i]));
   const candidateSet = new Set(candidates);
-  const changed = new Set(base.changed_between);
-  const mixed = (file) => base.status === "mixed" || changed.has(file);
+  const changed = new Set(provenance.changed_between);
+  const rowBase = (file) =>
+    provenance.status !== "match"
+      ? provenance.status
+      : changed.has(file)
+        ? "mixed"
+        : null;
   const out = [];
   const passed = (r) => index.tests[testIndex.get(r.id)].state === "passed";
   const pairs = (rs) =>
@@ -801,7 +928,9 @@ export function buildLedger({
       resolved: row.keys.size > 0,
       keys: row.keys.size,
       ...(row.notes.size ? { notes: [...row.notes] } : {}),
-      ...(mixed(row.location.file) ? { base: "mixed" } : {}),
+      ...(rowBase(row.location.file)
+        ? { base: rowBase(row.location.file) }
+        : {}),
       inputs: row.inputs,
       reach_counts_issues: [...row.issues],
       ...split,
@@ -822,11 +951,11 @@ export function buildLedger({
     });
   }
   out.sort((a, b) => a.id.localeCompare(b.id));
-  base.mixed_rows = out.filter((row) => row.base === "mixed").length;
+  provenance.mixed_rows = out.filter((row) => row.base === "mixed").length;
 
   return {
     format: "location-ledger prototype",
-    base,
+    provenance,
     layers: LAYERS,
     tests: index.tests.map((t) => ({ id: t.id, state: t.state })),
     candidate_keys: Object.fromEntries(keysReachedBy(index, candidates)),
@@ -959,6 +1088,7 @@ const CSV_COLUMNS = [
   "equivalent_suspect",
   "checker_kills",
   "equivalence_state",
+  "patch_sha256",
 ];
 
 function csvCell(value) {
@@ -1014,7 +1144,7 @@ export function toCsv(ledger) {
       resolved: row.resolved ? "yes" : "no",
       location_notes: (row.notes ?? []).join(" | "),
       reach_counts_issues: row.reach_counts_issues.join(";"),
-      base: row.base ?? ledger.base.status,
+      base: row.base ?? ledger.provenance.status,
     };
     const perMutant = row.mutants.length
       ? row.mutants.map(({ id }) => {
@@ -1052,6 +1182,7 @@ export function toCsv(ledger) {
             equivalent_suspect: m.equivalent_suspect ? "yes" : "no",
             checker_kills: (m.checker_kills ?? []).join(";"),
             equivalence_state: m.equivalence_state,
+            patch_sha256: m.patch_sha256,
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -1134,6 +1265,23 @@ function symptomCounts(mutants) {
   };
 }
 
+function provenanceLine(p) {
+  const index = `index ${short(p.against.index_sha)} (app commit ${short(p.against.index_app_base)})`;
+  const kills = `kills file sha256 ${p.kills.sha256.slice(0, 12)}`;
+  if (p.status === "match") {
+    const bases = [
+      ...new Set(
+        p.checks
+          .filter((c) => c.check === "production revision")
+          .map((c) => short(c.found)),
+      ),
+    ];
+    return `Provenance: match. Kills base ${bases.join(", ")}, ${index}, ${kills}. ${p.mixed_rows} rows are in files the capture branch changes, and are marked mixed.`;
+  }
+  const what = p.status === "mismatch" ? p.mismatches : p.unknown;
+  return `Provenance: ${p.status}${p.overridden ? ", overridden" : ""}, ${what.join("; ")}. Against ${index}, ${kills}. Every row is marked ${p.status}.`;
+}
+
 export function summarize(ledger, derived, inputs) {
   const { rows, mutants } = ledger;
   const count = (xs, f) => xs.filter(f).length;
@@ -1192,9 +1340,10 @@ export function summarize(ledger, derived, inputs) {
   const suspectsKilled = suspectIds(derived.equivalent_suspect_killed);
   const hasSuspects = suspectsUnkilled.length + suspectsKilled.length > 0;
   const lines = [
+    ...(ledger.provenance.banner ? [ledger.provenance.banner, ""] : []),
     "# Location ledger",
     "",
-    `Base: ${ledger.base.status}, ${ledger.base.mixed_rows} rows marked mixed. Kills base ${ledger.base.kills_base.slice(0, 11)}, index ${ledger.base.index_sha.slice(0, 11)} (app commit ${String(ledger.base.index_app_base).slice(0, 11)}): ${ledger.base.reason}.`,
+    provenanceLine(ledger.provenance),
     `Inputs: ${inputs.kills} mutants, ${inputs.reachCountsLines} reach-counts lines, ${inputs.candidates} candidates, index runs ${inputs.runs.join(", ")}.`,
     "",
     "A location is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`.",
@@ -1339,31 +1488,16 @@ function readSidecars(dir) {
 function main() {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const args = parseArgs(process.argv.slice(2), {
-    booleans: ["allow-mixed"],
+    booleans: ["allow-provenance-mismatch"],
     multiple: ["candidates"],
   });
   const indexDir = args.index ?? process.env.JOURNEY_LOOKUP_INDEX;
   if (!indexDir || !args.kills || !args.out) {
     console.error(
-      "Usage: node ledger.mjs --index <index dir> --kills <kills file> --kills-base <commit> --out <dir> " +
-        "[--locations <reach-counts.jsonl>] [--candidates <file or test id> ...] [--mutants-dir <dir>] [--allow-mixed] [--repo <path>]",
+      "Usage: node ledger.mjs --index <index dir> --kills <kills file> --out <dir> " +
+        "[--locations <reach-counts.jsonl>] [--candidates <file or test id> ...] [--mutants-dir <dir>] [--allow-provenance-mismatch] [--repo <path>]",
     );
     process.exit(1);
-  }
-  if (!args["kills-base"]) {
-    console.error(
-      "The kills file doesn't record its base commit, so pass it with --kills-base <commit>.",
-    );
-    process.exit(1);
-  }
-  const index = loadIndex(indexDir);
-  const ctx = { repo: args.repo ?? repoRoot(here), sha: index.meta.sha };
-  const base = checkBase(ctx.repo, args["kills-base"], index.meta);
-  if (base.status === "mixed" && !args["allow-mixed"]) {
-    console.error(
-      `Refusing to join: ${base.reason} (kills base ${base.kills_base}, index ${base.index_sha}, app commit ${base.index_app_base}). Pass --allow-mixed to join anyway with every row marked mixed.`,
-    );
-    process.exit(2);
   }
   const killsFile = readKillsFile(args.kills);
   if (killsFile.meta.layer_roles) {
@@ -1372,6 +1506,27 @@ function main() {
         "The ledger joins a kills file without them to an index: read this one with kills.py --candidates <candidates file>.",
     );
     process.exit(1);
+  }
+  const index = loadIndex(indexDir);
+  const ctx = { repo: args.repo ?? repoRoot(here), sha: index.meta.sha };
+  const provenance = checkProvenance({
+    repo: ctx.repo,
+    killsFile,
+    file: args.kills,
+    digest: createHash("sha256")
+      .update(fs.readFileSync(args.kills))
+      .digest("hex"),
+    indexMeta: index.meta,
+  });
+  if (provenance.status === "mismatch") {
+    if (!args["allow-provenance-mismatch"]) {
+      console.error(
+        `Refusing to join: ${provenance.mismatches.join("; ")}. Pass --allow-provenance-mismatch to join anyway, with every row and output stamped.`,
+      );
+      process.exit(2);
+    }
+    provenance.overridden = true;
+    provenance.banner = `Provenance mismatch, overridden by --allow-provenance-mismatch: ${provenance.mismatches.join("; ")}`;
   }
   const kills = killsFile.entries;
   const reachCounts = args.locations
@@ -1386,7 +1541,7 @@ function main() {
     index,
     ctx,
     kills,
-    base,
+    provenance,
     reachCounts,
     candidates,
     sidecars: readSidecars(args["mutants-dir"]),
@@ -1398,9 +1553,7 @@ function main() {
       index: { runs: index.meta.runs.map((r) => r.runId), sha: index.meta.sha },
       kills: {
         mutants: Object.keys(kills).length,
-        sha256: createHash("sha256")
-          .update(fs.readFileSync(args.kills))
-          .digest("hex"),
+        sha256: provenance.kills.sha256,
       },
       reach_counts: { lines: reachCounts.length },
       candidates,
