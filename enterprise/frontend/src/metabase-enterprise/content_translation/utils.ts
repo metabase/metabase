@@ -149,7 +149,7 @@ export const translateDisplayNames = <T>({
   const traverse = (element: T): T => {
     if (Array.isArray(element)) {
       // Unjustified type cast. FIXME
-      return element.map((item) => traverse(item)) as T;
+      return element.map((item) => undefined) as T;
     }
 
     if (isRecord(element)) {
