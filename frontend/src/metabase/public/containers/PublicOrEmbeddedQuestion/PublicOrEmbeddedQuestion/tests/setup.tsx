@@ -101,7 +101,7 @@ export async function setup(
     }),
   );
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <Route
       path="public/question/:uuid"
       element={<PublicOrEmbeddedQuestion />}
@@ -114,4 +114,6 @@ export async function setup(
   );
   expect(await screen.findByText(questionName)).toBeInTheDocument();
   await waitForLoaderToBeRemoved();
+
+  return { store };
 }

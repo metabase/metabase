@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
+import { getFont } from "metabase/styled-components/selectors";
 import { createMockParameter } from "metabase-types/api/mocks";
 import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
@@ -70,5 +71,11 @@ describe("PublicOrEmbeddedQuestion", () => {
     expect(JSON.parse(String(parameters))).toEqual([
       { id: "category-id", value: ["Gizmo"] },
     ]);
+  });
+
+  it("should apply the font from the `#font` hash parameter (metabase#45638)", async () => {
+    const { store } = await setupCommon({ hash: { font: "Roboto" } });
+
+    expect(getFont(store.getState())).toBe("Roboto");
   });
 });
