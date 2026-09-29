@@ -167,7 +167,7 @@ function ExtractionPicker({
               key={extraction.info.tag}
               title={extraction.info.displayName}
               example={getExample(extraction.info) ?? ""}
-              onClick={() => onSelect(extraction.info, extraction.extraction)}
+              onClick={() => undefined}
             />
           ))}
         </Stack>
