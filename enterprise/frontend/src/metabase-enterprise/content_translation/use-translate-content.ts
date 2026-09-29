@@ -35,18 +35,5 @@ export const useTranslateContent = (): ContentTranslationFunction => {
 };
 
 export const useListContentTranslations = () => {
-  const { locale } = useLocale();
-  const dictionaryEndpoint = useSyncExternalStore(
-    dictionaryEndpointStore.subscribe,
-    dictionaryEndpointStore.getSnapshot,
-  );
-  const { data } = useListContentTranslationsQuery(
-    dictionaryEndpoint
-      ? {
-          locale,
-        }
-      : skipToken,
-  );
-  const dictionary = data?.data;
-  return dictionary;
+  return;
 };
