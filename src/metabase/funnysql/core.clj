@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -21,8 +22,13 @@
   (append-sql! context "?")
   (append-arg! context x))
 
-(defn- null!    [_x context] (append-sql! context "NULL"))
-(defn- integer! [n context]  (append-sql! context (str n)))
+(defn- null! [_x context]
+  (append-sql! context "NULL"))
+
+(defn- number! [n context]
+  (if (instance? clojure.lang.Ratio n)
+    (recur (double n) context)
+    (append-sql! context (str n))))
 
 (defn- interpose-fn
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
@@ -236,7 +242,7 @@
                 (fn [k] ((clause-fns k) (get m k) context))
                 #(append-sql! context " ")))
 
-(defn- -identifier-component!
+(defn- -identifier-part!
   "Emit a single quoted and escaped identifier part."
   [part context]
   (if (= part "*")
@@ -255,9 +261,9 @@
         (append-sql! context quote-char)))))
 
 (defn -identifier!
-  "Emit a (possibly qualified) identifier composed of multiple [[-identifier-component]]s."
+  "Emit a (possibly qualified) identifier composed of multiple [[-identifier-part]]s."
   [s context]
-  (interpose-fn (str/split s #"\.") #(-identifier-component! % context) #(append-sql! context ".")))
+  (interpose-fn (str/split s #"\.") #(-identifier-part! % context) #(append-sql! context ".")))
 
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
@@ -310,14 +316,14 @@
   (compile! z context))
 
 (defn- cast! [[x type-name] context]
-  (append-sql! context "CAST(")
-  (compile! x context)
-  (append-sql! context " AS ")
   (let [type-name (name type-name)]
-    (when-not (re-matches #"^[A-Za-z_][()A-Za-z0-9_-]*$" type-name)
+    (when-not (h2x/raw-type-name? type-name)
       (throw (ex-info "Invalid type" {:type type-name})))
-    (append-sql! context type-name))
-  (append-sql! context ")"))
+    (append-sql! context "CAST(")
+    (compile! x context)
+    (append-sql! context " AS ")
+    (append-sql! context type-name)
+    (append-sql! context ")")))
 
 (defn- case! [args context]
   (append-sql! context "CASE ")
@@ -354,6 +360,71 @@
     (append-sql! context f))
   (-list! args context))
 
+(defn- h2x-identifier! [[_identifier-type parts] context]
+  (interpose-fn parts #(-identifier-part! % context) #(append-sql! context ".")))
+
+(defn- h2x-literal! [s context]
+  (let [s (as-> s s
+            (u/qualified-name s)
+            (str/replace s "'" "''"))]
+    (append-sql! context "'")
+    (append-sql! context s)
+    (append-sql! context "'")))
+
+(defn- h2x-extract! [[unit expr] context]
+  (when-not (re-matches #"^[a-zA-Z0-9]+$" (name unit))
+    (throw (ex-info "Invalid unit" {:unit unit})))
+  (append-sql! context "extract(")
+  (append-sql! context (name unit))
+  (append-sql! context " FROM ")
+  (compile! expr context)
+  (append-sql! context ")"))
+
+(defn- h2x-distinct-count! [expr context]
+  (append-sql! context "count(DISTINCT ")
+  (compile! expr context)
+  (append-sql! context ")"))
+
+(defn- h2x-percentile-cont! [[expr fraction] context]
+  (when-not (number? fraction)
+    (throw (ex-info "Invalid continuous percentile fraction" {:fraction fraction})))
+  (append-sql! context "percentile_cont(")
+  (compile! fraction context)
+  (append-sql! context ") WITHIN GROUP (ORDER BY ")
+  (compile! expr context)
+  (append-sql! context ")"))
+
+(defn- h2x-collate! [[expr collation] context]
+  (when-not (re-matches #"^\w+$" (name collation))
+    (throw (ex-info "Invalid collation" {:collation collation})))
+  (compile! expr context)
+  (append-sql! context " COLLATE ")
+  (append-sql! context (name collation)))
+
+(defn- h2x-at-time-zone! [[expr zone] context]
+  ;; support stuff like `America/New_York`, `Etc/GMT+5`, or `America/Indiana/Indianapolis`
+  (when-not (re-matches #"^[A-Za-z0-9_+\-]+(?:/[A-Za-z0-9_+\-]+){0,2}$" (name zone))
+    (throw (ex-info "Invalid time zone" {:time-zone zone})))
+  (append-sql! context "(")
+  (compile! expr context)
+  (append-sql! context " AT TIME ZONE '")
+  (append-sql! context (name zone))
+  (append-sql! context "')"))
+
+(defn- -h2x-interval! [engine [amount unit] context]
+  (when-not (number? amount)
+    (throw (ex-info "Invalid amount" {:amount amount})))
+  (when-not (#{:millisecond :second :minute :hour :day :week :month :year} unit)
+    (throw (ex-info "Invalid unit" {:unit unit})))
+  (append-sql! context (case engine
+                         :postgres "INTERVAL '"
+                         :mysql "INTERVAL "))
+  (compile! amount context)
+  (append-sql! context " ")
+  (append-sql! context (name unit))
+  (when (= engine :postgres)
+    (append-sql! context "'")))
+
 (defn- -fn-call! [[f & args] context]
   (case f
     :not                    (not!     args context)
@@ -387,7 +458,18 @@
      :now
      :sum
      :upper)
-    (-simple-fn! f args context)))
+    (-simple-fn! f args context)
+
+    :metabase.util.honey-sql-2/identifier        (h2x-identifier! args context)
+    :metabase.util.honey-sql-2/literal           (h2x-literal! (first args) context)
+    :metabase.util.honey-sql-2/extract           (h2x-extract! args context)
+    :metabase.util.honey-sql-2/distinct-count    (h2x-distinct-count! (first args) context)
+    :metabase.util.honey-sql-2/percentile-cont   (h2x-percentile-cont! args context)
+    :metabase.util.honey-sql-2/collate           (h2x-collate! args context)
+    :metabase.util.honey-sql-2/at-time-zone      (h2x-at-time-zone! args context)
+    :metabase.util.honey-sql-2/typed             (compile! (first args) context)
+    :metabase.util.honey-sql-2/postgres-interval (-h2x-interval! :postgres args context)
+    :metabase.util.honey-sql-2/mysql-interval    (-h2x-interval! :mysql args context)))
 
 (defn- vector! [xs context]
   (if (keyword? (first xs))
@@ -400,7 +482,7 @@
 (extend-protocol Compile
   Object                         (compile! [this context] (object! this context))
   nil                            (compile! [this context] (null! this context))
-  Long                           (compile! [this context] (integer! this context))
+  Number                         (compile! [this context] (number! this context))
   clojure.lang.Keyword           (compile! [this context] (keyword! this context))
   clojure.lang.IPersistentVector (compile! [this context] (vector! this context)))
 
@@ -413,7 +495,7 @@
       (engine      [_this]     engine)
       (result!     [_this]     (into [(str sb)] (persistent! @args))))))
 
-(mu/defn compile :- [:cat :string [:* :any]]
+(mu/defn format :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
   [honeysql-form :- [:or
                      [:map {:metabase.util.malli.registry/deliberately-open true}]

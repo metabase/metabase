@@ -397,5 +397,5 @@
   "Override default Honey SQL 2 backend; compile using Funny SQL instead."
   [query-type model honeysql]
   (let [sql-args (t2.util/try-with-error-context ["compile Honey SQL to SQL" {::honeysql honeysql}]
-                   (funnysql/compile honeysql (mdb.connection/db-type)))]
+                   (funnysql/format honeysql (mdb.connection/db-type)))]
     (t2.pipeline/compile query-type model sql-args)))
