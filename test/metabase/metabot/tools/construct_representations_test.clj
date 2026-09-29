@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.construct :as construct]
@@ -24,7 +25,8 @@
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -372,7 +374,7 @@
                   "v1's table points at aggregation-clause recovery")
               (is (re-find #"base_table_fully_qualified_name" (v1-hints/recovery-hint d))
                   "v1's table names the attribute the LLM looks up on the metric")
-              (is (re-find #"aggregation" (v2-hints/recovery-hint d))
+              (is (re-find #"aggregation" (message/render (v2-hints/recovery-hint d)))
                   "v2's table points at aggregation-clause recovery too, in its own vocabulary"))))))
     (testing "question / model URI - hint points at `source-card:`"
       (doseq [t ["question" "model" "card"]]
@@ -388,7 +390,7 @@
               (is (= t (:entity-type d)))
               (is (re-find #"source-card" (v1-hints/recovery-hint d))
                   (str "v1 hint for " t " points at source-card:"))
-              (is (re-find #"source-card" (v2-hints/recovery-hint d))
+              (is (re-find #"source-card" (message/render (v2-hints/recovery-hint d)))
                   (str "v2 hint for " t " points at source-card:")))))))
     (testing "table URI - hint points at portable FK form"
       (try
@@ -402,7 +404,7 @@
             (is (= :uri-in-source-table (:error d)))
             (is (= "table" (:entity-type d)))
             (is (re-find #"portable FK" (v1-hints/recovery-hint d)))
-            (is (re-find #"numeric table id" (v2-hints/recovery-hint d)))))))))
+            (is (re-find #"numeric table id" (message/render (v2-hints/recovery-hint d))))))))))
 
 (deftest execute-representations-query-unknown-db-in-source-table-test
   (testing (str "Post step-14-follow-up the first stage's `source-table[0]` is the sole source\n"
@@ -1246,8 +1248,8 @@
   `source-card` branch resolves the database id straight off the card row, before any
   metadata provider or resolver exists."
   [read-check f]
-  (with-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
-                api/read-check  read-check]
+  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+                              api/read-check  read-check]
     (f)))
 
 (deftest numeric-source-card-resolves-database-id-test
@@ -1323,7 +1325,7 @@
                 "distinct from the portable form's `:unknown-table` — the two want different\n"
                 "recovery vocabulary, so the keys must not be collapsed.")
     (with-v2-surface
-      (with-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
+      (mt/with-dynamic-fn-redefs [metabot.db/readable-active-table-database-id (fn [_] nil)]
         (try
           (construct/resolve-database-id-from-first-stage
            {"lib/type" "mbql/query"
@@ -1378,13 +1380,13 @@
               {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "NOPE"]
-                            "aggregation"  [["count" {}]]}]})
-             {:recovery-hint v2-hints/recovery-hint})
+                            "aggregation"  [["count" {}]]}]}))
             (is false "expected throw")
             (catch clojure.lang.ExceptionInfo e
-              (is (= :unknown-table (:error (ex-data e))))
-              (is (re-find #"browse_data" (ex-message e)))
-              (is (not (re-find #"read_resource|metabase://" (ex-message e)))))))))))
+              (let [hint (message/render (v2-hints/recovery-hint (ex-data e)))]
+                (is (= :unknown-table (:error (ex-data e))))
+                (is (re-find #"browse_data" hint))
+                (is (not (re-find #"read_resource|metabase://" (str (ex-message e) hint))))))))))))
 
 (deftest numeric-aggregation-index-ref-in-order-by-v2-test
   (testing (str "`[aggregation, {}, <index>]` composes with numeric field refs: the repair pass\n"
@@ -1677,10 +1679,11 @@
   (testing "repair's source-card lookups are best-effort and the query is resolved for real afterwards,
             so a refusal in there must not be audited as an access attempt"
     (let [seen   (atom ::never-called)
-          repair repr.repair/repair]
-      (with-redefs [repr.repair/repair (fn [& args]
-                                         (reset! seen resolve.mp/*audit-refusals?*)
-                                         (apply repair args))]
+          repair (mt/original-fn #'repr.repair/repair)]
+      (mt/with-dynamic-fn-redefs
+        [repr.repair/repair (fn [& args]
+                              (reset! seen resolve.mp/*audit-refusals?*)
+                              (apply repair args))]
         (with-mp-and-stubs!
           (fn []
             (construct/execute-representations-query

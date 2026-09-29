@@ -9,10 +9,10 @@
 
 (deftest ^:parallel table-columns-match-the-table-schema-test
   (testing "the spelled-out column list keeps up with the Table schema it cannot require"
-    (is (= (set (mu/map-schema-keys :metabase.warehouse-schema.schema/table))
+    (is (= (into #{:id :unique_table_helper} (mu/map-schema-keys :metabase.warehouse-schema.schema/table.update))
            warehouse-schema-overlay/table-columns))))
 
 (deftest ^:parallel field-columns-match-the-field-schema-test
   (testing "the spelled-out column list keeps up with the Field schema it cannot require"
-    (is (= (set (mu/map-schema-keys :metabase.warehouse-schema.schema/field))
+    (is (= (into #{:id :unique_field_helper} (mu/map-schema-keys :metabase.warehouse-schema.schema/field.update))
            warehouse-schema-overlay/field-columns))))

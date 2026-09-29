@@ -221,7 +221,7 @@
 
 (defn- hydrate-exploration [exploration]
   (-> exploration
-      (t2/hydrate :creator :can_write :collection :document [:threads :queries :timelines])
+      (t2/hydrate :creator :can_write :can_restore :can_delete :collection :document [:threads :queries :timelines])
       (update :threads
               #(some->> %
                         (mapv (comp redact-thread-query-errors attach-thread-status))
@@ -480,6 +480,9 @@
    [:creator       {:optional true} [:maybe :map]]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:archived      {:optional true} :boolean]
+   [:can_write     {:optional true} :boolean]
+   [:can_restore   {:optional true} :boolean]
+   [:can_delete    {:optional true} :boolean]
    [:document      {:optional true} [:maybe ::ExplorationDocument]]
    [:threads       {:optional true} [:maybe [:sequential ::HydratedThread]]]
    [:created_at    {:optional true} [:maybe :any]]

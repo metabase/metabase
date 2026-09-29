@@ -86,7 +86,6 @@ export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
   NLQ: "nlq",
   SQL: "sql",
-  TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;
 
 export const isHistoryEnabledProfile = (profile: string | undefined) =>

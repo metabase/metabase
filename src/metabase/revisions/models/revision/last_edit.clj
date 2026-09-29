@@ -11,10 +11,12 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.dashboards.schema]
    [metabase.revisions.db :as revisions.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [steffan-westcott.clj-otel.api.trace.span :as span]))
+   [steffan-westcott.clj-otel.api.trace.span :as span]
+   [toucan2.core :as t2]))
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
@@ -38,7 +40,9 @@
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
-  [items
+  [items :- [:sequential [:multi {:dispatch t2/model}
+                          [:model/Card      :metabase.queries.schema/card]
+                          [:model/Dashboard :metabase.dashboards.schema/dashboard]]]
    model :- [:enum :dashboard :card]]
   (let [ids (into #{} (map :id) items)]
     (span/with-span!
@@ -61,7 +65,7 @@
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
-  [user]
+  [user :- [:maybe :metabase.users.schema/user]]
   (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 
@@ -72,13 +76,18 @@
    [:card      {:optional true} [:map-of :int LastEditInfo]]
    [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
 
+(def ^:private FetchLastEditedInfoArgs
+  [:map {:closed true}
+   [:card-ids      {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:dashboard-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
+
 (mu/defn fetch-last-edited-info :- [:maybe CollectionLastEditInfo]
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
   name. Takes card-ids and dashboard-ids and returns a map structured like
 
   {:card      {card_id      {:id :email :first_name :last_name :timestamp}}
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
-  [{:keys [card-ids dashboard-ids]}]
+  [{:keys [card-ids dashboard-ids]} :- FetchLastEditedInfoArgs]
   (when (seq (concat card-ids dashboard-ids))
     (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
       (->> latest-changes

@@ -1,4 +1,4 @@
-(ns metabase.app-db.schema-migrations-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.schema-migrations-test
   "Tests for the schema migrations defined in the Liquibase YAML files. The basic idea is:
 
   1. Create a temporary H2/Postgres/MySQL/MariaDB database
@@ -3406,3 +3406,55 @@
         (testing "only the columns that are non-NULL are flagged true"
           (is (=? {:description_set true, :semantic_type_set false, :fk_target_field_id_set false}
                   (t2/select-one :metabase_field_user_settings :field_id mixed-id))))))))
+
+(deftest glossary-entity-id-backfill-test
+  (testing "v64.2026-09-11: glossary.entity_id is added, backfilled for existing rows, NOT NULL and unique"
+    (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
+      (let [row      (fn [term] {:term       term
+                                 :definition (str term " definition")
+                                 :creator_id 13371338
+                                 :created_at :%now
+                                 :updated_at :%now})
+            arr-id   (t2/insert-returning-pk! :glossary (row "ARR"))
+            churn-id (t2/insert-returning-pk! :glossary (row "Churn"))]
+        (migrate!)
+        (let [arr-eid   (t2/select-one-fn :entity_id :glossary :id arr-id)
+              churn-eid (t2/select-one-fn :entity_id :glossary :id churn-id)]
+          (testing "existing rows receive distinct 21-character entity_ids"
+            (is (= 21 (count arr-eid)))
+            (is (= 21 (count churn-eid)))
+            (is (not= arr-eid churn-eid)))
+          (testing "entity_id is NOT NULL"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "MRR") :entity_id nil)))))
+          (testing "entity_id is unique"
+            (is (thrown? Exception
+                         (t2/insert! :glossary (assoc (row "NRR") :entity_id arr-eid))))))))))
+
+(deftest glossary-entity-id-skipped-when-v65-ids-ran-test
+  (testing "v64.2026-09-11 glossary changesets are MARK_RAN on a database that already ran them under their v65 ids"
+    (impl/test-migrations ["v64.2026-09-11T12:00:00" "v64.2026-09-11T12:00:03"] [migrate!]
+      (let [clog       (keyword (liquibase/changelog-table-name (mdb/data-source)))
+            last-order (:orderexecuted (t2/select-one clog {:order-by [[:orderexecuted :desc]]}))
+            suffixes   ["T12:00:00" "T12:00:01" "T12:00:02" "T12:00:03"]]
+        (t2/insert! clog (map-indexed (fn [i suffix]
+                                        {:id            (str "v65.2026-09-11" suffix)
+                                         :author        "tplude"
+                                         :filename      "migrations/065/20260911_glossary_entity_id.yaml"
+                                         :dateexecuted  :%now
+                                         :orderexecuted (+ last-order i 1)
+                                         :exectype      "EXECUTED"})
+                                      suffixes))
+        ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
+        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (migrate!)
+        (is (= (repeat 4 "MARK_RAN")
+               (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
+        (testing "the changes were skipped, not re-applied"
+          ;; information_schema spans every database on a shared MySQL server, so scope to this app db's schema
+          (is (empty? (t2/query [(str "SELECT column_name FROM information_schema.columns"
+                                      " WHERE lower(table_name) = 'glossary' AND lower(column_name) = 'entity_id'"
+                                      (case (mdb/db-type)
+                                        :mysql    " AND table_schema = database()"
+                                        :postgres " AND table_schema = current_schema()"
+                                        :h2       ""))]))))))))

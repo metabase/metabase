@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import { setupCardsForTableEndpoint } from "__support__/server-mocks";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
@@ -17,7 +18,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -92,7 +92,7 @@ function setup({
     }),
   });
 
-  const metadata = getMetadata(state);
+  const metadata = createMockMetadataFromState(state);
   // Unjustified type cast. FIXME
   const question = metadata.question(card.id) as Question;
   const onOpenModal = jest.fn();

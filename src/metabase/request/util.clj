@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.current :as request.current]
+   [metabase.request.schema :as request.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
@@ -109,7 +110,7 @@
 
 (mu/defn device-info :- DeviceInfo
   "Information about the device that made this request, as recorded by the `LoginHistory` table."
-  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request}]
+  [{{:strs [user-agent]} :headers, :keys [browser-id token-exchange?], :as request} :- ::request.schema/request]
   (let [id          (or browser-id
                         (log/warn "Login request is missing device ID information"))
         description (or user-agent

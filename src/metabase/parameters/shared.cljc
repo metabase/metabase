@@ -323,7 +323,7 @@
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
            tag->normalized-param (try
-                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (update-vals tag->param #(lib/normalize ::parameters.schema/parameter %))
                                    (catch #?(:clj Throwable :cljs :default) e
                                      (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use

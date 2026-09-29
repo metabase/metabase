@@ -3,8 +3,6 @@ import { useCallback, useMemo } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
 import { useDispatch, useSelector } from "metabase/redux";
-import { useMaybeLocation } from "metabase/router";
-import * as Urls from "metabase/urls";
 
 import { trackMetabotRequestSent } from "../analytics";
 import type { MetabotProfileId } from "../constants";
@@ -25,7 +23,7 @@ import {
   getMetabotId,
   getMetabotReactionsState,
   getMetabotRequestId,
-  getProfile,
+  getProfileOverride,
   retryPrompt,
   setProfileOverride as setProfileOverrideAction,
   submitInput as submitInputAction,
@@ -48,12 +46,6 @@ export const useMetabotConversation = (conversationId: string) => {
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
 
-  // `null` when rendered outside the app router (e.g. the SDK), where there is
-  // no transforms page. Drives the transforms-codegen profile auto-selection
-  // that used to read the retired routing slice.
-  const location = useMaybeLocation();
-  const isTransformsPage =
-    location?.pathname.startsWith(Urls.transformList()) ?? false;
   const isFullPageMetabot = useIsFullPageMetabot();
 
   const metabotRequestId = useSelector((state) =>
@@ -98,7 +90,6 @@ export const useMetabotConversation = (conversationId: string) => {
           conversationId,
           metabot_id: metabotRequestId,
           profile: options?.profile,
-          isTransformsPage,
           isFullPageMetabot,
         }),
       );
@@ -119,7 +110,6 @@ export const useMetabotConversation = (conversationId: string) => {
       conversationId,
       promptInputRef,
       setPrompt,
-      isTransformsPage,
       isFullPageMetabot,
     ],
   );
@@ -134,7 +124,6 @@ export const useMetabotConversation = (conversationId: string) => {
           metabot_id: metabotRequestId,
           conversationId,
           profile: options?.profile,
-          isTransformsPage,
           isFullPageMetabot,
         }),
       );
@@ -148,7 +137,6 @@ export const useMetabotConversation = (conversationId: string) => {
       metabotRequestId,
       prepareRetryIfUnsuccesful,
       conversationId,
-      isTransformsPage,
       isFullPageMetabot,
     ],
   );
@@ -188,9 +176,7 @@ export const useMetabotConversation = (conversationId: string) => {
     cancelRequest,
     reloadConversation,
     metabotId: useSelector(getMetabotId),
-    profile: useSelector((state) =>
-      getProfile(state, conversationId, isTransformsPage),
-    ),
+    profile: useSelector((state) => getProfileOverride(state, conversationId)),
     title: useSelector((state) => getConversationTitle(state, conversationId)),
     forkedFromConversationId: useSelector((state) =>
       getConversationForkedFrom(state, conversationId),

@@ -547,7 +547,7 @@
   replaced with underscores in order to support languages that don't use the Latin alphabet; see metabase#3818).
 
   Optionally specify `:max-length` which will truncate the slug after that many characters."
-  (^String [^String s]
+  (^String [^String s :- [:maybe :string]]
    (slugify s {}))
   (^String [s :- [:maybe :string]
             {:keys [max-length unicode?]} :- [:maybe
@@ -805,6 +805,7 @@
             pprint-to-str)
      :cljs pprint-to-str))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *profile-level*
   "Impl for `profile` macro -- don't use this directly. Nesting-level for the `profile` macro e.g. 0 for a top-level
   `profile` form or 1 for a form inside that."

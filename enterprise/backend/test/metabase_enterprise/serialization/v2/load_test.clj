@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1609,12 +1610,13 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! {:entity_id     eid
-                                            :name          "the action"
-                                            :model_id      (:id card)
-                                            :type          :query
-                                            :dataset_query (mt/mbql-query users {:limit 1})
-                                            :database_id   (:id db)})]
+                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                                                          {:entity_id     eid
+                                                           :name          "the action"
+                                                           :model_id      (:id card)
+                                                           :type          :query
+                                                           :dataset_query (mt/mbql-query users {:limit 1})
+                                                           :database_id   (:id db)}))]
             (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
                                                      (and (= model "Action") (= id eid)))
@@ -2648,7 +2650,7 @@
           (ts/with-db source-db
             (ts/create! :model/Channel :name "Test Email Channel"
                         :type :channel/email
-                        :details {:host "smtp.example.com" :port 587}
+                        :details {}
                         :description "A test email channel")
             (reset! serialized (into [] (serdes.extract/extract {})))
             (is (some (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -2701,7 +2703,7 @@
         (ts/with-db source-db
           (ts/create! :model/Channel :name "Minimal Channel"
                       :type :channel/email
-                      :details {:host "smtp.example.com" :port 587}
+                      :details {}
                       :description "Some description")
           (reset! serialized (into [] (serdes.extract/extract {}))))
         (let [minimal (mapv (fn [entity]
@@ -2980,3 +2982,64 @@
                     (is (= (:id data-dest) (:id data-after))))
                   (testing "permissions are unchanged after import"
                     (is (= perms-before perms-after))))))))))))
+
+(deftest glossary-round-trip-test
+  (let [serialized (atom nil)
+        eid        (atom nil)]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [entry (ts/create! :model/Glossary :term "ARR" :definition "Annual recurring revenue")]
+          (reset! eid (:entity_id entry))
+          (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+      (testing "the export is keyed on entity_id"
+        (is (contains? (ids-by-model @serialized "Glossary") @eid)))
+      (testing "importing into an empty app db reproduces the term, definition and entity_id"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue" :entity_id @eid}]
+                  (t2/select :model/Glossary)))))
+      (testing "importing again updates in place rather than duplicating"
+        (ts/with-db dest-db
+          (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+          (is (= 1 (t2/count :model/Glossary))))))))
+
+(deftest glossary-load-find-local-test
+  (mt/with-temp [:model/Glossary entry {:term "ARR" :definition "Annual recurring revenue"}]
+    (testing "an entity_id path finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id (:entity_id entry)}])))))
+    (testing "a term-keyed path from a pre-entity_id export finds the row"
+      (is (= (:id entry) (:id (serdes/load-find-local [{:model "Glossary" :id "ARR"}])))))
+    (testing "a term that is itself 21 nano-id characters still finds the row by term"
+      (mt/with-temp [:model/Glossary shaped {:term "CustomerLifetimeValue" :definition "x"}]
+        (is (= (:id shaped) (:id (serdes/load-find-local [{:model "Glossary" :id "CustomerLifetimeValue"}]))))))
+    (testing "an unknown term finds nothing"
+      (is (nil? (serdes/load-find-local [{:model "Glossary" :id "No such term"}]))))))
+
+(deftest glossary-import-matches-existing-term-test
+  (let [glossary-file (fn [id entity]
+                        (merge {:serdes/meta [{:model "Glossary" :id id}]
+                                :term        "ARR"
+                                :definition  "Annual recurring revenue (imported)"
+                                :creator_id  "crowberto@metabase.com"
+                                :created_at  "2026-09-11T00:00:00Z"
+                                :updated_at  "2026-09-11T00:00:00Z"}
+                               entity))]
+    (testing "a term-keyed file exported before entity_id existed updates the same-term row and keeps its entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [{local-eid :entity_id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file "ARR" nil)]))
+          (is (=? [{:term "ARR" :definition "Annual recurring revenue (imported)" :entity_id local-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose term exists locally under another entity_id updates that row in place and adopts the file's entity_id"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid       "glossaryfileeid000001"
+              {local-id :id} (ts/create! :model/Glossary :term "ARR" :definition "local")]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:id local-id :term "ARR" :definition "Annual recurring revenue (imported)" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))
+    (testing "a file whose entity_id and term are both new inserts a row"
+      (mt/with-empty-h2-app-db!
+        (let [file-eid "glossaryfileeid000002"]
+          (serdes.load/load-metabase! (ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
+          (is (=? [{:term "ARR" :entity_id file-eid}]
+                  (t2/select :model/Glossary))))))))

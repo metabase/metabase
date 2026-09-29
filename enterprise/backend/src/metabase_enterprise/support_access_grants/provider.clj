@@ -39,7 +39,7 @@
   [token :- :string
    grant-ends-at :- ::schema/timestamp
    & {:keys [expires-in-ms]
-      :or {expires-in-ms (* 48 60 60 1000)}}]
+      :or {expires-in-ms (* 48 60 60 1000)}} :- [:maybe [:map {:closed true} [:expires-in-ms {:optional true} [:maybe :int]]]]]
   {:token_hash (u.password/hash-bcrypt token)
    :expires_at (t/plus (t/instant) (t/millis expires-in-ms))
    :grant_ends_at grant-ends-at
@@ -62,7 +62,7 @@
 
   Returns the plaintext token string that should be sent to the user via email."
   [user-id :- ms/PositiveInt
-   grant :- [:maybe [:map [:grant_end_timestamp ::schema/timestamp]]]]
+   grant :- [:maybe [:or ::schema/support-access-grant-log ::schema/grant-response]]]
   (when-not grant
     (throw (ex-info "Cannot create support access reset token: no grant provided"
                     {:status-code 400})))

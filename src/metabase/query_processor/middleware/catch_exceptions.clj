@@ -6,6 +6,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -16,6 +17,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some get-in]])
   (:import
    (clojure.lang ExceptionInfo)
@@ -58,6 +60,18 @@
   (assoc ((get-method format-exception Throwable) e)
          :state (.getSQLState e)))
 
+(mr/def ::format-exception-result
+  "The map shape produced by one of this namespace's private `format-exception` methods."
+  [:map {:closed true}
+   [:status            [:enum :failed :interrupted]]
+   [:class             {:optional true} (lib.schema.common/instance-of-class Class)]
+   [:error             {:optional true} [:maybe :string]]
+   [:stacktrace        {:optional true} [:maybe [:sequential :string]]]
+   [:error_type        {:optional true} :keyword]
+   [:error_is_curated  {:optional true} :boolean]
+   [:ex-data           {:optional true} :metabase.lib.schema.common/exception-data]
+   [:state             {:optional true} [:maybe :string]]])
+
 ;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
 ;; whether we can use that more extensively and remove some of this logic
 (defn- exception-chain
@@ -68,7 +82,7 @@
 (mu/defn- best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
   usually want to show SQLExceptions at the top level since they contain more useful information."
-  [maps :- [:sequential {:min 1} :map]]
+  [maps :- [:sequential {:min 1} ::format-exception-result]]
   (some (fn [m]
           (when (isa? (:class m) SQLException)
             ;; Some JDBC drivers (e.g. Databricks) return a stacktrace in the
@@ -102,15 +116,28 @@
       :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
 
+(mr/def ::query-execution-info
+  "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
+  [:merge
+   ::queries.schema/query-execution.update
+   [:map {:closed true}
+    [:json_query        {:optional true} ::qp.schema/any-query]
+    [:start_time_millis {:optional true} :int]]])
+
 (mu/defn- query-execution-info :- :map
-  [query-execution :- :map]
+  [query-execution :- ::query-execution-info]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
+
+(def ^:private ExtraInfo
+  [:map {:closed true}
+   [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
+   [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
 
 (mu/defn- format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
-  [query        :- :map
+  [query        :- ::qp.schema/any-query
    ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
-   extra-info   :- [:maybe :map]]
+   extra-info   :- [:maybe ExtraInfo]]
   (try
     ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
     ;; to add query execution info, unwrap them and format the wrapped one

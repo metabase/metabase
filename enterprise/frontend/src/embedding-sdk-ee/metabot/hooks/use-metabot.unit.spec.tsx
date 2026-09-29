@@ -9,7 +9,7 @@ import type {
   FinishReason,
   SSEEvent,
 } from "metabase/api/ai-streaming/sse-types";
-import { metabotActions } from "metabase/metabot/state";
+import { getMetabotState, metabotActions } from "metabase/metabot/state";
 import {
   createTestMetabotState,
   lastReqBody,
@@ -434,21 +434,25 @@ describe("useMetabot", () => {
       });
 
       expect(
-        store.getState().metabot?.conversations?.[conversationId]?.messages
-          .length,
+        getMetabotState(store.getState()).conversations[conversationId]
+          ?.messages.length,
       ).toBe(0);
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
 
       await userEvent.click(screen.getByTestId("submit-btn"));
 
       await waitFor(() => {
         expect(
-          store.getState().metabot?.conversations?.[conversationId]?.messages
-            .length,
+          getMetabotState(store.getState()).conversations[conversationId]
+            ?.messages.length,
         ).toBeGreaterThan(0);
       });
 
-      expect(store.getState().metabot?.agents?.omnibot?.visible).toBe(false);
+      expect(getMetabotState(store.getState()).agents.omnibot?.visible).toBe(
+        false,
+      );
     });
 
     it("resolves to undefined even though agent.submitInput returns an action", async () => {
@@ -525,7 +529,8 @@ describe("useMetabot", () => {
     ) =>
       waitFor(() =>
         expect(
-          store.getState().metabot?.conversations?.[conversationId]?.messages,
+          getMetabotState(store.getState()).conversations[conversationId]
+            ?.messages,
         ).toHaveLength(count),
       );
 
@@ -630,7 +635,7 @@ describe("useMetabot", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("re-exposes when the continued response hits the step limit again", async () => {
+    it("re-exposes when the continued response is cut off again", async () => {
       mockAgentEndpoint({ events: turnEndingWith("tool-calls") });
       setup({ ui: <TestIncomplete /> });
       await submit();

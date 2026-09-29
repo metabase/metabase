@@ -295,7 +295,7 @@
 (defn- check-data-app-group-feature!
   [group-id]
   (when (permissions-rest.db/data-app-group? group-id)
-    (premium-features/assert-has-feature :data-apps-preview (tru "Data Apps"))
+    (premium-features/assert-has-feature :data-apps (tru "Data Apps"))
     true))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

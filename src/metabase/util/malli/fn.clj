@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
+   [metabase.util.malli.closed-schemas :as mu.closed-schemas]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]))
@@ -143,6 +144,7 @@
                        (for [arity (:arities arities-value)]
                          (arity-schema (:values arity) return-schema options)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not.
 
@@ -401,11 +403,18 @@
   return an unevaluated instrumented [[fn]] form like
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
-                    (fn [x y] (+ 1 2)))"
-  [error-context lang parsed & [fn-name]]
+                    (fn [x y] (+ 1 2)))
+
+  With `checked-name`, the form also checks with [[mu.closed-schemas/check-args!]] that every argument map is closed."
+  [error-context lang parsed & [fn-name checked-name]]
   (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
     `(let [~'&f ~(deparameterized-fn-form lang parsed fn-name)
            ~@(into [] cat captured)]
+       ~@(when checked-name
+           [`(mu.closed-schemas/check-args! '~checked-name
+                                            ~(case (first fn-schema)
+                                               :=>       [(second fn-schema)]
+                                               :function (mapv second (rest fn-schema))))])
        (core/fn ~'mufn ~@(instrumented-fn-tail error-context fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------

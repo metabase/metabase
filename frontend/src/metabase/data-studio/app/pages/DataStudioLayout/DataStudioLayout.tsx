@@ -39,6 +39,8 @@ export function DataStudioLayout() {
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
+  const hasGlossaryDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -113,6 +115,12 @@ export function DataStudioLayout() {
           to={Urls.dataStudioGlossary()}
           isSelected={currentTab === "glossary"}
           showLabel={isNavbarOpened}
+          rightSection={
+            hasGlossaryDirtyChanges &&
+            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
         />
       </AreaTabGroup>
 

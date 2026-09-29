@@ -41,7 +41,8 @@
   the create-check runs wherever a Segment is authored."
   [{:keys [name description definition], :as body}]
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
-  (let [table-id (definition-table-id definition)]
+  (let [table-id   (definition-table-id definition)
+        definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :table_id table-id))
     (let [segment (api/check-500
                    (segments.db/insert-segment! table-id api/*current-user-id* name description definition))]
@@ -108,7 +109,8 @@
         (when (not= new-table-id (:table_id existing))
           (api/create-check :model/Segment {:table_id new-table-id}))))
     (when changes
-      (segments.db/update-segment! id changes))
+      (segments.db/update-segment! id (cond-> changes
+                                        (:definition changes) (update :definition lib-be/normalize-query))))
     (u/prog1 (hydrated-segment id)
       (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
