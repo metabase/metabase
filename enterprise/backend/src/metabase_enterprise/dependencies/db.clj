@@ -453,7 +453,7 @@
                                                                           location-column default-visible-restriction)
         all-joins (set/union joins sort-joins)
         item-visible-expr (edge-restriction-expr (name entity-type) :entity.id item-visible-restriction)
-        select-clause [[^:allow-raw-sql [:inline (name entity-type)] :entity_type]
+        select-clause [[(name entity-type) :entity_type]
                        [:entity.id :entity_id]
                        [sort-expr :sort_key]]]
     ^:allow-subquery

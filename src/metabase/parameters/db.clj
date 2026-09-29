@@ -24,7 +24,7 @@
 (defn- implicit-pk->name-mapping-query
   [field-id mapping-type]
   ^:allow-subquery
-  {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
+  {:select    [[:dest.id :id] [mapping-type :mapping_type]]
    :from      [(warehouse-schema-overlay/field-query {:alias :source})]
    :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
                (warehouse-schema-overlay/field-query {:alias :dest}) [:= :dest.table_id :table.id]]
@@ -44,7 +44,7 @@
     :from   [[^:allow-subquery
               {::union (into [;; Explicit FK Field->Field remapping
                               ^:allow-subquery
-                              {:select [[:dimension.human_readable_field_id :id] [^:allow-raw-sql [:inline "fk->field"] :mapping_type]]
+                              {:select [[:dimension.human_readable_field_id :id] ["fk->field" :mapping_type]]
                                :from   [[:dimension :dimension]]
                                :where  [:and
                                         [:= :dimension.field_id field-id]
