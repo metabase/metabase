@@ -163,6 +163,42 @@ function restsOnlyOnSymptomKills(killed, unconfirmed, symptom) {
   return killers.every((id) => flagged.has(id));
 }
 
+const CHECKERS = { tsc: "type checker", contract: "contract checker" };
+
+/**
+ * The checkers with a confirmed kill of the mutant, by name, and whether `killed_at_layer` and `layer_results` disagree on one.
+ * A checker kills it when `killed_at_layer` names its layer and `kill_confirmed` is true, or when its `layer_results` result is killed.
+ */
+function checkerKills(entry) {
+  const confirmed = entry.kill_confirmed === true;
+  const at = entry.killed_at_layer;
+  const names = [];
+  let disagree = false;
+  for (const [layer, name] of Object.entries(CHECKERS)) {
+    const recorded = confirmed && at === layer;
+    const result = entry.layer_results?.[layer]?.result;
+    if (recorded || result === "killed") {
+      names.push(name);
+    }
+    if (recorded && result != null && result !== "killed") {
+      disagree = true;
+    }
+    // `killed_at_layer` is the cheapest layer with a confirmed kill, so a checker kill puts it at that checker or a cheaper one.
+    if (
+      result === "killed" &&
+      "kill_confirmed" in entry &&
+      !(
+        confirmed &&
+        LAYERS.indexOf(at) !== -1 &&
+        LAYERS.indexOf(at) <= LAYERS.indexOf(layer)
+      )
+    ) {
+      disagree = true;
+    }
+  }
+  return { names, disagree };
+}
+
 export function mutantFacts(mid, raw, sidecar) {
   const entry = Array.isArray(raw) ? { killed_by: raw } : raw;
   const killed = byLayer(entry.killed_by);
@@ -179,6 +215,12 @@ export function mutantFacts(mid, raw, sidecar) {
     killed.contract = contract.killed_by?.length
       ? contract.killed_by
       : ["contract"];
+  }
+  const checkers = checkerKills(entry);
+  for (const [layer, name] of Object.entries(CHECKERS)) {
+    if (checkers.names.includes(name)) {
+      killed[layer] ??= [layer];
+    }
   }
   const recomputed = firstLayer(killed);
   const recorded = recordedLayer(mid, entry);
@@ -210,6 +252,8 @@ export function mutantFacts(mid, raw, sidecar) {
     symptom_kills: byLayer(symptom.symptom_kills.ids),
     symptom_unconfirmed_by: byLayer(symptom.symptom_unconfirmed_by.ids),
     symptom_only: restsOnlyOnSymptomKills(killed, unconfirmed, symptom),
+    checker_kills: checkers.names,
+    ...(checkers.disagree ? { checker_disagreement: true } : {}),
     ...(symptom.symptom_kills.ignored || symptom.symptom_unconfirmed_by.ignored
       ? {
           symptom_ids_ignored: Object.fromEntries(
@@ -751,6 +795,7 @@ const CSV_COLUMNS = [
   "symptom_unconfirmed_by_layers",
   "symptom_only",
   "equivalent_suspect",
+  "checker_kills",
 ];
 
 function csvCell(value) {
@@ -842,6 +887,7 @@ export function toCsv(ledger) {
             symptom_only:
               m.symptom_only == null ? "" : m.symptom_only ? "yes" : "no",
             equivalent_suspect: m.equivalent_suspect ? "yes" : "no",
+            checker_kills: (m.checker_kills ?? []).join(";"),
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -921,6 +967,15 @@ export function summarize(ledger, derived, inputs) {
       const r = mutants[mid].routed_to ?? "not routed";
       routed[r] = (routed[r] ?? 0) + 1;
     });
+  const checkerCounts = Object.values(CHECKERS).map((name) => [
+    name,
+    count(Object.values(mutants), (m) =>
+      (m.checker_kills ?? []).includes(name),
+    ),
+  ]);
+  const checkerDisagreements = Object.keys(mutants).filter(
+    (mid) => mutants[mid].checker_disagreement,
+  );
   const unknownIds = Object.values(mutants).reduce(
     (n, m) =>
       n +
@@ -981,6 +1036,16 @@ export function summarize(ledger, derived, inputs) {
       .map((l) => `${l} ${cheapest[l]}`)
       .join(", ")}.`,
     `- Unconfirmed killers: ${count(Object.values(mutants), (m) => Object.keys(m.unconfirmed_by).length)} mutants, kept out of the cheapest layer.`,
+    ...(checkerCounts.some(([, n]) => n)
+      ? [
+          `- Checker kills, from \`killed_at_layer\` with \`kill_confirmed\` or from \`layer_results\`: ${checkerCounts.map(([name, n]) => `${name} ${n}`).join(", ")}. The verdicts count them as kills by the remaining suite, and \`checker_kills\` names them in the CSV.`,
+        ]
+      : []),
+    ...(checkerDisagreements.length
+      ? [
+          `- ${checkerDisagreements.length} mutants record a checker kill differently in \`killed_at_layer\` and \`layer_results\`: ${checkerDisagreements.join(", ")}.`,
+        ]
+      : []),
     ...(hasSymptoms
       ? [
           `- Symptom kills count as kills: ${symptom.kills} confirmed, on ${symptom.killed} mutants, and ${symptom.unconfirmed} unconfirmed, on ${symptom.unconfirmedMutants} mutants. ${symptom.restingOnly} mutants rest only on symptom kills: their confirmed kills, or their unconfirmed kills when they have none, are all symptom kills. \`symptom_only\` marks them in the CSV, and in each group of the demand list and the e2e floor in the JSON.`,

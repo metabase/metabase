@@ -60,6 +60,8 @@ function mutantView(m, position, reachedBy) {
   const errored = split(testIds(m.errored));
   const ran = split(m.ran_e2e);
   const symptomIds = new Set(testIds(m.symptom_kills ?? {}));
+  // The checkers run on every PR, so a checker kill is a kill by the remaining suite.
+  const checkers = m.checker_kills ?? [];
   const ranTotal = TEST_LAYERS.reduce((n, layer) => n + (m.ran[layer] ?? 0), 0);
   return {
     stratum: m.stratum,
@@ -68,17 +70,20 @@ function mutantView(m, position, reachedBy) {
     located: m.locations.length > 0,
     reached_by: reachedBy,
     killed_by: killed.mine,
-    killed_by_others: killed.others,
+    killed_by_others: killed.others || checkers.length > 0,
     unconfirmed_by: unconfirmed.mine,
     unconfirmed_by_others: unconfirmed.others,
     errored: errored.mine,
     ran: ran.mine,
-    ran_others: ranTotal > ran.mine.size,
+    ran_others: ranTotal > ran.mine.size || checkers.length > 0,
     symptom_kills: split(symptomIds).mine,
     symptom_unconfirmed_by: split(testIds(m.symptom_unconfirmed_by ?? {})).mine,
-    others_kill_only_by_symptom: testIds(m.killed_by)
-      .filter((id) => !position.has(id))
-      .every((id) => symptomIds.has(id)),
+    others_kill_only_by_symptom:
+      checkers.length === 0 &&
+      testIds(m.killed_by)
+        .filter((id) => !position.has(id))
+        .every((id) => symptomIds.has(id)),
+    checker_kills: checkers,
     checker_kill: Boolean(
       m.killed_by.tsc?.length || m.killed_by.contract?.length,
     ),
@@ -162,6 +167,15 @@ function byStratumIds(mutants, mids) {
     (out[mutants[mid].stratum] ??= []).push(mid);
   }
   return out;
+}
+
+function checkerIds(ledgerMutants, view, mids) {
+  return Object.fromEntries(
+    Object.entries(byStratumIds(ledgerMutants, mids)).map(([s, ids]) => [
+      s,
+      Object.fromEntries(ids.map((mid) => [mid, view[mid].checker_kills])),
+    ]),
+  );
 }
 
 export function verdictsFromLedger(
@@ -320,6 +334,11 @@ export function verdictsFromLedger(
       unconfirmed_symptom_kills: byStratumIds(
         ledger.mutants,
         sorted([...by.symptom_unconfirmed_by[t.i]].filter(ranHere)),
+      ),
+      also_killed_by_checker: checkerIds(
+        ledger.mutants,
+        mutants,
+        sorted(killsHere.filter((mid) => mutants[mid].checker_kills.length)),
       ),
       kills: killsHere.length,
       misses: [...by.ran[t.i]].filter(

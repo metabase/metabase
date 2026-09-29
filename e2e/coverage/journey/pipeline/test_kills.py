@@ -153,7 +153,7 @@ EXPECTED = {
 }
 COMPARED = ("verdict", "reason", "unique_kills", "unconfirmed_unique_kills", "cover_kept_for", "kills", "misses", "errored",
             "qualifying_mutants", "qualifying_without_location", "qualifying_basis", "depends_on",
-            "symptom_kills", "unconfirmed_symptom_kills", "symptom_only", "symptom_only_after_deletion")
+            "symptom_kills", "unconfirmed_symptom_kills", "symptom_only", "symptom_only_after_deletion", "also_killed_by_checker")
 SHARED_KILLS_HEADING = "\nKills that no remaining test has\n"
 
 UNCONFIRMED_KILLS = {
@@ -696,6 +696,11 @@ class Accepted(unittest.TestCase):
         self.assertEqual((rows[UNIQUE]["verdict"], a["outcome"], a["survivors"], a["sampled"]), ("accepted", "accepted", [], 6))
         self.assertEqual((rows[UNIQUE]["depends_on"], result["joint_check"]), ({}, "ok"))
 
+    def test_a_sampled_mutant_only_a_checker_kills_is_no_survivor(self):
+        sampled = checked(mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE), "tsc")
+        row = self.evaluate_entries(ACCEPT_KILLS | {"sampled": sampled})["candidates"][UNIQUE]
+        self.assertEqual((row["verdict"], row["acceptance"]["survivors"], row["acceptance"]["sampled"]), ("accepted", [], 6))
+
     def test_a_sampled_mutant_only_a_remaining_symptom_kill_catches_is_no_survivor(self):
         cases = {
             "symptom kill": (mutant("logic", [REMAINING], [UNIQUE, REMAINING], L_UNIQUE, symptom_kills=[REMAINING]), ("accepted", [])),
@@ -1155,6 +1160,29 @@ class SymptomKills(unittest.TestCase):
                 self.assertEqual({f: pipeline[cid].get(f) for f in COMPARED}, {f: self.rows[cid].get(f) for f in COMPARED})
 
 
+def checked(entry, layer, confirmed=True, result="killed", at=None):
+    """The entry with a checker's kill recorded as the kills file records it, in `killed_at_layer` and in `layer_results`."""
+    return entry | {"killed_at_layer": at or layer, "kill_confirmed": confirmed, "layer_results": {layer: {"result": result}}}
+
+
+CHECKED = mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE)
+CHECKER_CASES = {
+    "type checker": (checked(CHECKED, "tsc"), ["type checker"], False),
+    "contract checker": (checked(CHECKED, "contract"), ["contract checker"], False),
+    "contract checker in layer_results only": (CHECKED | {"layer_results": {"contract": {"result": "killed"}}}, ["contract checker"], False),
+    "both, the contract checker in layer_results only": (
+        checked(CHECKED, "tsc") | {"layer_results": {"tsc": {"result": "killed"}, "contract": {"result": "killed"}}},
+        ["type checker", "contract checker"], False),
+    "killed_at_layer only, with layer_results that disagree": (checked(CHECKED, "tsc", result="survived"), ["type checker"], True),
+    "layer_results only, with kill_confirmed false": (checked(CHECKED, "tsc", confirmed=False, at="none"), ["type checker"], True),
+}
+UNCOUNTED_CASES = {
+    "unconfirmed": checked(CHECKED, "tsc", confirmed=False, result="unconfirmed"),
+    "survived": checked(CHECKED, "tsc", result="survived", at="e2e"),
+    "no checker fields": CHECKED,
+}
+
+
 def ledger_run(entries, candidate_ids, min_mutants, strata):
     """The ledger of a kills file of these entries, and ledger-verdicts.mjs's check of it against kills.py's verdicts."""
     lookup = os.path.join(HERE, "..", "lookup")
@@ -1339,6 +1367,78 @@ class EquivalentSuspects(unittest.TestCase):
         self.assertNotIn("Suspected equivalent", self.unmarked.summary)
         self.assertNotIn("equivalent_suspect", self.unmarked.summary)
         self.assertEqual({mark for _, mark in self.csv_marks(self.unmarked).values()}, {"no"})
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class CheckerKills(unittest.TestCase):
+    @staticmethod
+    def evaluate_entries(entries, candidate_ids, min_mutants=1, strata=()):
+        path = write_json(entries)
+        try:
+            return kills.evaluate(INDEX, path, candidate_ids, min_mutants, list(strata))
+        finally:
+            os.unlink(path)
+
+    def test_a_kill_a_checker_also_makes_is_not_unique(self):
+        for name, (entry, names, disagree) in CHECKER_CASES.items():
+            with self.subTest(name):
+                result = self.evaluate_entries({"checked": entry}, [UNIQUE])
+                row = result["candidates"][UNIQUE]
+                self.assertEqual((row["verdict"], row["reason"], row["unique_kills"], row["cover_kept_for"]),
+                                 ("delete", "no unique kill", {}, {}))
+                self.assertEqual((row["also_killed_by_checker"], row["depends_on"], row["symptom_only_after_deletion"]),
+                                 ({"logic": {"checked": names}}, {}, {}))
+                self.assertEqual((result["joint_check"], result["kills_cover"]["kept"]), ("ok", []))
+                self.assertEqual(result["kills"]["checker_disagreements"], ["checked"] if disagree else [])
+
+    def test_an_unconfirmed_or_missing_checker_kill_leaves_a_unique_kill(self):
+        for name, entry in UNCOUNTED_CASES.items():
+            with self.subTest(name):
+                result = self.evaluate_entries({"checked": entry}, [UNIQUE])
+                row = result["candidates"][UNIQUE]
+                self.assertEqual((row["verdict"], row["reason"], row["unique_kills"], row["also_killed_by_checker"]),
+                                 ("keep", "unique kills", {"logic": ["checked"]}, {}))
+                self.assertEqual(result["kills"]["checker_kills"], {"type checker": 0, "contract checker": 0})
+
+    def test_the_cover_keeps_no_twin_for_a_kill_a_checker_also_makes(self):
+        twins = [TWIN_MYSQL, TWIN_POSTGRES]
+        result = self.evaluate_entries({"twins": checked(mutant("logic", twins, twins + [REMAINING], L_TWIN), "tsc")}, twins)
+        self.assertEqual(result["kills_cover"]["kept"], [])
+        self.assertEqual({t: result["candidates"][t]["verdict"] for t in twins}, {t: "delete" for t in twins})
+
+    def test_the_report_names_the_checker(self):
+        result = self.evaluate_entries({"checked": CHECKER_CASES["killed_at_layer only, with layer_results that disagree"][0]}, [UNIQUE])
+        text = kills.report(result)
+        self.assertIn("\n1 mutants: logic 1\n  1 killed by the type checker, 0 killed by the contract checker, which count as remaining tests\n",
+                      text)
+        self.assertIn(f"\nKills a checker also makes\n  {UNIQUE}\n      delete, the type checker also kills logic checked\n", text)
+        self.assertIn("\n1 mutants record a checker kill differently in `killed_at_layer` and `layer_results`: checked", text)
+
+    def test_pipeline_gives_the_same_verdicts(self):
+        path = write_json({"checked": CHECKER_CASES["type checker"][0], "shared": CHECKER_CASES["contract checker"][0]})
+        try:
+            rows = kills.evaluate(INDEX, path, [UNIQUE], 1, [])["candidates"]
+            pipeline = pipeline_verdicts(path, [UNIQUE], 1, [])
+        finally:
+            os.unlink(path)
+        self.assertEqual({f: pipeline[UNIQUE].get(f) for f in COMPARED}, {f: rows[UNIQUE].get(f) for f in COMPARED})
+
+    def test_the_ledger_counts_checker_kills_as_kills_py_does(self):
+        entries = {f"case-{n}": entry for n, (entry, _, _) in enumerate(CHECKER_CASES.values())}
+        entries |= {f"uncounted-{n}": entry for n, entry in enumerate(UNCOUNTED_CASES.values())}
+        run = ledger_run(entries, [UNIQUE], 1, [])
+        self.assertEqual(run.check.returncode, 0, run.check.stdout)
+        self.assertEqual(run.result["candidates"][UNIQUE]["unique_kills"], {"logic": ["uncounted-0", "uncounted-1", "uncounted-2"]})
+        mutants = run.ledger["mutants"]
+        self.assertEqual({mid: (m["checker_kills"], m.get("checker_disagreement", False)) for mid, m in mutants.items()},
+                         {**{f"case-{n}": (names, disagree) for n, (_, names, disagree) in enumerate(CHECKER_CASES.values())},
+                          **{f"uncounted-{n}": ([], False) for n in range(len(UNCOUNTED_CASES))}})
+        self.assertIn("- Checker kills, from `killed_at_layer` with `kill_confirmed` or from `layer_results`: type checker 4, "
+                      "contract checker 3.", run.summary)
+        self.assertIn("- 2 mutants record a checker kill differently in `killed_at_layer` and `layer_results`: case-4, case-5.",
+                      run.summary)
+        self.assertEqual({r["mutant"]: r["checker_kills"] for r in run.csv if r["mutant"] in ("case-3", "uncounted-0")},
+                         {"case-3": "type checker;contract checker", "uncounted-0": ""})
 
 
 class Ordinals(unittest.TestCase):

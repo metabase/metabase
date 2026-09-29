@@ -21,6 +21,12 @@ A test id is "<spec path>::<Cypress full title>" for e2e,
 An entry that is a bare list of test ids, {"<mutant id>": [killer test id, ...]}, is read as killed_by with `ran` unknown,
 and so is an entry without `ran`.
 
+The type checker and the contract checker kill a mutant when `killed_at_layer` names their layer, "tsc" or "contract",
+and `kill_confirmed` is true, or when their `layer_results` entry has the result "killed".
+They run on every PR, so each counts as a remaining test that kills it, named "type checker" or "contract checker".
+An unconfirmed checker kill doesn't count, and a mutant whose two records of a checker kill disagree is listed.
+Each candidate's `also_killed_by_checker` lists its kills that a checker also makes.
+
 A symptom kill counts as a kill everywhere, and its two fields only mark it.
 A missing symptom field means no symptom kills, and an id in one that isn't in its killed_by or unconfirmed_by is ignored and counted.
 
@@ -135,6 +141,8 @@ PRIOR_WITH_CALLERS = "reached files plus direct callers"
 IMPORTERS_ROLE = "information only"
 IMPORTERS_LISTED = 10
 SYMPTOM_FIELDS = {"symptom_kills": "killed_by", "symptom_unconfirmed_by": "unconfirmed_by"}
+CHECKERS = {"tsc": "type checker", "contract": "contract checker"}
+LAYERS = ("tsc", "contract", "jest", "deftest", "e2e")
 SYMPTOM_ONLY = "all symptom kills"
 COARSE_STRATA = {
     "logic": "logic",
@@ -152,6 +160,25 @@ def coarse_stratum(entry):
     return entry.get("stratum_coarse") or COARSE_STRATA.get(entry.get("stratum"), entry.get("stratum"))
 
 
+def checker_kills(entry):
+    """The checkers with a confirmed kill of the mutant, by name, and whether `killed_at_layer` and `layer_results` disagree on one."""
+    results = entry.get("layer_results") or {}
+    confirmed = entry.get("kill_confirmed") is True
+    at = entry.get("killed_at_layer")
+    names, disagree = [], False
+    for layer, name in CHECKERS.items():
+        recorded = confirmed and at == layer
+        result = (results.get(layer) or {}).get("result")
+        if recorded or result == "killed":
+            names.append(name)
+        if recorded and result not in (None, "killed"):
+            disagree = True
+        # `killed_at_layer` is the cheapest layer with a confirmed kill, so a checker kill puts it at that checker or a cheaper one.
+        if result == "killed" and "kill_confirmed" in entry and not (confirmed and at in LAYERS[:LAYERS.index(layer) + 1]):
+            disagree = True
+    return names, disagree
+
+
 def load(path, run):
     """The kill matrix mapped onto the run: per mutant and field, the ids of the run's tests and the ids of every other test."""
     with open(path) as f:
@@ -164,6 +191,8 @@ def load(path, run):
     mutants = {}
     ran_known = True
     symptom = collections.Counter()
+    checkers = collections.Counter()
+    disagreements = []
     for mid, entry in raw.items():
         if isinstance(entry, list):
             entry = {"killed_by": entry}
@@ -179,13 +208,18 @@ def load(path, run):
             ids = set(entry.get(field) or [])
             listed[field] = ids & listed[within]
             symptom[f"{field}_ignored"] += len(ids - listed[within])
-        killers = listed["killed_by"] or listed["unconfirmed_by"]
+        checked, disagree = checker_kills(entry)
+        checkers.update(checked)
+        if disagree:
+            disagreements.append(str(mid))
+        confirmed = listed["killed_by"] | set(checked)
+        killers, marked = ((confirmed, listed["symptom_kills"]) if confirmed
+                           else (listed["unconfirmed_by"], listed["symptom_unconfirmed_by"]))
         symptom["kills"] += len(listed["killed_by"])
         symptom["symptom_kills"] += len(listed["symptom_kills"])
         symptom["unconfirmed_kills"] += len(listed["unconfirmed_by"])
         symptom["unconfirmed_symptom_kills"] += len(listed["symptom_unconfirmed_by"])
-        symptom["mutants_resting_only_on_symptom_kills"] += bool(killers) and killers <= (
-            listed["symptom_kills"] if listed["killed_by"] else listed["symptom_unconfirmed_by"])
+        symptom["mutants_resting_only_on_symptom_kills"] += bool(killers) and killers <= marked
         for field, test_ids in listed.items():
             ids, others = set(), set()
             for test_id in test_ids:
@@ -200,6 +234,9 @@ def load(path, run):
                         unknown_e2e.add(test_id)
             m[field] = ids
             m[f"{field}_others"] = others
+        m["checker_kills"] = checked
+        m["killed_by_others"] |= set(checked)
+        m["ran_others"] |= set(checked)
         mutants[str(mid)] = m
     return {
         "file": path,
@@ -215,6 +252,8 @@ def load(path, run):
                                        "mutants_resting_only_on_symptom_kills")},
             "ignored": {field: symptom[f"{field}_ignored"] for field in SYMPTOM_FIELDS},
         },
+        "checker_kills": {name: checkers[name] for name in CHECKERS.values()},
+        "checker_disagreements": disagreements,
     }
 
 
@@ -348,6 +387,9 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
     def by_stratum_ids(mids):
         return {s: [mid for mid in mids if mutants[mid]["stratum"] == s] for s in {mutants[mid]["stratum"] for mid in mids}}
 
+    def checker_ids(mids):
+        return {s: {mid: mutants[mid]["checker_kills"] for mid in ids} for s, ids in by_stratum_ids(mids).items()}
+
     out = {}
     evidence = {}
     for t in tests:
@@ -389,6 +431,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             "cover_kept_for": by_stratum_ids(cover_kept_for),
             "symptom_kills": by_stratum_ids(sorted(kills_here & symptom_by_test[t.id])),
             "unconfirmed_symptom_kills": by_stratum_ids(unconfirmed_symptom),
+            "also_killed_by_checker": checker_ids(sorted(mid for mid in kills_here if mutants[mid]["checker_kills"])),
             "kills": len(kills_here),
             "misses": len(ran_by_test[t.id] - killed_by_test[t.id] - errored_by_test[t.id]),
             "errored": errored,
@@ -850,6 +893,8 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
             "kills_by_a_test_that_errored": kills["kills_by_a_test_that_errored"],
             "e2e_ids_not_in_index": sorted(i for i in kills["e2e_ids_not_in_run"] if i not in index_ids),
             "symptom_kills": kills["symptom_kills"],
+            "checker_kills": kills["checker_kills"],
+            "checker_disagreements": kills["checker_disagreements"],
         },
         "min_mutants": min_mutants,
         "required_strata": required_strata,
@@ -929,6 +974,15 @@ def symptom_report(in_file, in_candidates):
     ]
 
 
+def checker_lines(by_stratum_mids):
+    by_name = collections.defaultdict(lambda: collections.defaultdict(list))
+    for stratum, mids in by_stratum_mids.items():
+        for mid, names in mids.items():
+            for name in names:
+                by_name[name][stratum].append(mid)
+    return [f"the {name} also kills {ids_by_stratum(groups)}" for name, groups in sorted(by_name.items())]
+
+
 def symptom_lines(r):
     return [f"      {what}: {ids_by_stratum(r[field])}"
             for field, what in (("symptom_kills", "symptom kills"), ("unconfirmed_symptom_kills", "unconfirmed symptom kills"))
@@ -953,6 +1007,8 @@ def report(result):
         *joint_check_report(result["joint_check"]),
         f"Verdicts from {k['file']} over the reach index at {result['index']['sha'][:11]} (runs {', '.join(result['index']['runs'])})",
         f"{k['mutants']} mutants: {by_stratum(k['strata'])}",
+        *([f"  {', '.join(f'{n} killed by the {name}' for name, n in k['checker_kills'].items())}, which count as remaining tests"]
+          if any(k["checker_kills"].values()) else []),
         *(f"  {n} with {how}" for how, n in sorted(k["reach"].items())),
         f"{s['candidates']} candidates, {len(result['candidates_not_in_index'])} of them not in the index",
         *([f"{len(result['ordinals'])} candidates each stand for several index tests that share their title"]
@@ -994,6 +1050,11 @@ def report(result):
         lines += ["", "Kills that no remaining test has"]
     for cid in dependent:
         lines += [f"  {cid}", *(f"      {rows[cid]['verdict']}, {line}" for line in depends_on_lines(rows[cid]["depends_on"]))]
+    checked = sorted(cid for cid, r in rows.items() if r.get("also_killed_by_checker"))
+    if checked:
+        lines += ["", "Kills a checker also makes"]
+    for cid in checked:
+        lines += [f"  {cid}", *(f"      {rows[cid]['verdict']}, {line}" for line in checker_lines(rows[cid]["also_killed_by_checker"]))]
     on_symptoms = sorted(cid for cid, r in rows.items() if r.get("symptom_only_after_deletion"))
     if on_symptoms:
         lines += ["", "Kills that stay only as symptom kills"]
@@ -1011,6 +1072,9 @@ def report(result):
                         ("kills_by_a_test_that_errored", "a killer that also errored")):
         if k[field]:
             lines += ["", f"{k[field]} mutants have {what}"]
+    if k["checker_disagreements"]:
+        lines += ["", f"{len(k['checker_disagreements'])} mutants record a checker kill differently in `killed_at_layer` and `layer_results`: "
+                      f"{listed(k['checker_disagreements'])}"]
     for field, within in SYMPTOM_FIELDS.items():
         if k["symptom_kills"]["ignored"][field]:
             lines += ["", f"{k['symptom_kills']['ignored'][field]} ids in `{field}` aren't in their mutant's `{within}`, and are ignored"]
