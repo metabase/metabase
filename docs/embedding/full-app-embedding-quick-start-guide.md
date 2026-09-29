@@ -55,7 +55,7 @@ In your app, you'll create a route for SSO at `/sso/metabase`. In the **JWT Iden
 
 #### Generate a JWT signing key
 
-Click on the **Set up key** button to generate a signing key. Keep this key a secret. You'll use it on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
+Click on the **Set up key** button to generate a signing key. Keep this key a secret. You'll use this JWT signing key on your server. If you generate another key, you'll overwrite the existing key, so you'll need to update the key in your app as well.
 
 Copy this key, as you'll need it in the next section.
 

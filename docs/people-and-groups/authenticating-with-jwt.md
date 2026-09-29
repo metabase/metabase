@@ -82,7 +82,7 @@ To add groups to your JWT, use the syntax `groups: ["group_name"]`, where `group
 
 The **Group mapping** section has three options:
 
-- **Automatic**: Metabase adds people to the Metabase groups whose names match the group names in their JWT.
+- **Automatic**: If a person's JWT contains group names that match Metabase groups, Metabase will add the person to those Metabase groups.
 - **Manual**: Metabase adds people to groups using only the mappings you create.
 - **Off**: Metabase ignores your saved mappings and doesn't add people to groups.
 
@@ -97,23 +97,23 @@ To create manual mappings:
 5. Click **Add mapping**.
 6. Repeat steps 2 to 5 for each group you want to map.
 
-Metabase saves each mapping as soon as you add, edit, or remove it.
+Metabase saves each mapping as soon as you add, edit, or remove the mapping.
 
 ![JWT group mappings](./images/jwt-groups.png)
 
-To edit or remove a mapping, hover over it and click the pencil or trash icon.
+To edit or remove a mapping, hover over the mapping and click the pencil or trash icon.
 
 Switching from **Manual** to **Automatic** deletes all of your mappings. Removing your last mapping switches group mapping to **Off**.
 
 #### Remove a group mapping
 
-To remove a mapping, hover over it and click the trash icon. Choose what to do with the groups in the mapping:
+To remove a mapping, hover over the mapping and click the trash icon. Choose what to do with the groups in the mapping:
 
 - **Nothing, just remove the mapping**
 - **Also remove all members from this group** (Metabase keeps their accounts)
 - **Also delete the group** (the Administrators group isn't affected)
 
-Removing members or deleting groups takes effect immediately and can't be undone.
+Removing members or deleting groups takes effect immediately and can't be undone!
 
 ### Configure group mapping through environment variables
 
