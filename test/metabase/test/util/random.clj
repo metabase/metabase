@@ -5,6 +5,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce
   ^{:dynamic true
     :doc "Generator that could be rebound. Bind when you need to control the seed for exmaple."}

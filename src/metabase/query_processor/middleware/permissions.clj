@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
@@ -54,6 +55,7 @@
             (throw-inactive-table-error (lib.metadata.protocols/database (qp.store/metadata-provider))
                                         table)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *param-values-query*
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
@@ -102,10 +104,12 @@
             ;; collection perms for the dashboard and not ad-hoc query perms
             *param-values-query*
             (do
-              ;; The value-source Card itself is read-checked by the caller, but its query may nest other Cards; the
-              ;; user must be able to read every one of those too, just like when running the Card normally.
-              ;; Otherwise a readable wrapper Card launders the values of a Card the user cannot read. The
-              ;; result_metadata check covers tables a Card's saved columns name but its query footprint does not.
+              ;; `source-card-ids` holds the Card the values query is built on as well as every Card its query nests,
+              ;; and the user must be able to read all of them, just like when running the Card normally. Otherwise a
+              ;; readable wrapper Card launders the values of a Card the user cannot read. Don't narrow this to the
+              ;; nested Cards: filter values from field-ref-only dashcard mappings have no caller-side read check on
+              ;; the mapped Card, so this is the only check. The result_metadata check covers tables a Card's saved
+              ;; columns name but its query footprint does not.
               (doseq [card-id source-card-ids]
                 (query-perms/check-card-read-perms database-id card-id)
                 (query-perms/check-card-result-metadata-data-perms database-id card-id))

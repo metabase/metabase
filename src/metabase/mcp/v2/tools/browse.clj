@@ -292,7 +292,11 @@
                                       [id (into []
                                                 (comp (keep #(get-in % [:target :table_id]))
                                                       (remove #{id})
-                                                      (distinct))
+                                                      (distinct)
+                                                      ;; Cap before the lookup so its `IN` stays bounded. The
+                                                      ;; `:target` hydration already dropped unreadable targets,
+                                                      ;; so only inactive or unbrowsable ones can shrink the list.
+                                                      (take max-related-tables))
                                                 fields)]))
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
@@ -314,7 +318,6 @@
                  (fn [target-ids]
                    (into []
                          (comp (keep related)
-                               (take max-related-tables)
                                (map-indexed
                                 (fn [i {:keys [id name display_name schema]}]
                                   (cond-> {:id id :name name :display_name display_name :schema schema}

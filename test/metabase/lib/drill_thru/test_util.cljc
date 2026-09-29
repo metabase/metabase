@@ -116,6 +116,7 @@
 (def ^:private TestCase
   (test-case-schema))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *native-card-id* nil)
 
 (defonce ^:private last-native-card-id (atom 12))

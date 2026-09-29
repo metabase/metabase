@@ -145,7 +145,7 @@ export type MetabotChainStep =
       name: string;
       title?: string;
       searchResults?: MetabotSearchResults;
-      status: "started" | "ended";
+      status: "started" | "ended" | "errored";
       startedAtMs?: number;
     };
 
