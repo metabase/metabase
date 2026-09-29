@@ -138,16 +138,7 @@ export function CombineColumns({
   };
 
   const handleSubmit: FormEventHandler = (event) => {
-    event.preventDefault();
-
-    const name = getExpressionName(query, stageIndex, columnsAndSeparators);
-
-    const expression = Lib.expressionClause(
-      "concat",
-      flatten(columnsAndSeparators),
-    );
-
-    onSubmit(name, expression);
+    return;
   };
 
   const isValid = state.columnsAndSeparators.every(({ column }) =>
