@@ -16,7 +16,7 @@ DATA="$CORPUS_OUT/july-corpus"
 cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
 LOGS="$DATA/logs"; mkdir -p "$LOGS"
 OUT="$DATA/coverage-results.jsonl"
-SKIP="66670 70451"
+SKIP="66670"
 
 # --- crash safety: restore whatever patch is currently applied ------------------
 CUR_PATCH=""

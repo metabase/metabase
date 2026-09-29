@@ -11,7 +11,7 @@ BUGS="$REPO_ROOT/e2e/regression-corpus/bugs"
 DATA="$CORPUS_OUT/july-corpus"
 cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
 mkdir -p "$DATA/logs"
-CANDS="5334 42723 44499 47005 49319 56839"
+CANDS="5334 56839"
 
 restore_all(){ for i in $CANDS; do git apply "$BUGS/$i/inverse.patch" 2>/dev/null; done; }
 trap restore_all EXIT
@@ -22,27 +22,6 @@ enterprise/frontend/src/metabase-enterprise/whitelabel/components/IllustrationWi
 frontend/src/metabase/querying/common/utils/question.unit.spec.ts
 frontend/src/metabase/querying/drills/utils/query-drill.unit.spec.ts
 frontend/src/metabase/visualizations/visualizations/PieChart/use-chart-events.unit.spec.ts
-EOF
-;;
-  42723) cat <<'EOF'
-enterprise/frontend/src/metabase-enterprise/metabot/components/MetabotAdmin/MetabaseAIProviderSetup.unit.spec.tsx
-frontend/src/metabase/common/components/Pickers/EntityPicker/hooks/use-get-path-from-value.unit.spec.tsx
-EOF
-;;
-  44499) cat <<'EOF'
-frontend/src/metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper.unit.spec.tsx
-frontend/src/metabase/dashboard/actions/data-fetching.unit.spec.ts
-frontend/src/metabase/data-studio/data-model/pages/DataModel/DataModel.unit.spec.tsx
-frontend/src/metabase/timelines/collections/components/TimelineDetailsModal/TimelineDetailsModal.unit.spec.tsx
-EOF
-;;
-  47005) cat <<'EOF'
-enterprise/frontend/src/metabase-enterprise/content_translation/tests/use-translate-content.common.unit.spec.tsx
-frontend/src/metabase/parameters/components/ValuesSourceModal/tests/common.unit.spec.tsx
-EOF
-;;
-  49319) cat <<'EOF'
-frontend/src/metabase/admin/settings/tests/premium.unit.spec.tsx
 EOF
 ;;
   56839) cat <<'EOF'

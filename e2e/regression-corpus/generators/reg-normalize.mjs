@@ -84,12 +84,12 @@ const fresh = fs
   .split("\n")
   .filter(Boolean)
   .map((l) => JSON.parse(l))
-  .filter((x) => x.status === "live" || x.issue === 69160);
+  .filter((x) => x.status === "live");
 
 for (const x of fresh) {
   const id = `reg-${x.issue}`;
   const rec = records.get(x.issue) ?? {};
-  const e = { id, issue: x.issue, set: x.status === "live" ? "freshness" : "gap-69160", stratum: rec.stratum ?? null, hint: x.hint, hint_kind: x.hint_kind, layer: x.layer, cljs_rebuild_needed: x.cljs_rebuild_needed, apply: x.apply };
+  const e = { id, issue: x.issue, set: "freshness", stratum: rec.stratum ?? null, hint: x.hint, hint_kind: x.hint_kind, layer: x.layer, cljs_rebuild_needed: x.cljs_rebuild_needed, apply: x.apply };
   const patch = path.join(BUGS, String(x.issue), x.patch_file);
   const argv = ["apply"];
   if (/ -R /.test(x.apply_cmd)) argv.push("-R");

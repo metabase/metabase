@@ -42,10 +42,10 @@ These July lessons are built into the record and the kill rules:
 
 - A raw failure in a 10,000-test `findRelatedTests` run is often load flake. 4 of 6 raw kill candidates among the clean reverters passed when rerun on their own, so a kill has to reproduce on a rerun in isolation.
 - `./bin/test-agent` run from the main checkout compiles the main checkout, not the worktree with the mutant in it, so every test passes. Tests run in the worktree the patch is applied to.
-- A crash counts as a kill only when it's the bug's own symptom. 22449's July mutant reintroduced a crash instead of the bug, and the shipped test flipped on it by erroring, so July rejected it. A setup crash, a harness error, or a timeout that isn't the bug's own symptom is recorded as an error.
-- The reporting test doesn't define the bug. 39053's fix commit was mis-attributed, 45073's named test was the wrong one, and one fix-added deftest was always true because of a fixture bug. `hint` is only where to start.
+- A crash counts as a kill only when it's the bug's own symptom. One of 63745's July mutants reintroduced a crash instead of the bug, and the shipped tests flipped on it by erroring, so July rejected it. A setup crash, a harness error, or a timeout that isn't the bug's own symptom is recorded as an error.
+- The reporting test doesn't define the bug. 42049's fix commit was mis-attributed, 65533's named test was the wrong one, and one fix-added deftest was always true because of a fixture bug. `hint` is only where to start.
 - A test failing on a mutant doesn't prove the mutant is the bug. 25614's July mutant dropped the Stack-100% scaling from the bars as well as the trend line, so the test that failed was a bar test, and the e2e stayed green because the trend line was still visible. `bug.statement` identifies the bug, and 26 entries have a `rebuilt/` mutant for this reason or because the July patch stopped applying.
 - The unit tests that killed a mutant often shipped with the fix. That shows the bug is guarded now, not that the suite would have caught it at the time, so `fix_tests` records them and results are reported with and without them.
 - A bug July couldn't reconstruct is unknown, not safe to cull. Those entries have no patch and are `status: retired`.
 
-Where later work contradicted July, the record follows the later work and its `notes` say so. For example 67399, one of July's four browser-measurement bugs, has a jest test now and is `lowest_level: unit`.
+Where later work contradicted July, the record follows the later work and its `notes` say so. For example July called 69831's e2e load-bearing, but it has a jest test now and is `lowest_level: unit`.
