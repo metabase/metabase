@@ -261,6 +261,32 @@
           (finally
             (token-check/-clear-cache! checker)))))))
 
+(deftest malformed-status-body-is-transient-test
+  (doseq [[description body] {"an empty object"            "{}"
+                              "an unrelated object"        "{\"foo\":1}"
+                              "a non-boolean valid"        "{\"valid\":\"yes\",\"status\":\"ok\"}"
+                              "a blank status"             "{\"valid\":false,\"status\":\"\"}"
+                              "features that aren't a list" "{\"valid\":true,\"status\":\"ok\",\"features\":\"sso\"}"
+                              "a JSON value, not an object" "[1,2,3]"}]
+    (testing (format "%s decodes as JSON but is not a token status: transient, never stamped canonical or cached" description)
+      (let [token      (tu/random-token)
+            call-count (atom 0)
+            checker    (binding [token-check/*customize-checker* true]
+                         (token-check/make-checker {:soft-ttl (t/minutes 1)
+                                                    :hard-ttl (t/minutes 2)}))]
+        (try
+          (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                               (swap! call-count inc)
+                                                               {:status 200 :body body})]
+            (dotimes [_ 3] (token-check/check-token checker token))
+            (is (= 3 @call-count) "not cached")
+            (is (=? {:valid         false
+                     :canonical?    false
+                     :error-details "Token validation provided no response."}
+                    (token-check/check-token checker token))))
+          (finally
+            (token-check/-clear-cache! checker)))))))
+
 (deftest do-refresh-refuses-non-canonical-test
   (testing "the caching layer refuses to hold on to a result not marked :canonical?"
     (let [token      (tu/random-token)

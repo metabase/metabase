@@ -192,6 +192,16 @@
    [:meters        {:optional true} Meters]
    [:quotas        {:optional true} [:sequential Quota]]])
 
+(def ^:private MinimalTokenStatus
+  "The least a decoded token-status body must carry before we treat it as the store's answer and cache it.
+
+  This is deliberately not [[TokenStatus]]: we want to be relatively loose with this schema so that we don't
+  risk marking responses as invalid even if they're usable."
+  [:map {:closed false}
+   [:valid                     :boolean]
+   [:status                    [:string {:min 1}]]
+   [:features {:optional true} [:maybe [:sequential :string]]]])
+
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
@@ -211,12 +221,12 @@
 
 (defn- parse-status-body
   "Decode a token-status response body, returning the status map, or nil when the body is missing,
-  unparseable (e.g. a proxy's HTML error page), or not a JSON object."
+  unparseable (e.g. a proxy's HTML error page), or does not satisfy [[MinimalTokenStatus]]."
   [body]
   (let [decoded (try
                   (some-> body json/decode+kw)
                   (catch Exception _e nil))]
-    (when (map? decoded)
+    (when (mr/validate MinimalTokenStatus decoded)
       decoded)))
 
 (defn- fetch-token-and-parse-body
