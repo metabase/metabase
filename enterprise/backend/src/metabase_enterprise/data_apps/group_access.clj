@@ -24,10 +24,11 @@
 (defn assigned-groups
   "Assigned groups with their current member counts."
   [app]
-  (let [using-tenants? (setting/get :use-tenants)]
+  (let [using-tenants? (setting/get :use-tenants)
+        group-ids     (into #{} (map :permission_group_id) (data-apps.db/app-assignments [(:id app)]))]
     (mapv (fn [group]
             (assoc group :name (perms/group-display-name group using-tenants?)))
-          (t2/hydrate (data-apps.db/assigned-groups (:id app)) :member_count))))
+          (t2/hydrate (perms/groups-by-ids group-ids) :member_count))))
 
 (defn add-groups!
   "Assign all groups and update collection grants in one transaction."

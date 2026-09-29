@@ -3788,7 +3788,6 @@
                     :model/Database
                     :model/Field
                     :model/Permissions
-                    :model/PermissionsGroup
                     :model/QueryAction
                     :model/Table}
    :model-exports #{:model/DataApp}}

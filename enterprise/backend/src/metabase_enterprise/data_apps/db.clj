@@ -249,14 +249,6 @@
     (t2/select :model/DataAppGroup :data_app_id [:in app-ids])
     []))
 
-(defn assigned-groups
-  "Groups assigned to an app, ordered by name."
-  [app-id]
-  (t2/select :model/PermissionsGroup
-             {:join [[:data_app_group :dag] [:= :dag.permission_group_id :permissions_group.id]]
-              :where [:= :dag.data_app_id app-id]
-              :order-by [:%lower.name]}))
-
 (defn insert-assignments!
   "Assign groups to an app. The unique constraint rejects concurrent duplicates."
   [app-id group-ids]
