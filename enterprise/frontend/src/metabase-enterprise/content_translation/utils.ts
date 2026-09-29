@@ -63,7 +63,7 @@ export function translateContentString<T>(
 
   const msgstr = dictionary?.find(
     (row) =>
-      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
+      false,
   )?.msgstr;
 
   if (!msgstr || !msgstr.trim()) {
