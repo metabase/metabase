@@ -83,7 +83,35 @@ function nonJsonType(value) {
   return tag === "Object" || tag === "Array" ? null : tag;
 }
 
-function canonical(value, ancestors) {
+// The app makes these up for each query or dashboard load, so the same request carries new ones every time:
+// MBQL clause ids, dashboard load ids and native template tag ids.
+const MADE_UP_ID_KEYS = new Set(["lib/uuid", "dashboard_load_id"]);
+
+// `role` is "tags" for the `template-tags` object and "tag" for each template tag in it.
+function collectMadeUpIds(value, ids, ancestors, role = null) {
+  if (value === null || typeof value !== "object" || ancestors.has(value)) {
+    return;
+  }
+  if (typeof value.toJSON === "function") {
+    collectMadeUpIds(value.toJSON(), ids, ancestors, role);
+    return;
+  }
+  ancestors.add(value);
+  for (const [key, item] of Object.entries(value)) {
+    if (
+      typeof item === "string" &&
+      (MADE_UP_ID_KEYS.has(key) || (role === "tag" && key === "id"))
+    ) {
+      ids.add(item);
+    }
+    const childRole =
+      role === "tags" ? "tag" : key === "template-tags" ? "tags" : null;
+    collectMadeUpIds(item, ids, ancestors, childRole);
+  }
+  ancestors.delete(value);
+}
+
+function canonical(value, ancestors, madeUp) {
   if (value === null) {
     return "null";
   }
@@ -91,10 +119,18 @@ function canonical(value, ancestors) {
     return String(value);
   }
   if (typeof value !== "object") {
+    if (typeof value === "string" && madeUp.ids.has(value)) {
+      let n = madeUp.numbers.get(value);
+      if (n === undefined) {
+        n = madeUp.numbers.size + 1;
+        madeUp.numbers.set(value, n);
+      }
+      return JSON.stringify(`<id ${n}>`);
+    }
     return JSON.stringify(value);
   }
   if (typeof value.toJSON === "function") {
-    return canonical(value.toJSON(), ancestors);
+    return canonical(value.toJSON(), ancestors, madeUp);
   }
   if (ancestors.has(value)) {
     return JSON.stringify("<cycle>");
@@ -102,7 +138,9 @@ function canonical(value, ancestors) {
   ancestors.add(value);
   let text;
   if (Array.isArray(value)) {
-    const items = value.map((item) => canonical(item, ancestors) ?? "null");
+    const items = value.map(
+      (item) => canonical(item, ancestors, madeUp) ?? "null",
+    );
     text = `[${items.join(",")}]`;
   } else {
     const members = [];
@@ -113,7 +151,7 @@ function canonical(value, ancestors) {
       }
       const encoded = SECRET_KEY.test(key)
         ? JSON.stringify(MASK)
-        : canonical(item, ancestors);
+        : canonical(item, ancestors, madeUp);
       if (encoded !== undefined) {
         members.push(`${JSON.stringify(key)}:${encoded}`);
       }
@@ -124,6 +162,13 @@ function canonical(value, ancestors) {
   return text;
 }
 
+// Made-up ids become `<id 1>`, `<id 2>` and so on, numbered in the order they first appear, so a reference to one keeps pointing at it.
+function canonicalValue(value) {
+  const ids = new Set();
+  collectMadeUpIds(value, ids, new Set());
+  return canonical(value, new Set(), { ids, numbers: new Map() });
+}
+
 function maskFormFields(text) {
   return text.replace(
     /(^|&)([^=&]*(?:password|token|secret|session)[^=&]*)=[^&]*/gi,
@@ -132,7 +177,8 @@ function maskFormFields(text) {
 }
 
 /**
- * JSON with object keys sorted and the values of keys matching password, token, secret or session masked.
+ * JSON with object keys sorted, the values of keys matching password, token, secret or session masked,
+ * and the ids the app makes up for each request numbered in order of appearance.
  * A string that holds a JSON object or array is canonicalized as that value, other strings get their matching form fields masked.
  */
 export function canonicalBody(value) {
@@ -140,14 +186,14 @@ export function canonicalBody(value) {
     const trimmed = value.trim();
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
       try {
-        return canonical(JSON.parse(trimmed), new Set());
+        return canonicalValue(JSON.parse(trimmed));
       } catch {
         // Not JSON after all.
       }
     }
     return JSON.stringify(maskFormFields(value));
   }
-  return canonical(value, new Set());
+  return canonicalValue(value);
 }
 
 function hashFields(text) {
@@ -193,9 +239,8 @@ export function requestBodyArg(args, isMethod) {
 }
 
 /**
- * The event fields for a request body seen by a `cy.intercept` handler.
- * Cypress hands the handler JSON bodies already parsed and forwards `JSON.stringify` of them,
- * so hashing that text hashes the bytes the server receives.
+ * The event fields for a request body seen by a `cy.intercept` handler: the hash and UTF-8 length of its canonical form, as for `cy.request`.
+ * Cypress hands the handler JSON bodies already parsed.
  */
 export function proxyBodyFields(body, headers) {
   if (body === undefined || body === null || body === "") {
@@ -209,13 +254,13 @@ export function proxyBodyFields(body, headers) {
     if (/^multipart\//i.test(String(contentType ?? ""))) {
       return { bodyType: "multipart", bodyBytes: hashText(body).bytes };
     }
-    return hashFields(body);
+    return hashFields(canonicalBody(body));
   }
   const type = nonJsonType(body);
   if (type) {
     return { bodyType: type };
   }
-  return hashFields(JSON.stringify(body));
+  return hashFields(canonicalBody(body));
 }
 
 /**

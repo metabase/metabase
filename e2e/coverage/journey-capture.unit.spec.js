@@ -320,6 +320,86 @@ describe("canonicalBody", () => {
       '"username=a&password=<masked>&x=1"',
     );
   });
+
+  // An MBQL 5 query that counts, sorts by the count and filters on a field, with each clause's lib/uuid made up.
+  const query = (uuids) => ({
+    "lib/type": "mbql/query",
+    database: 1,
+    stages: [
+      {
+        "source-table": 2,
+        aggregation: [["count", { "lib/uuid": uuids[0] }]],
+        "order-by": [
+          [
+            "desc",
+            { "lib/uuid": uuids[1] },
+            ["aggregation", { "lib/uuid": uuids[2] }, uuids[0]],
+          ],
+        ],
+        filters: [
+          [
+            "=",
+            { "lib/uuid": uuids[3] },
+            ["field", { "lib/uuid": uuids[4] }, 7],
+            "Gizmo",
+          ],
+        ],
+      },
+    ],
+  });
+  const uuids = (seed) =>
+    [0, 1, 2, 3, 4].map((i) => `0000000${seed}-0000-4000-8000-00000000000${i}`);
+
+  it("should number the ids the app makes up in the order they first appear, references included", () => {
+    expect(canonicalBody(query(uuids(1)))).toBe(
+      '{"database":1,"lib/type":"mbql/query","stages":[{' +
+        '"aggregation":[["count",{"lib/uuid":"<id 1>"}]],' +
+        '"filters":[["=",{"lib/uuid":"<id 2>"},["field",{"lib/uuid":"<id 3>"},7],"Gizmo"]],' +
+        '"order-by":[["desc",{"lib/uuid":"<id 4>"},["aggregation",{"lib/uuid":"<id 5>"},"<id 1>"]]],' +
+        '"source-table":2}]}',
+    );
+  });
+
+  it("should give the same text for the same query with other made-up ids", () => {
+    expect(canonicalBody(query(uuids(1)))).toBe(canonicalBody(query(uuids(2))));
+  });
+
+  it("should keep a reference to another clause apart", () => {
+    const other = query(uuids(1));
+    other.stages[0].aggregation.push(["sum", { "lib/uuid": "u-sum" }, 3]);
+    const sortedBySum = structuredClone(other);
+    sortedBySum.stages[0]["order-by"][0][2][2] = "u-sum";
+
+    expect(canonicalBody(other)).not.toBe(canonicalBody(sortedBySum));
+  });
+
+  it("should number template tag ids, the parameter ids that repeat them and the dashboard load id", () => {
+    const body = (tagId, loadId) => ({
+      dashboard_load_id: loadId,
+      parameters: [{ id: tagId, type: "category", value: "Gizmo" }],
+      native: {
+        query: "select {{category}}",
+        "template-tags": {
+          category: { id: tagId, name: "category", type: "text" },
+        },
+      },
+    });
+
+    expect(canonicalBody(body("tag-a", "load-a"))).toBe(
+      '{"dashboard_load_id":"<id 1>",' +
+        '"native":{"query":"select {{category}}","template-tags":{"category":{"id":"<id 2>","name":"category","type":"text"}}},' +
+        '"parameters":[{"id":"<id 2>","type":"category","value":"Gizmo"}]}',
+    );
+    expect(canonicalBody(body("tag-a", "load-a"))).toBe(
+      canonicalBody(body("tag-b", "load-b")),
+    );
+  });
+
+  it("should keep ids that aren't template tag ids", () => {
+    expect(
+      canonicalBody({ id: "card-a", parameters: [{ id: "d4a7a3c0" }] }),
+    ).toBe('{"id":"card-a","parameters":[{"id":"d4a7a3c0"}]}');
+  });
 });
 
 describe("requestBodyFields", () => {
@@ -379,17 +459,33 @@ describe("requestBodyArg", () => {
 });
 
 describe("proxyBodyFields", () => {
-  it("should hash the JSON text Cypress forwards for a parsed JSON body", () => {
+  it("should hash the canonical form of a parsed JSON body", () => {
     const raw = '{"type":"query","query":{"source-table":2}}';
-    const { hash, bytes } = hashText(raw);
+    const { hash, bytes } = hashText(canonicalBody(JSON.parse(raw)));
     expect(
       proxyBodyFields(JSON.parse(raw), { "content-type": "application/json" }),
     ).toEqual({ bodyHash: hash, bodyBytes: bytes });
   });
 
-  it("should hash string bodies as they are", () => {
-    expect(proxyBodyFields("a=1&b=2", {}).bodyHash).toBe(
-      hashText("a=1&b=2").hash,
+  it("should give the same hash to the same query sent twice with other made-up ids and key order", () => {
+    const first = {
+      stages: [{ aggregation: [["count", { "lib/uuid": "a-1" }]] }],
+      database: 1,
+    };
+    const again = {
+      database: 1,
+      stages: [{ aggregation: [["count", { "lib/uuid": "b-2" }]] }],
+    };
+
+    expect(proxyBodyFields(first, {})).toEqual(proxyBodyFields(again, {}));
+    expect(proxyBodyFields(JSON.stringify(again), {})).toEqual(
+      proxyBodyFields(first, {}),
+    );
+  });
+
+  it("should hash the canonical form of other string bodies, with secret form fields masked", () => {
+    expect(proxyBodyFields("a=1&password=2", {}).bodyHash).toBe(
+      hashText('"a=1&password=<masked>"').hash,
     );
   });
 
