@@ -398,10 +398,13 @@
     (testing "create a db with default scan options"
       (with-db-scheduler-setup!
         (with-test-driver-available!
-          (let [resp (mt/user-http-request :crowberto :post 200 "database"
-                                           {:name    (mt/random-name)
-                                            :engine  (u/qualified-name ::test-driver)
-                                            :details {:db "my_db"}})
+          ;; The create event starts a sync on another thread. If it gets as far as the dbms-version step before the
+          ;; row is read back, `dbms_version` is no longer its default, so keep it from running.
+          (let [resp (mt/with-dynamic-fn-redefs [quick-task/submit-task! (constantly nil)]
+                       (mt/user-http-request :crowberto :post 200 "database"
+                                             {:name    (mt/random-name)
+                                              :engine  (u/qualified-name ::test-driver)
+                                              :details {:db "my_db"}}))
                 db   (t2/select-one :model/Database (:id resp))]
             (is (malli= [:merge
                          (into [:map] (m/map-vals (fn [v] [:= {} v]) (mt/object-defaults :model/Database)))
