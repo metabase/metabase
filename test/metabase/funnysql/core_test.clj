@@ -4,6 +4,23 @@
    [metabase.funnysql.core :as funnysql]
    [metabase.util.honey-sql-2 :as h2x]))
 
+(deftest ^:parallel interpose-fn-test
+  (letfn [(interpose-fn* [xs]
+            (let [result (atom [])]
+              (#'funnysql/interpose-fn
+               xs
+               (fn [x]
+                 (swap! result conj x))
+               (fn []
+                 (swap! result conj "-")))
+              @result))]
+    (are [xs expected] (= expected
+                          (interpose-fn* xs))
+      []         []
+      [:a]       [:a]
+      [:a :b]    [:a "-" :b]
+      [:a :b :c] [:a "-" :b "-" :c])))
+
 (deftest ^:parallel equals-test
   (are [value expected] (= expected
                            (funnysql/format {:where [:= :field value]} :postgres))
