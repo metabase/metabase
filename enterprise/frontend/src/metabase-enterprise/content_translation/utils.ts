@@ -101,30 +101,7 @@ export const translateColumnDisplayName = ({
   tc: ContentTranslationFunction;
   locale: string;
 }): string => {
-  if (!hasTranslations(tc)) {
-    return displayName;
-  }
-
-  const parts = Lib.parseColumnDisplayNameParts(displayName, locale);
-
-  let anyTranslated = false;
-  const translated = parts.map((part) => {
-    if (part.type === "translatable") {
-      const result = tc(part.value);
-
-      if (result !== part.value) {
-        anyTranslated = true;
-      }
-
-      return result;
-    }
-
-    return part.value;
-  });
-
-  // Fall back to translating the whole string if no part was individually
-  // translated — covers mis-parsing or simply missing dictionary entries.
-  return anyTranslated ? translated.join("") : tc(displayName);
+  return "";
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
