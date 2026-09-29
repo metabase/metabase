@@ -2883,7 +2883,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to a plain date string like \"2025-01-01\" - or write the range out with `between` and two plain date strings. Inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:` moving the unit onto the column would change the answer, so the explicit range is the only rewrite there."
+               (tru "`{0}` does not survive the round trip through the question link the frontend opens: the question either fails to load, or silently loses the clause and answers something else. Put the unit on the column instead - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause

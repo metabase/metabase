@@ -1118,6 +1118,17 @@
     (let [input ["=" {} created-at (abs-dt "2024-13-45" "month")]]
       (is (= input (repair-filter input))))))
 
+(deftest ^:parallel unencodable-temporal-clause-message-test
+  (testing "the message steers to a half-open range, and names `year` on an `expression` ref as needing it"
+    ;; `year` is also an extraction unit, so on an untyped `expression` ref the QP reads the bucketed
+    ;; column as an integer and fails on the date literal; and `between` compiles to SQL BETWEEN wherever
+    ;; `optimize-temporal-filters` does not run - every `expression` ref, all of `aggregation:` - so a
+    ;; plain upper date keeps only midnight of the last day
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"`>=` its first day and `<` the first day after it.*not `between`.*`year` on an `expression` reference"
+         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")])))))
+
 ;;; ============================================================
 ;;; Pass 1.867 - rewrite temporal-extract to its get-* equivalent
 ;;; ============================================================
