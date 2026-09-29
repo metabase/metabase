@@ -5,7 +5,7 @@ summary: Harden a self-hosted Metabase by keeping it patched, protecting secrets
 
 # Security best practices for self-hosted Metabase
 
-This guide covers the Metabase-specific controls for hardening a self-hosted Metabase. It doesn't cover every aspect of running a service in production, so you'll also need to [secure the surrounding infrastructure](#secure-the-surrounding-infrastructure).
+This guide covers the Metabase-specific controls for hardening a self-hosted Metabase.
 
 ## Keep Metabase patched
 
