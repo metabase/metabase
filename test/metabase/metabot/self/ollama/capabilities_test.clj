@@ -199,7 +199,7 @@
             (is (true? (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
           (testing "once the re-ask has actually failed, the answer still stands — a server that
                    would not answer is not evidence that the model changed"
-            (is (tu/poll-until 5000 (and (pos? @attempts) (empty? @@#'ollama.capabilities/refreshing))))
+            (is (tu/poll-until 5000 (and (pos? @attempts) (empty? @@#'ollama.capabilities/in-flight))))
             (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
       (finally
         (ollama.capabilities/clear-cache!)))))
@@ -262,6 +262,35 @@
         (dotimes [_ 20] (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))
         (is (true? (tu/poll-until 5000 (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
         (is (= 1 (count @seen)))))))
+
+(deftest a-cold-lookup-is-shared-by-every-caller-waiting-on-it-test
+  (testing "requests for a model with no entry yet share one lookup rather than each asking the server"
+    (let [seen    (atom [])
+          handler (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]} seen)]
+      (with-stub! (fn [req] (Thread/sleep 200) (handler req))
+        (fn []
+          (let [answers (tu/repeat-concurrently 10 #(ollama.capabilities/reasoning-model?
+                                                     credentials "gpt-oss:20b"))]
+            (is (every? true? answers))
+            (is (= 1 (count @seen)))))))))
+
+(deftest lookups-in-front-of-the-caller-share-the-concurrency-bound-test
+  (testing "two catalog listings at once stay within one bound, not one bound each"
+    (let [open    (atom 0)
+          peak    (atom 0)
+          handler (showing {})
+          models  (mapv #(str "model-" %) (range 24))]
+      (with-stub! (fn [req]
+                    (swap! peak max (swap! open inc))
+                    (try
+                      (Thread/sleep 50)
+                      (handler req)
+                      (finally
+                        (swap! open dec))))
+        (fn []
+          (run! deref [(future (ollama.capabilities/chat-capable-ids credentials models))
+                       (future (ollama.capabilities/chat-capable-ids credentials (rseq models)))])
+          (is (<= @peak @#'ollama.capabilities/lookup-concurrency)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Chat-capable

@@ -49,6 +49,28 @@
   "What a model has to report to be worth offering Metabot. Embedding models report neither."
   #{"completion" "tools"})
 
+(def ^:private lookup-concurrency
+  "How many models to ask about at once. A catalog listing asks about every model it offers, and
+  `/api/show` opens a fresh connection per call — against Cloud that is a TLS handshake each, to one
+  host. Unbounded, a 40-model catalog is how an instance earns a 429, and a 429 is cached as \"would
+  not say\" until [[retry-after-ms]] passes, so one burst would cost reasoning detection for every
+  model on the connection meanwhile."
+  8)
+
+(defonce ^:private lookup-permits
+  ;; Taken by every `/api/show` call, cold or background, so [[lookup-concurrency]] bounds all the
+  ;; calls open at once rather than the calls one fan-out makes.
+  (Semaphore. lookup-concurrency))
+
+(defn- with-permit
+  "Call `f` holding one of [[lookup-permits]]."
+  [f]
+  (.acquire ^Semaphore lookup-permits)
+  (try
+    (f)
+    (finally
+      (.release ^Semaphore lookup-permits))))
+
 (defn- fetch-capabilities
   "Ask Ollama what `model` can do: `{:caps #{...}-or-nil, :answered? bool}`.
 
@@ -61,14 +83,15 @@
   server that will not answer must not take down the request or the page that asked."
   [credentials model]
   (try
-    (let [res  (adapter/request! conn/native-provider
-                                 {:credentials credentials
-                                  :method      :post
-                                  :path        "/api/show"
-                                  :as          :json
-                                  :body        (json/encode {:model model})}
-                                 {:socket-timeout     native-api-timeout-ms
-                                  :connection-timeout (llm/llm-connection-timeout-ms)})
+    (let [res  (with-permit
+                 #(adapter/request! conn/native-provider
+                                    {:credentials credentials
+                                     :method      :post
+                                     :path        "/api/show"
+                                     :as          :json
+                                     :body        (json/encode {:model model})}
+                                    {:socket-timeout     native-api-timeout-ms
+                                     :connection-timeout (llm/llm-connection-timeout-ms)}))
           caps (get-in res [:body :capabilities])]
       {:answered? true
        :caps      (when (sequential? caps)
@@ -141,50 +164,39 @@
       (cache/lookup k)
       :caps))
 
-(defn- fetch-and-remember!
-  "Ask the server about `model` and record the answer. Blocks."
+;; Lookups in flight, by cache key. Callers after the same key share one, so a burst for one model —
+;; page loads against a stale entry, or requests for a model with none — asks once.
+(defonce ^:private in-flight
+  (atom {}))
+
+(defn- shared-lookup
+  "The lookup for `model`, joining the one in flight or starting one: `[started? lookup]`, where
+  `lookup` is a delay that asks the server and records the answer. Whoever gets `started?` is
+  responsible for it running; everyone else may deref it or leave it.
+
+  The lookup re-reads the cache first and asks only if the entry is still missing or stale. A caller
+  decides to start one from a read taken earlier, and a lookup that finished in between has already
+  answered."
   [credentials model]
-  (remember! (cache-key credentials model) (fetch-capabilities credentials model)))
-
-(def ^:private lookup-concurrency
-  "How many models to ask about at once. A catalog listing asks about every model it offers, and
-  `/api/show` opens a fresh connection per call — against Cloud that is a TLS handshake each, to one
-  host. Unbounded, a 40-model catalog is how an instance earns a 429, and a 429 is cached as \"would
-  not say\" for the whole TTL, so one burst would cost reasoning detection for every model on the
-  connection."
-  8)
-
-;; The cache keys a background lookup is already in flight for. Without this, a burst of page loads
-;; against a stale entry would each start their own.
-(defonce ^:private refreshing
-  (atom #{}))
-
-(defonce ^:private refresh-permits
-  ;; Background refreshes honour the same bound as the fan-out that triggers them. Serving a believed
-  ;; answer costs nanoseconds, so a stale catalog walks its whole listing in microseconds and would
-  ;; otherwise hand every model its own thread at once — the burst [[lookup-concurrency]] exists to
-  ;; prevent, arriving by the back door.
-  (Semaphore. lookup-concurrency))
+  (let [k              (cache-key credentials model)
+        lookup         (delay
+                         (try
+                           (let [entry (cache/lookup @capabilities-cache k)]
+                             (if (and entry (not (stale? entry)))
+                               (:caps entry)
+                               (remember! k (fetch-capabilities credentials model))))
+                           (finally
+                             (swap! in-flight dissoc k))))
+        ;; `swap-vals!` hands back the map as it was, so exactly one thread finds `k` missing from it
+        [before after] (swap-vals! in-flight #(cond-> % (not (contains? % k)) (assoc k lookup)))]
+    [(not (contains? before k)) (get after k)]))
 
 (defn- refresh-in-background!
-  "Re-ask for `model` on another thread, unless a lookup for it is already in flight.
-
-  Goes straight to [[fetch-and-remember!]]: the read paths serve what is already believed, so routing
-  a refresh through them would never actually re-ask."
+  "Re-ask for `model` on another thread, unless a lookup for it is already in flight."
   [credentials model]
-  (let [k          (cache-key credentials model)
-        [claimed?] (swap-vals! refreshing conj k)]
-    ;; `swap-vals!` hands back the set as it was, so exactly one thread sees `k` missing from it
-    (when-not (contains? claimed? k)
-      (u.jvm/in-virtual-thread*
-       (try
-         (.acquire ^Semaphore refresh-permits)
-         (try
-           (fetch-and-remember! credentials model)
-           (finally
-             (.release ^Semaphore refresh-permits)))
-         (finally
-           (swap! refreshing disj k)))))))
+  (let [[started? lookup] (shared-lookup credentials model)]
+    (when started?
+      (u.jvm/in-virtual-thread* @lookup))))
 
 (defn- capabilities
   "`model`'s capability set, or nil when nothing is known about it.
@@ -198,7 +210,7 @@
         (do (when (stale? entry)
               (refresh-in-background! credentials model))
             (:caps entry))
-        (fetch-and-remember! credentials model)))))
+        @(second (shared-lookup credentials model))))))
 
 (defn- cached-capabilities
   "[[capabilities]] without the cold fetch: nil rather than a wait when nothing is known yet.
@@ -219,7 +231,7 @@
 (defn clear-cache!
   "Forget every lookup. For tests, which must not inherit each other's servers."
   []
-  (reset! refreshing #{})
+  (reset! in-flight {})
   (swap! capabilities-cache cache/seed {}))
 
 ;;; --------------------------------------------- What callers ask for --------------------------------------------
