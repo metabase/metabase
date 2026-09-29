@@ -37,13 +37,17 @@
   A map in a `def` or `defonce` is the value, not an attr-map."
   [node]
   (let [[head _name & args] (:children node)]
-    (when-not (#{'def 'defonce} (hooks/sexpr head))
-      (loop [[arg & more] args]
+    (when-not (#{"def" "defonce"} (name (hooks/sexpr head)))
+      (loop [[arg & more :as args] args]
         (cond
           (hooks/string-node? arg)                                  (recur more)
           ;; a Malli `:- schema` return annotation
           (and (hooks/keyword-node? arg) (= :- (hooks/sexpr arg))) (recur (rest more))
-          (hooks/map-node? arg)                                     (hooks/sexpr arg))))))
+          (hooks/map-node? arg)                                     (hooks/sexpr arg)
+          ;; a multi-arity body can end with a trailing attr-map
+          (hooks/list-node? arg)                                    (let [trailing (last args)]
+                                                                      (when (hooks/map-node? trailing)
+                                                                        (hooks/sexpr trailing))))))))
 
 (defn- dynamic?
   "Whether the var defined by `def-node` is dynamic, through metadata on `symbol-node` or a `defn` attr-map."

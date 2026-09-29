@@ -36,6 +36,7 @@
       "(defonce ^:dynamic *x* nil)"
       "(defn f {:dynamic true} [] nil)"
       "(defn f \"docstring\" {:dynamic true} [] nil)"
+      "(defn f \"docstring\" ([] 1) ([a] a) {:dynamic true})"
       "(mu/defn f :- :int \"docstring\" {:dynamic true} [] 1)")))
 
 (deftest ^:parallel discourage-dynamic-vars-location-test
@@ -52,7 +53,12 @@
       "(def ^{:private true} x nil)"
       "(def x {:dynamic true})"
       "(defonce x {:dynamic true})"
-      "(defn f {:private true} [] nil)")))
+      "(clojure.core/def x {:dynamic true})"
+      "(clojure.core/defonce x {:dynamic true})"
+      "(cljs.core/defonce x {:dynamic true})"
+      "(defn f {:private true} [] nil)"
+      "(defn f [] {:dynamic true})"
+      "(defn f ([] 1) ([a] {:dynamic true}))")))
 
 (deftest ^:synchronized discourage-dynamic-vars-config-test
   (testing "BEGUILD-37: config.edn sends defn, the mu/defn variants, and cljs defs to the dynamic-var check"
