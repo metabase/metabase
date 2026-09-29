@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-22 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Finnish\n"
 "Language: fi_FI\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-09-29 05:42\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "Täällä ei ole mitään"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "Valitse..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "Käyttäjäattribuutti"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "Käyttäjäattribuutti"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "Peruuta"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -700,6 +695,8 @@ msgstr "Poista käyttöoikeus kaikista ryhmistä"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "Käyttäjäryhmät"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "Vuokralaisryhmät"
 
@@ -761,8 +757,8 @@ msgstr "AI-chatin prompt-ohjeet"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "Lisää tähän ohjeet sivupalkin AI-chat-kokemukselle kohteessa {0}. Voit haluta antaa ohjeita sävystä, suosittavista entiteettityypeistä ja vastaavista."
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "Lisää tähän ohjeet sivupalkin AI-chat-kokemusta varten sovelluksessa {0} sekä Slackin Metabotia varten. Voit antaa ohjeita esimerkiksi sävystä, suosittavista entiteettityypeistä ja vastaavista."
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1167,7 +1163,6 @@ msgstr "Hae ryhmää"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "Ryhmän nimi"
 
@@ -1287,11 +1282,9 @@ msgstr "Poista tilaus kaikista tilauksista / hälytyksistä"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1348,11 +1341,13 @@ msgid "Unit"
 msgstr "Yksikkö"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "Määritys lisätty"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "Määritys päivitetty"
@@ -1395,6 +1390,7 @@ msgstr "Uusi yhdistämismääritys"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1410,6 +1406,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "Lisää vähintään yksi mapitus käyttääksesi manuaalista ryhmämapitusta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "Lisää mapitus"
 
@@ -1439,30 +1436,36 @@ msgid "Enter JWT group..."
 msgstr "Syötä JWT-ryhmä..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "Tälle ryhmälle on jo olemassa mapitus"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} ryhmää"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "Valitse {0}-ryhmä..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "Muokkaa kartoitusta"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "Poista mapitus"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "Ei ryhmiä"
@@ -1475,10 +1478,12 @@ msgid "Changes saved"
 msgstr "Muutokset tallennettu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Virhe ryhmämapituksen tallentamisessa"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "Mapitus poistettiin, mutta kaikkia sen ryhmiä ei voitu päivittää"
 
@@ -1487,14 +1492,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "Mapitus poistettu ja ryhmämapitus poistettu käytöstä"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "Määritys poistettu"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1503,6 +1504,11 @@ msgstr "Virhe JWT-asetusten tallentamisessa"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "Virhe JWT-konfiguraation lataamisessa"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1529,14 +1535,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "Voit lähettää lisäkäyttäjäattribuutteja {0}:lle lisäämällä attribuutit avain/arvo-pareina JWT:hen"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "Sähköposti-attribuutin avain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Etunimi-attribuutin avain"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Sukunimi-attribuutin avain"
 
@@ -1551,7 +1560,7 @@ msgstr "Tenant-määrityksen attribuuttiavain"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Ryhmäkartoitus"
 
@@ -1571,6 +1580,7 @@ msgstr "Tallenna ja ota käyttöön"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1753,17 +1763,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "Mapppaa OIDC-claimit käyttäjäattribuutteihin. Käytä standardeja OIDC-claim-nimiä tai palveluntarjoajasi omia claimeja."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "Sähköpostiattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "Etunimiattribuutti"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "Sukunimiattribuutti"
 
@@ -1906,6 +1913,7 @@ msgid "SAML keystore password"
 msgstr "SAML-avainsäilön salasana"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "Shh..."
 
@@ -2089,21 +2097,21 @@ msgstr "Seuraava kohde"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2154,8 +2162,8 @@ msgstr "Välimuistiasetukset"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2613,11 +2621,11 @@ msgstr "Aseta dev-palvelimen URL, jotta plugin-koodi ladataan paikalliselta dev-
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2745,9 +2753,9 @@ msgstr "Katso SDK:n muutosloki"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "Käytössä"
@@ -2891,6 +2899,7 @@ msgstr "Ne on saatettu rakentaa eri versiota varten, ja ne saattavat vaatia päi
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2953,6 +2962,7 @@ msgid "Snippet"
 msgstr "Koodinpätkä"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3769,7 +3779,6 @@ msgid "Actions for {0}"
 msgstr "Toiminnot kohteelle {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "Näytä resurssit"
 
@@ -3829,6 +3838,10 @@ msgstr "Asenna Metabasen Data App -taidot projektiisi ja pyydä sitten AI-agentt
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSkillsSection/DataAppSkillsSection.tsx
 msgid "Install command"
 msgstr "Asennuskomento"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "Vanhentunut"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -3902,6 +3915,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "Tätä datasovellusta ei ole olemassa tai se on poistettu käytöstä."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "Tämä data-app on vanhentunut"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "Tätä datasovellusta ei ole vielä julkaistu"
 
@@ -3944,6 +3961,12 @@ msgstr "Jokin meni pieleen tätä sovellusta ladattaessa. Yritä päivittää si
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "Tämä data-sovellus ei latautunut. Se on voitu estää tai se on tavoittamattomissa. Kokeile päivittää sivu tai palaa takaisin."
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "Tämä sovellus on rakennettu data-appien versiolle {0}. Migroi se nykyiseen versioon ja rakenna sekä synkronoi se sitten uudelleen."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4140,7 +4163,7 @@ msgstr "Prosessi suoritetaan taustalla. Tietokannan koosta riippuen tämä voi k
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4284,6 +4307,7 @@ msgstr "Voit myös lisätä tietokantoja ohjelmallisesti API:n kautta."
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4313,12 +4337,12 @@ msgstr "Näytä kaikki {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4443,12 +4467,12 @@ msgstr "Valitse kohde nähdäksesi sen riippuvuudet"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4967,8 +4991,22 @@ msgid "exact specifications"
 msgstr "tarkat määritykset"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "Sallitut alkuperät koko sovelluksen upotukselle"
+msgid "Authorized origins"
+msgstr "Sallitut alkuperät"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "Ota käyttöön koko sovelluksen upotus"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "Upota koko Metabase-sovellus tai yksittäisiä sivuja sovellukseesi. Paras monimutkaisiin, BI-painotteisiin skenaarioihin, joissa haluat upottaa kaikki Metabasen ominaisuudet sovellukseesi. Jos haet UX:n vakautta, joustavuutta tai hallintaa, tai sinulla ei ole monimutkaista käyttötapausta, joka vaatii täysiverisen BI-ratkaisun, suosittelemme käyttämään sen sijaan Modulaarista upotusta."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "Dokumentaatio"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5180,6 +5218,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5270,7 +5309,6 @@ msgstr "OK"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5876,12 +5914,12 @@ msgid "Queries generated"
 msgstr "Luodut kyselyt"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "Negatiivinen"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "Positiivinen"
 
@@ -6320,8 +6358,9 @@ msgid "Unavailable"
 msgstr "Ei saatavilla"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "Kompleksisuuspisteet"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "Monimutkaisuuspisteet {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6414,6 +6453,7 @@ msgstr "Riippuvuusdiagnostiikka"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6421,7 +6461,6 @@ msgstr "Riippuvuusdiagnostiikka"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6461,6 +6500,7 @@ msgstr "Tiedot"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6475,7 +6515,6 @@ msgstr "Tiedot"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6899,6 +6938,7 @@ msgid "No changes to push"
 msgstr "Ei muutoksia pushattavaksi"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7137,24 +7177,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "Pidä koontinäyttösi, kysymyksesi ja kokoelmasi turvallisesti varmuuskopioituna Gitissä."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "Synkronoidaanko riippuvuuksien kanssa olevat kokoelmat?"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "Valittua kokoelmaa ei voitu synkronoida"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "Synkronoi jatkaaksesi"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "Ei voi synkronoida"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "Synkronoi vaaditut kokoelmat"
+msgid "Item"
+msgstr "Kohde"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "Käytössä kohteissa"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "Siirry kokoelmaan"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7320,13 +7360,12 @@ msgid "What will be overwritten: "
 msgstr "Mitä ylikirjoitetaan: "
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "Koodinpätkät"
+msgid "Snippets and glossary"
+msgstr "Koodinpätkät ja sanasto"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "Kirjasto, Muunnokset ja Koodinpätkät."
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "Kirjasto, Muunnokset, Koodinpätkät ja sanasto."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7421,6 +7460,14 @@ msgid "An error occurred during sync."
 msgstr "Synkronoinnin aikana tapahtui virhe."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "Synkronointi pysäytetty"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "Synkronointi peruttiin."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "Odota, että tämä valmistuu, ennen kuin muokkaat sisältöä."
 
@@ -7429,15 +7476,33 @@ msgid "Cancelling…"
 msgstr "Peruutetaan…"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "Työstetään yhä…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "Aloittaja {0} klo {1}"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "Työstetään yhä. Ei päivitystä {0} minuuttiin."
-msgstr[1] "Työstetään yhä. Ei päivitystä {0} minuuttiin."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "Aloitettu klo {0}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "Pysähtyi kohdassa {0}% vaiheessa {1}"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "Edistymistä ei ole raportoitu viime aikoina. Synkronointi on edelleen käynnissä."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "Ei edistymistä {0} minuuttiin. Synkronointi on edelleen käynnissä."
+msgstr[1] "Ei edistymistä {0} minuuttiin. Synkronointi on edelleen käynnissä."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7568,6 +7633,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "Synkronoitu kokoelma päivittyy vastaamaan uutta branchia. Kysymykset, jotka ovat nykyisessä branchissa mutta eivät uudessa, poistetaan pysyvästi kaikista koontinäytöistä tai sisällöstä, jotka viittaavat niihin, vaikka vaihtaisit takaisin."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "valmistellaan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "viedään sisältöä"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "pusketaan"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "tuodaan sisältöä"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "tallennetaan synkronoinnin tila"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "viimeistellään"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "Synkronoinnin haara vaihtui toisessa istunnossa. Päivitä sivu ja yritä uudelleen."
 
@@ -7599,16 +7688,24 @@ msgid "Our analytics"
 msgstr "Oma analytiikka"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "Tuntematon kokoelma"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "Tämän kokoelman koontinäytöt tai kysymykset perustuvat henkilökohtaiseen kokoelmaan tallennettuun sisältöön, jota ei voi synkronoida. Jatka siirtämällä sisältö jaettuun kokoelmaan."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "Tämän kokoelman koontinäytöt tai kysymykset käyttävät käyttöanalytiikan sisältöä, jota ei voi synkronoida. Päivitä ne käyttämään synkronoitavaa sisältöä jatkaaksesi."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "Tämän kokoelman koontinäytöt tai kysymykset perustuvat sisältöön, jota ei voi synkronoida siinä sijainnissa, jossa se nyt on. Jatka siirtämällä sisältö synkronoitavaan kokoelmaan."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "Tämän kokoelman koontinäytöt tai kysymykset perustuvat koodinpätkiin, jotka synkronoituvat Kirjaston kanssa. Jatka synkronoimalla myös Kirjasto."
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "Tämän kokoelman koontinäytöt tai kysymykset käyttävät koodinpätkiä, jotka synkronoituvat Kirjaston mukana. Luo Kirjasto Datastudiossa ja synkronoi se sitten jatkaaksesi."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8293,8 +8390,9 @@ msgstr "Määritä ilmoituskanavat {0}-osiossa, jotta saat ilmoituksia Metabase-
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "Tietoturva"
 
@@ -8718,13 +8816,13 @@ msgstr[1] "Valittu {0} riviä"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8772,7 +8870,6 @@ msgstr "Luo uusi tietue"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9180,14 +9277,15 @@ msgstr "Jos sinun täytyy muuttaa näitä asetuksia, voit palata edellisiin vaih
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "Vuokralaiset"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9195,8 +9293,7 @@ msgstr "Ihmiset"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "Oikeudet"
 
@@ -9225,7 +9322,9 @@ msgstr "ja"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "taulu"
+msgid_plural "tables"
+msgstr[0] "taulu"
+msgstr[1] "taulut"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10107,6 +10206,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "Sinulta veloitetaan {0} per muunnosajo."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "Päivitä"
 
@@ -10230,6 +10330,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "Ilmoitamme sinulle, kun olet saavuttanut {0}% käyttökiintiöstäsi."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10448,7 +10549,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "Huom: poistamalla jokaisen arvon ne palautuvat oletuksiin."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "Kaavion värit"
 
@@ -10474,22 +10575,6 @@ msgstr "Värit"
 msgid "Preview"
 msgstr "Esikatselu"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "Latausviesti"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "Kun laskelmat eivät palauta tuloksia"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "Kun objekteja ei löydy"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "Fontin paino"
@@ -10505,8 +10590,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "Fontti"
 
@@ -10693,6 +10778,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "Fontit"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "Latausviesti"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10737,6 +10827,14 @@ msgstr "Kirjautumis- ja tilauksen peruutussivut"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "Aloitussivu"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "Kun laskelmat eivät palauta tuloksia"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "Kun objekteja ei löydy"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10865,7 +10963,7 @@ msgid "Add another summary"
 msgstr "Lisää toinen yhteenveto"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12558,10 +12656,10 @@ msgstr "Uusi mahtava toimintoni"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "Se on valinnainen, mutta tosi hyödyllinen"
 
@@ -12646,10 +12744,8 @@ msgid "Field type"
 msgstr "Kentän tyyppi"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "Ulkoasu"
@@ -13207,6 +13303,7 @@ msgid "upgrade"
 msgstr "päivitä"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13221,6 +13318,12 @@ msgstr "päivitä"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "Tietokannat"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "Upotus"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13241,6 +13344,10 @@ msgstr "Suorituskyky"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Ohje"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "Aiheeseen liittyvät asetukset"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13681,6 +13788,236 @@ msgstr "Luo segmenttejä, jotta voit lisätä ne kyselyrakentajan Suodata-pudotu
 msgid "Filter by table"
 msgstr "Suodata taulun mukaan"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "Käyttöönotto-opas"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "Vierasukotukset"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "Teemat"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "Muokkaa teemaa"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "Kopioi koodi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "Teeman nimi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "Päävärit"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "Palauta päävärit oletuksiin"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "Näytä vähemmän värejä"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "Näytä lisää värejä"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "Luo uudelleen suodatin-, yhteenveto-, positiivinen-, negatiivinen- ja kaaviovärit brändiväristä"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "Luo uudelleen brändiväristä"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "Perusfonttikoko"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "Poista teema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "Tallenna teema"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "käyttöehdot"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "Ota modulaarinen upotus käyttöön, jotta näet teemastasi live-esikatselun."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "Hyväksy {0}, jotta näet teemastasi live-esikatselun."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "Ota modulaarinen upotus käyttöön"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "Hyväksy ja jatka"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "Teeman esikatselu"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "Luo koontinäyttö tai kysymys, jotta voit esikatsella tätä teemaa."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "Vaihda esikatseltava resurssi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "Valitse data esikatselua varten"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "Brändi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "Tausta"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "Ensisijainen teksti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "Toissijainen teksti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "Kolmannen tason teksti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "Reunus"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "Varjo"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "Haluatko varmasti poistaa tämän teeman? Tätä toimintoa ei voi kumota."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "Kopioi ja poista"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "Duplikoi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "Teema kopioitiin onnistuneesti"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "Teeman kopiointi epäonnistui"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "Luo ja muokkaa teemoja, jotta voit käyttää niitä uudelleen useissa upotuksissa."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "Uusi teema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "Vaalea"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "Tumma"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "Teema poistettiin onnistuneesti"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "Teeman poistaminen epäonnistui"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "Nimetön teema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "Suodatin-, yhteenveto-, positiivinen-, negatiivinen- ja kaaviovärit luotiin uudelleen brändiväristä."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "Kumoa"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "Päävärit palautettiin oletuksiin."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "Teema tallennettu"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "Teeman tallentaminen epäonnistui"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "Upotuksen käyttöönotto-opas"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "Seuraa opasta aloittaaksesi modulaarisen upotuksen"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -13922,7 +14259,6 @@ msgstr "Sisäiset ryhmät"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "Vuokralaisten käyttäjät"
 
@@ -14997,7 +15333,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "Et voi palauttaa poistettua API-avainta. Sinun täytyy luoda uusi avain."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "Ei, älä poista"
 
@@ -15047,7 +15382,6 @@ msgid "Copy and save this API key"
 msgstr "Kopioi ja tallenna tämä API-avain"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "Tallenna tämä avain turvalliseen paikkaan. Tietoturvasyistä emme voi näyttää sitä sinulle uudelleen."
 
@@ -15207,6 +15541,208 @@ msgstr "Määritä"
 msgid "Edit configuration"
 msgstr "Muokkaa konfiguraatiota"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "Ensin juridiikkaa"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "Metabase-tilien jakaminen on tietoturvariski. Vaikka suodattaisit dataa asiakaspuolella, jokainen käyttäjä voisi tokenillaan nähdä kaikki kyseisen jaetun tilin näkyvissä olevat tiedot."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "Ja lisäksi pidämme jaettuja tilejä epäreiluna käyttönä. Reilu käyttö tarkoittaa, että jokaisella upotetun analytiikan loppukäyttäjällä on oma Metabase-tili."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "Hylkää ja palaa takaisin"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "Kun käytät Reactin Embedded analytics SDK:ta, jokaisella loppukäyttäjällä tulee olla oma Metabase-tili."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "Modulaarista upotusta käytettäessä jokaisella loppukäyttäjällä täytyy olla oma Metabase-tili."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "ota käyttöön JWT- tai SAML SSO"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "Voit testata Upotettu analytiikka -SDK:ta nopeasti localhostissa API-avaimilla. Käyttääksesi SDK:ta muilla sivustoilla, {0} ja {1}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "Voit testata Upotettu analytiikka -SDK:ta nopeasti localhostissa API-avaimilla. Käyttääksesi SDK:ta muilla sivustoilla, {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "Ota käyttöön modulaarinen upotus-SDK"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "Upota Metabasen kaikki teho sovellukseesi, jotta voit rakentaa räätälöidyn analytiikkakokemuksen ja hallita koontinäyttöjä ja dataa ohjelmallisesti."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "Pika-aloitus"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "Upotuksen salainen avain"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "Standalone Upotus Salainen Avain käytetään allekirjoittamaan JSON Web Tokenit /api/embed-pyyntöihin. Tämä mahdollistaa turvallisen ympäristön luomisen, joka on rajoitettu tiettyihin käyttäjiin tai organisaatioihin."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "Luo avain uudelleen"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "Luodaanko upotusavain uudelleen?"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "Tämä aiheuttaa sen, että nykyiset upotukset lakkaavat toimimasta, kunnes ne on päivitetty uudella avaimella."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "Luo avain"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "Erottele arvot välilyönnillä. Localhost ei ole sallittu. Muutokset tulevat voimaan minuutin kuluessa."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "Erota arvot välilyönnillä. Localhost sisältyy automaattisesti. Muutokset tulevat voimaan yhden minuutin kuluessa."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "Cross-Origin Resource Sharing (CORS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "Lisää verkkosivustojen domainit, joissa haluat sallia upotuksen. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "Määrittää, sallitaanko evästeet sivustojen välisissä pyynnöissä. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "Sinun kannattaa luultavasti muuttaa tämä asetus arvoon {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "Ei mitään"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "Lax (oletus)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "Sallii Metabase-istuntoevästeiden jakamisen samalla domainilla. Käytetään tuotantoympäristön instansseissa samalla domainilla."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "Strict (ei suositella)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "Ei salli Metabase-istuntoevästeiden jakamista upotettujen instanssien kanssa. Käytä tätä, jos et halua ottaa käyttöön istunnon jakamista upotuksessa."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "Ei mikään (vaatii HTTPS:n)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "Käytä \"None\", kun sovelluksesi ja Metabase on hostattu eri domaineissa. Ei yhteensopiva Safarin ja iOS-pohjaisten selainten kanssa."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "SameSite-evästeasetus"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "Upotusasetukset"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "Upotusmenetelmät"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "Helpoin tapa upottaa Metabase. Upota koontinäytöt, kysymykset, kyselyrakentaja, luonnollisen kielen kyselyt AI:lla ja paljon muuta sovellukseesi komponenteilla. Rakennettu SDK:n päälle, komponenttikohtaisilla ohjauksilla ja teemojen tuella."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "Version kiinnitys"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Metabase Cloud -instanssit päivitetään automaattisesti uusiin julkaisuihin. SDK-paketit ovat tiukasti yhteensopivia tietyn Metabase-version kanssa. Voit pyytää Metabase-versiosi kiinnitystä pääversioon ja päivittää Metabasen ja SDK-riippuvuuden koordinoidusti."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "Pyydä version kiinnitystä"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "Asetettu ympäristömuuttujalla"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "Uusi upotus"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "Ota käyttöön vierasukotukset"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "Turvallinen tapa upottaa kaavioita ja koontinäyttöjä ilman kertakirjautumista, kun et halua tarjota ad hoc -kyselyitä tai porautumista kaavioihin."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "Päivitä Metabase Prohon tehokkaampia upotusmenetelmiä varten"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "Upota kaavioita, porautumiset sisältäviä koontinäyttöjä tai jopa kyselyrakentaja omaan sovellukseesi muokattavilla komponenteilla. Suojaa upotukset kertakirjautumisella."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "Julkaistut upotukset"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "Tämä instanssi on kehitystilassa, ja sitä voi käyttää vain kehitys- tai testaustarkoituksiin."
@@ -15223,10 +15759,32 @@ msgstr "Tämä instanssi on kehitystilassa, ja sitä voi käyttää vain kehitys
 msgid "Get your token"
 msgstr "Hae tokenisi"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "Määritä ihmiset automaattisesti {0}-ryhmiin LDAP-ryhmäjäsenyyden perusteella"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "Manuaaliset ryhmäkohdistukset"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "LDAP-ryhmän nimi"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "Ei vielä yhdistämismäärityksiä"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Aktivoi"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "Virhe ladattaessa LDAP-määrityksiä"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15239,18 +15797,6 @@ msgstr "LDAP-portti"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "LDAP-suojaus"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "Ei mitään"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15281,12 +15827,26 @@ msgid "User search base"
 msgstr "Käyttäjähakujen perus-DN"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "LDAP-palvelimesi kohteen erottava nimi (DN), jota {0} käyttää lähtöpisteenä käyttäjiä haettaessa"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "Käyttäjäsuodatin"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "Kohdista LDAP-attribuutit {0}:n sähköposti-, etunimi- ja sukunimikenttiin"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "Ryhmähaun perus-DN"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "Ei vaadita LDAP-hakemistoissa, jotka tarjoavat 'memberOf'-overlayn, kuten Active Directory. Haku tehdään rekursiivisesti."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15327,9 +15887,6 @@ msgstr "Webhookit"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "Lokalisointi"
@@ -15551,18 +16108,6 @@ msgstr "Ota X-Ray-ominaisuudet käyttöön"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "Käytön seuranta"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "Version kiinnitys"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Metabase Cloud -instanssit päivitetään automaattisesti uusiin julkaisuihin. SDK-paketit ovat tiukasti yhteensopivia tietyn Metabase-version kanssa. Voit pyytää Metabase-versiosi kiinnitystä pääversioon ja päivittää Metabasen ja SDK-riippuvuuden koordinoidusti."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "Pyydä version kiinnitystä"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -16028,10 +16573,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "Ei vielä määrityksiä, ryhmäsynkronointi ei ole päällä"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Ei vielä yhdistämismäärityksiä"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "Synkronoi ryhmien jäsenyydet"
 
@@ -16206,9 +16747,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "Poista tämä kohde"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "Upotetut koontinäytöt"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "Yhtään koontinäyttöä ei ole upotettu vielä."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "Upotetut kysymykset"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "Yhtään kysymystä ei ole upotettu vielä."
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "Yhtään dokumenttia ei ole vielä jaettu julkisesti."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "Julkinen linkki"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "Mitätöi linkki"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "Mitätöi linkki"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "Poistetaanko tämä linkki käytöstä?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "Ne eivät enää toimi eikä niitä voi palauttaa, mutta voit luoda uusia linkkejä."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16400,7 +16977,6 @@ msgstr "Hallitse välimuistitusta"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "Kokeile Metabase Prota"
 
@@ -16459,6 +17035,14 @@ msgstr "Testaa koodia staging-ympäristössä erillisessä Metabase-instanssissa
 msgid "Whitelabel email notifications"
 msgstr "Whitelabel-sähköposti-ilmoitukset"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "Luo mukautettuja teemoja"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "Hienosäädä upotetun sisällön ulkoasua väreillä ja fonteilla."
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "Minimoi ylläpito"
@@ -16507,19 +17091,21 @@ msgstr "Metabase-ryhmäsynkronointi SAML:n, JWT:n ja LDAP:n avulla"
 msgid "User provisioning with SCIM"
 msgstr "Käyttäjien provisiointi SCIM:llä"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "päivitä Metabase Prohon"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "Hanki tämä Prolla. Kokeile ilmaiseksi."
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "Käytä usean tenantin käyttäjästrategiaa"
+msgid "Manage customer-facing analytics at scale"
+msgstr "Hallinnoi asiakkaille suunnattua analytiikkaa skaalassa"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Jaa data turvallisesti ulkoisten käyttäjien kanssa ja salli heidän luoda sisältöä. Hyödynnä samat koontinäytöt ja käyttöoikeudet kaikissa tenant-ympäristöissä sen sijaan, että loisit ne uudelleen jokaiselle asiakkaalle."
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "Ryhmittele asiakkaasi vuokralaisiin, käytä samoja koontinäyttöjä ja käyttöoikeuksia uudelleen ja pidä kunkin vuokralaisen data eristettynä."
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -16969,18 +17555,6 @@ msgid "There was an error bookmarking these items."
 msgstr "Näiden kohteiden kirjanmerkitsemisessä tapahtui virhe."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "Duplikoi"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17308,8 +17882,8 @@ msgid "This comment was deleted."
 msgstr "Tämä kommentti poistettiin."
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "Mikä on koontinäyttösi nimi?"
 
@@ -17596,20 +18170,6 @@ msgstr "Alfa-prosentti"
 msgid "Use system default"
 msgstr "Käytä järjestelmän oletusta"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "Tumma"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "Vaalea"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "Osa käännöksistä on Metabase-yhteisön tekemiä, eikä niiden laatu välttämättä ole täydellinen."
@@ -17626,6 +18186,14 @@ msgstr "osallistu käännösten tekemiseen täällä"
 #, javascript-format
 msgid "You can {0}"
 msgstr "Voit {0}"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "Mihin haluat tallentaa tämän?"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17728,14 +18296,6 @@ msgstr "Valitse dimensio"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "Mikä on dokumenttisi nimi?"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "Mihin haluat tallentaa tämän?"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18240,7 +18800,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "Tietokannat näkyvät täällä, kun ylläpitäjäsi ovat lisänneet niitä"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18350,26 +18909,6 @@ msgstr "Siirretäänkö {0} kohdetta?"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "Valitse kysymys tai malli"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "Julkinen linkki"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "Mitätöi linkki"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "Mitätöi linkki"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "Poistetaanko tämä linkki käytöstä?"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "Ne eivät enää toimi eikä niitä voi palauttaa, mutta voit luoda uusia linkkejä."
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18787,7 +19326,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Minuutti"
 msgstr[1] "{0} minuuttia"
 
@@ -18838,16 +19377,6 @@ msgstr "muokattu"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "kohde"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "Kumoa"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -19053,8 +19582,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "Pyydä Metabase Store -ylläpitäjää päivittämään pakettisi."
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "Aloita tämän ja muiden Pro-ominaisuuksien 14 päivän kokeilu."
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "Saat 14 päivän ilmaisen kokeilun tästä ja muista Pro-ominaisuuksista"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19469,6 +19998,7 @@ msgid "Indexed record"
 msgstr "Indeksoitu tietue"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "Tutkimus"
@@ -22556,227 +23086,6 @@ msgstr "Dokumentti tallennettu"
 msgid "Error saving document"
 msgstr "Virhe tallennettaessa dokumenttia"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "Aloita"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "Tenantit"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "Upotuskeskus"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "Uusi upotus"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "Teemat"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "Brändäyselementit"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "Koko sovelluksen upotuksen värit ja brändäys perustuvat ulkoasuasetuksiin, jotka on määritetty"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML on konfiguroitu"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "Voit tarkistaa kaikki todennusasetukset ylläpidossa."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "Siirry ylläpitoon"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "Katso lisää todennusvaihtoehtoja, kuten SAML, kohdasta"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "Ylläpidon asetukset"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "Päivitä Metabase Prohon saadaksesi React SDK:n ja lisää edistyneitä vaihtoehtoja."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "Julkaistut guest-upotukset"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "Dokumentaatio"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "Ota käyttöön usean vuokralaisen käyttäjästrategia"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Tenant on käyttäjälle määritetty ominaisuusjoukko, jolla hänet eristetään muista tenanteista. Esimerkiksi SaaS-sovelluksessa, jossa on upotetut Metabase-koontinäytöt, voit määrittää jokaisen asiakkaan tenanttiin. Tenanttien avulla voit käyttää samoja koontinäyttöjä ja käyttöoikeuksia kaikissa tenanteissa sen sijaan, että loisit ne uudelleen jokaiselle asiakkaalle."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "Ota usean tenantin käyttö käyttöön"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "Näytä dokumentaatio"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "Vaihe {0} valmis"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "Määritä SSO avataksesi"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "Aloita Metabase-upotuksen käyttö"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "Luo ensimmäinen upotus"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "Jos haluat vain yksinkertaisen upotetun koontinäytön, nämä vaiheet ovat kaikki mitä tarvitset."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "Aloita Metabase-upotuksen perusteista."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "Hienosäädä upotustasi"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "Jos sinulla on mielessä monipuolisempi kokonaisuus, jossa on paljon käyttäjiä ja tenantteja, jatka eteenpäin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "Päivitä Metabase Prohon, jotta voit määrittää edistyneet vaihtoehdot."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "Yhdistä oma tietokantasi tai lataa CSV ja aloita työskentely oikealla datallasi."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "Luo koontinäyttö"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "Luo koontinäyttö datastasi automaattisesti röntgeneillä."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "Hae upotuskoodinpätkä"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "Upota koontinäyttö, kysymys, kyselyrakentaja tai kokoela­selain. Konfiguroi käyttökokemus ja mukauta ulkoasua."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "Upota koontinäyttö tai kysymys. Määritä käyttökokemus ja mukauta ulkoasu."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "Määritä datakäyttöoikeudet ja tenantit"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "Jaa data ulkoisten käyttäjien kanssa ja salli heidän luoda sisältöä."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "Määritä SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "Määritä JWT-todennus varmistaaksesi, että vain valtuutetut käyttäjät voivat käyttää upotuksiasi."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "Upota tuotantoon SSO:lla"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "Luo mukautettu teema"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "Hienosäädä upotetun sisällön ulkoasua väreillä ja fonteilla."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "Määritä AI"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "Yhdistä LLM-palveluntarjoajaan, jotta voit upottaa AI-chat-käyttöliittymiä ja antaa käyttäjiesi kysyä luonnollisen kielen kyselyitä."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "Hyödyllisiä linkkejä"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "Upotusmenetelmät"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "Demo"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "Luo mukautettuja teemoja"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "Suojaa upotuksesi kertakirjautumisella"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "Yhdistä Metabase identiteetintarjoajaasi JSON Web Tokens (JWT) -tokeneilla käyttäjien todentamiseksi, jotta vain valtuutetut käyttäjät voivat käyttää upotuksiasi."
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "Käännä upotettu sisältösi"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "Lataa käännössanakirja kääntääksesi sisältöä, kuten kohteiden otsikot, otsikot, suodattimien nimet ja tiedot upotetuissa komponenteissasi."
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -23091,23 +23400,13 @@ msgid "Guest"
 msgstr "Vierailija"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "Modulaarisen upotuksen käyttöönotto epäonnistui"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "Upotuksen käyttöönotto epäonnistui"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "käyttöehdot"
+msgid "Failed to enable guest embeds"
+msgstr "Vierasukotusten käyttöönotto epäonnistui"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "Jatkaaksesi ota upotus käyttöön ja hyväksy {0}."
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "Jatkaaksesi ota vierasukotukset käyttöön ja hyväksy {0}."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23120,13 +23419,8 @@ msgid "Agree to the {0} to continue."
 msgstr "Hyväksy {0} jatkaaksesi."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "Ota käyttöön modulaarinen upotus aloittaaksesi."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "Ota upotus käyttöön aloittaaksesi."
+msgid "Enable guest embeds to get started."
+msgstr "Ota vierasukotukset käyttöön aloittaaksesi."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23147,6 +23441,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "Sinun kannattaa kuitenkin lukea yllä linkitetty lisenssiteksti, sillä se on varsinainen lisenssi, jonka hyväksyt ottaessasi tämän ominaisuuden käyttöön."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "Modulaarisen upotuksen käyttöönotto epäonnistui"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "Jatkaaksesi ota käyttöön modulaarinen upotus ja hyväksy käyttöehdot."
 
@@ -23155,16 +23453,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "Hyväksy käyttöehdot jatkaaksesi."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "Modulaarista upotusta käytettäessä jokaisella loppukäyttäjällä täytyy olla oma Metabase-tili."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "Metabase-tilien jakaminen on tietoturvariski. Vaikka suodattaisit dataa asiakaspuolella, jokainen käyttäjä voisi tokenillaan nähdä kaikki kyseisen jaetun tilin näkyvissä olevat tiedot."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "Ja lisäksi pidämme jaettuja tilejä epäreiluna käyttönä. Reilu käyttö tarkoittaa, että jokaisella upotetun analytiikan loppukäyttäjällä on oma Metabase-tili."
+msgid "Enable modular embedding to get started."
+msgstr "Ota käyttöön modulaarinen upotus aloittaaksesi."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23199,12 +23489,6 @@ msgstr "Yksi tai useampi tämän koontinäytön kysymyksistä tekee kyselyitä t
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "Tämä kysymys tekee kyselyitä tietokantaan, jossa tietokantareititys on käytössä. Tietokantakyselyt suoritetaan reititintietokantaa vasten."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "Kopioi koodi"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23579,156 +23863,6 @@ msgstr "Tämä visualisointi on vanhentunut. Pyydä MCP client -asiakastasi suor
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "Tätä visualisointia ei voitu ladata. Varmista, että Metabase on tavoitettavissa, ja pyydä sitten MCP client -asiakastasi näyttämään tämä uudelleen."
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "Upotetut koontinäytöt"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "Yhtään koontinäyttöä ei ole upotettu vielä."
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "Upotetut kysymykset"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "Yhtään kysymystä ei ole upotettu vielä."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "Jokainen loppukäyttäjä tarvitsee oman Metabase-tilin"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "Kun upotat Metabasen, jokainen sovellustasi käyttävä henkilö tarvitsee oman Metabase-tilin. Tämä johtuu siitä, että yhden tilin jakaminen käyttäjien kesken on tietoturvariski. Datan suodattaminen asiakaspuolella ei ratkaise sitä, koska kuka tahansa, jolla on kyseisen tilin token, pääsee kaikkeen, mitä tili näkee. Lisäksi pidämme jaettuja tilejä epäreiluna käyttönä."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "Hyväksy"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "Modulaarinen upotus ja React SDK"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "Upota Metabasen koko teho sovellukseesi modulaarisella upotuksella ja React SDK:lla, jotta voit rakentaa mukautettuja analytiikkakokemuksia ja hallita koontinäyttöjä ja dataa ohjelmallisesti."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "Ota upotus käyttöön"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "Upota Metabase-koontinäytöt ja -kysymykset sovellukseesi modulaarisella upotuksella."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "Koko sovelluksen upotus"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "Tapa upottaa koko Metabase-sovellus iframeen. Tämä sisältää merkittäviä kompromisseja eikä sitä yleensä suositella, ellei tiedä tarkalleen mitä tekee."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "Upotusmenetelmien saatavuus"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "Salainen avain guest-upotuksille"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "Standalone Upotus Salainen Avain käytetään allekirjoittamaan JSON Web Tokenit /api/embed-pyyntöihin. Tämä mahdollistaa turvallisen ympäristön luomisen, joka on rajoitettu tiettyihin käyttäjiin tai organisaatioihin."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "Luo avain uudelleen"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "Luodaanko upotusavain uudelleen?"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "Tämä aiheuttaa sen, että nykyiset upotukset lakkaavat toimimasta, kunnes ne on päivitetty uudella avaimella."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "Luo avain"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "Erottele arvot välilyönnillä. Localhost ei ole sallittu. Muutokset tulevat voimaan minuutin kuluessa."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "Erota arvot välilyönnillä. Localhost sisältyy automaattisesti. Muutokset tulevat voimaan yhden minuutin kuluessa."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "Lisää verkkosivuston domainit, joissa haluat sallia Modulaarisen upotuksen ja SDK:n. API-avaimia käyttävä SDK voi toimia vain localhostissa. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "Lisää verkkosivustojen domainit, joissa haluat sallia upotuksen. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "Cross-Origin Resource Sharing (CORS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "Määrittää, saako evästeitä lähettää cross-site-pyynnöissä. Sinun täytyy todennäköisesti vaihtaa tämä arvoon None, jos upottava sovelluksesi on hostattu eri domainissa kuin Metabase. Muuten jätä se arvoon Lax, koska se on turvallisempi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "Jos asetat tämän arvoon None, sinun on käytettävä HTTPS:ää, tai selaimet hylkäävät pyynnön. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "Sinun kannattaa luultavasti muuttaa tämä asetus arvoon {0}."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "Lax (oletus)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "Sallii Metabase-istuntoevästeiden jakamisen samalla domainilla. Käytetään tuotantoympäristön instansseissa samalla domainilla."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "Strict (ei suositella)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "Ei salli Metabase-istuntoevästeiden jakamista upotettujen instanssien kanssa. Käytä tätä, jos et halua ottaa käyttöön istunnon jakamista upotuksessa."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "Ei mikään (vaatii HTTPS:n)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "Käytä \"None\", kun sovelluksesi ja Metabase on hostattu eri domaineissa. Ei yhteensopiva Safarin ja iOS-pohjaisten selainten kanssa."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "SameSite-evästeasetus"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "Asetettu ympäristömuuttujalla"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -23901,6 +24035,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "Määritä dataoikeudet ja ota vuokralaiset käyttöön"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "Ota käyttöön usean vuokralaisen käyttäjästrategia"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "Siirrä koontinäyttö jaettuun kokoelmaan"
 
@@ -24030,8 +24168,8 @@ msgid "404 error after SSO sign-in"
 msgstr "404-virhe SSO-kirjautumisen jälkeen"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "Jos selaimesi palauttaa 404-virheen klikattuasi \"Sign in with SSO\", varmista, että upotuskeskuksen Todennus-välilehden JWT SSO URI -arvo osoittaa päätepisteeseesi ja että päätepisteesi on käynnissä ja tavoitettavissa."
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "Jos \"Sign in with SSO\" -painikkeen napsauttamisen jälkeen selain palauttaa 404-virheen, varmista, että ylläpitoasetuksissa / auth / JWT oleva JWT SSO URI -arvo osoittaa päätepisteeseesi ja että päätepisteesi on käynnissä ja saatavilla."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -24054,8 +24192,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "Käyttäjien provisiointi poistettu käytöstä JWT SSO:lle"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "Jos sovelluksestasi Metabaseen uudelleenohjauksen jälkeen näet virheilmoituksen \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Joko ota tämä ominaisuus käyttöön, jotta käyttäjät provisionoidaan, jos heitä ei vielä ole, tai varmista, että käyttäjät ovat olemassa ennen kuin kirjaat heidät sisään JWT SSO:n kautta."
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "Jos sovelluksestasi Metabaseen uudelleenohjauksen jälkeen näet virheilmoituksen \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.\""
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -24070,14 +24208,36 @@ msgid "Create embed"
 msgstr "Luo upotus"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "Hae upotuskoodinpätkä"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "Upota koontinäyttö, kysymys, kyselyrakentaja tai kokoela­selain. Konfiguroi käyttökokemus ja mukauta ulkoasua."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "Lisää datasi"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "Yhdistä oma tietokantasi tai lataa CSV ja aloita työskentely oikealla datallasi."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "Valmistele data"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "Luo koontinäyttö"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "Luo koontinäyttö datastasi automaattisesti röntgeneillä."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -24088,168 +24248,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "Aseta tarkat oikeudet monivuokralaista varten datan käytön hallintaan. Jaa koontinäytöt, kysymykset ja mallit ulkoisten käyttäjien kanssa ja salli heidän luoda sisältöä, samalla kun rajoitat pääsyä sisäiseen dataan tai muiden vuokralaisten dataan."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "Määritä JWT-todennus varmistaaksesi, että vain valtuutetut käyttäjät voivat käyttää upotuksiasi."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "Julkaisu"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "Upota tuotantoon SSO:lla"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "Julkaise upotettu koontinäyttösi tuotantoympäristöön ja jaa se käyttäjiesi kanssa."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "Muokkaa teemaa"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "Teeman nimi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "Päävärit"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "Palauta päävärit oletuksiin"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "Näytä vähemmän värejä"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "Näytä lisää värejä"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "Luo uudelleen suodatin-, yhteenveto-, positiivinen-, negatiivinen- ja kaaviovärit brändiväristä"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "Luo uudelleen brändiväristä"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "Perusfonttikoko"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "Poista teema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "Tallenna teema"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "Ota modulaarinen upotus käyttöön, jotta näet teemastasi live-esikatselun."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "Hyväksy {0}, jotta näet teemastasi live-esikatselun."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "Ota modulaarinen upotus käyttöön"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "Hyväksy ja jatka"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "Teeman esikatselu"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "Luo koontinäyttö tai kysymys, jotta voit esikatsella tätä teemaa."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "Vaihda esikatseltava resurssi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "Valitse data esikatselua varten"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "Brändi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "Tausta"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "Ensisijainen teksti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "Toissijainen teksti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "Kolmannen tason teksti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "Reunus"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "Varjo"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "Haluatko varmasti poistaa tämän teeman? Tätä toimintoa ei voi kumota."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "Kopioi ja poista"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "Teema kopioitiin onnistuneesti"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "Teeman kopiointi epäonnistui"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "Uusi teema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "Teema poistettiin onnistuneesti"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "Teeman poistaminen epäonnistui"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "Nimetön teema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "Suodatin-, yhteenveto-, positiivinen-, negatiivinen- ja kaaviovärit luotiin uudelleen brändiväristä."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "Päävärit palautettiin oletuksiin."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "Teema tallennettu"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "Teeman tallentaminen epäonnistui"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24400,6 +24412,7 @@ msgid "Initial investigation"
 msgstr "Alkuperäinen selvitys"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "Uusi tutkimus"
 
@@ -24711,33 +24724,41 @@ msgstr "Valitse ryhmä"
 msgid "Set up key"
 msgstr "Määritä avain"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "Luo salainen avain"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "Tallenna uusi avaimesi"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "Poistetaanko avain ja luodaanko uusi?"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "Tämä aiheuttaa sen, että olemassa olevat tokenit lakkaavat toimimasta, kunnes identiteetintarjoaja on päivitetty uudella avaimella."
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "Poista avain"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "Virhe salaisen avaimen luomisessa."
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "Määritä salainen avain"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "Kopioi leikepöydälle"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "Salainen avain kopioitu leikepöydälle"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "Virhe kopioitaessa salaista avainta leikepöydälle."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "Uusi salainen avain"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "Varmista, että kopioit tämän avaimen nyt ja tallennat sen turvalliseen paikkaan."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "Et voi nähdä sitä uudelleen."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "Tämä aiheuttaa sen, että olemassa olevat tokenit lakkaavat toimimasta, kunnes identiteetintarjoaja päivitetään uudella avaimella."
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -24902,6 +24923,11 @@ msgstr "Älä kerro kenellekään, mutta olet suosikkini."
 #, javascript-format
 msgid "{0} tips"
 msgstr "{0}-vinkit"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "Etusivu"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25299,7 +25325,6 @@ msgid "New conversation"
 msgstr "Uusi keskustelu"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "Chattaa {0}:n kanssa ({1}+E)"
@@ -25376,14 +25401,6 @@ msgid "Data sources used"
 msgstr "Käytetyt datalähteet"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "Otetaan käyttöön..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "Käytössä"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "Versio"
 
@@ -25394,10 +25411,6 @@ msgstr "Esikatselun lataaminen epäonnistui"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "Ladataan esikatselua"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "Vain luku"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25731,15 +25744,6 @@ msgstr "Tätä keskustelua ei voi ladata"
 msgid "Try refreshing the page."
 msgstr "Yritä päivittää sivu."
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "Kohdetta {0} ei voi tarkastella tällä sivulla"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "Muunnetaan dataasi yhdessä!"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "Kuvaile, millaista SQL:ää haluat; kirjoita @ mainitaksesi kohteen."
@@ -25818,11 +25822,6 @@ msgstr "{0}-dialogi"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "Mainitse kohde"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "Upotus"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -27980,10 +27979,6 @@ msgid "Internal Collections"
 msgstr "Sisäiset kokoelmat"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "Etusivu"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "Muiden käyttäjien henkilökohtaiset kokoelmat"
 
@@ -28401,6 +28396,14 @@ msgstr "Luo natiivi kysely"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "lisää natiivi kysely, lisää SQL, luo SQL"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "Luo tutkimus"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "lisää tutkimus, lisää explorointi, tutkimustila"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -28950,10 +28953,6 @@ msgstr "Älä välimuistita tuloksia"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "Ei välimuistitusta"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "Ensin juridiikkaa"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29704,6 +29703,10 @@ msgstr "Mukautetut lausekkeet"
 msgid "Custom Expression"
 msgstr "Mukautettu lauseke"
 
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "Valitse..."
+
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
 msgstr "Luotettavia määritelmiä, joista aloittaa."
@@ -30085,6 +30088,10 @@ msgstr "Tämä voi olla etsimäsi vastaus. Jos ei, kokeile poistaa tai muuttaa s
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Takaisin edellisiin tuloksiin"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "Koodinpätkät"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -32962,10 +32969,6 @@ msgstr[1] "Tämä arkistoi myös {0} muunnosta sen sisältä."
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "Haluatko varmasti arkistoida tämän kansion?"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "Luo muunnos, joka "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35855,6 +35858,10 @@ msgstr "ei voitu luoda avainta uniikilla etuliitteellä"
 msgid "API endpoint does not exist."
 msgstr "API-päätepistettä ei ole olemassa."
 
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "Luku- ja kyselyoikeus hiekkalaatikossa olevalle data-appille."
+
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
 msgstr "Sovellustietokannan purku MB_ENCRYPTION_SECRET_KEY:llä ei onnistu"
@@ -36504,10 +36511,6 @@ msgstr "Määrittää, millaiset hostit sallitaan HTTP-kanavien kohteina.\n"
 "- allow-all (ei rajoituksia, mukaan lukien localhost).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Virheellinen http-channel-allowed-networks! Vain arvot external-only, allow-private ja allow-all ovat sallittuja."
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "Tapahtuman enimmäisuudelleenyrityskertojen määrä."
 
@@ -36776,6 +36779,10 @@ msgstr "Kommentin sisällön on oltava kelvollista JSON:ia."
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "Kommentin kontekstin on oltava kelvollinen JSON-objekti."
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "Emojin on oltava 1–10 Unicode-koodipistettä."
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37405,10 +37412,6 @@ msgstr "Määrittää, mihin verkkoihin Metabase saa muodostaa yhteyden warehous
 "Koskee myös SSH-tunnelin hostia ja tietokannan auth-provider-URL-osoitteita."
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "Virheellinen warehouse-allowed-networks! Vain arvot `external-only`, `allow-private`,` ja `allow-all` ovat sallittuja."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "Määrittää, kuinka usein heartbeat-viestejä lähetetään, kun SSH-tunneli on muodostettu (sekunteina)."
 
@@ -37797,10 +37800,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "Tarkista, pitäisikö ylläpitäjän nähdä yksinkertaisen upotuksen ehtoponnahdusikkuna"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "Tarkista, pitäisikö ylläpitäjän nähdä modulaarisen upotuksen ja SDK:n lisenssiehtojen ponnahdusikkuna"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "Sallitaanko ylläpitäjien upottaa kysymyksiä ja koontinäyttöjä turvallisesti muihin sovelluksiin?"
 
@@ -37815,10 +37814,6 @@ msgstr "Sallitaanko ylläpitäjien upottaa Metabase SDK:n kautta?"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "Sallitaanko ylläpitäjien upottaa Metabase modulaarisen upotuksen kautta?"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "Sallitaanko ylläpitäjien upottaa Metabase modulaarisen upotuksen, React SDK:n ja guest-upotusten kautta?"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -39946,10 +39941,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "Onko MCP-palvelin käytössä."
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "Käytöstä poistettavien v2 MCP -työkalujen nimet, tallennetaan CSV:nä. Käytöstä poistetut työkalut piilotetaan tools/list:stä ja hylätään tools/call:ssa."
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "Kuinka monta tuntia tallennettu MCP-kyselykahva säilytetään ennen kuin ajastettu GC-tehtävä poistaa sen."
 
@@ -39960,62 +39951,6 @@ msgstr "Suositut CORS:lle käyttöön otetut MCP-asiakkaat, tallennetaan CSV-asi
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "Mukautetut CORS-originit itse ylläpidetyille MCP-asiakkaille, erotettu välilyönneillä."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "Mittarit ovat aggregointeja, eivät lähteitä. Jotta voit käyttää mittaria {0}, laita sen perustaulun numeerinen id kenttään `source-table:` (löydät sen `search`- tai `browse_data`-toiminnolla) ja viittaa mittariin sen numeerisella id:llä:"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "Jos haluat viitata tallennettuun kysymykseen tai malliin kyselyn lähteenä, laita sen pelkkä numeerinen id kenttään `source-card:` — ei URI: `\"source-card\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "Käytä pelkkää numeerista taulu-id:tä kentässä `source-table:` — ei URI:a: `\"source-table\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` hyväksyy numeerisen taulu-id:n; `source-card:` hyväksyy tallennetun kortin numeerisen id:n."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "Kutsu `browse_data` toiminnolla \"list_tables\", jotta voit listata saatavilla olevat taulut numeerisine id-tunnuksineen, ja käytä sitten yhtä niistä `source-table`-arvona."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "Kutsu `browse_data` toiminnolla \"list_tables\" tietokannalle ja yritä sitten uudelleen numeerisella taulu-id:llä — se ei ole koskaan monitulkintainen."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "Kutsu `browse_data` toiminnolla \"get_fields\" taululle, jotta voit listata sen sarakkeet numeerisine id-tunnuksineen."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "Kutsu `browse_data` toiminnolla \"get_fields\" lähdetaululle listataksesi saatavilla olevat foreign key -sarakkeet."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "Jos mittari liittyy siihen tauluun, kutsu `browse_data` toiminnolla \"get_fields\" taululle, joka omistaa mittarin, ja lue sen dimensiot, jotka antavat tarkan `joins:`-lausekkeen."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "Etsi kysymys tai malli `search`-toiminnolla ja laita sen pelkkä numeerinen id kenttään `source-card:`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "Kutsu `browse_data` toiminnolla \"get_fields\" taululle, joka omistaa mittarin, ja käytä sen measures-listasta numeerista id:tä."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "Kutsu `browse_data` toiminnolla \"get_fields\" taululle, joka omistaa segmentin, ja käytä sen segments-listasta numeerista id:tä."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "Käytä numeerista taulu-id:tä kentässä `source-table:` (`browse_data`-toiminnon \"list_tables\" palauttamana), jolloin tietokannan nimeä ei tarvita lainkaan."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` ottaa numeerisen taulu-id:n; `source-card:` ottaa tallennetun kortin numeerisen id:n."
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -40140,10 +40075,6 @@ msgid "View transforms"
 msgstr "Näytä muunnokset"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "Luo ja muokkaa muunnoksia"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "Näytä SQL-koodinpätkät"
 
@@ -40222,6 +40153,10 @@ msgstr "Hae sisältöä"
 #: metabase/metabot/scope.clj
 msgid "View database metadata"
 msgstr "Näytä tietokannan metatiedot"
+
+#: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "Lue MCP-resursseja"
 
 #: metabase/metabot/scope.clj
 msgid "View todos"
@@ -40792,8 +40727,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "Näytetäänkö Metabot-kuvitukset käyttöliittymässä."
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "Mukautetut ohjeet, jotka liitetään Metabot''s järjestelmäpromptiin chat-kokemusta varten (AI-sivupalkki ja upotettu Metabot)."
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "Mukautetut ohjeet, jotka liitetään Metabot''in järjestelmäkehotteen perään chat-kokemuksessa (AI-sivupalkki, upotettu Metabot ja Metabot Slackissa)."
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42520,6 +42455,10 @@ msgstr "arvon on oltava kelvollinen MBQL-kysely, jossa on lähdetaulu ja suodatt
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "segmentin määritelmän on oltava yksivaiheinen kysely, jossa on lähdetaulu ja suodattimet, eikä siinä saa olla liitoksia, lausekkeita, ryhmittelyjä, aggregointeja, kenttiä, ORDER BY:tä tai LIMITiä"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "Pyynnön runko ylittää enimmäiskoon {0} tavua."
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Mallin ''{0}'' lataus epäonnistui. Muistitko buildata Metabase-frontendin?"
@@ -42559,6 +42498,10 @@ msgstr "Estää palvelinta lähettämästä CORS-otsakkeita localhostista peräi
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "Estä poikkeus-middlewareä sisällyttämästä stack traceja vastauksiin."
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "Enimmäiskoko tavuina todennettua käyttäjää vailla olevan kutsujan HTTP-pyynnön rungolle. Suuremmat pyynnöt hylätään HTTP 413:lla ennen kuin runkoa luetaan."
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -42911,8 +42854,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "JSON, joka sisältää LDAP → Metabase -ryhmämapitukset."
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} ei ole kelvollinen DN."
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} ei ole kelvollinen DN. Esimerkki: {1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -43049,10 +42992,6 @@ msgstr "Implisiittisten liitosten kautta viitattuja kenttiä ei tueta."
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "Kysely epäonnistui"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Virheellinen map-tile-server-allowed-networks! Vain arvot external-only, allow-private ja allow-all ovat sallittuja."
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44214,6 +44153,10 @@ msgstr "Tukikäyttäjät"
 msgid "Transforms Python"
 msgstr "Muunnokset Python"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "Muunnokset-testaus"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "Analytics dev mode ei ole käytössä."
@@ -44357,6 +44300,10 @@ msgstr "Tenant-käyttäjiä ei voi lisätä data-sovelluksiin."
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Data-sovellusten kyselyt eivät voi käyttää mittareita, jotka viittaavat muihin tallennettuihin kysymyksiin tai mittareihin: {0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}: \"version\" on oltava positiivinen kokonaisluku, kuten 1."
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -44673,8 +44620,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "Jos remote-sync-type on :read-only ja remote-sync-auto-import on true, tarkistustiheys (minuuteissa) päivityksille, jotka tuodaan. Oletus 5."
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "Etäsynkronointitehtävälle annettava enimmäisaika valmistua"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "Kuinka kauan etäsynkronointitehtävä voi olla todistamatta prosessinsa olevan elossa (heartbeatillä tai riviedistymisellä ilman sitä) ennen kuin se tulkitaan kuolleeksi ja korvataan. Hidas mutta elossa oleva tehtävä ei koskaan vaikutu. Tehtävä itsessään keskeytetään kymmenkertaisen tämän rajan jälkeen."
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45212,6 +45159,70 @@ msgstr "attribuuttien avainten on oltava keyword tai merkkijono, eikä niiden sa
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "Vuokralaisen kokoelma: {0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "Odotus {0} nimeää sarakkeen {1}, joka vastaa useampaa kuin yhtä tulostesaraketta: {2}. Kirjoita se täsmälleen niin kuin tuloste kirjoittaa sen."
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "Odotus {0} vertaa saraketta {1}, jota muunnoksen tulosteessa ei ole. Siinä on: {2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "Odotus {0} vertaa SQL-kyselyä vastaan, mitä ei ole vielä toteutettu. Anna sen sijaan ''columns'' ja ''rows''."
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "Odotus {0} on tyyppiä {1}, mitä ei ole vielä toteutettu."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "Odotusta ei voitu suorittaa, eikä tietokanta antanut syytä."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "Vain kyselymuunnoksia voidaan testata."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "Tämän muunnoksen {0}-tietokanta ei tue muunnosten testausta."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "Muunnoksen lähde-SQL:ää ei voitu jäsentää testisyötteen validointia varten: {0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "Testisyötettä kohteelle {0} ei voitu luoda:"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "Testattava muunnos ei onnistunut suorittamaan:"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "Odotus {0} lukee taulu(ja), joita tämä testi ei korvaa: {1}. Odotus saa lukea vain muunnoksen tulostetta ja sen ilmoitettuja syötteitä."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "Muunnostesti ei pystynyt remappaamaan lähdettä täysin testitauluihin; nämä viittaukset jäivät: {0}. Aliasoi jokainen lähdetaulu ja kvalifioi sen sarakkeet aliaksella (esim. `FROM my_table t ... t.col`), ei taulun nimellä."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "Odotuksella {0} on SQL, jota ei voitu jäsentää: {1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "Muunnos lukee taulu(ja), joille ei ole ilmoitettu testisyötettä: {0}. Lisää syöte jokaiselle."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "Testisyöte(-syötteitä) ilmoitettu taulu(ille), joita muunnos ei lue: {0}. Poista ne."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "Päällekkäiset testisyötteet; kukin syötetaulu voidaan ilmoittaa vain kerran: {0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"

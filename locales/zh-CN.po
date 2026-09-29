@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-22 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Chinese Simplified\n"
 "Language: zh_CN\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-09-29 05:43\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "这里没有任何内容"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "选择..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "用户属性"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "用户属性"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "用户属性"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "用户属性"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "用户属性"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "用户属性"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "取消"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -700,6 +695,8 @@ msgstr "从所有组移除访问权限"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "用户组"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "租户组"
 
@@ -761,8 +757,8 @@ msgstr "AI 聊天提示词说明"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "在此为 {0} 中的侧边栏 AI 聊天体验添加说明。你可能想就语气、优先选择的实体类型等方面给出指导。"
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "在此为 {0} 中的侧边栏 AI 聊天体验以及 Slack 中的 Metabot 添加说明。你可能想提供关于语气、偏好的实体类型等方面的说明。"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1165,7 +1161,6 @@ msgstr "搜索群组"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "群组名称"
 
@@ -1285,11 +1280,9 @@ msgstr "取消订阅所有订阅 / 警报"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1346,11 +1339,13 @@ msgid "Unit"
 msgstr "单位"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "已添加映射"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "已更新映射"
@@ -1393,6 +1388,7 @@ msgstr "新的映射"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1408,6 +1404,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "要使用手动组映射，请至少添加一条映射"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "添加映射"
 
@@ -1437,30 +1434,36 @@ msgid "Enter JWT group..."
 msgstr "输入 JWT 组……"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "该组的映射已存在"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} 个组"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "选择 {0} 组……"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "编辑映射"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "删除映射"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "没有组"
@@ -1473,10 +1476,12 @@ msgid "Changes saved"
 msgstr "更改已保存"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "保存组映射时出错"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "映射已删除，但并非所有关联的组都能更新"
 
@@ -1485,14 +1490,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "映射已删除，且组映射已关闭"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "已删除映射"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1501,6 +1502,11 @@ msgstr "保存 JWT 设置时出错"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "加载 JWT 配置时出错"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1527,14 +1533,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "你可以通过在 JWT 中将这些属性以键/值对的形式添加，向 {0} 发送额外的用户属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "邮箱属性键"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "名字属性键"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "姓氏属性键"
 
@@ -1549,7 +1558,7 @@ msgstr "租户分配属性键"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "组映射"
 
@@ -1569,6 +1578,7 @@ msgstr "保存并启用"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1751,17 +1761,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "将 OIDC claims 映射到用户属性。使用标准 OIDC claim 名称或你的提供商自定义 claims。"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "邮箱属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "名属性"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "姓属性"
 
@@ -1904,6 +1911,7 @@ msgid "SAML keystore password"
 msgstr "SAML 密钥库密码"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "嘘…"
 
@@ -2087,21 +2095,21 @@ msgstr "下一项"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2152,8 +2160,8 @@ msgstr "缓存设置"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2608,11 +2616,11 @@ msgstr "设置开发服务器 URL，以便从本地开发服务器而非 git 仓
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2740,9 +2748,9 @@ msgstr "查看 SDK 更新日志"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "已启用"
@@ -2886,6 +2894,7 @@ msgstr "它们可能是为不同版本构建的，可能需要更新。"
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2948,6 +2957,7 @@ msgid "Snippet"
 msgstr "代码片段"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3763,7 +3773,6 @@ msgid "Actions for {0}"
 msgstr "{0} 的操作"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "查看资源"
 
@@ -3822,6 +3831,10 @@ msgstr "在你的项目中安装 Metabase Data App 技能，然后让你的 AI �
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSkillsSection/DataAppSkillsSection.tsx
 msgid "Install command"
 msgstr "安装命令"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "已过时"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -3895,6 +3908,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "此数据应用不存在或已被禁用。"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "此数据应用已过时"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "此数据应用尚未发布"
 
@@ -3937,6 +3954,12 @@ msgstr "加载此应用时出了点问题。请尝试刷新页面。"
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "此数据应用未加载。它可能已被阻止或无法访问。请尝试刷新页面，或返回。"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "此应用是为数据应用的 {0} 版本构建的。请将其迁移到当前版本，然后重新构建并再次同步。"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4133,7 +4156,7 @@ msgstr "该过程在后台运行。根据数据库大小，可能需要长达数
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4277,6 +4300,7 @@ msgstr "你也可以通过 API 以编程方式添加数据库。"
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4306,12 +4330,12 @@ msgstr "查看全部 {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4436,12 +4460,12 @@ msgstr "选择一个项目以查看其依赖项"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4938,8 +4962,22 @@ msgid "exact specifications"
 msgstr "精确规范"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "用于全应用嵌入的已授权的来源"
+msgid "Authorized origins"
+msgstr "已授权的来源"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "启用全应用嵌入"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "将完整的 Metabase 应用或单个页面嵌入到你的应用中。最适合复杂、以 BI 为重点的场景，在这种场景下你希望把 Metabase 的全部能力嵌入到你的应用中。如果你更看重 UX 的稳定性、灵活性或可控性，或者你的用例并不复杂、不需要完整的 BI 方案，我们建议改用模块化嵌入。"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "文档"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5151,6 +5189,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5241,7 +5280,6 @@ msgstr "OK"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5846,12 +5884,12 @@ msgid "Queries generated"
 msgstr "生成的查询"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "负向"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "正向"
 
@@ -6285,8 +6323,9 @@ msgid "Unavailable"
 msgstr "不可用"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "复杂度评分"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "复杂度评分 {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6379,6 +6418,7 @@ msgstr "依赖项诊断"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6386,7 +6426,6 @@ msgstr "依赖项诊断"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6426,6 +6465,7 @@ msgstr "信息"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6440,7 +6480,6 @@ msgstr "信息"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6861,6 +6900,7 @@ msgid "No changes to push"
 msgstr "没有可推送的更改"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7098,24 +7138,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "将你的仪表板、问题和集合安全地备份到 Git。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "同步包含依赖项的集合？"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "无法同步所选集合"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "同步以继续"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "无法同步"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "同步必需的集合"
+msgid "Item"
+msgstr "项目"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "被用于"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "转到集合"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7279,13 +7319,12 @@ msgid "What will be overwritten: "
 msgstr "将被覆盖的内容："
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "代码片段"
+msgid "Snippets and glossary"
+msgstr "代码片段和术语表"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "内容库、转换和代码片段。"
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "内容库、转换、代码片段和术语表。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7380,6 +7419,14 @@ msgid "An error occurred during sync."
 msgstr "同步期间发生错误。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "同步已停止"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "同步已取消。"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "请等待其完成后再编辑内容。"
 
@@ -7388,14 +7435,32 @@ msgid "Cancelling…"
 msgstr "正在取消…"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "仍在处理中…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "由 {0} 于 {1} 启动"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "仍在处理中。{0} 分钟未更新。"
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "于 {0} 启动"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "在 {1} 时于 {0}% 停止"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "最近未报告进度。同步仍在运行。"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "{0} 分钟无进度。同步仍在运行。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7526,6 +7591,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "已同步的集合将更新以匹配新分支。当前分支中存在但新分支中不存在的问题，将从所有引用它们的仪表板或内容中被永久移除，即使你之后切换回来也是如此。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "准备中"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "正在导出内容"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "推送中"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "正在导入内容"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "正在记录同步状态"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "收尾中"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "同步分支已在另一个会话中更改。刷新页面后重试。"
 
@@ -7557,16 +7646,24 @@ msgid "Our analytics"
 msgstr "我们的分析"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "未知集合"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "此集合中的仪表板或问题依赖于保存在个人集合中的内容，而个人集合无法同步。将该内容移到共享集合以继续。"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "此集合中的仪表板或问题依赖于使用情况分析中的内容，而这些内容无法同步。请更新它们以使用可同步的内容后再继续。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "此集合中的仪表板或问题依赖于当前所在位置无法同步的内容。将该内容移到你正在同步的集合中以继续。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "此集合中的仪表板或问题依赖于代码片段，而代码片段会随内容库同步。也同步内容库以继续。"
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "此集合中的仪表板或问题依赖于代码片段，而代码片段会随内容库一起同步。请在数据工作室中创建内容库，然后同步后再继续。"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8247,8 +8344,9 @@ msgstr "请在 {0} 中配置通知渠道，以便在你的 Metabase 实例存在
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "安全"
 
@@ -8670,13 +8768,13 @@ msgstr[0] "已选择 {0} 行"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8724,7 +8822,6 @@ msgstr "创建新记录"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9130,14 +9227,15 @@ msgstr "如果你需要更改这些设置，可以返回前面的步骤，或在
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "租户"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9145,8 +9243,7 @@ msgstr "人员"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "权限"
 
@@ -9175,7 +9272,8 @@ msgstr "和"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "表"
+msgid_plural "tables"
+msgstr[0] "表"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10055,6 +10153,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "每次转换运行将向你收取 {0}。"
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "升级"
 
@@ -10178,6 +10277,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "当你达到配额的 {0}% 时，我们会通知你。"
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10392,7 +10492,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "注意：删除每个值将恢复为默认值。"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "图表颜色"
 
@@ -10418,22 +10518,6 @@ msgstr "颜色"
 msgid "Preview"
 msgstr "预览"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "加载消息"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "当计算返回无结果时"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "当找不到任何对象时"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "字体粗细"
@@ -10449,8 +10533,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "字体"
 
@@ -10636,6 +10720,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "字体"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "加载消息"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10680,6 +10769,14 @@ msgstr "登录页和退订页"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "落地页"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "当计算返回无结果时"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "当找不到任何对象时"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10808,7 +10905,7 @@ msgid "Add another summary"
 msgstr "再添加一个汇总"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12501,10 +12598,10 @@ msgstr "我的新奇妙操作"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "可选，但会非常有帮助"
 
@@ -12589,10 +12686,8 @@ msgid "Field type"
 msgstr "字段类型"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "外观"
@@ -13150,6 +13245,7 @@ msgid "upgrade"
 msgstr "升级"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13164,6 +13260,12 @@ msgstr "升级"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "数据库"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "嵌入"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13184,6 +13286,10 @@ msgstr "性能"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "帮助"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "相关设置"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13619,6 +13725,236 @@ msgstr "创建细分，以便在查询构建器的“筛选器”下拉菜单中
 msgid "Filter by table"
 msgstr "按表筛选"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "设置指南"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "访客嵌入"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "主题"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "编辑主题"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "复制代码"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "主题名称"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "主要颜色"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "将主颜色重置为默认值"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "显示更少颜色"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "显示更多颜色"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "根据品牌颜色重新生成筛选、汇总、正向、负向以及图表颜色"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "从品牌颜色重新生成"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "基础字体大小"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "删除主题"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "保存主题"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "使用条件"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "启用模块化嵌入以查看主题的实时预览。"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "接受 {0} 以查看主题的实时预览。"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "启用模块化嵌入"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "接受并继续"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "主题预览"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "创建仪表板或问题以预览此主题。"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "更改预览资源"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "选择要预览的数据"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "品牌"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "背景"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "主要文本"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "次要文本"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "第三级文本"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "边框"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "阴影"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "确定要删除此主题吗？此操作无法撤销。"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "复制和删除"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "复制"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "主题复制成功"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "复制主题失败"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "创建和编辑主题，以便在多个嵌入中复用。"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "新建主题"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "浅色"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "深色"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "主题删除成功"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "删除主题失败"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "无标题主题"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "筛选、汇总、正向、负向以及图表颜色已根据品牌颜色重新生成。"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "撤销"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "主颜色已重置为默认值。"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "主题已保存"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "保存主题失败"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "嵌入设置指南"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "按照指南开始使用模块化嵌入"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -13856,7 +14192,6 @@ msgstr "内部组"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "租户用户"
 
@@ -14925,7 +15260,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "已删除的 API key 无法恢复。你需要创建一个新的 key。"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "不，别删除"
 
@@ -14975,7 +15309,6 @@ msgid "Copy and save this API key"
 msgstr "复制并保存此 API key"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "请将此 key 保存在安全的位置。出于安全原因，我们无法再次向你展示它。"
 
@@ -15135,6 +15468,208 @@ msgstr "配置"
 msgid "Edit configuration"
 msgstr "编辑配置"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "首先，一些法律条款"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "共享 Metabase 账号存在安全风险。即使你在客户端过滤数据，每个用户仍可能使用其 token 查看该共享账号可见的任何数据。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "此外，我们认为共享账号属于不公平使用。公平使用意味着为嵌入式分析的每个最终用户提供各自的 Metabase 账号。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "拒绝并返回"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "使用适用于 React 的嵌入式分析 SDK 时，每位最终用户都应拥有自己的 Metabase 账户。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "使用模块化嵌入时，每个最终用户都必须拥有自己的 Metabase 账号。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "实现 JWT 或 SAML SSO"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "你可以使用 API key 在 localhost 上快速测试嵌入式分析 SDK。要在其他站点上使用 SDK，{0} 和 {1}。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "你可以使用 API key 在 localhost 上快速测试嵌入式分析 SDK。要在其他站点上使用 SDK，{0}。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "启用模块化嵌入 SDK"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "将 Metabase 的全部能力嵌入到你的应用中，打造自定义分析体验，并以编程方式管理仪表板和数据。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "快速开始"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "嵌入密钥"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "独立嵌入密钥用于访问 /api/Embed端点的请求的JSON Web令牌进行签名。您可以用这个技术创建一个仅限于特定用户或组织的安全环境。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "重新生成 key"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "重新生成嵌入 key？"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "这会导致现有嵌入内容在更新为新 key 之前停止工作。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "生成密钥"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "用空格分隔各个值。不允许使用 localhost。更改将在一分钟内生效。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "用空格分隔多个值。自动包含 localhost。更改将在一分钟内生效。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "跨域资源共享（CORS）"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "添加你想允许嵌入的网站域名。{0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "用于确定是否允许跨站请求携带 cookie。{0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "您可能需要将此设置更改为{0}。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "无"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "宽松<b>（默认）</b>"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "允许在同一域名上共享 Metabase 会话 cookie。适用于同域名下的生产环境实例。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "严格<b>（不推荐）</b>"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "不允许与嵌入实例共享 Metabase 会话 cookie。如果你不想启用嵌入的会话共享，请使用此选项。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "无（需要 HTTPS）"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "当你的应用与 Metabase 托管在不同域名时使用“无”。与 Safari 和基于 iOS 的浏览器不兼容。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "SameSite cookie设置"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "嵌入设置"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "嵌入方式"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "嵌入 Metabase 的最简单方式。使用组件将仪表板、问题、查询构建器、带 AI 的自然语言查询等嵌入到你的应用中。基于 SDK 构建，提供按组件的控制和主题。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "版本锁定"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Metabase Cloud 实例会自动升级到新版本。SDK 包只严格兼容特定版本的 Metabase。你可以请求将你的 Metabase 锁定到某个主版本号，并以协同方式升级你的 Metabase 和 SDK 依赖项。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "请求版本锁定"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "通过环境变量设置"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "新建嵌入"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "启用访客嵌入"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "一种安全的方式，可在不使用单点登录的情况下嵌入图表和仪表板，并且不会提供即席查询或图表下钻查看功能。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "升级到 Metabase Pro 以获得更强大的嵌入方式"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "使用可自定义的组件将图表、支持下钻查看的仪表板，甚至查询构建器嵌入到你自己的应用中。通过单点登录保护你的嵌入。"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "已发布的嵌入"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "此实例处于开发模式，只能用于开发或测试用途。"
@@ -15151,10 +15686,32 @@ msgstr "此实例处于开发模式，只能用于开发或测试用途。要创
 msgid "Get your token"
 msgstr "获取你的 token"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "根据用户的 LDAP 组成员关系，自动将人员分配到 {0} 组"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "手动组映射"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "LDAP 组名称"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "尚无映射"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "激活"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "加载 LDAP 配置时出错"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15167,18 +15724,6 @@ msgstr "LDAP 端口"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "LDAP 安全性"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "无"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15209,12 +15754,26 @@ msgid "User search base"
 msgstr "用户搜索基准"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "LDAP 服务器中条目的可分辨名称（DN），{0} 在搜索用户时将以此作为起始点"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "用户过滤器"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "将 LDAP 属性映射到 {0} 中的邮箱、名和姓字段"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "组搜索基准"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "对于提供“memberOf”覆盖层的 LDAP 目录（如 Active Directory）不需要此项。将进行递归搜索。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15255,9 +15814,6 @@ msgstr "Webhooks"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "本地化"
@@ -15479,18 +16035,6 @@ msgstr "启用 X-Ray 功能"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "使用情况跟踪"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "版本锁定"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Metabase Cloud 实例会自动升级到新版本。SDK 包只严格兼容特定版本的 Metabase。你可以请求将你的 Metabase 锁定到某个主版本号，并以协同方式升级你的 Metabase 和 SDK 依赖项。"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "请求版本锁定"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -15956,10 +16500,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "尚无映射，未开启组同步"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "尚无映射"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "同步组成员关系"
 
@@ -16134,9 +16674,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "删除此目标"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "已嵌入的仪表板"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "尚未嵌入任何仪表板。"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "已嵌入的问题"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "尚未嵌入任何问题。"
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "尚无公开分享的文档。"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "公开链接"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "撤销链接"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "去掉分享链接"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "禁用此链接？"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "它们将不再可用，且无法恢复，但你可以创建新的链接。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16328,7 +16904,6 @@ msgstr "控制你的缓存"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "试用 Metabase Pro"
 
@@ -16387,6 +16962,14 @@ msgstr "在部署到生产环境之前，在单独的 Metabase 实例中先在 s
 msgid "Whitelabel email notifications"
 msgstr "白标邮件通知"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "创建自定义主题"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "通过颜色和字体微调嵌入内容的外观。"
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "尽量减少维护"
@@ -16435,19 +17018,21 @@ msgstr "通过 SAML、JWT 和 LDAP 进行 Metabase 群组同步"
 msgid "User provisioning with SCIM"
 msgstr "使用 SCIM 进行用户预配"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "升级到 Metabase Pro"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "Pro 版本可用。免费试用。"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "使用多租户用户策略"
+msgid "Manage customer-facing analytics at scale"
+msgstr "大规模管理面向客户的分析"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "安全地与外部用户共享数据，并允许他们创建内容。在所有租户间复用同一套仪表板和权限，而不是为每个客户重新创建。"
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "将你的客户分组到租户中，复用相同的仪表板和权限，并让每个租户的数据彼此隔离。"
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -16894,18 +17479,6 @@ msgid "There was an error bookmarking these items."
 msgstr "为这些项目添加书签时出错。"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "复制"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17232,8 +17805,8 @@ msgid "This comment was deleted."
 msgstr "此评论已删除。"
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "你的仪表板叫什么名字？"
 
@@ -17517,20 +18090,6 @@ msgstr "Alpha 百分比"
 msgid "Use system default"
 msgstr "使用系统默认"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "深色"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "浅色"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "部分翻译由 Metabase 社区创建，可能不够完善。"
@@ -17547,6 +18106,14 @@ msgstr "在此参与翻译"
 #, javascript-format
 msgid "You can {0}"
 msgstr "你可以 {0}"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "你想把它保存到哪里？"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17646,14 +18213,6 @@ msgstr "选择一个维度"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "你的文档叫什么名字？"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "你想把它保存到哪里？"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18155,7 +18714,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "管理员添加数据库后，数据库将显示在这里"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18265,26 +18823,6 @@ msgstr "移动 {0} 个项目？"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "选择一个问题或模型"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "公开链接"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "撤销链接"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "去掉分享链接"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "禁用此链接？"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "它们将不再可用，且无法恢复，但你可以创建新的链接。"
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18702,7 +19240,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "{0} 分钟"
 
 #: frontend/src/metabase/common/components/SendTestPulse/SendTestPulse.tsx
@@ -18752,16 +19290,6 @@ msgstr "已修改"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "项目"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "撤销"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -18966,8 +19494,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "请联系 Metabase Store 管理员为你升级套餐。"
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "获取 14 天试用，体验此功能和其他 Pro 功能。"
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "获取 14 天免费试用，体验此功能及其他 Pro 功能"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19382,6 +19910,7 @@ msgid "Indexed record"
 msgstr "索引记录"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "研究"
@@ -22462,227 +22991,6 @@ msgstr "文档已保存"
 msgid "Error saving document"
 msgstr "保存文档出错"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "开始使用"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "租户体系"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "嵌入中心"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "新建嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "主题"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "品牌元素"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "用于全应用嵌入的颜色和品牌基于以下位置定义的外观设置"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML 已配置"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "你可以在管理员中查看所有身份验证设置。"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "前往管理员"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "在以下位置查看更多身份验证选项（如 SAML），"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "管理员设置"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "升级到 Metabase Pro 以使用 React 的 SDK 和更多高级选项。"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "已发布的访客嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "文档"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "启用多租户用户策略"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "租户是一组分配给用户的属性，用于将其与其他租户隔离。例如，在带有嵌入式 Metabase 仪表板的 SaaS 应用中，你可以把每个客户分配到一个租户。租户让你可以在所有租户间复用同一套仪表板和权限，而不是为每个客户重新创建。"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "启用多租户体系"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "查看文档"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "步骤 {0} 已完成"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "设置 SSO 以解锁"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "开始使用 Metabase 嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "创建你的第一个嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "如果你只需要一个简单的嵌入式仪表板，这些步骤就足够了。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "从 Metabase 嵌入的基础开始。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "微调你的嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "如果你希望实现更复杂的方案，包含大量用户和租户，那就继续。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "升级到 Metabase Pro 以配置高级选项。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "连接你自己的数据库或上传 CSV，开始使用你的真实数据。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "创建仪表板"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "使用 X-rays 从你的数据自动生成一个仪表板。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "获取嵌入代码片段"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "嵌入仪表板、问题、查询构建器或集合浏览器。配置使用体验并自定义外观。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "嵌入仪表板或问题。配置体验并自定义外观。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "配置数据权限和租户"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "与外部用户共享数据，并允许他们创建内容。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "设置 SSO"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "配置 JWT 身份验证，确保只有已授权的用户才能访问你的嵌入内容。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "使用 SSO 在生产环境嵌入"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "创建自定义主题"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "通过颜色和字体微调嵌入内容的外观。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "配置 AI"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "连接到 LLM 提供商以嵌入 AI 聊天界面，并让你的用户用自然语言提问查询。"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "实用链接"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "嵌入方式"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "演示"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "创建自定义主题"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "用单点登录保护你的嵌入"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "使用 JSON Web Tokens (JWT) 将 Metabase 连接到你的身份提供商，以对用户进行身份验证，确保只有已授权用户才能访问你的嵌入内容。"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "翻译你的嵌入内容"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "上传翻译词典，以翻译嵌入组件中的条目标题、标题、筛选器标签以及数据等内容。"
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -22997,23 +23305,13 @@ msgid "Guest"
 msgstr "访客"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "启用模块化嵌入失败"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "启用嵌入失败"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "使用条件"
+msgid "Failed to enable guest embeds"
+msgstr "启用访客嵌入失败"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "要继续，请启用嵌入并同意 {0}。"
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "要继续，请启用访客嵌入并同意 {0}。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23026,13 +23324,8 @@ msgid "Agree to the {0} to continue."
 msgstr "同意 {0} 以继续。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "启用模块化嵌入以开始使用。"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "启用嵌入以开始使用。"
+msgid "Enable guest embeds to get started."
+msgstr "启用访客嵌入以开始使用。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23055,6 +23348,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "不过，你仍应阅读上方链接的许可文本，因为启用此功能即表示你将同意该许可。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "启用模块化嵌入失败"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "要继续，请启用模块化嵌入并同意使用条件。"
 
@@ -23063,16 +23360,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "请同意使用条款以继续。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "使用模块化嵌入时，每个最终用户都必须拥有自己的 Metabase 账号。"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "共享 Metabase 账号存在安全风险。即使你在客户端过滤数据，每个用户仍可能使用其 token 查看该共享账号可见的任何数据。"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "此外，我们认为共享账号属于不公平使用。公平使用意味着为嵌入式分析的每个最终用户提供各自的 Metabase 账号。"
+msgid "Enable modular embedding to get started."
+msgstr "启用模块化嵌入以开始使用。"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23107,12 +23396,6 @@ msgstr "此仪表板中的一个或多个问题正在查询启用了数据库路
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "此问题正在查询启用了数据库路由的数据库。数据库查询将会在路由数据库上执行。"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "复制代码"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23487,156 +23770,6 @@ msgstr "此可视化已过期。请让你的 MCP client 再次运行该查询。
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "无法加载此可视化。请确认可以访问 Metabase，然后让你的 MCP client 再次显示它。"
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "已嵌入的仪表板"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "尚未嵌入任何仪表板。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "已嵌入的问题"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "尚未嵌入任何问题。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "每个最终用户都需要自己的 Metabase 账户"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "当你嵌入 Metabase 时，使用你应用的每个人都需要自己的 Metabase 账户。这是因为多个用户共享同一个账户存在安全风险。客户端侧筛选数据也无法解决这个问题，因为任何拿到该账户 token 的人都能访问该账户可见的所有内容。此外，我们认为共享账户属于不公平使用。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "同意"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "模块化嵌入与 React SDK"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "通过模块化嵌入和 React SDK，将 Metabase 的全部能力嵌入到你的应用中，构建自定义分析体验，并以编程方式管理仪表板和数据。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "启用嵌入"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "使用模块化嵌入将 Metabase 仪表板和问题嵌入到你的应用中。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "全应用嵌入"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "一种在 iframe 中嵌入整个 Metabase 应用的方式。这涉及较大的取舍，除非你非常清楚自己在做什么，否则通常不建议使用。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "嵌入方式的可用性"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "访客嵌入的密钥"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "独立嵌入密钥用于访问 /api/Embed端点的请求的JSON Web令牌进行签名。您可以用这个技术创建一个仅限于特定用户或组织的安全环境。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "重新生成 key"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "重新生成嵌入 key？"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "这会导致现有嵌入内容在更新为新 key 之前停止工作。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "生成密钥"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "用空格分隔各个值。不允许使用 localhost。更改将在一分钟内生效。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "用空格分隔多个值。自动包含 localhost。更改将在一分钟内生效。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "添加你希望允许模块化嵌入和 SDK 使用的网站域名。使用 API keys 的 SDK 只能在 localhost 上运行。{0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "添加你想允许嵌入的网站域名。{0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "跨域资源共享（CORS）"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "决定是否允许在跨站请求中发送 cookie。如果你的嵌入应用托管在与 Metabase 不同的域名下，你很可能需要将此项改为 None。否则请保持为 Lax，因为更安全。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "如果将其设置为 None，你必须使用 HTTPS，否则浏览器会拒绝该请求。{0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "您可能需要将此设置更改为{0}。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "宽松<b>（默认）</b>"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "允许在同一域名上共享 Metabase 会话 cookie。适用于同域名下的生产环境实例。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "严格<b>（不推荐）</b>"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "不允许与嵌入实例共享 Metabase 会话 cookie。如果你不想启用嵌入的会话共享，请使用此选项。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "无（需要 HTTPS）"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "当你的应用与 Metabase 托管在不同域名时使用“无”。与 Safari 和基于 iOS 的浏览器不兼容。"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "SameSite cookie设置"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "通过环境变量设置"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -23809,6 +23942,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "配置数据权限并启用租户"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "启用多租户用户策略"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "将仪表板移动到共享集合"
 
@@ -23938,8 +24075,8 @@ msgid "404 error after SSO sign-in"
 msgstr "SSO 登录后出现 404 错误"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "如果在点击 \"Sign in with SSO\" 后浏览器返回 404 错误，请确保嵌入中心的身份验证标签页中 JWT SSO URI 的值指向你的 endpoint，并且你的 endpoint 正在运行且可用。"
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "如果点击“Sign in with SSO”后浏览器返回 404 错误，请确认管理员设置 / auth / JWT 中的 JWT SSO URI 指向你的端点，并确保该端点已启动、正在运行且可访问。"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -23962,8 +24099,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "JWT SSO 的用户预配已禁用"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "如果从你的应用重定向到 Metabase 后，你看到错误消息 \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO.\""
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "如果从你的应用重定向到 Metabase 后，你看到错误消息“抱歉，但你需要一个 $SITENAME 账户才能查看此页面，请联系你的管理员。JWT SSO 的用户预配在管理员设置/身份验证中已关闭。你可以开启此功能，以便在用户尚不存在时自动预配，或者在通过 JWT SSO 为其登录之前确保用户已存在。\""
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -23978,14 +24115,36 @@ msgid "Create embed"
 msgstr "创建嵌入"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "获取嵌入代码片段"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "嵌入仪表板、问题、查询构建器或集合浏览器。配置使用体验并自定义外观。"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "添加你的数据"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "连接你自己的数据库或上传 CSV，开始使用你的真实数据。"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "准备数据"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "创建仪表板"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "使用 X-rays 从你的数据自动生成一个仪表板。"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -23996,168 +24155,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "为多租户设置精细化权限以控制数据访问。与外部用户共享仪表板、问题和模型，并允许他们创建内容，同时限制对内部数据或其他租户数据的访问。"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "配置 JWT 身份验证，确保只有已授权的用户才能访问你的嵌入内容。"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "部署"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "使用 SSO 在生产环境嵌入"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "将你嵌入的仪表板部署到生产环境并与用户分享。"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "编辑主题"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "主题名称"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "主要颜色"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "将主颜色重置为默认值"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "显示更少颜色"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "显示更多颜色"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "根据品牌颜色重新生成筛选、汇总、正向、负向以及图表颜色"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "从品牌颜色重新生成"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "基础字体大小"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "删除主题"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "保存主题"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "启用模块化嵌入以查看主题的实时预览。"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "接受 {0} 以查看主题的实时预览。"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "启用模块化嵌入"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "接受并继续"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "主题预览"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "创建仪表板或问题以预览此主题。"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "更改预览资源"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "选择要预览的数据"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "品牌"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "背景"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "主要文本"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "次要文本"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "第三级文本"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "边框"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "阴影"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "确定要删除此主题吗？此操作无法撤销。"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "复制和删除"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "主题复制成功"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "复制主题失败"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "新建主题"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "主题删除成功"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "删除主题失败"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "无标题主题"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "筛选、汇总、正向、负向以及图表颜色已根据品牌颜色重新生成。"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "主颜色已重置为默认值。"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "主题已保存"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "保存主题失败"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24308,6 +24319,7 @@ msgid "Initial investigation"
 msgstr "初始调查"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "新研究"
 
@@ -24618,33 +24630,41 @@ msgstr "选择一个组"
 msgid "Set up key"
 msgstr "设置 key"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "创建密钥"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "保存你的新密钥"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "删除密钥并生成一个新的？"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "这将导致现有 token 停止工作，直到身份提供商使用新密钥完成更新。"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "删除密钥"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "生成密钥时出错。"
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "设置密钥"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "复制到剪贴板"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "密钥已复制到剪贴板"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "将密钥复制到剪贴板时出错。"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "新密钥"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "请确保现在就复制此密钥，并将其保存在安全的地方。"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "你将无法再次查看它。"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "在身份提供方更新为新密钥之前，这将导致现有 token 失效并停止工作。"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -24809,6 +24829,11 @@ msgstr "别告诉别人，但你是我最喜欢的。"
 #, javascript-format
 msgid "{0} tips"
 msgstr "{0} 小贴士"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "首页"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25206,7 +25231,6 @@ msgid "New conversation"
 msgstr "新建对话"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "与 {0} 聊天（{1}+E）"
@@ -25283,14 +25307,6 @@ msgid "Data sources used"
 msgstr "使用的数据源"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "正在应用..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "已应用"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "修订版"
 
@@ -25301,10 +25317,6 @@ msgstr "加载预览失败"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "正在加载预览"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "只读"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25635,15 +25647,6 @@ msgstr "无法加载此对话"
 msgid "Try refreshing the page."
 msgstr "尝试刷新页面。"
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "此页面无法查看 {0}"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "让我们一起转换你的数据吧！"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "描述你想要的 SQL，输入 @ 可提及一个项目。"
@@ -25722,11 +25725,6 @@ msgstr "{0} 对话框"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "提及一个项目"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "嵌入"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -27879,10 +27877,6 @@ msgid "Internal Collections"
 msgstr "内部集合"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "首页"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "其他用户的个人集合"
 
@@ -28299,6 +28293,14 @@ msgstr "创建原生查询"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "添加原生查询，添加 SQL，创建 SQL"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "创建研究"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "添加研究，添加探索，研究模式"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -28846,10 +28848,6 @@ msgstr "不缓存结果"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "不缓存"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "首先，一些法律条款"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29593,6 +29591,10 @@ msgstr "自定义表达式"
 msgid "Custom Expression"
 msgstr "自定义表达式"
 
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "选择..."
+
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
 msgstr "可信的定义，便于从此开始。"
@@ -29971,6 +29973,10 @@ msgstr "这可能就是你要找的答案。如果不是，试着移除或调整
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "返回之前的结果"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "代码片段"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -32832,10 +32838,6 @@ msgstr[0] "这也会归档其中的 {0} 个转换。"
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "确定要归档此文件夹吗？"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "创建一个转换，它会 "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35714,6 +35716,10 @@ msgstr "无法生成具有唯一前缀的 key"
 msgid "API endpoint does not exist."
 msgstr "API 端点不存在。"
 
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "对沙盒化数据应用的读取和查询访问权限。"
+
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
 msgstr "无法使用 MB_ENCRYPTION_SECRET_KEY 解密应用程序数据库"
@@ -36361,10 +36367,6 @@ msgstr "控制允许哪些类型的主机作为 HTTP channel 目的地。\n"
 "- allow-all（不作限制，包括 localhost）。\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "无效的 http-channel-allowed-networks！只允许 external-only、allow-private 和 allow-all 这几个值。"
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "事件的最大重试次数。"
 
@@ -36633,6 +36635,10 @@ msgstr "评论内容必须是有效的 JSON。"
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "评论上下文必须是有效的 JSON 对象。"
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "Emoji 必须为 1 到 10 个 Unicode 码点。"
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37261,10 +37267,6 @@ msgstr "控制 Metabase 在连接到数据仓库时可以连接哪些网络。\n
 "同样适用于 SSH 隧道主机和数据库 auth-provider URL。"
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`, and `allow-all` are allowed."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "控制在建立 SSH 隧道时发送心跳的频率（秒）。"
 
@@ -37653,10 +37655,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "检查管理员是否应看到简单嵌入条款弹窗"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "检查管理员是否应看到模块化嵌入和 SDK 的许可条款弹窗"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "允许管理员在其他应用中安全嵌入问题和仪表板？"
 
@@ -37671,10 +37669,6 @@ msgstr "允许管理员通过 SDK 嵌入 Metabase？"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "允许管理员通过模块化嵌入来嵌入 Metabase？"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "允许管理员通过模块化嵌入、React SDK 和访客嵌入来嵌入 Metabase？"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -39770,10 +39764,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "MCP 服务器是否已启用。"
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "要禁用的 v2 MCP tool 名称，以 CSV 存储。被禁用的工具会从 tools/list 中隐藏，并在 tools/call 时被拒绝。"
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "存储的 MCP query handle 在计划的 GC 任务删除之前保留的小时数。"
 
@@ -39784,62 +39774,6 @@ msgstr "为 CORS 启用的常用 MCP 客户端，以 CSV 客户端 key（例如 
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "自托管 MCP 客户端的自定义 CORS 源，用空格分隔。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "指标是聚合，不是来源。要使用指标 {0}，请把其基础表的数字 id 填入 `source-table:`（可通过 `search` 或 `browse_data` 查找），并用该指标的数字 id 引用它："
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "要将已保存的问题或模型作为查询来源引用，请将其纯数字 id 填入 `source-card:` —— 不要用 URI：`\"source-card\": {0}`。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "在 `source-table:` 中使用纯数字的表 id —— 不要用 URI：`\"source-table\": {0}`。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` 接受数字表 id；`source-card:` 接受已保存卡片的数字 id。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "调用 `browse_data`，并将操作设为 \"list_tables\" 以列出可用表及其数字 id，然后选一个作为 `source-table`。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "对该数据库调用 `browse_data`，并将操作设为 \"list_tables\"，然后使用数字表 id 重试——它永远不会有歧义。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "对该表调用 `browse_data`，并将操作设为 \"get_fields\"，以列出其列及其数字 id。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "对源表调用 `browse_data`，并将操作设为 \"get_fields\"，以列出可用的外键列。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "如果某个指标与该表相关，请对拥有该指标的表调用 `browse_data`，并将操作设为 \"get_fields\" 来查看其维度；其中提供了精确的 `joins:` 子句。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "用 `search` 查找该问题或模型，并将其纯数字 id 填入 `source-card:`。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "对拥有该度量的表调用 `browse_data`，并将操作设为 \"get_fields\"，然后使用其 measures 列表中的数字 id。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "对拥有该细分的表调用 `browse_data`，并将操作设为 \"get_fields\"，然后使用其 segments 列表中的数字 id。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "在 `source-table:` 中使用数字表 id（来自 `browse_data` 的操作 \"list_tables\"），这样完全不需要数据库名称。"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` 接受数字表 id；`source-card:` 接受已保存卡片的数字 id。"
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -39964,10 +39898,6 @@ msgid "View transforms"
 msgstr "查看转换"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "创建并编辑转换"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "查看 SQL 代码片段"
 
@@ -40046,6 +39976,10 @@ msgstr "搜索内容"
 #: metabase/metabot/scope.clj
 msgid "View database metadata"
 msgstr "查看数据库元数据"
+
+#: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "读取 MCP 资源"
 
 #: metabase/metabot/scope.clj
 msgid "View todos"
@@ -40616,8 +40550,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "是否在 UI 中显示 Metabot 插画。"
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "追加到 Metabot 的系统提示词中的自定义指令，用于聊天体验（AI 侧边栏和嵌入式 Metabot）。"
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "追加到 Metabot 的聊天体验系统提示中的自定义说明（AI 侧边栏、嵌入式 Metabot，以及 Slack 中的 Metabot）。"
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42340,6 +42274,10 @@ msgstr "value 必须是带有源表和筛选器的有效 MBQL 查询。"
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "细分定义必须是单阶段查询，包含源表和筛选器，并且不能包含 joins、表达式、分组、聚合、字段、order by 或 limit"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "请求正文超过最大大小 {0} 字节。"
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "加载模板 ''{0}'' 失败。你是否记得构建 Metabase 前端？"
@@ -42379,6 +42317,10 @@ msgstr "阻止服务器为来自 localhost 的请求发送 CORS 标头。"
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "阻止异常中间件在响应中包含堆栈跟踪。"
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "未通过身份验证的调用方发出的 HTTP 请求正文的最大大小（以字节计）。超过此大小的请求会在读取正文之前以 HTTP 413 拒绝。"
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -42731,8 +42673,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "包含 LDAP 到 Metabase 群组映射的 JSON。"
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} 不是有效的 DN。"
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} 不是有效的 DN。示例：{1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -42869,10 +42811,6 @@ msgstr "不支持通过隐式 join 引用字段。"
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "查询失败"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "无效的 map-tile-server-allowed-networks！只允许 external-only、allow-private 和 allow-all 这几个值。"
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44033,6 +43971,10 @@ msgstr "支持用户"
 msgid "Transforms Python"
 msgstr "转换 Python"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "转换测试"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "未启用 analytics dev mode。"
@@ -44176,6 +44118,10 @@ msgstr "无法将租户用户添加到数据应用。"
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "数据应用查询不能使用引用其他已保存问题或指标的指标：{0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}：\"version\" 必须是正整数，例如 1。"
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -44492,8 +44438,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "如果 remote-sync-type 为 :read-only 且 remote-sync-auto-import 为 true，则检查要导入更新的频率（分钟）。默认为 5。"
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "远程同步任务允许完成的最长时间"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "远程同步任务在未证明其进程仍存活（通过心跳，或在没有心跳的情况下通过行进度）时，最多可以持续多久才会被视为已死亡并被替代。缓慢但仍存活的任务永远不受影响。任务本身会在该限制的十倍后被中止。"
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45029,6 +44975,70 @@ msgstr "attribute key 必须是 keyword 或 string，且不能以 `@` 开头"
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "租户集合：{0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "预期 {0} 指定了列 {1}，它匹配到多个输出列：{2}。请按输出中的拼写原样填写。"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "预期 {0} 比较列 {1}，但转换输出中没有该列。它包含：{2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "预期 {0} 与 SQL 查询进行比较，但该功能尚未实现。请改为提供 ''columns'' 和 ''rows''。"
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "预期 {0} 的类型为 {1}，但该功能尚未实现。"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "无法运行该预期，且数据库未给出原因。"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "只能测试查询类型的转换。"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "此转换的 {0} 数据库不支持转换测试。"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "无法解析该转换的源 SQL 以进行测试输入校验：{0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "无法为 {0} 创建测试输入："
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "正在测试的转换运行失败："
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "预期 {0} 读取了本测试未替代的表：{1}。预期只能读取该转换的输出及其声明的输入。"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "转换测试无法将源完全重映射到测试表；仍保留以下引用：{0}。请为每个源表设置别名，并使用别名限定其列（例如 `FROM my_table t ... t.col`），而不是使用表名。"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "预期 {0} 的 SQL 无法解析：{1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "该转换读取了未声明测试输入的表：{0}。请为每个表添加一个输入。"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "为该转换未读取的表声明了测试输入：{0}。请移除它们。"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "重复的测试输入；每个输入表只能声明一次：{0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"

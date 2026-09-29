@@ -7,7 +7,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Project-Id-Version: metabase-i18n\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-15 05:47+0000\n"
+"POT-Creation-Date: 2026-09-22 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -18,7 +18,7 @@ msgstr ""
 "X-Crowdin-File-ID: 2\n"
 "Language-Team: Turkish\n"
 "Language: tr_TR\n"
-"PO-Revision-Date: 2026-09-22 05:40\n"
+"PO-Revision-Date: 2026-09-29 05:43\n"
 
 #: /home/runner/work/metabase/metabase/src/metabase/analyze/fingerprint/fingerprinters.clj
 msgid "Error generating fingerprint for {0}"
@@ -162,11 +162,6 @@ msgid "Nothing here"
 msgstr "Burada hiçbir şey yok"
 
 #: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
-#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
-msgid "Select..."
-msgstr "Seçin..."
-
-#: enterprise/frontend/src/embedding/data-picker/TriggerComponents.tsx
 #: frontend/src/metabase/admin/settings/components/UploadSettings/UploadSettingsForm.tsx
 #: frontend/src/metabase/databases/components/DatabaseEngineField/DatabaseEngineSelect.tsx
 #: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
@@ -295,7 +290,6 @@ msgstr "Kullanıcı özniteliği"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/GitSyncControls/GitSyncControls.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/PushChangesModal/PushChangesModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/BranchSwitcher.tsx
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -318,6 +312,8 @@ msgstr "Kullanıcı özniteliği"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx
 #: frontend/src/metabase/admin/datamodel/components/SegmentRetireModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/admin/people/components/AddRow.tsx
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.tsx
@@ -325,6 +321,7 @@ msgstr "Kullanıcı özniteliği"
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.tsx
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/CreateApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
@@ -338,6 +335,7 @@ msgstr "Kullanıcı özniteliği"
 #: frontend/src/metabase/common/collections/components/QuestionMoveConfirmModal.tsx
 #: frontend/src/metabase/common/components/ArchiveModal/ArchiveModal.tsx
 #: frontend/src/metabase/common/components/ConfirmModal/ConfirmModal.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryRowEditor.tsx
@@ -366,9 +364,6 @@ msgstr "Kullanıcı özniteliği"
 #: frontend/src/metabase/documents/components/editor-extensions/CardEmbed/modals/NativeQueryModal.tsx
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/mcp/McpFeedbackArea.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/home/components/EmbedHomepage/FeedbackModal.tsx
@@ -387,7 +382,6 @@ msgstr "Kullanıcı özniteliği"
 #: frontend/src/metabase/querying/components/QueryVisualization/RunButton.tsx
 #: frontend/src/metabase/querying/components/expressions/ExpressionWidget/ExpressionWidget.tsx
 #: frontend/src/metabase/querying/metrics/components/MetricEditor/MetricEditorHeader/MetricEditorHeader.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/components/EditHeader.tsx
 #: frontend/src/metabase/reference/components/RevisionMessageModal.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -424,6 +418,7 @@ msgstr "İptal"
 #: frontend/src/metabase/actions/utils.ts
 #: frontend/src/metabase/admin/performance/components/StrategyForm.tsx
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/EditApiKeyModal.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/components/ActionButton/ActionButton.tsx
@@ -700,6 +695,8 @@ msgstr "Tüm gruplardan erişimi kaldır"
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotFeatureAccessPage/components/GearIconMenu/GearIconMenu.tsx
 #: frontend/src/metabase/admin/ai/MetabotNavPane.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/settings/pages/SettingsPage/SettingsPage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
@@ -727,7 +724,6 @@ msgstr "Kullanıcı grupları"
 #: enterprise/frontend/src/metabase-enterprise/tenants/index.tsx
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/GroupsListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant groups"
 msgstr "Kiracı grupları"
 
@@ -761,8 +757,8 @@ msgstr "YZ sohbet prompt talimatları"
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 #, javascript-format
-msgid "Add instructions here for the sidebar AI chat experience in {0}. You might want to give instructions about tone, types of entities to prefer, and things like that."
-msgstr "{0} içindeki kenar çubuğu YZ sohbet deneyimi için buraya talimatlar ekleyin. Ton, tercih edilecek varlık türleri ve benzeri konularda talimat vermek isteyebilirsiniz."
+msgid "Add instructions here for the sidebar AI chat experience in {0} and for Metabot in Slack. You might want to give instructions about tone, types of entities to prefer, and things like that."
+msgstr "{0} içindeki kenar çubuğu YZ sohbet deneyimi ve Slack’teki Metabot için buraya talimatlar ekleyin. Ton, tercih edilecek varlık türleri ve benzeri konularda talimatlar vermek isteyebilirsiniz."
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotSystemPromptsPage/MetabotSystemPromptsPage.tsx
 msgid "Natural language query prompt instructions"
@@ -1167,7 +1163,6 @@ msgstr "Bir grup ara"
 #: frontend/src/metabase/admin/people/components/GroupsListing.tsx
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.tsx
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group name"
 msgstr "Grup adı"
 
@@ -1287,11 +1282,9 @@ msgstr "Tüm aboneliklerden / uyarılardan çık"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/AuthSettingsPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/AuthenticationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/AuthenticationCard.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Authentication"
@@ -1348,11 +1341,13 @@ msgid "Unit"
 msgstr "Birim"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping added"
 msgstr "Eşleme eklendi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping updated"
 msgstr "Eşleme güncellendi"
@@ -1395,6 +1390,7 @@ msgstr "Yeni eşleme"
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/SyncModeSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/admin/settings/auth/components/GoogleAuthForm/GoogleAuthForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/admin/settings/utils.ts
 #, javascript-format
 msgid "Using {0}"
@@ -1410,6 +1406,7 @@ msgid "Add at least one mapping to use manual group mapping"
 msgstr "Manuel grup eşlemeyi kullanmak için en az bir eşleme ekleyin"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/JWTGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/GroupMappingList.tsx
 msgid "Add mapping"
 msgstr "Eşleme ekle"
 
@@ -1439,30 +1436,36 @@ msgid "Enter JWT group..."
 msgstr "JWT grubu girin..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-editor.ts
 msgid "A mapping for this group already exists"
 msgstr "Bu grup için zaten bir eşleme var"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "{0} groups"
 msgstr "{0} grup"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingEditorRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingEditorRow.tsx
 #, javascript-format
 msgid "Pick {0} group..."
 msgstr "{0} grubunu seçin..."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/metadata/components/FieldSection/BehaviorSection/RemappingPicker/RemappingPicker.tsx
 msgid "Edit mapping"
 msgstr "Eşlemeyi düzenle"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 msgid "Delete mapping"
 msgstr "Eşlemeyi sil"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/MappingRow.tsx
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/MappingRow.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupSelect/GroupSelect.tsx
 msgid "No groups"
 msgstr "Grup yok"
@@ -1475,10 +1478,12 @@ msgid "Changes saved"
 msgstr "Değişiklikler kaydedildi"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-group-mapping-settings.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-group-mappings.ts
 msgid "Error saving group mapping"
 msgstr "Grup eşleme kaydedilirken hata oluştu"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 msgid "Mapping deleted, but not all of its groups could be updated"
 msgstr "Eşleme silindi, ancak gruplarının hepsi güncellenemedi"
 
@@ -1487,14 +1492,10 @@ msgid "Mapping deleted and group mapping turned off"
 msgstr "Eşleme silindi ve grup eşleme kapatıldı"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/JWTGroupMappingSection/use-mapping-deletion.ts
+#: frontend/src/metabase/admin/settings/auth/components/GroupMappings/use-mapping-deletion.ts
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Mapping deleted"
 msgstr "Eşleme silindi"
-
-#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
-#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
-msgid "JWT"
-msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error saving JWT Settings"
@@ -1503,6 +1504,11 @@ msgstr "JWT Ayarları kaydedilirken hata oluştu"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 msgid "Error loading JWT configuration"
 msgstr "JWT yapılandırması yüklenirken hata oluştu"
+
+#: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/auth/containers/JwtAuthCard/JwtAuthCard.tsx
+msgid "JWT"
+msgstr "JWT"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
@@ -1529,14 +1535,17 @@ msgid "You can send additional user attributes to {0} by adding the attributes a
 msgstr "Öznitelikleri JWT’nize anahtar/değer çiftleri olarak ekleyerek {0}’a ek kullanıcı öznitelikleri gönderebilirsiniz"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute key"
 msgstr "E-posta öznitelik anahtarı"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute key"
 msgstr "Ad öznitelik anahtarı"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute key"
 msgstr "Soyad öznitelik anahtarı"
 
@@ -1551,7 +1560,7 @@ msgstr "Kiracı ataması öznitelik anahtarı"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 msgid "Group mapping"
 msgstr "Grup eşleme"
 
@@ -1571,6 +1580,7 @@ msgstr "Kaydet ve etkinleştir"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsJWTForm/SettingsJWTForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/modals/UpdateRowActionFormModal.tsx
 #: frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx
@@ -1753,17 +1763,14 @@ msgid "Map OIDC claims to user attributes. Use standard OIDC claim names or your
 msgstr "OIDC claimlerini kullanıcı attributelarına eşleyin. Standart OIDC claim adlarını ya da sağlaycınızın özel claimlerini kullanın."
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Email attribute"
 msgstr "E-posta özniteliği"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "First name attribute"
 msgstr "Ad özniteliği"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsOIDCForm/SettingsOIDCForm.tsx
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Last name attribute"
 msgstr "Soyad özniteliği"
 
@@ -1906,6 +1913,7 @@ msgid "SAML keystore password"
 msgstr "SAML anahtar deposu parolası"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm/SettingsSAMLForm.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Shh..."
 msgstr "Şşşt..."
 
@@ -2089,21 +2097,21 @@ msgstr "Sonraki öğe"
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx
 #: frontend/src/metabase/admin/people/components/PeopleList.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/browse/metrics/MetricsTable.tsx
 #: frontend/src/metabase/browse/models/ModelsTable.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/common/data-studio/components/PaneHeader/PaneHeader.tsx
 #: frontend/src/metabase/data-studio/components/RevisionHistory/RevisionDiff.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePickerTreeTable.tsx
 #: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/timelines/common/components/TimelineForm/TimelineForm.tsx
 #: frontend/src/metabase/transforms/components/CreateTransformCollectionModal/CreateTransformCollectionModal.tsx
 #: frontend/src/metabase/transforms/components/TagMultiSelect/UpdateTagModal/UpdateTagModal.tsx
@@ -2154,8 +2162,8 @@ msgstr "Önbellekleme ayarları"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/caching/components/StrategyEditorForQuestionsAndDashboards/CachingPoliciesFilters.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricControls/LeftControls/LeftControls.tsx
 #: frontend/src/metabase/metrics/components/MetricDimensions/DimensionRow.tsx
 #: frontend/src/metabase/plugins/oss/caching.ts
@@ -2613,11 +2621,11 @@ msgstr "Plugin kodunu git deposu yerine yerel bir dev sunucudan y fcklemek iin 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/CustomVizListItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 #: frontend/src/metabase/transforms/components/JobHeader/JobHeader.tsx
 #: frontend/src/metabase/transforms/pages/JobListPage/JobListPage.tsx
@@ -2745,9 +2753,9 @@ msgstr "SDK değişiklik günlüğünü görüntüleyin"
 
 #: enterprise/frontend/src/metabase-enterprise/custom_viz/components/EditDevCustomVizForm.tsx
 #: frontend/src/metabase/admin/performance/components/ModelPersistenceConfiguration.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/widgets/FormattingWidget.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
 #: frontend/src/metabase/settings-components/AdminSettingInput.tsx
 msgid "Enabled"
 msgstr "Etkin"
@@ -2891,6 +2899,7 @@ msgstr "Farklı bir sürüm için oluşturulmuş olabilirler ve güncellenmeleri
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/metrics/pages/NewMetricPage/NewMetricPage.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/ItemLists/SearchResults.tsx
 #: frontend/src/metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.tsx
 #: frontend/src/metabase/data-studio/upsells/pages/LibraryUpsellPage.tsx
@@ -2953,6 +2962,7 @@ msgid "Snippet"
 msgstr "Snippet"
 
 #: enterprise/frontend/src/metabase-enterprise/data-studio/library/LibraryPage/components/CreateMenu.tsx
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
@@ -3769,7 +3779,6 @@ msgid "Actions for {0}"
 msgstr "{0} için Eylemler"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppActionsMenu/DataAppActionsMenu.tsx
-#: metabase/metabot/scope.clj
 msgid "View resources"
 msgstr "Kaynakları görüntüle"
 
@@ -3829,6 +3838,10 @@ msgstr "Projenize Metabase Data Uygulama becerilerini yükleyin, sonra YZ agent�
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSkillsSection/DataAppSkillsSection.tsx
 msgid "Install command"
 msgstr "Yükleme komutu"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppStatusBadge/DataAppStatusBadge.tsx
+msgid "Outdated"
+msgstr "Güncel değil"
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/admin/components/DataAppSummary/DataAppSummary.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
@@ -3902,6 +3915,10 @@ msgid "This data app doesn’t exist or has been disabled."
 msgstr "Bu veri uygulaması mevcut değil veya devre dışı bırakılmış."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
+msgid "This data app is outdated"
+msgstr "Bu veri uygulaması güncel değil"
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app isn’t published yet"
 msgstr "Bu veri Uygulaması henüz yayınlanmadı"
 
@@ -3944,6 +3961,12 @@ msgstr "Bu uygulama yüklenirken bir şeyler ters gitti. Sayfayı yenilemeyi den
 #: enterprise/frontend/src/metabase-enterprise/data_apps/components/DataAppView/DataAppView.tsx
 msgid "This data app didn’t load. It may have been blocked or is unreachable. Try refreshing the page, or go back."
 msgstr "Bu veri uygulaması yüklenmedi. Engellenmiş olabilir veya erişilemiyor olabilir. Sayfayı yenilemeyi deneyin ya da geri dönün."
+
+#: enterprise/frontend/src/metabase-enterprise/data_apps/constants.ts
+#: metabase_enterprise/data_apps/api.clj
+#, javascript-format
+msgid "This app was built for version {0} of data apps. Migrate it to the current version, then rebuild and sync it again."
+msgstr "Bu uygulama, veri uygulamalarının {0} sürümü için oluşturuldu. Mevcut sürüme migrate edin, ardından yeniden derleyip tekrar sync edin."
 
 #: enterprise/frontend/src/metabase-enterprise/data_apps/runtime/components/DataAppIframeApp/DataAppIframeApp.tsx
 msgid "This data app can’t be opened directly."
@@ -4140,7 +4163,7 @@ msgstr "İşlem arka planda çalışır. Veritabanı boyutuna bağlı olarak bu 
 #: frontend/src/metabase/embedding/components/SharingMenu/InviteToViewModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal.tsx
 #: frontend/src/metabase/embedding/setup-guide/components/StepperWithCards/StepperWithCards.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderSetup.tsx
 #: frontend/src/metabase/metadata/components/TableSection/TableSection.tsx
@@ -4284,6 +4307,7 @@ msgstr "Veritabanlarını API üzerinden programatik olarak da ekleyebilirsiniz.
 #: frontend/src/metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp.tsx
 #: frontend/src/metabase/admin/permissions/components/LegacyPermissionsModal/LegacyPermissionsModal.tsx
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorSplitPermsMessage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/DomainsSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/MapsSettingsPage.tsx
 #: frontend/src/metabase/admin/upsells/UpsellCloud.tsx
@@ -4313,12 +4337,12 @@ msgstr "Tümünü görüntüle: {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/database_routing/DestinationDatabasesList/DestinationDatabasesList.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/common/TableBreadcrumbs.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/auth/components/AuthCard/AuthCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/ErrorPages/BugReportModal.tsx
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/metabot/components/AIProviderConfigurationForm/AIProviderList.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricExpressionPill/MetricExpressionPill.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/ModelActionListItem.tsx
@@ -4443,12 +4467,12 @@ msgstr "Bağımlılıklarını görmek için bir öğe seçin"
 #: enterprise/frontend/src/metabase-enterprise/dependencies/components/FilterOptionsPicker/FilterOptionsPicker.tsx
 #: enterprise/frontend/src/metabase-enterprise/table-editing/table-edit/EditTableDataFilterButton.tsx
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Filter/FilterDropdown/FilterDropdown.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/collections/components/CollectionContent/CollectionTypeFilter.tsx
 #: frontend/src/metabase/common/components/ListFilterPopover/ListFilterPopover.tsx
 #: frontend/src/metabase/data-studio/data-model/components/TablePicker/components/TablePicker.tsx
 #: frontend/src/metabase/data-studio/segments/components/SegmentRevisionHistory/SegmentRevisionHistory.tsx
 #: frontend/src/metabase/embedding/LocaleProvider.unit.spec.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationSidebar.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearchPanel/MetricSearchPanel.tsx
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/FilterHeaderButton.tsx
@@ -4967,8 +4991,22 @@ msgid "exact specifications"
 msgstr "kesin spesifikasyonlar"
 
 #: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingAuthorizedOriginsWidget/InteractiveEmbeddingAuthorizedOriginsWidget.tsx
-msgid "Authorized origins for full-app embedding"
-msgstr "Tam uygulama gömme için yetkili origin’ler"
+msgid "Authorized origins"
+msgstr "Yetkili origin’ler"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Enable full app embedding"
+msgstr "Tam uygulama gömmeyi etkinleştir"
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+msgid "Embed the full Metabase application or individual pages into your app. Best for complex, BI-focused scenarios where you want to embed all of Metabase's capabilities into your app. If you are looking for stability of UX, flexibility or control, or don't have a complex use case that requires a full-blown BI solution, we recommend using Modular embedding instead."
+msgstr "Tam Metabase uygulamasını veya tek tek sayfaları uygulamanıza gömün. Metabase’in tüm yeteneklerini uygulamanıza gömmek istediğiniz, karmaşık ve BI odaklı senaryolar için en iyisi. UX kararlılığı, esneklik ya da kontrol arıyorsanız veya tam teşekküllü bir BI çözümü gerektiren karmaşık bir kullanım senaryonuz yoksa bunun yerine Modüler gömme kullanmanızı öneririz."
+
+#: enterprise/frontend/src/metabase-enterprise/embedding/components/InteractiveEmbeddingSettingsCard.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Documentation"
+msgstr "Dokümantasyon"
 
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts
 #: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts
@@ -5180,6 +5218,7 @@ msgstr "Google Sheets"
 #: enterprise/frontend/src/metabase-enterprise/google_drive/GdriveDbMenu.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/LibrarySyncRow/LibrarySyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/TransformsSyncRow/TransformsSyncRow.tsx
 #: frontend/src/metabase/databases/components/DatabaseSyncScheduleField/DatabaseSyncScheduleField.tsx
 #: frontend/src/metabase/monitor/tools/components/RunTypePicker/TaskRunTypePicker.tsx
@@ -5270,7 +5309,6 @@ msgstr "OK"
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationHeader.tsx
 #: frontend/src/metabase/admin/people/components/GroupSummary.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 #: frontend/src/metabase/palette/constants.ts
 #: frontend/src/metabase/palette/utils.ts
@@ -5876,12 +5914,12 @@ msgid "Queries generated"
 msgstr "Oluşturulan sorgular"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Negative"
 msgstr "Negatif"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationDetailPage/ConversationDetailPage.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 msgid "Positive"
 msgstr "Pozitif"
 
@@ -6320,8 +6358,9 @@ msgid "Unavailable"
 msgstr "Kullanılamıyor"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/DataComplexityCards.tsx
-msgid "Complexity score"
-msgstr "Karmaşıklık skoru"
+#, javascript-format
+msgid "Complexity score {0}"
+msgstr "Karmaşıklık skoru {0}"
 
 #: enterprise/frontend/src/metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationStatsPage/query-utils.ts
 msgid "Input tokens"
@@ -6414,6 +6453,7 @@ msgstr "Bağımlılık tanılama"
 #: enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics/components/DiagnosticsSidebar/ErrorsSection/ErrorsSection.tsx
 #: enterprise/frontend/src/metabase-enterprise/multi_factor_auth/components/common/CopyableCodeBlock/CopyableCodeBlock.tsx
 #: frontend/src/metabase/admin/ai/MetabotAdminSuggestedPrompts.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
 #: frontend/src/metabase/common/components/CopyButton/CopyButton.tsx
 #: frontend/src/metabase/common/components/CopyTextField/copy-text-field-props.tsx
@@ -6421,7 +6461,6 @@ msgstr "Bağımlılık tanılama"
 #: frontend/src/metabase/detail-view/components/DetailViewSidesheet/DetailViewSidesheet.tsx
 #: frontend/src/metabase/documents/components/Editor/AnchorLinkMenu/AnchorLinkButton.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentToolCallPart.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotChatMessage.tsx
@@ -6461,6 +6500,7 @@ msgstr "Bilgi"
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CollectionRowMenu/EditCollectionModal/EditCollectionModal.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/ItemsTable/Columns.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
@@ -6475,7 +6515,6 @@ msgstr "Bilgi"
 #: frontend/src/metabase/monitor/tools/components/JobInfoApp/JobsTable.tsx
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.tsx
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionInfoSidebar.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/reference/databases/DatabaseDetail.tsx
 #: frontend/src/metabase/reference/databases/FieldDetail.tsx
 #: frontend/src/metabase/reference/databases/TableDetail.tsx
@@ -6899,6 +6938,7 @@ msgid "No changes to push"
 msgstr "Push edilecek değişiklik yok"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/CollectionSyncRow/CollectionSyncRow.tsx
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 #, javascript-format
 msgctxt "{0} is the name of a metabase collection"
 msgid "Sync {0}"
@@ -7137,24 +7177,24 @@ msgid "Keep your dashboards, questions, and collections safely backed up in Git.
 msgstr "Panolarınızı, sorularınızı ve koleksiyonlarınızı Git’te güvenle yedekli tutun."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync collections with dependencies?"
-msgstr "Bağımlılıkları olan koleksiyonlar da senkronize edilsin mi?"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Couldn’t sync selected collection"
 msgstr "Seçilen koleksiyon senkronize edilemedi"
-
-#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync to continue"
-msgstr "Devam etmek için senkronize edin"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
 msgid "Can't be synced"
 msgstr "Senkronize edilemez"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
-msgid "Sync required collections"
-msgstr "Gerekli koleksiyonları senkronize et"
+msgid "Item"
+msgstr "Öğe"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Used By"
+msgstr "Tarafından kullanılıyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncDependencyModal.tsx
+msgid "Go to collection"
+msgstr "Koleksiyona git"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/RemoteSyncAdminSettings/RemoteSyncSettingsForm.tsx
 msgid "Content to sync"
@@ -7320,13 +7360,12 @@ msgid "What will be overwritten: "
 msgstr "Üzerine yazılacaklar: "
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
-msgid "Snippets"
-msgstr "Kod parçaları"
+msgid "Snippets and glossary"
+msgstr "Kod parçaları ve sözlük"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SetupConflictInfo.tsx
-msgid "Library, Transforms and Snippets."
-msgstr "Kütüphane, Dönüşümler ve Kod parçaları."
+msgid "Library, Transforms, Snippets and Glossary."
+msgstr "Kütüphane, Dönüşümler, Kod parçaları ve Sözlük."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncConflictModal/SyncConflictModal.tsx
 msgid "Failed to mark library and transforms as synced"
@@ -7421,6 +7460,14 @@ msgid "An error occurred during sync."
 msgstr "Senkronizasyon sırasında bir hata oluştu."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "Sync stopped"
+msgstr "Senkronizasyon durduruldu"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "The sync was cancelled."
+msgstr "Senkronizasyon iptal edildi."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Please wait until this finishes before editing content."
 msgstr "İçeriği düzenlemeden önce bunun bitmesini bekleyin."
 
@@ -7429,15 +7476,33 @@ msgid "Cancelling…"
 msgstr "İptal ediliyor"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
-msgid "Still working…"
-msgstr "Hâlâ çalışıyor…"
+#, javascript-format
+msgctxt "{0} is a person's name, {1} is a time of day"
+msgid "Started by {0} at {1}"
+msgstr "{0} tarafından {1} saatinde başlatıldı"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 #, javascript-format
-msgid "Still working. No update for {0} minute."
-msgid_plural "Still working. No update for {0} minutes."
-msgstr[0] "Hâlâ çalışıyor. {0} dakikadır güncelleme yok."
-msgstr[1] "Hâlâ çalışıyor. {0} dakikadır güncelleme yok."
+msgctxt "{0} is a time of day"
+msgid "Started at {0}"
+msgstr "{0} saatinde başlatıldı"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgctxt "{0} is a percentage, {1} is a sync phase such as 'importing content'"
+msgid "Stopped at {0}% while {1}"
+msgstr "{1} sırasında {0}%’de durduruldu"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+msgid "No progress reported recently. The sync is still running."
+msgstr "Yakın zamanda ilerleme bildirilmedi. Senkronizasyon hâlâ çalışıyor."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
+#, javascript-format
+msgid "No progress for {0} minute. The sync is still running."
+msgid_plural "No progress for {0} minutes. The sync is still running."
+msgstr[0] "{0} dakika boyunca ilerleme yok. Senkronizasyon hâlâ çalışıyor."
+msgstr[1] "{0} dakika boyunca ilerleme yok. Senkronizasyon hâlâ çalışıyor."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/components/SyncProgressModal.tsx
 msgid "Pulling from Git"
@@ -7568,6 +7633,30 @@ msgid "The synced collection will update to match the new branch. Questions that
 msgstr "Senkronize edilen koleksiyon, yeni branch ile eşleşecek şekilde güncellenecek. Mevcut branch’te olup yeni branch’te olmayan sorular, onlara referans veren panolardan veya içerikten kalıcı olarak kaldırılacak; geri dönseniz bile."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "preparing"
+msgstr "hazırlanıyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "exporting content"
+msgstr "içerik dışa aktarılıyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "pushing"
+msgstr "push ediliyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "importing content"
+msgstr "içerik içe aktarılıyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "recording sync state"
+msgstr "senkronizasyon durumu kaydediliyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "finishing"
+msgstr "bitiriliyor"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "The sync branch changed in another session. Refresh the page and try again."
 msgstr "Senkronizasyon dalı başka bir oturumda değişti. Sayfayı yenileyin ve tekrar deneyin."
 
@@ -7599,16 +7688,24 @@ msgid "Our analytics"
 msgstr "Analitiklerimiz"
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Unknown collection"
+msgstr "Bilinmeyen koleksiyon"
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content saved in a personal collection, which can’t be synced. Move that content to a shared collection to continue."
 msgstr "Bu koleksiyondaki Panolar veya Sorular, senkronize edilemeyen bir kişisel koleksiyonda kaydedilmiş içeriğe dayanıyor. Devam etmek için bu içeriği paylaşılan bir koleksiyona taşıyın."
+
+#: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
+msgid "Dashboards or questions in this collection rely on content in usage analytics, which can’t be synced. Update them to use content you can sync to continue."
+msgstr "Bu koleksiyondaki panolar veya sorular, sync edilemeyen kullanım analitiğindeki içeriğe bağlı. Devam etmek için onları sync edebileceğiniz içerikleri kullanacak şekilde güncelleyin."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on content that can’t be synced where it currently lives. Move that content into a collection you’re syncing to continue."
 msgstr "Bu koleksiyondaki Panolar veya Sorular, şu anda bulunduğu yerde senkronize edilemeyen içeriğe dayanıyor. Devam etmek için bu içeriği senkronize ettiğiniz bir koleksiyona taşıyın."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
-msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Sync the Library as well to continue."
-msgstr "Bu Koleksiyon'daki Panolar veya Sorular, Kütüphane ile senkronize olan kod parçacıklarına dayanıyor. Devam etmek için Kütüphane'yi de senkronize edin."
+msgid "Dashboards or questions in this collection rely on snippets, which sync with the Library. Create the Library in Data Studio, then sync it to continue."
+msgstr "Bu koleksiyondaki panolar veya sorular, Kütüphane ile sync olan kod parçalarına bağlı. Veri Stüdyosu’nda Kütüphane’yi oluşturun, ardından devam etmek için sync edin."
 
 #: enterprise/frontend/src/metabase-enterprise/remote_sync/utils.ts
 msgid "Dashboards or questions in this collection rely on data saved elsewhere. To continue, sync those linked collections as well."
@@ -8293,8 +8390,9 @@ msgstr "Metabase örneğinizdeki güvenlik açıkları hakkında bildirim alabil
 
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterMobileNavItem.tsx
 #: enterprise/frontend/src/metabase-enterprise/security_center/components/SecurityCenterNavItem/SecurityCenterNavItem.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingSecuritySettings.tsx
 msgid "Security"
 msgstr "Güvenlik"
 
@@ -8718,13 +8816,13 @@ msgstr[1] "{0} satır seçildi"
 #: frontend/src/metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.tsx
 #: frontend/src/metabase/account/notifications/components/NotificationCard/NotificationCard.tsx
 #: frontend/src/metabase/actions/utils.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/admin/settings/components/ApiKeys/ManageApiKeys.tsx
 #: frontend/src/metabase/comments/components/Discussion/DiscussionActionPanel.tsx
 #: frontend/src/metabase/common/components/Glossary/GlossaryTable.tsx
 #: frontend/src/metabase/dashboard/components/DashboardSubscriptionsSidebar/AddEditSidebar/DeleteSubscriptionAction.tsx
 #: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.tsx
 #: frontend/src/metabase/timelines/common/components/DeleteEventModal/DeleteEventModal.tsx
@@ -8772,7 +8870,6 @@ msgstr "Yeni bir kayıt oluştur"
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewCollectionDialog/NewCollectionDialog.tsx
 #: frontend/src/metabase/common/components/Pickers/EntityPicker/components/NewDashboardDialog/NewDashboardDialog.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 #: frontend/src/metabase/models/components/ModelActions/ModelActionDetails/useEnableImplicitActionsForModel.ts
 #: frontend/src/metabase/timelines/common/components/EventForm/EventForm.tsx
@@ -9180,14 +9277,15 @@ msgstr "Bu ayarları değiştirmeniz gerekirse önceki adımlara geri dönebilir
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: enterprise/frontend/src/metabase-enterprise/tenants/containers/TenantsListingApp.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 #: metabase/permissions_rest/api.clj metabase_enterprise/api_routes/routes.clj
 msgid "Tenants"
 msgstr "Kiracılar"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
 msgid "People"
@@ -9195,8 +9293,7 @@ msgstr "Kişiler"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #: frontend/src/metabase/admin/app/reducers.ts
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubPermissionsPage.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 msgid "Permissions"
 msgstr "İzinler"
 
@@ -9225,7 +9322,9 @@ msgstr "ve"
 #: frontend/src/metabase/common/hooks/use-set-collection.ts
 #: frontend/src/metabase/querying/components/DataReference/DatabasePane.tsx
 msgid "table"
-msgstr "tablo"
+msgid_plural "tables"
+msgstr[0] "tablo"
+msgstr[1] "tablolar"
 
 #: enterprise/frontend/src/metabase-enterprise/tenants/components/TenantsSummaryOnboardingStep/TenantsSummaryOnboardingStep.tsx
 #, javascript-format
@@ -10107,6 +10206,7 @@ msgid "You'll be charged {0} per transform run."
 msgstr "Dönüşüm çalıştırma başına {0} ücretlendirilirsiniz."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms-python/upsells/PythonTransformsUpsellModal/PurchaseAdvancedTransforms.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
 msgid "Upgrade"
 msgstr "Yükselt"
 
@@ -10230,6 +10330,7 @@ msgid "We'll notify you when you've hit {0}% of your allotment."
 msgstr "Kotalınızın {0}% seviyesine ulaştığınızda sizi bilgilendireceğiz."
 
 #: enterprise/frontend/src/metabase-enterprise/transforms/upsells/pages/TransformsUpsellPage/TransformsUpsellPage.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
@@ -10448,7 +10549,7 @@ msgid "Note: deleting each of the values will revert them back to default."
 msgstr "Not: değerlerin her birini silmek, onları varsayılan ayarlara geri döndürür."
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSettings/ColorSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 msgid "Chart colors"
 msgstr "Grafik renkleri"
 
@@ -10474,22 +10575,6 @@ msgstr "Renkler"
 msgid "Preview"
 msgstr "Önizleme"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
-msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
-msgid "Loading message"
-msgstr "Yükleme mesajı"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When calculations return no results"
-msgstr "Hesaplamalar sonuç döndürmediğinde"
-
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/EmbeddedAppearanceSettings.tsx
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
-msgid "When no objects can be found"
-msgstr "Hiçbir nesne bulunamadığında"
-
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontFilesWidget.tsx
 msgid "Font weight"
 msgstr "Yazı tipi kalınlığı"
@@ -10505,8 +10590,8 @@ msgid "URL"
 msgstr "URL"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/FontWidget/FontWidget.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
 #: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
 msgid "Font"
 msgstr "Yazı tipi"
 
@@ -10692,6 +10777,11 @@ msgstr "Favicon"
 msgid "Fonts"
 msgstr "Yazı tipleri"
 
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelBrandingSettingsPage.tsx
+msgctxt "Label for a setting that selects the message shown to users while Metabase is loading"
+msgid "Loading message"
+msgstr "Yükleme mesajı"
+
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 msgid "Conceal Metabase"
@@ -10736,6 +10826,14 @@ msgstr "Giriş ve abonelikten çıkma sayfaları"
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
 msgid "Landing page"
 msgstr "Açılış sayfası"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When calculations return no results"
+msgstr "Hesaplamalar sonuç döndürmediğinde"
+
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/WhiteLabelConcealSettingsPage.tsx
+msgid "When no objects can be found"
+msgstr "Hiçbir nesne bulunamadığında"
 
 #: enterprise/frontend/src/metabase-enterprise/whitelabel/index.ts
 msgid "Custom URL"
@@ -10864,7 +10962,7 @@ msgid "Add another summary"
 msgstr "Başka bir özet ekle"
 
 #: frontend/src/embedding-sdk-bundle/components/private/SdkQuestion/components/Summarize/SummarizeDropdown/SummarizeDropdown.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionSummarizeWidget.tsx
 #: frontend/src/metabase/querying/notebook/components/NotebookStep/utils.ts
 #: frontend/src/metabase/visualizations/components/ClickActions/utils.ts
@@ -12557,10 +12655,10 @@ msgstr "Yeni harika aksiyonum"
 #: frontend/src/metabase/actions/containers/ActionCreator/CreateActionForm/CreateActionForm.tsx
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
 #: frontend/src/metabase/common/collections/components/CreateCollectionForm/CreateCollectionForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 #: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
 #: frontend/src/metabase/querying/components/NativeQueryEditor/SnippetForm/SnippetForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "It's optional but oh, so helpful"
 msgstr "İsteğe bağlı ama çok faydalı"
 
@@ -12645,10 +12743,8 @@ msgid "Field type"
 msgstr "Alan türü"
 
 #: frontend/src/metabase/actions/containers/ActionCreator/FormCreator/FormFieldEditor/FormFieldEditor.tsx
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/BaseAppearanceSection.tsx
 msgid "Appearance"
 msgstr "Görünüm"
@@ -13206,6 +13302,7 @@ msgid "upgrade"
 msgstr "yükseltin"
 
 #: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/constants.ts
 #: frontend/src/metabase/admin/databases/components/DatabaseList/DatabaseList.tsx
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.tsx
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx
@@ -13220,6 +13317,12 @@ msgstr "yükseltin"
 #: frontend/src/metabase/reference/databases/TableSidebar.tsx
 msgid "Databases"
 msgstr "Veritabanları"
+
+#: frontend/src/metabase/admin/app/reducers.ts
+#: frontend/src/metabase/metabot/constants.ts
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Embedding"
+msgstr "Gömme"
 
 #: frontend/src/metabase/admin/app/reducers.ts
 msgid "AI"
@@ -13240,6 +13343,10 @@ msgstr "Performans"
 #: frontend/src/metabase/parameters/components/TagEditor/TagEditorSidebar.tsx
 msgid "Help"
 msgstr "Yardım"
+
+#: frontend/src/metabase/admin/components/RelatedSettingsSection/RelatedSettingsSection.tsx
+msgid "Related settings"
+msgstr "İlgili ayarlar"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx
 #, javascript-format
@@ -13680,6 +13787,236 @@ msgstr "Sorgu oluşturucudaki Filtre açılır menüsüne eklemek için segmentl
 msgid "Filter by table"
 msgstr "Tabloya göre filtrele"
 
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+msgid "Setup guide"
+msgstr "Kurulum kılavuzu"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/GuestEmbedsSettings/GuestEmbedsSettings.tsx
+msgid "Guest embeds"
+msgstr "Misafir gömmeler"
+
+#: frontend/src/metabase/admin/embedding/components/EmbeddingNav.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Themes"
+msgstr "Temalar"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Edit theme"
+msgstr "Temayı düzenle"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
+#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
+msgid "Copy code"
+msgstr "Kodu kopyala"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Theme name"
+msgstr "Tema adı"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Main colors"
+msgstr "Ana renkler"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Reset main colors to defaults"
+msgstr "Ana renkleri varsaylanlara sfrla"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show fewer colors"
+msgstr "Daha az renk göster"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Show more colors"
+msgstr "Daha fazla renk göster"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
+msgstr "Filtre, Özetle, pozitif, negatif ve grafik renklerini marka renginden yeniden oluştur"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Regenerate from brand color"
+msgstr "Marka renginden yeniden olutur"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Base font size"
+msgstr "Temel font boyutu"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Delete theme"
+msgstr "Temayı sil"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EditorPanel.tsx
+msgid "Save theme"
+msgstr "Temayı kaydet"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
+msgid "usage conditions"
+msgstr "kullanım koşulları"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
+msgid "Enable modular embedding to see a live preview of your theme."
+msgstr "Temanızın canlı önizlemesini görmek için modüler gömmeyi etkinleştirin."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#, javascript-format
+msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
+msgid "Accept the {0} to see a live preview of your theme."
+msgstr "Temanızın canlı önizlemesini görmek için {0} kabul edin."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Enable modular embedding"
+msgstr "Modüler gömmeyi etkinleştir"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/EnableEmbeddingPrompt.tsx
+msgid "Accept and continue"
+msgstr "Kabul et ve devam et"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Theme preview"
+msgstr "Tema önizlemesi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewPanel.tsx
+msgid "Create a dashboard or question to preview this theme."
+msgstr "Bu temayı önizlemek için bir pano veya soru oluşturun."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Change preview resource"
+msgstr "Önizleme kaynağını değiştir"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/PreviewResourcePicker.tsx
+msgid "Select data to preview"
+msgstr "Önizlemek için veri seçin"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Brand"
+msgstr "Marka"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Background"
+msgstr "Arka plan"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Primary text"
+msgstr "Birincil metin"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Secondary text"
+msgstr "İkincil metin"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Tertiary text"
+msgstr "Üçüncül metin"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Border"
+msgstr "Kenar çizgisi"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeEditor/constants.ts
+msgid "Shadow"
+msgstr "Gölge"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/DeleteThemeModal.tsx
+msgid "Are you sure you want to delete this theme? This action cannot be undone."
+msgstr "Bu temayı silmek istediğinizden emin misiniz? Bu eylem geri alınamaz."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+msgid "Duplicate and delete"
+msgstr "Çoğalt ve sil"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeCard.tsx
+#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
+#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
+#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
+msgid "Duplicate"
+msgstr "Çoğalt"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Theme duplicated successfully"
+msgstr "Tema başarıyla çoğaltıldı"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Failed to duplicate theme"
+msgstr "Tema çoğaltılamadı"
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/EmbeddingThemeListingApp.tsx
+msgid "Create and edit themes to reuse across multiple embeds."
+msgstr "Birden çok gömme genelinde yeniden kullanmak için temalar oluşturun ve düzenleyin."
+
+#: frontend/src/metabase/admin/embedding/components/ThemeListing/NewThemeCard.tsx
+msgid "New theme"
+msgstr "Yeni tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Light"
+msgstr "Açık"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-default-embedding-themes.ts
+#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
+#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
+msgid "Dark"
+msgstr "Koyu"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Theme deleted successfully"
+msgstr "Tema başarıyla silindi"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-delete-theme-flow.tsx
+msgid "Failed to delete theme"
+msgstr "Tema silinemedi"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Untitled theme"
+msgstr "Başlıksız tema"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
+msgstr "Filtre, Özetle, pozitif, negatif ve grafik renkleri marka renginden yeniden oluşturuldu."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+#: frontend/src/metabase/common/components/UndoListing.tsx
+#: frontend/src/metabase/common/components/Unsubscribe.tsx
+#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
+#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
+#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
+#: frontend/src/metabase/visualizer/components/Header/Header.tsx
+msgid "Undo"
+msgstr "Geri al"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Main colors reset to defaults."
+msgstr "Ana renkler varsaylanlara sfrland."
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Theme saved"
+msgstr "Tema kaydedildi"
+
+#: frontend/src/metabase/admin/embedding/hooks/use-embedding-theme-editor.ts
+msgid "Failed to save theme"
+msgstr "Tema kaydedilemedi"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Embedding setup guide"
+msgstr "Gömme kurulum kılavuzu"
+
+#: frontend/src/metabase/admin/embedding/setup-guide/SetupGuideAdminSettingsPage.tsx
+msgid "Follow the guide to get started with modular embedding"
+msgstr "Modüler gömmeye başlamak için kılavuzu izleyin"
+
 #: frontend/src/metabase/admin/help/Help.tsx
 #: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
 msgid "Get help"
@@ -13921,7 +14258,6 @@ msgstr "Dahili gruplar"
 
 #: frontend/src/metabase/admin/people/components/PeopleNav.tsx
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp/PeopleListingApp.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
 msgid "Tenant users"
 msgstr "Kiracı kullanıcıları"
 
@@ -14997,7 +15333,6 @@ msgid "You won't be able to recover a deleted API key. You'll have to create a n
 msgstr "Silinen bir API anahtarını kurtaramazsınız. Yeni bir anahtar oluşturmanız gerekir."
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/DeleteApiKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
 msgid "No, don't delete"
 msgstr "Hayır, silme"
 
@@ -15047,7 +15382,6 @@ msgid "Copy and save this API key"
 msgstr "Bu API anahtarını kopyalayıp kaydedin"
 
 #: frontend/src/metabase/admin/settings/components/ApiKeys/SecretKeyModal.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Store this key somewhere safe. For security reasons, we can't show it to you again."
 msgstr "Bu anahtarı güvenli bir yerde saklayın. Güvenlik nedeniyle size tekrar gösteremeyiz."
 
@@ -15207,6 +15541,208 @@ msgstr "Yapılandır"
 msgid "Edit configuration"
 msgstr "Yapılandırmayı düzenle"
 
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
+msgid "First, some legalese"
+msgstr "Önce, biraz hukuki metin"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
+msgstr "Metabase hesaplarını paylaşmak bir güvenlik riskidir. Verileri istemci tarafında filtreleseniz bile, her kullanıcı token’ını kullanarak paylaşılan kullanıcı hesabının görebildiği her türlü veriyi görüntüleyebilir."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
+msgstr "Ayrıca, paylaşılan hesapları adil olmayan kullanım olarak değerlendiriyoruz. Adil kullanım, gömülü analitiğin her son kullanıcısına kendi Metabase hesabını vermeyi içerir."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "Decline and go back"
+msgstr "Reddet ve geri dön"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+msgid "When using the Embedded analytics SDK for React, each end user should have their own Metabase account."
+msgstr "React için Gömülü analitik SDK kullanırken, her son kullanıcının kendi Metabase hesabı olmalıdır."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "When using modular embedding, each end user must have their own Metabase account."
+msgstr "Modüler gömme kullanırken her son kullanıcının kendi Metabase hesabı olmalıdır."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "implement JWT or SAML SSO"
+msgstr "JWT veya SAML SSO uygulayın"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to upsell the SDK. {1} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0} and {1}."
+msgstr "API anahtarlarını kullanarak Gömülü analitik SDK’yı localhost’ta hızlıca test edebilirsiniz. SDK’yı diğer sitelerde kullanmak için {0} ve {1}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+#, javascript-format
+msgctxt "{0} is the link to implement JWT or SAML authentication."
+msgid "You can test Embedded analytics SDK on localhost quickly by using API keys. To use the SDK on other sites, {0}."
+msgstr "API anahtarlarını kullanarak Gömülü analitik SDK’yı localhost’ta hızlıca test edebilirsiniz. SDK’yı diğer sitelerde kullanmak için {0}."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Enable modular embedding SDK"
+msgstr "Modüler gömme SDK’sını etkinleştir"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data."
+msgstr "Özel bir analitik deneyimi oluşturmak ve panoları ile verileri programatik olarak yönetmek için Metabase’in tüm gücünü uygulamanıza gömün."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSdkSettings/EmbeddingSdkSettings.tsx
+msgid "Quick start"
+msgstr "Hızlı başlangıç"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Embedding secret key"
+msgstr "Gömme gizli anahtarı"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
+msgstr "Bağımsız Gömme Gizli Anahtarı, /api/embed uç noktalarına yapılan istekler için JSON Web Tokenlerini imzalamak için kullanılır. Bu, belirli kullanıcılar veya kuruluşlarla sınırlı bir güvenli ortam oluşturmanıza olanak tanır."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Regenerate key"
+msgstr "Anahtarı yeniden oluştur"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Regenerate embedding key?"
+msgstr "Gömme anahtarı yeniden oluşturulsun mu?"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "This will cause existing embeds to stop working until they are updated with the new key."
+msgstr "Bu, mevcut gömmelerin yeni anahtarla güncellenene kadar çalışmayı durdurmasına neden olur."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecretKeyWidget.tsx
+msgid "Generate key"
+msgstr "Anahtar oluştur"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
+msgstr "Değerleri boşlukla ayırın. Localhost’a izin verilmez. Değişiklikler bir dakika içinde geçerli olur."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
+msgstr "Değerleri boşlukla ayırın. Localhost otomatik olarak dahildir. Değişiklikler bir dakika içinde etkili olur."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+msgid "Cross-Origin Resource Sharing (CORS)"
+msgstr "Cross-Origin Resource Sharing (CORS)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/CorsInputWidget.tsx
+#, javascript-format
+msgid "Add the website domains where you want to allow embedding. {0}"
+msgstr "Gömme işlemine izin vermek istediğiniz web sitesi domain’lerini ekleyin. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "Determines whether to allow cookies for cross-site requests. {0}"
+msgstr "Siteler arası istekler için çerezlere izin verilip verilmeyeceğini belirler. {0}"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#, javascript-format
+msgid "You should probably change this setting to {0}."
+msgstr "Muhtemelen bu ayarı {0} olarak değiştirmelisiniz."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
+#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
+#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
+#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
+#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
+#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "None"
+msgstr "Yok"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Lax (default)"
+msgstr "Lax (varsayılan)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
+msgstr "Metabase oturum çerezlerinin aynı domain üzerinde paylaşılmasına izin verir. Aynı domaindeki prodüksiyon instance’ları için kullanılır."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Strict (not recommended)"
+msgstr "Strict (önerilmez)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
+msgstr "Metabase oturum çerezlerinin gömülü instance’larla paylaşılmasına izin vermez. Gömme ile oturum paylaşımını etkinleştirmek istemiyorsanız bunu kullanın."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "None (requires HTTPS)"
+msgstr "None (HTTPS gerektirir)"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
+msgstr "Uygulamanız ve Metabase farklı domain’lerde barındırılıyorsa \"None\" kullanın. Safari ve iOS tabanlı tarayıcılarla uyumsuzdur."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
+msgid "SameSite cookie setting"
+msgstr "SameSite cookie ayarı"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding settings"
+msgstr "Gömme ayarları"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Embedding methods"
+msgstr "Gömme yöntemleri"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "The simplest way to embed Metabase. Embed dashboards, questions, the query builder, natural language querying with AI, and more in your app with components. Built on the SDK with per-component controls and theming."
+msgstr "Metabase’i gömmenin en basit yolu. Bileşenlerle panoları, soruları, sorgu oluşturucuyu, YZ ile doğal dil sorgulamayı ve daha fazlasını uygulamanıza gömün. Bileşen başına kontroller ve temalandırma ile SDK üzerine inşa edilmiştir."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Version pinning"
+msgstr "Sürüm sabitleme"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
+msgstr "Metabase Cloud instance’ları yeni sürümlere otomatik olarak yükseltilir. SDK paketleri belirli Metabase sürümüyle sıkı şekilde uyumludur. Metabase’inizi bir ana sürüme sabitlemeyi talep edebilir ve Metabase ile SDK bağımlılığınızı koordineli şekilde yükseltebilirsiniz."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingSettings/EmbeddingSettings.tsx
+msgid "Request version pinning"
+msgstr "Sürüm sabitleme talep et"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle/EmbeddingToggle.tsx
+msgid "Set via environment variable"
+msgstr "Ortam değişkeni ile ayarlandı"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/NewEmbedButton/NewEmbedButton.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "New embed"
+msgstr "Yeni gömme"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Enable guest embeds"
+msgstr "Misafir gömmeleri etkinleştir"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through."
+msgstr "Ad-hoc sorgulama ya da grafiklerde detaya inmeyi sunmak istemediğinizde, tek oturum açma olmadan grafikleri ve panoları gömmenin güvenli bir yolu."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Upgrade to Metabase Pro for more powerful embedding methods"
+msgstr "Daha güçlü gömme yöntemleri için Metabase Pro’ya yükseltin"
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on."
+msgstr "Özelleştirilebilir bileşenleri kullanarak grafikleri, detaya inmeli panoları, hatta sorgu oluşturucuyu kendi uygulamanıza gömün. Gömmelerinizi tek oturum açma ile güvenceye alın."
+
+#: frontend/src/metabase/admin/settings/components/EmbeddingSettings/SharedCombinedEmbeddingSettings/SharedCombinedEmbeddingSettings.tsx
+msgid "Published embeds"
+msgstr "Yayınlanmış gömmeler"
+
 #: frontend/src/metabase/admin/settings/components/GeneralSettings/DevInstanceBanner.tsx
 msgid "This instance is in development mode and can be used for development or testing purposes only."
 msgstr "Bu instance geliştirme modunda ve yalnızca geliştirme veya test amaçlı kullanılabilir."
@@ -15223,10 +15759,32 @@ msgstr "Bu instance geliştirme modunda ve yalnızca geliştirme veya test amaç
 msgid "Get your token"
 msgstr "Token''ınızı alın"
 
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#, javascript-format
+msgid "Automatically assign people to {0} groups based on their LDAP group membership"
+msgstr "LDAP grup üyeliklerine göre kişileri otomatik olarak {0} gruplarına atayın"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "Manual group mappings"
+msgstr "Manuel grup eşlemeleri"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+msgid "LDAP group name"
+msgstr "LDAP grup adı"
+
+#: frontend/src/metabase/admin/settings/components/LdapGroupMappingSection/LdapGroupMappingSection.tsx
+#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
+msgid "No mappings yet"
+msgstr "Henüz eşleme yok"
+
 #: frontend/src/metabase/admin/settings/components/LicenseInput/LicenseInput.tsx
 #: frontend/src/metabase/setup/components/LicenseTokenStep/LicenseTokenForm.tsx
 msgid "Activate"
 msgstr "Etkinleştir"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Error loading LDAP configuration"
+msgstr "LDAP yapılandırması yüklenirken hata oluştu"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP host"
@@ -15239,18 +15797,6 @@ msgstr "LDAP port"
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "LDAP security"
 msgstr "LDAP güvenliği"
-
-#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
-#: frontend/src/metabase/admin/settings/components/widgets/Notifications/WebhookForm.tsx
-#: frontend/src/metabase/dashboard/components/ClickMappings/ClickMappingsTargetWithoutSource.tsx
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#: frontend/src/metabase/parameters/components/TagEditor/TagEditorParamParts/FilterWidgetTypeSelect.tsx
-#: frontend/src/metabase/parameters/components/TemporalUnitSettings/TemporalUnitSettings.tsx
-#: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx
-#: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx
-#: frontend/src/metabase/viz-core/lib/settings/graph.ts
-msgid "None"
-msgstr "Yok"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgctxt "short for 'Secure Sockets Layer'"
@@ -15281,12 +15827,26 @@ msgid "User search base"
 msgstr "Kullanıcı arama tabanı"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "The distinguished name (DN) of the entry in your LDAP server that {0} should use as the starting point when searching for users"
+msgstr "LDAP sunucunuzda, {0}’ın kullanıcıları ararken başlangıç noktası olarak kullanması gereken girişin distinguished name’i (DN)"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "User filter"
 msgstr "Kullanıcı filtresi"
 
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+#, javascript-format
+msgid "Map LDAP attributes to the email, first name, and last name fields in {0}"
+msgstr "LDAP özniteliklerini {0} içindeki e-posta, ad ve soyad alanlarıyla eşleştirin"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
 msgid "Group search base"
 msgstr "Grup arama tabanı"
+
+#: frontend/src/metabase/admin/settings/components/SettingsLdapForm.tsx
+msgid "Not required for LDAP directories that provide a 'memberOf' overlay, such as Active Directory. It will be searched recursively."
+msgstr "Active Directory gibi 'memberOf' overlay sağlayan LDAP dizinleri için gerekli değildir. Özyinelemeli olarak aranacaktır."
 
 #: frontend/src/metabase/admin/settings/components/SettingsLicense/SettingsLicense.tsx
 msgid "Metabase is open source and will be free forever – but by upgrading you can have priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
@@ -15327,9 +15887,6 @@ msgstr "Webhook'lar"
 
 #: frontend/src/metabase/admin/settings/components/SettingsNav/SettingsNav.tsx
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubLocalizationPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
 #: frontend/src/metabase/palette/constants.ts
 msgid "Localization"
 msgstr "Yerelleştirme"
@@ -15551,18 +16108,6 @@ msgstr "X-Ray özelliklerini etkinleştir"
 #: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
 msgid "Usage tracking"
 msgstr "Kullanım izleme"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Version pinning"
-msgstr "Sürüm sabitleme"
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Metabase Cloud instances are automatically upgraded to new releases. SDK packages are strictly compatible with specific version of Metabase. You can request to pin your Metabase to a major version and upgrade your Metabase and SDK dependency in a coordinated fashion."
-msgstr "Metabase Cloud instance’ları yeni sürümlere otomatik olarak yükseltilir. SDK paketleri belirli Metabase sürümüyle sıkı şekilde uyumludur. Metabase’inizi bir ana sürüme sabitlemeyi talep edebilir ve Metabase ile SDK bağımlılığınızı koordineli şekilde yükseltebilirsiniz."
-
-#: frontend/src/metabase/admin/settings/components/SettingsPages/GeneralSettingsPage.tsx
-msgid "Request version pinning"
-msgstr "Sürüm sabitleme talep et"
 
 #: frontend/src/metabase/admin/settings/components/SettingsPages/LocalizationSettingsPage.tsx
 msgid "Instance settings"
@@ -16028,10 +16573,6 @@ msgid "No mappings yet, group sync is not on"
 msgstr "Henüz eşleme yok, grup senkronizasyonu açık değil"
 
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
-msgid "No mappings yet"
-msgstr "Henüz eşleme yok"
-
-#: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView.tsx
 msgid "Synchronize Group Memberships"
 msgstr "Grup Üyeliklerini Senkronize Et"
 
@@ -16206,9 +16747,45 @@ msgstr "Bearer"
 msgid "Delete this destination"
 msgstr "Bu hedefi sil"
 
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded dashboards"
+msgstr "Gömülü panolar"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No dashboards have been embedded yet."
+msgstr "Henüz hiçbir pano gömülmedi."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "Embedded questions"
+msgstr "Gömülü sorular"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/EmbeddedResources.tsx
+msgid "No questions have been embedded yet."
+msgstr "Henüz hiçbir soru gömülmedi."
+
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicDocumentResources.tsx
 msgid "No documents have been publicly shared yet."
 msgstr "Henüz hiçbir doküman herkese açık paylaşılmadı."
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Public Link"
+msgstr "Herkese Açık Bağlantı"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke Link"
+msgstr "Bağlantıyı iptal et"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Revoke link"
+msgstr "Bağlantıyı İptal Et"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "Disable this link?"
+msgstr "Bu bağlantı devre dışı bırakılsın mı?"
+
+#: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicLinksListing.tsx
+msgid "They won't work anymore, and can't be restored, but you can create new links."
+msgstr "Artık çalışmayacaklar ve geri yüklenemezler, ancak yeni bağlantılar oluşturabilirsiniz."
 
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing/PublicResources.tsx
 msgid "No dashboards have been publicly shared yet."
@@ -16400,7 +16977,6 @@ msgstr "Önbelleklemenizi kontrol edin"
 #: frontend/src/metabase/admin/upsells/UpsellCacheConfig.tsx
 #: frontend/src/metabase/admin/upsells/UpsellSSO.tsx
 #: frontend/src/metabase/common/components/upsells/UpsellEmbedHomepage.tsx
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubUpsellBanner.tsx
 msgid "Try Metabase Pro"
 msgstr "Metabase Pro’yu deneyin"
 
@@ -16459,6 +17035,14 @@ msgstr "Prodüksiyona almadan önce staging''de, ayrı bir Metabase instance''ı
 msgid "Whitelabel email notifications"
 msgstr "Beyaz etiketli e-posta bildirimleri"
 
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Create custom themes"
+msgstr "Özel temalar oluşturun"
+
+#: frontend/src/metabase/admin/upsells/UpsellEmbeddingTheme.tsx
+msgid "Fine-tune the appearance of your embedded content with colors and fonts."
+msgstr "Renkler ve fontlarla gömülü içeriğinizin görünümünü ince ayarlayın."
+
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx
 msgid "Minimize maintenance"
 msgstr "Bakımı en aza indirin"
@@ -16507,19 +17091,21 @@ msgstr "SAML, JWT ve LDAP ile Metabase grup senkronizasyonu"
 msgid "User provisioning with SCIM"
 msgstr "SCIM ile kullanıcı provizyonlama"
 
+#: frontend/src/metabase/admin/upsells/UpsellSdkLink.tsx
+msgid "upgrade to Metabase Pro"
+msgstr "Metabase Pro’ya yükseltin"
+
 #: frontend/src/metabase/admin/upsells/UpsellSemanticSearch.tsx
 msgid "Get this with Pro. Try for free."
 msgstr "Bunu Pro ile edinin. Ücretsiz deneyin."
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Use a multi-tenant user strategy"
-msgstr "Çoklu kiracılı bir kullanıcı stratejisi kullanın"
+msgid "Manage customer-facing analytics at scale"
+msgstr "Müşteriye dönük analitiği ölçekte yönetin"
 
 #: frontend/src/metabase/admin/upsells/UpsellTenants.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Securely share data with external users and allow them to create content. Reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Verileri harici kullanıcılarla güvenli şekilde paylaşın ve onların içerik oluşturmasına izin verin. Her müşteri için yeniden oluşturmaktansa aynı Panoları ve izinleri tüm kiracılarda yeniden kullanın."
+msgid "Group your customers into tenants, reuse the same dashboards and permissions, and keep each tenant's data isolated."
+msgstr "Müşterilerinizi kiracılarda gruplandırın, aynı panoları ve izinleri yeniden kullanın ve her kiracının verisini izole tutun."
 
 #: frontend/src/metabase/admin/upsells/UpsellUploads.tsx
 msgctxt "in the sentence 'Upgrade to Metabase Pro to manage your uploaded files and available storage space.'"
@@ -16969,18 +17555,6 @@ msgid "There was an error bookmarking these items."
 msgstr "Bu öğeleri yer imlerine eklerken bir hata oluştu."
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
-#: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/common/components/CopyModal/CopyModal.tsx
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/DashCardActionsPanel.tsx
-#: frontend/src/metabase/dashboard/components/DashboardTabs/DashboardTabs.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: metabase/dashboards/write.clj metabase/dashboards_rest/api.clj
-msgid "Duplicate"
-msgstr "Çoğalt"
-
-#: frontend/src/metabase/collections/components/CollectionBulkActions/use-bulk-duplicate.ts
 #, javascript-format
 msgid "{0} item has been duplicated."
 msgid_plural "{0} items have been duplicated."
@@ -17308,8 +17882,8 @@ msgid "This comment was deleted."
 msgstr "Bu yorum silindi."
 
 #: frontend/src/metabase/common/CreateDashboard/CreateDashboardForm.tsx
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
 msgid "What is the name of your dashboard?"
 msgstr "Panonuzun adı ne olsun?"
 
@@ -17596,20 +18170,6 @@ msgstr "Alfa yüzdesi"
 msgid "Use system default"
 msgstr "Sistem varsayılanını kullan"
 
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Dark"
-msgstr "Koyu"
-
-#: frontend/src/metabase/common/components/ColorScheme/ColorSchemeSelect.tsx
-#: frontend/src/metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/LookAndFeelSettings.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Appearance/SimpleThemeSwitcherSection.tsx
-#: frontend/src/metabase/embedding/themes/hooks/use-default-embedding-themes.ts
-msgid "Light"
-msgstr "Açık"
-
 #: frontend/src/metabase/common/components/CommunityLocalizationNotice/CommunityLocalizationNotice.tsx
 msgid "Some translations are created by the Metabase community, and might not be perfect."
 msgstr "Bazı çeviriler Metabase topluluğu tarafından oluşturulur ve mükemmel olmayabilir."
@@ -17626,6 +18186,14 @@ msgstr "çevirilere buradan katkıda bulunun"
 #, javascript-format
 msgid "You can {0}"
 msgstr "{0} yapabilirsiniz"
+
+#: frontend/src/metabase/common/components/CopyCardForm/CopyCardForm.tsx
+#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
+#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
+#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
+#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
+msgid "Where do you want to save this?"
+msgstr "Bunu nereye kaydetmek istiyorsunuz?"
 
 #: frontend/src/metabase/common/components/CopyDashboardForm/CopyDashboardForm.tsx
 msgid "Only duplicate the dashboard"
@@ -17728,14 +18296,6 @@ msgstr "Bir Boyut seçin"
 #: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
 msgid "What is the name of your document?"
 msgstr "Dokümanınızın adı nedir?"
-
-#: frontend/src/metabase/common/components/DocumentCopyForm/DocumentCopyForm.tsx
-#: frontend/src/metabase/common/components/SaveQuestionForm/SaveQuestionForm.tsx
-#: frontend/src/metabase/metrics/pages/NewMetricPage/CreateMetricModal/CreateMetricModal.tsx
-#: frontend/src/metabase/questions/components/CopyCardForm/CopyCardForm.tsx
-#: frontend/src/metabase/questions/components/MoveCardModal/MoveCardModal.tsx
-msgid "Where do you want to save this?"
-msgstr "Bunu nereye kaydetmek istiyorsunuz?"
 
 #: frontend/src/metabase/common/components/EmojiPicker/EmojiPicker.tsx
 #: frontend/src/metabase/common/components/InfoText/InfoTextAssetLink.tsx
@@ -18240,7 +18800,6 @@ msgid "Databases will appear here once your admins have added some"
 msgstr "Yöneticileriniz bazılarını eklediğinde veritabanları burada görünecek"
 
 #: frontend/src/metabase/common/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/metadata/components/NoDatabasesEmptyState/NoDatabasesEmptyState.tsx
 msgid "Connect a database"
@@ -18350,26 +18909,6 @@ msgstr "{0} öğe taşınsın mı?"
 #: frontend/src/metabase/common/components/Pickers/QuestionPicker/QuestionPickerModal.tsx
 msgid "Choose a question or model"
 msgstr "Bir soru veya model seçin"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Public Link"
-msgstr "Herkese Açık Bağlantı"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke Link"
-msgstr "Bağlantıyı iptal et"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Revoke link"
-msgstr "Bağlantıyı İptal Et"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "Disable this link?"
-msgstr "Bu bağlantı devre dışı bırakılsın mı?"
-
-#: frontend/src/metabase/common/components/PublicLinksListing/PublicLinksListing.tsx
-msgid "They won't work anymore, and can't be restored, but you can create new links."
-msgstr "Artık çalışmayacaklar ve geri yüklenemezler, ancak yeni bağlantılar oluşturabilirsiniz."
 
 #: frontend/src/metabase/common/components/QuestionDownloadWidget/QuestionDownloadWidget.tsx
 msgid "The maximum download size is 1 million rows."
@@ -18787,7 +19326,7 @@ msgstr "AM/PM"
 #: frontend/src/metabase/notifications/utils.ts
 #: metabase/lib/temporal_bucket.cljc
 msgid "Minute"
-msgid_plural "{0} Minutes"
+msgid_plural "Minutes"
 msgstr[0] "Dakika"
 msgstr[1] "{0} Dakika"
 
@@ -18838,16 +19377,6 @@ msgstr "değiştirildi"
 #: frontend/src/metabase/common/components/UndoListing.tsx
 msgid "item"
 msgstr "öğe"
-
-#: frontend/src/metabase/common/components/UndoListing.tsx
-#: frontend/src/metabase/common/components/Unsubscribe.tsx
-#: frontend/src/metabase/dashboard/actions/auto-wire-parameters/toasts.ts
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-#: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
-#: frontend/src/metabase/explorations/components/ExplorationVisualization/ActionToolbar.tsx
-#: frontend/src/metabase/visualizer/components/Header/Header.tsx
-msgid "Undo"
-msgstr "Geri al"
 
 #: frontend/src/metabase/common/components/Unsubscribe.tsx
 #, javascript-format
@@ -19053,8 +19582,8 @@ msgid "Please ask a Metabase Store Admin to upgrade your plan."
 msgstr "Planınızı yükseltmek için lütfen bir Metabase Store Yöneticisi'nden rica edin."
 
 #: frontend/src/metabase/common/components/upsells/components/UpsellCardContent.tsx
-msgid "Get a 14 day trial of this and other Pro features."
-msgstr "Bunun ve diğer Pro özelliklerinin 14 günlük deneme sürümünü edinin."
+msgid "Get a 14-day free trial of this and other pro features"
+msgstr "Bu ve diğer pro özellikler için 14 günlük ücretsiz deneme edinin"
 
 #: frontend/src/metabase/common/hooks/use-before-unload/use-before-unload.ts
 msgid "You have unsaved changes."
@@ -19469,6 +19998,7 @@ msgid "Indexed record"
 msgstr "İndekslenmiş kayıt"
 
 #: frontend/src/metabase/common/utils/model-names.ts
+#: frontend/src/metabase/metabot/components/MetabotAsk/MetabotGreeting.tsx
 #: frontend/src/metabase/metabot/constants.ts
 msgid "Research"
 msgstr "Araştırma"
@@ -22556,227 +23086,6 @@ msgstr "Doküman kaydedildi"
 msgid "Error saving document"
 msgstr "Doküman kaydedilirken hata oluştu"
 
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-msgid "Get started"
-msgstr "Başlayın"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/TenancyUpsellPage.tsx
-msgid "Tenancy"
-msgstr "Kiracılık"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/nav/components/AppSwitcher/AppSwitcher.tsx
-msgid "Embedding hub"
-msgstr "Gömme merkezi"
-
-#: frontend/src/metabase/embedding-hub/components/EmbeddingHubLayout/EmbeddingHubLayout.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "New embed"
-msgstr "Yeni gömme"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Themes"
-msgstr "Temalar"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Branding elements"
-msgstr "Marka öğeleri"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAppearancePage.tsx
-msgid "Colors and branding for full-app embedding are based on the appearance settings defined in the"
-msgstr "Tam uygulama gömme için renkler ve markalama, şurada tanımlanan görünüm ayarlarına dayanır"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "SAML is configured"
-msgstr "SAML yapılandırıldı"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "You can review all authentication settings in the Admin."
-msgstr "Tüm kimlik doğrulama ayarlarını Yönetici bölümünde gözden geçirebilirsiniz."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Go to Admin"
-msgstr "Yönetici bölümüne git"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "View more authentication options, such as SAML, in the"
-msgstr "SAML gibi daha fazla kimlik doğrulama seçeneğini şurada görüntüleyin"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubAuthenticationPage.tsx
-msgid "Admin settings"
-msgstr "Yönetici ayarları"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Upgrade to Metabase Pro to access the SDK for React and more advanced options."
-msgstr "React için SDK’ya ve daha gelişmiş seçeneklere erişmek için Metabase Pro’ya yükseltin."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubSecurityPage.tsx
-msgid "Published guest embeds"
-msgstr "Yayınlanmış misafir gömler"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Documentation"
-msgstr "Dokümantasyon"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
-msgid "Enable multi-tenant user strategy"
-msgstr "Çoklu kiracılı kullanıcı stratejisini etkinleştir"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "A tenant is a set of attributes assigned to a user to isolate them from other tenants. For example, in a SaaS app with embedded Metabase dashboards, you can assign each customer to a tenant. Tenants let you reuse the same dashboards and permissions across all tenants, instead of recreating them for each customer."
-msgstr "Kiracı, bir kullanıcıya atanan ve onu diğer kiracılardan yalıtmak için kullanılan öznitelikler kümesidir. Örneğin, gömülü Metabase Panoları olan bir SaaS Uygulamasında her müşteriyi bir kiracıya atayabilirsiniz. Kiracılar, her müşteri için yeniden oluşturmaktansa aynı Panoları ve izinleri tüm kiracılarda yeniden kullanmanızı sağlar."
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "Enable multi-tenancy"
-msgstr "Çoklu kiracılığı etkinleştir"
-
-#: frontend/src/metabase/embedding-hub/pages/EmbeddingHubTenancyPage.tsx
-msgid "View docs"
-msgstr "Dokümanları görüntüle"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/ChecklistCard.tsx
-#, javascript-format
-msgid "Step {0} complete"
-msgstr "Adım {0} tamamlandı"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO to unlock"
-msgstr "Kilidi açmak için SSO’yu kurun"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Get started with Metabase Embedding"
-msgstr "Metabase Gömme ile başlayın"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create your first embed"
-msgstr "İlk gömmenizi oluşturun"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If all you want is a simple embedded dashboard, these steps are all you need."
-msgstr "Tek istediğiniz basit bir gömülü Pano ise, ihtiyacınız olan tüm adımlar bunlar."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Start with the basics of Metabase embedding."
-msgstr "Metabase gömmenin temelleriyle başlayın."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Fine-tune your embed"
-msgstr "Gömmenizi ince ayar yapın"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
-msgstr "Aklınızda çok sayıda kullanıcı ve kiracılı daha gelişmiş bir kurulum varsa, devam edin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Upgrade to Metabase Pro to configure advanced options."
-msgstr "Gelişmiş seçenekleri yapılandırmak için Metabase Pro’ya yükseltin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Connect your own database or upload a CSV and start working with your real data."
-msgstr "Kendi veritabanınızı bağlayın veya bir CSV yükleyin ve gerçek verilerinizle çalışmaya başlayın."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
-#: frontend/src/metabase/palette/shortcuts/global.ts
-msgid "Create a dashboard"
-msgstr "Pano oluştur"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Automatically generate a dashboard from your data using x-rays."
-msgstr "X-ray’leri kullanarak verilerinizden otomatik olarak bir pano oluşturun."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Get embed snippet"
-msgstr "Gömme kod parçasını al"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
-msgstr "Bir panoyu, soruyu, sorgu oluşturucuyu veya koleksiyon tarayıcıyı gömün. Deneyimi yapılandırın ve görünümü özelleştirin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embed a dashboard or question. Configure the experience and customize the appearance."
-msgstr "Bir Pano ya da Soru gömün. Deneyimi yapılandırın ve görünümü özelleştirin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure data permissions and tenants"
-msgstr "Veri izinlerini ve kiracıları yapılandırın"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Share data with external users and allow them to create content."
-msgstr "Verileri harici kullanıcılarla paylaşın ve onların içerik oluşturmasına izin verin."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Set up SSO"
-msgstr "SSO’yu kurun"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
-msgstr "Yalnızca yetkili kullanıcıların embed'lerinize erişebilmesini sağlamak için JWT kimlik doğrulamasını yapılandırın."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
-msgid "Embed in production with SSO"
-msgstr "SSO ile prodüksiyonda göm"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Create a custom theme"
-msgstr "Özel bir tema oluştur"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Fine-tune the appearance of your embedded content with colors and fonts."
-msgstr "Renkler ve fontlarla gömülü içeriğinizin görünümünü ince ayarlayın."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Configure AI"
-msgstr "YZ’yi yapılandır"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Connect to an LLM provider to embed AI chat interfaces and let your users ask natural language queries."
-msgstr "YZ sohbet arayüzlerini gömmek ve kullanıcılarınızın doğal dil sorguları sormasına izin vermek için bir LLM sağlayıcısına bağlanın."
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Useful links"
-msgstr "Faydalı bağlantılar"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Embedding methods"
-msgstr "Gömme yöntemleri"
-
-#: frontend/src/metabase/embedding-hub/pages/GetStarted/EmbeddingHubGetStartedPage.tsx
-msgid "Demo"
-msgstr "Demo"
-
-#: frontend/src/metabase/embedding-hub/upsells/AppearanceUpsellPage.tsx
-msgid "Create custom themes"
-msgstr "Özel temalar oluşturun"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Secure your embeds with single sign-on"
-msgstr "Gömlerinizi tek oturum açma ile güvence altına alın"
-
-#: frontend/src/metabase/embedding-hub/upsells/AuthenticationUpsellPage.tsx
-msgid "Connect Metabase to your identity provider using JSON Web Tokens (JWT) to authenticate people to ensure only authorized users can access your embeds."
-msgstr "Yalnızca yetkili kullanıcıların gömlerinize erişebilmesini sağlamak için kişileri doğrulamada JSON Web Tokens (JWT) kullanarak Metabase’i kimlik sağlayıcınıza bağlayın."
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Translate your embedded content"
-msgstr "Gömülü içeriğinizi çevirin"
-
-#: frontend/src/metabase/embedding-hub/upsells/LocalizationUpsellPage.tsx
-msgid "Upload a translation dictionary to translate content such as item titles, headings, filter labels, and data in your embedded components."
-msgstr "Gömdüğünüz bileşenlerde öğe başlıkları, başlıklar, filtre etiketleri ve veriler gibi içerikleri çevirmek için bir çeviri sözlüğü yükleyin."
-
 #: frontend/src/metabase/embedding/components/ArchiveButton.tsx
 msgctxt "button that opens an actions dropdown e.g. Move this item to trash"
 msgid "Actions"
@@ -23091,23 +23400,13 @@ msgid "Guest"
 msgstr "Misafir"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Failed to enable modular embedding"
-msgstr "Modüler gömme etkinleştirilemedi"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Failed to enable embedding"
-msgstr "Gömme etkinleştirilemedi"
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "usage conditions"
-msgstr "kullanım koşulları"
+msgid "Failed to enable guest embeds"
+msgstr "Misafir gömmeler etkinleştirilemedi"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #, javascript-format
-msgid "To continue, enable embedding and agree to the {0}."
-msgstr "Devam etmek için gömmeyi etkinleştirin ve {0} kabul edin."
+msgid "To continue, enable guest embeds and agree to the {0}."
+msgstr "Devam etmek için misafir gömmeleri etkinleştirin ve {0}’ı kabul edin."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23120,13 +23419,8 @@ msgid "Agree to the {0} to continue."
 msgstr "Devam etmek için {0} kabul edin."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Enable modular embedding to get started."
-msgstr "Başlamak için modüler gömmeyi etkinleştirin."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
-msgid "Enable embedding to get started."
-msgstr "Başlamak için gömmeyi etkinleştirin."
+msgid "Enable guest embeds to get started."
+msgstr "Başlamak için misafir gömmeleri etkinleştirin."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableGuestEmbedsSection.tsx
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
@@ -23147,6 +23441,10 @@ msgid "You should, however, read the license text linked above as that is the ac
 msgstr "Ancak, bu özelliği etkinleştirerek kabul edeceğiniz asıl lisans bu olduğundan, yukarıda bağlantısı verilen lisans metnini okumalısınız."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
+msgid "Failed to enable modular embedding"
+msgstr "Modüler gömme etkinleştirilemedi"
+
+#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
 msgid "To continue, enable modular embedding and agree to the usage conditions."
 msgstr "Devam etmek için modüler gömmeyi etkinleştirin ve kullanım koşullarını kabul edin."
 
@@ -23155,16 +23453,8 @@ msgid "Agree to the usage conditions to continue."
 msgstr "Devam etmek için kullanım koşullarını kabul edin."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "When using modular embedding, each end user must have their own Metabase account."
-msgstr "Modüler gömme kullanırken her son kullanıcının kendi Metabase hesabı olmalıdır."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "Sharing Metabase accounts is a security risk. Even if you filter data on the client side, each user could use their token to view any data visible to that shared user account."
-msgstr "Metabase hesaplarını paylaşmak bir güvenlik riskidir. Verileri istemci tarafında filtreleseniz bile, her kullanıcı token’ını kullanarak paylaşılan kullanıcı hesabının görebildiği her türlü veriyi görüntüleyebilir."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/AuthenticationCard/EnableModularEmbeddingSection.tsx
-msgid "That, and we consider shared accounts to be unfair usage. Fair usage involves giving each end-user of the embedded analytics their own Metabase account."
-msgstr "Ayrıca, paylaşılan hesapları adil olmayan kullanım olarak değerlendiriyoruz. Adil kullanım, gömülü analitiğin her son kullanıcısına kendi Metabase hesabını vermeyi içerir."
+msgid "Enable modular embedding to get started."
+msgstr "Başlamak için modüler gömmeyi etkinleştirin."
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/Common/EmbeddingUpsell.tsx
 msgid "Get more powerful embedding"
@@ -23199,12 +23489,6 @@ msgstr "Bu panodaki bir veya daha fazla soru, veritabanı yönlendirmesi etkin o
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/DatabaseRoutingWarning.tsx
 msgid "This question is querying a database with database routing enabled. The database queries will be executed against the router database."
 msgstr "Bu soru, veritabanı yönlendirmesi etkin olan bir veritabanını sorguluyor. Veritabanı sorguları yönlendirici veritabanına karşı yürütülecek."
-
-#: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/CopyCodeSnippetButton.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/metabot/components/AIMarkdown/AIMarkdown.tsx
-msgid "Copy code"
-msgstr "Kodu kopyala"
 
 #: frontend/src/metabase/embedding/embedding-iframe-sdk-setup/components/GetCode/PublishQuestionEmptyState.tsx
 #, javascript-format
@@ -23579,156 +23863,6 @@ msgstr "Bu görselleştirmenin süresi doldu. MCP istemcinizden sorguyu yeniden 
 msgid "Could not load this visualization. Make sure Metabase is reachable, then ask your MCP client to show this again."
 msgstr "Bu görselleştirme yüklenemedi. Metabase’e erişilebildiğinden emin olun, ardından MCP istemcinizden bunu yeniden göstermesini isteyin."
 
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded dashboards"
-msgstr "Gömülü panolar"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No dashboards have been embedded yet."
-msgstr "Henüz hiçbir pano gömülmedi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "Embedded questions"
-msgstr "Gömülü sorular"
-
-#: frontend/src/metabase/embedding/settings/EmbeddedResources.tsx
-msgid "No questions have been embedded yet."
-msgstr "Henüz hiçbir soru gömülmedi."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Each end user needs their own Metabase account"
-msgstr "Her son kullanıcının kendi Metabase hesabı olmalı"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "When you embed Metabase, each person who uses your app needs their own Metabase account. That's because sharing a single account between users is a security risk. Filtering data on the client side doesn't solve it, since anyone with that account's token can reach anything the account can see. Additionally, we consider shared accounts to be unfair usage."
-msgstr "Metabase’i gömdüğünüzde, Uygulamanızı kullanan her kişinin kendi Metabase hesabına ihtiyacı vardır. Bunun nedeni, kullanıcılar arasında tek bir hesabı paylaşmanın bir güvenlik riski olmasıdır. İstemci tarafında veriyi filtrelemek bunu çözmez; çünkü o hesabın token’ına sahip olan herkes, hesabın görebildiği her şeye erişebilir. Ayrıca paylaşılan hesapları adil olmayan kullanım olarak değerlendiriyoruz."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingLegaleseModal/EmbeddingLegaleseModal.tsx
-msgid "Agree"
-msgstr "Kabul et"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Modular embedding and SDK for React"
-msgstr "Modüler gömme ve React için SDK"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed the full power of Metabase into your application with modular embedding and the React SDK to build custom analytics experiences and programmatically manage dashboards and data."
-msgstr "Özel analitik deneyimleri oluşturmak ve Panoları ile verileri programatik olarak yönetmek için modüler gömme ve React SDK ile Metabase’in tüm gücünü uygulamanıza gömün."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Enable embedding"
-msgstr "Gömmeyi etkinleştir"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Embed Metabase dashboards and questions into your application with modular embedding."
-msgstr "Modüler gömme ile Metabase panolarını ve soruları uygulamanıza gömün."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Full-app embedding"
-msgstr "Tam uygulama gömme"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "A way to embed the entire Metabase app in an iframe. This involves hard trade-off and is generally not recommended unless you know exactly what you are doing."
-msgstr "Metabase Uygulamasının tamamını bir iframe içine gömmenin bir yolu. Bu, ciddi bir trade-off içerir ve tam olarak ne yaptığınızı bilmiyorsanız genelde önerilmez."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingMethodsCard/EmbeddingMethodsCard.tsx
-msgid "Availability of embedding methods"
-msgstr "Gömme yöntemlerinin kullanılabilirliği"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Secret key for guest embeds"
-msgstr "Misafir gömler için gizli anahtar"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations."
-msgstr "Bağımsız Gömme Gizli Anahtarı, /api/embed uç noktalarına yapılan istekler için JSON Web Tokenlerini imzalamak için kullanılır. Bu, belirli kullanıcılar veya kuruluşlarla sınırlı bir güvenli ortam oluşturmanıza olanak tanır."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Regenerate key"
-msgstr "Anahtarı yeniden oluştur"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Regenerate embedding key?"
-msgstr "Gömme anahtarı yeniden oluşturulsun mu?"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "This will cause existing embeds to stop working until they are updated with the new key."
-msgstr "Bu, mevcut gömmelerin yeni anahtarla güncellenene kadar çalışmayı durdurmasına neden olur."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecretKeyWidget.tsx
-msgid "Generate key"
-msgstr "Anahtar oluştur"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is not allowed. Changes will take effect within one minute."
-msgstr "Değerleri boşlukla ayırın. Localhost’a izin verilmez. Değişiklikler bir dakika içinde geçerli olur."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Separate values with a space. Localhost is automatically included. Changes will take effect within one minute."
-msgstr "Değerleri boşlukla ayırın. Localhost otomatik olarak dahildir. Değişiklikler bir dakika içinde etkili olur."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow Modular embedding and SDK. SDK using API keys can only run on localhost. {0}"
-msgstr "Modüler gömme ve SDK’ya izin vermek istediğiniz web sitesi domain’lerini ekleyin. API anahtarlarını kullanan SDK yalnızca localhost’ta çalışabilir. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-#, javascript-format
-msgid "Add the website domains where you want to allow embedding. {0}"
-msgstr "Gömme işlemine izin vermek istediğiniz web sitesi domain’lerini ekleyin. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget.tsx
-msgid "Cross-Origin Resource Sharing (CORS)"
-msgstr "Cross-Origin Resource Sharing (CORS)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-msgid "Determines whether or not cookies are allowed to be sent on cross-site requests. You'll likely need to change this to None if your embedding application is hosted under a different domain than Metabase. Otherwise, leave it set to Lax, as it's more secure."
-msgstr "Cookie’lerin siteler arası isteklere gönderilip gönderilemeyeceğini belirler. Gömme uygulamanız Metabase’ten farklı bir domain altında barındırılıyorsa bunu muhtemelen None olarak değiştirmeniz gerekir. Aksi halde daha güvenli olduğu için Lax olarak bırakın."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgctxt "{0} is a 'Learn more' link to the embedding documentation"
-msgid "If you set this to None, you'll have to use HTTPS, or browsers will reject the request. {0}"
-msgstr "Bunu None olarak ayarlarsanız HTTPS kullanmanız gerekir; aksi halde tarayıcılar isteği reddeder. {0}"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/EmbeddingAppSameSiteCookieDescription.tsx
-#, javascript-format
-msgid "You should probably change this setting to {0}."
-msgstr "Muhtemelen bu ayarı {0} olarak değiştirmelisiniz."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Lax (default)"
-msgstr "Lax (varsayılan)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain."
-msgstr "Metabase oturum çerezlerinin aynı domain üzerinde paylaşılmasına izin verir. Aynı domaindeki prodüksiyon instance’ları için kullanılır."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Strict (not recommended)"
-msgstr "Strict (önerilmez)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding."
-msgstr "Metabase oturum çerezlerinin gömülü instance’larla paylaşılmasına izin vermez. Gömme ile oturum paylaşımını etkinleştirmek istemiyorsanız bunu kullanın."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "None (requires HTTPS)"
-msgstr "None (HTTPS gerektirir)"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "Use \"None\" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers."
-msgstr "Uygulamanız ve Metabase farklı domain’lerde barındırılıyorsa \"None\" kullanın. Safari ve iOS tabanlı tarayıcılarla uyumsuzdur."
-
-#: frontend/src/metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget.tsx
-msgid "SameSite cookie setting"
-msgstr "SameSite cookie ayarı"
-
-#: frontend/src/metabase/embedding/settings/EmbeddingToggle/EmbeddingToggle.tsx
-msgid "Set via environment variable"
-msgstr "Ortam değişkeni ile ayarlandı"
-
 #: frontend/src/metabase/embedding/setup-guide/components/SetupGuide.tsx
 msgid "If all you want is a simple embedded dashboard, you're done! \n"
 "If you have a more sophisticated setup in mind, with many users and tenants, then keep going."
@@ -23901,6 +24035,10 @@ msgid "Configure data permissions and enable tenants"
 msgstr "Veri izinlerini yapılandırın ve kiracıları etkinleştirin"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
+msgid "Enable multi-tenant user strategy"
+msgstr "Çoklu kiracılı kullanıcı stratejisini etkinleştir"
+
+#: frontend/src/metabase/embedding/setup-guide/components/SetupPermissionsAndTenantsPage/SetupPermissionsAndTenantsPage.tsx
 msgid "Move a dashboard to the shared collection"
 msgstr "Panoyu paylaşılan koleksiyona taşı"
 
@@ -24030,8 +24168,8 @@ msgid "404 error after SSO sign-in"
 msgstr "SSO ile oturum açtıktan sonra 404 hatası"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in the embedding hub's Authentication tab is pointing to your endpoint and your endpoint is up and running and available."
-msgstr "\"Sign in with SSO\"ya tıkladıktan sonra tarayıcı 404 hatası döndürüyorsa, gömme merkezinin Kimlik doğrulama sekmesindeki JWT SSO URI değerinin endpoint’inizi işaret ettiğinden ve endpoint’inizin çalışır durumda ve erişilebilir olduğundan emin olun."
+msgid "If after clicking on \"Sign in with SSO\", the browser returns a 404 error, make sure the value of the JWT SSO URI in admin settings / auth / JWT is pointing to your endpoint and your endpoint is up and running and available."
+msgstr "\"SSO ile oturum aç\"a tıkladıktan sonra tarayıcı 404 hatası döndürürse, yönetici ayarları / auth / JWT içindeki JWT SSO URI değerinin endpoint’inize işaret ettiğinden ve endpoint’inizin çalışır durumda ve erişilebilir olduğundan emin olun."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "JWT decryption error: \"Message seems corrupt\""
@@ -24054,8 +24192,8 @@ msgid "User provisioning disabled for JWT SSO"
 msgstr "JWT SSO için kullanıcı provizyonlama devre dışı"
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
-msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in the embedding hub's Authentication tab. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
-msgstr "Uygulamanızdan Metabase’e yönlendirildikten sonra \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator.\" hata mesajını görüyorsanız, gömme merkezinin Kimlik doğrulama sekmesinde JWT SSO için kullanıcı provizyonlama kapalıdır. Kullanıcılar henüz yoksa provizyonlanmaları için bu özelliği açın veya JWT SSO ile oturum açtırmadan önce kullanıcıların mevcut olduğundan emin olun."
+msgid "If after being redirected from your app to Metabase, you see an error message \"Sorry, but you'll need a $SITENAME account to view this page, contact your administrator. User provisioning is turned off for JWT SSO in admin settings/authentication. Either turn this feature on to have users be provisioned if they don't exist yet, or ensure users exist before signing them in via JWT SSO."
+msgstr "Uygulamanızdan Metabase’e yönlendirildikten sonra \"Üzgünüz, ama bu sayfayı görüntülemek için bir $SITENAME hesabına ihtiyacınız var, yöneticinizle iletişime geçin. JWT SSO için kullanıcı provizyonlama yönetici ayarları/kimlik doğrulama bölümünde kapalı. Kullanıcılar henüz yoksa provize edilebilmeleri için bu özelliği açın veya JWT SSO ile oturum açtırmadan önce kullanıcıların mevcut olduğundan emin olun.\" hata mesajını görürseniz, JWT SSO için kullanıcı provizyonlamanın Metabase yönetici Kimlik doğrulama ayarlarında kapalı olduğunu kontrol edin. Kullanıcılar henüz yoksa provize edilebilmeleri için bu özelliği açın veya JWT SSO ile oturum açtırmadan önce kullanıcıların mevcut olduğundan emin olun."
 
 #: frontend/src/metabase/embedding/setup-guide/components/SetupSsoPage/TestJwtStep.tsx
 msgid "Contact customer support"
@@ -24070,14 +24208,36 @@ msgid "Create embed"
 msgstr "Gömme oluştur"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Get embed snippet"
+msgstr "Gömme kod parçasını al"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance."
+msgstr "Bir panoyu, soruyu, sorgu oluşturucuyu veya koleksiyon tarayıcıyı gömün. Deneyimi yapılandırın ve görünümü özelleştirin."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/GettingStartedSection.tsx
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx
 msgid "Add your data"
 msgstr "Verinizi ekleyin"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Connect your own database or upload a CSV and start working with your real data."
+msgstr "Kendi veritabanınızı bağlayın veya bir CSV yükleyin ve gerçek verilerinizle çalışmaya başlayın."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Prepare data"
 msgstr "Veriyi hazırla"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+#: frontend/src/metabase/home/components/Onboarding/items/DashboardItem.tsx
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a dashboard"
+msgstr "Pano oluştur"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Automatically generate a dashboard from your data using x-rays."
+msgstr "X-ray’leri kullanarak verilerinizden otomatik olarak bir pano oluşturun."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Pick a strategy for users and permissions"
@@ -24088,168 +24248,20 @@ msgid "Set granular permissions for multi-tenancy to control data access. Share 
 msgstr "Veri erişimini kontrol etmek için çoklu kiracılıkta ayrıntılı izinler ayarlayın. Harici kullanıcılarla panoları, soruları ve modelleri paylaşın ve içerik oluşturmalarına izin verin; iç veriler veya diğer kiracıların verilerine erişimi kısıtlayın."
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Configure JWT authentication to ensure only authorized users can access your embeds."
+msgstr "Yalnızca yetkili kullanıcıların embed'lerinize erişebilmesini sağlamak için JWT kimlik doğrulamasını yapılandırın."
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deployment"
 msgstr "Dağıtım"
 
 #: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
+msgid "Embed in production with SSO"
+msgstr "SSO ile prodüksiyonda göm"
+
+#: frontend/src/metabase/embedding/setup-guide/hooks/use-get-setup-guide-steps.ts
 msgid "Deploy your embedded dashboard to a production environment and share with your users."
 msgstr "Gömülü panonuzu prodüksiyon ortamına dağıtın ve kullanıcılarınızla paylaşın."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Edit theme"
-msgstr "Temayı düzenle"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Theme name"
-msgstr "Tema adı"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Main colors"
-msgstr "Ana renkler"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Reset main colors to defaults"
-msgstr "Ana renkleri varsaylanlara sfrla"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show fewer colors"
-msgstr "Daha az renk göster"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Show more colors"
-msgstr "Daha fazla renk göster"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate filter, summarize, positive, negative, and chart colors from the brand color"
-msgstr "Filtre, Özetle, pozitif, negatif ve grafik renklerini marka renginden yeniden oluştur"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Regenerate from brand color"
-msgstr "Marka renginden yeniden olutur"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Base font size"
-msgstr "Temel font boyutu"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Delete theme"
-msgstr "Temayı sil"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EditorPanel.tsx
-msgid "Save theme"
-msgstr "Temayı kaydet"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgctxt "Prompt to enable modular embedding to see a live preview of an embedding theme."
-msgid "Enable modular embedding to see a live preview of your theme."
-msgstr "Temanızın canlı önizlemesini görmek için modüler gömmeyi etkinleştirin."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-#, javascript-format
-msgctxt "{0} is a link to the embedding conditions, for users to accept them and see a live preview of their theme."
-msgid "Accept the {0} to see a live preview of your theme."
-msgstr "Temanızın canlı önizlemesini görmek için {0} kabul edin."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Enable modular embedding"
-msgstr "Modüler gömmeyi etkinleştir"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/EnableEmbeddingPrompt.tsx
-msgid "Accept and continue"
-msgstr "Kabul et ve devam et"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Theme preview"
-msgstr "Tema önizlemesi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewPanel.tsx
-msgid "Create a dashboard or question to preview this theme."
-msgstr "Bu temayı önizlemek için bir pano veya soru oluşturun."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Change preview resource"
-msgstr "Önizleme kaynağını değiştir"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/PreviewResourcePicker.tsx
-msgid "Select data to preview"
-msgstr "Önizlemek için veri seçin"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Brand"
-msgstr "Marka"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Background"
-msgstr "Arka plan"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Primary text"
-msgstr "Birincil metin"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Secondary text"
-msgstr "İkincil metin"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Tertiary text"
-msgstr "Üçüncül metin"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Border"
-msgstr "Kenar çizgisi"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeEditor/constants.ts
-msgid "Shadow"
-msgstr "Gölge"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/DeleteThemeModal.tsx
-msgid "Are you sure you want to delete this theme? This action cannot be undone."
-msgstr "Bu temayı silmek istediğinizden emin misiniz? Bu eylem geri alınamaz."
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeCard.tsx
-msgid "Duplicate and delete"
-msgstr "Çoğalt ve sil"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Theme duplicated successfully"
-msgstr "Tema başarıyla çoğaltıldı"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/EmbeddingThemeListingApp.tsx
-msgid "Failed to duplicate theme"
-msgstr "Tema çoğaltılamadı"
-
-#: frontend/src/metabase/embedding/themes/components/ThemeListing/NewThemeCard.tsx
-msgid "New theme"
-msgstr "Yeni tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Theme deleted successfully"
-msgstr "Tema başarıyla silindi"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-delete-theme-flow.tsx
-msgid "Failed to delete theme"
-msgstr "Tema silinemedi"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Untitled theme"
-msgstr "Başlıksız tema"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Filter, summarize, positive, negative, and chart colors regenerated from the brand color."
-msgstr "Filtre, Özetle, pozitif, negatif ve grafik renkleri marka renginden yeniden oluşturuldu."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Main colors reset to defaults."
-msgstr "Ana renkler varsaylanlara sfrland."
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Theme saved"
-msgstr "Tema kaydedildi"
-
-#: frontend/src/metabase/embedding/themes/hooks/use-embedding-theme-editor.ts
-msgid "Failed to save theme"
-msgstr "Tema kaydedilemedi"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationErrorMarker.tsx
 msgid "Failed to generate"
@@ -24400,6 +24412,7 @@ msgid "Initial investigation"
 msgstr "İlk inceleme"
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/utils.ts
+#: frontend/src/metabase/palette/hooks/useCommandPaletteBasicActions.tsx
 msgid "New research"
 msgstr "Yeni araştırma"
 
@@ -24711,33 +24724,41 @@ msgstr "Bir grup seçin"
 msgid "Set up key"
 msgstr "Anahtarı ayarla"
 
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Create a secret key"
-msgstr "Gizli anahtar oluştur"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/FormSecretKey.tsx
-msgid "Store your new key"
-msgstr "Yeni anahtarınızı saklayın"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key and generate a new one?"
-msgstr "Anahtar silinsin ve yenisi oluşturulsun mu?"
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "This will cause existing tokens to stop working until the identity provider is updated with a new key."
-msgstr "Bu, kimlik sağlayıcı yeni bir anahtarla güncellenene kadar mevcut token’ların çalışmayı durdurmasına neden olur."
-
-#: frontend/src/metabase/forms/components/FormSecretKey/RegenerateKeyConfirmModal.tsx
-msgid "Delete key"
-msgstr "Anahtarı sil"
-
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "Error generating secret key."
 msgstr "Gizli anahtar oluşturulurken hata oluştu."
 
 #: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Set up secret key"
+msgstr "Gizli anahtarı ayarla"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Copy to clipboard"
+msgstr "Panoya kopyala"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Secret key copied to clipboard"
+msgstr "Gizli anahtar panoya kopyalandı"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Error copying secret key to clipboard."
+msgstr "Gizli anahtar panoya kopyalanırken hata oluştu."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
 msgid "New secret key"
 msgstr "Yeni gizli anahtar"
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "Make sure you copy this key now and save it in a safe place."
+msgstr "Bu anahtarı şimdi kopyaladığınızdan ve güvenli bir yerde sakladığınızdan emin olun."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "You won't be able to see it again."
+msgstr "Bir daha göremeyeceksiniz."
+
+#: frontend/src/metabase/forms/components/FormSecretKey/SetupKeyModal.tsx
+msgid "This will cause existing tokens to stop working until the identity provider is updated with the new key."
+msgstr "Bu, kimlik sağlayıcı yeni anahtarla güncellenene kadar mevcut token’ların çalışmayı durdurmasına neden olur."
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx
 msgid "This dashboard has been set as your homepage."
@@ -24902,6 +24923,11 @@ msgstr "Kimseye söyleme, ama en sevdiğim sensin."
 #, javascript-format
 msgid "{0} tips"
 msgstr "{0} ipuçları"
+
+#: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
+msgid "Home"
+msgstr "Ana sayfa"
 
 #: frontend/src/metabase/home/components/HomeLayout/HomeLayout.tsx
 msgid "Pick a dashboard to serve as the homepage"
@@ -25299,7 +25325,6 @@ msgid "New conversation"
 msgstr "Yeni konuşma"
 
 #: frontend/src/metabase/metabot/components/MetabotAppBarButton.tsx
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
 #, javascript-format
 msgid "Chat with {0} ({1}+E)"
 msgstr "{0} ile sohbet et ({1}+E)"
@@ -25376,14 +25401,6 @@ msgid "Data sources used"
 msgstr "Kullanlan veri kaynaklar"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applying..."
-msgstr "Uygulanıyor..."
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Applied"
-msgstr "Uygulandı"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Revision"
 msgstr "Revizyon"
 
@@ -25394,10 +25411,6 @@ msgstr "Önizleme yüklenemedi"
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
 msgid "Loading preview"
 msgstr "Önizleme yükleniyor"
-
-#: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentSuggestionMessage.tsx
-msgid "Read only"
-msgstr "Salt okunur"
 
 #: frontend/src/metabase/metabot/components/MetabotChat/MetabotAgentTodoMessage.tsx
 msgid "Todo List"
@@ -25731,15 +25744,6 @@ msgstr "Bu konuşma yüklenemiyor"
 msgid "Try refreshing the page."
 msgstr "Sayfayı yenilemeyi deneyin."
 
-#: frontend/src/metabase/metabot/components/MetabotDataStudioButton.tsx
-#, javascript-format
-msgid "{0} can't be viewed on this page"
-msgstr "{0} bu sayfada görüntülenemez"
-
-#: frontend/src/metabase/metabot/components/MetabotDataStudioSidebar.tsx
-msgid "Let's transform your data together!"
-msgstr "Verilerinizi birlikte dönüştürelim!"
-
 #: frontend/src/metabase/metabot/components/MetabotInlineSQLPrompt/MetabotInlineSQLPrompt.tsx
 msgid "Describe what SQL you want, type @ to mention an item."
 msgstr "İstediğiniz SQL'i tarif edin, bir öğeyi anmak için @ yazın."
@@ -25818,11 +25822,6 @@ msgstr "{0} diyaloğu"
 #: frontend/src/metabase/metabot/components/editor-extensions/MetabotMention/MetabotSuggestionNew.tsx
 msgid "Mention an item"
 msgstr "Bir öğeden bahset"
-
-#: frontend/src/metabase/metabot/constants.ts
-#: metabase_enterprise/api_routes/routes.clj
-msgid "Embedding"
-msgstr "Gömme"
 
 #: frontend/src/metabase/metabot/constants.ts
 msgid "NLQ"
@@ -27980,10 +27979,6 @@ msgid "Internal Collections"
 msgstr "Dahili Koleksiyonlar"
 
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
-msgid "Home"
-msgstr "Ana sayfa"
-
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx
 msgid "Other users' personal collections"
 msgstr "Diğer kullanıcıların kişisel koleksiyonları"
 
@@ -28401,6 +28396,14 @@ msgstr "Yerel sorgu oluştur"
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add native query, add SQL, create SQL"
 msgstr "yerel sorgu ekle, SQL ekle, SQL oluştur"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "Create a research"
+msgstr "Bir araştırma oluştur"
+
+#: frontend/src/metabase/palette/shortcuts/global.ts
+msgid "add research, add exploration, research mode"
+msgstr "araştırma ekle, keşif ekle, araştırma modu"
 
 #: frontend/src/metabase/palette/shortcuts/global.ts
 msgid "add dashboard"
@@ -28950,10 +28953,6 @@ msgstr "Sonuçları cache’leme"
 #: frontend/src/metabase/plugins/oss/caching.ts
 msgid "No caching"
 msgstr "Cache yok"
-
-#: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
-msgid "First, some legalese"
-msgstr "Önce, biraz hukuki metin"
 
 #: frontend/src/metabase/public/components/widgets/LegaleseStep/LegaleseStep.tsx
 #, javascript-format
@@ -29704,6 +29703,10 @@ msgstr "Özel İfadeler"
 msgid "Custom Expression"
 msgstr "Özel İfade"
 
+#: frontend/src/metabase/querying/common/components/DataSelector/TriggerComponents.tsx
+msgid "Select..."
+msgstr "Seçin..."
+
 #: frontend/src/metabase/querying/common/components/DataSelector/constants.ts
 msgid "Trustworthy definitions to start from."
 msgstr "Başlamak için güvenilir tanımlar."
@@ -30085,6 +30088,10 @@ msgstr "Aradığınız yanıt bu olabilir. Değilse, daha az spesifik olmaları 
 #: frontend/src/metabase/querying/components/QueryVisualization/VisualizationResult.tsx
 msgid "Back to previous results"
 msgstr "Önceki sonuçlara geri dön"
+
+#: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebar.tsx
+msgid "Snippets"
+msgstr "Kod parçaları"
 
 #: frontend/src/metabase/querying/components/SnippetSidebar/SnippetSidebarEmptyState.tsx
 msgid "Code snippet bot illustration"
@@ -32955,10 +32962,6 @@ msgstr[1] "Bu işlem, içinde bulunan {0} Dönüşümü de arşivleyecek."
 #: frontend/src/metabase/transforms/pages/TransformListPage/CollectionRowMenu.tsx
 msgid "Are you sure you want to archive this folder?"
 msgstr "Bu klasr fc arivlemek istediinizden emin misiniz?"
-
-#: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
-msgid "Create a transform that "
-msgstr "Şunu yapan bir dönüşüm oluştur: "
 
 #: frontend/src/metabase/transforms/pages/TransformListPage/CreateTransformMenu/CreateTransformMenu.tsx
 msgid "Transforms can't be created when Remote Sync is in read-only mode"
@@ -35848,6 +35851,10 @@ msgstr "benzersiz önek ile anahtar oluşturulamadı"
 msgid "API endpoint does not exist."
 msgstr "API endpoint mevcut değil."
 
+#: metabase/api_scope/data_app.clj
+msgid "Read and query access for a sandboxed data app."
+msgstr "Sandbox’lı bir veri uygulaması için okuma ve sorgulama erişimi."
+
 #: metabase/app_db/encryption.clj
 msgid "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY"
 msgstr "MB_ENCRYPTION_SECRET_KEY ile uygulama DB'si çözülemiyor"
@@ -36497,10 +36504,6 @@ msgstr "HTTP kanal hedefi olarak hangi tür host'lara izin verileceğini belirle
 "- allow-all (localhost dahil kısıtlama yok).\n"
 
 #: metabase/channel/settings.clj
-msgid "Invalid http-channel-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Geçersiz http-channel-allowed-networks! Yalnızca external-only, allow-private ve allow-all değerlerine izin verilir."
-
-#: metabase/channel/settings.clj
 msgid "The maximum number of retries for an event."
 msgstr "Bir olay için maksimum yeniden deneme sayısı."
 
@@ -36769,6 +36772,10 @@ msgstr "Yorum içeriği geçerli JSON olmalıdır."
 #: metabase/comments/api.clj
 msgid "Comment context must be a valid JSON object."
 msgstr "Yorum bağlamı geçerli bir JSON nesnesi olmalıdır."
+
+#: metabase/comments/schema.clj
+msgid "Emoji must be 1 to 10 Unicode code points."
+msgstr "Emoji 1 ile 10 Unicode kod noktası olmalıdır."
 
 #: metabase/content_translation/models.clj
 #: metabase_enterprise/api_routes/routes.clj
@@ -37398,10 +37405,6 @@ msgstr "Metabase’in warehouse bağlantıları için hangi ağlara bağlanabile
 "SSH tüneli host’unu ve veritabanı auth-provider URL’lerini de kapsar."
 
 #: metabase/driver/settings.clj
-msgid "Invalid warehouse-allowed-networks! Only values of `external-only`, `allow-private`,` and `allow-all` are allowed."
-msgstr "Geçersiz warehouse-allowed-networks! Yalnızca `external-only`, `allow-private`, ve `allow-all` değerlerine izin verilir."
-
-#: metabase/driver/settings.clj
 msgid "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds)."
 msgstr "SSH tüneli kurulduğunda heartbeat'lerin ne sıklıkta gönderileceğini kontrol eder (saniye cinsinden)."
 
@@ -37790,10 +37793,6 @@ msgid "Check if admin should see the simple embedding terms popup"
 msgstr "Yöneticinin basit gömme şartları açılır penceresini görüp görmeyeceğini kontrol et"
 
 #: metabase/embedding/settings.clj
-msgid "Check if admin should see the modular embedding and SDK licensing terms popup"
-msgstr "Yöneticinin modüler gömme ve React için SDK lisans koşulları popup’ını görmesi gerekip gerekmediğini kontrol et"
-
-#: metabase/embedding/settings.clj
 msgid "Allow admins to securely embed questions and dashboards within other applications?"
 msgstr "Yöneticilerin soruları ve panoları diğer uygulamalar içine güvenli şekilde gömmesine izin verilsin mi?"
 
@@ -37808,10 +37807,6 @@ msgstr "Yöneticilerin SDK üzerinden Metabase’i gömmesine izin verilsin mi?"
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via modular embedding?"
 msgstr "Yöneticilerin Metabase'i modüler gömme ile gömmesine izin verilsin mi?"
-
-#: metabase/embedding/settings.clj
-msgid "Allow admins to embed Metabase via modular embedding, the SDK for React, and guest embeds?"
-msgstr "Yöneticilerin Metabase’i modüler gömme, React için SDK ve misafir gömmeler üzerinden gömmesine izin verilsin mi?"
 
 #: metabase/embedding/settings.clj
 msgid "Allow admins to embed Metabase via interactive embedding?"
@@ -39939,10 +39934,6 @@ msgid "Whether the MCP server is enabled."
 msgstr "MCP sunucusunun etkin olup olmadığı."
 
 #: metabase/mcp/settings.clj
-msgid "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call."
-msgstr "Devre dışı bırakılacak v2 MCP tool adları, CSV olarak saklanır. Devre dışı bırakılan tool’lar tools/list’ten gizlenir ve tools/call tarafından reddedilir."
-
-#: metabase/mcp/settings.clj
 msgid "Hours a stored MCP query handle is kept before the scheduled GC task deletes it."
 msgstr "Zamanlanmış GC görevi silmeden önce saklanan bir MCP sorgu tanıtıcısının tutulacağı saat sayısı."
 
@@ -39953,62 +39944,6 @@ msgstr "CORS için etkinleştirilmiş popüler MCP istemcileri, CSV istemci anah
 #: metabase/mcp/settings.clj
 msgid "Custom CORS origins for self-hosted MCP clients, space-separated."
 msgstr "Kendi sunucunda barındırılan MCP istemcileri için özel CORS origin’leri, boşlukla ayrılmış."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Metrics are aggregations, not sources. To use metric {0}, put its base table''s numeric id into `source-table:` (find it via `search` or `browse_data`) and reference the metric by its numeric id:"
-msgstr "Metrikler kaynak değil, toplulaştırmadır. Metrik {0} kullanmak için, temel tablosunun sayısal id’sini `source-table:` içine koyun (`search` veya `browse_data` ile bulun) ve metriğe sayısal id’siyle referans verin:"
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "To reference a saved question or model as a query source, put its bare numeric id into `source-card:` — not a URI: `\"source-card\": {0}`."
-msgstr "Kayıtlı bir Soruyu veya modeli sorgu kaynağı olarak referanslamak için, URI değil, yalın sayısal id’sini `source-card:` içine koyun: `\"source-card\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use the bare numeric table id in `source-table:` — not a URI: `\"source-table\": {0}`."
-msgstr "`source-table:` içinde URI değil, yalın sayısal tablo id''sini kullanın: `\"source-table\": {0}`."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` accepts a numeric table id; `source-card:` accepts a saved-card numeric id."
-msgstr "`source-table:` sayısal bir tablo id''si kabul eder; `source-card:` kayıtlı kartın sayısal id''sini kabul eder."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" to list available tables with their numeric ids, then use one as `source-table`."
-msgstr "Kullanılabilir tabloları sayısal id’leriyle listelemek için Eylem \"list_tables\" ile `browse_data` çağırın, sonra birini `source-table` olarak kullanın."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"list_tables\" for the database, then retry with the numeric table id — it is never ambiguous."
-msgstr "Veritabanı için Eylem \"list_tables\" ile `browse_data` çağırın, sonra sayısal tablo id’siyle yeniden deneyin — asla belirsiz değildir."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table to list its columns with their numeric ids."
-msgstr "Tablonun sütunlarını sayısal id’leriyle listelemek için tablo için Eylem \"get_fields\" ile `browse_data` çağırın."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the source table to list the available foreign-key columns."
-msgstr "Kullanılabilir foreign-key sütunlarını listelemek için kaynak tablo için Eylem \"get_fields\" ile `browse_data` çağırın."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "If a metric relates to that table, call `browse_data` with action \"get_fields\" for the table that owns the metric to read its dimensions, which give the exact `joins:` clause."
-msgstr "Bir metrik o tabloyla ilişkiliyse, metriğin sahibi olan tablo için Eylem \"get_fields\" ile `browse_data` çağırıp boyutlarını okuyun; bunlar birebir `joins:` maddesini verir."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Find the question or model with `search` and put its bare numeric id into `source-card:`."
-msgstr "`search` ile Soruyu veya modeli bulun ve yalın sayısal id’sini `source-card:` içine koyun."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the measure and use the numeric id from its measures list."
-msgstr "Ölçünün sahibi olan tablo için Eylem \"get_fields\" ile `browse_data` çağırın ve measures listesindeki sayısal id’yi kullanın."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Call `browse_data` with action \"get_fields\" for the table that owns the segment and use the numeric id from its segments list."
-msgstr "Segmentin sahibi olan tablo için Eylem \"get_fields\" ile `browse_data` çağırın ve segments listesindeki sayısal id’yi kullanın."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "Use a numeric table id in `source-table:` (from `browse_data` action \"list_tables\"), which needs no database name at all."
-msgstr "Veritabanı adına hiç ihtiyaç duymayan `source-table:` içinde sayısal bir tablo id’si kullanın (`browse_data` Eylem \"list_tables\" çıktısından)."
-
-#: metabase/mcp/v2/recovery_hints.clj
-msgid "`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."
-msgstr "`source-table:` sayısal bir tablo id''si alır; `source-card:` kayıtlı kartın sayısal id''sini alır."
 
 #: metabase/mcp/validation.clj
 msgid "MCP server is not enabled."
@@ -40133,10 +40068,6 @@ msgid "View transforms"
 msgstr "Dönüşümleri görüntüle"
 
 #: metabase/metabot/scope.clj
-msgid "Create and edit transforms"
-msgstr "Dönüşümleri oluştur ve düzenle"
-
-#: metabase/metabot/scope.clj
 msgid "View SQL snippets"
 msgstr "SQL kod parçacıklarını görüntüle"
 
@@ -40215,6 +40146,10 @@ msgstr "İçerik ara"
 #: metabase/metabot/scope.clj
 msgid "View database metadata"
 msgstr "Veritabanı metadatasını görüntüle"
+
+#: metabase/metabot/scope.clj
+msgid "Read MCP resources"
+msgstr "MCP kaynaklarını oku"
 
 #: metabase/metabot/scope.clj
 msgid "View todos"
@@ -40785,8 +40720,8 @@ msgid "Whether to show Metabot illustrations in the UI."
 msgstr "UI’da Metabot illüstrasyonlarının gösterilip gösterilmeyeceği."
 
 #: metabase/metabot/settings.clj
-msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot)."
-msgstr "Sohbet deneyimi (YZ kenar çubuğu ve gömülü Metabot) için Metabot''un sistem prompt’una eklenen özel talimatlar."
+msgid "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack)."
+msgstr "Sohbet deneyimi (YZ kenar çubuğu, gömülü Metabot ve Slack’teki Metabot) için Metabot''un sistem prompt’una eklenen özel talimatlar."
 
 #: metabase/metabot/settings.clj
 msgid "Custom instructions appended to Metabot''s system prompt for the natural language query (AI exploration) experience."
@@ -42513,6 +42448,10 @@ msgstr "değer, kaynak tablo ve filtrelere sahip geçerli bir MBQL sorgusu olmal
 msgid "a segment definition must be a single-stage query with a source table and filters, and without joins, expressions, breakouts, aggregations, fields, order by, or limit"
 msgstr "bir segment tanımı; kaynak tablo ve filtrelere sahip, join’ler, ifadeler, kırılımlar, toplulaştırmalar, alanlar, order by veya limit olmadan, tek aşamalı bir sorgu olmalıdır"
 
+#: metabase/server/middleware/body_limit.clj
+msgid "Request body exceeds the maximum size of {0} bytes."
+msgstr "İstek gövdesi, {0} baytlık maksimum boyutu aşıyor."
+
 #: metabase/server/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
 msgstr "Şablon ''{0}'' yüklenemedi. Metabase frontend'ini build etmeyi hatırladınız mı?"
@@ -42552,6 +42491,10 @@ msgstr "Sunucunun localhost’tan gelen istekler için CORS header’ları gönd
 #: metabase/server/settings.clj
 msgid "Prevent the exception middleware from including stacktraces in responses."
 msgstr "Exception middleware'in yanıtlara stacktrace eklemesini engelle."
+
+#: metabase/server/settings.clj
+msgid "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+msgstr "Kimliği doğrulanmamış bir çağırandan gelen bir HTTP istek gövdesinin bayt cinsinden maksimum boyutu. Daha büyük istekler, gövde okunmadan önce HTTP 413 ile reddedilir."
 
 #: metabase/server/settings.clj
 msgid "Signing secret for verifying requests from the Metabot Slack app"
@@ -42904,8 +42847,8 @@ msgid "JSON containing LDAP to Metabase group mappings."
 msgstr "LDAP → Metabase grup eşlemelerini içeren JSON."
 
 #: metabase/sso/settings.clj
-msgid "{0} is not a valid DN."
-msgstr "{0} geçerli bir DN değil."
+msgid "{0} is not a valid DN. Example: {1}"
+msgstr "{0} geçerli bir DN değil. Örnek: {1}"
 
 #: metabase/sso/settings.clj
 msgid "Have the mandatory LDAP settings (host and user search base) been validated and saved?"
@@ -43042,10 +42985,6 @@ msgstr "Örtük join'ler üzerinden referans verilen alanlar desteklenmiyor."
 #: metabase/tiles/api.clj
 msgid "Query failed"
 msgstr "Sorgu başarısız oldu"
-
-#: metabase/tiles/settings.clj
-msgid "Invalid map-tile-server-allowed-networks! Only values of external-only, allow-private, and allow-all are allowed."
-msgstr "Geçersiz map-tile-server-allowed-networks! Yalnızca external-only, allow-private ve allow-all değerlerine izin verilir."
 
 #: metabase/tiles/settings.clj
 msgid "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox. This URL is visible to clients, so do not include private keys."
@@ -44207,6 +44146,10 @@ msgstr "Destek Kullanıcıları"
 msgid "Transforms Python"
 msgstr "Python Dönüşümleri"
 
+#: metabase_enterprise/api_routes/routes.clj
+msgid "Transforms Testing"
+msgstr "Dönüşümler Testi"
+
 #: metabase_enterprise/audit_app/analytics_dev.clj
 msgid "Analytics dev mode is not enabled."
 msgstr "Analytics dev modu etkin değil."
@@ -44350,6 +44293,10 @@ msgstr "Kiracı kullanıcılar veri Uygulamalarına eklenemez."
 #: metabase_enterprise/data_apps/api.clj
 msgid "Data app queries cannot use metrics that reference other saved questions or metrics: {0}"
 msgstr "Veri Uygulaması sorguları, başka kayıtlı sorulara veya metriklere referans veren metrikleri kullanamaz: {0}"
+
+#: metabase_enterprise/data_apps/config.clj
+msgid "{0}/{1}: \"version\" must be a positive whole number, such as 1."
+msgstr "{0}/{1}: \"version\" 1 gibi pozitif bir tam sayı olmalıdır."
 
 #: metabase_enterprise/data_apps/config.clj
 msgid "{0}/{1}: \"description\" must be a one-line string."
@@ -44666,8 +44613,8 @@ msgid "If remote-sync-type is :read-only and remote-sync-auto-import is true, th
 msgstr "remote-sync-type :read-only ve remote-sync-auto-import true ise, içe aktarılacak güncellemeleri kontrol etme sıklığı (dakika). Varsayılan: 5."
 
 #: metabase_enterprise/remote_sync/settings.clj
-msgid "The maximum amount of time a remote sync task will be given to complete"
-msgstr "Bir uzak senkronizasyon görevinin tamamlanması için tanınacak maksimum süre"
+msgid "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit."
+msgstr "Bir uzak senkronizasyon görevinin, ölü sayılıp yerine yenisi başlatılmadan önce süreçlerinin canlı olduğunu kanıtlamadan (heartbeat veya heartbeat olmayan satırlarda ilerleme ile) ne kadar süre geçebileceği. Yavaş ama canlı bir görev asla etkilenmez. Görevin kendisi bu limitin on katı sonra iptal edilir."
 
 #: metabase_enterprise/remote_sync/settings.clj
 msgid "Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely."
@@ -45204,6 +45151,70 @@ msgstr "öznitelik anahtarları bir keyword veya string olmalı ve `@` ile başl
 #: metabase_enterprise/tenants/models.clj
 msgid "Tenant collection: {0}"
 msgstr "Kiracı koleksiyonu: {0}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} names column {1}, which matches more than one output column: {2}. Write it exactly as the output spells it."
+msgstr "Expectation {0}, {1} sütununu adlandırıyor; bu, birden fazla çıktı sütunuyla eşleşiyor: {2}. Çıktıda nasıl yazıyorsa aynen öyle yazın."
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares column {1}, which the transform output does not have. It has: {2}"
+msgstr "Expectation {0}, {1} sütununu karşılaştırıyor; ancak dönüşüm çıktısında bu sütun yok. Şunlar var: {2}"
+
+#: metabase_enterprise/transform_testing/expectations/equals.clj
+msgid "Expectation {0} compares against a SQL query, which is not implemented yet. Give ''columns'' and ''rows'' instead."
+msgstr "Expectation {0} bir SQL sorgusuyla karşılaştırıyor; bu henüz uygulanmadı. Onun yerine ''columns'' ve ''rows'' verin."
+
+#: metabase_enterprise/transform_testing/expectations/protocol.clj
+msgid "Expectation {0} is of type {1}, which is not implemented yet."
+msgstr "Expectation {0}, türü {1} olan bir expectation; bu henüz uygulanmadı."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The expectation could not be run, and the database gave no reason."
+msgstr "Expectation çalıştırılamadı ve veritabanı bir neden vermedi."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Only query transforms can be tested."
+msgstr "Yalnızca sorgu dönüşümleri test edilebilir."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The {0} database of this transform does not support transform testing."
+msgstr "Bu dönüşümün {0} veritabanı, dönüşüm testini desteklemiyor."
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform source SQL could not be parsed for test input validation: {0}"
+msgstr "Test girdisi doğrulaması için dönüşüm kaynak SQL’i ayrıştırılamadı: {0}"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "Could not create the test input for {0}:"
+msgstr "{0} için test girdisi oluşturulamadı:"
+
+#: metabase_enterprise/transform_testing/runner.clj
+msgid "The transform under test failed to run:"
+msgstr "Test edilen dönüşüm çalıştırılamadı:"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} reads table(s) this test does not stand in for: {1}. An expectation may only read the transform''s output and its declared inputs."
+msgstr "Expectation {0}, bu testin yerine geçmediği tablo(ları) okuyor: {1}. Bir expectation yalnızca dönüşümün çıktısını ve beyan edilmiş girdilerini okuyabilir."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform test could not fully remap the source to test tables; these reference(s) remain: {0}. Alias each source table and qualify its columns by the alias (e.g. `FROM my_table t ... t.col`), not by the table name."
+msgstr "Dönüşüm testi, kaynağı test tablolarına tamamen yeniden eşleyemedi; şu referans(lar) kaldı: {0}. Her kaynak tabloya alias verin ve sütunlarını tablo adıyla değil alias ile niteleyin (örn. `FROM my_table t ... t.col`)."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Expectation {0} has SQL that could not be parsed: {1}"
+msgstr "Expectation {0} ayrıştırılamayan SQL içeriyor: {1}"
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "The transform reads table(s) with no declared test input: {0}. Add an input for each."
+msgstr "Dönüşüm, beyan edilmiş test girdisi olmayan tablo(ları) okuyor: {0}. Her biri için bir girdi ekleyin."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Test input(s) declared for table(s) the transform does not read: {0}. Remove them."
+msgstr "Dönüşümün okumadığı tablo(lar) için beyan edilmiş test girdisi/girdileri: {0}. Kaldırın."
+
+#: metabase_enterprise/transform_testing/validator.clj
+msgid "Duplicate test inputs; each input table may be declared only once: {0}"
+msgstr "Yinelenen test girdileri; her girdi tablosu yalnızca bir kez beyan edilebilir: {0}"
 
 #: metabase_enterprise/transforms_inspector/core.clj
 msgid "Transform Inspector: {0}"
