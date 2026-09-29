@@ -5,7 +5,8 @@
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- field
   [name & {:as overrides}]
@@ -86,6 +87,10 @@
     (is (= "none" (last (get-in item [:properties :semantic_type :enum]))))
     (is (false? (:additionalProperties item)))
     (is (false? (:additionalProperties llm/response-schema)))))
+
+(deftest response-schema-accepted-by-provider-adapters-test
+  (testing "the response schema validates against the structured-output schema every provider adapter checks"
+    (is (nil? (mr/explain :metabase.metabot.self.core/json-schema-node llm/response-schema)))))
 
 (deftest max-tokens-test
   (is (= 632 (llm/max-tokens 1)))
