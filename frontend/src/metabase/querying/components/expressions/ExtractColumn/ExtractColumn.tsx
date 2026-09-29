@@ -53,14 +53,7 @@ export function ExtractColumn({
     info: Lib.ColumnExtractionInfo,
     extraction: Lib.ColumnExtraction,
   ) {
-    // @todo this is a hack until Lib supports building an expression from an extraction
-    const newQuery = Lib.extract(query, stageIndex, extraction);
-    const expressions = Lib.expressions(newQuery, stageIndex);
-    const name = getName(query, stageIndex, info);
-    const lastExpression = expressions.at(-1);
-    if (lastExpression) {
-      onSubmit(lastExpression, name, extraction);
-    }
+    return;
   }
 
   return (
