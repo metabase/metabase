@@ -142,43 +142,7 @@ export const translateDisplayNames = <T>({
   locale: string;
   fieldsToTranslate?: string[];
 }): T => {
-  if (!hasTranslations(tc)) {
-    return obj;
-  }
-
-  const traverse = (element: T): T => {
-    if (Array.isArray(element)) {
-      // Unjustified type cast. FIXME
-      return element.map((item) => traverse(item)) as T;
-    }
-
-    if (isRecord(element)) {
-      return Object.entries(element).reduce((acc, [key, value]) => {
-        const shouldTranslate =
-          fieldsToTranslate.includes(key) && typeof value === "string";
-
-        // We can't detect if an element has a special pattern (aggregation, binning, temporal bucket) or not here.
-        // We can't rely on the `source` field as for cases when a question containing aggregations is a base for another question,
-        // the `source` field contains the `fields` value, not the `aggregation` one.
-        // As the solution, we always try to translate the display name using pattern matching,
-        // and inside `translateColumnDisplayName` we fallback to regular tc() call if no pattern is matched.
-        const newValue = shouldTranslate
-          ? translateColumnDisplayName({
-              displayName: value,
-              tc,
-              locale,
-            })
-          : // Unjustified type cast. FIXME
-            traverse(value as T);
-
-        return I.assoc(acc, key, newValue);
-      }, element);
-    }
-
-    return element;
-  };
-
-  return traverse(obj);
+  return;
 };
 
 export const translateFieldValuesInHoveredObject = (
