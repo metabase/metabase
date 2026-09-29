@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -520,15 +521,39 @@
 
 (defn- check-curated-query-sources!
   "When the session's Metabot is restricted to curated content, require every Table and Card `pmbql-query` reads —
-  source and implicitly joined Tables, source Cards, and metrics — to be curated, so an uncurated Table can't be
-  queried by naming it directly rather than finding it through `search` / `read_resource` (BOT-1649)."
+  source, joined, and implicitly joined Tables, source Cards, and metrics — to be curated, or covered by curated
+  content the query reads, so an uncurated Table can't be queried by naming it directly rather than finding it
+  through `search` / `read_resource` (BOT-1649). A curated entity covers what `read_resource` exposes through it:
+  - a curated Table or Card covers the Tables one FK hop away (its related tables);
+  - a curated metric covers the Tables and Cards it's defined on, and their related tables;
+  - a curated Table covers the metrics defined on it."
   [metadata-provider pmbql-query]
-  (when (curation/curated-content-only? shared/*metabot-id* shared/*profile-id*)
-    (let [{:keys [table card metric]} (lib/all-referenced-entity-ids [(lib/query metadata-provider pmbql-query)])
-          sources   (concat (map #(vector "table" %) table)
-                            (map #(vector "card" %) (into card metric)))
-          curated   (curation/curated-ids sources)
-          uncurated (into [] (remove curated) sources)]
+  (when (shared/curated-only?)
+    (let [mp            metadata-provider
+          {:keys [table card metric]} (lib/all-referenced-entity-ids [(lib/query mp pmbql-query)])
+          ;; `:card` also lists the metrics the query references; judge those as metrics, not as source Cards
+          card          (remove (set metric) card)
+          curated       (curation/curated-ids (concat (map #(vector "table" %) table)
+                                                      (map #(vector "card" %) (concat card metric))))
+          curated?      (fn [model id] (contains? curated [model id]))
+          metric-query  (fn [id] (lib/query mp (:dataset-query (lib.metadata/card mp id))))
+          covered       (lib/all-referenced-entity-ids
+                         (concat (for [id table  :when (curated? "table" id)] (lib/query mp (lib.metadata/table mp id)))
+                                 (for [id card   :when (curated? "card" id)] (lib/query mp (lib.metadata/card mp id)))
+                                 (for [id metric :when (curated? "card" id)] (metric-query id)))
+                         {:include-implicitly-joinable? true})
+          uncurated     (into []
+                              cat
+                              [(for [id table
+                                     :when (not (or (curated? "table" id) (contains? (:table covered) id)))]
+                                 ["table" id])
+                               (for [id card
+                                     :when (not (or (curated? "card" id) (contains? (:card covered) id)))]
+                                 ["card" id])
+                               (for [id metric
+                                     :when (not (or (curated? "card" id)
+                                                    (curated? "table" (lib/primary-source-table-id (metric-query id)))))]
+                                 ["card" id])])]
       (when (seq uncurated)
         (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "
                                   "and the query reads a table, model, or metric that is not curated. Use `search` "

@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.metadata :as metadata-tools]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.test :as mt]
@@ -132,27 +133,36 @@
                                                                              :dataset_query (orders-query)}
                    :model/Card {plain-eid :entity_id} {:type :model :name "plain model"
                                                        :dataset_query (orders-query)}
+                   :model/Card {verified-metric :id verified-metric-eid :entity_id}
+                   {:type :metric :name "verified metric" :dataset_query (lib/aggregate (orders-query) (lib/count))}
+                   :model/Card {plain-metric-eid :entity_id}
+                   {:type :metric :name "plain metric" :dataset_query (lib/aggregate (orders-query) (lib/count))}
                    :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
       (verify-card! verified-model)
-      (let [db-name      (t2/select-one-fn :name :model/Database :id (mt/id))
-            stage        (fn [source] (merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]} source))
-            query        (fn [source] {:lib/type "mbql/query" :stages [(stage source)]})
-            orders-query (query {:source-table [db-name "PUBLIC" "ORDERS"]})
-            joined-query (assoc-in orders-query [:stages 0 :breakout]
-                                   [["field" {:source-field [db-name "PUBLIC" "ORDERS" "PRODUCT_ID"]}
-                                     [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]])
-            construct    (fn [metabot-id profile-id q]
-                           (binding [tools.shared/*metabot-id* metabot-id
-                                     tools.shared/*profile-id* profile-id]
-                             (construct/execute-representations-query q)))
-            rejected?    (fn [metabot-id profile-id q]
-                           (try
-                             (construct metabot-id profile-id q)
-                             false
-                             (catch clojure.lang.ExceptionInfo e
-                               (if (= :uncurated-source (:error (ex-data e)))
-                                 true
-                                 (throw e)))))]
+      (verify-card! verified-metric)
+      (let [db-name        (t2/select-one-fn :name :model/Database :id (mt/id))
+            stage          (fn [source] (merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]} source))
+            query          (fn [source] {:lib/type "mbql/query" :stages [(stage source)]})
+            orders-query   (query {:source-table [db-name "PUBLIC" "ORDERS"]})
+            products-query (query {:source-table [db-name "PUBLIC" "PRODUCTS"]})
+            joined-query   (assoc-in orders-query [:stages 0 :breakout]
+                                     [["field" {:source-field [db-name "PUBLIC" "ORDERS" "PRODUCT_ID"]}
+                                       [db-name "PUBLIC" "PRODUCTS" "CATEGORY"]]])
+            metric-query   (fn [metric-eid]
+                             (assoc-in orders-query [:stages 0 :aggregation] [["metric" {} metric-eid]]))
+            construct      (fn [metabot-id profile-id q]
+                             (binding [tools.shared/*metabot-id* metabot-id
+                                       tools.shared/*profile-id* profile-id]
+                               (construct/execute-representations-query q)))
+            rejected?      (fn [metabot-id profile-id q]
+                             (try
+                               (construct metabot-id profile-id q)
+                               false
+                               (catch clojure.lang.ExceptionInfo e
+                                 (if (= :uncurated-source (:error (ex-data e)))
+                                   true
+                                   (throw e)))))
+            accepted?      (fn [q] (some? (:structured-output (construct metabot-id :internal q))))]
         (testing "a raw table is rejected for a curated-only Metabot"
           (is (rejected? metabot-id :internal orders-query)))
         (testing "a raw table is queryable without a restricted Metabot, and for the nlq profile"
@@ -160,9 +170,81 @@
           (is (some? (:structured-output (construct metabot-id :nlq orders-query)))))
         (testing "a curated table is queryable"
           (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
-            (is (some? (:structured-output (construct metabot-id :internal orders-query))))
-            (testing "but not when it implicitly joins an uncurated table"
-              (is (rejected? metabot-id :internal joined-query)))))
+            (is (accepted? orders-query))
+            (testing "along with the related tables it exposes, joined implicitly"
+              (is (accepted? joined-query)))
+            (testing "and the metrics defined on it, curated or not"
+              (is (accepted? (metric-query plain-metric-eid))))
+            (testing "but a related table is still not a source of its own"
+              (is (rejected? metabot-id :internal products-query)))))
+        (testing "a curated metric covers the raw table it's defined on, and that table's related tables"
+          (is (accepted? (metric-query verified-metric-eid)))
+          (is (accepted? (assoc-in (metric-query verified-metric-eid) [:stages 0 :breakout]
+                                   (get-in joined-query [:stages 0 :breakout])))))
+        (testing "an uncurated metric on a raw table is rejected"
+          (is (rejected? metabot-id :internal (metric-query plain-metric-eid))))
         (testing "source cards must be curated"
-          (is (some? (:structured-output (construct metabot-id :internal (query {:source-card verified-eid})))))
+          (is (accepted? (query {:source-card verified-eid})))
           (is (rejected? metabot-id :internal (query {:source-card plain-eid}))))))))
+
+(deftest read-resource-curated-check-after-handler-test
+  (testing "the curation check runs after the handler's own checks"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (testing "a missing table reads as missing, not as uncurated"
+          (let [[resource] (read-uris metabot-id :internal "metabase://table/2147483647")]
+            (is (some? (:error resource)))
+            (is (not (denied? resource)))))))
+    (testing "an unreadable table doesn't reveal whether it's curated"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
+                                                   :is_published true :data_layer :final}
+                     :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
+                     :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [errors (mapv #(:error (first (read-uris metabot-id :internal (str "metabase://table/" %))))
+                               [published raw])]
+              (is (every? some? errors))
+              (is (not-any? #(str/includes? % "only uses curated content") errors))
+              (is (apply = errors)))))))))
+
+(deftest read-resource-curated-action-uri-test
+  (testing "an action dashcard keeps its backing model's uri only when that model is curated"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-actions [{model-id :id} {:type :model :dataset_query (orders-query)}
+                        {:keys [action-id]} {:type :query :visualization_settings {}}]
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/DashboardCard _ {:dashboard_id dash-id :card_id model-id :action_id action-id
+                                               :row 0 :col 0 :size_x 4 :size_y 1
+                                               :visualization_settings {:button.label "Create Row"}}
+                       :model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+          (let [action-uris (fn []
+                              (into []
+                                    (keep :uri)
+                                    (get-in (first (read-uris metabot-id :internal
+                                                              (str "metabase://dashboard/" dash-id "/items")))
+                                            [:content :structured-output :items])))]
+            (is (= [] (action-uris)))
+            (verify-card! model-id)
+            (is (= [(str "metabase://model/" model-id)] (action-uris)))))))))
+
+(deftest metadata-tools-curated-only-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Metabot {metabot-id :entity_id} {:name "curated metabot" :use_verified_content true}]
+      (binding [tools.shared/*metabot-id* metabot-id
+                tools.shared/*profile-id* :internal]
+        (testing "list_available_fields reports uncurated tables as errors"
+          (let [{:keys [tables errors]} (:structured-output (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]}))]
+            (is (empty? tables))
+            (is (some #(str/includes? % "only uses curated content") errors))))
+        (testing "get_field_values rejects uncurated tables"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"only uses curated content"
+                                (metadata-tools/get-field-values-tool
+                                 {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)}))))
+        (testing "curated tables are readable"
+          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+            (is (=? {:structured-output {:tables [{:id (mt/id :orders)}]}}
+                    (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]})))
+            (is (some? (metadata-tools/get-field-values-tool
+                        {:data_source "table" :source_id (mt/id :orders) :field_id (mt/id :orders :total)})))))))))

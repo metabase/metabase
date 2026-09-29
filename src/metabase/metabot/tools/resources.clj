@@ -718,6 +718,13 @@
                        (->> (metabot.db/unarchived-card-summaries card-ids)
                             (filter mi/can-read?)
                             (into {} (map (juxt :id identity)))))
+        ;; An action button's uri points at its backing model, which [[list-result]]'s curation filter can't see
+        ;; through, so under [[*curated-only?*]] only curated models keep their uri.
+        linkable     (if *curated-only?*
+                       (let [action-card-ids (into [] (keep #(when (:action_id %) (:card_id %))) dashcards)]
+                         (select-keys readable (keep (fn [[_model id]] id)
+                                                     (curation/curated-ids (map #(vector "card" %) action-card-ids)))))
+                       readable)
         ->item       (fn [{:keys [id card_id action_id] :as dashcard}]
                        ;; action_id wins over card_id: an action button may reference its backing
                        ;; model through card_id but renders as a button — with a uri to that model
@@ -726,7 +733,7 @@
                          (when-let [card (get readable card_id)]
                            (assoc (present-card card) :dashcard_id id))
                          (cond-> (present-non-question-dashcard dashcard)
-                           (get readable card_id) (assoc :uri (:uri (present-card (get readable card_id)))))))
+                           (get linkable card_id) (assoc :uri (:uri (present-card (get linkable card_id)))))))
         items        (if (seq tabs)
                        ;; group by tab without emitting tab pseudo-items — those would inflate the
                        ;; paginated total; the tab list rides on the response as `:tabs` instead.
@@ -871,19 +878,26 @@
         "transform"                   ::never
         nil))))
 
+(defn check-curated-subject!
+  "Reject `subject` — a `[curation-model id]` pair, or `::never` for entities that can't be curated — unless it's
+  curated, naming it by `label` (a URI or a short description) rather than by the entity's own name. Callers decide
+  whether the session is curated-only. Exported for [[metabase.metabot.tools.metadata]]."
+  [label subject]
+  (when (or (= subject ::never)
+            (and subject (empty? (curation/curated-ids [subject]))))
+    (throw (ex-info (tru "`{0}` is not available: this Metabot only uses curated content (verified, official, or Library content). Use `search` to find curated tables, models, or metrics instead."
+                         label)
+                    {:agent-error? true
+                     :status-code  403
+                     :label        label}))))
+
 (defn- check-curated-uri!
-  "Under [[*curated-only?*]], reject a URI naming an entity that isn't curated, without naming the entity."
-  [uri segments]
+  "Under [[*curated-only?*]], reject a URI naming an entity that isn't curated, without naming the entity. Returns
+   `result`, the URI's already-fetched content, so it threads after the handler."
+  [uri segments result]
   (when *curated-only?*
-    (when-let [subject (curation-subject segments)]
-      (when (or (= subject ::never)
-                (empty? (curation/curated-ids [subject])))
-        (throw (ex-info (str "`" uri "` is not available: this Metabot only uses curated content (verified, "
-                             "official, or Library content). Use `search` to find curated tables, models, or "
-                             "metrics instead.")
-                        {:agent-error? true
-                         :status-code  403
-                         :uri          uri}))))))
+    (check-curated-subject! uri (curation-subject segments)))
+  result)
 
 (defn- dispatch
   "Route a parsed URI to the right fetch handler. The match-one table is the canonical
@@ -894,7 +908,6 @@
   [uri]
   (let [{:keys [segments query-params]} (parse-uri uri)]
     (check-numeric-id-segment! uri segments)
-    (check-curated-uri! uri segments)
     (->> (match/match-one segments
            ;; Navigation
            ["databases"]                                    (fetch-databases-list query-params)
@@ -953,6 +966,9 @@
            ;; Default — required to make match non-recursive
            _ (throw (ex-info (str "Unsupported URI: " uri)
                              {:uri uri :segments segments})))
+         ;; Gate curation after the handler, so its 404 and permission checks come first: a missing entity reads
+         ;; as missing rather than uncurated, and whether an unreadable entity is curated isn't revealed.
+         (check-curated-uri! uri segments)
          (attach-next-page-uri uri))))
 
 ;; ----- Display titles -----
@@ -1106,7 +1122,7 @@
             {:agent-error? true :uri-count (count uris) :max max-concurrent-uris})))
 
   ;; Fetch all URIs (sequentially for now, could parallelize with pmap)
-  (let [resources (binding [*curated-only?* (curation/curated-content-only? shared/*metabot-id* shared/*profile-id*)]
+  (let [resources (binding [*curated-only?* (shared/curated-only?)]
                     (mapv fetch-single-uri uris))
         formatted (format-resources resources)
         labels    (into []
