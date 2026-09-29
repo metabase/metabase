@@ -811,7 +811,7 @@
           location-is-personal    (fn [location]
                                     (boolean
                                      (and (string? location)
-                                          (personal-collection-ids (first (location-path->ids location))))))]
+                                          (contains? personal-collection-ids (first (location-path->ids location))))))]
       (map (fn [{:keys [location personal_owner_id] :as coll}]
              (if (some? coll)
                (assoc coll :is_personal (or (some? personal_owner_id)

@@ -86,7 +86,7 @@ jobs:
       frontend_sources_files: ${{ steps.changes.outputs.frontend_sources_files }}
       backend_sources_files: ${{ steps.changes.outputs.backend_sources_files }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Test which files changed
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         id: changes
@@ -106,7 +106,7 @@ jobs:
       stats: ${{ steps.compute.outputs.stats }}
       artifact-id: ${{ steps.compute.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Create test plan
         id: compute
         uses: ./.github/actions/create-test-plan
@@ -131,7 +131,7 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/prepare-node-bun
       - name: Upload affected tests stats
         env:
@@ -187,7 +187,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -214,7 +214,7 @@ jobs:
     outputs:
       static_viz: ${{ steps.static_viz.outputs.static_viz }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
