@@ -12,14 +12,17 @@ let prefetch: typeof prefetchModule;
 type Deferred = {
   promise: Promise<unknown>;
   resolve: () => void;
+  reject: () => void;
 };
 
 function deferred(): Deferred {
   let resolve!: () => void;
-  const promise = new Promise<unknown>((res) => {
+  let reject!: () => void;
+  const promise = new Promise<unknown>((res, rej) => {
     resolve = () => res(undefined);
+    reject = () => rej(new Error("failed"));
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function setConnection(connection: unknown) {
@@ -143,7 +146,26 @@ describe("prefetchRegisteredPages", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
-  it("fetches nothing when shouldStart declines", async () => {
+  // The current user arrives from a request, and someone on the login page signs
+  // in without the tab reloading. A no on the first idle turn is not an answer
+  // for the rest of the session.
+  it("keeps asking shouldStart after it has declined", async () => {
+    const load = jest.fn().mockResolvedValue(undefined);
+    prefetch.registerPagePrefetch("/signs-in-later", load);
+
+    let signedIn = false;
+    prefetch.prefetchRegisteredPages({ shouldStart: () => signedIn });
+
+    await idleOnce();
+    expect(load).not.toHaveBeenCalled();
+
+    signedIn = true;
+    await idleOnce();
+
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetches nothing while shouldStart declines", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
     prefetch.registerPagePrefetch("/declined", load);
 
@@ -167,6 +189,34 @@ describe("prefetchRegisteredPages", () => {
     expect(modal).toHaveBeenCalledTimes(1);
   });
 
+  it("carries on when a page fails to load", async () => {
+    const failing = jest.fn().mockRejectedValue(new Error("failed"));
+    const next = jest.fn().mockResolvedValue(undefined);
+    prefetch.registerPagePrefetch("/failing", failing);
+    prefetch.registerPagePrefetch("/next", next);
+
+    prefetch.prefetchRegisteredPages();
+    await idleUntilSettled();
+
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  // A failed fetch is forgotten, so the navigation that asks for the page can
+  // show the error where the user is looking.
+  it("leaves a page that failed in the background open to a later hover", async () => {
+    const failing = jest.fn().mockRejectedValue(new Error("failed"));
+    prefetch.registerPagePrefetch("/retried", failing);
+
+    prefetch.prefetchRegisteredPages();
+    await idleUntilSettled();
+    expect(failing).toHaveBeenCalledTimes(1);
+
+    prefetch.prefetchPage("/retried");
+
+    expect(failing).toHaveBeenCalledTimes(2);
+  });
+
   it("fetches nothing on a metered connection", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
     prefetch.registerPagePrefetch("/metered", load);
@@ -187,5 +237,26 @@ describe("prefetchRegisteredPages", () => {
     await idleUntilSettled();
 
     expect(load).not.toHaveBeenCalled();
+  });
+
+  // Read again for each page, so a connection that turns metered part way
+  // through stops the pass instead of being a decision made at startup.
+  it("stops when the connection turns metered part way through", async () => {
+    const held = deferred();
+    const first = jest.fn().mockReturnValue(held.promise);
+    const second = jest.fn().mockResolvedValue(undefined);
+    prefetch.registerPagePrefetch("/first", first);
+    prefetch.registerPagePrefetch("/second", second);
+
+    prefetch.prefetchRegisteredPages();
+
+    await idleOnce();
+    expect(first).toHaveBeenCalledTimes(1);
+
+    setConnection({ saveData: true });
+    held.resolve();
+    await idleUntilSettled();
+
+    expect(second).not.toHaveBeenCalled();
   });
 });

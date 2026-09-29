@@ -133,6 +133,21 @@ function nextIdle(): Promise<void> {
 }
 
 /**
+ * Wait for the tab to be idle, and for the caller to still want this.
+ *
+ * The caller's answer changes while the app loads. The current user arrives from
+ * a request, and someone on the login page signs in without the tab ever
+ * reloading, so a single no at the first idle turn says nothing about the rest of
+ * the session. This keeps asking instead. A tab that nobody signs into runs one
+ * boolean check per idle turn and fetches nothing.
+ */
+async function waitUntilWanted(shouldStart?: () => boolean): Promise<void> {
+  do {
+    await nextIdle();
+  } while (shouldStart && !shouldStart());
+}
+
+/**
  * One page at a time, and only while the tab has nothing else to do.
  *
  * The browser runs a chunk as it arrives, so the cost of a page is main thread
@@ -144,14 +159,17 @@ function nextIdle(): Promise<void> {
 async function startPendingRegistrationsInTurn(
   shouldStart?: () => boolean,
 ): Promise<void> {
-  await nextIdle();
-  if (shouldStart && !shouldStart()) {
-    return;
-  }
-
   for (const registration of registrations) {
     if (registration.isStarted) {
       continue;
+    }
+
+    await waitUntilWanted(shouldStart);
+
+    // Read again for each page. A connection that turns metered or drops to 2g
+    // part way through is a reason to stop rather than to carry on.
+    if (!isConnectionWorthGuessingOn()) {
+      return;
     }
 
     registration.isStarted = true;
@@ -160,8 +178,6 @@ async function startPendingRegistrationsInTurn(
     } catch {
       registration.isStarted = false;
     }
-
-    await nextIdle();
   }
 }
 
@@ -178,9 +194,10 @@ async function startPendingRegistrationsInTurn(
  * registered still has to be fetched when the user asks for it, and so does a
  * chunk that a registered page asks for in turn.
  *
- * `shouldStart` is read when the tab goes idle, not when this is called, so a
- * caller can decline on what it knows by then. The app uses it to fetch nothing
- * for a visitor who is sitting on the login page.
+ * `shouldStart` is asked on every idle turn rather than once, so a caller can
+ * answer on what it knows by then and change its answer later. The app uses it to
+ * fetch nothing for a visitor sitting on the login page, and to start as soon as
+ * that visitor signs in.
  */
 export function prefetchRegisteredPages({
   shouldStart,
