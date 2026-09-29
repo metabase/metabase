@@ -21,22 +21,12 @@
   (append-sql! context "?")
   (append-arg! context x))
 
-(defn- null! [_x context]
-  (append-sql! context "NULL"))
-
-(defn- integer! [n context]
-  (append-sql! context (str n)))
+(defn- null!    [_x context] (append-sql! context "NULL"))
+(defn- integer! [n context]  (append-sql! context (str n)))
 
 (defn- interpose-fn
-  "Iterate all elements in `xs`. Execute
-
-    (x-fn <x>)
-
-  for each item in `xs`. Execute
-
-    (separator-fn)
-
-  in between each item in `xs`."
+  "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
+  item in `xs`."
   [xs x-fn separator-fn]
   (loop [[x & more] xs]
     (x-fn x)
@@ -78,8 +68,7 @@
     (compile! lhs context)
     (when rhs
       (append-sql! context " AS ")
-      (compile! rhs context)))
-  nil)
+      (compile! rhs context))))
 
 (declare equals!)
 
@@ -93,7 +82,7 @@
 
 (declare map!)
 
-(defn- -with! [sql ctes context]
+(defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(-cte [[identifier subquery]]
             (compile! identifier context)
@@ -101,9 +90,6 @@
             (map! subquery context)
             (append-sql! context ")"))]
     (interpose-fn ctes -cte #(append-sql! context ", "))))
-
-(defn- with!           [ctes context] (-with! "WITH "           ctes context))
-(defn- with-recursive! [ctes context] (-with! "WITH RECURSIVE " ctes context))
 
 (defn- insert-into! [identifier context]
   (append-sql! context "INSERT INTO ")
@@ -127,15 +113,9 @@
   (append-sql! context "DELETE FROM ")
   (compile! (unwrap-identifier identifier) context))
 
-(defn- -select! [sql cols context]
+(defn- select! [sql cols context]
   (append-sql! context sql)
   (interpose-fn cols #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))
-
-(defn- select! [cols context]
-  (-select! "SELECT " cols context))
-
-(defn- select-distinct! [cols context]
-  (-select! "SELECT DISTINCT " cols context))
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
@@ -224,15 +204,15 @@
 
 (def ^:private clause-fns
   (ordered-map/ordered-map
-   :with            with!
-   :with-recursive  with-recursive!
+   :with            (partial with! "WITH ")
+   :with-recursive  (partial with! "WITH RECURSIVE ")
    :insert-into     insert-into!
    :values          values!
    :update          update!
    :set             set!
    :delete-from     delete-from!
-   :select          select!
-   :select-distinct select-distinct!
+   :select          (partial select! "SELECT ")
+   :select-distinct (partial select! "SELECT DISTINCT ")
    :from            from!
    :join            (partial join! :join)
    :left-join       (partial join! :left)
@@ -282,10 +262,7 @@
 (defn -identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-component]]s."
   [s context]
-  (interpose-fn
-   (str/split s #"\.")
-   #(-identifier-component! % context)
-   #(append-sql! context ".")))
+  (interpose-fn (str/split s #"\.") #(-identifier-component! % context) #(append-sql! context ".")))
 
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
@@ -305,14 +282,10 @@
       (compile! y context))
     (append-sql! context nil-sql)))
 
-(defn- equals!     [args context] (-equals! " = "  " IS NULL"     args context))
-(defn- not-equals! [args context] (-equals! " <> " " IS NOT NULL" args context))
+(defn- equals! [args context] (-equals! " = "  " IS NULL" args context))
 
 (defn- -compound! [sql xs context]
   (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))
-
-(defn- and! [xs context] (-compound! " AND " xs context))
-(defn- or!  [xs context] (-compound! " OR "  xs context))
 
 (defn- not! [[x] context]
   (append-sql! context "NOT ")
@@ -322,9 +295,6 @@
   (compile! lhs context)
   (append-sql! context sql)
   (-list! vs context))
-
-(defn- in!     [args context] (-in! " IN "     args context))
-(defn- not-in! [args context] (-in! " NOT IN " args context))
 
 (defn- between! [[x y z] context]
   (compile! x context)
@@ -366,9 +336,6 @@
   (map! subquery context)
   (append-sql! context ")"))
 
-(defn- exists!     [subquery context] (-exists! "EXISTS "     subquery context))
-(defn- not-exists! [subquery context] (-exists! "NOT EXISTS " subquery context))
-
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
@@ -383,18 +350,18 @@
 
 (defn- -fn-call! [[f & args] context]
   (case f
-    (:= :is)                (equals!     args context)
-    (:<> :!= :not= :is-not) (not-equals! args context)
-    :and                    (and!        args context)
-    :or                     (or!         args context)
-    :not                    (not!        args context)
-    :in                     (in!         args context)
-    :not-in                 (not-in!     args context)
-    :between                (between!    args context)
-    :cast                   (cast!       args context)
-    :case                   (case!       args context)
-    :exists                 (exists!     (first args) context)
-    :not-exists             (not-exists! (first args) context)
+    :not                    (not!     args context)
+    :between                (between! args context)
+    :cast                   (cast!    args context)
+    :case                   (case!    args context)
+    (:= :is)                (equals!  args context)
+    (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
+    :and                    (-compound! " AND " args context)
+    :or                     (-compound! " OR "  args context)
+    :in                     (-in! " IN "     args context)
+    :not-in                 (-in! " NOT IN " args context)
+    :exists                 (-exists! "EXISTS "     (first args) context)
+    :not-exists             (-exists! "NOT EXISTS " (first args) context)
 
     (:< :<= :> :>= :like :not-like)
     (-binary-operator! f args context)
@@ -428,7 +395,9 @@
 
 (mu/defn compile :- [:cat :string [:* :any]]
   "Compile `honeysql-form` (either a top-level map or an individual clause) to SQL for `engine`."
-  [honeysql-form
+  [honeysql-form :- [:or
+                     [:map {:metabase.util.malli.registry/deliberately-open true}]
+                     vector?]
    engine :- [:enum :h2 :postgres :mysql]]
   (let [context (default-context engine)]
     ;; [[compile!]] doesn't support compiling maps recursively on purpose
