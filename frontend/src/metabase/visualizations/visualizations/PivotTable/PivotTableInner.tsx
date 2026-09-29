@@ -146,10 +146,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       return showTotals;
     }
     useEffect(() => {
-      // This is needed in case the cell counts didn't change, but the data or cell sizes did
-      leftHeaderRef.current?.recomputeCellSizesAndPositions?.();
-      topHeaderRef.current?.recomputeCellSizesAndPositions?.();
-      gridRef.current?.recomputeGridSize?.();
+      return;
     }, [
       data,
       leftHeaderRef,
