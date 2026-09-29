@@ -637,8 +637,7 @@ export class UnconnectedDataSelector extends Component<
   };
 
   hasUsableModels = () => {
-    // As models are actually saved questions, nested queries must be enabled
-    return this.hasModels() && this.props.hasNestedQueriesEnabled;
+    return false;
   };
 
   hasMetrics = () => {
