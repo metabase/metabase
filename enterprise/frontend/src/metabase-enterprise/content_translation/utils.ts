@@ -37,40 +37,7 @@ export function translateContentString<T>(
   locale: string | undefined,
   rawMsgid: T,
 ): string | T {
-  if (!locale) {
-    return rawMsgid;
-  }
-
-  if (Array.isArray(rawMsgid)) {
-    // Unjustified type cast. FIXME
-    return rawMsgid.map((msgid) =>
-      translateContentString(dictionary, locale, msgid),
-    ) as T;
-  }
-
-  if (typeof rawMsgid !== "string" && typeof rawMsgid !== "boolean") {
-    return rawMsgid;
-  }
-
-  // Boolean values are matched against the dictionary as strings
-  const msgid = typeof rawMsgid === "boolean" ? rawMsgid.toString() : rawMsgid;
-
-  if (!msgid.trim()) {
-    return msgid;
-  }
-
-  const lowerCaseMsgId = msgid.toLowerCase();
-
-  const msgstr = dictionary?.find(
-    (row) =>
-      row.locale === locale && row.msgid.toLowerCase() === lowerCaseMsgId,
-  )?.msgstr;
-
-  if (!msgstr || !msgstr.trim()) {
-    return msgid;
-  }
-
-  return msgstr;
+  return "";
 }
 
 /**
