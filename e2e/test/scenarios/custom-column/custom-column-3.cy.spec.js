@@ -195,7 +195,9 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.log("functions unsupported by the current database are hidden");
       cy.findByPlaceholderText("Search functions…")
         .clear()
-        .type("convertTimezone");
+        .type("convertTimezone")
+        .should("have.value", "convertTimezone");
+      cy.findByText("Didn't find any results").should("be.visible");
       cy.findByText("convertTimezone").should("not.exist");
     });
   });

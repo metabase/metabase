@@ -31,7 +31,9 @@ describe("scenarios > question > custom column", () => {
       },
       { visitQuestion: true },
     );
-    cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
+    cy.intercept("GET", "/api/automagic-dashboards/**/cell/**/compare/**").as(
+      "xray",
+    );
 
     H.cartesianChartCircle().eq(5).click();
     H.popover()

@@ -130,7 +130,7 @@ describe("scenarios > question > custom column > combine shortcuts", () => {
 
     cy.log("a text column as the first column defaults to an empty separator");
     H.expressionEditorWidget().within(() => {
-      cy.findByText("Separated by (empty)").should("exist");
+      cy.findByText("Separated by (empty)").should("be.visible");
       cy.findByText(/Separated by/).click();
       cy.findByLabelText("Separator").should("have.value", "");
     });

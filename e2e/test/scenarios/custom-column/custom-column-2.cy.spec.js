@@ -161,7 +161,7 @@ describe("scenarios > question > custom column > expression editor", () => {
     H.CustomExpressionEditor.value().should("equal", "1+1");
 
     cy.viewport(1260, 800);
-    cy.findByDisplayValue("Math");
+    cy.findByDisplayValue("Math").should("be.visible");
     H.CustomExpressionEditor.value().should("equal", "1+1");
     cy.button("Done").should("not.be.disabled");
   });

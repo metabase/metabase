@@ -604,8 +604,14 @@ describe("issue 24922", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
     // The first order's total is under 100, the second one's is not
-    H.tableInteractiveBody().findAllByText("Segment").should("exist");
-    H.tableInteractiveBody().findAllByText("Other").should("exist");
+    H.tableInteractiveBody()
+      .findAllByText("Segment")
+      .first()
+      .should("be.visible");
+    H.tableInteractiveBody()
+      .findAllByText("Other")
+      .first()
+      .should("be.visible");
   });
 });
 
