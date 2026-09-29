@@ -166,7 +166,13 @@ export const cardApi = Api.injectEndpoints({
           url: "/api/card",
           body,
         }),
-        invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
+        invalidatesTags: (card, error) =>
+          invalidateTags(error, [
+            listTag("card"),
+            ...(card
+              ? [idTag("collection", card.collection_id ?? "root")]
+              : []),
+          ]),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
         query: ({ file, collection_id }) => {
