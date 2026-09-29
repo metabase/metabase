@@ -13,7 +13,7 @@ function addCustomColumns(columns) {
     }
 
     H.enterCustomColumnDetails(column);
-    cy.button("Done").click({ force: true });
+    H.expressionEditorWidget().button("Done").click();
   });
 }
 
