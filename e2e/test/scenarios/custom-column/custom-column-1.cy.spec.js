@@ -279,8 +279,10 @@ describe("scenarios > question > custom column", () => {
     cy.findAllByText("57,911");
   });
 
-  it("should not be dropped if filter is changed after aggregation (metabase#14193)", () => {
+  it("should use custom expressions after aggregation, and not drop them if filter is changed (metabase#13857, metabase#14193)", () => {
     const CC_NAME = "Double the fun";
+    const CE_NAME = "13857_CE";
+    const CE_CC_NAME = "13857_CC";
 
     H.createQuestion(
       {
@@ -289,18 +291,37 @@ describe("scenarios > question > custom column", () => {
           "source-query": {
             "source-table": ORDERS_ID,
             filter: [">", ["field-id", ORDERS.SUBTOTAL], 0],
-            aggregation: [["sum", ["field-id", ORDERS.TOTAL]]],
+            aggregation: [
+              ["sum", ["field-id", ORDERS.TOTAL]],
+              [
+                "aggregation-options",
+                ["*", ["count"], 1],
+                { name: CE_NAME, "display-name": CE_NAME },
+              ],
+            ],
             breakout: [
               ["datetime-field", ["field-id", ORDERS.CREATED_AT], "year"],
             ],
           },
           expressions: {
             [CC_NAME]: ["*", ["field-literal", "sum", "type/Float"], 2],
+            [CE_CC_NAME]: ["*", ["field-literal", CE_NAME, "type/Float"], 1234],
           },
         },
       },
       { visitQuestion: true },
     );
+
+    H.assertTableData({
+      columns: [
+        "Created At: Year",
+        "Sum of Total",
+        CE_NAME,
+        CC_NAME,
+        CE_CC_NAME,
+      ],
+      firstRows: [["2025", "42,156.87", "744", "84,313.74", "918,096"]],
+    });
     // Test displays collapsed filter - click on number 1 to expand and show the filter name
     cy.findByTestId("filters-visibility-control")
       .should("have.text", "1")
@@ -315,8 +336,14 @@ describe("scenarios > question > custom column", () => {
     cy.wait("@dataset").its("response.body.error").should("not.exist");
     cy.findByTestId("filters-visibility-control").should("not.exist");
     H.assertTableData({
-      columns: ["Created At: Year", "Sum of Total", CC_NAME],
-      firstRows: [["2025", "42,156.87", "84,313.74"]],
+      columns: [
+        "Created At: Year",
+        "Sum of Total",
+        CE_NAME,
+        CC_NAME,
+        CE_CC_NAME,
+      ],
+      firstRows: [["2025", "42,156.87", "744", "84,313.74", "918,096"]],
     });
   });
 
