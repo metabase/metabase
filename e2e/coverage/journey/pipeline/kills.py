@@ -1,4 +1,5 @@
-"""Reads a kill matrix and turns it into a keep, provisional-keep, delete, unmeasured or accepted verdict per candidate test.
+"""Reads a kill matrix and turns it into a keep, provisional-keep, delete, unmeasured, eligible-for-risk-acceptance or accepted verdict
+per candidate test.
 
 The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant id:
 
@@ -76,9 +77,9 @@ A candidate passes the baseline check with a confirmed kill among its qualifying
 because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
 
 A kept candidate is one whose verdict is keep or provisional-keep, and it stays in the suite like a remaining test.
-A delete, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills,
+A delete, eligible, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills,
 with the kept candidates that kill it, which include the one the cover keeps for it.
-The joint check fails on any mutant a delete or accepted candidate killed that no remaining test or kept candidate kills.
+The joint check fails on any mutant a delete, eligible or accepted candidate killed that no remaining test or kept candidate kills.
 
 A keep rests on its unique kills and the confirmed kills the cover keeps it for,
 and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for.
@@ -86,12 +87,12 @@ When all of them are the candidate's symptom kills, its `symptom_only` is true a
 Its `scope` is the widest scope at which the remaining side missed any of them: full, selected,
 or unmeasured when the remaining side missed none of them.
 When that isn't full, the reason ends in "; " and the remaining side's result on each of them.
-A delete, accepted or unmeasured candidate's `symptom_only_after_deletion` lists each mutant it killed
+A delete, eligible, accepted or unmeasured candidate's `symptom_only_after_deletion` lists each mutant it killed
 that remaining tests and kept candidates kill only through symptom kills,
 and its `scope` is the same scope over the mutants in its `depends_on` that no kept candidate kills.
 
-An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
-when it has all four of these fields:
+An unmeasured candidate that passed in the capture becomes eligible for risk acceptance, never a measured delete,
+when its `eligibility` has all four of these fields:
   prior    the highest `score` the location prior gives the files of its qualifying mutants' locations,
            and the files of their direct callers when a callers file is given
   sampled  n, the number of its qualifying mutants
@@ -101,8 +102,13 @@ when it has all four of these fields:
 It also needs a confirmed kill by a remaining test or a kept candidate on every one of the n, no unresolved suspected
 equivalent mutant among the ones it would sample, the baseline check, and a prior of at most `max_prior`.
 Each unresolved suspect in a sample records the candidates whose verdict changes when only that suspect is dismissed.
-Each module takes at most `cap` accepted candidates, lowest prior first, then lowest bound.
+Each module takes at most `cap` eligible candidates, lowest prior first, then lowest bound.
 A candidate over several modules counts against each of them.
+An eligible candidate is accepted only when the acceptances file records a person's authorisation of it and the policy scope:
+
+  {"<test id>": {"authorisation": {"by": "<person>", "date": "<date>"}, "policy_scope": "<the policy it was accepted under>"}}
+
+A record missing a field, or naming a test that isn't eligible, accepts nothing and is listed.
 
 The location prior is JSON keyed by repo-relative file, with a rollup per module:
 
@@ -114,7 +120,7 @@ Its graph file sits beside it as `<prior name>-graph.json`:
   {"barrels": [<path>, ...], "importers": {"<path>": [<importing path>, ...]}}
 
 A file's static importers are the files that import it, and through a barrel, the files that import the barrel.
-Each acceptance records a summary of its files' static importers as information only, and they never change its prior.
+Each eligibility records a summary of its files' static importers as information only, and they never change its prior.
 
 The callers file is JSON keyed by test id:
 
@@ -123,7 +129,7 @@ The callers file is JSON keyed by test id:
 A candidate's entry lists the files of the direct callers of the functions its qualifying mutants sit in.
 When a callers file is given, a candidate without an entry has no prior.
 
-The CI history is JSON keyed by test id. A candidate's entry is copied onto its acceptance and never decides it.
+The CI history is JSON keyed by test id. A candidate's entry is copied onto its eligibility and never decides it.
 
 As a command, it takes the candidates' reached code from a reach index instead of a pipeline run:
 
@@ -150,7 +156,7 @@ in any form lookup.mjs takes, and a candidate reaches the mutant when it ran a f
 That reach has basis subtraction when the index measured it, and basis baseline when it is inferred for code in every test's baseline.
 Both count, and each candidate's `qualifying_basis` lists its located qualifying mutants under the basis of its reach.
 When the joint check fails, it exits with code 1, and with `--joint-check-report-only` it only reports the failure.
-The pipeline takes no location prior, so it never gives accepted.
+The pipeline takes no location prior, so it never gives eligible or accepted.
 """
 
 import argparse
@@ -164,16 +170,18 @@ import subprocess
 import sys
 import types
 
-VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured", "accepted")
+ELIGIBLE = "eligible-for-risk-acceptance"
+RISK_ACCEPTANCE = (ELIGIBLE, "accepted")
+VERDICTS = ("keep", "provisional-keep", "delete", "unmeasured", ELIGIBLE, "accepted")
 KEPT = ("keep", "provisional-keep")
-DELETED = ("delete", "accepted")
+DELETED = ("delete", ELIGIBLE, "accepted")
 MIN_MUTANTS = 5
 REQUIRED_STRATA = "logic,wiring"
 # Two, so one wrong prior takes at most two tests out of a module before an escape there brings them back.
 ACCEPT_CAP = 2
 # At or below the median file, when the score is a percentile.
 MAX_PRIOR = 0.5
-ACCEPT_FIELDS = ("prior", "sampled", "bound", "module")
+ELIGIBILITY_FIELDS = ("prior", "sampled", "bound", "module")
 BOUND_RULE = "3/n, the rule of three: when remaining tests kill all n sampled mutants, their miss rate is below 3/n at 95% confidence"
 PRIOR_REACHED = "reached files"
 PRIOR_WITH_CALLERS = "reached files plus direct callers"
@@ -735,7 +743,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
     """`reach(t)` gives a function that says whether test t reached a located mutant, file_reach(run) by default.
 
     Its value is a list of the reach's bases, or True for reach after baseline subtraction.
-    With `accept`, from read_acceptance(), every unmeasured candidate gets an `acceptance` and can become accepted.
+    With `accept`, from read_acceptance(), every unmeasured candidate gets an `eligibility` and can become eligible or accepted.
     """
     tests = run.tests
     mutants = kills["mutants"] if kills else {}
@@ -872,8 +880,8 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         ev["survivors"] = sorted({mid for mid in ev["qualifying"] if not stays_killed(mutants[mid], kept)}
                                  | set(ev["unresolved_suspects"]))
     if accept is not None:
-        outcomes = acceptance_outcomes(tests, out, evidence, accept)
-        apply_acceptance(out, outcomes)
+        outcomes = eligibility_outcomes(tests, out, evidence, accept)
+        apply_eligibility(out, outcomes, accept.acceptances)
         dismissal_dependencies(tests, out, evidence, accept, outcomes, mutants)
     key_of = {t.id: t.key for t in tests}
     for t in tests:
@@ -996,8 +1004,8 @@ def listed(paths, most=5):
     return ", ".join(paths[:most]) + (f" and {len(paths) - most} more" if len(paths) > most else "")
 
 
-def acceptance_fields(test_id, evidence, reason, accept):
-    """The four fields an accepted verdict records, and which of them are missing and why."""
+def eligibility_fields(test_id, evidence, reason, accept):
+    """The four fields an eligible verdict records, and which of them are missing and why."""
     n = evidence["sampled"] if evidence else None
     files = sorted(evidence["files"]) if evidence else []
     bound = rule_of_three(n)
@@ -1039,7 +1047,7 @@ def acceptance_fields(test_id, evidence, reason, accept):
         "prior": prior, "prior_over": accept.prior_over,
         **({"importers": importers} if accept.graph else {}),
         "sampled": n, "bound": bound, "modules": modules,
-        "missing": {f: missing[f] for f in ACCEPT_FIELDS if f in missing},
+        "missing": {f: missing[f] for f in ELIGIBILITY_FIELDS if f in missing},
         "survivors": evidence["survivors"] if evidence else [],
         "outcome": None,
     }
@@ -1048,8 +1056,8 @@ def acceptance_fields(test_id, evidence, reason, accept):
     return record
 
 
-def acceptance_outcomes(tests, out, evidence, accept):
-    """Each unmeasured candidate's acceptance fields and outcome, accepting those whose fields allow it,
+def eligibility_outcomes(tests, out, evidence, accept):
+    """Each unmeasured candidate's eligibility fields and outcome, making eligible those whose fields allow it,
     lowest prior then lowest bound first, while their modules have room.
     """
     records = {}
@@ -1059,7 +1067,7 @@ def acceptance_outcomes(tests, out, evidence, accept):
         if row["verdict"] != "unmeasured":
             continue
         ev = evidence.get(t.key)
-        records[t.key] = a = acceptance_fields(t.key, ev, row["reason"], accept)
+        records[t.key] = a = eligibility_fields(t.key, ev, row["reason"], accept)
         if not passed(t):
             a["outcome"] = "never: did not pass in the capture"
         elif a["missing"]:
@@ -1079,32 +1087,47 @@ def acceptance_outcomes(tests, out, evidence, accept):
             a["outcome"] = "over the module cap"
             continue
         taken.update(a["modules"])
-        a["outcome"] = "accepted"
+        a["outcome"] = "eligible"
     return records
 
 
-def apply_acceptance(out, records):
+def acceptance_gaps(record):
+    """The fields an acceptance record lacks: a person's authorisation, with who and when, and the policy scope."""
+    record = record if isinstance(record, dict) else {}
+    authorisation = record.get("authorisation") if isinstance(record.get("authorisation"), dict) else {}
+    return [f"authorisation.{k}" for k in ("by", "date") if not authorisation.get(k)] + (
+        [] if record.get("policy_scope") else ["policy_scope"])
+
+
+def apply_eligibility(out, records, acceptances):
+    """Records each unmeasured candidate's eligibility, and makes an eligible one accepted when a complete acceptance names it."""
     for key, a in records.items():
-        out[key]["acceptance"] = a
-        if a["outcome"] == "accepted":
+        out[key]["eligibility"] = a
+        if a["outcome"] != "eligible":
+            continue
+        record = (acceptances or {}).get(key)
+        if record is not None and not acceptance_gaps(record):
             out[key]["verdict"] = "accepted"
+            out[key]["accepted"] = {"authorisation": record["authorisation"], "policy_scope": record["policy_scope"]}
+        else:
+            out[key]["verdict"] = ELIGIBLE
 
 
 def dismissal_dependencies(tests, out, evidence, accept, records, mutants):
     """Records on each unresolved suspected equivalent mutant in a sample the candidates whose verdict changes if it is dismissed."""
-    before = {key: row["verdict"] for key, row in out.items()}
-    unaccepted = {key: dict(row, verdict="unmeasured") if key in records else row for key, row in out.items()}
+    before = {key: out[key]["verdict"] in RISK_ACCEPTANCE for key in records}
+    unmeasured = {key: dict(row, verdict="unmeasured") if key in records else row for key, row in out.items()}
     for mid in sorted({mid for ev in evidence.values() for mid in ev["unresolved_suspects"]}):
         dismissed = {key: dict(ev, survivors=[s for s in ev["survivors"] if s != mid],
                                unresolved_suspects=[s for s in ev["unresolved_suspects"] if s != mid])
                      for key, ev in evidence.items()}
-        after = acceptance_outcomes(tests, unaccepted, dismissed, accept)
-        mutants[mid]["dismissal_changes"] = sorted(
-            key for key, a in after.items() if ("accepted" if a["outcome"] == "accepted" else "unmeasured") != before[key])
+        after = eligibility_outcomes(tests, unmeasured, dismissed, accept)
+        mutants[mid]["dismissal_changes"] = sorted(key for key, a in after.items() if (a["outcome"] == "eligible") != before[key])
 
 
-def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None):
-    prior = graph = graph_path = ci_history = callers = None
+def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None,
+                    acceptances_path=None):
+    prior = graph = graph_path = ci_history = callers = acceptances = None
     if prior_path:
         with open(prior_path) as f:
             prior = json.load(f)
@@ -1124,22 +1147,43 @@ def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_p
     if callers_path:
         with open(callers_path) as f:
             callers = json.load(f)
+    if acceptances_path:
+        with open(acceptances_path) as f:
+            acceptances = json.load(f)
+        if not isinstance(acceptances, dict):
+            raise ValueError(f"{acceptances_path} isn't a JSON object keyed by test id, so it isn't an acceptances file")
     return types.SimpleNamespace(prior=prior, prior_file=prior_path, graph=graph, graph_file=graph_path,
                                  callers=callers, callers_file=callers_path,
                                  prior_over=PRIOR_WITH_CALLERS if callers is not None else PRIOR_REACHED,
-                                 ci_history=ci_history, ci_history_file=ci_history_path, cap=cap, max_prior=max_prior)
+                                 ci_history=ci_history, ci_history_file=ci_history_path, cap=cap, max_prior=max_prior,
+                                 acceptances=acceptances, acceptances_file=acceptances_path)
 
 
-def accepted_section(rows, accept):
-    """The accepted verdicts apart from the others, with the settings they were given under."""
-    records = {cid: r["acceptance"] for cid, r in rows.items() if "acceptance" in r}
+def acceptance_warnings(rows, accept):
+    """Each acceptance record that accepts nothing, and why."""
+    warnings = []
+    for key, record in sorted((accept.acceptances or {}).items()):
+        gaps = acceptance_gaps(record)
+        if key not in rows:
+            warnings.append(f"{key}: an acceptance is recorded for a test that isn't a candidate")
+        elif rows[key]["verdict"] not in RISK_ACCEPTANCE:
+            warnings.append(f"{key}: an acceptance is recorded, and the verdict is {rows[key]['verdict']}, "
+                            "not eligible for risk acceptance, so it stands")
+        elif gaps:
+            warnings.append(f"{key}: the acceptance has no {', '.join(gaps)}, so it stays eligible for risk acceptance")
+    return warnings
+
+
+def risk_acceptance_section(rows, accept):
+    """The verdicts eligible for risk acceptance and the accepted ones, apart from the others, with the settings they were given under."""
+    records = {cid: r["eligibility"] for cid, r in rows.items() if "eligibility" in r}
     rollup = (accept.prior or {}).get("modules") or {}
     modules = {}
     for cid, a in sorted(records.items()):
-        if a["outcome"] in ("accepted", "over the module cap"):
+        if a["outcome"] in ("eligible", "over the module cap"):
             for m in a["modules"]:
-                entry = modules.setdefault(m, {"accepted": [], "over_cap": [], "prior": (rollup.get(m) or {}).get("score")})
-                entry["accepted" if a["outcome"] == "accepted" else "over_cap"].append(cid)
+                entry = modules.setdefault(m, {"eligible": [], "over_cap": [], "prior": (rollup.get(m) or {}).get("score")})
+                entry["eligible" if a["outcome"] == "eligible" else "over_cap"].append(cid)
     return {
         "cap": accept.cap,
         "max_prior": accept.max_prior,
@@ -1148,11 +1192,14 @@ def accepted_section(rows, accept):
                   "over": accept.prior_over, "callers": accept.callers_file,
                   "graph": accept.graph_file, "importers": IMPORTERS_ROLE if accept.graph else None},
         "ci_history": accept.ci_history_file,
-        "candidates": {cid: a for cid, a in records.items() if a["outcome"] == "accepted"},
+        "acceptances": accept.acceptances_file,
+        "eligible": {cid: a for cid, a in records.items() if a["outcome"] == "eligible"},
+        "accepted": {cid: r.get("accepted") for cid, r in sorted(rows.items()) if r["verdict"] == "accepted"},
         "modules": dict(sorted(modules.items())),
         "outcomes": dict(collections.Counter(a["outcome"] for a in records.values()).most_common()),
-        "missing": {f: n for f in ACCEPT_FIELDS
+        "missing": {f: n for f in ELIGIBILITY_FIELDS
                     if (n := sum(1 for a in records.values() if a["outcome"] == "missing fields" and f in a["missing"]))},
+        "data_warnings": acceptance_warnings(rows, accept),
     }
 
 
@@ -1187,6 +1234,7 @@ def summarize(results, keys=None):
             "provisional-keep, tests with an unconfirmed unique kill in the stratum": dict(strata["provisional-keep"]),
             "delete, tests with a qualifying mutant in the stratum": dict(strata["delete"]),
             "unmeasured, tests with a qualifying mutant in the stratum": dict(strata["unmeasured"]),
+            "eligible for risk acceptance, tests with a qualifying mutant in the stratum": dict(strata[ELIGIBLE]),
             "accepted, tests with a qualifying mutant in the stratum": dict(strata["accepted"]),
         },
         "symptom_kills": {
@@ -1295,7 +1343,7 @@ def read_candidates_file(path):
 
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
              repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR,
-             callers_path=None, allow_provenance_mismatch=False):
+             callers_path=None, allow_provenance_mismatch=False, acceptances_path=None):
     kills_file = read_kills_file(kills_path)
     index_meta_path = os.path.join(index_dir, "meta.json")
     index_meta = {}
@@ -1304,7 +1352,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
             index_meta = json.load(f)
     checked = provenance(kills_path, kills_file, {"index_sha": index_meta.get("sha"), "index_app_base": index_meta.get("appBase")},
                          allow_provenance_mismatch)
-    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
+    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path, acceptances_path)
     candidate_ids = list(dict.fromkeys(candidate_ids))
     entries = kills_file["entries"]
     with open(os.path.join(index_dir, "tests.json")) as f:
@@ -1367,11 +1415,11 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
 
 def evaluate_candidates_file(kills_path, candidates_file, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
                              prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None,
-                             allow_provenance_mismatch=False):
+                             allow_provenance_mismatch=False, acceptances_path=None):
     """Verdicts for the tests of a candidates file, with no index: every mutant counts as reached by the candidates that ran it."""
     kills_file = read_kills_file(kills_path)
     checked = provenance(kills_path, kills_file, {k: candidates_file[k] for k in ("removed_at", "head")}, allow_provenance_mismatch)
-    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
+    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path, acceptances_path)
     candidates = [types.SimpleNamespace(id=i, key=cid, base_key=cid, state=None, captured=False)
                   for i, cid in enumerate(candidates_file["tests"])]
     kills = load(kills_path, types.SimpleNamespace(tests=candidates))
@@ -1434,7 +1482,7 @@ def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, req
         "required_strata": required_strata,
         "summary": summarize(results),
         "mutant_states": state_counts(mutants),
-        "accepted": accepted_section(results, accept),
+        "risk_acceptance": risk_acceptance_section(results, accept),
         "kills_cover": {"mutants": universe, "kept": [candidates[i].key for i in sorted(kept)]},
         "candidates": {c.key: {"state": c.state, **results[c.key]} for c in candidates},
         "mutants": mutants,
@@ -1461,21 +1509,26 @@ def ids_by_stratum(groups):
     return "; ".join(f"{s or 'no stratum'} {', '.join(mids)}" for s, mids in sorted(groups.items(), key=lambda x: str(x[0])))
 
 
-def accepted_report(a):
+def risk_acceptance_report(a):
     lines = [
         "",
-        "Accepted, on a stated risk and not a measured delete",
+        "Eligible for risk acceptance, which only a person's recorded acceptance makes accepted, and never a measured delete",
         f"  location prior {a['prior']['file']}" if a["prior"]["file"] else "  no location prior given",
         f"  the prior covers {a['prior']['over']}" + (f", from {a['prior']['callers']}" if a["prior"]["callers"] else ""),
         *([f"  static importers from {a['prior']['graph']} are {a['prior']['importers']}"] if a["prior"]["graph"] else []),
         f"  at most {a['cap']} per module, lowest prior first, and a prior of at most {a['max_prior']}",
         f"  bound {a['bound']}",
+        f"  acceptances from {a['acceptances']}" if a["acceptances"] else "  no acceptances file given",
     ]
-    for cid, r in sorted(a["candidates"].items()):
+    for cid, r in sorted(a["eligible"].items()):
         lines += [
             f"  {cid}",
             f"      module {', '.join(r['modules'])}, prior {r['prior']['score']}, {r['sampled']} mutants sampled, bound {r['bound']}",
         ]
+        if cid in a["accepted"]:
+            accepted = a["accepted"][cid]
+            lines.append(f"      accepted by {accepted['authorisation']['by']} on {accepted['authorisation']['date']}, "
+                         f"under {accepted['policy_scope']}")
         if r.get("importers"):
             lines.append(f"      {r['importers']['count']} static importers, highest score {r['importers']['max']}, {IMPORTERS_ROLE}")
         if r.get("ci_history") is not None:
@@ -1485,9 +1538,11 @@ def accepted_report(a):
         lines.append("  Over the module cap")
         for m, cids in over.items():
             lines += [f"    {m}", *(f"      {cid}" for cid in cids)]
-    lines += ["  Not accepted", *(f"  {n:>4}  {outcome}" for outcome, n in a["outcomes"].items() if outcome != "accepted")]
+    lines += ["  Not eligible", *(f"  {n:>4}  {outcome}" for outcome, n in a["outcomes"].items() if outcome != "eligible")]
     if a["missing"]:
         lines.append(f"  Missing fields: {', '.join(f'{field} {n}' for field, n in a['missing'].items())}")
+    if a["data_warnings"]:
+        lines += ["  Acceptances that accept nothing", *(f"    {w}" for w in a["data_warnings"])]
     return lines
 
 
@@ -1495,7 +1550,8 @@ def joint_check_report(joint):
     if joint == "ok":
         return ["Joint check: ok"]
     failures = sum(len(mids) for mids in joint.values())
-    lines = [f"Joint check: failed, {failures} mutants killed by delete or accepted candidates and by no remaining test or kept candidate"]
+    lines = [f"Joint check: failed, {failures} mutants killed by delete, eligible or accepted candidates and by no remaining test "
+             "or kept candidate"]
     for stratum, mids in sorted(joint.items(), key=lambda x: str(x[0])):
         for mid, cids in mids.items():
             lines += [f"  {stratum or 'no stratum'} {mid}", *(f"      {cid}" for cid in cids)]
@@ -1695,7 +1751,7 @@ def report(result):
         lines += [f"  {cid}", f"      {rows[cid]['verdict']}, the tests that stay kill {mids} only through symptom kills"]
     lines += states_report(result)
     lines += suspects_report(result)
-    lines += accepted_report(result["accepted"])
+    lines += risk_acceptance_report(result["risk_acceptance"])
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
         lines += ["", "Mutants whose location resolves to no code, so no candidate reaches them"]
@@ -1724,18 +1780,20 @@ def report(result):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Keep, provisional-keep, delete, unmeasured or accepted verdicts from a kills file and a reach index.")
+        description="Keep, provisional-keep, delete, unmeasured, eligible-for-risk-acceptance or accepted verdicts from a kills file "
+                    "and a reach index or a candidates file.")
     parser.add_argument("--index", default=os.environ.get("JOURNEY_LOOKUP_INDEX"), help="the reach index, or JOURNEY_LOOKUP_INDEX")
     parser.add_argument("--kills", required=True, help="the kills file")
     parser.add_argument("--candidates", action="append", required=True,
                         help="a file of test ids or a single test id, repeatable, or one candidates file, which reads no index")
     parser.add_argument("--min-mutants", type=int, default=MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
     parser.add_argument("--require-strata", default=REQUIRED_STRATA, help="strata a delete verdict needs among them")
-    parser.add_argument("--prior", help="the location prior, which an accepted verdict needs, with its graph file beside it if it has one")
+    parser.add_argument("--prior", help="the location prior, which an eligible verdict needs, with its graph file beside it if it has one")
     parser.add_argument("--callers", help="the files of each candidate's direct callers by test id, which the prior then covers too")
-    parser.add_argument("--ci-history", help="CI failure history by test id, recorded on each acceptance")
-    parser.add_argument("--accept-cap", type=int, default=ACCEPT_CAP, help="accepted verdicts a module can take")
-    parser.add_argument("--max-prior", type=float, default=MAX_PRIOR, help="the highest prior an accepted verdict can have")
+    parser.add_argument("--ci-history", help="CI failure history by test id, recorded on each eligibility")
+    parser.add_argument("--accept-cap", type=int, default=ACCEPT_CAP, help="eligible verdicts a module can take")
+    parser.add_argument("--max-prior", type=float, default=MAX_PRIOR, help="the highest prior an eligible verdict can have")
+    parser.add_argument("--acceptances", help="the authorisation and policy scope of each accepted test, by test id")
     parser.add_argument("--out", help="write the full result here as JSON")
     parser.add_argument("--repo", help="the git repo for source reads, default the one lookup/ is in")
     parser.add_argument("--sha", help="read source at this commit instead of the captured one")
@@ -1752,13 +1810,13 @@ def main():
                 parser.error("a candidates file with `removed_at` must be the only --candidates")
             result = evaluate_candidates_file(args.kills, candidates_files[0], args.min_mutants, required,
                                               args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers,
-                                              args.allow_provenance_mismatch)
+                                              args.allow_provenance_mismatch, args.acceptances)
         else:
             if not args.index:
                 parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
             result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo,
                               args.sha, args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers,
-                              args.allow_provenance_mismatch)
+                              args.allow_provenance_mismatch, args.acceptances)
     except ProvenanceMismatch as e:
         print(f"Refusing to give verdicts: {e}.", file=sys.stderr)
         sys.exit(2)

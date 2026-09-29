@@ -671,8 +671,9 @@ function main() {
   }
   for (const id of expectedIds.filter((x) => x in got.results)) {
     const { state, ...want } = expected.candidates[id];
-    // `acceptance` comes from the location prior, which the ledger doesn't take.
-    delete want.acceptance;
+    // `eligibility` comes from the location prior and `accepted` from the acceptances file, which the ledger doesn't take.
+    delete want.eligibility;
+    delete want.accepted;
     // `depends_on` comes from the verdicts of the other candidates, which are compared on their own rows.
     delete want.depends_on;
     const have = got.results[id];

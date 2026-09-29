@@ -230,7 +230,9 @@ PRIOR = {
     "modules": {"fe:quiet": {"relative_churn": 0.05, "fix_commits": 2, "corpus_regressions": 0, "score": 0.15}},
 }
 CI_HISTORY = {"tests": {UNIQUE: {"failures": 4, "real": 0, "flakes": 4}, TWIN_POSTGRES: {"failures": 1, "real": 1, "flakes": 0}}}
-ACCEPTED_HEADING = "\nAccepted, on a stated risk and not a measured delete\n"
+ELIGIBLE_HEADING = ("\nEligible for risk acceptance, which only a person's recorded acceptance makes accepted, "
+                    "and never a measured delete\n")
+ELIGIBLE = kills.ELIGIBLE
 
 
 FLAT_BANNER = "Base unknown: the kills file is in the flat format, which records no revisions"
@@ -505,7 +507,7 @@ class UnconfirmedKills(unittest.TestCase):
 
     def test_reports(self):
         summary = self.result["summary"]
-        self.assertEqual(summary["verdicts"], {"keep": 2, "provisional-keep": 1, "delete": 1, "unmeasured": 2, "accepted": 0})
+        self.assertEqual(summary["verdicts"], {"keep": 2, "provisional-keep": 1, "delete": 1, "unmeasured": 2, ELIGIBLE: 0, "accepted": 0})
         self.assertEqual(summary["reasons"]["provisional-keep: unconfirmed unique kills"], 1)
         self.assertEqual(summary["strata"]["provisional-keep, tests with an unconfirmed unique kill in the stratum"], {"logic": 1})
         text = kills.report(self.result)
@@ -596,23 +598,23 @@ class Accepted(unittest.TestCase):
             os.unlink(path)
 
     @staticmethod
-    def accepted(result):
-        return {cid for cid, r in result["candidates"].items() if r["verdict"] == "accepted"}
+    def eligible(result):
+        return {cid for cid, r in result["candidates"].items() if r["verdict"] == ELIGIBLE}
 
-    def test_the_cap_accepts_the_lowest_priors_first(self):
-        self.assertEqual(self.accepted(self.result), {UNIQUE, TWIN_MYSQL})
-        self.assertEqual(self.rows[UNIQUE]["acceptance"] | {"ci_history": None}, {
+    def test_the_cap_makes_the_lowest_priors_eligible_first(self):
+        self.assertEqual(self.eligible(self.result), {UNIQUE, TWIN_MYSQL})
+        self.assertEqual(self.rows[UNIQUE]["eligibility"] | {"ci_history": None}, {
             "prior": {"score": 0.1, "files": {L_UNIQUE["file"]: 0.1}}, "prior_over": "reached files",
-            "sampled": 5, "bound": 0.6, "modules": ["fe:quiet"], "missing": {}, "survivors": [], "outcome": "accepted",
+            "sampled": 5, "bound": 0.6, "modules": ["fe:quiet"], "missing": {}, "survivors": [], "outcome": "eligible",
             "ci_history": None,
         })
-        self.assertEqual((self.rows[TWIN_MYSQL]["acceptance"]["bound"], self.rows[TWIN_MYSQL]["acceptance"]["prior"]["score"]), (0.75, 0.2))
-        self.assertEqual((self.rows[TWIN_POSTGRES]["verdict"], self.rows[TWIN_POSTGRES]["acceptance"]["outcome"]),
+        self.assertEqual((self.rows[TWIN_MYSQL]["eligibility"]["bound"], self.rows[TWIN_MYSQL]["eligibility"]["prior"]["score"]), (0.75, 0.2))
+        self.assertEqual((self.rows[TWIN_POSTGRES]["verdict"], self.rows[TWIN_POSTGRES]["eligibility"]["outcome"]),
                          ("unmeasured", "over the module cap"))
 
-    def test_a_candidate_exactly_at_the_cap_is_accepted(self):
-        self.assertEqual(self.accepted(self.evaluate(cap=3)), {UNIQUE, TWIN_MYSQL, TWIN_POSTGRES})
-        self.assertEqual(self.accepted(self.evaluate(cap=1)), {UNIQUE})
+    def test_a_candidate_exactly_at_the_cap_is_eligible(self):
+        self.assertEqual(self.eligible(self.evaluate(cap=3)), {UNIQUE, TWIN_MYSQL, TWIN_POSTGRES})
+        self.assertEqual(self.eligible(self.evaluate(cap=1)), {UNIQUE})
 
     def test_each_missing_field_keeps_a_candidate_unmeasured(self):
         expected = {
@@ -625,36 +627,37 @@ class Accepted(unittest.TestCase):
         for cid, missing in expected.items():
             with self.subTest(cid):
                 row = self.rows[cid]
-                self.assertEqual((row["verdict"], row["acceptance"]["outcome"], row["acceptance"]["missing"]),
+                self.assertEqual((row["verdict"], row["eligibility"]["outcome"], row["eligibility"]["missing"]),
                                  ("unmeasured", "missing fields", missing))
         without_prior = self.evaluate(prior_path=None)
-        self.assertEqual(self.accepted(without_prior), set())
-        self.assertEqual(without_prior["candidates"][UNIQUE]["acceptance"]["missing"],
+        self.assertEqual(self.eligible(without_prior), set())
+        self.assertEqual(without_prior["candidates"][UNIQUE]["eligibility"]["missing"],
                          {"prior": "no location prior given", "module": "no location prior given"})
 
-    def test_accepted_never_overrides_keep_provisional_keep_or_a_failed_capture(self):
+    def test_eligibility_never_overrides_keep_provisional_keep_or_a_failed_capture(self):
         result = self.evaluate(cap=100, max_prior=1)
         rows = result["candidates"]
         self.assertEqual([rows[c]["verdict"] for c in (REPRO_35009, REPRO_69160)], ["keep", "provisional-keep"])
-        self.assertNotIn("acceptance", rows[REPRO_35009])
-        self.assertNotIn("acceptance", rows[REPRO_69160])
+        self.assertNotIn("eligibility", rows[REPRO_35009])
+        self.assertNotIn("eligibility", rows[REPRO_69160])
         failed = rows[FAILED]
-        self.assertEqual((failed["verdict"], failed["acceptance"]["missing"], failed["acceptance"]["outcome"]),
+        self.assertEqual((failed["verdict"], failed["eligibility"]["missing"], failed["eligibility"]["outcome"]),
                          ("unmeasured", {}, "never: did not pass in the capture"))
 
-    def test_accepted_has_its_own_section_in_the_output(self):
-        section = self.result["accepted"]
-        self.assertEqual(set(section["candidates"]), {UNIQUE, TWIN_MYSQL})
+    def test_risk_acceptance_has_its_own_section_in_the_output(self):
+        section = self.result["risk_acceptance"]
+        self.assertEqual((set(section["eligible"]), section["accepted"], section["data_warnings"]), ({UNIQUE, TWIN_MYSQL}, {}, []))
         self.assertEqual(section["modules"]["fe:quiet"],
-                         {"accepted": sorted([UNIQUE, TWIN_MYSQL]), "over_cap": [TWIN_POSTGRES], "prior": 0.15})
+                         {"eligible": sorted([UNIQUE, TWIN_MYSQL]), "over_cap": [TWIN_POSTGRES], "prior": 0.15})
         self.assertEqual(section["missing"], {"prior": 2, "sampled": 1, "bound": 2, "module": 2})
         self.assertEqual({k: section["prior"][k] for k in ("over", "callers", "graph", "importers")},
                          {"over": "reached files", "callers": None, "graph": None, "importers": None})
-        self.assertEqual(self.result["summary"]["verdicts"], {"keep": 1, "provisional-keep": 1, "delete": 0, "unmeasured": 7, "accepted": 2})
+        self.assertEqual(self.result["summary"]["verdicts"],
+                         {"keep": 1, "provisional-keep": 1, "delete": 0, "unmeasured": 7, ELIGIBLE: 2, "accepted": 0})
         text = kills.report(self.result)
         self.assertNotIn("\nDelete\n", text)
-        self.assertIn(f"{ACCEPTED_HEADING}  location prior {self.prior_file}\n", text)
-        self.assertLess(text.index(ACCEPTED_HEADING),
+        self.assertIn(f"{ELIGIBLE_HEADING}  location prior {self.prior_file}\n", text)
+        self.assertLess(text.index(ELIGIBLE_HEADING),
                         text.index(f"\n  {UNIQUE}\n      module fe:quiet, prior 0.1, 5 mutants sampled, bound 0.6\n"))
         self.assertIn(f"  Over the module cap\n    fe:quiet\n      {TWIN_POSTGRES}\n", text)
         with tempfile.TemporaryDirectory() as d:
@@ -668,16 +671,16 @@ class Accepted(unittest.TestCase):
             )
             with open(out) as f:
                 written = json.load(f)
-        self.assertEqual(written["accepted"], section)
-        self.assertIn(ACCEPTED_HEADING, done.stdout)
+        self.assertEqual(written["risk_acceptance"], section)
+        self.assertIn(ELIGIBLE_HEADING, done.stdout)
 
     def test_a_candidate_that_kills_none_of_its_mutants_needs_a_baseline_check(self):
-        self.assertEqual((self.rows[UNIT]["verdict"], self.rows[UNIT]["acceptance"]["outcome"]), ("unmeasured", NEEDS_BASELINE))
+        self.assertEqual((self.rows[UNIT]["verdict"], self.rows[UNIT]["eligibility"]["outcome"]), ("unmeasured", NEEDS_BASELINE))
         for tag, boot in (("stratum_coarse", boot_mutant([UNIT])), ("stratum", boot_mutant([UNIT], stratum="baseline"))):
             with self.subTest(tag):
-                self.assertIn(UNIT, self.accepted(self.evaluate_entries(ACCEPT_KILLS | {"boot": boot})))
+                self.assertIn(UNIT, self.eligible(self.evaluate_entries(ACCEPT_KILLS | {"boot": boot})))
 
-    def test_a_sampled_mutant_no_remaining_test_or_kept_candidate_kills_blocks_accepted(self):
+    def test_a_sampled_mutant_no_remaining_test_or_kept_candidate_kills_blocks_eligibility(self):
         survivors = {
             "killed by nothing": (mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE), ACCEPT_CANDIDATES),
             "killed only unconfirmed": (
@@ -689,7 +692,7 @@ class Accepted(unittest.TestCase):
             with self.subTest(name):
                 result = self.evaluate_entries(ACCEPT_KILLS | {"survivor": survivor}, candidate_ids=candidate_ids)
                 row = result["candidates"][UNIQUE]
-                a = row["acceptance"]
+                a = row["eligibility"]
                 self.assertEqual((row["verdict"], a["outcome"], a["survivors"], a["sampled"]),
                                  ("unmeasured", "survivor in sample", ["survivor"], 6))
                 self.assertEqual(result["joint_check"], "ok")
@@ -703,24 +706,24 @@ class Accepted(unittest.TestCase):
         result = self.evaluate_entries(ACCEPT_KILLS | {"kept-kill": kept_kill})
         rows = result["candidates"]
         self.assertEqual((rows[TWIN_MYSQL]["verdict"], rows[TWIN_MYSQL]["unique_kills"]), ("keep", {"logic": ["kept-kill"]}))
-        a = rows[UNIQUE]["acceptance"]
-        self.assertEqual((rows[UNIQUE]["verdict"], a["outcome"], a["survivors"], a["sampled"]), ("accepted", "accepted", [], 6))
+        a = rows[UNIQUE]["eligibility"]
+        self.assertEqual((rows[UNIQUE]["verdict"], a["outcome"], a["survivors"], a["sampled"]), (ELIGIBLE, "eligible", [], 6))
         self.assertEqual((rows[UNIQUE]["depends_on"], result["joint_check"]), ({}, "ok"))
 
     def test_a_sampled_mutant_only_a_checker_kills_is_no_survivor(self):
         sampled = checked(mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE), "tsc")
         row = self.evaluate_entries(ACCEPT_KILLS | {"sampled": sampled})["candidates"][UNIQUE]
-        self.assertEqual((row["verdict"], row["acceptance"]["survivors"], row["acceptance"]["sampled"]), ("accepted", [], 6))
+        self.assertEqual((row["verdict"], row["eligibility"]["survivors"], row["eligibility"]["sampled"]), (ELIGIBLE, [], 6))
 
     def test_a_sampled_mutant_only_a_remaining_symptom_kill_catches_is_no_survivor(self):
         cases = {
-            "symptom kill": (mutant("logic", [REMAINING], [UNIQUE, REMAINING], L_UNIQUE, symptom_kills=[REMAINING]), ("accepted", [])),
+            "symptom kill": (mutant("logic", [REMAINING], [UNIQUE, REMAINING], L_UNIQUE, symptom_kills=[REMAINING]), (ELIGIBLE, [])),
             "errored": (mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE, errored=[REMAINING]), ("unmeasured", ["sampled"])),
         }
         for name, (sampled, (verdict, survivors)) in cases.items():
             with self.subTest(name):
                 row = self.evaluate_entries(ACCEPT_KILLS | {"sampled": sampled})["candidates"][UNIQUE]
-                self.assertEqual((row["verdict"], row["acceptance"]["survivors"]), (verdict, survivors))
+                self.assertEqual((row["verdict"], row["eligibility"]["survivors"]), (verdict, survivors))
 
     def test_static_importers_are_recorded_and_never_gate(self):
         caller, barrel, app, unscored = (
@@ -736,21 +739,21 @@ class Accepted(unittest.TestCase):
                     json.dump(data, f)
             result = self.evaluate(prior_path=prior_path)
         rows = result["candidates"]
-        self.assertEqual({k: rows[TWIN_MYSQL]["acceptance"][k] for k in ("prior", "prior_over", "importers", "outcome")}, {
+        self.assertEqual({k: rows[TWIN_MYSQL]["eligibility"][k] for k in ("prior", "prior_over", "importers", "outcome")}, {
             "prior": {"score": 0.2, "files": {L_TWIN["file"]: 0.2}}, "prior_over": "reached files",
             "importers": {"role": "information only", "count": 2, "unscored": 0, "max": 0.9, "highest": {app: 0.9, barrel: 0.1}},
-            "outcome": "accepted",
+            "outcome": "eligible",
         })
-        self.assertEqual((rows[PAIRED]["acceptance"]["importers"], rows[PAIRED]["acceptance"]["missing"]), (
+        self.assertEqual((rows[PAIRED]["eligibility"]["importers"], rows[PAIRED]["eligibility"]["missing"]), (
             {"role": "information only", "count": 1, "unscored": 1, "max": None, "highest": {}},
             {"bound": "3/n bounds nothing for n = 3"}))
 
         def gate(row):
-            a = row.get("acceptance") or {}
+            a = row.get("eligibility") or {}
             return row["verdict"], a.get("outcome"), a.get("prior"), a.get("missing")
 
         self.assertEqual({c: gate(r) for c, r in rows.items()}, {c: gate(r) for c, r in self.rows.items()})
-        self.assertEqual({k: result["accepted"]["prior"][k] for k in ("over", "graph", "importers")},
+        self.assertEqual({k: result["risk_acceptance"]["prior"][k] for k in ("over", "graph", "importers")},
                          {"over": "reached files", "graph": graph_path, "importers": "information only"})
         self.assertIn(f"\n  {TWIN_MYSQL}\n      module fe:quiet, prior 0.2, 4 mutants sampled, bound 0.75\n"
                       "      2 static importers, highest score 0.9, information only\n", kills.report(result))
@@ -775,28 +778,28 @@ class Accepted(unittest.TestCase):
             with open(out) as f:
                 written = json.load(f)
         rows = result["candidates"]
-        self.assertEqual({c: (rows[c]["acceptance"]["prior"], rows[c]["acceptance"]["outcome"]) for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)}, {
+        self.assertEqual({c: (rows[c]["eligibility"]["prior"], rows[c]["eligibility"]["outcome"]) for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)}, {
             UNIQUE: ({"score": 0.9, "files": {L_UNIQUE["file"]: 0.1}, "callers": {hot: 0.9}}, "prior above the maximum"),
-            TWIN_MYSQL: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {cool: 0.1}}, "accepted"),
-            TWIN_POSTGRES: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {}}, "accepted"),
+            TWIN_MYSQL: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {cool: 0.1}}, "eligible"),
+            TWIN_POSTGRES: ({"score": 0.2, "files": {L_TWIN["file"]: 0.2}, "callers": {}}, "eligible"),
         })
-        self.assertEqual(rows[UNIT]["acceptance"]["missing"], {"prior": "no entry for it in the callers file"})
-        self.assertEqual((rows[UNIQUE]["acceptance"]["prior_over"], result["accepted"]["prior"]["callers"]),
+        self.assertEqual(rows[UNIT]["eligibility"]["missing"], {"prior": "no entry for it in the callers file"})
+        self.assertEqual((rows[UNIQUE]["eligibility"]["prior_over"], result["risk_acceptance"]["prior"]["callers"]),
                          ("reached files plus direct callers", callers_path))
-        self.assertEqual(written["accepted"], result["accepted"])
+        self.assertEqual(written["risk_acceptance"], result["risk_acceptance"])
 
     def test_a_prior_above_the_maximum_stays_unmeasured(self):
         rows = self.evaluate(max_prior=0.15)["candidates"]
-        self.assertEqual({c: rows[c]["acceptance"]["outcome"] for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)},
-                         {UNIQUE: "accepted", TWIN_MYSQL: "prior above the maximum", TWIN_POSTGRES: "prior above the maximum"})
+        self.assertEqual({c: rows[c]["eligibility"]["outcome"] for c in (UNIQUE, TWIN_MYSQL, TWIN_POSTGRES)},
+                         {UNIQUE: "eligible", TWIN_MYSQL: "prior above the maximum", TWIN_POSTGRES: "prior above the maximum"})
 
     def test_ci_history_is_recorded_and_decides_nothing(self):
-        self.assertEqual({c: self.rows[c]["acceptance"]["ci_history"] for c in (UNIQUE, TWIN_POSTGRES, UNIT)},
+        self.assertEqual({c: self.rows[c]["eligibility"]["ci_history"] for c in (UNIQUE, TWIN_POSTGRES, UNIT)},
                          {UNIQUE: CI_HISTORY["tests"][UNIQUE], TWIN_POSTGRES: CI_HISTORY["tests"][TWIN_POSTGRES], UNIT: None})
         without = self.evaluate(ci_history_path=None)["candidates"]
-        self.assertNotIn("ci_history", without[UNIQUE]["acceptance"])
-        self.assertEqual({c: (r["verdict"], r.get("acceptance", {}).get("outcome")) for c, r in without.items()},
-                         {c: (r["verdict"], r.get("acceptance", {}).get("outcome")) for c, r in self.rows.items()})
+        self.assertNotIn("ci_history", without[UNIQUE]["eligibility"])
+        self.assertEqual({c: (r["verdict"], r.get("eligibility", {}).get("outcome")) for c, r in without.items()},
+                         {c: (r["verdict"], r.get("eligibility", {}).get("outcome")) for c, r in self.rows.items()})
 
 
 UNIT_MISSES = {f"unit-{i}": mutant("logic", [JEST], [UNIT, JEST], L_UNIT) for i in range(1, 5)}
@@ -982,6 +985,7 @@ class JointDeletion(unittest.TestCase):
         first, middle, last = CHAIN
         expected = {
             "delete": {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}},
+            ELIGIBLE: {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}},
             "accepted": {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}},
             "unmeasured": {"logic": {"first-pair": [first]}, "wiring": {"second-pair": [last]}},
         }
@@ -991,7 +995,7 @@ class JointDeletion(unittest.TestCase):
                     result = kills.evaluate(INDEX, self.kills_file, CHAIN, 1, [])
                 self.assertEqual(result["joint_check"], failures)
                 self.assertTrue(without_banner(kills.report(result)).startswith(
-                    "Joint check: failed, 2 mutants killed by delete or accepted candidates and by no remaining test or kept candidate\n"
+                    "Joint check: failed, 2 mutants killed by delete, eligible or accepted candidates and by no remaining test or kept candidate\n"
                     f"  logic first-pair\n      {failures['logic']['first-pair'][0]}\n"))
 
     def test_the_command_exits_with_code_1_on_a_failed_joint_check_unless_it_only_reports(self):
@@ -1559,7 +1563,7 @@ class RealData(unittest.TestCase):
                         self.assertIn(cid, killers[mid])
                         self.assertLessEqual(killers[mid], set(rows))
                         self.assertEqual(kept, sorted(killers[mid] & stays))
-                survivors = (row.get("acceptance") or {}).get("survivors") or []
+                survivors = (row.get("eligibility") or {}).get("survivors") or []
                 self.assertEqual([mid for mid in survivors if stays_killed(mid)], [])
 
 
@@ -1851,7 +1855,7 @@ class EquivalenceSuspects(unittest.TestCase):
         row = result["candidates"][D5]
         self.assertEqual((row["verdict"], row["reason"], row["equivalent_suspects"]),
                          ("unmeasured", "4 qualifying mutants, fewer than 5", {"suspect": "unresolved"}))
-        self.assertEqual((row["acceptance"]["sampled"], row["acceptance"]["survivors"], row["acceptance"]["outcome"]),
+        self.assertEqual((row["eligibility"]["sampled"], row["eligibility"]["survivors"], row["eligibility"]["outcome"]),
                          (4, ["suspect"], "unresolved suspected equivalent mutant in sample"))
         self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
                          {"state": "unresolved", "deletion_depends_on_dismissing": True, "candidates": [D5]})
@@ -1877,9 +1881,9 @@ class EquivalenceSuspects(unittest.TestCase):
             with self.subTest(name):
                 result = self.evaluate(suspect_kills(**marks))
                 row = result["candidates"][D5]
-                self.assertEqual((row["verdict"], row["equivalent_suspects"], row["acceptance"]["sampled"]),
-                                 ("accepted", {"suspect": state}, 4))
-                self.assertEqual(row["acceptance"]["survivors"], [])
+                self.assertEqual((row["verdict"], row["equivalent_suspects"], row["eligibility"]["sampled"]),
+                                 (ELIGIBLE, {"suspect": state}, 4))
+                self.assertEqual(row["eligibility"]["survivors"], [])
                 self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
                                  {"state": state, **marks, "deletion_depends_on_dismissing": False, "candidates": []})
 
@@ -1958,6 +1962,77 @@ class LedgerScopeAndSuspects(unittest.TestCase):
     def test_misses_leave_out_unconfirmed_results(self):
         self.assertEqual(self.joined.ledger["mutants"]["unconfirmed-remaining"]["misses"], 0)
         self.assertEqual(self.joined.ledger["mutants"]["selected"]["misses"], 1)
+
+
+def sampled_kills(candidate):
+    """Four mutants the candidate runs and a remaining jest test kills, one of which the candidate kills too."""
+    entries = shared_kills(3, candidate=candidate) | shared_kills(1, "intra-frontend-wiring", candidate=candidate)
+    return {f"{candidate[-1]}-{mid}": e for mid, e in killed_by_candidate_too(entries, "logic-1", candidate).items()}
+
+
+AUTHORISED = {"authorisation": {"by": "fraser", "date": "2026-09-29"}, "policy_scope": "repro tests in quiet document modules"}
+
+
+class RiskAcceptance(unittest.TestCase):
+    def evaluate(self, entries, candidates, acceptances=None, cap=kills.ACCEPT_CAP, command=False):
+        with tempfile.TemporaryDirectory() as d:
+            prior = write_kills(d, SUSPECT_PRIOR, "prior.json")
+            accepted = write_kills(d, acceptances, "acceptances.json") if acceptances is not None else None
+            if command:
+                out = os.path.join(d, "verdicts.json")
+                done = subprocess.run(
+                    [sys.executable, kills.__file__, "--kills", write_kills(d, format_2(entries)), "--candidates",
+                     write_candidates_file(d, candidates), "--prior", prior, "--acceptances", accepted, "--out", out],
+                    stdout=subprocess.PIPE, text=True, check=True)
+                with open(out) as f:
+                    return json.load(f), done.stdout
+            path = write_kills(d, format_2(entries))
+            cf = kills.read_candidates_file(write_candidates_file(d, candidates))
+            return kills.evaluate_candidates_file(path, cf, prior_path=prior, cap=cap, acceptances_path=accepted)
+
+    def test_an_eligible_candidate_needs_a_recorded_acceptance_to_be_accepted(self):
+        for name, acceptances in (("no acceptances file", None), ("not named in it", {D6: AUTHORISED})):
+            with self.subTest(name):
+                result = self.evaluate(sampled_kills(D5), [D5], acceptances)
+                row = result["candidates"][D5]
+                self.assertEqual((row["verdict"], row["eligibility"]["outcome"], "accepted" in row), (ELIGIBLE, "eligible", False))
+                self.assertEqual((set(result["risk_acceptance"]["eligible"]), result["risk_acceptance"]["accepted"]), ({D5}, {}))
+
+    def test_an_acceptance_with_both_fields_makes_it_accepted(self):
+        result, text = self.evaluate(sampled_kills(D5), [D5], {D5: AUTHORISED}, command=True)
+        row = result["candidates"][D5]
+        self.assertEqual((row["verdict"], row["eligibility"]["outcome"], row["accepted"]), ("accepted", "eligible", AUTHORISED))
+        self.assertEqual(result["risk_acceptance"]["accepted"], {D5: AUTHORISED})
+        self.assertEqual(result["summary"]["verdicts"][ELIGIBLE], 0)
+        self.assertEqual(result["summary"]["verdicts"]["accepted"], 1)
+        self.assertIn(f"\n  {D5}\n      module fe:documents, prior 0.1, 4 mutants sampled, bound 0.75\n"
+                      "      accepted by fraser on 2026-09-29, under repro tests in quiet document modules\n", text)
+
+    def test_a_record_missing_a_field_leaves_it_eligible_with_a_warning(self):
+        cases = {
+            "no date": ({"authorisation": {"by": "fraser"}, "policy_scope": "quiet modules"}, "authorisation.date"),
+            "no policy scope": ({"authorisation": AUTHORISED["authorisation"]}, "policy_scope"),
+            "no authorisation": ({"policy_scope": "quiet modules"}, "authorisation.by, authorisation.date"),
+        }
+        for name, (record, gaps) in cases.items():
+            with self.subTest(name):
+                result = self.evaluate(sampled_kills(D5), [D5], {D5: record, H1: AUTHORISED})
+                self.assertEqual(result["candidates"][D5]["verdict"], ELIGIBLE)
+                self.assertEqual(result["risk_acceptance"]["data_warnings"], [
+                    f"{H1}: an acceptance is recorded for a test that isn't a candidate",
+                    f"{D5}: the acceptance has no {gaps}, so it stays eligible for risk acceptance",
+                ])
+
+    def test_the_module_cap_holds_whatever_is_accepted(self):
+        result = self.evaluate(sampled_kills(D5) | sampled_kills(D6), [D5, D6], {D5: AUTHORISED, D6: AUTHORISED}, cap=1)
+        rows = result["candidates"]
+        self.assertEqual({c: (rows[c]["verdict"], rows[c]["eligibility"]["outcome"]) for c in (D5, D6)},
+                         {D5: ("accepted", "eligible"), D6: ("unmeasured", "over the module cap")})
+        self.assertEqual(result["risk_acceptance"]["modules"], {"fe:documents": {"eligible": [D5], "over_cap": [D6], "prior": None}})
+        self.assertEqual(result["risk_acceptance"]["data_warnings"], [
+            f"{D6}: an acceptance is recorded, and the verdict is unmeasured, not eligible for risk acceptance, so it stands"])
+        both = self.evaluate(sampled_kills(D5) | sampled_kills(D6), [D5, D6], {D5: AUTHORISED}, cap=2)["candidates"]
+        self.assertEqual({c: both[c]["verdict"] for c in (D5, D6)}, {D5: "accepted", D6: ELIGIBLE})
 
 
 OTHER_BASE = "0123456789abcdef0123456789abcdef01234567"

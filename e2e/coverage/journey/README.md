@@ -3,7 +3,7 @@
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
 - **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, provisional-keep, delete or unmeasured verdict.
-- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run, or gives them from a PR's kills file and a candidates file with no index. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict. `lookup/ledger.mjs` joins the index and a kills file into one row per code location.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run, or gives them from a PR's kills file and a candidates file with no index. Given a location prior as well, it can also find an unmeasured candidate eligible for risk acceptance. `lookup/ledger.mjs` joins the index and a kills file into one row per code location.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
 
@@ -193,15 +193,16 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 - **provisional-keep:** not a keep, but the test has an unconfirmed kill no other test has, or the kills-first cover keeps it for unconfirmed kills it shares only with other tests of the run. For every mutant that only tests of the run kill, the cover keeps one test in its `killed_by`, or one in its `unconfirmed_by` when `killed_by` is empty, so an unconfirmed kill blocks a delete but never makes a keep.
 - **delete:** no unique kill, at least `--min-mutants` qualifying mutants, every `--require-strata` stratum among them, and the baseline check passed. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too. The baseline check passes with a confirmed kill among the qualifying mutants, or a run against a baseline mutant without erroring, because only a baseline mutant run shows whether a test that kills nothing it reaches still guards boot. A test that fails it is unmeasured, with the reason "needs a baseline check".
 - **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
-- **accepted:** an unmeasured test deleted on a stated risk, never a measured delete. Only `kills.py` over the index gives it, and only with a location prior. See [Accepted verdicts](#accepted-verdicts).
+- **eligible-for-risk-acceptance:** an unmeasured test that a person may choose to delete on a stated risk, never a measured delete. Only `kills.py` gives it, and only with a location prior.
+- **accepted:** an eligible test whose acceptance a person has recorded, with who authorised it, when, and the policy scope. The script never decides it. See [Eligible for risk acceptance](#eligible-for-risk-acceptance).
 
 A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason gains ", all symptom kills", as in "unique kills, all symptom kills".
 
-Those mutants are the ones no remaining test kills, and that claim holds only at the scope that ran. A keep's `scope` is the widest scope at which the remaining side missed any of them: `full`, `selected`, or `unmeasured` when the remaining side missed none of them, because it errored, was unconfirmed, was excluded or never ran. When the scope isn't full, the reason ends in "; " and the remaining side's result on each of the mutants, as in "unique kills; reg-1: missed by 7 selected remaining tests, 42 excluded". A keep stays a keep at any scope, since keeping is the safe side. A delete, accepted or unmeasured test's `scope` is the same scope over its lost kills, the mutants in its `depends_on` that no kept test kills.
+Those mutants are the ones no remaining test kills, and that claim holds only at the scope that ran. A keep's `scope` is the widest scope at which the remaining side missed any of them: `full`, `selected`, or `unmeasured` when the remaining side missed none of them, because it errored, was unconfirmed, was excluded or never ran. When the scope isn't full, the reason ends in "; " and the remaining side's result on each of the mutants, as in "unique kills; reg-1: missed by 7 selected remaining tests, 42 excluded". A keep stays a keep at any scope, since keeping is the safe side. A delete, eligible, accepted or unmeasured test's `scope` is the same scope over its lost kills, the mutants in its `depends_on` that no kept test kills.
 
 When tests share a kill, the kills-first cover prefers one that kills with an assertion, because a timeout or retry change can lose a symptom kill. Among tests with the same number of new kills, it takes the one with the most new kills that aren't its symptom kills, confirmed or not, before it looks at code, checks or time. When it drops tests whose kills the other kept tests already have, it tries the most expensive first, and among equal costs, the ones with the most symptom kills.
 
-A kept test is one with a keep or provisional-keep verdict. Every delete, accepted or unmeasured test also gets `depends_on`: each mutant it killed that no remaining test kills, grouped by stratum, with the kept tests that kill it. The cover keeps one of them for each such mutant, so the test is safe to delete only while they stay. See [Depends on and the joint check](#depends-on-and-the-joint-check).
+A kept test is one with a keep or provisional-keep verdict. Every delete, eligible, accepted or unmeasured test also gets `depends_on`: each mutant it killed that no remaining test kills, grouped by stratum, with the kept tests that kill it. The cover keeps one of them for each such mutant, so the test is safe to delete only while they stay. See [Depends on and the joint check](#depends-on-and-the-joint-check).
 
 ## Reach lookup
 
@@ -277,12 +278,13 @@ The text output ends the line of a test reached with basis `baseline` with `(bas
 
 ### Verdicts from a kills file
 
-`pipeline/kills.py` gives each candidate a keep, provisional-keep, delete, unmeasured or accepted verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
+`pipeline/kills.py` gives each candidate a keep, provisional-keep, delete, unmeasured, eligible-for-risk-acceptance or accepted verdict from a kills file and this index, with no pipeline run. It needs Python 3.9 or later and `node`, and reads the index through `lookup/reach.mjs`.
 
 ```
 python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file> --candidates <file or test id> [--candidates ...]
     [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>] [--accept-cap <k>]
-    [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>] [--joint-check-report-only] [--allow-provenance-mismatch]
+    [--max-prior <x>] [--acceptances <file>] [--out <json file>] [--repo <path>] [--sha <commit>] [--joint-check-report-only]
+    [--allow-provenance-mismatch]
 ```
 
 | Option                      | Meaning                                                                                                   |
@@ -292,11 +294,12 @@ python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file
 | `--candidates <file or id>` | the tests proposed for deletion. A file holds one test id per line, a JSON list, or JSON lines with a `deleted_test` or `id` field. Anything else is read as one test id. Repeat it for more. A [candidates file](#a-pull-requests-kills-file) must be the only one |
 | `--min-mutants <k>`         | qualifying mutants a delete verdict needs, default 5                                                       |
 | `--require-strata`          | coarse strata a delete verdict needs among them, default `logic,wiring`                                    |
-| `--prior <file>`            | the location prior, which an accepted verdict needs. See [Accepted verdicts](#accepted-verdicts)           |
-| `--callers <file>`          | the files of each candidate's direct callers, keyed by test id. The prior then covers them too. See [Accepted verdicts](#accepted-verdicts) |
-| `--ci-history <file>`       | CI failure history keyed by test id, at the top level or under `tests`. Each candidate's entry is recorded on its acceptance and never decides it |
-| `--accept-cap <k>`          | accepted verdicts one module can take, default 2                                                           |
-| `--max-prior <x>`           | the highest prior an accepted verdict can have, default 0.5                                                |
+| `--prior <file>`            | the location prior, which an eligible verdict needs. See [Eligible for risk acceptance](#eligible-for-risk-acceptance) |
+| `--callers <file>`          | the files of each candidate's direct callers, keyed by test id. The prior then covers them too. See [Eligible for risk acceptance](#eligible-for-risk-acceptance) |
+| `--ci-history <file>`       | CI failure history keyed by test id, at the top level or under `tests`. Each candidate's entry is recorded on its eligibility and never decides it |
+| `--accept-cap <k>`          | eligible verdicts one module can take, default 2                                                           |
+| `--max-prior <x>`           | the highest prior an eligible verdict can have, default 0.5                                                |
+| `--acceptances <file>`      | who authorised each accepted test, when, and under what policy scope, keyed by test id. See [Eligible for risk acceptance](#eligible-for-risk-acceptance) |
 | `--out <file>`              | where to write the full result as JSON                                                                     |
 | `--repo`, `--sha`           | as for `lookup.mjs`                                                                                        |
 | `--joint-check-report-only` | report a failed [joint check](#depends-on-and-the-joint-check) without exiting with code 1                |
@@ -325,13 +328,13 @@ python3 e2e/coverage/journey/pipeline/kills.py --kills <file> --candidates <cand
 
 `removed_at` is the revision the tests were removed at and `head` the PR's head, which is optional. The tests are the candidates. `kills.py` then reads no index, even when `--index` or `JOURNEY_LOOKUP_INDEX` is set, and a candidate reaches every mutant it ran, with basis `ran`. There's no capture, so no candidate is unmeasured for not being in it or failing in it. The verdict rules are otherwise the same, including the minimum sample and the required strata before a delete. A PR's kills file is usually [format 2 with layer roles](#format-2-and-layer-roles).
 
-It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
+It prints a short report, with the joint check on its first line, after any provenance banner, and the verdicts eligible for risk acceptance in a section of their own. With `--out`, it also writes JSON with these keys:
 
 - `joint_check`: `ok`, or the mutants that fail it, below
 - `provenance`: what the observations rest on and how they were checked, [below](#provenance)
 - `mode`: `index` or `candidates file`, with `index` or `candidates_file` saying which, and the other one null
-- `candidates`: for each candidate, the verdict and reason, its `scope`, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for), `symptom_kills` and `unconfirmed_symptom_kills` (its kills and unconfirmed kills that are symptom kills) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, the mutants it `errored` on, `symptom_only`, `equivalent_suspects`, the suspected equivalent mutants it would otherwise sample, with how each stands, and `also_killed_by_checker`, its kills that a checker also makes, as `{"<stratum>": {"<mutant id>": ["type checker" | "contract checker", ...]}}`. A delete, accepted or unmeasured candidate also has `depends_on` and `symptom_only_after_deletion`, below, and an unmeasured or accepted candidate has an `acceptance`, below
-- `accepted`: the accepted verdicts on their own, below
+- `candidates`: for each candidate, the verdict and reason, its `scope`, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for), `symptom_kills` and `unconfirmed_symptom_kills` (its kills and unconfirmed kills that are symptom kills) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, the mutants it `errored` on, `symptom_only`, `equivalent_suspects`, the suspected equivalent mutants it would otherwise sample, with how each stands, and `also_killed_by_checker`, its kills that a checker also makes, as `{"<stratum>": {"<mutant id>": ["type checker" | "contract checker", ...]}}`. A delete, eligible, accepted or unmeasured candidate also has `depends_on` and `symptom_only_after_deletion`, below, an unmeasured, eligible or accepted candidate has an `eligibility`, below, and an accepted one has `accepted`, its `authorisation` and `policy_scope`
+- `risk_acceptance`: the eligible and accepted verdicts on their own, below
 - `summary`: verdicts, reasons, `scopes` (the candidates with each scope, by verdict), candidates per stratum, and under `symptom_kills` the candidates' kills, how many of them are symptom kills, their unconfirmed symptom kills, and how many keeps and provisional-keeps rest only on symptom kills
 - `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to with its number of `baseline_keys`, how many candidates reach it, and:
   - `removed`: the removed side's `result`, `caught`, `missed`, `unresolved` or `not run`, and `tests`, each candidate with a result and its execution state
@@ -363,7 +366,7 @@ The `provenance` block has `status` (`match`, `unknown` or `mismatch`), `overrid
 
 A mutant with `equivalent_suspect: true` and no confirmed kill earns no sample credit: it isn't a qualifying mutant, so it counts towards neither `--min-mutants` nor `--require-strata`, and it can leave a candidate under the minimum and unmeasured. Each candidate's `equivalent_suspects` lists the ones it would otherwise have sampled.
 
-Until the mutant records a reviewed equivalence, `equivalence`, or a scope decision, `scope_decision`, it's unresolved, and it counts as a survivor that blocks an accepted verdict. It doesn't stop a delete that the other mutants already justify, since a delete never needs every sampled mutant killed. With either record it's resolved: still no sample credit, and no longer a blocker.
+Until the mutant records a reviewed equivalence, `equivalence`, or a scope decision, `scope_decision`, it's unresolved, and it counts as a survivor that blocks eligibility for risk acceptance. It doesn't stop a delete that the other mutants already justify, since a delete never needs every sampled mutant killed. With either record it's resolved: still no sample credit, and no longer a blocker.
 
 For each unresolved suspect in a sample, `deletion_depends_on_dismissing` says whether dismissing that one mutant, and only it, changes any candidate's verdict, and `candidates` lists them. When two suspects block the same candidate, dismissing either one alone changes nothing, so neither is flagged. That errs towards keeping the test, and it's kept that way on purpose.
 
@@ -373,7 +376,7 @@ A suspected equivalent mutant with a confirmed kill shows the mark is wrong, and
 
 The candidates are judged together: what stays is every remaining test plus the kept candidates, those with a keep or provisional-keep verdict. Unmeasured candidates don't count as staying.
 
-A delete, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills, grouped by stratum, with the kept candidates that kill it:
+A delete, eligible, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills, grouped by stratum, with the kept candidates that kill it:
 
 ```
 {"<stratum>": {"<mutant id>": ["<kept candidate id>", ...]}}
@@ -385,13 +388,13 @@ The kills-first cover keeps a candidate for each of those mutants, so the list i
 
 The report also has a `Symptom kills` section when the kills file has any, with the counts from `kills` and `summary`. When a checker kills any mutant, the report gives the counts under the mutants, and a section, `Kills a checker also makes`, lists each candidate with one, as in "delete, the type checker also kills logic reg-55322". Each keep, provisional-keep and delete it lists has a line for its symptom kills and one for its unconfirmed symptom kills, and the reasons of the candidates that rest only on symptom kills end in ", all symptom kills".
 
-The joint check takes the delete and accepted candidates together, and fails when one of them killed a mutant that no remaining test and no kept candidate kills. The verdict rules never allow that, so a failure is a bug in them. `joint_check` is then, by stratum, each such mutant with the delete and accepted candidates that kill it, in the same shape as `depends_on`. The report lists them at the top, and the command exits with code 1 after writing its output, unless `--joint-check-report-only` is given.
+The joint check takes the delete, eligible and accepted candidates together, and fails when one of them killed a mutant that no remaining test and no kept candidate kills. The verdict rules never allow that, so a failure is a bug in them. `joint_check` is then, by stratum, each such mutant with the delete, eligible and accepted candidates that kill it, in the same shape as `depends_on`. The report lists them at the top, and the command exits with code 1 after writing its output, unless `--joint-check-report-only` is given.
 
-#### Accepted verdicts
+#### Eligible for risk acceptance
 
-An accepted verdict is an unmeasured test deleted on a stated risk. It's never a measured delete, which is why the report and the JSON keep it apart from the other verdicts.
+A verdict of eligible for risk acceptance, `eligible-for-risk-acceptance`, marks an unmeasured test that a person may choose to delete on a stated risk. It's never a measured delete, which is why the report and the JSON keep it apart from the other verdicts. `kills.py` never decides to accept it: a test is `accepted` only when the `--acceptances` file records who authorised it, when, and the policy scope it was accepted under.
 
-An unmeasured candidate that passed in the capture becomes accepted when it has all four fields:
+An unmeasured candidate that passed in the capture becomes eligible when it has all four fields:
 
 | Field     | Meaning                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------- |
@@ -406,9 +409,17 @@ It also needs:
 - a confirmed kill on every one of its n qualifying mutants by a test that stays: a remaining test, which isn't a candidate, or a kept candidate. A sampled mutant that none of them kills is a survivor, with the outcome `survivor in sample`.
 - the baseline check, as for delete.
 
-Each module takes at most `--accept-cap` accepted verdicts, default 2, so one wrong prior takes at most two tests out of a module before an escape there brings them back. Candidates are taken lowest prior first, then lowest bound, then in `--candidates` order. A candidate whose files span several modules counts against each of them.
+Each module takes at most `--accept-cap` eligible verdicts, default 2, accepted ones included, so one wrong prior takes at most two tests out of a module before an escape there brings them back. Candidates are taken lowest prior first, then lowest bound, then in `--candidates` order. A candidate whose files span several modules counts against each of them.
 
-A keep or provisional-keep is never accepted, and neither is a candidate that didn't pass in the capture.
+A keep or provisional-keep is never eligible, and neither is a candidate that didn't pass in the capture.
+
+The acceptances file is JSON keyed by test id:
+
+```
+{"<test id>": {"authorisation": {"by": "<person>", "date": "<date>"}, "policy_scope": "<the policy it was accepted under>"}}
+```
+
+An eligible candidate with a record that has all three fields is `accepted`, and its row has them under `accepted`. A record missing a field leaves the candidate eligible. A record for a test that isn't eligible, or isn't a candidate, accepts nothing, so the cap and every other condition still hold. Each such record is listed in `risk_acceptance.data_warnings` and at the end of the report's section.
 
 The location prior is JSON keyed by repo-relative file, with a rollup per module:
 
@@ -424,9 +435,9 @@ The location prior is JSON keyed by repo-relative file, with a rollup per module
 
 Only `score` and `module` decide anything. A file missing from the prior, or one without a `score` or a `module`, leaves that field missing.
 
-Each acceptance's `prior_over` says what the prior covers: `reached files`, or `reached files plus direct callers` with `--callers`. Modules come from the reached files alone.
+Each eligibility's `prior_over` says what the prior covers: `reached files`, or `reached files plus direct callers` with `--callers`. Modules come from the reached files alone.
 
-**Static importers:** when the location prior has a graph file beside it, named `<prior name>-graph.json`, each acceptance records the static importers of its reached files. That's the files that import them and, through a barrel, the files that import the barrel. They're information only and never change the prior, because importing a file isn't calling the function that changed. The record is a summary, since one file can have hundreds of importers: `role` (`information only`), `count`, `unscored` (how many the prior has no score for), the highest score as `max`, and the 10 highest-scored importers in `highest`.
+**Static importers:** when the location prior has a graph file beside it, named `<prior name>-graph.json`, each eligibility records the static importers of its reached files. That's the files that import them and, through a barrel, the files that import the barrel. They're information only and never change the prior, because importing a file isn't calling the function that changed. The record is a summary, since one file can have hundreds of importers: `role` (`information only`), `count`, `unscored` (how many the prior has no score for), the highest score as `max`, and the 10 highest-scored importers in `highest`.
 
 ```
 {"barrels": ["<path>", ...], "importers": {"<path>": ["<importing path>", ...]}}
@@ -440,17 +451,19 @@ Each acceptance's `prior_over` says what the prior covers: `reached files`, or `
 
 The prior's `callers` holds their scores. A candidate without an entry has no prior, and one with an empty list has no direct callers.
 
-Every unmeasured candidate's `acceptance` has the four fields, `prior_over`, `importers` when the prior has a graph file, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `accepted`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
+Every unmeasured, eligible or accepted candidate's `eligibility` has the four fields, `prior_over`, `importers` when the prior has a graph file, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `eligible`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `unresolved suspected equivalent mutant in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
 
-The top-level `accepted` key has:
+The top-level `risk_acceptance` key has:
 
-- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, what it covers, the `callers` file, the `graph` file and the `importers` role, and the `ci_history` file
-- `candidates`: each accepted candidate with its `acceptance`
-- `modules`: for each module that accepted a candidate or turned one away at the cap, those candidates and the rollup's `prior`
-- `outcomes`: the number of unmeasured and accepted candidates with each outcome
+- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, what it covers, the `callers` file, the `graph` file and the `importers` role, the `ci_history` file and the `acceptances` file
+- `eligible`: each eligible or accepted candidate with its `eligibility`
+- `accepted`: each accepted candidate with its `authorisation` and `policy_scope`
+- `modules`: for each module that made a candidate eligible or turned one away at the cap, those candidates and the rollup's `prior`
+- `outcomes`: the number of unmeasured, eligible and accepted candidates with each outcome
 - `missing`: among the candidates with `missing fields`, the number missing each field
+- `data_warnings`: each acceptance record that accepts nothing, and why
 
-The tests run a synthetic kills file through both this command and the pipeline's verdicts, and a synthetic location prior through the accepted verdict. They also build a [location ledger](#location-ledger) from a synthetic kills file and check it with `ledger-verdicts.mjs`. They need the index of run 36089233978 or 36482017221. One more test runs the stranded culls through the joint check, from the corpus kills file, `reach-counts.jsonl` and the location prior under `local/`, or under `JOURNEY_LOCAL_DIR`, and it skips without them:
+The tests run a synthetic kills file through both this command and the pipeline's verdicts, and a synthetic location prior through the eligible and accepted verdicts. They also build a [location ledger](#location-ledger) from a synthetic kills file and check it with `ledger-verdicts.mjs`. They need the index of run 36089233978 or 36482017221. One more test runs the stranded culls through the joint check, from the corpus kills file, `reach-counts.jsonl` and the location prior under `local/`, or under `JOURNEY_LOCAL_DIR`, and it skips without them:
 
 ```
 JOURNEY_LOOKUP_INDEX=<index dir> [JOURNEY_LOCAL_DIR=<local dir>] python3 e2e/coverage/journey/pipeline/test_kills.py
@@ -501,7 +514,7 @@ node e2e/coverage/journey/lookup/ledger-verdicts.mjs --ledger <ledger.json> --ve
     [--min-mutants <k>] [--require-strata <s,...>] [--strata coarse]
 ```
 
-It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check, the symptom markers, the remaining side's scope and the sample credit of suspected equivalent mutants, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `scope`, `qualifying_basis`, `equivalent_suspects`, `symptom_kills`, `symptom_only`, `symptom_only_after_deletion` and `also_killed_by_checker`, with each mutant's `checker_kills` counted as a kill by the remaining suite, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It also prints the keeps and provisional-keeps that rest only on symptom kills. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the ledger's provenance first, and counts it as a difference when the ledger and the verdicts file read kills files with different sha256 digests. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
+It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check, the symptom markers, the remaining side's scope and the sample credit of suspected equivalent mutants, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `scope`, `qualifying_basis`, `equivalent_suspects`, `symptom_kills`, `symptom_only`, `symptom_only_after_deletion` and `also_killed_by_checker`, with each mutant's `checker_kills` counted as a kill by the remaining suite, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It also prints the keeps and provisional-keeps that rest only on symptom kills. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the ledger's provenance first, and counts it as a difference when the ledger and the verdicts file read kills files with different sha256 digests. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `eligibility` and `accepted`, which depend on the location prior and the acceptances file that the ledger doesn't take, so an eligible or accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
 
 ### Building an index
 
