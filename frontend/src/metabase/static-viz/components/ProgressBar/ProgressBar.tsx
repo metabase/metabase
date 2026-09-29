@@ -9,7 +9,7 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
-  getGoalReferences,
+  getForeignGoalRefs,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
@@ -60,7 +60,7 @@ export const ProgressBar = ({
     const { cols, rows } = seriesData;
     const goalSetting = settings["progress.goal"];
 
-    if (hasUnresolvedGoalValues(seriesData, getGoalReferences(goalSetting))) {
+    if (hasUnresolvedGoalValues(seriesData, getForeignGoalRefs(goalSetting))) {
       throw new Error(getUnresolvedGoalMessage("value"));
     }
 

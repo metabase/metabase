@@ -26,8 +26,7 @@ export const getValue = (rows: RowValues[]) => {
   return rawValue;
 };
 
-// Unlike a reference to another entity, a column of this question falls back to 0
-export const getGoalReferences = (
+export const getForeignGoalRefs = (
   goalSetting: GoalValue | null | undefined,
 ): GoalForeignColumnRef[] =>
   isGoalForeignColumnRef(goalSetting) ? [goalSetting] : [];
