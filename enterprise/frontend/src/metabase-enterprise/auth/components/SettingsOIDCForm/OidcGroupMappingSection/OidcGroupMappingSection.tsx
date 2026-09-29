@@ -92,6 +92,8 @@ type OidcGroupMappingSectionProps = {
   lockedEnvName?: string;
   // true while the page form saves the provider, which a card write would race
   isPageSaving?: boolean;
+  // greys the card until the backend counts the provider as configured, like the cards above it
+  disabled?: boolean;
   onToggle?: (enabled: boolean) => void;
 } & BoxProps;
 
@@ -102,6 +104,7 @@ export function OidcGroupMappingSection({
   children,
   lockedEnvName,
   isPageSaving = false,
+  disabled = false,
   onToggle,
   ...boxProps
 }: OidcGroupMappingSectionProps) {
@@ -150,7 +153,7 @@ export function OidcGroupMappingSection({
       title={t`Group mapping`}
       description={t`Automatically assign people to ${applicationName} groups based on groups from your OIDC provider`}
       checked={provider?.["group-sync"]?.enabled ?? false}
-      disabled={provider == null}
+      disabled={disabled || provider == null}
       switchDisabled={isLocked || isWriting}
       onChange={handleChange}
       {...boxProps}

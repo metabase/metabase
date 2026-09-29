@@ -21,7 +21,11 @@ import {
 } from "metabase/forms";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useGetAdminSettingsDetailsQuery, useSetting } from "metabase/settings";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useSetting,
+} from "metabase/settings";
 import {
   CollapsibleSettingsSection,
   SETTINGS_CARD_STACK_PROPS,
@@ -189,6 +193,8 @@ export function SettingsOIDCForm() {
   const siteUrl = useSetting("site-url");
   const { data: settingDetails, isLoading: isLoadingDetails } =
     useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
   const { data: providers, isLoading: isLoadingProviders } =
     useGetCustomOidcProvidersQuery();
   const [createProvider] = useCreateCustomOidcMutation();
@@ -201,8 +207,10 @@ export function SettingsOIDCForm() {
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
-  // the cards below the server settings stay read-only until it is saved
-  const isConfigured = existingProvider != null;
+  // the key names the provider, so it is fixed once one exists
+  const isExisting = existingProvider != null;
+  // the cards below the server settings unlock on the flag the overview card reads too
+  const isConfigured = settingValues?.["oidc-configured"] ?? false;
   const providersSetting = settingDetails?.["oidc-providers"];
   // the env var holds every provider, so it locks the whole page rather than one field
   const lockedEnvName = providersSetting?.is_env_setting
@@ -290,11 +298,11 @@ export function SettingsOIDCForm() {
     [existingProvider, createProvider, updateProvider, runCheck],
   );
 
-  if (isLoadingDetails || isLoadingProviders) {
+  if (isLoadingDetails || isLoadingValues || isLoadingProviders) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (settingDetails == null || providers == null) {
+  if (settingDetails == null || settingValues == null || providers == null) {
     return (
       <LoadingAndErrorWrapper error={t`Error loading OIDC configuration`} />
     );
@@ -312,6 +320,12 @@ export function SettingsOIDCForm() {
           <Form>
             <Stack gap="xl">
               {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="oidc-user-provisioning-enabled?"
+                providerName="OIDC"
+              />
+
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -325,7 +339,7 @@ export function SettingsOIDCForm() {
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     placeholder="okta"
                     required
-                    disabled={isConfigured}
+                    disabled={isExisting}
                     readOnly={isLocked}
                   />
                   <FormTextInput
@@ -380,13 +394,6 @@ export function SettingsOIDCForm() {
                 </Stack>
               </SettingsSection>
 
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <UserProvisioningSection
-                settingKey="oidc-user-provisioning-enabled?"
-                providerName="OIDC"
-                disabled={!isConfigured}
-              />
-
               <CollapsibleSettingsSection
                 title={t`Attributes`}
                 description={t`Map OIDC claims to user attributes. Use standard OIDC claim names or your provider's custom claims.`}
@@ -421,6 +428,7 @@ export function SettingsOIDCForm() {
               <OidcGroupMappingSection
                 provider={existingProvider}
                 writer={groupSyncWriter}
+                disabled={!isConfigured}
                 lockedEnvName={lockedEnvName}
                 isPageSaving={isSubmitting}
                 data-testid="oidc-group-mapping-section"

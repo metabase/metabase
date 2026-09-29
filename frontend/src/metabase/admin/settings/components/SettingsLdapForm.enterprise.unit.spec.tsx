@@ -48,26 +48,37 @@ const setup = async (
 
 describe("SettingsLdapForm (EE)", () => {
   describe("user provisioning", () => {
-    it("sits right above the attributes", async () => {
+    it("sits at the top of the page", async () => {
       await setup();
 
       const cardTitles = screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
+        "User provisioning",
         "Server settings",
         "User schema",
-        "User provisioning",
         "Attributes",
         "Group mapping",
       ]);
     });
 
-    it("stays disabled until LDAP is configured", async () => {
+    it("stays editable before LDAP is configured", async () => {
       await setup({ "ldap-host": null, "ldap-configured?": false });
 
       const toggle = screen.getByRole("switch", { name: "User provisioning" });
-      expect(toggle).toBeDisabled();
+      expect(toggle).toBeEnabled();
+    });
+
+    it("stays editable while LDAP is paused but configured", async () => {
+      await setup({
+        "ldap-enabled": false,
+        "ldap-host": "ldap.example.test",
+        "ldap-configured?": true,
+      });
+
+      const toggle = screen.getByRole("switch", { name: "User provisioning" });
+      expect(toggle).toBeEnabled();
     });
 
     it("saves right away without touching the page form", async () => {

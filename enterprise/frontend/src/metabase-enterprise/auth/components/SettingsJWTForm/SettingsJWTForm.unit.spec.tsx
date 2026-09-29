@@ -37,6 +37,7 @@ const setup = async ({
   jwtEnabled,
   useTenants,
   configured,
+  uriOnly,
   attributesConfigured,
   attributesEnvConfigured,
   tenantAttributeConfigured,
@@ -58,6 +59,8 @@ const setup = async ({
   jwtEnabled?: boolean;
   useTenants?: boolean;
   configured?: boolean;
+  // the identity provider URI is saved but the shared secret is not, so the backend does not count JWT as configured
+  uriOnly?: boolean;
   attributesConfigured?: boolean;
   attributesEnvConfigured?: boolean;
   tenantAttributeConfigured?: boolean;
@@ -117,6 +120,11 @@ const setup = async ({
           { key: "jwt-shared-secret", value: "590ab155f412d477b8ab9c8b0e7b" },
         ] as const)
       : []),
+    ...(uriOnly
+      ? ([
+          { key: "jwt-identity-provider-uri", value: "http://example.com" },
+        ] as const)
+      : []),
     ...(attributesConfigured
       ? ([{ key: "jwt-attribute-email", value: "email-key" }] as const)
       : []),
@@ -137,6 +145,10 @@ const setup = async ({
   const sessionSettings = createMockSettings({
     "use-tenants": useTenants,
     "jwt-enabled": jwtEnabled,
+    "jwt-configured": configured ?? false,
+    "jwt-identity-provider-uri":
+      configured || uriOnly ? "http://example.com" : null,
+    "jwt-shared-secret": configured ? "590ab155f412d477b8ab9c8b0e7b" : null,
     "jwt-user-provisioning-enabled?": userProvisioning ?? true,
     "jwt-group-sync": groupSync ?? false,
     "jwt-group-mappings": groupMappings ?? {},
@@ -170,21 +182,23 @@ const setup = async ({
     },
     { name: "settings-list" },
   );
-  if (saveStatus != null || saveDelayMs != null) {
-    // a failed write leaves the store alone, and a slow one lands in it once it resolves
-    const status = saveStatus ?? 204;
-    fetchMock.removeRoute("update-settings");
-    fetchMock.put(
-      "path:/api/setting",
-      ({ options }) => {
-        if (status < 300) {
-          Object.assign(settingsStore, JSON.parse(String(options.body)));
-        }
-        return { status };
-      },
-      { name: "update-settings", delay: saveDelayMs },
-    );
-  }
+  // a failed write leaves the store alone, and a slow one lands in it once it resolves
+  const status = saveStatus ?? 204;
+  fetchMock.removeRoute("update-settings");
+  fetchMock.put(
+    "path:/api/setting",
+    ({ options }) => {
+      if (status < 300) {
+        Object.assign(settingsStore, JSON.parse(String(options.body)));
+        // the backend derives the flag from the two mandatory settings
+        settingsStore["jwt-configured"] =
+          Boolean(settingsStore["jwt-identity-provider-uri"]) &&
+          Boolean(settingsStore["jwt-shared-secret"]);
+      }
+      return { status };
+    },
+    { name: "update-settings", delay: saveDelayMs },
+  );
   if (provisioningSaveStatus != null || provisioningSaveDelayMs != null) {
     // the single-key write behaves the same way for the provisioning switch
     const status = provisioningSaveStatus ?? 204;
@@ -295,7 +309,7 @@ describe("SettingsJWTForm", () => {
       name: "User provisioning",
     });
     expect(attributeHeader).toBeDisabled();
-    expect(provisioningToggle).toBeDisabled();
+    expect(provisioningToggle).toBeEnabled();
 
     await fillServerSettings();
     await userEvent.click(
@@ -316,7 +330,6 @@ describe("SettingsJWTForm", () => {
       "jwt-group-mappings": {},
     });
     await waitFor(() => expect(attributeHeader).toBeEnabled());
-    expect(provisioningToggle).toBeEnabled();
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Automatic" })).toBeEnabled();
     expect(
@@ -447,15 +460,15 @@ describe("SettingsJWTForm", () => {
   });
 
   describe("user provisioning", () => {
-    it("sits right below the server settings", async () => {
+    it("sits at the top of the page", async () => {
       await setup();
 
       const cardTitles = screen
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "Server settings",
         "User provisioning",
+        "Server settings",
         "User attribute configuration",
         "Group mapping",
       ]);
@@ -467,6 +480,26 @@ describe("SettingsJWTForm", () => {
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
       ).toBeEnabled();
+    });
+
+    it("stays editable before the server settings are saved", async () => {
+      await setup();
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeEnabled();
+    });
+
+    it("stays editable while only the identity provider URI is saved", async () => {
+      await setup({ uriOnly: true });
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeEnabled();
+      // the attribute card needs the shared secret too, which is what the backend flag checks
+      expect(
+        screen.getByRole("button", { name: /User attribute configuration/ }),
+      ).toBeDisabled();
     });
 
     it("saves right away without touching the page form", async () => {

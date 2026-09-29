@@ -18,6 +18,7 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   useAdminSetting,
   useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
 } from "metabase/settings";
 import {
   CollapsibleSettingsSection,
@@ -68,14 +69,14 @@ export const SettingsJWTForm = () => {
     isLoading: isLoadingDetails,
     refetch: refetchSettingDetails,
   } = useGetAdminSettingsDetailsQuery();
+  const { data: settingValues, isLoading: isLoadingValues } =
+    useGetSettingsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
   const applicationName = useSelector(getApplicationName);
   const [sendToast] = useToast();
 
-  // a paused JWT keeps its settings, so "configured" means an identity provider URI exists
-  const uriSetting = settingDetails?.["jwt-identity-provider-uri"];
-  const isServerConfigured =
-    Boolean(uriSetting?.value) || (uriSetting?.is_env_setting ?? false);
+  // the flag the overview card reads: the URI and the shared secret are both saved, paused or not
+  const isServerConfigured = settingValues?.["jwt-configured"] ?? false;
 
   // either env var locks the whole group mapping section, since the two settings act as one feature
   const groupMappingEnvNames = [
@@ -117,11 +118,11 @@ export const SettingsJWTForm = () => {
     sendToast({ message: t`Changes saved`, icon: "check_filled" });
   };
 
-  if (isLoadingDetails) {
+  if (isLoadingDetails || isLoadingValues) {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!settingDetails) {
+  if (!settingDetails || !settingValues) {
     return (
       <LoadingAndErrorWrapper error={t`Error loading JWT configuration`} />
     );
@@ -149,6 +150,11 @@ export const SettingsJWTForm = () => {
         {({ dirty, isSubmitting }) => (
           <Form>
             <Stack gap="xl">
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="jwt-user-provisioning-enabled?"
+                providerName="JWT"
+              />
               <SettingsSection
                 title={t`Server settings`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -175,12 +181,6 @@ export const SettingsJWTForm = () => {
                   />
                 </Stack>
               </SettingsSection>
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <UserProvisioningSection
-                settingKey="jwt-user-provisioning-enabled?"
-                providerName="JWT"
-                disabled={!isServerConfigured}
-              />
               <CollapsibleSettingsSection
                 title={t`User attribute configuration`}
                 description={t`You can send additional user attributes to ${applicationName} by adding the attributes as key/value pairs to your JWT`}

@@ -57,6 +57,7 @@ const OIDC_GROUP_PLACEHOLDER = "Enter OIDC group...";
 function setupProviderEndpoints(
   initialProviders: CustomOidcConfig[],
   { writeDelay, readDelay, readStatus, writeStatus }: ProviderDelays = {},
+  settingsStore: Record<string, unknown> = {},
 ) {
   const providers = initialProviders.map((provider) => ({ ...provider }));
 
@@ -71,6 +72,8 @@ function setupProviderEndpoints(
   fetchMock.post("path:/api/ee/sso/oidc", ({ options }) => {
     const provider = JSON.parse(String(options.body));
     providers.push(provider);
+    // the backend derives the flag from the saved providers
+    settingsStore["oidc-configured"] = true;
     return provider;
   });
   // the backend merges the body into the stored provider one level deep, so a group-sync map replaces the old one
@@ -109,10 +112,13 @@ type ProviderDelays = {
 
 const setup = async ({
   providers = [],
+  configured = providers.length > 0,
   providersEnvName,
   ...delays
 }: {
   providers?: CustomOidcConfig[];
+  // what the backend reports for oidc-configured, which a provider saved without a client secret would fail
+  configured?: boolean;
   // the env var that owns the providers, which the settings list reports as an env setting
   providersEnvName?: string;
 } & ProviderDelays = {}) => {
@@ -128,11 +134,13 @@ const setup = async ({
         ],
   );
   // the provisioning switch reads its value back after saving, so the properties mock has to remember writes
-  setupStatefulSettingsEndpoints(createMockSettings());
+  const settingsStore = setupStatefulSettingsEndpoints(
+    createMockSettings({ "oidc-configured": configured }),
+  );
   fetchMock.get("path:/api/permissions/group", GROUPS);
   fetchMock.put("express:/api/permissions/membership/:id/clear", 204);
   fetchMock.delete("express:/api/permissions/group/:id", 204);
-  setupProviderEndpoints(providers, delays);
+  setupProviderEndpoints(providers, delays, settingsStore);
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
 
@@ -246,19 +254,19 @@ describe("SettingsOIDCForm", () => {
         .getAllByRole("heading", { level: 2 })
         .map((heading) => heading.textContent);
       expect(cardTitles).toEqual([
-        "Server settings",
         "User provisioning",
+        "Server settings",
         "Attributes",
         "Group mapping",
       ]);
     });
 
-    it("keeps the cards below the server settings disabled until the provider is saved", async () => {
+    it("keeps the attributes and group mapping cards disabled until the provider is saved", async () => {
       await setup();
 
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeDisabled();
+      ).toBeEnabled();
       expect(screen.getByRole("button", { name: "Attributes" })).toBeDisabled();
       expect(groupMappingSwitch()).toBeDisabled();
       expect(groupMappingSwitch()).not.toBeChecked();
@@ -268,6 +276,13 @@ describe("SettingsOIDCForm", () => {
       expect(
         screen.queryByRole("textbox", { name: /Group attribute name/ }),
       ).not.toBeInTheDocument();
+    });
+
+    it("locks those cards on the backend's configured flag rather than the provider list", async () => {
+      await setup({ providers: [EXISTING_PROVIDER], configured: false });
+
+      expect(screen.getByRole("button", { name: "Attributes" })).toBeDisabled();
+      expect(groupMappingSwitch()).toBeDisabled();
     });
   });
 
@@ -402,6 +417,15 @@ describe("SettingsOIDCForm", () => {
       expect(puts[0].url).toMatch(
         /\/api\/setting\/oidc-user-provisioning-enabled%3F$/,
       );
+    });
+
+    it("stays editable while the provider is paused", async () => {
+      await setup({ providers: [{ ...EXISTING_PROVIDER, enabled: false }] });
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeEnabled();
+      expect(groupMappingSwitch()).toBeEnabled();
     });
   });
 

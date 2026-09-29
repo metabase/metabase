@@ -144,10 +144,10 @@ describe("SettingsSAMLForm", () => {
       .getAllByRole("heading", { level: 2 })
       .map((heading) => heading.textContent);
     expect(cardTitles).toEqual([
+      "User provisioning",
       "Identity provider (IdP) configuration",
       "Identity provider info",
       "Sign SSO requests",
-      "User provisioning",
       "Group mapping",
     ]);
   });
@@ -320,15 +320,24 @@ describe("SettingsSAMLForm", () => {
         screen.queryByText("Using MB_SAML_USER_PROVISIONING_ENABLED"),
       ).not.toBeInTheDocument();
     });
+
+    it("stays editable while SAML is paused but configured", async () => {
+      await setupConfigured({ ...IDP_SETTINGS, "saml-enabled": false });
+
+      expect(
+        screen.getByRole("switch", { name: "User provisioning" }),
+      ).toBeEnabled();
+      expect(groupMappingSwitch()).toBeEnabled();
+    });
   });
 
   describe("group mapping", () => {
-    it("keeps the provisioning and group mapping cards disabled until the identity provider is set up", async () => {
+    it("keeps the group mapping card disabled until the identity provider is set up", async () => {
       await setup({ "saml-group-sync": true });
 
       expect(
         screen.getByRole("switch", { name: "User provisioning" }),
-      ).toBeDisabled();
+      ).toBeEnabled();
       expect(groupMappingSwitch()).toBeDisabled();
       expect(groupMappingSwitch()).toBeChecked();
       expect(

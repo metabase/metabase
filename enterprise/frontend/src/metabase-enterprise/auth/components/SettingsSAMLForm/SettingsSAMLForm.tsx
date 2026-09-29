@@ -129,6 +129,13 @@ export function SettingsSAMLForm() {
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
+              {/* the card saves on its own, so it stays out of the form's values */}
+              <UserProvisioningSection
+                settingKey="saml-user-provisioning-enabled?"
+                providerName="SAML"
+                lockedNote={scimNote}
+              />
+
               <SettingsSection
                 title={t`Identity provider (IdP) configuration`}
                 titleProps={SETTINGS_CARD_TITLE_PROPS}
@@ -272,14 +279,6 @@ export function SettingsSAMLForm() {
                   />
                 </Stack>
               </CollapsibleSettingsSection>
-
-              {/* the card saves on its own, so it stays out of the form's values */}
-              <UserProvisioningSection
-                settingKey="saml-user-provisioning-enabled?"
-                providerName="SAML"
-                disabled={!isConfigured}
-                lockedNote={scimNote}
-              />
 
               <SettingsGroupMappingSection
                 syncSettingKey="saml-group-sync"

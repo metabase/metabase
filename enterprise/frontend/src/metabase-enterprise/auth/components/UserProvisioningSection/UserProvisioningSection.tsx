@@ -16,8 +16,6 @@ type UserProvisioningSectionProps = {
   settingKey: UserProvisioningSettingKey;
   // the sign-in method as the description names it
   providerName: string;
-  // greys the card out on pages that stay read-only until their server settings are saved
-  disabled?: boolean;
   // says why the switch cannot be toggled and keeps it disabled while shown
   lockedNote?: React.ReactNode;
 };
@@ -25,7 +23,6 @@ type UserProvisioningSectionProps = {
 export function UserProvisioningSection({
   settingKey,
   providerName,
-  disabled = false,
   lockedNote,
 }: UserProvisioningSectionProps) {
   const applicationName = useSelector(getApplicationName);
@@ -47,7 +44,6 @@ export function UserProvisioningSection({
         )
       }
       checked={provisioningSwitch.checked}
-      disabled={disabled}
       switchDisabled={hasLockedNote || provisioningSwitch.isBusy}
       onChange={provisioningSwitch.onChange}
     />
