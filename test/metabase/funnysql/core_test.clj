@@ -365,13 +365,24 @@
     "WHERE \"field\" = 'foo'' OR 1 = 1; --'"))
 
 (deftest ^:parallel h2x-literal-backslash-injection-test
-  (testing "backslashes must be escaped too, not just quotes"
-    (testing "MySQL and ClickHouse read `\\'` inside a string literal as an escaped quote, not the end of the
-              string (unless NO_BACKSLASH_ESCAPES is set) -- a trailing backslash right before the closing quote
-              lets the doubled quote that follows become the *real* terminator, and everything after it becomes
-              raw SQL instead of part of the literal"
-      (is (= ["WHERE \"field\" = 'foo\\\\'' OR 1=1; --'"]
-             (funnysql/format {:where [:= :field (h2x/literal "foo\\' OR 1=1; --")]} :postgres))))))
+  (testing "on MySQL, backslashes must be escaped too, not just quotes"
+    (testing "MySQL reads `\\'` inside a string literal as an escaped quote, not the end of the string (unless
+              NO_BACKSLASH_ESCAPES is set) -- a trailing backslash right before the closing quote lets the
+              doubled quote that follows become the *real* terminator, and everything after it becomes raw SQL
+              instead of part of the literal"
+      (is (= ["WHERE `field` = 'foo\\\\'' OR 1=1; --'"]
+             (funnysql/format {:where [:= :field (h2x/literal "foo\\' OR 1=1; --")]} :mysql))))))
+
+(deftest ^:parallel h2x-literal-does-not-mangle-backslash-on-ansi-engines-test
+  (testing "on Postgres and H2, a backslash is an ordinary character inside a plain '...' literal (as long as
+            standard_conforming_strings is on, the default) -- doubling it there would corrupt a value that
+            legitimately contains one, instead of protecting anything, since there's no backslash/quote
+            interaction to guard against on these engines"
+    (are [engine expected] (= [expected]
+                              (funnysql/format {:where [:= :field (h2x/literal "C:\\temp")]} engine))
+      :postgres "WHERE \"field\" = 'C:\\temp'"
+      ;; h2 uppercases identifiers, hence "FIELD" not "field"
+      :h2       "WHERE \"FIELD\" = 'C:\\temp'")))
 
 (deftest ^:parallel h2x-extract-test
   (is (= ["WHERE \"field\" = extract(epoch FROM \"created_at\")"]

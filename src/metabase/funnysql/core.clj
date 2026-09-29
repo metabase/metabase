@@ -379,12 +379,17 @@
   (interpose-fn parts #(-identifier-part! % context) #(append-sql! context ".")))
 
 (defn- h2x-literal! [s context]
-  ;; escape backslashes *before* doubling quotes: MySQL reads `\'` inside a string literal as an escaped quote rather
-  ;; than the end of the string, so an unescaped trailing backslash could let a doubled quote become the real
-  ;; terminator and let whatever follows it escape the literal.
+  ;; only double backslashes on engines that actually treat `\` as an escape character inside a plain `'...'`
+  ;; literal. MySQL always does, unless the session's `NO_BACKSLASH_ESCAPES` sql_mode is set (see
+  ;; [[metabase.driver.mysql/utf8-string-literal]]'s docstring for the same caveat). Postgres and H2 do *not*, as long
+  ;; as `standard_conforming_strings` is on (the default) -- doubling backslashes there would corrupt a value that
+  ;; legitimately contains one instead of protecting it. See [[metabase.driver.sql.util/escape-sql]], which documents
+  ;; this exact per-engine distinction (`:ansi` vs `:backslashes` vs `:ansi+backslashes`) and warns against relying on
+  ;; any of these styles to sanitize untrusted input in the first place.
   (let [s (as-> s s
             (u/qualified-name s)
-            (str/replace s "\\" "\\\\")
+            (cond-> s
+              (= (engine context) :mysql) (str/replace "\\" "\\\\"))
             (str/replace s "'" "''"))]
     (append-sql! context "'")
     (append-sql! context s)
