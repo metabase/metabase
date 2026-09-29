@@ -1,6 +1,5 @@
 import type { State } from "metabase/redux/store";
 import { getSubpathSafeUrl } from "metabase/urls/utils";
-import { getBasename } from "metabase/utils/basename";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -28,43 +27,14 @@ const selectSessionProperties: (state: State) => {
 // Hoisted so `getSettings` returns a stable reference
 const EMPTY_SETTINGS = {};
 
-// The backend serves uploaded images from this path and returns their URLs
-// relative to the Metabase root. We prefix them with the basename, so they work
-// on subpaths and in the SDK, which renders on the host app origin.
-const IMAGE_URL_PREFIX = "api/session/illustration/";
-
-const resolvedSettingsCache = new WeakMap<
-  EnterpriseSettings,
-  { basename: string; settings: EnterpriseSettings }
->();
-
-function resolveImageUrls(settings: EnterpriseSettings): EnterpriseSettings {
-  const basename = getBasename();
-  const cached = resolvedSettingsCache.get(settings);
-  if (cached?.basename === basename) {
-    return cached.settings;
-  }
-
-  let resolved = settings;
-  for (const [key, value] of Object.entries(settings)) {
-    if (typeof value === "string" && value.startsWith(IMAGE_URL_PREFIX)) {
-      resolved = { ...resolved, [key]: getSubpathSafeUrl(value) };
-    }
-  }
-  resolvedSettingsCache.set(settings, { basename, settings: resolved });
-  return resolved;
-}
-
 // Typed as `EnterpriseSettings` (a superset of the OSS `Settings`): the cache
 // holds whatever the backend returned, and reads of OSS keys narrow naturally.
 // There is no `settings` key on `State` — settings are not redux state.
 export const getSettings = (state: State): EnterpriseSettings =>
-  resolveImageUrls(
-    // Unjustified type cast. FIXME
-    (selectSessionProperties(state).data ??
-      (typeof window !== "undefined" ? window.MetabaseBootstrap : undefined) ??
-      EMPTY_SETTINGS) as EnterpriseSettings,
-  );
+  // Unjustified type cast. FIXME
+  (selectSessionProperties(state).data ??
+    (typeof window !== "undefined" ? window.MetabaseBootstrap : undefined) ??
+    EMPTY_SETTINGS) as EnterpriseSettings;
 
 export const getSettingsLoading = (state: State): boolean =>
   selectSessionProperties(state).isLoading;
@@ -81,4 +51,22 @@ export const getSetting = <T extends EnterpriseSettingKey>(
 export const getTokenFeature = (state: State, feature: TokenFeature) => {
   const tokenFeatures = getSetting(state, "token-features");
   return tokenFeatures[feature];
+};
+
+type CustomIllustrationSettingKey =
+  | "login-page-illustration-custom"
+  | "landing-page-illustration-custom"
+  | "no-data-illustration-custom"
+  | "no-object-illustration-custom";
+
+const IMAGE_URL_PREFIX = "api/session/illustration/";
+
+// Uploaded images come as URLs relative to the Metabase root. Prefix them with
+// the basename, so they load on subpaths and in the SDK on the host app origin.
+export const getCustomIllustrationUrl = (
+  state: State,
+  key: CustomIllustrationSettingKey,
+) => {
+  const value = getSetting(state, key);
+  return value?.startsWith(IMAGE_URL_PREFIX) ? getSubpathSafeUrl(value) : value;
 };
