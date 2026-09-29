@@ -285,23 +285,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
         : 0;
 
     useEffect(() => {
-      const availableBodyWidth = width - leftHeaderWidth;
-      const fullBodyWidth = sumArray(
-        getCellWidthsForSection(
-          valueHeaderWidths,
-          pivoted?.valueIndexes ?? [],
-          0,
-        ),
-      );
-
-      const minUsableBodyWidth = Math.min(MIN_USABLE_BODY_WIDTH, fullBodyWidth);
-      const shouldOverflow = availableBodyWidth < minUsableBodyWidth;
-      setShouldOverflow(shouldOverflow);
-      if (shouldOverflow) {
-        setViewPortWidth(leftHeaderWidth + minUsableBodyWidth);
-      } else {
-        setViewPortWidth(width);
-      }
+      return;
     }, [
       totalLeftHeaderWidths,
       valueHeaderWidths,
