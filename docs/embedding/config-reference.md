@@ -13,18 +13,7 @@ For how to set all this up, check out [Configure your embeds](./config.md).
 
 Every web component on the page uses these settings. For the SDK, see [`MetabaseProvider` props](#react-sdk-metabaseprovider-props).
 
-| Setting                       | Type     | What it does                                                                                                                                                                                                                      |
-| ----------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `instanceUrl`                 | string   | The URL of your Metabase, like `https://youlooknicetoday.metabaseapp.com`. Required.                                                                                                                                              |
-| `isGuest`                     | boolean  | Whether the components authenticate as guest embeds, with a signed JWT instead of a Metabase session. See [Configure a guest embed](./config.md#configure-a-guest-embed).                                                         |
-| `guestEmbedProviderUri`       | string   | Guest embeds only. Your app's endpoint that signs guest tokens. On load, the embed calls this endpoint for a token, and again when the current token expires. See [Configure a guest embed](./config.md#configure-a-guest-embed). |
-| `locale`                      | string   | The display language for every embed, as an ISO language code. Defaults to your Metabase instance's locale. See [Set the language](./config.md#set-the-language).                                                                 |
-| `theme`                       | object   | Colors, fonts, and per-component appearance overrides. See [Appearance](./appearance.md).                                                                                                                                         |
-| `pluginsConfig`               | object   | Plugins that customize component behavior. Web components support `handleLink`, for customizing what happens when people click a link. See [Web component plugins](./config.md#web-component-plugins).                            |
-| `allowedCustomVisualizations` | string[] | The custom visualizations that components on the page can load, each prefixed with `custom:`. Not available in guest embeds. See [custom visualizations in embeds](./custom-visualizations.md).                                   |
-| `fetchRequestToken`           | function | SSO embeds with JWT only. A function that fetches the JWT for embeds. Returns `Promise<{ jwt: string }>`. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).                               |
-| `useExistingUserSession`      | boolean  | Whether to render embeds with your Metabase session. Development only. Only supported in Google Chrome.                                                                                                                           |
-| `apiKey`                      | string   | An API key from your Metabase. Embeds use it to render on localhost. Development only. See [Preview embeds during development](./config.md#preview-embeds-during-development).                                                    |
+{% include_file "{{ dirname }}/eajs/snippets/MetabaseConfig.md" snippet="properties" %}
 
 ## React SDK `MetabaseProvider` props
 
