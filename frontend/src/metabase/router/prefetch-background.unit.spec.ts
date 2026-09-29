@@ -1,12 +1,13 @@
-import {
-  prefetchPage,
-  prefetchRegisteredPages,
-  registerPagePrefetch,
-} from "./prefetch";
+import type * as prefetchModule from "./prefetch";
 
 // Its own file, so the module-level registry holds only what these tests put in
 // it. `prefetchRegisteredPages` reaches every registration, so a registry shared
 // with the other prefetch tests would drag their pages into these assertions.
+//
+// The registry is module state, so each test takes a fresh copy of the module. A
+// test that declines leaves its pages unstarted, and a shared registry would hand
+// them to whichever test ran next.
+let prefetch: typeof prefetchModule;
 
 type Deferred = {
   promise: Promise<unknown>;
@@ -35,7 +36,7 @@ const IDLE_DEADLINE: IdleDeadline = {
 
 let idleCallbacks: IdleRequestCallback[];
 
-beforeEach(() => {
+beforeEach(async () => {
   idleCallbacks = [];
   setConnection(undefined);
   // jsdom has no idle callback. Collect them so a test decides when the tab
@@ -44,6 +45,9 @@ beforeEach(() => {
     idleCallbacks.push(run);
     return 1;
   };
+
+  jest.resetModules();
+  prefetch = await import("./prefetch");
 });
 
 const flush = () => Promise.resolve().then().then().then();
@@ -71,10 +75,10 @@ describe("prefetchRegisteredPages", () => {
   it("fetches every registered page once the tab is idle", async () => {
     const dashboard = jest.fn().mockResolvedValue(undefined);
     const collection = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/dashboard", dashboard);
-    registerPagePrefetch("/collection", collection);
+    prefetch.registerPagePrefetch("/dashboard", dashboard);
+    prefetch.registerPagePrefetch("/collection", collection);
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
     expect(dashboard).not.toHaveBeenCalled();
 
     await idleUntilSettled();
@@ -88,10 +92,10 @@ describe("prefetchRegisteredPages", () => {
   it("waits for the tab to be idle again between pages", async () => {
     const first = jest.fn().mockResolvedValue(undefined);
     const second = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/first", first);
-    registerPagePrefetch("/second", second);
+    prefetch.registerPagePrefetch("/first", first);
+    prefetch.registerPagePrefetch("/second", second);
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
 
     await idleOnce();
     expect(first).toHaveBeenCalledTimes(1);
@@ -107,10 +111,10 @@ describe("prefetchRegisteredPages", () => {
     const held = deferred();
     const slow = jest.fn().mockReturnValue(held.promise);
     const next = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/slow", slow);
-    registerPagePrefetch("/next", next);
+    prefetch.registerPagePrefetch("/slow", slow);
+    prefetch.registerPagePrefetch("/next", next);
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
 
     await idleOnce();
     expect(slow).toHaveBeenCalledTimes(1);
@@ -128,10 +132,10 @@ describe("prefetchRegisteredPages", () => {
   // then rather than on what it knew at startup.
   it("asks shouldStart when the tab goes idle, not when called", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/late", load);
+    prefetch.registerPagePrefetch("/late", load);
 
     let signedIn = false;
-    prefetchRegisteredPages({ shouldStart: () => signedIn });
+    prefetch.prefetchRegisteredPages({ shouldStart: () => signedIn });
     signedIn = true;
 
     await idleUntilSettled();
@@ -141,9 +145,9 @@ describe("prefetchRegisteredPages", () => {
 
   it("fetches nothing when shouldStart declines", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/declined", load);
+    prefetch.registerPagePrefetch("/declined", load);
 
-    prefetchRegisteredPages({ shouldStart: () => false });
+    prefetch.prefetchRegisteredPages({ shouldStart: () => false });
     await idleUntilSettled();
 
     expect(load).not.toHaveBeenCalled();
@@ -152,12 +156,12 @@ describe("prefetchRegisteredPages", () => {
   // No link points at a modal, so hovering is never a signal that one is wanted.
   it("fetches a background-only page that a link never would", async () => {
     const modal = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/page/", modal, { backgroundOnly: true });
+    prefetch.registerBackgroundPagePrefetch(modal);
 
-    prefetchPage("/page/1");
+    prefetch.prefetchPage("/page/1");
     expect(modal).not.toHaveBeenCalled();
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
     await idleUntilSettled();
 
     expect(modal).toHaveBeenCalledTimes(1);
@@ -165,10 +169,10 @@ describe("prefetchRegisteredPages", () => {
 
   it("fetches nothing on a metered connection", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/metered", load);
+    prefetch.registerPagePrefetch("/metered", load);
     setConnection({ saveData: true });
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
     await idleUntilSettled();
 
     expect(load).not.toHaveBeenCalled();
@@ -176,10 +180,10 @@ describe("prefetchRegisteredPages", () => {
 
   it("fetches nothing on a 2g connection", async () => {
     const load = jest.fn().mockResolvedValue(undefined);
-    registerPagePrefetch("/slow-2g", load);
+    prefetch.registerPagePrefetch("/slow-2g", load);
     setConnection({ effectiveType: "slow-2g" });
 
-    prefetchRegisteredPages();
+    prefetch.prefetchRegisteredPages();
     await idleUntilSettled();
 
     expect(load).not.toHaveBeenCalled();

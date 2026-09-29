@@ -1,10 +1,13 @@
 type LoadPage = () => Promise<unknown>;
 
 type Registration = {
-  path: string;
+  /**
+   * The link prefix that starts this page's fetch, or `null` for a page that
+   * only the background pass reaches.
+   */
+  path: string | null;
   load: LoadPage;
   isExact: boolean;
-  isBackgroundOnly: boolean;
   isStarted: boolean;
 };
 
@@ -24,30 +27,25 @@ const registrations: Registration[] = [];
  *
  * `exact` matches the whole path instead. The home page needs it: every path
  * starts with "/", so a prefix registration would fetch it from any link.
- *
- * `backgroundOnly` keeps a page out of the fetch that a link triggers, leaving
- * it to `prefetchRegisteredPages`. Use it where no link points at the page, so
- * hovering is never a signal that it is wanted: a modal that a menu on the page
- * opens, or a section that only some people can reach.
  */
 export function registerPagePrefetch(
   path: string,
   load: LoadPage,
-  {
-    exact = false,
-    backgroundOnly = false,
-  }: {
-    exact?: boolean;
-    backgroundOnly?: boolean;
-  } = {},
+  { exact = false }: { exact?: boolean } = {},
 ): void {
-  registrations.push({
-    path,
-    load,
-    isExact: exact,
-    isBackgroundOnly: backgroundOnly,
-    isStarted: false,
-  });
+  registrations.push({ path, load, isExact: exact, isStarted: false });
+}
+
+/**
+ * Ask for a page that no link points at to be fetched in the background.
+ *
+ * Hovering is never a signal that such a page is wanted, so it takes no path and
+ * `prefetchPage` never reaches it. A modal that a menu on the page opens is the
+ * case this exists for. The point of fetching it at all is that a tab which
+ * outlives a deploy can still open it.
+ */
+export function registerBackgroundPagePrefetch(load: LoadPage): void {
+  registrations.push({ path: null, load, isExact: false, isStarted: false });
 }
 
 /**
@@ -60,11 +58,15 @@ export function registerPagePrefetch(
  */
 export function prefetchPage(path: string): void {
   for (const registration of registrations) {
+    if (registration.isStarted || registration.path === null) {
+      continue;
+    }
+
     const matches = registration.isExact
       ? path === registration.path
       : path.startsWith(registration.path);
 
-    if (registration.isStarted || registration.isBackgroundOnly || !matches) {
+    if (!matches) {
       continue;
     }
 

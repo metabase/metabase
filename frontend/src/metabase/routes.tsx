@@ -50,6 +50,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerBackgroundPagePrefetch,
   registerPagePrefetch,
   toRouteObjects,
   useParams,
@@ -253,15 +254,9 @@ registerPagePrefetch("/browse", browsePage("BrowseModels"));
 // No link points at a modal, so hovering never says one is wanted. These are
 // fetched only in the background, where the point is that a tab which outlives a
 // deploy can still open them.
-registerPagePrefetch("/dashboard/", dashboardMoveModal, {
-  backgroundOnly: true,
-});
-registerPagePrefetch("/dashboard/", dashboardCopyModal, {
-  backgroundOnly: true,
-});
-registerPagePrefetch("/dashboard/", dashboardArchiveModal, {
-  backgroundOnly: true,
-});
+registerBackgroundPagePrefetch(dashboardMoveModal);
+registerBackgroundPagePrefetch(dashboardCopyModal);
+registerBackgroundPagePrefetch(dashboardArchiveModal);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
