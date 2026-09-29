@@ -39,21 +39,15 @@
   [separator xs context]
   (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
 
-(defn- -commas!
-  "Compile all the forms in `xs` with commas between each item."
-  [xs context]
+(defn- -commas! [xs context]
   (-interpose! ", " xs context))
 
-(defn- -parens!
-  "Compile `x` with parentheses before and after it."
-  [x context]
+(defn- -parens! [x context]
   (append-sql! context "(")
   (compile! x context)
   (append-sql! context ")"))
 
-(defn- -list!
-  "Compile a list form (combines behavior of [[-parens]] and [[-commas]])."
-  [xs context]
+(defn- -list! [xs context]
   (append-sql! context "(")
   (-commas! xs context)
   (append-sql! context ")"))
@@ -196,11 +190,8 @@
   (append-sql! context "RETURNING ")
   (-commas! cols context))
 
-(defn- union! [subqueries context]
-  (interpose-fn subqueries #(map! % context) #(append-sql! context " UNION ")))
-
-(defn- union-all! [subqueries context]
-  (interpose-fn subqueries #(map! % context) #(append-sql! context " UNION ALL ")))
+(defn- union! [sql subqueries context]
+  (interpose-fn subqueries #(map! % context) #(append-sql! context sql)))
 
 (def ^:private clause-fns
   (ordered-map/ordered-map
@@ -228,8 +219,8 @@
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
    :returning       returning!
-   :union           union!
-   :union-all       union-all!))
+   :union           (partial union! " UNION ")
+   :union-all       (partial union! " UNION ALL ")))
 
 (def ^:private clause-rank
   (into {}
@@ -282,7 +273,8 @@
       (compile! y context))
     (append-sql! context nil-sql)))
 
-(defn- equals! [args context] (-equals! " = "  " IS NULL" args context))
+(defn- equals! [args context]
+  (-equals! " = "  " IS NULL" args context))
 
 (defn- -compound! [sql xs context]
   (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))
