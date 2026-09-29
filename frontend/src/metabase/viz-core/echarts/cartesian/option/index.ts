@@ -20,7 +20,7 @@ import {
   X_AXIS_DATA_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
-import type { ChartLayout } from "../layout/types";
+import type { ChartLayout, RowChartMetricTicks } from "../layout/types";
 import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import type {
   BaseCartesianChartModel,
@@ -219,6 +219,23 @@ export function buildGridAndSeriesOption(
   };
 }
 
+// Legacy-matched metric ticks for row charts; see `getRowChartMetricTicks`.
+const getRowMetricTicksOption = (
+  axis: XAXisOption,
+  ticks: RowChartMetricTicks | undefined,
+) => {
+  if (ticks == null) {
+    return {};
+  }
+  const { interval, min, max, showMinLabel, showMaxLabel } = ticks;
+  return {
+    interval,
+    ...(min != null && { min }),
+    ...(max != null && { max }),
+    axisLabel: { ...axis.axisLabel, showMinLabel, showMaxLabel },
+  };
+};
+
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   chartLayout: ChartLayout,
@@ -319,7 +336,10 @@ export const getCartesianChartOption = (
       xAxis = (axes.yAxis as unknown as XAXisOption[]).map((axis) => ({
         ...axis,
         nameRotate: 0,
-        nameGap: getAxisNameGap(ticksDimensions.xTicksHeight),
+        nameGap:
+          getAxisNameGap(ticksDimensions.xTicksHeight) +
+          CHART_STYLE.rowChartAxisName.metricGapExtra,
+        ...getRowMetricTicksOption(axis, chartLayout.metricTicks),
         // The metric axis hard-codes `axisLine: { show: false }`, because
         // upright it is the vertical axis and convention there is split lines
         // only. Rotated it runs along the bottom, where the legacy renderer

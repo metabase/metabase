@@ -19,6 +19,14 @@ export interface ChartBoundsCoords {
 
 export type TicksRotation = "horizontal" | "vertical";
 
+export interface RowChartMetricTicks {
+  interval: number;
+  min?: number;
+  max?: number;
+  showMinLabel: boolean;
+  showMaxLabel: boolean;
+}
+
 export interface ChartLayout {
   /**
    * Row charts put the dimension on the vertical axis and the metrics on the
@@ -27,6 +35,8 @@ export interface ChartLayout {
    * builder, so nothing else needs a new parameter.
    */
   isRowChart: boolean;
+  /** Row charts only: legacy-matched ticks for the horizontal metric axis. */
+  metricTicks?: RowChartMetricTicks;
   padding: Padding;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;

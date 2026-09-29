@@ -1,3 +1,4 @@
+import * as d3 from "d3";
 import _ from "underscore";
 
 import type { RowValue } from "metabase-types/api";
@@ -28,7 +29,12 @@ import type {
 } from "../model/types";
 import { getPaddedAxisLabel } from "../option/utils";
 
-import type { ChartBoundsCoords, ChartLayout, TicksDimensions } from "./types";
+import type {
+  ChartBoundsCoords,
+  ChartLayout,
+  RowChartMetricTicks,
+  TicksDimensions,
+} from "./types";
 
 export interface ChartLayoutInput {
   xAxisModel: XAxisModel;
@@ -892,8 +898,8 @@ const ROW_CHART_LABEL_MAX_WIDTH_RATIO = 0.5;
  *
  * Deliberately fills the same `TicksDimensions` shape as the vertical path, but
  * with the roles swapped: `yTicksWidthLeft` measures the *category* labels and
- * `xTicksHeight` the *metric* ticks. That lets `getCartesianChartPadding` and
- * `getChartBounds` be reused verbatim instead of growing an orientation branch.
+ * `xTicksHeight` the *metric* ticks. That lets `getChartBounds` be reused
+ * verbatim; padding has its own row builder (`getRowChartPadding`).
  *
  * `xTickWidthCap` is likewise reused: `buildCategoricalDimensionAxis` already
  * turns a finite cap into `axisLabel.width` + `overflow: "truncate"`, which is
@@ -1064,6 +1070,133 @@ const getRowChartMetricTickOverflow = (
   };
 };
 
+const ROW_CHART_MIN_TICK_GAP = 20;
+const ROW_CHART_MAX_TICKS_PER_WIDTH = 12;
+
+// Trims float noise from d3 tick steps such as 0.1 + 0.2.
+const roundTickValue = (value: number) => Number(value.toPrecision(12));
+
+/**
+ * Ticks for a row chart's horizontal metric axis, reproducing the legacy visx
+ * renderer: d3 rounds the domain outward (unless the range is fixed), a tick
+ * budget comes from the axis width, and d3's 1/2/5 steps are fitted under that
+ * budget. ECharts' own `splitNumber` is only a hint (and allows 3×10ⁿ steps),
+ * so the result is handed over as a fixed interval. Linear scales only.
+ */
+const getRowChartMetricTicks = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  gridWidth: number,
+  { measureText, fontFamily, theme }: RenderingContext,
+): RowChartMetricTicks | undefined => {
+  const axisModel = input.leftAxisModel ?? input.rightAxisModel;
+  const isLinear = (settings["graph.y_axis.scale"] ?? "linear") === "linear";
+  if (axisModel == null || !isLinear || gridWidth <= 0) {
+    return undefined;
+  }
+
+  const isFixedRange =
+    axisModel.isNormalized || !settings["graph.y_axis.auto_range"];
+  const goal = settings["graph.goal_value"];
+  const extent = getYAxisExtentToMeasure(
+    axisModel,
+    settings,
+    input.yAxisScaleTransforms,
+  );
+  const domain =
+    !isFixedRange && settings["graph.show_goal"] && typeof goal === "number"
+      ? [Math.min(extent[0], goal), Math.max(extent[1], goal)]
+      : extent;
+  const scale = d3.scaleLinear().domain(domain);
+  if (!isFixedRange) {
+    scale.nice();
+  }
+  const [min, max] = scale.domain();
+
+  const fontStyle = {
+    ...CHART_STYLE.axisTicks,
+    family: fontFamily,
+    size: theme.cartesian.label.fontSize,
+  };
+  const widestTick = Math.max(
+    ...[min, max].map((value) =>
+      measureText(axisModel.formatter(value), fontStyle),
+    ),
+  );
+  const tickSpacing = Math.max(
+    widestTick + ROW_CHART_MIN_TICK_GAP,
+    gridWidth / ROW_CHART_MAX_TICKS_PER_WIDTH,
+  );
+  const tickBudget = Math.floor(gridWidth / tickSpacing);
+
+  const ticks =
+    _.range(tickBudget, 0, -1)
+      .map((count) => scale.ticks(count))
+      .find((candidate) => candidate.length <= tickBudget) ?? [];
+  if (ticks.length < 2) {
+    return undefined;
+  }
+
+  const interval = roundTickValue(ticks[1] - ticks[0]);
+  const isOnTick = (value: number) =>
+    Math.abs(value / interval - Math.round(value / interval)) < 1e-9;
+
+  return {
+    interval,
+    ...(!isFixedRange && { min, max }),
+    // ECharts labels an axis end that is not on a tick; visx did not.
+    showMinLabel: isOnTick(min),
+    showMaxLabel: isOnTick(max),
+  };
+};
+
+/**
+ * Padding for a rotated chart, built side by side in row terms rather than by
+ * correcting `getCartesianChartPadding`, whose every reserve assumes an upright
+ * chart. Left: category ticks and the dimension title. Bottom: metric ticks and
+ * the metric title. Right: data labels. Top: only the goal label, which sits
+ * above the plot.
+ */
+const getRowChartPadding = (
+  input: ChartLayoutInput,
+  settings: ComputedVisualizationSettings,
+  ticksDimensions: TicksDimensions,
+  renderingContext: RenderingContext,
+): Padding => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+  const axisNameWidth = fontSize + CHART_STYLE.axisNameMargin;
+  const dimensionNameWidth =
+    fontSize + CHART_STYLE.rowChartAxisName.dimensionMargin;
+  // Mirrors what the axis builders render as each axis's `name`.
+  const hasDimensionName = Boolean(
+    settings["graph.x_axis.labels_enabled"] &&
+    settings["graph.x_axis.title_text"],
+  );
+  const hasMetricName = Boolean(input.leftAxisModel?.label);
+  const hasGoalLabel = Boolean(
+    settings["graph.show_goal"] && settings["graph.goal_label"],
+  );
+
+  return {
+    top:
+      CHART_STYLE.padding.y +
+      (hasGoalLabel ? fontSize + CHART_STYLE.seriesLabels.offset : 0),
+    left:
+      CHART_STYLE.padding.x +
+      ticksDimensions.yTicksWidthLeft +
+      (hasDimensionName ? dimensionNameWidth : 0),
+    bottom:
+      CHART_STYLE.padding.y +
+      ticksDimensions.xTicksHeight +
+      (hasMetricName ? axisNameWidth : 0),
+    right:
+      CHART_STYLE.padding.x +
+      ticksDimensions.yTicksWidthRight +
+      (input.rightAxisModel?.label ? axisNameWidth : 0) +
+      getRowChartDataLabelsWidth(input, settings, renderingContext),
+  };
+};
+
 const getRowChartLayout = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
@@ -1078,49 +1211,46 @@ const getRowChartLayout = (
     renderingContext,
   );
 
-  const basePadding = getCartesianChartPadding(
+  const basePadding = getRowChartPadding(
     input,
     settings,
     ticksDimensions,
-    settings["graph.x_axis.axis_enabled"],
-    width,
     renderingContext,
   );
-
-  // The shared padding put the data-label reserve at the top, where a vertical
-  // bar's label goes. Move it to the right, where a rotated bar's actually
-  // lands, and size it by label width rather than one line of text.
-  const verticalLabelReserve = settings["graph.show_values"]
-    ? renderingContext.theme.cartesian.label.fontSize +
-      CHART_STYLE.seriesLabels.offset
-    : 0;
-
-  const withLabelReserve = {
-    ...basePadding,
-    top: basePadding.top - verticalLabelReserve,
-    right:
-      basePadding.right +
-      getRowChartDataLabelsWidth(input, settings, renderingContext),
-  };
 
   const tickOverflow = getRowChartMetricTickOverflow(
     input,
     settings,
-    withLabelReserve,
+    basePadding,
     width,
     renderingContext,
   );
 
+  // Matches the legacy visx band scale: ECharts centres each bar in a full
+  // band, so shrink the grid until its bands land where visx's did.
+  const bandPadding = CHART_STYLE.series.rowBandOuterPadding;
+  const gridHeight = height - basePadding.top - basePadding.bottom;
+  const legacyBandStep =
+    gridHeight / (Math.max(getDataset(input).length, 1) + bandPadding);
+  const outerInset = (bandPadding / 2) * legacyBandStep;
+
   const padding = {
-    ...withLabelReserve,
-    left: withLabelReserve.left + tickOverflow.left,
-    right: withLabelReserve.right + tickOverflow.right,
+    top: basePadding.top + outerInset,
+    bottom: basePadding.bottom + outerInset,
+    left: basePadding.left + tickOverflow.left,
+    right: basePadding.right + tickOverflow.right,
   };
 
   const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
   return {
     isRowChart: true,
+    metricTicks: getRowChartMetricTicks(
+      input,
+      settings,
+      width - padding.left - padding.right,
+      renderingContext,
+    ),
     ticksDimensions,
     padding,
     bounds,

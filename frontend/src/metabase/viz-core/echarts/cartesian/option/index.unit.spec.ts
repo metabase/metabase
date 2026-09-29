@@ -18,13 +18,19 @@ import {
 
 import { DEFAULT_VISUALIZATION_THEME } from "../../../shared/utils/theme";
 import type { RenderingContext } from "../../../types";
+import { registerEChartsModules } from "../../index";
+import { CHART_STYLE } from "../constants/style";
 import { getChartLayout } from "../layout";
 import { getCartesianChartModel } from "../model";
 
 import { buildAxes } from "./axis";
 import { buildEChartsSeries } from "./series";
 
-import { ensureRoomForLabels, getSharedEChartsOptions } from "./index";
+import {
+  ensureRoomForLabels,
+  getCartesianChartOption,
+  getSharedEChartsOptions,
+} from "./index";
 
 echarts.use([
   BarChart,
@@ -207,5 +213,103 @@ describe("brushSelected / brushEnd ordering", () => {
 
     expect(order).toEqual(["brushSelected", "brushEnd"]);
     chart.dispose();
+  });
+});
+
+describe("row chart bands", () => {
+  beforeAll(() => registerEChartsModules());
+
+  const CATEGORIES = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+
+  // Bars render as `<path d="M{x} {y}l{w} 0l0 {h}l-{w} 0Z">`; returns each
+  // series-0 bar's top and thickness.
+  const getBarRects = (svg: string) =>
+    [
+      ...svg.matchAll(
+        /<path d="M[\d.]+ ([\d.]+)l[\d.]+ 0l0 ([\d.]+)l-[\d.]+ 0Z"[^>]*ecmeta_series_index="0"/g,
+      ),
+    ].map((match) => ({ top: Number(match[1]), thickness: Number(match[2]) }));
+
+  const renderRowChartBars = () => {
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const rowSettings = createMockVisualizationSettings({
+      "graph.dimensions": ["CATEGORY"],
+      "graph.metrics": ["count"],
+      "graph.x_axis.scale": "ordinal",
+      series: () => ({ display: "bar" }),
+    });
+    const rawSeries: RawSeries = [
+      {
+        card: createMockCard({ display: "row" }),
+        data: createMockDatasetData({
+          rows: CATEGORIES.map((category, index) => [
+            category,
+            100 * (index + 1),
+          ]),
+          cols: [
+            createMockColumn({ name: "CATEGORY", base_type: "type/Text" }),
+            createMockColumn({ name: "count", base_type: "type/Integer" }),
+          ],
+        }),
+      },
+    ];
+    const chartModel = getCartesianChartModel(
+      rawSeries,
+      rowSettings,
+      hiddenSeries,
+      renderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      rowSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      renderingContext,
+      true,
+    );
+
+    const chart = echarts.init(null, null, {
+      renderer: "svg",
+      ssr: true,
+      width: chartWidth,
+      height: chartHeight,
+    });
+    chart.setOption(
+      getCartesianChartOption(
+        chartModel,
+        chartLayout,
+        hasTimelineEvents,
+        null,
+        [],
+        rowSettings,
+        chartWidth,
+        false,
+        renderingContext,
+      ),
+    );
+    const bars = getBarRects(chart.renderToSVGString());
+    chart.dispose();
+
+    expect(bars).toHaveLength(CATEGORIES.length);
+    return { bars, pitch: bars[1].top - bars[0].top };
+  };
+
+  it("gives each bar 80% of its category band, like the legacy renderer", () => {
+    const { bars, pitch } = renderRowChartBars();
+
+    for (const { thickness } of bars) {
+      expect(thickness / pitch).toBeCloseTo(0.8, 2);
+    }
+  });
+
+  it("keeps 20% of a band clear above the first bar, like the legacy renderer", () => {
+    const { bars, pitch } = renderRowChartBars();
+
+    // With no goal label, the plot starts at the base top padding.
+    expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
   });
 });

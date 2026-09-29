@@ -44,6 +44,7 @@ import { getDatasetExtents, getSeriesExtent } from "./dataset";
 import { getAxisTransforms } from "./transforms";
 import type {
   AxisFormatter,
+  BaseCartesianChartModel,
   ChartDataset,
   DataKey,
   DateRange,
@@ -585,6 +586,44 @@ export function getYAxisModel(
         : gridSize?.height && gridSize.height <= 5
           ? 2 // Use fewer ticks for small dashboard charts
           : 5, // Default to 5 ticks for consistent behavior between single and multiple series
+  };
+}
+
+/**
+ * Recomputes the left and right axis extents for a replaced dataset, with the
+ * same stack partitioning as `getYAxesModels`. The row fold needs this: its
+ * "Other" row sums many rows, so it can exceed every extent computed before.
+ */
+export function refitYAxisExtents(
+  { leftAxisModel, rightAxisModel, stackModels }: BaseCartesianChartModel,
+  transformedDataset: ChartDataset,
+  settings: ComputedVisualizationSettings,
+): Pick<BaseCartesianChartModel, "leftAxisModel" | "rightAxisModel"> {
+  const stackType = settings["stackable.stack_type"] ?? null;
+  const [leftStackModels, rightStackModels] = _.partition(
+    stackModels,
+    (stackModel) => stackModel.axis === "left",
+  );
+
+  return {
+    leftAxisModel: leftAxisModel && {
+      ...leftAxisModel,
+      extent: getYAxisExtent(
+        leftAxisModel.seriesKeys,
+        leftStackModels,
+        transformedDataset,
+        stackType,
+      ),
+    },
+    rightAxisModel: rightAxisModel && {
+      ...rightAxisModel,
+      extent: getYAxisExtent(
+        rightAxisModel.seriesKeys,
+        rightStackModels,
+        transformedDataset,
+        stackType === "normalized" ? null : stackType,
+      ),
+    },
   };
 }
 

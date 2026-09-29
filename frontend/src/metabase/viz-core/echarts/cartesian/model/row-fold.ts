@@ -5,6 +5,7 @@ import { checkNumber } from "metabase/utils/types";
 import type { ComputedVisualizationSettings } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 
+import { refitYAxisExtents } from "./axis";
 import type { CartesianChartModel, ChartDataset, Datum } from "./types";
 
 /**
@@ -92,14 +93,16 @@ export const foldRowChartModel = (
   }
 
   const seriesKeys = chartModel.seriesModels.map((series) => series.dataKey);
+  const transformedDataset = foldDataset(
+    chartModel.transformedDataset,
+    budget,
+    seriesKeys,
+  );
 
   return {
     ...chartModel,
     dataset: foldDataset(chartModel.dataset, budget, seriesKeys),
-    transformedDataset: foldDataset(
-      chartModel.transformedDataset,
-      budget,
-      seriesKeys,
-    ),
+    transformedDataset,
+    ...refitYAxisExtents(chartModel, transformedDataset, settings),
   };
 };

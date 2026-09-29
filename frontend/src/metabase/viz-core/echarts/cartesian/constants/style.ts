@@ -33,6 +33,11 @@ export const CHART_STYLE = {
   series: {
     barWidth: 0.8,
     histogramBarWidth: 0.995,
+    // Legacy row charts used a band scale with 0.2 padding; ECharts' default gap
+    // varies with the stack count (31% for one stack).
+    rowBarCategoryGap: "20%",
+    // The same band scale also kept 0.2 of a band clear at each end of the plot.
+    rowBandOuterPadding: 0.2,
   },
   axisTicksMarginX: 5,
   axisTicksMarginY: 10,
@@ -49,6 +54,11 @@ export const CHART_STYLE = {
     weight: 400,
   },
   axisNameMargin: 12,
+  // Row-chart axis title spacing, matched to the legacy visx renderer's output.
+  rowChartAxisName: {
+    dimensionMargin: 6,
+    metricGapExtra: 5,
+  },
   padding: {
     x: 8,
     y: 12,
