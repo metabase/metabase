@@ -37,13 +37,7 @@ export function initializePlugin() {
         dictionaryEndpointStore.setEndpoint(getDictionaryBasePath);
       },
       setEndpointsForStaticEmbedding: (encodedToken: string) => {
-        if (contentTranslationEndpoints.getDictionary) {
-          return;
-        }
-
-        dictionaryEndpointStore.setEndpoint(
-          `${getDictionaryBasePath}/${encodedToken}`,
-        );
+        return;
       },
       translateDisplayNames,
       translateColumnDisplayName,
