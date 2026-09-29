@@ -13,17 +13,32 @@ function checkLogo() {
   });
 }
 
-function checkLoginPageIllustration(testId, imageBase64) {
+function illustrationUrlPattern(settingKey) {
+  return new RegExp(`api/session/illustration/${settingKey}\\?v=[0-9a-f]{16}`);
+}
+
+function checkIllustrationResponse(url, imageBase64) {
+  cy.request({ url, encoding: "base64" }).then((response) => {
+    expect(response.headers["content-type"]).to.eq("image/jpeg");
+    expect(response.body).to.eq(imageBase64);
+  });
+}
+
+function checkBackgroundIllustration(testId, settingKey, imageBase64) {
   cy.findByTestId(testId)
     .should("have.css", "background-image")
-    .and("match", /api\/session\/login-page-illustration\?v=[0-9a-f]{16}/)
+    .and("match", illustrationUrlPattern(settingKey))
     .then((backgroundImage) => {
       const url = String(backgroundImage).match(/url\("(.+)"\)/)[1];
-      cy.request({ url, encoding: "base64" }).then((response) => {
-        expect(response.headers["content-type"]).to.eq("image/jpeg");
-        expect(response.body).to.eq(imageBase64);
-      });
+      checkIllustrationResponse(url, imageBase64);
     });
+}
+
+function checkNoResultsIllustration(settingKey, imageBase64) {
+  cy.findByAltText("No results")
+    .should("have.prop", "src")
+    .and("match", illustrationUrlPattern(settingKey))
+    .then((src) => checkIllustrationResponse(src, imageBase64));
 }
 
 const MB = 1024 * 1024;
@@ -284,8 +299,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
                 cy.signOut();
                 cy.log("the login page loads the image from its URL");
                 cy.visit("/");
-                checkLoginPageIllustration(
+                checkBackgroundIllustration(
                   "login-page-illustration",
+                  "login-page-illustration-custom",
                   logo_data,
                 );
 
@@ -293,8 +309,9 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
                 cy.visit(
                   "/unsubscribe?hash=hash&email=email&pulse-id=pulse-id",
                 );
-                checkLoginPageIllustration(
+                checkBackgroundIllustration(
                   "unsubscribe-page-illustration",
+                  "login-page-illustration-custom",
                   logo_data,
                 );
               },
@@ -345,12 +362,11 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
             (logo_data) => {
-              const backgroundImage = `url("data:image/jpeg;base64,${logo_data}")`;
               cy.visit("/");
-              cy.findByTestId("landing-page-illustration").should(
-                "have.css",
-                "background-image",
-                backgroundImage,
+              checkBackgroundIllustration(
+                "landing-page-illustration",
+                "landing-page-illustration-custom",
+                logo_data,
               );
             },
           );
@@ -425,25 +441,21 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.log("test custom illustration");
 
+          cy.readFile("e2e/support/assets/logo.jpeg", "base64").as("logoData");
+
           H.visitDashboard("@dashboardId");
-          cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-            (logo_data) => {
-              const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
-              cy.wrap(imageDataUrl).as("imageDataUrl");
-              cy.findByAltText("No results").should(
-                "have.attr",
-                "src",
-                imageDataUrl,
-              );
-            },
-          );
+          cy.get("@logoData").then((logo_data) => {
+            checkNoResultsIllustration(
+              "no-data-illustration-custom",
+              logo_data,
+            );
+          });
 
           H.visitQuestion("@questionId");
-          cy.get("@imageDataUrl").then((imageDataUrl) => {
-            cy.findByAltText("No results").should(
-              "have.attr",
-              "src",
-              imageDataUrl,
+          cy.get("@logoData").then((logo_data) => {
+            checkNoResultsIllustration(
+              "no-data-illustration-custom",
+              logo_data,
             );
           });
 
@@ -497,22 +509,18 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
           H.entityPickerModal().within(() => {
-            cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
-              (logo_data) => {
-                const imageDataUrl = `data:image/jpeg;base64,${logo_data}`;
-                cy.wrap(imageDataUrl).as("imageDataUrl");
-              },
+            cy.readFile("e2e/support/assets/logo.jpeg", "base64").as(
+              "logoData",
             );
 
             cy.log("test search not found illustration");
             cy.findByPlaceholderText("Search…").type(
               "This aren't the objects you're looking for",
             );
-            cy.get("@imageDataUrl").then((imageDataUrl) => {
-              cy.findByAltText("No results").should(
-                "have.attr",
-                "src",
-                imageDataUrl,
+            cy.get("@logoData").then((logo_data) => {
+              checkNoResultsIllustration(
+                "no-object-illustration-custom",
+                logo_data,
               );
             });
           });

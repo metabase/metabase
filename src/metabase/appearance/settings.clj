@@ -243,18 +243,35 @@ See [fonts](../configuring-metabase/fonts.md).")
         (catch IllegalArgumentException _
           nil)))))
 
-(def ^:private parsed-login-page-illustration-cache
-  "The last raw value of `login-page-illustration-custom` and its parsed image, as `[raw parsed]`."
-  (atom nil))
+(def custom-illustration-settings
+  "The settings that hold a custom illustration, uploaded as a data URI or given as a URL."
+  #{:login-page-illustration-custom
+    :landing-page-illustration-custom
+    :no-data-illustration-custom
+    :no-object-illustration-custom})
 
-(defn- parsed-login-page-illustration
-  [raw]
-  (let [[cached-raw parsed] @parsed-login-page-illustration-cache]
+(def ^:private parsed-illustrations
+  "The last raw value of each custom illustration setting and its parsed image, as `{setting-key [raw parsed]}`."
+  (atom {}))
+
+(defn- parsed-illustration
+  [setting-key raw]
+  (let [[cached-raw parsed] (get @parsed-illustrations setting-key)]
     (if (identical? raw cached-raw)
       parsed
       (let [parsed (some-> raw parse-image-data-uri)]
-        (reset! parsed-login-page-illustration-cache [raw parsed])
+        (swap! parsed-illustrations assoc setting-key [raw parsed])
         parsed))))
+
+;; keep uploaded images out of the bootstrap and session properties, they are served by
+;; `GET /api/session/illustration/:key`
+(defn- illustration-getter
+  [setting-key]
+  (fn []
+    (let [raw (setting/get-value-of-type :string setting-key)]
+      (if-let [{image-hash :hash} (parsed-illustration setting-key raw)]
+        (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+        raw))))
 
 (defsetting login-page-illustration-custom
   (deferred-tru "The custom illustration for the login page.")
@@ -264,19 +281,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  ;; keep uploaded images out of the bootstrap and session properties, they are served by
-  ;; `GET /api/session/login-page-illustration`
-  :getter     (fn []
-                (let [raw (setting/get-value-of-type :string :login-page-illustration-custom)]
-                  (if-let [{image-hash :hash} (parsed-login-page-illustration raw)]
-                    (str "api/session/login-page-illustration?v=" image-hash)
-                    raw))))
-
-(defn login-page-illustration-image
-  "The uploaded custom login page illustration as `{:content-type :bytes :hash}`, or nil if there is none."
-  []
-  (when (login-page-illustration-custom)
-    (parsed-login-page-illustration (setting/get-value-of-type :string :login-page-illustration-custom))))
+  :getter     (illustration-getter :login-page-illustration-custom))
 
 (defsetting landing-page-illustration
   (deferred-tru "Options for displaying the illustration on the landing page.")
@@ -295,7 +300,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :landing-page-illustration-custom))
 
 (defsetting no-data-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after running a question.")
@@ -314,7 +320,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :no-data-illustration-custom))
 
 (defsetting no-object-illustration
   (deferred-tru "Options for displaying the illustration when there are no results after searching.")
@@ -333,7 +340,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :string
   :audit      :getter
-  :feature    :whitelabel)
+  :feature    :whitelabel
+  :getter     (illustration-getter :no-object-illustration-custom))
+
+(defn illustration-image
+  "The uploaded image of the custom illustration setting `setting-key` as `{:content-type :media-type :bytes :hash}`,
+  or nil if there is none."
+  [setting-key]
+  (when (and (contains? custom-illustration-settings setting-key)
+             (setting/get setting-key))
+    (parsed-illustration setting-key (setting/get-value-of-type :string setting-key))))
 
 (def ^:private help-link-options
   #{:metabase :hidden :custom})

@@ -475,24 +475,27 @@
                          (str/split if-none-match #"\s*,\s*"))
                    etag))))
 
-(api.macros/defendpoint :get "/login-page-illustration" :- :any
-  "Fetch the uploaded custom login page illustration."
-  [_route-params
+(api.macros/defendpoint :get "/illustration/:key" :- :any
+  "Fetch the uploaded image of a custom illustration setting, e.g. `login-page-illustration-custom`."
+  [{setting-name :key} :- [:map {:closed true}
+                           [:key ms/NonBlankString]]
    {:keys [v]} :- [:map {:closed true}
                    [:v {:optional true} :string]]
    _body
    request]
-  (let [{:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
-        (api/check-404 (appearance/login-page-illustration-image))
-        headers (cond-> {"Content-Type"                 content-type
-                         "ETag"                         (format "\"%s\"" image-hash)
-                         ;; only our own pages show it, don't let other sites hotlink it
-                         "Cross-Origin-Resource-Policy" "same-origin"
+  (let [setting-key (keyword setting-name)
+        _           (api/check-404 (contains? appearance/custom-illustration-settings setting-key))
+        _           (api/check (setting/can-read-setting? setting-key (setting/current-user-readable-visibilities))
+                               [401 (tru "Unauthenticated")])
+        {:keys [content-type media-type], image-bytes :bytes, image-hash :hash}
+        (api/check-404 (appearance/illustration-image setting-key))
+        headers (cond-> {"Content-Type"  content-type
+                         "ETag"          (format "\"%s\"" image-hash)
                          ;; `v` is the hash in the URL the setting getter returns, so that URL can be cached forever.
                          ;; `private` because middleware adds cookies to the response.
-                         "Cache-Control"                (if (= v image-hash)
-                                                          "private, max-age=31536000, immutable"
-                                                          "private, no-cache")}
+                         "Cache-Control" (if (= v image-hash)
+                                           "private, max-age=31536000, immutable"
+                                           "private, no-cache")}
                   (= media-type "image/svg+xml")
                   (assoc "Content-Security-Policy" "default-src 'none'; style-src 'unsafe-inline'; sandbox"))]
     (if (etag-matches? (get-in request [:headers "if-none-match"]) image-hash)

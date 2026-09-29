@@ -17,16 +17,17 @@
   custom-formatting
   custom-homepage
   custom-homepage-dashboard
+  custom-illustration-settings
   example-dashboard-id
   help-link
   help-link-custom-destination
+  illustration-image
   landing-page
   landing-page-illustration
   landing-page-illustration-custom
   loading-message
   login-page-illustration
   login-page-illustration-custom
-  login-page-illustration-image
   no-data-illustration
   no-data-illustration-custom
   no-object-illustration

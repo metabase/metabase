@@ -21,6 +21,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
@@ -630,56 +631,101 @@
 (defn- image-data-uri [content-type content]
   (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
 
-(defn- fetch-login-page-illustration [expected-status & args]
-  (apply client/client-full-response :get expected-status "session/login-page-illustration" args))
+(defn- do-with-raw-value! [setting-key value thunk]
+  (tu/do-with-temporary-setting-value! setting-key value thunk :raw-setting? true))
 
-(deftest login-page-illustration-test
+(defn- illustration-request
+  "Call the API as rasta for the landing page illustration, which needs a logged in user, else anonymously."
+  [setting-key & args]
+  (if (= setting-key :landing-page-illustration-custom)
+    (apply mt/user-http-request-full-response :rasta args)
+    (apply mt/client-full-response args)))
+
+(defn- fetch-illustration [setting-key expected-status & args]
+  (apply illustration-request setting-key :get expected-status (str "session/illustration/" (name setting-key)) args))
+
+(defn- do-with-each-uploaded-illustration!
+  "Upload an image to each custom illustration setting and call `(f setting-key image-hash)`."
+  [f]
   (mt/with-premium-features #{:whitelabel}
-    (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
-      (let [image-hash (second (re-find #"v=(.+)$" (appearance/login-page-illustration-custom)))
-            etag       (format "\"%s\"" image-hash)
-            cached     "private, max-age=31536000, immutable"]
-        (testing "anonymous users get the image"
-          (let [{:keys [body headers]} (fetch-login-page-illustration 200)]
-            (is (= "png bytes" body))
-            (is (= "image/png" (get headers "Content-Type")))
-            (is (= etag (get headers "ETag")))
-            (is (= "private, no-cache" (get headers "Cache-Control")))
-            (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))))
-        (testing "the URL with the current hash is cached"
-          (is (= cached (get-in (fetch-login-page-illustration 200 :v image-hash) [:headers "Cache-Control"]))))
-        (testing "a URL with another hash is not cached"
-          (is (= "private, no-cache"
-                 (get-in (fetch-login-page-illustration 200 :v "0000000000000000") [:headers "Cache-Control"]))))
-        (testing "304 when the ETag matches"
-          (doseq [if-none-match [etag (str "W/" etag) (str "\"other\", " etag) "*"]]
-            (testing if-none-match
-              (let [{:keys [headers]} (fetch-login-page-illustration
-                                       304 {:request-options {:headers {"if-none-match" if-none-match}}} :v image-hash)]
-                (is (= etag (get headers "ETag")))
-                (is (= cached (get headers "Cache-Control")))
-                (is (= "image/png" (get headers "Content-Type")))))))
-        (testing "200 when the ETag does not match"
-          (fetch-login-page-illustration 200 {:request-options {:headers {"if-none-match" "\"other\""}}}))
-        (testing "session properties contain the URL, not the image"
-          (is (= (str "api/session/login-page-illustration?v=" image-hash)
-                 (:login-page-illustration-custom (mt/client :get 200 "session/properties")))))))
-    (testing "SVG images get a sandbox CSP"
+    (doseq [setting-key appearance/custom-illustration-settings]
+      (testing setting-key
+        (do-with-raw-value! setting-key (image-data-uri "image/png" "png bytes")
+                            #(f setting-key (second (re-find #"v=(.+)$" (setting/get setting-key)))))))))
+
+(deftest illustration-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key image-hash]
+     (let [{:keys [body headers]} (fetch-illustration setting-key 200)]
+       (is (= "png bytes" body))
+       (is (= "image/png" (get headers "Content-Type")))
+       (is (= (format "\"%s\"" image-hash) (get headers "ETag")))
+       (testing "no Cross-Origin-Resource-Policy, the React SDK loads it from the host app origin"
+         (is (nil? (get headers "Cross-Origin-Resource-Policy"))))))))
+
+(deftest illustration-session-properties-test
+  (testing "session properties contain the URL, not the image"
+    (do-with-each-uploaded-illustration!
+     (fn [setting-key image-hash]
+       (is (= (str "api/session/illustration/" (name setting-key) "?v=" image-hash)
+              (get-in (illustration-request setting-key :get 200 "session/properties") [:body setting-key])))))))
+
+(deftest illustration-cache-test
+  (do-with-each-uploaded-illustration!
+   (fn [setting-key image-hash]
+     (let [etag   (format "\"%s\"" image-hash)
+           cached "private, max-age=31536000, immutable"]
+       (testing "the URL without a hash is not cached"
+         (is (= "private, no-cache" (get-in (fetch-illustration setting-key 200) [:headers "Cache-Control"]))))
+       (testing "the URL with the current hash is cached"
+         (is (= cached (get-in (fetch-illustration setting-key 200 :v image-hash) [:headers "Cache-Control"]))))
+       (testing "a URL with another hash is not cached"
+         (is (= "private, no-cache"
+                (get-in (fetch-illustration setting-key 200 :v "0000000000000000") [:headers "Cache-Control"]))))
+       (testing "304 when the ETag matches"
+         (doseq [if-none-match [etag (str "W/" etag) (str "\"other\", " etag) "*"]]
+           (testing if-none-match
+             (let [{:keys [headers]} (fetch-illustration setting-key 304
+                                                         {:request-options {:headers {"if-none-match" if-none-match}}}
+                                                         :v image-hash)]
+               (is (= etag (get headers "ETag")))
+               (is (= cached (get headers "Cache-Control")))
+               (is (= "image/png" (get headers "Content-Type")))))))
+       (testing "200 when the ETag does not match"
+         (fetch-illustration setting-key 200 {:request-options {:headers {"if-none-match" "\"other\""}}}))))))
+
+(deftest illustration-authentication-test
+  (testing "the landing page illustration needs a logged in user"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-raw-setting-values [landing-page-illustration-custom (image-data-uri "image/png" "png bytes")]
+        (mt/client-full-response :get 401 "session/illustration/landing-page-illustration-custom")))))
+
+(deftest illustration-svg-test
+  (testing "SVG images get a sandbox CSP"
+    (mt/with-premium-features #{:whitelabel}
       (doseq [content-type ["image/svg+xml" "image/svg+xml;charset=iso-8859-1"]]
         (testing (str "Content-Type = " content-type)
           (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri content-type "<svg/>")]
-            (let [{:keys [headers]} (fetch-login-page-illustration 200)]
+            (let [{:keys [headers]} (fetch-illustration :login-page-illustration-custom 200)]
               (is (= content-type (get headers "Content-Type")))
               (is (= "default-src 'none'; style-src 'unsafe-inline'; sandbox"
-                     (get headers "Content-Security-Policy"))))))))
+                     (get headers "Content-Security-Policy"))))))))))
+
+(deftest illustration-not-found-test
+  (mt/with-premium-features #{:whitelabel}
     (testing "404 when there is no uploaded image"
-      (doseq [value [nil "https://example.com/login.png"]]
-        (mt/with-temporary-raw-setting-values [login-page-illustration-custom value]
-          (fetch-login-page-illustration 404)))))
+      (doseq [setting-key appearance/custom-illustration-settings
+              value       [nil "https://example.com/login.png"]]
+        (testing [setting-key value]
+          (do-with-raw-value! setting-key value #(fetch-illustration setting-key 404)))))
+    (testing "404 for other settings"
+      (mt/with-temporary-raw-setting-values [application-logo-url (image-data-uri "image/png" "png bytes")]
+        (fetch-illustration :application-logo-url 404)
+        (fetch-illustration :not-a-setting 404))))
   (testing "404 without the whitelabel feature"
     (mt/with-premium-features #{}
       (mt/with-temporary-raw-setting-values [login-page-illustration-custom (image-data-uri "image/png" "png bytes")]
-        (fetch-login-page-illustration 404)))))
+        (fetch-illustration :login-page-illustration-custom 404)))))
 
 (deftest properties-i18n-test
   (testing "GET /session/properties"
