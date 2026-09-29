@@ -65,14 +65,14 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-16T00:00:03
       author: alxnddr
-      comment: Enable MCP with no tool overrides for the magic groups
+      comment: Enable MCP with no tool overrides for the groups simple mode shows
       changes:
         - sql:
             sql: >-
               INSERT INTO mcp_group_permission (group_id, mcp_enabled, tool_access)
               SELECT pg.id, TRUE, '{}'
               FROM permissions_group pg
-              WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+              WHERE pg.magic_group_type IN ('admin', 'all-internal-users', 'all-external-users')
                 AND NOT EXISTS (
                   SELECT 1 FROM mcp_group_permission mgp
                   WHERE mgp.group_id = pg.id
@@ -83,5 +83,5 @@ databaseChangeLog:
               DELETE FROM mcp_group_permission
               WHERE group_id IN (
                 SELECT id FROM permissions_group
-                WHERE magic_group_type IN ('admin', 'all-internal-users', 'data-analyst', 'all-external-users')
+                WHERE magic_group_type IN ('admin', 'all-internal-users', 'all-external-users')
               )

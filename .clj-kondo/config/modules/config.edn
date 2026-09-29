@@ -3990,7 +3990,6 @@
               metabot
               permissions
               premium-features
-              settings
               task
               util}
    :model-imports #{:model/McpGroupPermission

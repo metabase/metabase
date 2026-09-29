@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.mcp.permissions]
-   [metabase-enterprise.mcp.settings :as mcp.settings]
+   [metabase-enterprise.mcp.test-util :as mcp.tu]
    [metabase.mcp.v2.api]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -90,30 +90,31 @@
            (mt/user-http-request :rasta :put 403 endpoint
                                  {:permissions [{:group_id 1 :mcp_enabled true :tool_access {}}]})))))
 
-(deftest ^:parallel put-permissions-upserts-test
+(deftest put-permissions-upserts-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temp [:model/PermissionsGroup    {group-a :id} {:name "Group A"}
-                   :model/PermissionsGroup    {group-b :id} {:name "Group B"}
-                   :model/McpGroupPermission _             {:group_id    group-b
-                                                            :mcp_enabled false
-                                                            :tool_access {"search" "no"}}]
-      (let [response (mt/user-http-request :crowberto :put 200 endpoint
-                                           {:permissions [{:group_id    group-a
-                                                           :mcp_enabled true
-                                                           :tool_access {"execute_sql"     "no"
-                                                                         "question_write"  "yes"}}
-                                                          {:group_id    group-b
-                                                           :mcp_enabled true
-                                                           :tool_access {}}]})]
-        (testing "a group without a row gets one"
-          (is (= {:group_id group-a :mcp_enabled true :tool_access {:execute_sql "no" :question_write "yes"}}
-                 (group-permission response group-a))))
-        (testing "a group with a row has it replaced wholesale, not duplicated or merged"
-          (is (= {:group_id group-b :mcp_enabled true :tool_access {}}
-                 (group-permission response group-b)))
-          (is (= 1 (t2/count :model/McpGroupPermission :group_id group-b))))
-        (testing "the response is the GET body"
-          (is (= (mt/user-http-request :crowberto :get 200 endpoint) response)))))))
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup    {group-a :id} {:name "Group A"}
+                     :model/PermissionsGroup    {group-b :id} {:name "Group B"}
+                     :model/McpGroupPermission _             {:group_id    group-b
+                                                              :mcp_enabled false
+                                                              :tool_access {"search" "no"}}]
+        (let [response (mt/user-http-request :crowberto :put 200 endpoint
+                                             {:permissions [{:group_id    group-a
+                                                             :mcp_enabled true
+                                                             :tool_access {"execute_sql"     "no"
+                                                                           "question_write"  "yes"}}
+                                                            {:group_id    group-b
+                                                             :mcp_enabled true
+                                                             :tool_access {}}]})]
+          (testing "a group without a row gets one"
+            (is (= {:group_id group-a :mcp_enabled true :tool_access {:execute_sql "no" :question_write "yes"}}
+                   (group-permission response group-a))))
+          (testing "a group with a row has it replaced wholesale, not duplicated or merged"
+            (is (= {:group_id group-b :mcp_enabled true :tool_access {}}
+                   (group-permission response group-b)))
+            (is (= 1 (t2/count :model/McpGroupPermission :group_id group-b))))
+          (testing "the response is the GET body"
+            (is (= (mt/user-http-request :crowberto :get 200 endpoint) response))))))))
 
 (deftest ^:parallel put-permissions-unknown-tool-test
   (mt/with-premium-features #{:ai-controls}
@@ -126,38 +127,40 @@
       (testing "nothing was written"
         (is (not (t2/exists? :model/McpGroupPermission :group_id group-id)))))))
 
-(deftest ^:parallel put-permissions-accepts-stored-stale-name-test
+(deftest put-permissions-accepts-stored-stale-name-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temp [:model/PermissionsGroup    {stale-id :id} {:name "Stale Group"}
-                   :model/PermissionsGroup    {other-id :id} {:name "Other Group"}
-                   :model/McpGroupPermission _              {:group_id    stale-id
-                                                             :mcp_enabled true
-                                                             :tool_access {"dodo" "no"}}]
-      (testing "a name the group already stores is accepted, so an untouched stale entry never blocks a save"
-        (is (= {:group_id stale-id :mcp_enabled false :tool_access {:dodo "no"}}
-               (group-permission (mt/user-http-request :crowberto :put 200 endpoint
-                                                       {:permissions [{:group_id    stale-id
-                                                                       :mcp_enabled false
-                                                                       :tool_access {"dodo" "no"}}]})
-                                 stale-id))))
-      (testing "the same name is refused for a group that does not store it"
-        (is (= "Unknown MCP tool: dodo"
-               (mt/user-http-request :crowberto :put 400 endpoint
-                                     {:permissions [{:group_id    other-id
-                                                     :mcp_enabled true
-                                                     :tool_access {"dodo" "no"}}]})))))))
+    (mcp.tu/with-group-level-mode
+      (mt/with-temp [:model/PermissionsGroup    {stale-id :id} {:name "Stale Group"}
+                     :model/PermissionsGroup    {other-id :id} {:name "Other Group"}
+                     :model/McpGroupPermission _              {:group_id    stale-id
+                                                               :mcp_enabled true
+                                                               :tool_access {"dodo" "no"}}]
+        (testing "a name the group already stores is accepted, so an untouched stale entry never blocks a save"
+          (is (= {:group_id stale-id :mcp_enabled false :tool_access {:dodo "no"}}
+                 (group-permission (mt/user-http-request :crowberto :put 200 endpoint
+                                                         {:permissions [{:group_id    stale-id
+                                                                         :mcp_enabled false
+                                                                         :tool_access {"dodo" "no"}}]})
+                                   stale-id))))
+        (testing "the same name is refused for a group that does not store it"
+          (is (= "Unknown MCP tool: dodo"
+                 (mt/user-http-request :crowberto :put 400 endpoint
+                                       {:permissions [{:group_id    other-id
+                                                       :mcp_enabled true
+                                                       :tool_access {"dodo" "no"}}]}))))))))
 
 (deftest put-permissions-accepts-former-name-test
   (mt/with-premium-features #{:ai-controls}
-    (do-with-renamed-tool!
-     (fn []
-       (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
-         (is (= {:group_id group-id :mcp_enabled true :tool_access {:test_echo "no"}}
-                (group-permission (mt/user-http-request :crowberto :put 200 endpoint
-                                                        {:permissions [{:group_id    group-id
-                                                                        :mcp_enabled true
-                                                                        :tool_access {"test_ping" "no"}}]})
-                                  group-id))))))))
+    (mcp.tu/with-group-level-mode
+      (do-with-renamed-tool!
+       (fn []
+         (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Group"}]
+           (is (= {:group_id group-id :mcp_enabled true :tool_access {:test_echo "no"}}
+                  (group-permission (mt/user-http-request :crowberto :put 200 endpoint
+                                                          {:permissions [{:group_id    group-id
+                                                                          :mcp_enabled true
+                                                                          :tool_access {"test_ping" "no"}}]})
+                                    group-id)))))))))
 
 (deftest ^:parallel put-permissions-rejects-other-access-values-test
   (mt/with-premium-features #{:ai-controls}
@@ -171,11 +174,30 @@
 (deftest ^:parallel put-permissions-unknown-group-test
   (mt/with-premium-features #{:ai-controls}
     (let [group-id Integer/MAX_VALUE]
-      (is (= (str "Unknown group: " group-id)
+      (is (= (str "Unknown group, or one the current permission mode hides: " group-id)
              (mt/user-http-request :crowberto :put 400 endpoint
                                    {:permissions [{:group_id    group-id
                                                    :mcp_enabled true
                                                    :tool_access {}}]}))))))
+
+(deftest put-permissions-rejects-hidden-group-test
+  (mt/with-premium-features #{:ai-controls}
+    (mcp.tu/with-mcp-group-permissions-snapshot
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Hidden Group"}]
+        (let [all-users-id (u/the-id (perms/all-users-group))
+              refusal      #(str "Unknown group, or one the current permission mode hides: " %)
+              put!         (fn [group-id]
+                             (mt/user-http-request :crowberto :put 400 endpoint
+                                                   {:permissions [{:group_id    group-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {}}]}))]
+          (testing "simple mode refuses a group it hides, so the row cannot go live unseen on the next switch"
+            (is (= (refusal group-id) (put! group-id)))
+            (is (not (t2/exists? :model/McpGroupPermission :group_id group-id))))
+          (testing "group-level mode refuses All Users, whose row would switch the mode back"
+            (mt/user-http-request :crowberto :post 200 "ee/ai-controls/mcp-permissions/advanced")
+            (is (= (refusal all-users-id) (put! all-users-id)))
+            (is (not (t2/exists? :model/McpGroupPermission :group_id all-users-id)))))))))
 
 (deftest ^:parallel permissions-require-ai-controls-feature-test
   (mt/with-premium-features #{}
@@ -183,101 +205,67 @@
     (mt/assert-has-premium-feature-error "AI Controls" (mt/user-http-request :crowberto :put 402 endpoint
                                                                              {:permissions []}))))
 
-(defn- do-with-mcp-group-permissions-snapshot!
-  "Run `thunk`, then restore every `mcp_group_permission` row to its prior state."
-  [thunk]
-  (let [snapshot (t2/select :model/McpGroupPermission)]
-    (try
-      (thunk)
-      (finally
-        (t2/delete! :model/McpGroupPermission)
-        (when (seq snapshot)
-          (t2/insert! :model/McpGroupPermission
-                      (map #(select-keys % [:group_id :mcp_enabled :tool_access]) snapshot)))))))
-
-(defmacro ^:private with-mcp-group-permissions-snapshot
-  [& body]
-  `(do-with-mcp-group-permissions-snapshot! (fn [] ~@body)))
-
-(deftest enable-advanced-mode-deletes-hidden-mcp-rows-test
+(deftest enable-advanced-mode-test
   (mt/with-premium-features #{:ai-controls}
-    (testing "POST /api/ee/ai-controls/mcp-permissions/advanced drops the rows of the simple-mode groups"
-      (with-mcp-group-permissions-snapshot
-        (t2/delete! :model/McpGroupPermission)
-        (let [all-users-id    (u/the-id (perms/all-users-group))
-              all-external-id (u/the-id (perms/all-external-users-group))]
-          (mt/with-temporary-setting-values [mcp-advanced-permissions false]
-            (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Other Group"}
-                           :model/McpGroupPermission _              {:group_id    all-users-id
-                                                                     :mcp_enabled true
-                                                                     :tool_access {}}
-                           :model/McpGroupPermission _              {:group_id    all-external-id
-                                                                     :mcp_enabled true
-                                                                     :tool_access {}}
-                           :model/McpGroupPermission _              {:group_id    group-id
-                                                                     :mcp_enabled true
-                                                                     :tool_access {"execute_sql" "no"}}]
-              (mt/user-http-request :crowberto :post 200 "ee/ai-controls/mcp-permissions/advanced")
-              (is (= #{group-id} (t2/select-fn-set :group_id :model/McpGroupPermission))
-                  "only the groups group-level mode shows keep their rows")
-              (let [response (mt/user-http-request :crowberto :get 200 endpoint)]
-                (is (true? (:advanced response)))
-                (is (= {:group_id all-users-id :mcp_enabled false :tool_access {}}
-                       (group-permission response all-users-id)))))))))))
-
-(deftest disable-advanced-mode-restores-the-seeded-rows-test
-  (mt/with-premium-features #{:ai-controls}
-    (testing "DELETE /api/ee/ai-controls/mcp-permissions/advanced drops the rows of every non-simple-mode group and
-              puts All Users, Data Analysts and All tenant users back in the seeded state"
-      (with-mcp-group-permissions-snapshot
+    (testing "POST /api/ee/ai-controls/mcp-permissions/advanced drops the rows of the simple-mode groups and enables
+              Data Analysts"
+      (mcp.tu/with-mcp-group-permissions-snapshot
         (t2/delete! :model/McpGroupPermission)
         (let [all-users-id    (u/the-id (perms/all-users-group))
               all-external-id (u/the-id (perms/all-external-users-group))
               data-analyst-id (u/the-id (perms/data-analyst-group))]
-          (mt/with-temporary-setting-values [mcp-advanced-permissions true]
-            (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Specific Group"}
-                           :model/McpGroupPermission _              {:group_id    all-users-id
-                                                                     :mcp_enabled false
-                                                                     :tool_access {"execute_sql" "no"}}
-                           :model/McpGroupPermission _              {:group_id    data-analyst-id
-                                                                     :mcp_enabled true
-                                                                     :tool_access {"search" "no"}}
-                           :model/McpGroupPermission _              {:group_id    group-id
-                                                                     :mcp_enabled true
-                                                                     :tool_access {}}]
-              (let [response (mt/user-http-request :crowberto :delete 200 "ee/ai-controls/mcp-permissions/advanced")]
-                (is (= #{all-users-id all-external-id data-analyst-id}
-                       (t2/select-fn-set :group_id :model/McpGroupPermission))
-                    "only the seeded groups have rows")
-                (is (= {:group_id all-users-id :mcp_enabled true :tool_access {}}
-                       (group-permission response all-users-id))
-                    "All Users is back to MCP on with every tool at its default")
-                (is (= {:group_id all-external-id :mcp_enabled true :tool_access {}}
-                       (group-permission response all-external-id))
-                    "All tenant users, which had no row, is seeded too")
-                (is (= {:group_id data-analyst-id :mcp_enabled true :tool_access {}}
-                       (t2/select-one [:model/McpGroupPermission :group_id :mcp_enabled :tool_access]
-                                      :group_id data-analyst-id))
-                    "Data Analysts, hidden in simple mode, is reseeded so the next switch shows it as the migration did")))))))))
+          (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Other Group"}
+                         :model/McpGroupPermission _              {:group_id    all-users-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {}}
+                         :model/McpGroupPermission _              {:group_id    all-external-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {}}
+                         :model/McpGroupPermission _              {:group_id    group-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {"execute_sql" "no"}}]
+            (let [response (mt/user-http-request :crowberto :post 200 "ee/ai-controls/mcp-permissions/advanced")]
+              (is (true? (:advanced response)))
+              (is (= #{group-id data-analyst-id} (t2/select-fn-set :group_id :model/McpGroupPermission))
+                  "only the groups group-level mode shows have rows")
+              (is (= {:group_id all-users-id :mcp_enabled false :tool_access {}}
+                     (group-permission response all-users-id)))
+              (is (= {:group_id data-analyst-id :mcp_enabled true :tool_access {}}
+                     (group-permission response data-analyst-id))
+                  "Data Analysts is enabled with every tool at its default"))
+            (testing "switching again keeps the admin's Data Analysts edits"
+              (mt/user-http-request :crowberto :put 200 endpoint
+                                    {:permissions [{:group_id    data-analyst-id
+                                                    :mcp_enabled true
+                                                    :tool_access {"search" "no"}}]})
+              (is (= {:group_id data-analyst-id :mcp_enabled true :tool_access {:search "no"}}
+                     (group-permission (mt/user-http-request :crowberto :post 200
+                                                             "ee/ai-controls/mcp-permissions/advanced")
+                                       data-analyst-id))))))))))
 
-(deftest mode-switch-rejected-under-env-var-test
+(deftest disable-advanced-mode-test
   (mt/with-premium-features #{:ai-controls}
-    (testing "the /advanced endpoints refuse to switch modes while an env var forces the setting"
-      (with-mcp-group-permissions-snapshot
-        (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Specific Group"}
-                       :model/McpGroupPermission _              {:group_id    group-id
-                                                                 :mcp_enabled true
-                                                                 :tool_access {}}]
-          (mt/with-temp-env-var-value! [mb-mcp-advanced-permissions "true"]
-            (let [msg "The permission mode is set by the MB_MCP_ADVANCED_PERMISSIONS environment variable."]
-              (is (= msg (mt/user-http-request :crowberto :delete 400 "ee/ai-controls/mcp-permissions/advanced")))
-              (is (= msg (mt/user-http-request :crowberto :post 400 "ee/ai-controls/mcp-permissions/advanced"))))
-            (is (t2/exists? :model/McpGroupPermission :group_id group-id)
-                "no rows are deleted by the refused switch")))))))
-
-(deftest mode-setting-is-read-only-outside-the-mode-switch-test
-  (mt/with-premium-features #{:ai-controls}
-    (testing "PUT /api/setting cannot flip the mode without the row changes the /advanced endpoints make"
-      (mt/with-temporary-setting-values [mcp-advanced-permissions false]
-        (mt/user-http-request :crowberto :put "setting/mcp-advanced-permissions" {:value true})
-        (is (false? (mcp.settings/mcp-advanced-permissions)))))))
+    (testing "DELETE /api/ee/ai-controls/mcp-permissions/advanced drops the rows of every non-simple-mode group and
+              enables All Users and All tenant users"
+      (mcp.tu/with-mcp-group-permissions-snapshot
+        (t2/delete! :model/McpGroupPermission)
+        (let [all-users-id    (u/the-id (perms/all-users-group))
+              all-external-id (u/the-id (perms/all-external-users-group))
+              data-analyst-id (u/the-id (perms/data-analyst-group))]
+          (mt/with-temp [:model/PermissionsGroup    {group-id :id} {:name "Specific Group"}
+                         :model/McpGroupPermission _              {:group_id    data-analyst-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {"search" "no"}}
+                         :model/McpGroupPermission _              {:group_id    group-id
+                                                                   :mcp_enabled true
+                                                                   :tool_access {}}]
+            (let [response (mt/user-http-request :crowberto :delete 200 "ee/ai-controls/mcp-permissions/advanced")]
+              (is (false? (:advanced response)))
+              (is (= #{all-users-id all-external-id} (t2/select-fn-set :group_id :model/McpGroupPermission))
+                  "only the groups simple mode enables have rows")
+              (is (= {:group_id all-users-id :mcp_enabled true :tool_access {}}
+                     (group-permission response all-users-id))
+                  "All Users is back to MCP on with every tool at its default")
+              (is (= {:group_id all-external-id :mcp_enabled true :tool_access {}}
+                     (group-permission response all-external-id))
+                  "All tenant users is seeded too"))))))))

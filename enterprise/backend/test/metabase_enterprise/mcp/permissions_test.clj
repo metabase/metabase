@@ -2,7 +2,9 @@
   "How a user's effective MCP policy is collected from their groups' `mcp_group_permission` rows."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.mcp.db :as mcp.db]
    [metabase-enterprise.mcp.permissions]
+   [metabase-enterprise.mcp.test-util :as mcp.tu]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util]
@@ -33,7 +35,7 @@
 
 (deftest stored-entries-override-defaults-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [mcp-advanced-permissions true]
+    (mcp.tu/with-group-level-mode
       (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
                      :model/PermissionsGroupMembership _              {:group_id group-id
                                                                        :user_id  (mt/user->id :rasta)}
@@ -55,7 +57,7 @@
 
 (deftest any-enabled-group-allowing-wins-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [mcp-advanced-permissions true]
+    (mcp.tu/with-group-level-mode
       (mt/with-temp [:model/PermissionsGroup           {denying-id :id}   {}
                      :model/PermissionsGroup           {allowing-id :id}  {}
                      :model/PermissionsGroup           {untouched-id :id} {}
@@ -86,7 +88,7 @@
 
 (deftest disabled-group-contributes-nothing-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [mcp-advanced-permissions true]
+    (mcp.tu/with-group-level-mode
       (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
                      :model/PermissionsGroupMembership _              {:group_id group-id
                                                                        :user_id  (mt/user->id :rasta)}
@@ -101,17 +103,14 @@
                                                                              :user_id  (mt/user->id :rasta)}]
             (is (= no-access-policy (mcp.perms/effective-policy (mt/user->id :rasta))))))))))
 
-(deftest hidden-group-rows-are-ignored-test
+(deftest rows-alone-decide-the-policy-test
   (mt/with-premium-features #{:ai-controls}
-    (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
-                   :model/PermissionsGroupMembership _              {:group_id group-id
-                                                                     :user_id  (mt/user->id :rasta)}
-                   :model/McpGroupPermission         _              {:group_id    group-id
-                                                                     :mcp_enabled false
-                                                                     :tool_access {}}]
-      (testing "simple mode reads only the magic groups, so All Users' seeded row enables the user"
-        (mt/with-temporary-setting-values [mcp-advanced-permissions false]
-          (is (= [{}] (mcp.perms/effective-policy (mt/user->id :rasta))))))
-      (testing "group-level mode ignores All Users, so the disabled group is all the user has"
-        (mt/with-temporary-setting-values [mcp-advanced-permissions true]
+    (mcp.tu/with-mcp-group-permissions-snapshot
+      (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                     :model/PermissionsGroupMembership _              {:group_id group-id
+                                                                       :user_id  (mt/user->id :rasta)}]
+        (testing "simple mode: All Users' seeded row enables every user"
+          (is (= [{}] (mcp.perms/effective-policy (mt/user->id :rasta)))))
+        (testing "group-level mode: All Users has no row, so a user in no enabled group has no access"
+          (mcp.db/delete-hidden-group-permissions! true)
           (is (= no-access-policy (mcp.perms/effective-policy (mt/user->id :rasta)))))))))

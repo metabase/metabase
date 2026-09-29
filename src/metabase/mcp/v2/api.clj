@@ -181,15 +181,13 @@
 (def ^:private server-instructions
   "The `initialize` result's `instructions` — the only channel that reaches the model before any tool call. It points
   at the `learn` skills and the `glossary` once, settles the routing choices a model makes before reading any tool
-  description closely
-  (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts when listed), and
-  explains the scope-denial failures that clients rewrite before the model sees them."
-  (str "This server ships task-shaped docs as skills. learn() lists the topics; learn(topic) returns one.\n"
+  description closely (structured queries are the default, raw SQL the escape hatch, `visualize_query` for charts),
+  and explains the scope-denial failures that clients rewrite before the model sees them."
+  (str "learn() lists task-shaped docs (skills) by topic; learn(topic) returns one.\n"
        "Before your first complex write — native template_tags, dashboard parameter wiring, a multi-stage or joined "
        "query, visualization settings — read the matching skill unless it is already in context.\n"
-       "This instance's glossary defines business terms that matter for answering questions about its data. Fetch "
-       "them with glossary() before you answer — an instance's own definition of a term overrides your reading of "
-       "it.\n"
+       "This instance's glossary defines business terms used in its data. Fetch them with glossary() before you "
+       "answer — an instance's own definition of a term overrides your reading of it.\n"
        "Answer questions from data with execute_query (structured MBQL) by default; execute_sql is the escape hatch "
        "for what MBQL cannot express or an explicit request for SQL.\n"
        "When visualize_query is available, use it for any request to show, chart, plot, or visualize data (pass a "
@@ -201,8 +199,8 @@
        ;; for. The unfiltered tool list needs saying because a scope-filtered list is the conventional design and the
        ;; protocol has no field to signal ours: asked what this connection could do, a model read the roster as a
        ;; grant and answered with scopes it did not hold.
-       "Every tool is listed whatever this connection holds, so the list says nothing about its permissions; only a "
-       "failed call reveals a missing one.\n"
+       "Tools are listed whatever this connection holds, so the list says nothing about its permissions; only a "
+       "failed call reveals a missing one. An unlisted tool is off for this user: ignore advice here about it.\n"
        "An auth error (\"re-authorization\", \"expired token\", \"insufficient scope\", \"Unauthorized\", \"tool "
        "execution failed\") usually means a missing permission, not an expired login. When a tool call or resource "
        "read needs a permission this connection lacks, tell the user which tool or resource failed, which permission "
@@ -215,7 +213,7 @@
 (def ^:private default-ask-scopes
   "The `scope` of the 401 challenge, which an uninstructed client requests on first connect. Every scope here must be
   inside the OAuth server's default grant ceiling."
-  ;; Every tool is listed whatever the token holds. A call needing a scope the token lacks is answered with a 403
+  ;; Tools are listed whatever scopes the token holds. A call needing a scope the token lacks is answered with a 403
   ;; `insufficient_scope` naming the union of held and required scopes, so a client steps up to the rest of the surface
   ;; rather than being granted it up front. Each tool also declares its scope in `securitySchemes`, which is draft
   ;; SEP-1488 (modelcontextprotocol issue 1488) and supported by ChatGPT; it is not in MCP 2025-03-26, the version this

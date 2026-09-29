@@ -276,12 +276,14 @@
       (testing "the cause is a missing permission, not an expired login"
         (is (re-find #"(?i)missing permission" instructions))
         (is (re-find #"(?i)not an expired login" instructions)))
-      (testing "GHY-4555: the roster is not a grant. Every tool is listed whatever the token holds, but a scope-filtered
+      (testing "GHY-4555: the roster is not a grant. Tools are listed whatever the token holds, but a scope-filtered
                 list is the conventional design and nothing on the wire signals ours, so a model asked what the
                 connection could do read the roster as a grant and named scopes it did not hold"
-        (is (re-find #"(?i)every tool is listed whatever this connection holds" instructions))
+        (is (re-find #"(?i)tools are listed whatever this connection holds" instructions))
         (is (re-find #"(?i)says nothing about its permissions" instructions))
-        (is (re-find #"(?i)only a failed call reveals a missing one" instructions)))
+        (is (re-find #"(?i)only a failed call reveals a missing one" instructions))
+        (testing "while an admin's group policy does hide tools, so the model drops advice about one it cannot see"
+          (is (re-find #"(?i)an unlisted tool is off for this user" instructions))))
       (testing "a resource read is refused the same way as a tool call, so the guidance covers both"
         (is (re-find #"(?i)tool call or resource read" instructions)))
       (testing "the model names the tool and the permission, as the consent screen names it"
