@@ -149,9 +149,8 @@ export function ProviderConnectionForm({
     setError(undefined);
   };
 
-  // Ollama's requirements depend on the deployment picked, which `required_any` cannot express:
-  // either credential satisfies it whatever `hosting` says, which is what let a self-hosted server
-  // be connected with nothing but an API key. `fields` already carries that deployment's flags.
+  // Ollama's requirements depend on the deployment picked, which `required_any` cannot express: it
+  // accepts either credential whatever `hosting` says. `fields` already carries that deployment's flags.
   const isComplete =
     providerType != null &&
     (isOllamaProvider(providerType)

@@ -232,12 +232,10 @@
             ([result chunk]
              (let [{:keys [delta finish_reason]} (get-in chunk [:choices 0])
                    content                       (not-empty (:content delta))]
-               ;; Taken before the chunk is judged, not as an alternative to judging it: a build
-               ;; older than ollama/ollama#17485 puts the last content fragment and `finish_reason`
-               ;; in one chunk, and testing the two as `cond` branches dropped the finish chunk on
-               ;; those builds — silently on `stop`, and expensively on `length`, where the
-               ;; truncation reached the caller as a parse error over a half-written answer instead.
-               ;; The connection check cannot catch this: it probes with a non-streaming request.
+               ;; Taken before the chunk is judged, not instead of judging it: a build older than
+               ;; ollama/ollama#17485 puts the last content fragment and `finish_reason` on one chunk,
+               ;; so the two are not alternatives. Which build a server runs cannot be known here —
+               ;; the connection check probes with a non-streaming request.
                (when content (.append buffer ^String content))
                (cond
                  finish_reason
@@ -295,9 +293,8 @@
   because the probe reads one whole answer, and the model is left to [[probe-chat!]]'s caller.
 
   So self-hosted is held to a grammar and Cloud is asked in words and offered the tool — each probed
-  through the mechanism it will really use. Probing the other one would test a path this connection
-  never takes, which is how the check this replaced came to prove nothing, being a second
-  `tool_choice` the server discarded."
+  through the mechanism it will really use. Probing the other one proves nothing, being a path this
+  connection never takes."
   [cloud? :- :boolean]
   (let [opts {:input probe-messages :schema probe-schema}
         plan (plan opts cloud?)]

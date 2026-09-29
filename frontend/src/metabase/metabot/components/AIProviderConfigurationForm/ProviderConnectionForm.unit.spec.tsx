@@ -502,8 +502,8 @@ describe("ProviderConnectionForm with a per-deployment form", () => {
     await pickOllama();
     await userEvent.type(screen.getByLabelText(/API key/), "k");
 
-    // the reported bug: `required_any` counted the key, so Connect enabled and the save then failed
-    // in the adapter for want of an address
+    // `required_any` accepts the key on its own, so only the deployment's own `fields` flags can tell
+    // that a self-hosted server still needs an address
     expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
   });
 
