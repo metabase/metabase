@@ -20,7 +20,7 @@ jobs:
     name: Generate pom.xml files
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Generate all pom.xml
@@ -50,7 +50,7 @@ jobs:
             package-manager: yarn
             category: release-helper
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: snyk/actions/setup@0.4.0
       - name: Run snyk test
         env:
@@ -127,7 +127,7 @@ jobs:
             file: modules/drivers/vertica/pom.xml
             category: driver-vertica
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: snyk/actions/setup@0.4.0
       - name: Download pom files
         uses: actions/download-artifact@v4

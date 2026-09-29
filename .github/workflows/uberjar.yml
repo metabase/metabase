@@ -38,7 +38,7 @@ jobs:
       should_build: ${{ steps.decide.outputs.should_build }}
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Try to fetch existing EE artifact
         id: check-ee
         continue-on-error: true
@@ -87,7 +87,7 @@ jobs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           sparse-checkout: release
       - name: Prepare build scripts
@@ -124,7 +124,7 @@ jobs:
       SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.commit }}
       - name: Prepare front-end environment
@@ -160,7 +160,7 @@ jobs:
         java-version: [21]
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Prepare JRE (Java Run-time Environment)
         uses: actions/setup-java@v4
         with:

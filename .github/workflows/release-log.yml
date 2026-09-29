@@ -34,7 +34,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags

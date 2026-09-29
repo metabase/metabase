@@ -23,7 +23,7 @@ jobs:
     env:
       DAYS_BACK: ${{ inputs.days_back || 7 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
