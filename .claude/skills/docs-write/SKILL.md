@@ -1,96 +1,32 @@
 ---
 name: docs-write
 description: Write documentation following Metabase's conversational, clear, and user-focused style. Use when creating or editing documentation files (markdown, MDX, etc.).
-allowed-tools: Read, Write, Grep, Bash, Glob
+allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 ---
 
-# Documentation Writing Skill
+# Documentation writing skill
 
 @./../_shared/metabase-style-guide.md
 
-## When writing documentation
+The guide above is the standard. This skill is only the workflow around it.
 
-### Start here
+## Writing a new page
 
-1. **Who is this for?** Match complexity to audience. Don't oversimplify hard things or overcomplicate simple ones.
-2. **What do they need?** Get them to the answer fast. Nobody wants to be in docs longer than necessary.
-3. **What did you struggle with?** Those common questions you had when learning? Answer them (without literally including the question).
+- **Name the reader first.** Match the complexity to them: don't oversimplify a hard thing or overcomplicate a simple one.
+- **Read one or two neighboring pages** in the same directory and copy their front matter shape. `title:` is always present; add `summary:` where the siblings have it.
+- **Run the guide's Accuracy checks** on every setting name, UI label, and example before you save. Whatever tripped you up when learning the topic will trip the reader too, so address it.
 
-### Writing process
+## Editing an existing doc
 
-**Draft:**
+- **Scope changes to the relevant sections**. Leave the rest alone. Use `Edit`, not `Write`. A diff touching forty lines to fix two buries the actual change. Mention unrelated problems rather than fixing them here.
+- **If you rewrite a heading, fix links to the heading (if any)**. For example, before changing `## Cache configuration`, search for inbound links to the anchor it generates:
 
-- Write out the steps/explanation as you'd tell a colleague
-- Lead with what to do, then explain why
-- Use headings that state your point: "Set SAML before adding users" not "SAML configuration timing"
-
-**Edit:**
-
-- Read aloud. Does it sound like you talking? If it's too formal, simplify.
-- Cut anything that doesn't directly help the reader
-- Check each paragraph has one clear purpose
-- Verify examples actually work (don't give examples that error)
-
-**Polish:**
-
-- Make links descriptive (never "here")
-- Backticks only for code/variables, **bold** for UI elements
-- American spelling, serial commas
-- Keep images minimal and scoped tight
-
-**Format:**
-
-- Run prettier on the file after making edits: `bun run prettier --write <file-path>`
-- This ensures consistent formatting across all documentation
-
-### Common patterns
-
-**Instructions:**
-
-```markdown
-Run:
-\`\`\`
-command-to-run
-\`\`\`
-
-Then:
-\`\`\`
-next-command
-\`\`\`
-
-This ensures you're getting the latest changes.
+```
+grep -rn "#cache-configuration" docs/
 ```
 
-Not: "(remember to run X before Y...)" buried in a paragraph.
+Moving a page? Add the old path to `redirect_from:` in the front matter.
 
-**Headings:**
+## Before you finish
 
-- "Use environment variables for configuration" ✅
-- "Environment variables" ❌ (too vague)
-- "How to use environment variables for configuration" ❌ (too wordy)
-
-**Links:**
-
-- "Check out the [SAML documentation](link)" ✅
-- "Read the docs [here](link)" ❌
-
-### Watch out for
-
-- Describing tasks as "easy" (you don't know the reader's context)
-- Using "we" when talking about Metabase features (use "Metabase" or "it")
-- Formal language: "utilize", "reference", "offerings"
-- Too peppy: multiple exclamation points
-- Burying the action in explanation
-- Code examples that don't work
-- Numbers that will become outdated
-
-### Quick reference
-
-| Write This                 | Not This           |
-| -------------------------- | ------------------ |
-| people, companies          | users              |
-| summarize                  | aggregate          |
-| take a look at             | reference          |
-| can't, don't               | cannot, do not     |
-| **Filter** button          | \`Filter\` button  |
-| Check out [the docs](link) | Click [here](link) |
+Reread once and delete every sentence the reader could have skipped. The guide's "Cut the filler that writes itself" list is the checklist.
