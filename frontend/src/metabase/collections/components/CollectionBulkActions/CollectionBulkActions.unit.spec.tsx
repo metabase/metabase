@@ -47,6 +47,12 @@ const destinationCollection = createMockCollection({
   location: "/",
 });
 
+const trashCollection = createMockCollection({
+  id: 2,
+  name: "Trash",
+  type: "trash",
+});
+
 const pinnedDashboard = createMockCollectionItem({
   id: 1,
   name: "Pinned dashboard",
@@ -742,6 +748,25 @@ describe("CollectionBulkActions", () => {
           result: "success",
         });
       });
+    });
+
+    it("keeps the selection when the move modal is cancelled in the trash (metabase#44911)", async () => {
+      setupMovePickerEndpoints();
+      const { clearSelected } = setup({
+        selected: [tableQuestion, tableDashboard],
+        collection: trashCollection,
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Move" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        await within(dialog).findByRole("button", { name: "Cancel" }),
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect(clearSelected).not.toHaveBeenCalled();
     });
   });
 });
