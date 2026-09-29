@@ -25,16 +25,14 @@ function PinDropZone({ variant, empty }: PinDropZoneProps) {
       hideUntilDrag
     >
       {({ hovered, highlighted }: PinDropTargetRenderArgs) => {
-        const isVisible = hovered || highlighted;
+        if (!hovered && !highlighted) {
+          return null;
+        }
 
         if (empty) {
           return (
             <Flex
               className={cx(S.emptyTarget, { [S.emptyTargetHovered]: hovered })}
-              display={isVisible ? undefined : "none"}
-              pos="absolute"
-              left="var(--mantine-spacing-lg)"
-              right="var(--mantine-spacing-lg)"
               mih={rem(32)}
               align="center"
               justify="center"
@@ -52,12 +50,6 @@ function PinDropZone({ variant, empty }: PinDropZoneProps) {
         return (
           <Box
             className={cx(S.indicator, { [S.hovered]: hovered })}
-            display={isVisible ? undefined : "none"}
-            pos="absolute"
-            top={0}
-            bottom={0}
-            left={0}
-            right={0}
             mih={rem(32)}
           />
         );
