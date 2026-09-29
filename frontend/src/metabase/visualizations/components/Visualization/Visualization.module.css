@@ -1,0 +1,4 @@
+/* Consumers override the height through the style prop, so it must stay a class rule */
+.root {
+  height: 100%;
+}
