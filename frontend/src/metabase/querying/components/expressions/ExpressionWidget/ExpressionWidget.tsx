@@ -121,7 +121,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
           hasExtractions(query, availableColumns) && {
             name: t`Extract columns`,
             icon: "arrow_split",
-            action: () => setIsExtractingColumn(true),
+            action: () => undefined,
           },
       ].filter((x): x is Shortcut => Boolean(x)),
     [expressionMode, query, availableColumns],
