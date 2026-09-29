@@ -1258,6 +1258,89 @@ class Ledger(unittest.TestCase):
         self.assertNotIn("rest only on symptom kills", run.summary)
 
 
+def suspect(entry):
+    return entry | {"equivalent_suspect": True}
+
+
+EQUIVALENT_KILLS = SYMPTOM_KILLS | {
+    "equivalent-alone": suspect(mutant("wiring", [], [REMAINING], L_TWIN) | {"routed_to": "e2e"}),
+    "equivalent-sampled": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)),
+    "equivalent-killed": suspect(mutant("logic", [PAIRED], [PAIRED, REMAINING], L_PAIRED)),
+}
+SUSPECTS = ("equivalent-alone", "equivalent-sampled", "equivalent-killed")
+
+
+def without_suspects(entries):
+    return {mid: {k: v for k, v in m.items() if k != "equivalent_suspect"} for mid, m in entries.items()}
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class EquivalentSuspects(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.marked = ledger_run(EQUIVALENT_KILLS, SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
+        cls.unmarked = ledger_run(without_suspects(EQUIVALENT_KILLS), SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
+
+    @staticmethod
+    def groups(ledger, key):
+        return {s: g["mutants"] for s, g in ledger[key].items()}
+
+    @staticmethod
+    def csv_marks(run):
+        return {r["mutant"]: (r["cheapest_killing_layer"], r["equivalent_suspect"]) for r in run.csv if r["mutant"]}
+
+    def test_a_suspected_equivalent_mutant_nobody_kills_is_off_the_demand_list(self):
+        ledger = self.marked.ledger
+        self.assertEqual(self.groups(ledger, "demand"), {"logic": ["69160-symptom"]})
+        self.assertEqual(self.groups(ledger, "equivalent_suspect"),
+                         {"logic": ["equivalent-sampled"], "wiring": ["equivalent-alone"]})
+        self.assertEqual((ledger["demand_rows_with_an_unkilled_mutant"], ledger["demand_rows_without_any_killer"]), (1, 1))
+        self.assertIn("\nMutants with no confirmed killer at any layer, leaving out 2 suspected equivalent ones: "
+                      "logic 1 mutants in 1 rows.\n", self.marked.summary)
+        self.assertIn("\n1 rows hold at least one of them, and 1 rows have no killed mutant at all.\n"
+                      "Routed by the kills file, as a judgement: not routed 1.\n", self.marked.summary)
+        self.assertIn("| logic | 1 | 1 | 1 | 1 | 1 | not routed 1 |\n\n", self.marked.summary)
+        self.assertIn("\n## Suspected equivalent\n\nThe kills file marks 3 mutants `equivalent_suspect`. No test can kill an "
+                      "equivalent mutant, so the ones with no confirmed killer are off the demand list: "
+                      "logic 1 mutants in 1 rows, wiring 1 mutants in 1 rows.\n", self.marked.summary)
+        marks = self.csv_marks(self.marked)
+        self.assertEqual({mid: marks[mid] for mid in ("equivalent-alone", "equivalent-sampled", "69160-symptom")}, {
+            "equivalent-alone": ("none", "yes"), "equivalent-sampled": ("none", "yes"), "69160-symptom": ("none", "no"),
+        })
+
+    def test_a_suspected_equivalent_mutant_that_a_test_kills_stays_on_the_floor(self):
+        ledger = self.marked.ledger
+        self.assertEqual(ledger["mutants"]["equivalent-killed"]["cheapest_layer"], "e2e")
+        self.assertIn("equivalent-killed", ledger["e2e_floor"]["logic"]["mutants"])
+        self.assertEqual(ledger["e2e_floor"], self.unmarked.ledger["e2e_floor"])
+        self.assertEqual(self.groups(ledger, "equivalent_suspect_killed"), {"logic": ["equivalent-killed"]})
+        self.assertIn("\n1 of them have a confirmed kill, so the mark is wrong for them, and they keep their cheapest layer: "
+                      "equivalent-killed (e2e).\n", self.marked.summary)
+        self.assertEqual(self.csv_marks(self.marked)["equivalent-killed"], ("e2e", "yes"))
+
+    def test_verdicts_and_the_joint_check_ignore_the_mark(self):
+        self.assertEqual([mid for mid, m in self.marked.ledger["mutants"].items() if m.get("equivalent_suspect")],
+                         list(SUSPECTS))
+        for run in (self.marked, self.unmarked):
+            self.assertEqual(run.check.returncode, 0, run.check.stdout)
+            self.assertEqual(run.result["joint_check"], "ok")
+        self.assertIn("equivalent-sampled", self.marked.result["candidates"][UNIT]["qualifying_basis"]["subtraction"])
+        for key in ("candidates", "summary", "kills_cover", "mutants"):
+            with self.subTest(key):
+                self.assertEqual(self.marked.result[key], self.unmarked.result[key])
+        self.assertEqual(self.marked.check.stdout, self.unmarked.check.stdout)
+
+    def test_an_older_kills_file_marks_no_mutant(self):
+        ledger = self.unmarked.ledger
+        self.assertEqual(self.groups(ledger, "demand"),
+                         {"logic": ["69160-symptom", "equivalent-sampled"], "wiring": ["equivalent-alone"]})
+        self.assertEqual((ledger["demand_rows_with_an_unkilled_mutant"], ledger["demand_rows_without_any_killer"]), (3, 2))
+        self.assertEqual((ledger["equivalent_suspect"], ledger["equivalent_suspect_killed"]), ({}, {}))
+        self.assertNotIn("Suspected equivalent", self.unmarked.summary)
+        self.assertNotIn("equivalent_suspect", self.unmarked.summary)
+        self.assertEqual({mark for _, mark in self.csv_marks(self.unmarked).values()}, {"no"})
+
+
 class Ordinals(unittest.TestCase):
     SPEC = "e2e/test/scenarios/filters/filter.cy.spec.js"
     TITLE = "scenarios > question > filter should convert negative filter to custom expression (metabase#14880)"

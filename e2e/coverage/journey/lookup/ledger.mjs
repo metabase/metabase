@@ -197,6 +197,7 @@ export function mutantFacts(mid, raw, sidecar) {
     origin: entry.origin ?? null,
     ...(entry.set ? { set: entry.set } : {}),
     ...(entry.alias_of ? { alias_of: entry.alias_of } : {}),
+    ...(entry.equivalent_suspect === true ? { equivalent_suspect: true } : {}),
     ...(sidecar?.description ? { description: sidecar.description } : {}),
     locations: mutantLocations(entry),
     ...(entry.locations_note ? { locations_note: entry.locations_note } : {}),
@@ -582,6 +583,7 @@ export function buildLedger({
           ? { symptom_unconfirmed_by: m.symptom_unconfirmed_by }
           : {}),
         ...(m.symptom_only ? { symptom_only: true } : {}),
+        ...(m.equivalent_suspect ? { equivalent_suspect: true } : {}),
         cheapest_layer: m.cheapest_layer,
       };
     });
@@ -638,7 +640,7 @@ export function buildLedger({
 }
 
 /**
- * The demand list and the e2e floor, per mutant and per row, grouped by stratum.
+ * The demand list, the e2e floor and the suspected equivalent mutants, per mutant and per row, grouped by stratum.
  * Each group's `symptom_only` lists the mutants in it that rest only on symptom kills.
  */
 export function derive(ledger) {
@@ -674,14 +676,21 @@ export function derive(ledger) {
     );
   };
   const rowsWith = (pick) =>
-    rows.filter((row) => row.mutants.some(pick)).length;
+    rows.filter((row) => row.mutants.some((rm) => pick(mutants[rm.id]))).length;
+  const unkilled = (m) => m.cheapest_layer === "none";
+  // No test can kill an equivalent mutant, so a suspected one is off the demand list.
+  const demanded = (m) => unkilled(m) && !m.equivalent_suspect;
   return {
-    demand: group((m) => m.cheapest_layer === "none"),
+    demand: group(demanded),
     demand_rows_without_any_killer: rows.filter(
-      (r) => r.status === "none killed",
+      (r) =>
+        r.status === "none killed" &&
+        r.mutants.some((rm) => demanded(mutants[rm.id])),
     ).length,
-    demand_rows_with_an_unkilled_mutant: rowsWith(
-      (m) => m.cheapest_layer === "none",
+    demand_rows_with_an_unkilled_mutant: rowsWith(demanded),
+    equivalent_suspect: group((m) => m.equivalent_suspect && unkilled(m)),
+    equivalent_suspect_killed: group(
+      (m) => m.equivalent_suspect && !unkilled(m),
     ),
     e2e_floor: group((m) => m.cheapest_layer === "e2e"),
     e2e_floor_rows: rowsWith((m) => m.cheapest_layer === "e2e"),
@@ -741,6 +750,7 @@ const CSV_COLUMNS = [
   "symptom_kills_layers",
   "symptom_unconfirmed_by_layers",
   "symptom_only",
+  "equivalent_suspect",
 ];
 
 function csvCell(value) {
@@ -831,6 +841,7 @@ export function toCsv(ledger) {
             ),
             symptom_only:
               m.symptom_only == null ? "" : m.symptom_only ? "yes" : "no",
+            equivalent_suspect: m.equivalent_suspect ? "yes" : "no",
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -924,6 +935,11 @@ export function summarize(ledger, derived, inputs) {
       symptom.unconfirmed +
       Object.values(symptom.ignored).reduce((a, b) => a + b, 0) >
     0;
+  const suspectIds = (groups) =>
+    Object.values(groups).flatMap((g) => g.mutants);
+  const suspectsUnkilled = suspectIds(derived.equivalent_suspect);
+  const suspectsKilled = suspectIds(derived.equivalent_suspect_killed);
+  const hasSuspects = suspectsUnkilled.length + suspectsKilled.length > 0;
   const lines = [
     "# Location ledger",
     "",
@@ -982,7 +998,7 @@ export function summarize(ledger, derived, inputs) {
     "",
     "## Demand list",
     "",
-    `Mutants with no confirmed killer at any layer: ${strataLine(derived.demand)}.`,
+    `Mutants with no confirmed killer at any layer${suspectsUnkilled.length ? `, leaving out ${suspectsUnkilled.length} suspected equivalent ones` : ""}: ${strataLine(derived.demand)}.`,
     ...(hasSymptoms ? [symptomLine(derived.demand)] : []),
     `${derived.demand_rows_with_an_unkilled_mutant} rows hold at least one of them, and ${derived.demand_rows_without_any_killer} rows have no killed mutant at all.`,
     `Routed by the kills file, as a judgement: ${Object.entries(routed)
@@ -1009,8 +1025,20 @@ export function summarize(ledger, derived, inputs) {
       return `| ${s} | ${g.mutants.length} | ${g.rows.length} | ${bare} | ${unconfirmed} | ${g.symptom_only.length} | ${routeText} |`;
     }),
     "",
-    "Each mutant, with its rows, e2e status and route, is in the CSV under `cheapest_killing_layer` none, and in the JSON under `demand`.",
+    `Each mutant, with its rows, e2e status and route, is in the CSV under \`cheapest_killing_layer\` none${hasSuspects ? " with `equivalent_suspect` no" : ""}, and in the JSON under \`demand\`.`,
     "",
+    ...(hasSuspects
+      ? [
+          "## Suspected equivalent",
+          "",
+          `The kills file marks ${suspectsUnkilled.length + suspectsKilled.length} mutants \`equivalent_suspect\`. No test can kill an equivalent mutant, so the ones with no confirmed killer are off the demand list: ${strataLine(derived.equivalent_suspect)}.`,
+          suspectsKilled.length
+            ? `${suspectsKilled.length} of them have a confirmed kill, so the mark is wrong for them, and they keep their cheapest layer: ${suspectsKilled.map((mid) => `${mid} (${mutants[mid].cheapest_layer})`).join(", ")}.`
+            : "None of them has a confirmed kill.",
+          "`equivalent_suspect` is yes for them in the CSV, and the JSON lists them under `equivalent_suspect` and `equivalent_suspect_killed`.",
+          "",
+        ]
+      : []),
     "## e2e floor",
     "",
     `Mutants whose cheapest confirmed layer is e2e: ${strataLine(derived.e2e_floor)}, in ${derived.e2e_floor_rows} rows.`,
