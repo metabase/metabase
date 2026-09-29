@@ -331,7 +331,10 @@ describe("scenarios > question > custom column > exiting the editor", () => {
 
   it("should only be possible to close the custom expression editor by pressing Escape when it is empty", () => {
     cy.log("untouched editor");
-    H.CustomExpressionEditor.get().should("be.visible");
+    // The editor loads lazily. Escape sent before it takes focus does not reach the popover.
+    H.CustomExpressionEditor.get()
+      .get(".cm-editor")
+      .should("have.class", "cm-focused");
     cy.realPress("Escape");
     H.expressionEditorWidget().should("not.exist");
     H.getNotebookStep("data").button("Custom column").click();
