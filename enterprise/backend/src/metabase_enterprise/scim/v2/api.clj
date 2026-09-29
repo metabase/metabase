@@ -16,6 +16,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -451,14 +452,22 @@
         mb-group->scim)))
 
 (defn- update-group-membership
-  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`."
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`.
+
+  Member values that match no User are skipped. When none of them match, the push is a no-op rather than an
+  emptying of the group: the IdP is referring to users this instance never provisioned, and wiping the group
+  would hide that drift behind a successful response."
   [group-id user-entity-ids]
   (let [desired-ids (set (scim.db/user-ids-by-entity-ids user-entity-ids))
         current-ids (set (scim.db/group-member-user-ids group-id))]
-    (doseq [user-id (set/difference current-ids desired-ids)]
-      (perms/remove-user-from-group! user-id group-id))
-    (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
-                                  {:group group-id :user user-id}))))
+    (if (empty? desired-ids)
+      (log/warnf "SCIM group %d membership push named %d member(s), none of them known users; leaving membership alone"
+                 group-id (count user-entity-ids))
+      (do
+        (doseq [user-id (set/difference current-ids desired-ids)]
+          (perms/remove-user-from-group! user-id group-id))
+        (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                      {:group group-id :user user-id}))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

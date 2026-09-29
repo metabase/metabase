@@ -446,6 +446,17 @@
             (is (= new-group-name (:name group)))
             (is (= 1 (count (:members group))))
             (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))
+    (testing "A members list naming only unknown users leaves the membership alone rather than emptying the group"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id    (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              group-update {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                            :id          entity-id
+                            :displayName (:name group)
+                            :members     [{:value (str (random-uuid))}]}]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
+          (is (= #{(mt/user->id :rasta)}
+                 (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id (:id group)))))))
     (testing "404 is returned when trying to update a data-app group, and its membership is left alone"
       (mt/with-temp [:model/PermissionsGroup app-group {:name "App Group" :is_data_app_group true}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id app-group)}]
