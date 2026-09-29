@@ -652,7 +652,7 @@ export class UnconnectedDataSelector extends Component<
   };
 
   hasUsableModelsOrMetrics = () => {
-    return this.hasUsableModels() || this.hasUsableMetrics();
+    return false;
   };
 
   hasSavedQuestions = () => {
