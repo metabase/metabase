@@ -16,10 +16,10 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
-  settlePendingUpdates,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
@@ -323,7 +323,7 @@ describe("DataModel", () => {
 
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
-      setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
+      await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(async () => {
         expect(
@@ -345,8 +345,6 @@ describe("DataModel", () => {
         await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
-
-      await settlePendingUpdates();
     });
 
     it("should allow to search for a table", async () => {
@@ -786,7 +784,9 @@ describe("DataModel", () => {
         await waitForLoaderToBeRemoved();
         expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
-        router?.back();
+        act(() => {
+          router?.back();
+        });
 
         await waitFor(() => {
           expect(
