@@ -1408,12 +1408,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps = (dispatch: Dispatch): DataSelectorDispatchProps => ({
   fetchDatabases: (databaseQuery) =>
-    runRtkEndpoint(
-      { ...databaseQuery, "can-query": true },
-      dispatch,
-      databaseApi.endpoints.listDatabases,
-      { forceRefetch: false },
-    ),
+    Promise.resolve(),
   fetchFields: (tableId) =>
     Promise.resolve(dispatch(fetchTableMetadata({ id: tableId }))),
   fetchQuestion: (id) =>
