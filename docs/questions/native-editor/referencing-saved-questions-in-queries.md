@@ -18,6 +18,8 @@ To reference that question or model in a SQL query, use typeahead search in a va
 
 Type `{% raw %}{{#your search term }}{% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
 
+Note that the search will only show models and questions in the database that is selected in the top left of the question editor. If you're not seeing the models or questions you expect, make sure you've selected the correct database.
+
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
 You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
