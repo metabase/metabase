@@ -184,21 +184,7 @@ See [Modular embedding parameters](./parameters.md#pass-parameter-values-to-embe
 
 ## Page-level config
 
-To define the configuration that applies to every embed on the page, use the `defineMetabaseConfig()` function. Its parameters include:
-
-- `instanceUrl: "https://your-metabase-url"` (required): the URL of your Metabase instance, like `https://youlooknicetoday.metabaseapp.com`
-
-- `theme: {...}` (optional): [appearance options for the embeds](./appearance.md).
-
-- `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
-
-- `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
-
-- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./authentication.md#customizing-jwt-authentication).
-
-- `pluginsConfig` : plugins to customize the behavior of embedded components. Use the `handleLink` function to customize what happens when people click a link in your embedded questions and dashboards. For details on the `handleLink` API, including code examples, see [`handleLink` plugin](./sdk/plugins.md#handlelink).
-
-- `allowedCustomVisualizations: ["custom:Calendar Heatmap"]` (optional): the [custom visualizations](./custom-visualizations.md) that the components on the page are allowed to load. Not available in guest embeds.
+To define the configuration that applies to every embed on the page, like the URL of your Metabase, the authentication mode, and the theme, use the `defineMetabaseConfig()` function. See [Configure your embeds](./config.md). For the full list of settings, see the [config reference](./config-reference.md#web-component-definemetabaseconfig-settings).
 
 ## Authentication
 

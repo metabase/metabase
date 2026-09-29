@@ -1,13 +1,11 @@
 import type { PropsWithChildren } from "react";
 import {
+  type MetabaseAuthConfig,
   MetabaseProvider,
   type SdkDashboardLoadEvent,
-  defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
 
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "",
-});
+const authConfig = {} as MetabaseAuthConfig;
 
 const Example = ({ children }: PropsWithChildren) => {
   // [<snippet example>]
