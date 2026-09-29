@@ -33,7 +33,7 @@ export function ExtractColumn({
   const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
 
   function handleSelect(column: Lib.ColumnMetadata) {
-    setColumn(column);
+    return;
   }
 
   if (!column) {
