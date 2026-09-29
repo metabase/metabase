@@ -117,7 +117,7 @@ function ColumnPicker({
           stageIndex={stageIndex}
           columnGroups={columnGroups}
           onSelect={onSelect}
-          checkIsColumnSelected={(item) => item.column === column}
+          checkIsColumnSelected={(item) => false}
           width="100%"
           alwaysExpanded
           disableSearch
