@@ -80,10 +80,12 @@
       (append-sql! context " AS ")
       (compile! rhs context))))
 
-(declare equals!)
-
 (defn- -kvs-map! [kvs context]
-  (interpose-fn kvs #(equals! % context) #(append-sql! context ", ")))
+  (letfn [(-x-equals-y! [[x y]]
+            (compile! x context)
+            (append-sql! context " = ")
+            (compile! y context))]
+    (interpose-fn kvs -x-equals-y! #(append-sql! context ", "))))
 
 (defn- unwrap-identifier [identifier]
   (if (vector? identifier)
@@ -304,9 +306,6 @@
       (compile! y context))
     (append-sql! context nil-sql)))
 
-(defn- equals! [args context]
-  (-equals! " = "  " IS NULL" args context))
-
 (defn- -compound! [sql xs context]
   (interpose-fn xs #(-parens! % context) #(append-sql! context sql)))
 
@@ -454,7 +453,7 @@
     :between                (between! args context)
     :cast                   (cast!    args context)
     :case                   (case!    args context)
-    (:= :is)                (equals!  args context)
+    (:= :is)                (-equals! " = "  " IS NULL"     args context)
     (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
     :and                    (-compound! " AND " args context)
     :or                     (-compound! " OR "  args context)

@@ -265,6 +265,14 @@
                            :set    {:state "deletable", :x "y"}
                            :where  [:= :id 1]} :postgres))))
 
+(deftest ^:parallel update-set-null-test
+  (testing "UPDATE <table> SET <field> = NULL should compile correctly"
+    (is (= ["UPDATE `setting` SET `value` = NULL WHERE `key` = ?" "query-caching-ttl-ratio"]
+           (funnysql/format {:update [:setting]
+                             :set    {:value nil}
+                             :where  [:= :key "query-caching-ttl-ratio"]}
+                            :mysql)))))
+
 (deftest ^:parallel delete-from-test
   (is (= ["DELETE FROM \"card\" WHERE \"database_id\" = 1"]
          (funnysql/format {:delete-from :card
