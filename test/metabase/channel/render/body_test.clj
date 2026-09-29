@@ -1296,10 +1296,11 @@
                                              :graph.metrics ["sum"]}}]
           (mt/with-temp [:model/Card {card-id :id} card]
             (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  weekday-names  #{"Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"}
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 4)
                                       (map str/trim)
+                                      (filter weekday-names)
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
