@@ -33,7 +33,7 @@
 
 (def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required])} session-with-id-query
   (mdb/memoize-for-application-db
-   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions? enable-tenants? session-timeout-seconds mfa-required?]
      (first
       (t2.pipeline/compile*
        (cond-> {:select    [[:session.user_id :metabase-user-id]
@@ -50,22 +50,22 @@
                                     [:or [:= :tenant.id nil] :tenant.is_active]
                                     [:= :tenant.id nil])
                                   [:= :user.is_active true]
-                                  [:= :session.key_hashed ^:allow-raw-sql [:raw "?"]]
+                                  [:= :session.key_hashed (Object.)] ; to produce "?"
                                   [:> :session.created_at (oldest-allowed-expr db-type max-age-minutes :minute)]
                                   [:or [:= :session.expires_at nil]
                                    [:> :session.expires_at (h2x/current-datetime-honeysql-form db-type)]]
                                   [:= :session.anti_csrf_token (case session-type
                                                                  :normal         nil
-                                                                 :full-app-embed ^:allow-raw-sql [:raw "?"])]]
+                                                                 :full-app-embed (Object.))]]
                                  cat
-                                 [(when mfa-required
+                                 [(when mfa-required?
                                     [[:or
                                       [:not= :session.mfa_auth_identity_id nil]
                                       (into [:and]
                                             (map (fn [mfa-supporting-provider]
-                                                   [:not= :auth_identity.provider
-                                                    ^:allow-raw-sql
-                                                    [:raw (str "'" (name mfa-supporting-provider) "'")]])
+                                                   [:not=
+                                                    :auth_identity.provider
+                                                    (h2x/literal (name mfa-supporting-provider))])
                                                  mfa-supported-methods))]])
                                   (when session-timeout-seconds
                                     [[:> [:coalesce :session.last_active_at :session.created_at]
@@ -133,20 +133,20 @@
   Session whose `key_hashed` is `session-key-hash`, or nil if there is none. `anti-csrf-token`, when present,
   additionally requires the Session's `anti_csrf_token` to match it (a full-app-embed session); `max-age-minutes`
   and `session-timeout-seconds` (which may be nil) bound how old or idle the Session may be."
-  [session-key-hash            :- :string
-   anti-csrf-token             :- [:maybe :string]
-   max-age-minutes             :- [:maybe :int]
+  [session-key-hash             :- :string
+   anti-csrf-token              :- [:maybe :string]
+   max-age-minutes              :- [:maybe :int]
    enable-advanced-permissions? :- :boolean
    enable-tenants?              :- :boolean
    session-timeout-seconds      :- [:maybe :int]
-   mfa-required                 :- :boolean]
+   mfa-required?                :- :boolean]
   (let [sql    (session-with-id-query (mdb/db-type)
                                       max-age-minutes
                                       (if (seq anti-csrf-token) :full-app-embed :normal)
                                       enable-advanced-permissions?
                                       enable-tenants?
                                       session-timeout-seconds
-                                      mfa-required)
+                                      mfa-required?)
         params (concat [session-key-hash] (when (seq anti-csrf-token) [anti-csrf-token]))]
     (t2/query-one (cons sql params))))
 

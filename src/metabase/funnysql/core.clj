@@ -211,16 +211,20 @@
                                      :desc " DESC"))))]
     (interpose-fn subclauses subclause! #(append-sql! context ", "))))
 
+(defn- inline? [x]
+  (and (vector? x)
+       (= (first x) :inline)))
+
 (defn- limit!
   [n context]
-  (when-not (nat-int? n)
+  (when-not ((some-fn nat-int? inline?) n)
     (throw (ex-info "Invalid limit" {:n n})))
   (append-sql! context "LIMIT ")
   (compile! n context))
 
 (defn- offset!
   [n context]
-  (when-not (nat-int? n)
+  (when-not ((some-fn nat-int? inline?) n)
     (throw (ex-info "Invalid offset" {:n n})))
   (append-sql! context "OFFSET ")
   (compile! n context))
@@ -296,7 +300,7 @@
   (if (= part "*")
     (append-sql! context "*")
     (do
-      (when-not (re-matches #"^[A-Za-z_][A-Za-z0-9_-]*$" part)
+      (when-not (re-matches #"^[A-Za-z_][?A-Za-z0-9_-]*$" part)
         (throw (ex-info "Invalid identifier" {:identifier part})))
       (let [engine     (engine context)
             quote-char (case engine

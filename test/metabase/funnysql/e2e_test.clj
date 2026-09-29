@@ -6,7 +6,11 @@
    [metabase.search.appdb.query :as appdb.query]
    [metabase.search.appdb.scoring :as appdb.scoring]
    [metabase.search.config :as search.config]
-   [metabase.search.spec :as search.spec]))
+   [metabase.search.spec :as search.spec]
+   [metabase.server.db]))
+
+(deftest ^:parallel compile-session-query-test
+  (is (some? (#'metabase.server.db/session-with-id-query (app-db/db-type) 100 :normal true true 200 true))))
 
 (def ^:private search-ctx
   {:archived?                           false
@@ -31,5 +35,5 @@
   (binding [*print-meta* true]
     (clojure.pprint/pprint (search-hsql))))
 
-(deftest ^:parallel compile-hairball-query-test
+(deftest ^:parallel compile-hairball-search-query-test
   (is (some? (funnysql/format (search-hsql) (app-db/db-type)))))
