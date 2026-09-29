@@ -89,7 +89,7 @@
 (mu/defn user-login-columns
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id (long user-id)))
 
 (mu/defn user-login-columns-by-email
   "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
