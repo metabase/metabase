@@ -7,6 +7,7 @@ jobs:
   # run mage tests even if the rest of be isnt needed
   mage-tests:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
     name: Mage
     steps:
       - uses: actions/checkout@v7

@@ -17,6 +17,7 @@ jobs:
         github.event.action == 'labeled' && github.event.label.name == 'backport'
       )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
     outputs:
       commit: ${{ steps.find_commit.outputs.commit }}
       targets: ${{ steps.targets.outputs.result }}
@@ -57,6 +58,7 @@ jobs:
   backport:
     needs: prepare
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false # one conflicting branch must not block the others
       matrix:
@@ -98,6 +100,7 @@ jobs:
         )
       )
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
     steps:
       - name: "!! double-backport and triple-backport label deprecation warning !!"
         if:

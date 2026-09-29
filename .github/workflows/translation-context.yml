@@ -9,6 +9,7 @@ jobs:
   harvest:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 70
     permissions:
       contents: read
     steps:
