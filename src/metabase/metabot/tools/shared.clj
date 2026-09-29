@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.shared
   "Shared tool helpers and state accessors."
   (:require
+   [metabase.metabot.curation :as curation]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -29,6 +30,12 @@
   "The profile keyword for the current agent session, e.g. `:nlq`. Bound during the
    agent loop so that tools can adapt their output to the active profile."
   nil)
+
+(defn curated-only?
+  "Whether the current session's tools may only reach curated content: its Metabot has `use_verified_content` on and
+  its profile isn't exempt (see [[curation/curated-content-only?]])."
+  []
+  (curation/curated-content-only? *metabot-id* *profile-id*))
 
 (defn current-memory
   "Returns the current agent memory map, or nil if not in an agent context."

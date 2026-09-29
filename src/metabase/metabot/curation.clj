@@ -76,22 +76,22 @@
     (= "dashboard" model)      (moderatable-curation-signals model :model/Dashboard "dashboard" ids)
     (= "table" model)          (table-curation-signals ids)))
 
+(def ^:private curation-batch-size
+  "How many ids one curation lookup reads at a time. Curated-only listings can judge every table in a warehouse, and
+  one `IN (...)` over all of them could exceed the app DB's bind-parameter limit (65535 on Postgres)."
+  10000)
+
 (defn curated-ids
   "Of `model+ids` (`[search-model-string id]` pairs), return the subset that are curated.
   Reads each item's signals from the source tables and applies [[curation/curated?]], with no search-index
   dependency. Recognizes the Metabot recent-view models: card/dataset/metric, dashboard, table."
   [model+ids]
   (into #{}
-        (for [[model ids]  (update-vals (group-by first model+ids) #(mapv second %))
-              [id signals] (curation-signals model ids)
+        (for [[model ids]  (update-vals (group-by first model+ids) #(into [] (comp (map second) (distinct)) %))
+              batch        (partition-all curation-batch-size ids)
+              [id signals] (curation-signals model (vec batch))
               :when        (curation/curated? signals)]
           [model id])))
-
-(defn- metabot-row
-  "The Metabot row for `metabot-id` — a key of [[metabot.config/metabot-config]] or a Metabot entity id — or nil."
-  [metabot-id]
-  (when metabot-id
-    (metabot.db/metabot-by-entity-id (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))))
 
 (def ^:private curation-exempt-profiles
   "Profiles whose tools aren't restricted by `use_verified_content`. The nlq profile discovers data through the curated
@@ -105,4 +105,4 @@
   [metabot-id profile-id]
   (boolean
    (and (not (curation-exempt-profiles (some-> profile-id name)))
-        (:use_verified_content (metabot-row metabot-id)))))
+        (:use_verified_content (metabot.config/metabot-by-id metabot-id)))))
