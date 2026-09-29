@@ -129,10 +129,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
 
   const handleCombineColumnsSubmit = useCallback(
     (name: string, clause: Lib.ExpressionClause) => {
-      trackColumnCombineViaShortcut(query);
-      handleExpressionChange(clause);
-      setName(name);
-      setIsCombiningColumns(false);
+      return;
     },
     [query, handleExpressionChange],
   );
