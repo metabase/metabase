@@ -507,8 +507,10 @@ describe("Issue 12938", () => {
   it("should be possible to concat number with string (metabase#12938)", () => {
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().within(() => {
+      // "Select all" on a fully selected list keeps only the first column (ID)
       cy.findByText("Select all").click();
       cy.findByText("Title").click();
+      cy.findByText("ID").click();
     });
     cy.realPress("Escape");
 
