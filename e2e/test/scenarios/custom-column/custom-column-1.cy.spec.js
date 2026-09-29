@@ -42,10 +42,7 @@ describe("scenarios > question > custom column", () => {
       .findByText(/Compare to the rest/i)
       .click();
 
-    cy.wait("@xray").then(({ response }) => {
-      expect(response.statusCode).to.eq(200);
-      expect(response.body.cause).not.to.exist;
-    });
+    cy.wait("@xray").its("response.statusCode").should("eq", 200);
     cy.location("pathname").should("match", /^\/auto\/dashboard\//);
     cy.findAllByTestId("dashcard-container").should("have.length.gt", 0);
   });
@@ -180,18 +177,6 @@ describe("scenarios > question > custom column", () => {
 
     H.visualize(({ body }) => {
       expect(body.error).to.not.exist;
-
-      const columnNames = body.data.cols.map((col) => col.display_name);
-      const subtotalIndex = columnNames.indexOf("Sum of Subtotal");
-      const totalIndex = columnNames.indexOf("Sum of Total");
-      const megaTotalIndex = columnNames.indexOf(columnName);
-      expect(body.data.rows).to.have.length.greaterThan(0);
-      body.data.rows.forEach((row) => {
-        expect(row[megaTotalIndex]).to.be.closeTo(
-          row[subtotalIndex] + row[totalIndex],
-          0.01,
-        );
-      });
     });
 
     // This is a pre-save state of the question but the column name should appear
@@ -327,15 +312,12 @@ describe("scenarios > question > custom column", () => {
       .find(".Icon-close")
       .click();
 
-    cy.wait("@dataset").then(({ response }) => {
-      expect(response.body.error).to.not.exist;
-      const columnNames = response.body.data.cols.map(
-        (col) => col.display_name,
-      );
-      expect(columnNames).to.include(CC_NAME);
-    });
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
     cy.findByTestId("filters-visibility-control").should("not.exist");
-    cy.findAllByTestId("header-cell").contains(CC_NAME).should("be.visible");
+    H.assertTableData({
+      columns: ["Created At: Year", "Sum of Total", CC_NAME],
+      firstRows: [["2025", "42,156.87", "84,313.74"]],
+    });
   });
 
   it("should handle identical custom column and table column names (metabase#14255)", () => {

@@ -505,6 +505,13 @@ describe("Issue 12938", () => {
   });
 
   it("should be possible to concat number with string (metabase#12938)", () => {
+    H.getNotebookStep("data").button("Pick columns").click();
+    H.popover().within(() => {
+      cy.findByText("Select all").click();
+      cy.findByText("Title").click();
+    });
+    cy.realPress("Escape");
+
     H.addCustomColumn();
     H.enterCustomColumnDetails({
       formula: "concat(floor([Rating]), [Title])",
@@ -521,25 +528,14 @@ describe("Issue 12938", () => {
 
     H.visualize(({ body }) => {
       expect(body.error).to.not.exist;
-
-      const columnNames = body.data.cols.map((col) => col.display_name);
-      const ratingIndex = columnNames.indexOf("Rating");
-      const titleIndex = columnNames.indexOf("Title");
-      const ratingTitleIndex = columnNames.indexOf("RatingTitle");
-      const hourMinuteIndex = columnNames.indexOf("HourMinute");
-      body.data.rows.forEach((row) => {
-        const ratingTitle = row[ratingTitleIndex];
-        const title = row[titleIndex];
-        expect(ratingTitle.endsWith(title)).to.be.true;
-        expect(ratingTitle.slice(0, -title.length)).to.match(
-          new RegExp(`^${Math.floor(row[ratingIndex])}(\\.0+)?$`),
-        );
-        expect(row[hourMinuteIndex]).to.match(/^\d{1,2}:\d{1,2}$/);
-      });
     });
-    cy.get("main")
-      .findByText("There was a problem with your question")
-      .should("not.exist");
+    H.assertTableData({
+      columns: ["Title", "RatingTitle", "HourMinute"],
+      firstRows: [
+        ["Rustic Paper Wallet", "4.0Rustic Paper Wallet", "19:44"],
+        ["Small Marble Shoes", "0.0Small Marble Shoes", "8:49"],
+      ],
+    });
   });
 });
 

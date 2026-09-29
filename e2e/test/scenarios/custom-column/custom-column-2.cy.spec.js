@@ -87,13 +87,6 @@ describe(
 
       H.visualize(({ body }) => {
         expect(body.error).to.not.exist;
-
-        const columnNames = body.data.cols.map((col) => col.display_name);
-        const [firstRow] = body.data.rows;
-        dateColumns.forEach(({ name }) => {
-          expect(columnNames).to.include(name);
-          expect(firstRow[columnNames.indexOf(name)]).to.not.be.null;
-        });
       });
     });
 

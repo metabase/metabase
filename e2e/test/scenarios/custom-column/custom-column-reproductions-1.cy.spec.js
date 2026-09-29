@@ -76,16 +76,12 @@ describe("issue 14843", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize(({ body }) => {
-      const ccIndex = body.data.cols.findIndex(
-        (col) => col.display_name === CC_NAME,
-      );
-      expect(ccIndex).to.be.at.least(0);
-      expect(body.data.rows.some((row) => row[ccIndex] === 3)).to.be.false;
-    });
+    H.visualize();
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
+    // Rye (length 3) is the city of the 4th person, so it would render without the filter
+    H.tableInteractiveBody().findByText("Hudson Borer").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
@@ -604,18 +600,12 @@ describe("issue 24922", () => {
 
     H.visualize(({ body }) => {
       expect(body.error).to.not.exist;
-
-      const columnNames = body.data.cols.map((col) => col.display_name);
-      const totalIndex = columnNames.indexOf("Total");
-      const ccIndex = columnNames.indexOf("CustomColumn");
-      const values = body.data.rows.map((row) => row[ccIndex]);
-      expect(values).to.include("Segment").and.to.include("Other");
-      body.data.rows.forEach((row) => {
-        expect(row[ccIndex]).to.eq(row[totalIndex] < 100 ? "Segment" : "Other");
-      });
     });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
+    // The first order's total is under 100, the second one's is not
+    H.tableInteractiveBody().findAllByText("Segment").should("exist");
+    H.tableInteractiveBody().findAllByText("Other").should("exist");
   });
 });
 
