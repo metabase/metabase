@@ -421,6 +421,21 @@
     (throw (ex-info ":inline is only allowed for numbers and booleans" {:x x})))
   (compile! x context))
 
+(defn- validate-unit [unit]
+  (when-not (and ((some-fn keyword? string?) unit)
+                 (re-matches #"^[a-zA-Z0-9]+$" (name unit)))
+    (throw (ex-info "Invalid unit" {:unit unit}))))
+
+(defn- timestamp-diff! [[unit col-x col-y] context]
+  (validate-unit unit)
+  (append-sql! context "timestampdiff(")
+  (append-sql! context (name unit))
+  (append-sql! context ", ")
+  (compile! col-x context)
+  (append-sql! context ", ")
+  (compile! col-y context)
+  (append-sql! context ")"))
+
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
@@ -454,8 +469,7 @@
     (append-sql! context "'")))
 
 (defn- h2x-extract! [[unit expr] context]
-  (when-not (re-matches #"^[a-zA-Z0-9]+$" (name unit))
-    (throw (ex-info "Invalid unit" {:unit unit})))
+  (validate-unit unit)
   (append-sql! context "extract(")
   (append-sql! context (name unit))
   (append-sql! context " FROM ")
@@ -530,6 +544,7 @@
     :exists                 (-exists! "EXISTS "     (first args) context)
     :not-exists             (-exists! "NOT EXISTS " (first args) context)
     :inline                 (inline! (first args) context)
+    :timestampdiff          (timestamp-diff! args context)
 
     ;; TODO -- confirm this is the correct way to implement `:lift`
     :lift

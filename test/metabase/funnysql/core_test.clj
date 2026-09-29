@@ -596,3 +596,8 @@
                                                      :from   [:permissions_group_membership]
                                                      :where  [:= :user_id [:inline 1]]}]}
                           :postgres)))))
+
+(deftest ^:parallel timestamp-diff-test
+  (is (= ["timestampdiff(second, \"col_a\", \"col_b\")"]
+         (funnysql/format [:timestampdiff :second :col_a :col_b]
+                          :postgres))))
