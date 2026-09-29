@@ -17,6 +17,7 @@
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -820,6 +821,31 @@
             "native model keeps structural type info the target can't re-derive")
         ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
         (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))))))
+
+(deftest serdes-load-legacy-query-integer-literals-test
+  (testing "a Card loaded from a legacy-MBQL export keeps integer literals in comparisons and runs"
+    (let [db-name  (t2/select-one-fn :name :model/Database (mt/id))
+          price-id (mt/id :venues :price)]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              ;; `price-id` is the Field ID of VENUES.PRICE, so coercing it would silently filter on that column
+              legacy    {:database db-name
+                         :type     "query"
+                         :query    {:source-table [db-name "PUBLIC" "VENUES"]
+                                    :aggregation  [["count"]]
+                                    :filter       ["=" price-id price-id]
+                                    :joins        [{:source-table [db-name "PUBLIC" "CATEGORIES"]
+                                                    :alias        "C"
+                                                    :strategy     "left-join"
+                                                    :condition    ["=" 1 1]}]}}]
+          (serdes/load-one! (assoc extracted :dataset_query legacy)
+                            (t2/select-one :model/Card :id card-id))
+          (let [query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+            (is (=? {:stages [{:filters [[:= {} price-id price-id]]
+                               :joins   [{:conditions [[:= {} 1 1]]}]}]}
+                    query))
+            (is (= [[(* 100 75)]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
