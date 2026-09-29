@@ -383,7 +383,14 @@ export interface MetabaseConfig {
    * `handleLink`, for customizing what happens when people click a link.
    * See [Web component plugins](https://www.metabase.com/docs/latest/embedding/config#web-component-plugins).
    */
-  pluginsConfig?: object;
+  pluginsConfig?: {
+    /**
+     * Called when people click a link in an embed. Return `{ handled: true }`
+     * to handle the link yourself, or `{ handled: false }` to open the link
+     * in a new tab.
+     */
+    handleLink?: (url: string) => { handled: boolean };
+  };
 
   /**
    * The custom visualizations that components on the page can load, each
@@ -391,7 +398,7 @@ export interface MetabaseConfig {
    * in guest embeds. See
    * [Custom visualizations in embeds](https://www.metabase.com/docs/latest/embedding/custom-visualizations).
    */
-  allowedCustomVisualizations?: string[];
+  allowedCustomVisualizations?: `custom:${string}`[];
 
   /**
    * SSO embeds only. Which SSO method to use. If you've set up both SAML and

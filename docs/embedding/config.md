@@ -219,8 +219,7 @@ To run your own code when embeds load, like sending analytics events, pass an `e
 {% include_file "{{ dirname }}/sdk/snippets/config/config-with-event-handlers.tsx" snippet="example" %}
 ```
 
-- `onDashboardLoad` fires when a dashboard loads with all visible cards and their content.
-- `onDashboardLoadWithoutCards` fires when the dashboard's title, tabs, and grid render, before the content loads.
+`onDashboardLoad` fires when a dashboard loads with all visible cards and their content.
 
 For the full list of handlers, see [`eventHandlers`](./config-reference.md#react-sdk-eventhandlers).
 

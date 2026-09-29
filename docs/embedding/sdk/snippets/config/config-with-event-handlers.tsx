@@ -15,7 +15,6 @@ const Example = ({ children }: PropsWithChildren) => {
 
   const eventHandlers = {
     onDashboardLoad: handleDashboardLoad,
-    onDashboardLoadWithoutCards: handleDashboardLoad,
   };
 
   return (
