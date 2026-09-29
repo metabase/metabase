@@ -48,7 +48,7 @@ describe("buildPath with spec setup", () => {
     command(
       seq,
       "intercept",
-      'intercept("GET", "/api/user/current", {"id":1})',
+      'intercept("GET", "/api/user/current", <reply>)',
       "before each",
       payload("reply", reply),
     );
@@ -84,7 +84,13 @@ describe("buildPath with spec setup", () => {
     ]).tokens;
 
     expect(ldap[0].exact).not.toBe(google[0].exact);
+    expect(ldap[0].exact).toMatch(
+      /^before each: intercept\("GET", "\/api\/user\/current", <reply>\) reply#[0-9a-f]{16}$/,
+    );
     expect(ldap[0].normalized).not.toBe(google[0].normalized);
+    expect(ldap[0].normalized).toBe(
+      'before each: intercept("GET", "/api/user/current", <reply>) reply {"id":<id>,"sso_source":"ldap"}',
+    );
   });
 
   it("should give stubs with the same reply the same token when run-varying values differ", () => {
@@ -98,7 +104,7 @@ describe("buildPath with spec setup", () => {
     const clipped = command(
       0,
       "intercept",
-      'intercept("/api/a", {"b":1})',
+      'intercept("/api/a", <reply>)',
       "test",
       {
         reply: '{"b":1…',
@@ -106,15 +112,21 @@ describe("buildPath with spec setup", () => {
         replyBytes: 5000,
       },
     );
-    const handler = command(1, "intercept", 'intercept("/api/a", fn)', "test", {
-      replyType: "handler",
-    });
+    const handler = command(
+      1,
+      "intercept",
+      'intercept("/api/a", <reply>)',
+      "test",
+      {
+        replyType: "handler",
+      },
+    );
 
     expect(
       buildPath([clipped, handler]).tokens.map((token) => token.exact),
     ).toEqual([
-      'intercept("/api/a", {"b":1}) reply#fedcba9876543210~raw',
-      'intercept("/api/a", fn) reply<handler>',
+      'intercept("/api/a", <reply>) reply#fedcba9876543210~raw',
+      'intercept("/api/a", <reply>) reply<handler>',
     ]);
   });
 });

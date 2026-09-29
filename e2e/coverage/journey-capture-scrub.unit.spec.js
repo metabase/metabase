@@ -662,15 +662,18 @@ describe("journey capture of spec setup", () => {
 
     expect(eventOf(events, "ch-stub")).toMatchObject({
       name: "intercept",
+      chain: 'intercept("GET", "/api/user/current", <reply>)',
       reply: '{"id":1,"sso_source":"ldap"}',
       replyHash: requestBodyFields({ id: 1, sso_source: "ldap" }).bodyHash,
     });
     expect(eventOf(events, "ch-fixture").reply).toBe('{"fixture":"card.json"}');
     expect(eventOf(events, "ch-handler")).toMatchObject({
+      chain: 'intercept({"method":"POST","url":"/api/dataset"}, <reply>)',
       replyType: "handler",
     });
     expect(eventOf(events, "ch-handler").reply).toBeUndefined();
     const spy = eventOf(events, "ch-spy");
+    expect(spy.chain).toBe('intercept("POST", "/api/dataset")');
     expect([spy.reply, spy.replyHash, spy.replyType]).toEqual([
       undefined,
       undefined,
@@ -682,7 +685,11 @@ describe("journey capture of spec setup", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "journey-scrub-"));
     try {
       const payload = recordAttempt(recordSetup);
-      expect(eventOf(payload.events, "ch-token-stub").reply).toBe(
+      const stub = eventOf(payload.events, "ch-token-stub");
+      expect(stub.chain).toBe(
+        'intercept("GET", "/api/session/properties", <reply>)',
+      );
+      expect(stub.reply).toBe(
         `{"body":{"premium-embedding-token":"<masked>","value":"${TOKEN}"}}`,
       );
       writeShard(dir, payload);

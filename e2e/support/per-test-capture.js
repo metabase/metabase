@@ -47,6 +47,7 @@ import { createCoverageCounters } from "./coverage-counters";
 import {
   flattenBranchHits,
   interceptReplyArg,
+  interceptReplyIndex,
   payloadFields,
   proxyBodyFields,
   requestBodyArg,
@@ -397,9 +398,17 @@ function commandText(name, args) {
   if (name === "request") {
     return requestText(args);
   }
-  // A task's argument can hold secrets like a signing key, so it is recorded masked in the event's own fields.
+  // A task's argument and a stub's reply can hold secrets, such as a signing key or a licence token, so the event records them masked in its own fields.
   if (name === "task") {
     return `task(${summarizeArg(args?.[0])})`;
+  }
+  if (name === "intercept") {
+    const reply = interceptReplyIndex(args || [], isHttpMethod);
+    return `intercept(${(args || [])
+      .map((arg, i) =>
+        i === reply && arg !== undefined ? "<reply>" : summarizeArg(arg),
+      )
+      .join(", ")})`;
   }
   return `${name}(${(args || []).map(summarizeArg).join(", ")})`;
 }

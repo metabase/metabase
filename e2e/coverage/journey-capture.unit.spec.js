@@ -8,6 +8,7 @@ import {
   hashText,
   indexBranchHits,
   interceptReplyArg,
+  interceptReplyIndex,
   payloadFields,
   proxyBodyFields,
   requestBodyArg,
@@ -477,6 +478,12 @@ describe("interceptReplyArg", () => {
     expect(
       interceptReplyArg(["/api/card", { method: "GET" }, reply], isMethod),
     ).toBe(reply);
+  });
+
+  it("should give the reply's position, or -1 without one", () => {
+    expect(interceptReplyIndex(["GET", "/api/card"], isMethod)).toBe(-1);
+    expect(interceptReplyIndex(["/api/card", reply], isMethod)).toBe(1);
+    expect(interceptReplyIndex(["GET", "/api/card", reply], isMethod)).toBe(2);
   });
 });
 

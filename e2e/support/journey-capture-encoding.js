@@ -236,12 +236,18 @@ export function payloadFields(value, prefix) {
   );
 }
 
-// Picks the reply out of cy.intercept's arguments: (matcher), (method, url), (matcher, reply), (method, url, reply) or (url, matcher, reply).
-export function interceptReplyArg(args, isMethod) {
+// Where the reply sits in cy.intercept's arguments: (matcher), (method, url), (matcher, reply), (method, url, reply) or (url, matcher, reply).
+// It is -1 when there is no reply.
+export function interceptReplyIndex(args, isMethod) {
   if (args.length >= 3) {
-    return args[2];
+    return 2;
   }
-  return args.length === 2 && !isMethod(args[0]) ? args[1] : undefined;
+  return args.length === 2 && !isMethod(args[0]) ? 1 : -1;
+}
+
+export function interceptReplyArg(args, isMethod) {
+  const index = interceptReplyIndex(args, isMethod);
+  return index === -1 ? undefined : args[index];
 }
 
 // Picks the body out of cy.request's arguments the way Cypress does: (url), (url, body), (method, url), (method, url, body) or (options).
