@@ -5,6 +5,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {
   createMockField,
+  createMockFieldDimension,
   createMockFieldValues,
 } from "metabase-types/api/mocks/field";
 
@@ -20,15 +21,7 @@ const setup = ({
     id: FIELD_ID,
     table_id: 1,
     dimensions: hasInternalDimension
-      ? [
-          {
-            id: 10,
-            type: "internal",
-            name: "Custom",
-            human_readable_field_id: null,
-            field_id: FIELD_ID,
-          },
-        ]
+      ? [createMockFieldDimension({ id: 10, type: "internal", name: "Custom" })]
       : [],
   });
 
