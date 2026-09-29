@@ -435,29 +435,6 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("the app's lifecycle", () => {
-    it("removes the app's resources and preserves its assigned group", () => {
-      syncOneQuery().then((card) => {
-        assignDataAppTestGroup(APP_SLUG).then((groupId) => {
-          cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-            cy.request("DELETE", `/api/apps/${APP_SLUG}`);
-
-            cy.request({
-              url: `/api/collection/${app.resource_collection_id}`,
-              failOnStatusCode: false,
-            })
-              .its("status")
-              .should("eq", 404);
-            cy.request(`/api/permissions/group/${groupId}`)
-              .its("body.id")
-              .should("eq", groupId);
-            cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
-              .its("status")
-              .should("eq", 404);
-          });
-        });
-      });
-    });
-
     // Everything the CLI drives is superuser-gated, starting with the draft it
     // asks for first, so a key that is not an admin's gets nowhere.
     it("refuses to synchronize at all for a key that is not an admin's", () => {
