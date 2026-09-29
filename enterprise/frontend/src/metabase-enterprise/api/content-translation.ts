@@ -20,7 +20,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
           url: contentTranslationEndpoints.getDictionary,
           params,
         }),
-        providesTags: () => [listTag("content-translation")],
+        providesTags: () => [],
       }),
       uploadContentTranslationDictionary: builder.mutation<
         { success: boolean },
