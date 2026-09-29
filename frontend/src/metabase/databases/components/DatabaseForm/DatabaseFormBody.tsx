@@ -65,15 +65,12 @@ export const DatabaseFormBody = ({
   );
 
   const px = match(location)
-    .with("setup", () => undefined)
-    .with("embedding_setup", () => "xl")
-    .with("admin", () => "xl")
-    .with("full-page", () => undefined)
-    .exhaustive();
+    .with("admin", "embedding_setup", () => "xl")
+    .otherwise(() => undefined);
   const mah = match(location)
-    .with("setup", () => undefined)
+    .with("admin", "embedding_setup", () => "calc(100vh - 20rem)")
     .with("full-page", () => "100%")
-    .otherwise(() => "calc(100vh - 20rem)");
+    .otherwise(() => undefined);
 
   return (
     <Box
