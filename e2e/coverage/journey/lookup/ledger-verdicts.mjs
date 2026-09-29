@@ -99,6 +99,25 @@ function remainingSide(m, position) {
 }
 
 /**
+ * For a candidate that killed none of its sampled mutants, with extreme ones among them, what it shows, as kills.py's sample_reading() gives it.
+ * The baseline mutants join the reading when it ran some and killed none of them.
+ */
+function sampleReading(qualifying, ranCleanly, killed, mutants) {
+  if (
+    qualifying.some((mid) => killed.has(mid)) ||
+    !qualifying.some((mid) => mutants[mid].stratum === "extreme")
+  ) {
+    return null;
+  }
+  const baseline = ranCleanly.filter(
+    (mid) => mutants[mid].coarse === "baseline",
+  );
+  return baseline.length && !baseline.some((mid) => killed.has(mid))
+    ? "no kill among the sampled extreme and baseline mutants"
+    : "no kill among the sampled extreme mutants";
+}
+
+/**
  * The widest scope at which the remaining side missed any of the mutants, and the remaining side's result on each when it isn't full,
  * as kills.py's reading_scope() gives them.
  */
@@ -533,6 +552,15 @@ export function verdictsFromLedger(
     const symptomOnly = grounds.length > 0 && grounds.every(symptomKill);
     if (symptomOnly) {
       reason = `${reason}, ${SYMPTOM_ONLY}`;
+    }
+    const reading = sampleReading(
+      qualifying,
+      [...by.ran[t.i]].filter((mid) => !by.errored[t.i].has(mid)),
+      new Set([...by.killed_by[t.i], ...by.unconfirmed_by[t.i]]),
+      mutants,
+    );
+    if (reading && !KEPT.includes(verdict)) {
+      reason = `${reason}, ${reading}`;
     }
     const [scope, scopeText] = readingScope(sorted(grounds), mutants);
     if (scopeText) {

@@ -196,6 +196,8 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 - **eligible-for-risk-acceptance:** an unmeasured test that a person may choose to delete on a stated risk, never a measured delete. Only `kills.py` gives it, and only with a location prior.
 - **accepted:** an eligible test whose acceptance a person has recorded, with who authorised it, when, and the policy scope. The script never decides it. See [Eligible for risk acceptance](#eligible-for-risk-acceptance).
 
+A delete or unmeasured test that killed none of its qualifying mutants, with extreme mutants among them, has a reason ending in "no kill among the sampled extreme mutants", or "no kill among the sampled extreme and baseline mutants" when it also ran baseline mutants and killed none of them. The reading says nothing about the test's original regression or finer mutants, which are still planted and run.
+
 A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason gains ", all symptom kills", as in "unique kills, all symptom kills".
 
 Those mutants are the ones no remaining test kills, and that claim holds only at the scope that ran. A keep's `scope` is the widest scope at which the remaining side missed any of them: `full`, `selected`, or `unmeasured` when the remaining side missed none of them, because it errored, was unconfirmed, was excluded or never ran. When the scope isn't full, the reason ends in "; " and the remaining side's result on each of the mutants, as in "unique kills; reg-1: missed by 7 selected remaining tests, 42 excluded". A keep stays a keep at any scope, since keeping is the safe side. A delete, eligible, accepted or unmeasured test's `scope` is the same scope over its lost kills, the mutants in its `depends_on` that no kept test kills.
@@ -394,13 +396,12 @@ The joint check takes the delete, eligible and accepted candidates together, and
 
 A verdict of eligible for risk acceptance, `eligible-for-risk-acceptance`, marks an unmeasured test that a person may choose to delete on a stated risk. It's never a measured delete, which is why the report and the JSON keep it apart from the other verdicts. `kills.py` never decides to accept it: a test is `accepted` only when the `--acceptances` file records who authorised it, when, and the policy scope it was accepted under.
 
-An unmeasured candidate that passed in the capture becomes eligible when it has all four fields:
+An unmeasured candidate that passed in the capture becomes eligible when it has all three fields:
 
 | Field     | Meaning                                                                                                   |
 | --------- | --------------------------------------------------------------------------------------------------------- |
 | `prior`   | the highest `score` the location prior gives the files of its qualifying mutants' locations, and the files of their direct callers when `--callers` is given. The index resolves each location to its file |
-| `sampled` | n, the number of its qualifying mutants                                                                    |
-| `bound`   | 3/n, the rule of three. Remaining tests killed all n, so their miss rate at those locations is below 3/n at 95% confidence. It's missing while n is 3 or less, where 3/n bounds nothing |
+| `sampled` | n, the number of its qualifying mutants, which must be at least 4. It's a count of what was observed, and the verdict reads nothing more into it |
 | `module`  | the location prior's module for each file of its qualifying mutants' locations. The index has no modules, so they come from the prior |
 
 It also needs:
@@ -409,7 +410,7 @@ It also needs:
 - a confirmed kill on every one of its n qualifying mutants by a test that stays: a remaining test, which isn't a candidate, or a kept candidate. A sampled mutant that none of them kills is a survivor, with the outcome `survivor in sample`.
 - the baseline check, as for delete.
 
-Each module takes at most `--accept-cap` eligible verdicts, default 2, accepted ones included, so one wrong prior takes at most two tests out of a module before an escape there brings them back. Candidates are taken lowest prior first, then lowest bound, then in `--candidates` order. A candidate whose files span several modules counts against each of them.
+Each module takes at most `--accept-cap` eligible verdicts, default 2, accepted ones included, so one wrong prior takes at most two tests out of a module before an escape there brings them back. Candidates are taken lowest prior first, then the most sampled mutants, then in `--candidates` order. A candidate whose files span several modules counts against each of them.
 
 A keep or provisional-keep is never eligible, and neither is a candidate that didn't pass in the capture.
 
@@ -451,11 +452,11 @@ Each eligibility's `prior_over` says what the prior covers: `reached files`, or 
 
 The prior's `callers` holds their scores. A candidate without an entry has no prior, and one with an empty list has no direct callers.
 
-Every unmeasured, eligible or accepted candidate's `eligibility` has the four fields, `prior_over`, `importers` when the prior has a graph file, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `eligible`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `unresolved suspected equivalent mutant in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
+Every unmeasured, eligible or accepted candidate's `eligibility` has the three fields, `prior_over`, `importers` when the prior has a graph file, `missing` with each missing field and why, the `survivors` in its sample, an `outcome`, and its `ci_history` entry when `--ci-history` is given. The `outcome` is one of `eligible`, `missing fields`, `never: did not pass in the capture`, `survivor in sample`, `unresolved suspected equivalent mutant in sample`, `needs a baseline check`, `prior above the maximum` or `over the module cap`.
 
 The top-level `risk_acceptance` key has:
 
-- the settings: `cap`, `max_prior`, the `bound` rule, the `prior` file with its `base_commit`, what it covers, the `callers` file, the `graph` file and the `importers` role, the `ci_history` file and the `acceptances` file
+- the settings: `cap`, `max_prior`, `min_sampled`, the `prior` file with its `base_commit`, what it covers, the `callers` file, the `graph` file and the `importers` role, the `ci_history` file and the `acceptances` file
 - `eligible`: each eligible or accepted candidate with its `eligibility`
 - `accepted`: each accepted candidate with its `authorisation` and `policy_scope`
 - `modules`: for each module that made a candidate eligible or turned one away at the cap, those candidates and the rollup's `prior`

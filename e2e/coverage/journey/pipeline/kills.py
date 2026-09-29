@@ -75,6 +75,9 @@ A qualifying mutant sits in the candidate's reached code, the candidate ran agai
 at least one other test ran against it, and it isn't a suspected equivalent mutant with no confirmed kill.
 A candidate passes the baseline check with a confirmed kill among its qualifying mutants or a run against a baseline mutant,
 because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
+A delete or unmeasured candidate that killed none of its qualifying mutants, with extreme mutants among them,
+has a reason ending in "no kill among the sampled extreme mutants",
+or "no kill among the sampled extreme and baseline mutants" when it also ran baseline mutants and killed none of them.
 
 A kept candidate is one whose verdict is keep or provisional-keep, and it stays in the suite like a remaining test.
 A delete, eligible, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills,
@@ -92,17 +95,16 @@ that remaining tests and kept candidates kill only through symptom kills,
 and its `scope` is the same scope over the mutants in its `depends_on` that no kept candidate kills.
 
 An unmeasured candidate that passed in the capture becomes eligible for risk acceptance, never a measured delete,
-when its `eligibility` has all four of these fields:
+when its `eligibility` has all three of these fields:
   prior    the highest `score` the location prior gives the files of its qualifying mutants' locations,
            and the files of their direct callers when a callers file is given
-  sampled  n, the number of its qualifying mutants
-  bound    3/n, the rule of three: remaining tests killed all n, so their miss rate there is below 3/n at 95% confidence.
-           It is missing while n is 3 or less, where 3/n bounds nothing
+  sampled  n, the number of its qualifying mutants, which must be at least MIN_SAMPLED
   module   the location prior's module for each of the files of its qualifying mutants' locations
+n is the number observed, and the verdict reads nothing more into it.
 It also needs a confirmed kill by a remaining test or a kept candidate on every one of the n, no unresolved suspected
 equivalent mutant among the ones it would sample, the baseline check, and a prior of at most `max_prior`.
 Each unresolved suspect in a sample records the candidates whose verdict changes when only that suspect is dismissed.
-Each module takes at most `cap` eligible candidates, lowest prior first, then lowest bound.
+Each module takes at most `cap` eligible candidates, lowest prior first, then the most sampled mutants.
 A candidate over several modules counts against each of them.
 An eligible candidate is accepted only when the acceptances file records a person's authorisation of it and the policy scope:
 
@@ -181,8 +183,8 @@ REQUIRED_STRATA = "logic,wiring"
 ACCEPT_CAP = 2
 # At or below the median file, when the score is a percentile.
 MAX_PRIOR = 0.5
-ELIGIBILITY_FIELDS = ("prior", "sampled", "bound", "module")
-BOUND_RULE = "3/n, the rule of three: when remaining tests kill all n sampled mutants, their miss rate is below 3/n at 95% confidence"
+ELIGIBILITY_FIELDS = ("prior", "sampled", "module")
+MIN_SAMPLED = 4
 PRIOR_REACHED = "reached files"
 PRIOR_WITH_CALLERS = "reached files plus direct callers"
 IMPORTERS_ROLE = "information only"
@@ -870,6 +872,10 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         symptom_only = rests_only_on_symptom_kills(t.id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
         if symptom_only:
             reason = f"{reason}, {SYMPTOM_ONLY}"
+        reading = sample_reading(qualifying, ran_by_test[t.id] - errored_by_test[t.id],
+                                 killed_by_test[t.id] | unconfirmed_by_test[t.id], mutants)
+        if reading and verdict not in KEPT:
+            reason = f"{reason}, {reading}"
         grounds = reading_grounds(verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
         scope, scope_text = reading_scope(grounds, mutants)
         if scope_text:
@@ -900,6 +906,19 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         lost = [mid for mids in depends_on.values() for mid, stay in mids.items() if not stay]
         out[t.key]["scope"] = reading_scope(lost, mutants)[0]
     return out
+
+
+def sample_reading(qualifying, ran_cleanly, killed, mutants):
+    """For a candidate that killed none of its sampled mutants, with extreme ones among them, what it shows, and None otherwise.
+
+    The baseline mutants join the reading when it ran some and killed none of them.
+    """
+    if killed & set(qualifying) or not any(mutants[mid]["stratum"] == "extreme" for mid in qualifying):
+        return None
+    baseline = {mid for mid in ran_cleanly if mutants[mid]["coarse"] == "baseline"}
+    if baseline and not killed & baseline:
+        return "no kill among the sampled extreme and baseline mutants"
+    return "no kill among the sampled extreme mutants"
 
 
 def reading_grounds(verdict, unique, unconfirmed_unique, cover_kept_for, mutants):
@@ -974,11 +993,6 @@ def passes_baseline_check(evidence):
     return evidence["killed"] or evidence["ran_baseline"]
 
 
-def rule_of_three(n):
-    """3/n, or None when n is 3 or less and 3/n bounds nothing."""
-    return round(3 / n, 4) if n and n > 3 else None
-
-
 def static_importers(files, graph):
     importers, barrels = graph["importers"], set(graph.get("barrels") or [])
     found, stack = set(), [i for f in files for i in importers.get(f, [])]
@@ -1008,7 +1022,6 @@ def eligibility_fields(test_id, evidence, reason, accept):
     """The four fields an eligible verdict records, and which of them are missing and why."""
     n = evidence["sampled"] if evidence else None
     files = sorted(evidence["files"]) if evidence else []
-    bound = rule_of_three(n)
     prior, importers, modules, missing = None, None, [], {}
     if accept.prior is None:
         missing["prior"] = missing["module"] = "no location prior given"
@@ -1041,12 +1054,12 @@ def eligibility_fields(test_id, evidence, reason, accept):
         missing["sampled"] = "ran unknown for some of its mutants" if evidence else reason
     elif n == 0:
         missing["sampled"] = "no qualifying mutants"
-    if bound is None:
-        missing["bound"] = f"3/n bounds nothing for n = {n}" if n else "no mutants sampled"
+    elif n < MIN_SAMPLED:
+        missing["sampled"] = f"{n} sampled mutants, fewer than {MIN_SAMPLED}"
     record = {
         "prior": prior, "prior_over": accept.prior_over,
         **({"importers": importers} if accept.graph else {}),
-        "sampled": n, "bound": bound, "modules": modules,
+        "sampled": n, "modules": modules,
         "missing": {f: missing[f] for f in ELIGIBILITY_FIELDS if f in missing},
         "survivors": evidence["survivors"] if evidence else [],
         "outcome": None,
@@ -1058,7 +1071,7 @@ def eligibility_fields(test_id, evidence, reason, accept):
 
 def eligibility_outcomes(tests, out, evidence, accept):
     """Each unmeasured candidate's eligibility fields and outcome, making eligible those whose fields allow it,
-    lowest prior then lowest bound first, while their modules have room.
+    lowest prior then most sampled mutants first, while their modules have room.
     """
     records = {}
     ready = []
@@ -1081,7 +1094,7 @@ def eligibility_outcomes(tests, out, evidence, accept):
         else:
             ready.append(t)
     taken = collections.Counter()
-    for t in sorted(ready, key=lambda t: (records[t.key]["prior"]["score"], records[t.key]["bound"], t.id)):
+    for t in sorted(ready, key=lambda t: (records[t.key]["prior"]["score"], -records[t.key]["sampled"], t.id)):
         a = records[t.key]
         if any(taken[m] >= accept.cap for m in a["modules"]):
             a["outcome"] = "over the module cap"
@@ -1187,7 +1200,7 @@ def risk_acceptance_section(rows, accept):
     return {
         "cap": accept.cap,
         "max_prior": accept.max_prior,
-        "bound": BOUND_RULE,
+        "min_sampled": MIN_SAMPLED,
         "prior": {"file": accept.prior_file, "base_commit": ((accept.prior or {}).get("meta") or {}).get("base_commit"),
                   "over": accept.prior_over, "callers": accept.callers_file,
                   "graph": accept.graph_file, "importers": IMPORTERS_ROLE if accept.graph else None},
@@ -1517,13 +1530,14 @@ def risk_acceptance_report(a):
         f"  the prior covers {a['prior']['over']}" + (f", from {a['prior']['callers']}" if a["prior"]["callers"] else ""),
         *([f"  static importers from {a['prior']['graph']} are {a['prior']['importers']}"] if a["prior"]["graph"] else []),
         f"  at most {a['cap']} per module, lowest prior first, and a prior of at most {a['max_prior']}",
-        f"  bound {a['bound']}",
+        f"  at least {a['min_sampled']} sampled mutants, every one killed by a test that stays",
         f"  acceptances from {a['acceptances']}" if a["acceptances"] else "  no acceptances file given",
     ]
     for cid, r in sorted(a["eligible"].items()):
         lines += [
             f"  {cid}",
-            f"      module {', '.join(r['modules'])}, prior {r['prior']['score']}, {r['sampled']} mutants sampled, bound {r['bound']}",
+            f"      module {', '.join(r['modules'])}, prior {r['prior']['score']}, {r['sampled']} mutants sampled, "
+            "all killed by tests that stay",
         ]
         if cid in a["accepted"]:
             accepted = a["accepted"][cid]
@@ -1694,7 +1708,7 @@ def report(result):
           if result.get("ordinals") else []),
         f"A delete needs {result['min_mutants']} qualifying mutants, among them {', '.join(result['required_strata']) or 'any stratum'}",
         "",
-        *(f"{v:<16} {n}" for v, n in s["verdicts"].items()),
+        *(f"{v:<{max(map(len, VERDICTS))}} {n}" for v, n in s["verdicts"].items()),
         *symptom_report(k["symptom_kills"], s["symptom_kills"]),
         "",
         "Reasons",
