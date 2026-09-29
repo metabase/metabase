@@ -531,7 +531,7 @@
                         (when (instance? Throwable required-perms)
                           required-perms)))))))
 
-;;; ---------------------------------------- Saved-Card run semantics (copying) ----------------------------------------
+;;; --------------------------------------------- Saved-Card run semantics ---------------------------------------------
 
 (defn- saved-query-referenced-card-ids
   "Every Card `mbql5-query` reads at any depth: source stages and joins, `:metric` refs, native `{{#N}}` tags. The same
@@ -565,15 +565,8 @@
               table-ids    (:table (lib/all-referenced-entity-ids (into [mbql5-query] card-queries)))]
           {:perms/view-data (into {} (map (fn [table-id] [table-id :unrestricted])) table-ids)})))))
 
-(mu/defn check-saved-query-run-permissions
-  "Throw a 403 unless the current user could run `query` as a saved Card: read on every referenced Card at any depth,
-  view-data on its Tables, and view-data on the columns those Cards return. Mirrors what the query processor enforces
-  when a Card is executed (the `*card-id*` branch of `check-query-permissions*`).
-
-  Deliberately NOT [[check-run-permissions-for-query]]: that is the *authoring* check, and copying a Card the caller
-  can read and run is not authoring. The ex-data is exactly `{:status-code 403}` so nothing about the query, the Cards
-  it reads, or the caller's permissions leaks in the response."
-  [{database-id :database, :as query} :- [:maybe ::query]]
+(defn- check-saved-query-run-permissions*
+  [{database-id :database, :as query} message]
   (when (and (seq query) (not api/*is-superuser?*))
     (try
       (qp.store/with-metadata-provider database-id
@@ -588,17 +581,53 @@
             (check-card-result-metadata-data-perms database-id card-id))))
       ;; Fail closed on anything the checks raise, a missing Card included, and never let the cause's data out.
       (catch Exception e
-        (log/debugf e "Refusing to copy query: %s" (ex-message e))
-        (throw (ex-info (tru "You cannot copy this question because you do not have permissions to run its query.")
-                        {:status-code 403}
-                        e))))))
+        (log/debugf e "Refusing saved query: %s" (ex-message e))
+        (throw (ex-info message {:status-code 403} e))))))
+
+(mu/defn check-saved-query-run-permissions
+  "Throw a 403 unless the current user could run `query` as a saved Card: read on every referenced Card at any depth,
+  view-data on its Tables, and view-data on the columns those Cards return. Mirrors what the query processor enforces
+  when a Card is executed (the `*card-id*` branch of `check-query-permissions*`).
+
+  Deliberately NOT [[check-run-permissions-for-query]]: that is the *authoring* check, and copying a Card the caller
+  can read and run is not authoring. The ex-data is exactly `{:status-code 403}` so nothing about the query, the Cards
+  it reads, or the caller's permissions leaks in the response."
+  [query :- [:maybe ::query]]
+  (check-saved-query-run-permissions*
+   query
+   (tru "You cannot copy this question because you do not have permissions to run its query.")))
 
 (mu/defn can-run-saved-query? :- :boolean
-  "Boolean twin of [[check-saved-query-run-permissions]], for callers that discard rather than refuse (dashboard deep
-  copy)."
+  "Boolean twin of [[check-saved-query-run-permissions]], for callers that discard rather than refuse."
   [query :- [:maybe ::query]]
   (try
     (check-saved-query-run-permissions query)
+    true
+    (catch clojure.lang.ExceptionInfo _
+      false)))
+
+(mu/defn check-saved-card-run-permissions
+  "Throw a 403 with `message` unless the current user could run the saved Card with `card-id` and `query`: read on the
+  Card itself plus everything [[check-saved-query-run-permissions]] requires. No-op for superusers. The ex-data is
+  exactly `{:status-code 403}`."
+  [card-id :- ::lib.schema.id/card
+   query   :- [:maybe ::query]
+   message :- :string]
+  (when-not api/*is-superuser?*
+    (when-not (try
+                (mi/can-read? :model/Card card-id)
+                (catch Exception e
+                  (log/debugf e "Could not read-check Card %d" card-id)
+                  false))
+      (throw (ex-info message {:status-code 403})))
+    (check-saved-query-run-permissions* query message)))
+
+(mu/defn can-run-saved-card? :- :boolean
+  "Boolean twin of [[check-saved-card-run-permissions]]."
+  [card-id :- ::lib.schema.id/card
+   query   :- [:maybe ::query]]
+  (try
+    (check-saved-card-run-permissions card-id query "")
     true
     (catch clojure.lang.ExceptionInfo _
       false)))

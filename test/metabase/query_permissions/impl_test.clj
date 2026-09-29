@@ -546,6 +546,38 @@
                                                                                    (query-perms/check-saved-query-run-permissions query)))
                                                              (is (false? (query-perms/can-run-saved-query? query)))))))))
 
+(deftest check-saved-card-run-permissions-test
+  (testing "running a saved Card needs read on the Card itself as well as everything its query needs"
+    (do-with-copy-perms-fixture! nil (fn [{:keys [hidden-coll readable-coll]}]
+                                       (mt/with-temp [:model/Card {hidden-id :id} {:collection_id hidden-coll
+                                                                                   :dataset_query (mt/mbql-query venues)}
+                                                      :model/Card {readable-id :id} {:collection_id readable-coll
+                                                                                     :dataset_query (mt/mbql-query venues)}
+                                                      :model/Card {wrapper-id :id} {:collection_id readable-coll
+                                                                                    :dataset_query (card-query hidden-id)}]
+                                         (let [query (fn [id] (t2/select-one-fn :dataset_query :model/Card :id id))]
+                                           (testing "a readable Card on a viewable table"
+                                             (is (true? (query-perms/can-run-saved-card? readable-id (query readable-id)))))
+                                           (testing "an unreadable Card, even though its query alone is fine"
+                                             (is (true? (query-perms/can-run-saved-query? (query hidden-id))))
+                                             (is (false? (query-perms/can-run-saved-card? hidden-id (query hidden-id)))))
+                                           (testing "a readable Card built on an unreadable one"
+                                             (is (false? (query-perms/can-run-saved-card? wrapper-id (query wrapper-id)))))
+                                           (testing "the refusal carries the caller's message and nothing else"
+                                             (let [e (is (thrown-with-msg? ExceptionInfo #"^Nope$"
+                                                                           (query-perms/check-saved-card-run-permissions
+                                                                            hidden-id (query hidden-id) "Nope")))]
+                                               (is (= {:status-code 403} (ex-data e)))))
+                                           (testing "a Card that doesn't exist"
+                                             (is (false? (query-perms/can-run-saved-card? Integer/MAX_VALUE (query readable-id)))))))))
+    (testing "blocked view-data"
+      (do-with-copy-perms-fixture! {:view-data :blocked}
+                                   (fn [{:keys [readable-coll]}]
+                                     (mt/with-temp [:model/Card {card-id :id} {:collection_id readable-coll
+                                                                               :dataset_query (mt/mbql-query venues)}]
+                                       (is (false? (query-perms/can-run-saved-card?
+                                                    card-id (t2/select-one-fn :dataset_query :model/Card :id card-id))))))))))
+
 (deftest check-result-metadata-data-perms-error-message-test
   (testing "the denied table's ID reads as a plain number, with no digit-grouping separator"
     ;; `tru` runs its arguments through MessageFormat, which formats a bare integer for the current locale: a

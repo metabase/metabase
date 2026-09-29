@@ -5672,3 +5672,52 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+(deftest move-card-onto-dashboard-requires-run-permission-test
+  (testing "PUT /api/card/:id with dashboard_id can't place a Card the user can't run on a dashboard"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Dashboard {dash-id :id} {}
+                       :model/Card      {blocked-id :id} {:database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (mt/mbql-query venues)}]
+          (mt/user-http-request :rasta :put 403 (str "card/" blocked-id) {:dashboard_id dash-id})
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card blocked-id)))
+          (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id))))))))
+
+(deftest card-parameter-values-source-requires-run-permission-test
+  (testing "A Card's parameter can't draw values from a Card the user can read but can't run"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-no-data-perms-for-all-users!
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+        (mt/with-temp [:model/Card {blocked-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :venues)
+                                                     :dataset_query (mt/mbql-query venues)}
+                       :model/Card {card-id :id}    {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories)}]
+          (let [param {:id                   "_P_"
+                       :name                 "P"
+                       :slug                 "p"
+                       :type                 "category"
+                       :values_source_type   "card"
+                       :values_source_config {:card_id     blocked-id
+                                              :value_field (mt/$ids $venues.name)}}]
+            (testing "the Card is readable but the user can't run it"
+              (mt/with-current-user (mt/user->id :rasta)
+                (is (mi/can-read? :model/Card blocked-id)))
+              (mt/user-http-request :rasta :post 403 (format "card/%d/query" blocked-id)))
+            (testing "POST /api/card"
+              (mt/with-model-cleanup [:model/Card]
+                (mt/user-http-request :rasta :post 403 "card"
+                                      (assoc (card-with-name-and-query "With blocked source" (mt/mbql-query categories))
+                                             :parameters [param]))))
+            (testing "PUT /api/card/:id"
+              (mt/user-http-request :rasta :put 403 (format "card/%d" card-id) {:parameters [param]})
+              (is (empty? (t2/select-one-fn :parameters :model/Card card-id))))
+            (testing "an admin can"
+              (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id) {:parameters [param]}))))))))
