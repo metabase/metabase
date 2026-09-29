@@ -575,5 +575,8 @@ export function hasActionsMenu(dashcard: DashboardCard) {
 }
 
 export function isTableDisplay(dashcard: DashboardCard) {
+  if (isVisualizerDashboardCard(dashcard)) {
+    return dashcard.visualization_settings.visualization.display === "table";
+  }
   return dashcard?.card?.display === "table";
 }

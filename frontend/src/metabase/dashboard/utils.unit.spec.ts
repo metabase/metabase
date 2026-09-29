@@ -4,12 +4,14 @@ import {
   createTabSlug,
   fetchDataOrError,
   findDashCardForInlineParameter,
+  getClickBehaviorDescription,
   getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardLoading,
+  isTableDisplay,
   parseTabSlug,
   setDashboardHeaderParameterIndex,
   syncParametersAndEmbeddingParams,
@@ -20,6 +22,7 @@ import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { ParameterValueOrArray } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
+  createMockCard,
   createMockColumn,
   createMockDashboard,
   createMockDashboardCard,
@@ -30,6 +33,7 @@ import {
   createMockParameter,
   createMockTextDashboardCard,
   createMockVirtualDashCard,
+  createMockVisualizerDashboardCard,
 } from "metabase-types/api/mocks";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
@@ -52,6 +56,23 @@ function getMockLocationWithTab(slug: string | string[] | null | undefined) {
 }
 
 describe("Dashboard utils", () => {
+  it("uses chart click behavior for a table visualized as a bar on a dashboard (#73448)", () => {
+    const dashcard = createMockVisualizerDashboardCard({
+      card: createMockCard({ display: "table" }),
+      visualization_settings: {
+        visualization: {
+          display: "bar",
+          settings: {},
+          columnValuesMapping: {},
+        },
+        click_behavior: { type: "crossfilter" },
+      },
+    });
+
+    expect(isTableDisplay(dashcard)).toBe(false);
+    expect(getClickBehaviorDescription(dashcard)).toBe("Filter this dashboard");
+  });
+
   describe("fetchDataOrError()", () => {
     it("should return data on successful fetch", async () => {
       const data = {

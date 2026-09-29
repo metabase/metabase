@@ -251,9 +251,7 @@ describe("issue 64368", () => {
   });
 });
 
-describe("issue 73448", () => {
-  const productCategories = ["Doohickey", "Gadget", "Gizmo", "Widget"];
-
+describe("table and chart click behavior", () => {
   const categoryParameter = createMockActionParameter({
     id: "category",
     name: "Category",
@@ -264,10 +262,10 @@ describe("issue 73448", () => {
 
   const questionDetails: StructuredQuestionDetails = {
     name: "Orders by Category",
-    display: "bar",
+    display: "table",
     query: {
       "source-table": ORDERS_ID,
-      aggregation: [["count"]],
+      aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
       breakout: [
         [
           "field",
@@ -275,21 +273,15 @@ describe("issue 73448", () => {
           { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
         ],
       ],
-      limit: 5,
     },
   };
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-  });
-
-  it("updates a dashboard filter from a bar chart dimension click behavior (#73448)", () => {
     H.createQuestionAndDashboard({
       questionDetails,
-      dashboardDetails: {
-        parameters: [categoryParameter],
-      },
+      dashboardDetails: { parameters: [categoryParameter] },
     }).then(({ body: dashcard }) => {
       H.addOrUpdateDashboardCard({
         dashboard_id: dashcard.dashboard_id,
@@ -313,60 +305,89 @@ describe("issue 73448", () => {
               ],
             },
           ],
-          visualization_settings: {
-            column_settings: {
-              '["name","CATEGORY"]': {
-                click_behavior: {
-                  type: "crossfilter",
-                  parameterMapping: {
-                    [categoryParameter.id]: {
-                      id: categoryParameter.id,
-                      source: {
-                        type: "column",
-                        id: "CATEGORY",
-                        name: "Product → Category",
-                      },
-                      target: {
-                        type: "parameter",
-                        id: categoryParameter.id,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
         },
       });
-
       H.visitDashboard(dashcard.dashboard_id);
     });
 
-    cy.location("pathname").as("dashboardPath");
+    H.editDashboard();
+    H.clickBehaviorSidebar().findByText("Product → Category").click();
+    configureCategoryFilter();
+    H.saveDashboard();
+  });
+
+  it("keeps a table column's filter action separate from metric drill-through (#82956)", () => {
+    for (const value of ["3,976", "297,270.99"]) {
+      H.getDashboardCard().findByText(value).click();
+      H.popover()
+        .should("contain", "See these Orders")
+        .and("contain", "Break out by…");
+      H.filterWidget().should("not.contain", "Doohickey");
+      cy.realPress("Escape");
+    }
+
+    H.getDashboardCard().findByText("Doohickey").click();
+    H.filterWidget().should("contain", "Doohickey");
+    H.assertTableRowsCount(1);
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    H.getDashboardCard().findByText("Doohickey").click();
+    H.filterWidget().should("not.contain", "Doohickey");
+    H.assertTableRowsCount(4);
+  });
+
+  it("configures chart click behavior after visualizing a table as a bar on a dashboard (#73448)", () => {
+    cy.log(
+      "Convert the dashboard visualization, keeping the saved question a table",
+    );
+    H.editDashboard();
+    H.showDashcardVisualizerModal(0, { isVisualizerCard: false });
+    H.modal().findByRole("button", { name: "Save", exact: true }).click();
+    H.modal().should("not.exist");
+    H.clickBehaviorSidebar()
+      .should("not.contain", "On-click behavior for each column")
+      .findByText("Update a dashboard filter")
+      .should("be.visible");
+    configureCategoryFilter();
+    H.saveDashboard();
 
     H.chartPathWithFillColor("#509EE3")
       .should("have.length", 4)
       .first()
       .click();
-
-    cy.log("dashboard filter updates with the clicked category value");
-    H.filterWidget()
-      .invoke("text")
-      .should((text) => {
-        expect(
-          productCategories.some((category) => text.includes(category)),
-        ).to.equal(true);
-      });
-    cy.location("search").should((search) => {
-      expect(new URLSearchParams(search).get("category")).to.be.oneOf(
-        productCategories,
-      );
-    });
-
-    cy.log("drill-through popover is not shown and navigation stays put");
+    H.filterWidget().should("contain", "Doohickey");
+    cy.location("search").should("eq", "?category=Doohickey");
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    cy.get("@dashboardPath").then((dashboardPath) => {
-      cy.location("pathname").should("eq", dashboardPath);
+    H.chartPathWithFillColor("#509EE3").should("have.length", 1).click();
+    H.filterWidget().should("not.contain", "Doohickey");
+    H.chartPathWithFillColor("#509EE3").should("have.length", 4);
+
+    cy.log(
+      "Clearing the chart action must not revive the old table column action",
+    );
+    H.editDashboard();
+    H.clickBehaviorSidebar().within(() => {
+      cy.findByRole("button", {
+        name: "filter icon Update a dashboard filter",
+      }).click();
+      cy.findByText("Open the Metabase drill-through menu").click();
+      cy.button("Done").click();
     });
+    H.saveDashboard();
+    H.chartPathWithFillColor("#509EE3")
+      .should("have.length", 4)
+      .first()
+      .click();
+    H.popover().findByText("See these Orders").should("be.visible");
+    H.filterWidget().should("not.contain", "Doohickey");
   });
+
+  function configureCategoryFilter() {
+    cy.findByTestId("click-behavior-sidebar").within(() => {
+      cy.findByText("Update a dashboard filter").click();
+      cy.findByText(categoryParameter.name).click();
+    });
+    H.popover().findByText("Product → Category").click();
+    cy.findByTestId("click-behavior-sidebar").button("Done").click();
+  }
 });
