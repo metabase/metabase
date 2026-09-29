@@ -109,8 +109,11 @@ gaps with `grep -rn "defendpoint" src/.../api.clj`.
    (a public Stripe-spec diff found 663 of 679 changes additive); reading the
    full diff to find the breaking few is how entries get missed.
 
-   If the two blobs are identical, `git rev-parse <ref>:resources/openapi/openapi.json`
-   on both to confirm, and report "no API surface changes" - do not invent entries.
+   **Identical committed specs do not mean the API did not change.** Two refs can
+   carry the same stale blob: `--committed origin/release-x.63.x master` reports 0
+   findings, while generating from source reports 10 removed endpoints for the same
+   pair. Before reporting "no API surface changes", re-run without `--committed`.
+   Only a clean generated diff supports that conclusion.
 
 3. Review the classification. The tool decides severity structurally, but two
    cases still need your judgement:
@@ -150,7 +153,18 @@ git log --oneline <old-ref>..<new-ref> -- resources/openapi/openapi.json
 git log -1 --format='%an %s' <sha>
 ```
 
-The commit that changed the spec is the PR that changed the API.
+Search the endpoint SOURCE, not `openapi.json`: the committed spec only changes on
+PRs carrying the `openapi-self-healing` label, which is usually a later, unrelated
+PR, so its history names the wrong author.
+
+```bash
+git log <old-ref>..<new-ref> --oneline -- 'src/metabase/**/api.clj' 'src/metabase/**/api/*.clj' 'enterprise/backend/src/**/api.clj'
+```
+
+Attribution by route search is unreliable in both directions - `git log -S` reports
+where a string's count *changed*, which for a long-lived route is its creation years
+ago rather than its recent removal. Treat any commit you find as a candidate to
+verify, never as the established cause.
 
 ## Backports
 
