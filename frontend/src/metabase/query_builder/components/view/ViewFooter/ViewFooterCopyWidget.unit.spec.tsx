@@ -1,6 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import * as SaveChartImage from "metabase/visualizations/lib/save-chart-image";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Card, Dataset } from "metabase-types/api";
@@ -97,6 +103,7 @@ describe("ViewFooterCopyWidget", () => {
   it("copies text and html table flavors so spreadsheets paste a grid", async () => {
     const write = mockClipboardWrite();
     setup({ card: TABLE_CARD, result: TABLE_RESULT });
+    await settlePendingUpdates();
 
     await userEvent.click(
       screen.getByLabelText("Copy these results to clipboard"),
