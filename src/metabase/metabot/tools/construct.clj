@@ -552,7 +552,8 @@
                                  ["card" id])
                                (for [id metric
                                      :when (not (or (curated? "card" id)
-                                                    (curated? "table" (lib/primary-source-table-id (metric-query id)))))]
+                                                    (curated? "table"
+                                                              (lib/primary-source-table-id (metric-query id)))))]
                                  ["card" id])])]
       (when (seq uncurated)
         (throw (ex-info (tru (str "This Metabot only uses curated content (verified, official, or Library content), "
