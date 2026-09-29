@@ -116,8 +116,7 @@
                                                   [:type    {:optional true} [:maybe :string]]]]]]])
 
 (def ^:private ToolCallArguments
-  "A tool call's arguments as the LLM wrote them against the tool's own schema, keyed by that tool's argument names:
-  string keys off the wire, keyword keys when built in Clojure."
+  "A tool call's arguments: a JSON object keyed by the tool's argument names."
   [:map-of {::mr/deliberately-open true, :description "tool call arguments"}
    [:or :string :keyword] ::request.schema/json-value])
 

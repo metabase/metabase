@@ -337,6 +337,28 @@
     (testing "no speed through the AI proxy"
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
 
+(deftest ^:parallel claude-request-body-nested-object-arguments-test
+  (testing "a replayed tool call whose arguments hold nested keyword-keyed maps is accepted and sent as-is"
+    ;; `parse-tool-arguments` keywordizes nested objects; this instrumented entry point is where the next
+    ;; agent-loop turn used to throw `Invalid input` on them (BOT-2190).
+    (let [arguments {:query         {:lib/type "mbql/query"
+                                     :stages   [{:source-table ["db" "public" "orders"]}]}
+                     :visualization {:chart_type "line"}
+                     :title         "Orders per month"
+                     :description   "Monthly orders in 2025"}
+          body      (claude/claude-request-body
+                     {:input [{:role :user :content "How many orders were placed each month in 2025?"}
+                              {:type :tool-input :id "call-1" :function "construct_notebook_query" :arguments arguments}
+                              {:type     :tool-output
+                               :id       "call-1"
+                               :function "construct_notebook_query"
+                               :result   {:output "query built"}}]})]
+      (is (=? [{:role "user"}
+               {:role    "assistant"
+                :content [{:type "tool_use" :id "call-1" :name "construct_notebook_query" :input arguments}]}
+               {:role "user" :content [{:type "tool_result" :tool_use_id "call-1"}]}]
+              (:messages body))))))
+
 (defn- close-tracking-json-body
   "A streamed JSON error body that flips `closed?` when closed, like the real `:as :stream`
   response body the adapter must not leak."
