@@ -41,5 +41,5 @@ export function useInitialClause({
 }
 
 export function hasActiveSnippet(state: EditorState) {
-  return hasNextSnippetField(state) || hasPrevSnippetField(state);
+  return false;
 }
