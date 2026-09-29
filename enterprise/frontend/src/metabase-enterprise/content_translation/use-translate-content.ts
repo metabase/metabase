@@ -19,19 +19,7 @@ export const hasTranslations = (
 ): tc is ContentTranslationFunction => !!tc && tc !== leaveUntranslated;
 
 export const useTranslateContent = (): ContentTranslationFunction => {
-  const { locale } = useLocale();
-  const dictionary = useListContentTranslations();
-
-  const tc = useCallback<ContentTranslationFunction>(
-    (msgid) => translateContentString(dictionary || [], locale, msgid),
-    [locale, dictionary],
-  );
-
-  if (!dictionary?.length) {
-    return leaveUntranslated;
-  }
-
-  return tc;
+  return () => "";
 };
 
 export const useListContentTranslations = () => {
