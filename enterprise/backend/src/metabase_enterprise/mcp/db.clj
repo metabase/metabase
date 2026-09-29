@@ -60,32 +60,42 @@
   []
   [(u/the-id (perms/all-users-group)) (u/the-id (perms/all-external-users-group))])
 
-(mu/defn seeded-group-ids :- [:sequential ms/PositiveInt]
-  "The IDs of the groups the migration seeds with MCP on and no overrides, Administrators aside: All Users, Data
-  Analysts, and All tenant users."
+(mu/defn advanced-mode? :- :boolean
+  "Whether MCP tool access is set per group instead of for All Users only. That is the state in which All Users has no
+  McpGroupPermission: the migration seeds one, only entering group-level mode deletes it, and leaving re-seeds it."
   []
-  (conj (default-group-ids) (u/the-id (perms/data-analyst-group))))
+  (not (t2/exists? :model/McpGroupPermission :group_id (u/the-id (perms/all-users-group)))))
+
+(mu/defn seeded-group-ids :- [:sequential ms/PositiveInt]
+  "The IDs of the groups the mode selected by `advanced?` enables on entry: Data Analysts in group-level mode, All
+  Users and All tenant users in simple mode."
+  [advanced? :- :boolean]
+  (if advanced?
+    [(u/the-id (perms/data-analyst-group))]
+    (default-group-ids)))
 
 (defn- visible-groups-expr
-  "Matches the groups the MCP tool access page shows in the mode selected by `advanced?`: Administrators, All
-  Users, and All tenant users in simple mode, every other group in group-level mode."
-  [advanced?]
+  "Matches, on `column`, the groups the MCP tool access page shows in the mode selected by `advanced?`:
+  Administrators, All Users, and All tenant users in simple mode, every other group in group-level mode."
+  [column advanced?]
   (if advanced?
-    [:not-in :group_id (default-group-ids)]
-    [:in :group_id (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
+    [:not-in column (default-group-ids)]
+    [:in column (conj (default-group-ids) (u/the-id (perms/admin-group)))]))
 
-(mu/defn visible-group-permissions-for-user
-  "The McpGroupPermission rows of the groups of the User with `user-id` that the mode selected by `advanced?` shows."
-  [user-id   :- ::lib.schema.id/user
-   advanced? :- :boolean]
+(mu/defn visible-group-ids :- [:set ms/PositiveInt]
+  "The IDs of the groups the mode selected by `advanced?` shows."
+  [advanced? :- :boolean]
+  (t2/select-pks-set :model/PermissionsGroup {:where (visible-groups-expr :id advanced?)}))
+
+(mu/defn group-permissions-for-user
+  "The McpGroupPermission rows of the groups of the User with `user-id`."
+  [user-id :- ::lib.schema.id/user]
   (t2/select :model/McpGroupPermission
-             {:where [:and
-                      [:in :group_id
-                       ^:allow-subquery
-                       {:select [:group_id]
-                        :from   [(t2/table-name :model/PermissionsGroupMembership)]
-                        :where  [:= :user_id user-id]}]
-                      (visible-groups-expr advanced?)]}))
+             {:where [:in :group_id
+                      ^:allow-subquery
+                      {:select [:group_id]
+                       :from   [(t2/table-name :model/PermissionsGroupMembership)]
+                       :where  [:= :user_id user-id]}]}))
 
 (mu/defn all-group-ids
   "Every PermissionsGroup id, in ID order."
@@ -107,7 +117,16 @@
     (t2/update! :model/McpGroupPermission {:group_id group-id} values)
     (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
 
+(mu/defn insert-group-permission-unless-exists!
+  "Give the group with `group-id` an McpGroupPermission with `values` when it has none."
+  [group-id :- ms/PositiveInt
+   values   :- [:map {:closed true}
+                [:mcp_enabled :boolean]
+                [:tool_access ::mcp.perms/tool-access]]]
+  (when-not (t2/exists? :model/McpGroupPermission :group_id group-id)
+    (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
+
 (mu/defn delete-hidden-group-permissions!
   "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
   [advanced? :- :boolean]
-  (t2/delete! :model/McpGroupPermission {:where [:not (visible-groups-expr advanced?)]}))
+  (t2/delete! :model/McpGroupPermission {:where [:not (visible-groups-expr :group_id advanced?)]}))

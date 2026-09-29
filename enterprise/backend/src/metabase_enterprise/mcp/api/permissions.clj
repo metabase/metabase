@@ -2,13 +2,11 @@
   "`/api/ee/ai-controls/mcp-permissions` routes for managing which MCP tools each permissions group may use."
   (:require
    [metabase-enterprise.mcp.db :as mcp.db]
-   [metabase-enterprise.mcp.settings :as mcp.settings]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -37,7 +35,7 @@
   {:mcp_enabled false :tool_access {}})
 
 (def ^:private seeded-permission
-  "What the migration gives the magic groups: MCP on, every tool at its author's default."
+  "What a group gets when a mode switch seeds it: MCP on, every tool at its author's default."
   {:mcp_enabled true :tool_access {}})
 
 (defn- under-current-names
@@ -53,7 +51,7 @@
   []
   (let [by-group (u/index-by :group_id (mcp.db/all-group-permissions))
         renamed  (mcp.v2.api/renamed-tool-names)]
-    {:advanced    (boolean (mcp.settings/mcp-advanced-permissions))
+    {:advanced    (mcp.db/advanced-mode?)
      :tools       (mcp.v2.api/tool-catalog)
      :permissions (mapv (fn [group-id]
                           (-> (get by-group group-id no-access-permission)
@@ -79,12 +77,14 @@
             tool-name                      (keys tool_access)]
       (api/check-400 (or (known tool-name) (stored tool-name)) (tru "Unknown MCP tool: {0}" tool-name)))))
 
-(defn- check-known-groups!
-  "Throw a 400 naming the first `group_id` in `permissions` that is not a permissions group."
+(defn- check-visible-groups!
+  "Throw a 400 naming the first `group_id` in `permissions` that is not a group the current mode shows, since such a
+  row would take effect unseen on the next mode switch."
   [permissions]
-  (let [known (set (mcp.db/all-group-ids))]
+  (let [visible (mcp.db/visible-group-ids (mcp.db/advanced-mode?))]
     (doseq [{:keys [group_id]} permissions]
-      (api/check-400 (contains? known group_id) (tru "Unknown group: {0}" (str group_id))))))
+      (api/check-400 (contains? visible group_id)
+                     (tru "Unknown group, or one the current permission mode hides: {0}" (str group_id))))))
 
 (api.macros/defendpoint :put "/" :- permissions-response-schema
   "Set the MCP tool policy of the given groups, in one transaction, and return the policy of every group."
@@ -94,52 +94,35 @@
                              [:permissions [:sequential group-permission-schema]]]]
   (api/check-superuser)
   (check-known-tools! permissions)
-  (check-known-groups! permissions)
+  (check-visible-groups! permissions)
   (t2/with-transaction [_conn]
     (doseq [{:keys [group_id] :as permission} permissions]
       (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access]))))
   (permissions-response))
 
 (defn- switch-mode!
-  "Switch permission modes and delete the rows hidden by the destination mode in a single transaction. Leaving
-  group-level mode also puts the seeded groups back in their seeded state."
+  "Switch permission modes in one transaction: delete the rows of the groups the destination mode hides and seed the
+  groups it enables on entry that have no row yet."
   [advanced?]
-  (try
-    (t2/with-transaction [_conn]
-      (mcp.db/delete-hidden-group-permissions! advanced?)
-      (when-not advanced?
-        (doseq [group-id (mcp.db/seeded-group-ids)]
-          (mcp.db/upsert-group-permission! group-id seeded-permission)))
-      (setting/set! :mcp-advanced-permissions advanced? :bypass-read-only? true))
-    (catch Throwable e
-      ;; the setting write updated the cache in place, so a rolled-back transaction leaves it describing the
-      ;; other mode
-      (setting/restore-cache!)
-      (throw e))))
-
-(defn- check-mode-switchable!
-  "Throw a 400 when [[mcp.settings/mcp-advanced-permissions]] is set by the `MB_MCP_ADVANCED_PERMISSIONS`
-  environment variable."
-  []
-  (api/check-400 (not (setting/env-var-value :mcp-advanced-permissions))
-                 (tru "The permission mode is set by the MB_MCP_ADVANCED_PERMISSIONS environment variable.")))
+  (t2/with-transaction [_conn]
+    (mcp.db/delete-hidden-group-permissions! advanced?)
+    (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
+      (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission))))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to group-level MCP tool access. Removes the rows of All Users and All tenant users, so access comes only
-   from the rows of the other groups."
+   from the rows of the other groups, and enables Data Analysts with every tool at its default when it has no row."
   []
   (api/check-superuser)
-  (check-mode-switchable!)
   (switch-mode! true)
   (permissions-response))
 
 (api.macros/defendpoint :delete "/advanced" :- permissions-response-schema
   "Switch back to All Users only. Removes the rows of every group other than Administrators, All Users and All
-   tenant users, and restores All Users, Data Analysts and All tenant users to MCP on with every tool at its
-   default, the state the migration leaves."
+   tenant users, and enables All Users and All tenant users with every tool at its default, the state the migration
+   leaves."
   []
   (api/check-superuser)
-  (check-mode-switchable!)
   (switch-mode! false)
   (permissions-response))
 
