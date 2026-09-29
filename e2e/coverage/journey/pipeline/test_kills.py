@@ -1,6 +1,6 @@
-"""Tests for kills.py.
+"""Tests for kills.py, and for the location ledger's check against it.
 
-The verdict tests need the reach index of run 36089233978 and its rerun, or of run 36482017221, and skip without one.
+The verdict and ledger tests need the reach index of run 36089233978 and its rerun, or of run 36482017221, and skip without one.
 Their test ids and locations come from the stranded culls' reach counts.
 The real-data test also needs the corpus kills file, the reach counts and the location prior,
 from the `local/` folder of this checkout or JOURNEY_LOCAL_DIR, and skips without them.
@@ -9,6 +9,7 @@ from the `local/` folder of this checkout or JOURNEY_LOCAL_DIR, and skips withou
 """
 
 import contextlib
+import csv
 import io
 import json
 import os
@@ -937,6 +938,49 @@ class JointDeletion(unittest.TestCase):
         code, text, written = self.command("--joint-check-report-only")
         self.assertEqual((code, set(written["joint_check"])), (0, {"logic", "wiring"}))
         self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
+
+
+def ledger_run(entries, candidate_ids, min_mutants, strata):
+    """The ledger of a kills file of these entries, and ledger-verdicts.mjs's check of it against kills.py's verdicts."""
+    lookup = os.path.join(HERE, "..", "lookup")
+    with open(os.path.join(INDEX, "meta.json")) as f:
+        meta = json.load(f)
+    with tempfile.TemporaryDirectory() as d:
+        kills_file, candidates, verdicts, out = (os.path.join(d, n) for n in ("kills.json", "candidates.txt", "verdicts.json", "ledger"))
+        with open(kills_file, "w") as f:
+            json.dump(entries, f)
+        with open(candidates, "w") as f:
+            f.write("\n".join(candidate_ids) + "\n")
+        subprocess.run(
+            [sys.executable, kills.__file__, "--index", INDEX, "--kills", kills_file, "--candidates", candidates,
+             "--min-mutants", str(min_mutants), "--require-strata", ",".join(strata), "--out", verdicts],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True,
+        )
+        subprocess.run(
+            ["node", os.path.join(lookup, "ledger.mjs"), "--index", INDEX, "--kills", kills_file,
+             "--kills-base", meta.get("appBase") or meta["sha"], "--candidates", candidates, "--out", out],
+            stdout=subprocess.DEVNULL, check=True,
+        )
+        check = subprocess.run(
+            ["node", os.path.join(lookup, "ledger-verdicts.mjs"), "--ledger", os.path.join(out, "ledger.json"),
+             "--verdicts", verdicts, "--candidates", candidates],
+            stdout=subprocess.PIPE, text=True,
+        )
+        with open(os.path.join(out, "ledger.json")) as f:
+            ledger = json.load(f)
+        with open(os.path.join(out, "ledger.csv")) as f:
+            csv_rows = list(csv.DictReader(f))
+        with open(os.path.join(out, "summary.md")) as f:
+            summary = f.read()
+    return types.SimpleNamespace(ledger=ledger, csv=csv_rows, summary=summary, check=check)
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class Ledger(unittest.TestCase):
+    def test_the_ledger_needs_a_baseline_check_where_kills_py_does(self):
+        run = ledger_run(UNIT_MISSES, [UNIT], 4, [])
+        self.assertEqual(run.check.returncode, 0, run.check.stdout)
+        self.assertIn('Verdicts from the ledger: {"unmeasured":1}', run.check.stdout)
 
 
 class Ordinals(unittest.TestCase):

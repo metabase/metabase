@@ -10,6 +10,18 @@ import { parseArgs } from "./args.mjs";
 import { readCandidates } from "./ledger.mjs";
 
 const TEST_LAYERS = ["jest", "deftest", "e2e"];
+const COARSE_STRATA = {
+  logic: "logic",
+  "intra-frontend-wiring": "wiring",
+  "boundary-wiring": "wiring",
+  "browser-measurement": "wiring",
+  "store-state": "state",
+  "server-state": "state",
+  "cross-page-timing": "state",
+};
+
+const coarseStratum = (m) =>
+  m.stratum_coarse ?? COARSE_STRATA[m.stratum] ?? m.stratum;
 
 // An older ledger holds its measured reach in `reach_and_assert` and `reach_other`.
 const REACH_FIELDS = {
@@ -48,6 +60,7 @@ function mutantView(m, position, reachedBy) {
   const ranTotal = TEST_LAYERS.reduce((n, layer) => n + (m.ran[layer] ?? 0), 0);
   return {
     stratum: m.stratum,
+    coarse: coarseStratum(m),
     ran_known: m.ran_known,
     located: m.locations.length > 0,
     reached_by: reachedBy,
@@ -321,6 +334,14 @@ export function verdictsFromLedger(
         "unmeasured",
         `no qualifying ${missing.join(", ")} mutant`,
       ];
+    } else if (
+      !qualifying.some((mid) => by.killed_by[t.i].has(mid)) &&
+      ![...by.ran[t.i]].some(
+        (mid) =>
+          !by.errored[t.i].has(mid) && mutants[mid].coarse === "baseline",
+      )
+    ) {
+      [verdict, reason] = ["unmeasured", "needs a baseline check"];
     } else {
       [verdict, reason] = ["delete", "no unique kill"];
     }
