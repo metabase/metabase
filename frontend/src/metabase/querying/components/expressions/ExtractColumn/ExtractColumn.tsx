@@ -89,42 +89,7 @@ function ColumnPicker({
   onSelect: (column: Lib.ColumnMetadata) => void;
   onCancel?: () => void;
 }) {
-  const extractableColumns = useMemo(
-    () =>
-      availableColumns.filter(
-        (column) => Lib.columnExtractions(query, column).length > 0,
-      ),
-    [query, availableColumns],
-  );
-  const columnGroups = Lib.groupColumns(extractableColumns);
-
-  return (
-    <>
-      {onCancel && (
-        <ExpressionWidgetHeader
-          title={t`Select column to extract from`}
-          onBack={onCancel}
-        />
-      )}
-      <Box py="sm">
-        {!onCancel && (
-          <Title p="lg" pt="sm" pb={0} order={6}>
-            {t`Select column to extract from`}
-          </Title>
-        )}
-        <QueryColumnPicker
-          query={query}
-          stageIndex={stageIndex}
-          columnGroups={columnGroups}
-          onSelect={onSelect}
-          checkIsColumnSelected={(item) => item.column === column}
-          width="100%"
-          alwaysExpanded
-          disableSearch
-        />
-      </Box>
-    </>
-  );
+  return null;
 }
 
 function ExtractionPicker({
