@@ -302,8 +302,8 @@
   (let [type-name (name type-name)]
     (when-not (re-matches #"^[A-Za-z_][()A-Za-z0-9_-]*$" type-name)
       (throw (ex-info "Invalid type" {:type type-name})))
-    (append-sql! context type-name)
-    (append-sql! context ")")))
+    (append-sql! context type-name))
+  (append-sql! context ")"))
 
 (defn- case! [args context]
   (append-sql! context "CASE ")
@@ -337,8 +337,8 @@
 
 (defn- -simple-fn! [f args context]
   (let [f (name f)]
-    (append-sql! context f)
-    (-list! args context)))
+    (append-sql! context f))
+  (-list! args context))
 
 (defn- -fn-call! [[f & args] context]
   (case f
