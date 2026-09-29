@@ -45,7 +45,10 @@ afterEach(() => {
 
   if (warnings.length > 0) {
     throw new Error(
-      `Test completed with React warnings:\n${warnings.join("\n")}`,
+      `Test completed with React warnings:\n${warnings.join("\n")}\n` +
+        "A warning can come from work that an earlier test left pending. If this " +
+        "test passes on its own, look at the test before it for a render or a " +
+        "request that nothing awaits.",
     );
   }
 });
