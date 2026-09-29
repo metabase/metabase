@@ -362,7 +362,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.CustomExpressionEditor.nameInput().type("Derived");
     H.popover().button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      const [[customSum, derived]] = body.data.rows;
+      expect(customSum).to.be.a("number");
+      expect(derived).to.eq(customSum);
+    });
     H.assertTableData({
       columns: ["Custom Sum", "Derived"],
     });
@@ -400,7 +404,11 @@ describe("scenarios > question > custom column > aggregation", () => {
     H.CustomExpressionEditor.nameInput().type("Derived");
     H.popover().button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      const [[customSum, derived]] = body.data.rows;
+      expect(customSum).to.be.a("number");
+      expect(derived).to.eq(customSum);
+    });
     H.assertTableData({
       columns: ["Custom Sum", "Derived"],
     });

@@ -76,7 +76,13 @@ describe("issue 14843", () => {
       cy.button("Add filter").click();
     });
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      const ccIndex = body.data.cols.findIndex(
+        (col) => col.display_name === CC_NAME,
+      );
+      expect(ccIndex).to.be.at.least(0);
+      expect(body.data.rows.some((row) => row[ccIndex] === 3)).to.be.false;
+    });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
@@ -596,7 +602,18 @@ describe("issue 24922", () => {
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+
+      const columnNames = body.data.cols.map((col) => col.display_name);
+      const totalIndex = columnNames.indexOf("Total");
+      const ccIndex = columnNames.indexOf("CustomColumn");
+      const values = body.data.rows.map((row) => row[ccIndex]);
+      expect(values).to.include("Segment").and.to.include("Other");
+      body.data.rows.forEach((row) => {
+        expect(row[ccIndex]).to.eq(row[totalIndex] < 100 ? "Segment" : "Other");
+      });
+    });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
   });
@@ -1046,6 +1063,14 @@ describe("issue 53682", () => {
       );
       cy.button("Done").should("be.disabled");
     });
+
+    cy.log("Editing the name should not crash the editor");
+    H.CustomExpressionEditor.nameInput().click().type("Name");
+    H.expressionEditorWidget().should("be.visible");
+    H.CustomExpressionEditor.nameInput().should("have.value", "Name");
+    H.popover()
+      .findByText("Function contains expects at least 2 arguments")
+      .should("be.visible");
   });
 });
 

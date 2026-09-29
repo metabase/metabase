@@ -487,14 +487,22 @@ describe("issue 57674", () => {
   it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();
 
-    H.CustomExpressionEditor.clear();
-    H.popover().findByText("Types are incompatible.").should("not.exist");
-
-    H.CustomExpressionEditor.type('case([Total] > 100, "foo", "bar")', {
+    H.CustomExpressionEditor.type('year("a string")', {
       allowFastSet: true,
     }).blur();
+    H.popover()
+      .findByText(/Types are incompatible/)
+      .should("be.visible");
 
-    H.popover().findByText("Types are incompatible.").should("not.exist");
+    H.CustomExpressionEditor.clear()
+      .type('case([Total] > 100, "foo", "bar")', { allowFastSet: true })
+      .blur();
+    H.popover()
+      .findByText(/Types are incompatible/)
+      .should("not.exist");
+
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
   });
 });
 
@@ -536,6 +544,8 @@ describe("Issue 12938", () => {
 
 describe("Issue 25189", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     H.restore();
     cy.signInAsNormalUser();
   });
@@ -575,6 +585,10 @@ describe("Issue 25189", () => {
       cy.findByText("Today").click();
     });
 
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
+    cy.findAllByTestId("filter-pill")
+      .should("have.length", 1)
+      .and("contain.text", "CCreated At");
     cy.findAllByTestId("header-cell")
       .contains("CCreated At")
       .should("be.visible");
@@ -618,13 +632,16 @@ describe("Issue 25189", () => {
       cy.findAllByText("Created At").should("have.length", 2).first().click();
       cy.findByText("Today").click();
     });
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
 
     H.filter();
     H.popover().within(() => {
       cy.findAllByText("Created At").should("have.length", 2).last().click();
       cy.findByText("Today").click();
     });
+    cy.wait("@dataset").its("response.body.error").should("not.exist");
 
+    cy.findAllByTestId("filter-pill").should("have.length", 2);
     cy.findAllByTestId("header-cell")
       .contains("Created At")
       .should("be.visible");

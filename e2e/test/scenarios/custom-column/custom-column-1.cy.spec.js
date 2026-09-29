@@ -193,10 +193,22 @@ describe("scenarios > question > custom column", () => {
     });
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
+      const columnNames = body.data.cols.map((col) => col.display_name);
+      const subtotalIndex = columnNames.indexOf("Sum of Subtotal");
+      const totalIndex = columnNames.indexOf("Sum of Total");
+      const megaTotalIndex = columnNames.indexOf(columnName);
+      expect(body.data.rows).to.have.length.greaterThan(0);
+      body.data.rows.forEach((row) => {
+        expect(row[megaTotalIndex]).to.be.closeTo(
+          row[subtotalIndex] + row[totalIndex],
+          0.01,
+        );
+      });
+    });
+
     // This is a pre-save state of the question but the column name should appear
     // both in tabular and graph views (regardless of which one is currently selected)
     cy.findByTestId("query-visualization-root").contains(columnName);
@@ -330,8 +342,15 @@ describe("scenarios > question > custom column", () => {
       .find(".Icon-close")
       .click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(CC_NAME);
+    cy.wait("@dataset").then(({ response }) => {
+      expect(response.body.error).to.not.exist;
+      const columnNames = response.body.data.cols.map(
+        (col) => col.display_name,
+      );
+      expect(columnNames).to.include(CC_NAME);
+    });
+    cy.findByTestId("filters-visibility-control").should("not.exist");
+    cy.findAllByTestId("header-cell").contains(CC_NAME).should("be.visible");
   });
 
   it("should handle identical custom column and table column names (metabase#14255)", () => {
