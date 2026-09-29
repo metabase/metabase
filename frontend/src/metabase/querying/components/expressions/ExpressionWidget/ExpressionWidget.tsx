@@ -110,20 +110,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
 
   const shortcuts = useMemo(
     () =>
-      [
-        expressionMode === "expression" &&
-          hasCombinations(availableColumns) && {
-            name: t`Combine columns`,
-            icon: "combine",
-            action: () => setIsCombiningColumns(true),
-          },
-        expressionMode === "expression" &&
-          hasExtractions(query, availableColumns) && {
-            name: t`Extract columns`,
-            icon: "arrow_split",
-            action: () => setIsExtractingColumn(true),
-          },
-      ].filter((x): x is Shortcut => Boolean(x)),
+      [],
     [expressionMode, query, availableColumns],
   );
 
