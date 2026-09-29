@@ -10,7 +10,7 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 export const dictionaryEndpointStore = {
-  getSnapshot: () => contentTranslationEndpoints.getDictionary,
+  getSnapshot: () => null,
   subscribe: (listener: Listener) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
