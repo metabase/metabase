@@ -25,6 +25,9 @@
 (defn- null! [_x context]
   (append-sql! context "NULL"))
 
+(defn- boolean! [x context]
+  (append-sql! context (str x)))
+
 (defn- number! [n context]
   (if (instance? clojure.lang.Ratio n)
     (recur (double n) context)
@@ -348,6 +351,11 @@
   (map! subquery context)
   (append-sql! context ")"))
 
+(defn- inline! [x context]
+  (when-not ((some-fn number? boolean?) x)
+    (throw (ex-info ":inline is only allowed for numbers and booleans" {:x x})))
+  (compile! x context))
+
 (defn- -binary-operator! [f args context]
   (let [f-str (case f
                 :like     " LIKE "
@@ -439,6 +447,7 @@
     :not-in                 (-in! " NOT IN " args context)
     :exists                 (-exists! "EXISTS "     (first args) context)
     :not-exists             (-exists! "NOT EXISTS " (first args) context)
+    :inline                 (inline! (first args) context)
 
     (:< :<= :> :>= :like :not-like)
     (-binary-operator! f args context)
@@ -482,6 +491,7 @@
 (extend-protocol Compile
   Object                         (compile! [this context] (object! this context))
   nil                            (compile! [this context] (null! this context))
+  Boolean                        (compile! [this context] (boolean! this context))
   Number                         (compile! [this context] (number! this context))
   clojure.lang.Keyword           (compile! [this context] (keyword! this context))
   clojure.lang.IPersistentVector (compile! [this context] (vector! this context)))

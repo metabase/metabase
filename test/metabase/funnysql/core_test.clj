@@ -7,8 +7,11 @@
 (deftest ^:parallel equals-test
   (are [value expected] (= expected
                            (funnysql/format {:where [:= :field value]} :postgres))
-    "x" ["WHERE \"field\" = ?" "x"]
-    nil ["WHERE \"field\" IS NULL"]))
+    "x"  ["WHERE \"field\" = ?" "x"]
+    nil  ["WHERE \"field\" IS NULL"]
+    ;; booleans and numbers can be inlined
+    true ["WHERE \"field\" = true"]
+    1    ["WHERE \"field\" = 1"]))
 
 (deftest ^:parallel not-equals-test
   (are [op expected] (= expected
@@ -391,3 +394,20 @@
       (keyword "field()")
       (keyword "field;")
       (keyword "\" OR 1 = 1; --"))))
+
+(deftest ^:parallel h2x-current-datetime-form-test
+  (are [engine expected] (= [expected]
+                            (funnysql/format (h2x/current-datetime-honeysql-form engine) engine))
+    :mysql    "now(6)"
+    :postgres "now()"
+    :h2       "now()"))
+
+(deftest ^:parallel inline-test
+  (are [x expected] (= [expected]
+                       (funnysql/format [:inline x] :mysql))
+    6    "6"
+    true "true")
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo
+       #":inline is only allowed for numbers and booleans"
+       (funnysql/format [:inline "s"] :mysql))))
