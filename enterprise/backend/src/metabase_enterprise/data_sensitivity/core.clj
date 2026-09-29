@@ -7,8 +7,10 @@
   instead; the instance gates (Metabot enabled, provider configured, usage limits) still apply and are reported by
   [[unavailable-reason]]. Result keys are snake_case because the maps are API responses."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.db :as db]
+   [metabase-enterprise.data-sensitivity.jev :as jev]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.database-routing.core :as database-routing]
    [metabase.metabot.core :as metabot]
@@ -102,8 +104,10 @@
   [:merge
    ::context/options
    [:map {:closed true}
+    [:engine     {:optional true} [:maybe [:enum :llm :jev]]]
     [:model      {:optional true} [:maybe :string]]
-    [:chunk-size {:optional true} [:maybe pos-int?]]]])
+    [:chunk-size {:optional true} [:maybe pos-int?]]
+    [:jev        {:optional true} [:maybe [:ref ::jev/options]]]]])
 
 (mr/def ::database-options
   [:merge
@@ -121,11 +125,16 @@
 ;;; Pre-flight
 
 (defn unavailable-reason
-  "Why an LLM classification cannot run right now, or nil when it can: `:metabot-disabled`, `:no-llm`, or
-  `:usage-limit`. Evaluated under the all-yes permission binding, so `:permission-denied` is not a possible answer."
-  []
-  (metabot/do-with-all-metabot-permissions
-   #(metabot/llm-call-unavailable-reason required-permission)))
+  "Why a classification with `engine` (default `:llm`) cannot run right now, or nil when it can. For `:llm`:
+  `:metabot-disabled`, `:no-llm`, or `:usage-limit`, evaluated under the all-yes permission binding, so
+  `:permission-denied` is not a possible answer. For `:jev`: `:no-jev-key`. The Metabot gates do not apply to Jev."
+  ([]
+   (unavailable-reason :llm))
+  ([engine]
+   (case engine
+     :llm (metabot/do-with-all-metabot-permissions
+           #(metabot/llm-call-unavailable-reason required-permission))
+     :jev (when-not (jev/configured?) :no-jev-key))))
 
 ;;; Diff
 
@@ -157,10 +166,12 @@
                                              (some? current-label) :classifier
                                              :else                 :unscanned)
                          :semantic_type    semantic_type}
-     :proposed          {:data_sensitivity proposed-label
-                         :confidence       (:confidence entry)
-                         :semantic_type    effective-st
-                         :reasoning        (:reasoning entry)}
+     :proposed          (merge {:data_sensitivity proposed-label
+                                :confidence       (:confidence entry)
+                                :semantic_type    effective-st
+                                :reasoning        (:reasoning entry)}
+                               (set/rename-keys (select-keys entry [:probabilities :raw-label :score])
+                                                {:raw-label :raw_label}))
      :status            (case status
                           :abstain :abstain
                           :dropped :dropped
@@ -184,15 +195,19 @@
 
 (mu/defn classify-table! :- ::table-result
   "Classify every active field of `table` and diff the proposal against the current labels. Options are those of
-  [[context/table-packet]] plus `:model` and `:chunk-size` for [[llm/classify-packet]]. The row sample runs as
-  admin with database routing off; the LLM call runs with all Metabot permissions granted. Writes nothing."
+  [[context/table-packet]] plus `:engine` (`:llm`, the default, or `:jev`), `:model` and `:chunk-size`, and `:jev`
+  for [[jev/classify-packet]]. The row sample runs as admin with database routing off; the LLM call runs with all
+  Metabot permissions granted, and a Jev call makes no Metabot call. Writes nothing."
   [table :- (ms/InstanceOf :model/Table)
-   & {:as opts} :- [:maybe ::table-options]]
+   & {:keys [engine] :as opts} :- [:maybe ::table-options]]
   (let [packet         (request/as-admin
                          (database-routing/with-database-routing-off
-                           (context/table-packet table (dissoc opts :model :chunk-size))))
-        classification (metabot/do-with-all-metabot-permissions
-                        #(llm/classify-packet packet (select-keys opts [:model :chunk-size])))
+                           (context/table-packet table (dissoc opts :engine :model :chunk-size :jev))))
+        engine-opts    (select-keys opts [:model :chunk-size])
+        classification (case (or engine :llm)
+                         :llm (metabot/do-with-all-metabot-permissions
+                               #(llm/classify-packet packet engine-opts))
+                         :jev (jev/classify-packet packet (merge engine-opts (:jev opts))))
         fields         (mapv (fn [field]
                                (diff-field field (get-in classification [:fields (:name field)])))
                              (:fields packet))]

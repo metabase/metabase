@@ -28,7 +28,7 @@
   "The abstain marker: the model could not support any category from name, type, and values together."
   "UNSURE")
 
-(def ^:private category-definitions
+(def category-definitions
   "One-line definition per category, in precedence order, sharing vocabulary with the deterministic classifier's
   rule sections so both classifiers describe the same thing."
   {"SEC_KEY"       "Security credentials and secrets: passwords and password hashes, API keys, access and refresh tokens, private keys, OTP or MFA secrets, connection strings."
@@ -215,7 +215,10 @@
    [:confidence       [:maybe :string]]
    [:semantic-type    [:maybe :keyword]]
    [:reasoning        [:maybe :string]]
-   [:status           [:enum :labeled :abstain :dropped]]])
+   [:status           [:enum :labeled :abstain :dropped]]
+   [:probabilities    {:optional true} [:maybe [:map-of :string number?]]]
+   [:raw-label        {:optional true} [:maybe :keyword]]
+   [:score            {:optional true} [:maybe number?]]])
 
 (mr/def ::parsed
   [:map

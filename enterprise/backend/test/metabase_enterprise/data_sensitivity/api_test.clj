@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
+   [metabase-enterprise.data-sensitivity.jev-test :as jev-test]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -161,3 +162,30 @@
                         #(mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:schema "no_such_schema"}))]
           (is (= [] (:tables response)))
           (is (= 0 (:requests response))))))))
+
+(deftest jev-engine-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
+      (testing "both routes accept the Jev engine, which ignores the Metabot gates"
+        (jev-test/do-with-jev!
+         (jev-test/canned-jev (constantly {}))
+         (fn []
+           (is (=? {:model "typesafe/jev-1.13.0" :requests 1}
+                   (mt/user-http-request :crowberto :post 200 (table-url (mt/id :people)) {:engine "jev"})))
+           (let [tables (t2/select :model/Table :db_id (mt/id) :active true)]
+             (is (=? {:requests (count tables) :failed 0}
+                     (mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:engine "jev"})))))))
+      (testing "an unknown engine is rejected"
+        (mt/user-http-request :crowberto :post 400 (table-url (mt/id :people)) {:engine "gpt"})
+        (mt/user-http-request :crowberto :post 400 (database-url (mt/id)) {:engine "gpt"}))
+      (testing "Jev without a key is a 400 with the reason"
+        (mt/with-temporary-setting-values [data-sensitivity-jev-api-key nil]
+          (is (=? {:message "No TypeSafe Jev API key is configured." :reason "no-jev-key"}
+                  (mt/user-http-request :crowberto :post 400 (table-url (mt/id :people)) {:engine "jev"})))))
+      (testing "a Jev rejection is a 502 carrying the vendor message"
+        (jev-test/do-with-jev!
+         (constantly {:status 401 :headers {}
+                      :body   "{\"detail\": {\"error_type\": \"authentication_error\", \"message\": \"Invalid API key\"}}"})
+         (fn []
+           (is (= {:message "Invalid API key" :reason "provider-error" :error-code "provider-error"}
+                  (mt/user-http-request :crowberto :post 502 (table-url (mt/id :people)) {:engine "jev"})))))))))

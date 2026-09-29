@@ -3676,6 +3676,7 @@
            lib.schema
            metabot
            request
+           settings
            util
            util.config
            warehouse-schema-overlay

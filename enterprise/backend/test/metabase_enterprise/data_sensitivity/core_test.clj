@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.core :as core]
+   [metabase-enterprise.data-sensitivity.jev-test :as jev-test]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.scope :as scope]
@@ -320,3 +321,41 @@
       (is (= (count tables) (:requests result))))
     (testing "no more than parallelism tables are in flight"
       (is (<= @peak 2)))))
+
+(deftest jev-engine-test
+  (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (fn [& _] (throw (ex-info "LLM called" {})))
+                              metabot.settings/metabot-enabled?           (constantly false)]
+    (jev-test/do-with-jev!
+     (jev-test/canned-jev #(if (= "EMAIL" %) {:choice "PII"} {}))
+     (fn []
+       (testing "a table classified with Jev makes no Metabot call and writes nothing"
+         (let [result (do-with-unchanged-fields
+                       (mt/id :people)
+                       #(core/classify-table! (people-table) :engine :jev :include-values? false))]
+           (is (=? {:model "typesafe/jev-1.13.0" :requests 1 :usage {:cache_read_tokens 0}} result))
+           (is (=? {:proposed {:data_sensitivity :PII :confidence "high" :raw_label :PII :score 0.95
+                               :probabilities    {"PUBLIC" 0.97 "PII" 0.03}}
+                    :status   :new}
+                   (result-field result "EMAIL")))))
+       (testing "Jev options reach the engine"
+         (let [result (core/classify-table! (people-table) :engine :jev :include-values? false
+                                            :jev {:request-shape :field})]
+           (is (= (count (:fields result)) (:requests result)))))
+       (testing "the database roll-up counts every field once"
+         (let [tables (active-tables nil)
+               result (core/classify-database! (mt/db) :engine :jev :include-values? false)]
+           (is (= 0 (:failed result)))
+           (is (= (count tables) (:requests result)))
+           (is (= (get-in result [:counts :fields])
+                  (+ (get-in result [:counts :agree]) (get-in result [:counts :disagree])
+                     (get-in result [:counts :new]) (get-in result [:counts :abstain])
+                     (get-in result [:counts :dropped]))))))))))
+
+(deftest jev-unavailable-reason-test
+  (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled? (constantly false)]
+    (testing "Jev needs only a key, not Metabot"
+      (mt/with-temporary-setting-values [data-sensitivity-jev-api-key nil]
+        (is (= :no-jev-key (core/unavailable-reason :jev))))
+      (mt/with-temporary-setting-values [data-sensitivity-jev-api-key "apikey_test"]
+        (is (nil? (core/unavailable-reason :jev)))
+        (is (= :metabot-disabled (core/unavailable-reason :llm)))))))
