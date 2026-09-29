@@ -632,8 +632,7 @@ export class UnconnectedDataSelector extends Component<
   }
 
   hasModels = () => {
-    const { availableModels, canSelectModel, loaded } = this.props;
-    return loaded && !!canSelectModel && availableModels.includes("dataset");
+    return false;
   };
 
   hasUsableModels = () => {
