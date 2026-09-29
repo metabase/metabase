@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { settingsApi, useAdminSetting } from "metabase/settings";
+import { useSettingSwitch } from "metabase/settings";
 import { SwitchSettingsSection } from "metabase/settings-components";
 import { Box } from "metabase/ui";
 
@@ -29,43 +29,16 @@ export function UserProvisioningSection({
   lockedNote,
 }: UserProvisioningSectionProps) {
   const applicationName = useSelector(getApplicationName);
-  const dispatch = useDispatch();
-  const {
-    value,
-    settingDetails,
-    updateSetting,
-    updateSettingResult,
-    isFetching,
-  } = useAdminSetting(settingKey);
-  const envName = settingDetails?.is_env_setting
-    ? settingDetails.env_name
-    : undefined;
+  const provisioningSwitch = useSettingSwitch(settingKey);
   // a note built as `condition && <Note/>` is `false` when its condition is off, so coerce rather than compare
   const hasLockedNote = Boolean(lockedNote);
-
-  const handleChange = async (enabled: boolean) => {
-    // show the click at once and let the write's refetch confirm it
-    const patch = dispatch(
-      settingsApi.util.updateQueryData(
-        "getSessionProperties",
-        undefined,
-        (draft) => {
-          draft[settingKey] = enabled;
-        },
-      ),
-    );
-    const { error } = await updateSetting({ key: settingKey, value: enabled });
-    if (error) {
-      patch.undo();
-    }
-  };
 
   return (
     <SwitchSettingsSection
       title={t`User provisioning`}
       description={t`Allow ${providerName} sign-in to create accounts for new users and reactivate deactivated accounts. When disabled, only users with active ${applicationName} accounts can sign in.`}
       // a caller's note explains the lock, so the env line steps aside
-      lockedEnvName={hasLockedNote ? undefined : envName}
+      lockedEnvName={hasLockedNote ? undefined : provisioningSwitch.envName}
       note={
         hasLockedNote && (
           <Box c="text-secondary" mt="sm">
@@ -73,13 +46,10 @@ export function UserProvisioningSection({
           </Box>
         )
       }
-      checked={value ?? false}
+      checked={provisioningSwitch.checked}
       disabled={disabled}
-      // held while the settings load or refetch and while the write runs, so no debounce is needed
-      switchDisabled={
-        hasLockedNote || isFetching || updateSettingResult.isLoading
-      }
-      onChange={handleChange}
+      switchDisabled={hasLockedNote || provisioningSwitch.isBusy}
+      onChange={provisioningSwitch.onChange}
     />
   );
 }

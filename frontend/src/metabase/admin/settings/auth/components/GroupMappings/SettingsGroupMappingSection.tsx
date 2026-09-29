@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/redux";
-import { settingsApi, useAdminSetting } from "metabase/settings";
+import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SwitchSettingsSection } from "metabase/settings-components";
 import type { BoxProps } from "metabase/ui";
 
@@ -41,50 +40,17 @@ export function SettingsGroupMappingSection({
   onToggle,
   ...boxProps
 }: SettingsGroupMappingSectionProps) {
-  const dispatch = useDispatch();
-  const {
-    value,
-    settingDetails,
-    updateSetting,
-    updateSettingResult,
-    isFetching,
-  } = useAdminSetting(syncSettingKey);
-  const envName = settingDetails?.is_env_setting
-    ? settingDetails.env_name
-    : undefined;
-
-  const handleChange = async (enabled: boolean) => {
-    // show the click at once and let the write's refetch confirm it
-    const patch = dispatch(
-      settingsApi.util.updateQueryData(
-        "getSessionProperties",
-        undefined,
-        (draft) => {
-          draft[syncSettingKey] = enabled;
-        },
-      ),
-    );
-    const { error } = await updateSetting({
-      key: syncSettingKey,
-      value: enabled,
-    });
-    if (error) {
-      patch.undo();
-    } else {
-      onToggle?.(enabled);
-    }
-  };
+  const groupSyncSwitch = useSettingSwitch(syncSettingKey, { onToggle });
 
   return (
     <SwitchSettingsSection
       title={t`Group mapping`}
       description={description}
-      lockedEnvName={envName}
-      checked={value ?? false}
+      lockedEnvName={groupSyncSwitch.envName}
+      checked={groupSyncSwitch.checked}
       disabled={disabled}
-      // a fetch still in flight could answer with the value from before the write
-      switchDisabled={isFetching || updateSettingResult.isLoading}
-      onChange={handleChange}
+      switchDisabled={groupSyncSwitch.isBusy}
+      onChange={groupSyncSwitch.onChange}
       {...boxProps}
     >
       <SettingsGroupMappings
