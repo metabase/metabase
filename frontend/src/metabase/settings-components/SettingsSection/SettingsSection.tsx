@@ -171,15 +171,6 @@ export function SwitchSettingsSection({
           checked={checked}
           disabled={disabled}
           aria-disabled={isSwitchLocked || undefined}
-          classNames={
-            isSwitchLocked
-              ? {
-                  root: S.LockedSwitch,
-                  track: S.LockedTrack,
-                  thumb: S.LockedThumb,
-                }
-              : undefined
-          }
           onChange={(event) => handleChange(event.currentTarget.checked)}
           onKeyDown={handleKeyDown}
         />
