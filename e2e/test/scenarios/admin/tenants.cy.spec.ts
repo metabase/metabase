@@ -430,49 +430,6 @@ describe("Tenants - management", () => {
     lacksGlobeIcon("All internal users");
   });
 
-  it("should show 'All tenant users' in permission warning tooltip for tenant groups (UXW-2474)", () => {
-    cy.request("PUT", "/api/setting", { "use-tenants": true });
-
-    // Create a tenant group
-    cy.request("POST", "/api/permissions/group", {
-      name: "Test Tenant Group",
-      is_tenant_group: true,
-    }).then(({ body: group }) => {
-      const tenantGroupId = group.id;
-
-      cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
-
-      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
-
-      cy.findByRole("menuitem", { name: "All tenant users" }).click();
-
-      cy.log("sample database's view data permission should be 'Can view'");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .should("contain", "Can view");
-
-      cy.findByRole("menuitem", { name: "Test Tenant Group" }).click();
-
-      cy.log("tenant group view data permission should be 'Blocked'");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .should("contain", "Blocked");
-
-      cy.log("tenant group permission should contain a warning");
-      getPermissionRowPermissions("Sample Database")
-        .first()
-        .findByLabelText("warning icon")
-        .realHover();
-
-      // Tooltip must reference "All tenant users" not "All internal users"
-      H.tooltip().should(
-        "contain",
-        'The "All tenant users" group has a higher level of access',
-      );
-      H.tooltip().should("not.contain", "All internal users");
-    });
-  });
-
   it("should show 'All internal users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
@@ -522,14 +479,53 @@ describe("Tenants - management", () => {
     });
   });
 
-  it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions (UXW-2624)", () => {
+  it("should show 'All tenant users' in permission warning tooltip and modal for tenant groups on data permissions, in both the group and database views (UXW-2474, UXW-2624)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
     cy.request("POST", "/api/permissions/group", {
       name: "Test Tenant Group",
       is_tenant_group: true,
+    }).then(({ body: group }) => {
+      const tenantGroupId = group.id;
+
+      cy.log(
+        "should show 'All tenant users' in permission warning tooltip for tenant groups in the group view (UXW-2474)",
+      );
+      cy.visit(`/admin/permissions/data/group/${tenantGroupId}`);
+
+      cy.findByRole("tab", { name: "Groups" }).click({ force: true });
+
+      cy.findByRole("menuitem", { name: "All tenant users" }).click();
+
+      cy.log("sample database's view data permission should be 'Can view'");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .should("contain", "Can view");
+
+      cy.findByRole("menuitem", { name: "Test Tenant Group" }).click();
+
+      cy.log("tenant group view data permission should be 'Blocked'");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .should("contain", "Blocked");
+
+      cy.log("tenant group permission should contain a warning");
+      getPermissionRowPermissions("Sample Database")
+        .first()
+        .findByLabelText("warning icon")
+        .realHover();
+
+      // Tooltip must reference "All tenant users" not "All internal users"
+      H.tooltip().should(
+        "contain",
+        'The "All tenant users" group has a higher level of access',
+      );
+      H.tooltip().should("not.contain", "All internal users");
     });
 
+    cy.log(
+      "should show 'All tenant users' in permission warning tooltip and modal for tenant groups in the database view (UXW-2624)",
+    );
     cy.visit("/admin/permissions/data/database/1");
 
     cy.log("all tenant users should have 'Can view' access");

@@ -32,36 +32,34 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("optional", () => {
     describe("admin settings", () => {
-      it("admin can enable and disable 2FA in authentication settings", () => {
-        cy.visit("/admin/settings/authentication");
-        mfaSetting().scrollIntoView();
-        mfaSetting()
-          .findByText("Two-factor authentication")
-          .should("be.visible");
-        mfaToggle().should("not.be.checked").click();
-        cy.wait("@updateSettings");
-        mfaSetting()
-          .should("contain", "0 enrolled users")
-          .and("contain", "users without 2FA");
-
-        cy.log("Enabling it leaves enforcement optional");
-        enforcementOption("Don't require").should("be.checked");
-
-        cy.log("Disable it again");
-        mfaToggle().should("be.checked").click();
-        cy.wait("@updateSettings");
-        mfaToggle().should("not.be.checked");
-        mfaSetting().should("not.contain", "enrolled");
-      });
-
-      it("admin can remove a user's enrollment to unlock them", () => {
+      it("admin can search the users-without-2FA list and remove a user's enrollment to unlock them", () => {
         enableMfa();
         enrollUser();
+
+        cy.signInAsAdmin();
+        cy.visit("/admin/settings/authentication");
+
+        cy.log("Admin searches the users-without-2FA list");
+        mfaSetting()
+          .scrollIntoView()
+          .findByText(/users? without 2FA/)
+          .click();
+
+        cy.log(
+          "The enrolled user is absent — they already have a second factor",
+        );
+        unenrolledUsersTable().should("contain", nodata.email);
+        unenrolledUsersTable().should("not.contain", normal.email);
+
+        cy.log("Searching narrows to a single person");
+        cy.findByPlaceholderText("Search…").type(admin.first_name);
+        unenrolledUsersTable()
+          .should("contain", admin.email)
+          .and("not.contain", nodata.email);
 
         cy.log(
           "Admin drills into the enrolled list from the count on the card",
         );
-        cy.signInAsAdmin();
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView().findByText("1 enrolled user").click();
 
@@ -96,30 +94,6 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         signInWithPassword();
         cy.findByTestId("greeting-message").should("be.visible");
         cy.url().should("not.contain", "/auth/login");
-      });
-
-      it("admin can search the users-without-2FA list", () => {
-        enableMfa();
-        enrollUser();
-
-        cy.signInAsAdmin();
-        cy.visit("/admin/settings/authentication");
-        mfaSetting()
-          .scrollIntoView()
-          .findByText(/users? without 2FA/)
-          .click();
-
-        cy.log(
-          "The enrolled user is absent — they already have a second factor",
-        );
-        unenrolledUsersTable().should("not.contain", normal.email);
-
-        cy.log("Searching narrows to a single person");
-        unenrolledUsersTable().should("contain", nodata.email);
-        cy.findByPlaceholderText("Search…").type(admin.first_name);
-        unenrolledUsersTable()
-          .should("contain", admin.email)
-          .and("not.contain", nodata.email);
       });
     });
 
@@ -355,11 +329,14 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
   describe("required", () => {
     describe("admin", () => {
-      it("allows user to set mfa to required, sets default grace period", () => {
+      it("admin can enable and disable 2FA, and set it to required with a default grace period", () => {
         const deadline = dayjs().add(GRACE_PERIOD_DAYS, "day");
 
         cy.visit("/admin/settings/authentication");
         mfaSetting().scrollIntoView();
+        mfaSetting()
+          .findByText("Two-factor authentication")
+          .should("be.visible");
 
         cy.log("Enforcement and the deadline only exist once 2FA is allowed");
         mfaSetting().should("not.contain", "Require now");
@@ -367,12 +344,29 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
 
         mfaToggle().should("not.be.checked").click();
         cy.wait("@updateSettings");
+        mfaSetting()
+          .should("contain", "0 enrolled users")
+          .and("contain", "users without 2FA");
+
+        cy.log("Enabling it leaves enforcement optional");
+        enforcementOption("Don't require").should("be.checked");
 
         // Because the admin has not enrolled, they cannot set two factor to required
         enforcementOption("Require by a certain date").should("be.disabled");
         mfaSetting()
           .findByText(/account before requiring it/)
           .should("be.visible");
+
+        cy.log("Admin can disable 2FA again");
+        mfaToggle().should("be.checked").click();
+        cy.wait("@updateSettings");
+        mfaToggle().should("not.be.checked");
+        mfaSetting().should("not.contain", "enrolled");
+
+        cy.log("Allow 2FA again so the admin can enroll");
+        mfaToggle().click();
+        cy.wait("@updateSettings");
+        mfaToggle().should("be.checked");
 
         enrollUser("admin");
         cy.reload();
@@ -413,70 +407,86 @@ describe("scenarios > admin > settings > multi-factor authentication", () => {
         );
       });
 
-      it("should immediately invalidate current LDAP sessions when enforcement is required", () => {
-        H.setupLdap();
-        signInWithLdap();
-        cy.findByTestId("greeting-message").should("be.visible");
-        H.openNavigationSidebar();
-        H.navigationSidebar()
-          .findByText("Your personal collection")
-          .should("be.visible");
+      it(
+        "should immediately invalidate current LDAP sessions when enforcement is required",
+        { tags: "@external" },
+        () => {
+          H.setupLdap();
+          signInWithLdap();
+          cy.findByTestId("greeting-message").should("be.visible");
+          H.openNavigationSidebar();
+          H.navigationSidebar()
+            .findByText("Your personal collection")
+            .should("be.visible");
 
-        cy.log("An admin turns enforcement on part-way through their session");
-        cy.task("requestAsAdmin", {
-          method: "PUT",
-          url: "/api/setting",
-          body: {
-            "mfa-enforcement": "required",
-            "mfa-requirement-deadline": null,
-          },
-        });
+          cy.log(
+            "An admin turns enforcement on part-way through their session",
+          );
+          cy.task("requestAsAdmin", {
+            method: "PUT",
+            url: "/api/setting",
+            body: {
+              "mfa-enforcement": "required",
+              "mfa-requirement-deadline": null,
+            },
+          });
 
-        cy.log("next api request should return unauthenticated");
-        H.navigationSidebar().findByText("Your personal collection").click();
+          cy.log("next api request should return unauthenticated");
+          H.navigationSidebar().findByText("Your personal collection").click();
 
-        cy.log("should be brought to login screen");
-        cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
-          "be.visible",
-        );
-      });
+          cy.log("should be brought to login screen");
+          cy.findByRole("heading", { name: "Sign in to Metabase" }).should(
+            "be.visible",
+          );
+        },
+      );
 
-      it("should not invalidate sessions created via SAML, even when enforcement is required", () => {
-        H.setupSaml();
-        createSamlUser();
+      it(
+        "should not invalidate sessions created via SAML, even when enforcement is required",
+        { tags: "@external" },
+        () => {
+          H.setupSaml();
+          createSamlUser();
 
-        cy.signOut();
-        cy.visit("/auth/login");
-        cy.button("Sign in with SSO").click();
+          cy.signOut();
+          cy.visit("/auth/login");
+          cy.button("Sign in with SSO").click();
 
-        cy.log("The IdP takes over — any password works, the domain is fixed");
-        cy.get("#username").type(SAML_USER.username);
-        cy.get("#domain").select(SAML_USER.domain);
-        cy.get("#password").type("anything");
-        cy.get("button").click();
+          cy.log(
+            "The IdP takes over — any password works, the domain is fixed",
+          );
+          cy.get("#username").type(SAML_USER.username);
+          cy.get("#domain").select(SAML_USER.domain);
+          cy.get("#password").type("anything");
+          cy.get("button").click();
 
-        cy.log("Straight in: SSO providers are exempt from the MFA gate");
-        cy.findByTestId("greeting-message").should("be.visible");
+          cy.log("Straight in: SSO providers are exempt from the MFA gate");
+          cy.findByTestId("greeting-message").should("be.visible");
 
-        cy.log("An admin turns enforcement on part-way through their session");
-        cy.task("requestAsAdmin", {
-          method: "PUT",
-          url: "/api/setting",
-          body: {
-            "mfa-enforcement": "required",
-            "mfa-requirement-deadline": null,
-          },
-        });
+          cy.log(
+            "An admin turns enforcement on part-way through their session",
+          );
+          cy.task("requestAsAdmin", {
+            method: "PUT",
+            url: "/api/setting",
+            body: {
+              "mfa-enforcement": "required",
+              "mfa-requirement-deadline": null,
+            },
+          });
 
-        cy.log("The SAML session survives — the IdP owns MFA for those users");
-        H.navigationSidebar().findByText("Our analytics").click();
-        H.collectionTable().findByText("Orders, Count").click();
-        cy.location("pathname").should(
-          "contain",
-          `/question/${ORDERS_COUNT_QUESTION_ID}`,
-        );
-        cy.findByTestId("login-page").should("not.exist");
-      });
+          cy.log(
+            "The SAML session survives — the IdP owns MFA for those users",
+          );
+          H.navigationSidebar().findByText("Our analytics").click();
+          H.collectionTable().findByText("Orders, Count").click();
+          cy.location("pathname").should(
+            "contain",
+            `/question/${ORDERS_COUNT_QUESTION_ID}`,
+          );
+          cy.findByTestId("login-page").should("not.exist");
+        },
+      );
     });
 
     describe("login", () => {
