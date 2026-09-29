@@ -53,14 +53,10 @@ export function Overview() {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`. `npm run
-sync-resources` (run by `npm run build`) scans only `queries/` and `actions/`,
-  so a definition anywhere else is never synchronized and fails in production.
+- This directory sits beside `package.json`, not under `src/`.
 - Keep a definition static. A clause whose value comes from a control (a
   selected filter, a date range, a search box) goes in the hook's second
   argument, never inside `defineQuery`.
 - One export per query the app renders. Filter-option queries, KPI queries, and
   helper queries are queries too.
 - Pass the export itself to the hook. Never spread or copy it.
-- `savedQuestionSourceId` is written by synchronization. Never add, edit, or
-  remove it by hand; commit it together with `resources_metadata.json`.

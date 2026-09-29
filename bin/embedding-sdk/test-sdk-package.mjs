@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import console from "node:console";
 import fs from "node:fs";
@@ -52,10 +51,6 @@ try {
     "node_modules/@metabase/embedding-sdk-react",
   );
 
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(installedPackage, "package.json"), "utf8"),
-  );
-
   // Check that both esbuild and typescript modules are installed and can be used
   execFileSync(
     process.execPath,
@@ -71,21 +66,6 @@ try {
     ],
     NPM_COMMAND_OPTIONS,
   );
-
-  // Check that the installed CLI has data apps sync command
-  const output = execFileSync(
-    process.execPath,
-    [
-      path.join(installedPackage, manifest.bin),
-      "data-apps",
-      "sync-resources",
-      "--help",
-    ],
-    NPM_COMMAND_OPTIONS,
-  );
-
-  assert.match(output, /Usage: .*sync-resources/);
-  assert.match(output, /--app-root/);
 
   console.log("SDK package smoke test passed.");
 } finally {

@@ -9,17 +9,11 @@
  * runtime through its own `getTestEnv()`.
  */
 export type DataAppTestEnv = {
-  /**
-   * A deployed app runs the card its query was published as, so every query the
-   * fixture renders names one. The swap drops the static clauses the card
-   * already contains, so each id must match its whole authored query.
-   */
   scalarQuery: {
     source: TableSource;
     aggregations: CountAggregation[];
-    savedQuestionSourceId: number;
   };
-  questionQuery: { source: TableSource; savedQuestionSourceId: number };
+  questionQuery: { source: TableSource };
   /**
    * `/download-question` page: the id of a saved CHART question (so a `.png`
    * export is offered). Passed in because the id tracks the Cypress snapshot.
@@ -43,11 +37,11 @@ export type DataAppTestEnv = {
     xhrBlockedUrl?: string;
   };
   /**
-   * `/query-states` page: a deliberately invalid query (a card that does not
-   * exist), so the hook resolves to an `error` state rather than to the refusal
-   * an unsynchronized query would raise; the page also exercises `refetch`.
+   * `/query-states` page: a deliberately invalid query (a table that does not
+   * exist), so the hook resolves to an `error` state; the page also exercises
+   * `refetch`.
    */
-  errorQuery?: { source: TableSource; savedQuestionSourceId: number };
+  errorQuery?: { source: TableSource };
   /**
    * `/actions` page: the id of the action the spec creates and `useAction`
    * executes, so it can't be hard-coded in the app. Left out to exercise the "no
