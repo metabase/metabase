@@ -43,12 +43,14 @@
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
   item in `xs`."
   [xs x-fn separator-fn]
-  (when (seq xs)
-    (loop [[x & more] xs]
-      (x-fn x)
-      (when (seq more)
-        (separator-fn)
-        (recur more)))))
+  (when xs
+    (assert ((some-fn sequential? set?) xs))
+    (when (seq xs)
+      (loop [[x & more] xs]
+        (x-fn x)
+        (when (seq more)
+          (separator-fn)
+          (recur more))))))
 
 (defn- -interpose!
   "Compile all the forms in `xs` and interpose the `separator` string between them."
@@ -80,8 +82,30 @@
       (append-sql! context " AS ")
       (compile! rhs context))))
 
+(defn- identifier-form?
+  "True if `x` is something we already know how to compile as an identifier: a keyword, or an `h2x/identifier`
+  tagged form."
+  [x]
+  (or (keyword? x)
+      (and (vector? x)
+           (= (first x) :metabase.util.honey-sql-2/identifier))))
+
+(defn- -require-identifier!
+  "Table/column-name positions must never silently fall through to [[object!]]'s `?`-parameter handling just
+  because someone passed the wrong shape of value (a string, a number, a map...) -- that produces a confusing
+  runtime error from the database instead of a clear one from the compiler. Call this before compiling anything
+  in one of those positions."
+  [x]
+  (when-not (identifier-form? x)
+    (throw (ex-info "Expected an identifier" {:x x}))))
+
+(defn- -identifier-list! [xs context]
+  (run! -require-identifier! xs)
+  (-list! xs context))
+
 (defn- -kvs-map! [kvs context]
   (letfn [(-x-equals-y! [[x y]]
+            (-require-identifier! x)
             (compile! x context)
             (append-sql! context " = ")
             (compile! y context))]
@@ -97,6 +121,7 @@
 (defn- with! [sql ctes context]
   (append-sql! context sql)
   (letfn [(-cte [[identifier subquery]]
+            (-require-identifier! identifier)
             (compile! identifier context)
             (append-sql! context " AS (")
             (map! subquery context)
@@ -105,17 +130,21 @@
 
 (defn- insert-into! [identifier context]
   (append-sql! context "INSERT INTO ")
-  (compile! (unwrap-identifier identifier) context))
+  (let [identifier (unwrap-identifier identifier)]
+    (-require-identifier! identifier)
+    (compile! identifier context)))
 
 (defn- values! [rows context]
   (let [columns (keys (first rows))]
-    (-list! columns context))
+    (-identifier-list! columns context))
   (append-sql! context " VALUES ")
   (interpose-fn rows #(-list! (vals %) context) #(append-sql! context ", ")))
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")
-  (compile! (unwrap-identifier identifier) context))
+  (let [identifier (unwrap-identifier identifier)]
+    (-require-identifier! identifier)
+    (compile! identifier context)))
 
 (defn- set! [kvs context]
   (append-sql! context "SET ")
@@ -123,11 +152,17 @@
 
 (defn- delete-from! [identifier context]
   (append-sql! context "DELETE FROM ")
-  (compile! (unwrap-identifier identifier) context))
+  (let [identifier (unwrap-identifier identifier)]
+    (-require-identifier! identifier)
+    (compile! identifier context)))
 
 (defn- select! [sql cols context]
-  (append-sql! context sql)
-  (interpose-fn cols #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))
+  (if-not (sequential? cols)
+    ;; TODO -- we shouldn't allow this, but the hairball search query does `:select :id` at some point
+    (recur sql [cols] context)
+    (do
+      (append-sql! context sql)
+      (interpose-fn cols #(-identifier-with-optional-as! % context) #(append-sql! context ", ")))))
 
 (defn- from! [from context]
   (append-sql! context "FROM ")
@@ -199,7 +234,7 @@
 (defn- on-conflict!
   [columns context]
   (append-sql! context "ON CONFLICT ")
-  (-list! columns context))
+  (-identifier-list! columns context))
 
 (defn- do-update-set!
   [kvs context]
@@ -315,6 +350,7 @@
 
 (defn- -in! [f [lhs vs] context]
   (when-not (or (sequential? vs)
+                (set? vs)
                 (and (map? vs)
                      (:allow-subquery (meta vs))))
     (throw (ex-info "Invalid sequence of values (maps must be marked with ^:allow-subquery)" {:vs vs})))
@@ -385,7 +421,7 @@
                 :like     " LIKE "
                 :not-like " NOT LIKE "
                 (str \space (name f) \space))]
-    (-interpose! f-str (take 2 args) context)))
+    (-interpose! f-str args context)))
 
 (defn- -simple-fn! [f args context]
   (let [f (name f)]

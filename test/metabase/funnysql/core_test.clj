@@ -284,6 +284,64 @@
                            :where       [:= :database_id 1]
                            :returning   [:id :x]} :postgres))))
 
+(deftest ^:parallel expected-identifier-test
+  (testing "table/column-name positions must reject a value that isn't an identifier (a keyword or `h2x/identifier`
+            form), instead of silently falling through to `object!`'s `?`-parameter handling and producing a
+            confusing runtime error from the database instead of a clear one from the compiler"
+    (testing "insert-into"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:insert-into "my_table"
+                             :values      [{:a "x"}]} :postgres))))
+    (testing "update"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:update ["persisted_info"]
+                             :set    {:state "deletable"}} :postgres))))
+    (testing "delete-from"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:delete-from 1}
+                            :postgres))))
+    (testing "values columns"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:insert-into :my_table
+                             :values      [{"a" "x"}]} :postgres))))
+    (testing "set"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:update [:persisted_info]
+                             :set    {"state" "deletable"}} :postgres))))
+    (testing "do-update-set"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:insert-into   :my_table
+                             :values        [{:a "x"}]
+                             :on-conflict   [:a]
+                             :do-update-set {"b" "z"}} :postgres))))
+    (testing "on-conflict"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:insert-into   :my_table
+                             :values        [{:a "x"}]
+                             :on-conflict   ["a"]
+                             :do-update-set {:b "z"}} :postgres))))
+    (testing "with (CTE name)"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Expected an identifier"
+           (funnysql/format {:with   [["cte" {:select [:id] :from [:table]}]]
+                             :select [:id]
+                             :from   [:cte]} :postgres))))))
+
 (deftest ^:parallel for-update-test
   (is (= ["SELECT \"id\" FROM \"revision\" WHERE \"model\" = ? FOR UPDATE" "Card"]
          (funnysql/format {:select [:id]
