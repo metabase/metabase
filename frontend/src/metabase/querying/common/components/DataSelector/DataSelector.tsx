@@ -1359,7 +1359,7 @@ function withDatabaseList(
 const isListDatabasesQuerySuccess = (
   state: State,
   query: ListDatabasesRequest,
-) => databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
+) => false;
 
 const mapStateToProps = (
   state: State,
