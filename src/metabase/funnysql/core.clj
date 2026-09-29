@@ -314,6 +314,10 @@
   (-parens! x context))
 
 (defn- -in! [f [lhs vs] context]
+  (when-not (or (sequential? vs)
+                (and (map? vs)
+                     (:allow-subquery (meta vs))))
+    (throw (ex-info "Invalid sequence of values (maps must be marked with ^:allow-subquery)" {:vs vs})))
   (if (empty? vs)
     (compile! (case f
                 :in     false
@@ -324,7 +328,12 @@
       (append-sql! context (case f
                              :in     " IN "
                              :not-in " NOT IN "))
-      (-list! vs context))))
+      (if (map? vs)
+        (do
+          (append-sql! context "(")
+          (map! vs context)
+          (append-sql! context ")"))
+        (-list! vs context)))))
 
 (defn- between! [[x y z] context]
   (compile! x context)

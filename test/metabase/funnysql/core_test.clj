@@ -523,3 +523,18 @@
       "\"id\" IN (1)" [:in :id [1]]
       "\"id\" IN (1)" [:in :id #{1}]
       "\"id\" IN (1)" [:in :id (lazy-seq [1])])))
+
+(deftest ^:parallel in-subquery-test
+  (is (= ["WHERE \"dp\".\"group_id\" IN (SELECT \"group_id\" FROM \"permissions_group_membership\" WHERE \"user_id\" = 1)"]
+         (funnysql/format {:where [:in :dp.group_id ^:allow-subquery {:select [:group_id]
+                                                                      :from   [:permissions_group_membership]
+                                                                      :where  [:= :user_id [:inline 1]]}]}
+                          :postgres)))
+  (testing "throw exception if subselect is not marked `^:allow-subquery`"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QInvalid sequence of values (maps must be marked with ^:allow-subquery)\E"
+         (funnysql/format {:where [:in :dp.group_id {:select [:group_id]
+                                                     :from   [:permissions_group_membership]
+                                                     :where  [:= :user_id [:inline 1]]}]}
+                          :postgres)))))
