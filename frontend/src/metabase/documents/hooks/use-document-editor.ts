@@ -30,6 +30,7 @@ import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
+  CardId,
   CollectionId,
   Document,
   DocumentCardToCreate,
@@ -325,9 +326,10 @@ export function useDocumentEditor({
               processedCardIds.add(cardId);
 
               if (cardId < 0 && draftCards[cardId]) {
-                const originalId = draftCardOriginalIds[cardId];
+                const originalId: CardId | undefined =
+                  draftCardOriginalIds[cardId];
                 cardsToSave[cardId] =
-                  originalId > 0
+                  originalId != null
                     ? { ...draftCards[cardId], source_card_id: originalId }
                     : draftCards[cardId];
               }

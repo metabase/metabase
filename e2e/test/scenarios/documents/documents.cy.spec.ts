@@ -2165,8 +2165,7 @@ describe("documents", () => {
 });
 
 function denyCollection(id: CollectionId): CollectionPermissions {
-  const none: CollectionPermission = "none";
-  const denied = { [id]: none };
+  const denied: Record<CollectionId, CollectionPermission> = { [id]: "none" };
   return {
     [ALL_USERS_GROUP]: denied,
     [COLLECTION_GROUP]: denied,
