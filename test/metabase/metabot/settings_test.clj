@@ -328,20 +328,23 @@
       (ollama.capabilities/clear-cache!))))
 
 (deftest metabot-supports-reasoning-ollama-test
-  (testing "Ollama answers per model rather than per connection — one connection serves as many models
-           as the operator has pulled, and the single flag this replaced could only ever describe the
-           one the connection was probed on"
+  (testing "Ollama answers per model rather than per connection: one connection serves as many models as
+           the operator has pulled, and Metabot and the mini model need not be on the same one"
     (with-capabilities! {"thinking-model" ["completion" "tools" "thinking"]
                          "chat-model"     ["completion" "tools"]}
       (fn []
         (with-connections [ollama-connection]
           (testing "thinking-model" (is (true? (supports-reasoning? "thinking-model"))))
           (testing "chat-model"     (is (false? (supports-reasoning? "chat-model"))))))))
-  (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing — the
-           setting is public, so it answers from what is known and never calls Ollama itself"
-    (with-connections [ollama-connection]
-      (with-selected-model "ollama/ollama-test"
-        (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))
+  (testing "and a model nothing has looked up yet reads as non-reasoning rather than guessing: the
+           setting is public, so it answers from what is already known instead of asking"
+    ;; the stub reports this model as thinking, so `false?` holds only while the setting answers from the
+    ;; cache rather than asking
+    (with-capabilities! {"unlooked-model" ["completion" "tools" "thinking"]}
+      (fn []
+        (with-connections [ollama-connection]
+          (with-selected-model "ollama/unlooked-model"
+            (is (false? (metabot.settings/llm-metabot-supports-reasoning?)))))))))
 
 (deftest metabot-supports-reasoning-managed-proxy-test
   (testing "the managed connection answers from the model's own provider segment"

@@ -266,8 +266,8 @@
                                   (assoc-in [:choices 0 :delta :content] held)))))
 
                  ;; the content is held, but the chunk it came on still goes on without it: Ollama opens
-                 ;; with content rather than OpenAI's empty chunk (ollama/ollama#17485), so swallowing it
-                 ;; put the minted call ahead of the `:start` its message `id` carries
+                 ;; with content rather than OpenAI's empty chunk (ollama/ollama#17485), so that chunk may
+                 ;; be the one carrying the message `id` the `:start` is built from
                  :else (rf result (cond-> chunk content strip-content)))))))))))
 
 ;;; ------------------------------------------------- Preflight --------------------------------------------------

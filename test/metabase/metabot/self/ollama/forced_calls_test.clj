@@ -182,8 +182,8 @@
 
 (deftest ^:parallel read-back-reads-a-chunk-carrying-both-content-and-finish-reason-test
   (testing (str "an Ollama build older than ollama/ollama#17485 puts the last content fragment and "
-                "`finish_reason` in one chunk. Taking the content used to end the chunk's handling "
-                "there, dropping the finish chunk entirely.")
+                "`finish_reason` in one chunk, so taking the content must not end the chunk's "
+                "handling — the finish chunk still has to be emitted.")
     (testing "the trailing fragment still lands in the call, and the finish chunk still closes it"
       (let [out (read-back structured-plan
                            [(content-chunk "{\"title\": ")
@@ -198,7 +198,7 @@
       (let [out (read-back structured-plan
                            [(content-chunk "{\"title\": \"Late or" "length")])]
         (is (= ["length"] (finish-reasons out))
-            "the `length` that used to be swallowed, leaving a parse error over a half-written answer")
+            "`length` reaches the caller as the diagnosis, not as a parse error over a half-written answer")
         (is (empty? (tool-calls out))
             (str "and no call is minted from the half-written buffer: `:structured`'s name is fixed, so it "
                  "would mint one regardless, and the caller would see `structured-output-invalid` instead "
@@ -211,7 +211,7 @@
 (deftest ^:parallel read-back-passes-on-the-chunks-it-holds-content-from-test
   (testing (str "Ollama opens a stream with content rather than OpenAI's empty chunk "
                 "(ollama/ollama#17485), so a held content chunk may be the first one carrying the "
-                "message `id`. Swallowing it whole put the minted call ahead of `:start`.")
+                "message `id` — it has to go on, or the minted call precedes `:start`.")
     (doseq [[plan answer] [[structured-plan "{\"title\": \"Late orders\"}"]
                            [tool-union-plan "{\"name\": \"search_facts\", \"parameters\": {\"question\": \"q\"}}"]]]
       (testing (:mode plan)

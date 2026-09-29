@@ -422,7 +422,7 @@
 
 (deftest preflight-skips-models-that-cannot-chat-test
   (testing "Ollama lists models newest-first and its OpenAI-compatible listing does not filter out
-           embedding models, so the newest pull being one used to fail the connect outright — with no
+           embedding models, so a newest pull that is one would fail the connect outright — with no
            way out, since the form hides the model picker for a type whose catalog is not fixed"
     (with-clean-capabilities!
       (fn []

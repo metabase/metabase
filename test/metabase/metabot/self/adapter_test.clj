@@ -70,8 +70,8 @@
    #'google/provider     "Google API error (HTTP 418)"
    #'mistral/provider    "Mistral API error (HTTP 418)"
    #'moonshot/provider   "Moonshot API error (HTTP 418)"
-   ;; the one adapter with no `:error-fallback` of its own — new on this branch, so it has no shipped
-   ;; translation to keep and takes the shared msgid, which renders identically
+   ;; the one adapter with no `:error-fallback` of its own: no shipped translation to keep, so it takes
+   ;; the shared msgid, which renders identically
    #'ollama/provider     "Ollama API error (HTTP 418)"
    #'openai/provider     "OpenAI API error (HTTP 418)"
    #'openrouter/provider "OpenRouter API error (HTTP 418)"

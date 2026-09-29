@@ -38,8 +38,8 @@
    {:slug           "ollama"
     :display-name   "Ollama"
     :auth           conn/auth
-    ;; no `:error-fallback`: that exists to keep the msgids the pre-refactor adapters already have
-    ;; translations for. Ollama is new, so it takes the shared one, which renders the same English.
+    ;; no `:error-fallback`: that key carries an adapter's own `HTTP {0}` msgid where one already has
+    ;; shipped translations. Ollama's has none, so it takes the shared msgid, which renders the same English.
     :errors         {400 #(tru "Ollama rejected the request — usually a model that cannot produce the requested tool call or JSON schema")
                      401 #(tru "Ollama rejected the API key")
                      404 #(tru "Ollama API endpoint was not found — the base URL should end in /v1, and the model must already be available")

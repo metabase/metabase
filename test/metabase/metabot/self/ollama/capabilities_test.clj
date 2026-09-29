@@ -80,7 +80,7 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (deftest reasoning-is-answered-per-model-not-per-connection-test
-  (testing "one connection, two models: the flag the connect-time probe used to store could only ever
+  (testing "one connection, two models: a single flag on the connection could only ever
            describe one of them"
     (with-server! {"gpt-oss:20b"          ["completion" "tools" "thinking"]
                    "mistral-large-3:675b" ["completion" "tools" "vision"]}
