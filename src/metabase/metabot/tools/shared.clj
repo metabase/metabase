@@ -51,13 +51,13 @@
   (get-in (current-memory) [:state :charts] {}))
 
 (defn current-client-ids
-  "Ids of the queries and charts seeded from this request's viewing context, as opposed to
-  written by the agent's own tools. A refusal to present one of these is a real access attempt
-  and gets the audited treatment; see `metabase.metabot.tools.shared.content-store`. Kept in state
-  rather than per request, since a tool can persist one of these queries and a later turn read it
-  back after it has left the viewing context."
+  "Ids of the queries and charts the client supplied, as opposed to ones the agent's tools wrote.
+  They come from this request's viewing context, plus the ones earlier turns stored. A refusal to
+  present one of these is a real access attempt and gets the audited treatment; see
+  `metabase.metabot.tools.shared.content-store`."
   []
-  (get-in (current-memory) [:state :client-ids] #{}))
+  (let [memory (current-memory)]
+    (into (set (get-in memory [:state :client-ids])) (:client-ids memory))))
 
 (defn current-chart-configs-state
   "Returns the current chart-configs state map from agent memory.
