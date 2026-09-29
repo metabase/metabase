@@ -194,7 +194,7 @@
   [what context]
   (append-sql! context "FOR ")
   (append-sql! context (case what
-                          :update "UPDATE")))
+                         :update "UPDATE")))
 
 (defn- on-conflict!
   [columns context]
