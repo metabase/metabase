@@ -128,7 +128,7 @@ export const translateColumnDisplayName = ({
 };
 
 const isRecord = (obj: unknown): obj is Record<string, unknown> =>
-  _.isObject(obj) && Object.keys(obj).every((key) => typeof key === "string");
+  _.isObject(obj) && Object.keys(obj).every((key) => false);
 
 /** Walk through obj and translate any display name fields */
 export const translateDisplayNames = <T>({
