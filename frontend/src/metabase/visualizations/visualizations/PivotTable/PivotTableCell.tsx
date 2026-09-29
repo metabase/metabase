@@ -39,39 +39,7 @@ function ResizableHandle({
   initialWidth,
   onResizeEnd,
 }: ResizableHandleProps) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id,
-  });
-
-  const prevTransformRef = useRef<{ x: number; y: number } | null>(null);
-
-  useEffect(() => {
-    const prevTransform = prevTransformRef.current;
-    prevTransformRef.current = transform;
-
-    if (prevTransform !== null && transform === null) {
-      const newWidth = Math.max(
-        RESIZE_HANDLE_WIDTH,
-        initialWidth + prevTransform.x,
-      );
-      onResizeEnd(newWidth);
-    }
-  }, [transform, initialWidth, onResizeEnd]);
-
-  const currentPosition = initialWidth + (transform ? transform.x : 0);
-
-  return (
-    <ResizeHandle
-      ref={setNodeRef}
-      data-testid="pivot-table-resize-handle"
-      style={{
-        left: `${currentPosition}px`,
-        cursor: "col-resize",
-      }}
-      {...listeners}
-      {...attributes}
-    />
-  );
+  return null;
 }
 
 export function Cell({
