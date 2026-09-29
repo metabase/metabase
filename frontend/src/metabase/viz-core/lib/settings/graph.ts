@@ -6,7 +6,10 @@ import { mergeLazily } from "metabase/utils/merge-lazily";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Series, VisualizationDisplay } from "metabase-types/api";
+import { isObjectWithRaw } from "metabase-types/guards";
 
+import { getYAxisLabel } from "../../echarts/cartesian/model/axis";
+import type { YAxisSeriesNames } from "../../echarts/cartesian/model/types";
 import {
   STACKABLE_SERIES_DISPLAY_TYPES,
   getAreDimensionsAndMetricsValid,
@@ -35,6 +38,7 @@ import {
   getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
+  getYAxisSeriesNames,
   getYAxisUnpinFromZeroDefault,
   isShowStackValuesValid,
   isStackingValueValid,
@@ -712,6 +716,50 @@ export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.colors": {},
 };
 
+// One split per sidebar build: every widget gets the same computed settings.
+const seriesNamesByYAxisCache = new WeakMap<
+  ComputedVisualizationSettings,
+  { series: Series; seriesNames: YAxisSeriesNames }
+>();
+
+// Not `useRawSeries`: it would also change the left label's default.
+const computeSeriesNamesByYAxis = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+): YAxisSeriesNames => {
+  const rawSeries =
+    isObjectWithRaw(series) && series._raw ? series._raw : series;
+
+  try {
+    return getYAxisSeriesNames(rawSeries, vizSettings);
+  } catch (error) {
+    console.warn("Error computing y-axis series", error);
+    return { left: null, right: null };
+  }
+};
+
+const getSeriesNamesByYAxis = (
+  series: Series,
+  vizSettings: ComputedVisualizationSettings,
+): YAxisSeriesNames => {
+  // Both label fields are hidden, so skip the split.
+  if (vizSettings["graph.y_axis.labels_enabled"] === false) {
+    return { left: null, right: null };
+  }
+
+  const cached = seriesNamesByYAxisCache.get(vizSettings);
+  if (cached?.series === series) {
+    return cached.seriesNames;
+  }
+
+  const seriesNames = computeSeriesNamesByYAxis(series, vizSettings);
+  seriesNamesByYAxisCache.set(vizSettings, { series, seriesNames });
+  return seriesNames;
+};
+
+const isYAxisSplit = ({ left, right }: YAxisSeriesNames) =>
+  left != null && right != null;
+
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.x_axis._is_timeseries": {
     readDependencies: ["graph.dimensions"],
@@ -1005,6 +1053,10 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     get title() {
       return t`Label`;
     },
+    getTitle: (series, vizSettings) =>
+      isYAxisSplit(getSeriesNamesByYAxis(series, vizSettings))
+        ? t`Left axis label`
+        : t`Label`,
     index: 2,
     get group() {
       return t`Y-axis`;
@@ -1012,6 +1064,14 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
     widget: "input",
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
+    // Not in getDefault: the split needs a pass over the rows, and every chart
+    // render computes defaults.
+    getProps: (series, vizSettings) => {
+      const { left, right } = getSeriesNamesByYAxis(series, vizSettings);
+      return {
+        value: getYAxisLabel(left ?? right ?? [], vizSettings, false),
+      };
+    },
     getDefault: (series, vizSettings) => {
       // If there are multiple series, we check if the metric names match.
       // If they do, we use that as the default y axis label.
@@ -1024,6 +1084,28 @@ export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {
       return getDefaultYAxisTitle(metricNames);
     },
     readDependencies: ["series", "graph.metrics"],
+  },
+  "graph.y_axis.right.title_text": {
+    getSection: () => t`Axes`,
+    get title() {
+      return t`Right axis label`;
+    },
+    index: 2,
+    get group() {
+      return t`Y-axis`;
+    },
+    widget: "input",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.y_axis.labels_enabled"] === false ||
+      !isYAxisSplit(getSeriesNamesByYAxis(series, vizSettings)),
+    // No getDefault: an unset value makes the right axis use the left label.
+    getProps: (series, vizSettings) => ({
+      value: getYAxisLabel(
+        getSeriesNamesByYAxis(series, vizSettings).right ?? [],
+        vizSettings,
+        true,
+      ),
+    }),
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

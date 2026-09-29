@@ -152,7 +152,6 @@
             ;; Clear the throbber when done
             (print "\r")
             (flush))
-
     ;; Execute the function
     (try
       (let [res (f)]
@@ -195,6 +194,7 @@
     (println "  mage <task-name> -h")
     task+descriptions))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-warning* "Skips warnings for can-run?" false)
 
 (defn can-run? [cmd]

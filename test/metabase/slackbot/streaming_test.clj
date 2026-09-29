@@ -98,6 +98,18 @@
                 {:role :user :content "chart it"}]
                result))))))
 
+(deftest thread->history-messages-without-text-test
+  (testing "A message with no text key still names its attachments, and is otherwise excluded"
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
+      (let [thread {:messages [{:ts "1709567890.000001" :user "U123" :files [{:name "data.csv"}]}
+                               {:ts "1709567890.000002" :user "U123"}
+                               {:ts "1709567890.000003" :bot_id "B123"}
+                               {:ts "1709567890.000004" :text "chart it" :user "U123"}]}
+            result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
+        (is (= [{:role :user :content "Attached files: data.csv"}
+                {:role :user :content "chart it"}]
+               result))))))
+
 (deftest thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
     (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history  (constantly {})

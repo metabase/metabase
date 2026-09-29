@@ -747,7 +747,7 @@ export const CardEmbedComponent = memo(
                         <CommentsButton
                           // don't use Link component here since it messes with tiptap's link handling
                           disabled={hasUnsavedChanges || !commentsPath}
-                          variant={isOpen ? "filled" : "default"}
+                          active={isOpen}
                           unresolvedCommentsCount={unresolvedCommentsCount}
                           onClick={() => {
                             navigate(commentsPath);

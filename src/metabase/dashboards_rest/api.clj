@@ -332,6 +332,7 @@
   "Using 10 seconds for the cache TTL."
   (* 10 1000))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *dashboard-load-id* nil)
 
 ;; This is a kind of two-layer memoization:

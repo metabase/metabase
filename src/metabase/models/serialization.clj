@@ -61,8 +61,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   ;; legacy usages -- do not use in new code
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -301,6 +299,7 @@
 
 (defmethod make-spec :default [_ _] nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *make-spec*
   "Cachable wrapper around [[make-spec]] that is memoized inside [[with-cache]]."
   [model-name opts]
@@ -818,6 +817,7 @@
 
 ;;; ## General foreign keys
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk*
   "Given a numeric foreign key and its model (symbol, name or IModel), looks up the entity by ID and gets its entity ID
   or identity hash.
@@ -840,6 +840,7 @@
          (throw e#))
        nil)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-fk*
   "Given an identifier, and the model it represents (symbol, name or IModel), looks up the corresponding
   entity and gets its primary key.
@@ -855,6 +856,7 @@
    model :- :metabase.models.serialization.path/model-keyword-or-symbol]
   (resolve/import-fk (import-resolver) eid model))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-fk-keyed*
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
@@ -867,6 +869,7 @@
    field :- :keyword]
   (resolve/export-fk-keyed (export-resolver) id model field))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-fk-keyed*
   "Given a single, portable, identifying field and the model it refers to, this resolves the entity and returns its
   numeric `:id`.
@@ -878,6 +881,7 @@
   (resolve/import-fk-keyed (import-resolver) portable model field))
 
 ;;; ## Users
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-user*
   "Exports a user as the email address.
   This just calls [[*export-fk-keyed*]], but the counterpart [[*import-user*]] is more involved. This is a unique function
@@ -885,6 +889,7 @@
   [id :- [:maybe ::lib.schema.id/user]]
   (resolve/export-user (export-resolver) id))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-user*
   "Imports a user by their email address.
   If a user with that email address exists, returns its primary key.
@@ -895,6 +900,7 @@
 
 ;;; ## Databases
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *export-database-fk*
   "Given a numeric database ID, return its name as a portable reference.
   [[*import-database-fk*]] is the inverse."
@@ -902,6 +908,7 @@
   (when id
     (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
   [[*export-database-fk*]] is the inverse."
@@ -910,6 +917,7 @@
 
 ;;; ## Tables
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-table-fk*
   "Given a numeric `table_id`, return a portable table reference.
   If the `table_id` is `nil`, return `nil`. This is legal for a native question.
@@ -919,6 +927,7 @@
   (when table-id
     (resolve/export-table-fk (export-resolver) table-id)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
   The input might be nil, in which case so is the output. This is legal for a native question."
@@ -969,6 +978,7 @@
 ;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
 ;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
 ;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
@@ -979,6 +989,7 @@
           [db-name schema table-name] (*export-table-fk* (:table_id (first fields)))]
       (into [db-name schema table-name] (map :name fields)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn ^:dynamic *import-field-fk*
   "Given a `field_id` as exported by [[*export-field-fk*]], resolve it back into a numeric `field_id`."
   [[_db-name _schema _table-name & _fields :as field-id] :- [:maybe [:cat string? [:maybe string?] string? #_fields [:+ string?]]]]
@@ -1020,11 +1031,7 @@
   (let [tag    (mbql-ref? mbql)
         schema (case tag
                  :field-id  ::mbql-3-field-id-ref
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     ::resolve/field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment
@@ -1033,6 +1040,7 @@
     (cond->> mbql
       schema (lib/normalize schema mbql))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *required-lib-uuids-for-export* nil)
 
 (mu/defn- collect-required-lib-uuids :- [:set ::lib.schema.common/uuid]
@@ -1207,6 +1215,7 @@
     (import-mbql-map m)))
 
 ;; Unfortunately, settings depend on serdes, so we can't read settings directly in serdes (circular dep)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-schema-validation?*
   "When true, [[import-mbql]] stores a normalized query without checking it against this instance's query schema."
   false)

@@ -1673,6 +1673,7 @@
               (is (= (map #(dissoc % :id) original-tabs)
                      (map #(dissoc % :id) new-tabs))))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})
@@ -5850,6 +5851,37 @@
                                :tabs []})
         (is (every? #(= 1 (count %)) (t2/select-fn-vec :parameter_mappings :model/DashboardCard :dashboard_id dash-id)))))))
 
+(deftest param-values-no-field-ids-unreadable-card-test
+  (testing "a field-ref-only param mapped to a card the user cannot read is a 403"
+    (let [mp        (mt/metadata-provider)
+          target    [:dimension [:field "SOURCE" {:base-type :type/Text}]]
+          no-perms  #(format "You do not have permissions to view Card %d." %)
+          all-users (perms-group/all-users)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection private-coll {:name "Private native card collection"}
+                       :model/Card {native-id :id} (assoc (qp.test-util/card-with-source-metadata-for-query
+                                                           (lib/native-query mp "select * from people"))
+                                                          :collection_id (:id private-coll))
+                       :model/Collection dash-coll {:name "Readable dashboard collection"}
+                       :model/Dashboard {dashboard-id :id}
+                       {:collection_id (:id dash-coll)
+                        :parameters    [{:name "User Source" :slug "user_source" :id "_US_" :type :string/=}]}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      native-id
+                                               :parameter_mappings [{:card_id      native-id
+                                                                     :parameter_id "_US_"
+                                                                     :target       target}]}]
+          (perms/grant-collection-read-permissions! all-users dash-coll)
+          (let [values-url (str "dashboard/" dashboard-id "/params/_US_/values")]
+            (testing "read on the dashboard does not grant read on the mapped card"
+              (is (= (no-perms native-id)
+                     (mt/user-http-request :rasta :get 403 values-url))))
+            (testing "the values come back once the user can read the mapped card"
+              (perms/grant-collection-read-permissions! all-users private-coll)
+              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 values-url))))))))))
+
 (deftest param-search-no-field-ids-test
   (testing "GET .../params/:param-key/search/:query for field-ref-only (nested-native) params currently returns the same unfiltered set as /values"
     (let [mp (mt/metadata-provider)]
@@ -5897,6 +5929,7 @@
       (mt/with-temp [:model/Card {source-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                      :model/Dashboard {id :id}
                      {:parameters [{:name "Number" :slug "number" :id "_NUM_" :type :number/<=
+                                    :values_query_type "list"
                                     :values_source_type "card"
                                     :values_source_config
                                     {:card_id     source-id
@@ -6025,10 +6058,13 @@
             "backend does not clean up dashcard parameter_mappings that reference a removed parameter_id")))))
 
 (deftest values-endpoint-does-not-gate-by-operator-type-test
-  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating"
+  (testing "GET /api/dashboard/:id/params/:param-key/values has no operator-type gating once the widget is a dropdown"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                            {:parameters (mapv (fn [p] (cond-> p (= (:id p) (:category-name param-keys)) (assoc :type :string/starts-with)))
+                            {:parameters (mapv (fn [p]
+                                                 (cond-> p
+                                                   (= (:id p) (:category-name param-keys))
+                                                   (assoc :type :string/starts-with, :values_query_type "list")))
                                                (:parameters dashboard))})
       (is (seq (:values (mt/user-http-request :rasta :get 200
                                               (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))
