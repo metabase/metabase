@@ -21,6 +21,7 @@ import {
   act,
   mockGetBoundingClientRect,
   screen,
+  settlePendingUpdates,
   waitFor,
   waitForLoaderToBeRemoved,
   within,
@@ -205,7 +206,11 @@ const setup = async ({
     },
   );
 
-  if (!preventWaitForLoader) {
+  if (preventWaitForLoader) {
+    // The provider settles right after the render. Absorbing it here keeps it
+    // inside act(), which the caller cannot do once this function has returned.
+    await settlePendingUpdates();
+  } else {
     await waitForLoaderToBeRemoved();
   }
 };
@@ -404,6 +409,7 @@ describe("InteractiveQuestion", () => {
       screen.queryByText(/To run your code, click on the Run button/),
     ).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(0);
+
   });
 
   describe("navigation stack initialization", () => {

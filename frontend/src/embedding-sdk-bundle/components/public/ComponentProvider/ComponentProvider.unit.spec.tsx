@@ -12,7 +12,7 @@ jest.mock("embedding-sdk-bundle/lib/host-react-version", () => ({
   isHostReactVersionSupported: jest.fn(() => true),
 }));
 
-import { render, screen } from "__support__/ui";
+import { render, screen, settlePendingUpdates } from "__support__/ui";
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { isHostReactVersionSupported } from "embedding-sdk-bundle/lib/host-react-version";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
@@ -58,7 +58,7 @@ describe("ComponentProvider — tracker wiring", () => {
     jest.clearAllMocks();
   });
 
-  it("passes locale != null as the third argument when locale is set", () => {
+  it("passes locale != null as the third argument when locale is set", async () => {
     renderWithSDKProviders(<div />, {
       componentProviderProps: {
         authConfig: { metabaseInstanceUrl: "https://metabase.example.com" },
@@ -71,6 +71,9 @@ describe("ComponentProvider — tracker wiring", () => {
       expect.anything(),
       true,
     );
+
+    // This test asks for a locale, so its catalogue load has to finish here.
+    await settlePendingUpdates();
   });
 
   it("passes false as the third argument when locale is not set", () => {
