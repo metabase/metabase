@@ -85,7 +85,7 @@ const DEFAULT_ROW_CHART_ARGS = {
 
 export const Default = {
   render: Template,
-  args: { ...DEFAULT_ROW_CHART_ARGS, isStatic: true },
+  args: DEFAULT_ROW_CHART_ARGS,
 };
 
 const ThemedRowChart = () => {
