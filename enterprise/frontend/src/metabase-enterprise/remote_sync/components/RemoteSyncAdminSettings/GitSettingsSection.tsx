@@ -22,7 +22,6 @@ export const GitSettingsSection = () => {
         name={URL_KEY}
         label={t`Repository URL`}
         placeholder="https://git-host.example.com/yourcompany/repo.git"
-        labelProps={{ mb: "0.75rem" }}
         {...getEnvSettingProps(settingDetails?.[URL_KEY])}
       />
       <FormTextInput

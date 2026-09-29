@@ -321,7 +321,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
       <Box pb="lg">
         <TextInput
           aria-label={t`Search fields`}
-          leftSection={<Icon name="search" size={12} />}
+          leftSection={<Icon name="search" />}
           onChange={(event) => setSearchText(event.currentTarget.value)}
           placeholder={t`Search fields`}
           value={searchText}

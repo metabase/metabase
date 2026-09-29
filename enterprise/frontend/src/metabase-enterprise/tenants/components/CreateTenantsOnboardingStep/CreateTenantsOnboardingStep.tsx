@@ -193,7 +193,7 @@ export const CreateTenantsOnboardingStep = ({
         <Button
           variant="transparent"
           size="compact-md"
-          leftSection={<Icon name="add" size={12} />}
+          leftSection={<Icon name="add" />}
           onClick={addTenantCard}
         >
           {t`New tenant`}

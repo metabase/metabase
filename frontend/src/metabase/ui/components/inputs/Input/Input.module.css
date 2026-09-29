@@ -83,6 +83,11 @@
   --input-bg: transparent;
 
   color: var(--mb-color-icon-primary);
+
+  & :global(.Icon) {
+    width: var(--input-section-icon-size);
+    height: var(--input-section-icon-size);
+  }
 }
 
 .label {
@@ -91,6 +96,10 @@
   font-weight: bold;
   line-height: var(--mantine-line-height-md);
   margin-bottom: var(--mantine-spacing-xs);
+
+  &:has(+ .description) {
+    margin-bottom: var(--mantine-spacing-xxxs);
+  }
 }
 
 .root[data-size="sm"] .label {
@@ -102,7 +111,7 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-sm);
-  margin-bottom: var(--mantine-spacing-sm);
+  margin-bottom: var(--mantine-spacing-xs);
 }
 
 .error {
