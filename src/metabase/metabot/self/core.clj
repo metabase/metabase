@@ -982,7 +982,7 @@
                              (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
 
                              :else
-                             (log/warn "Tool execution failed" {:tool-name safe-name :error (ex-message e)}))
+                             (log/error e "Tool execution failed" {:tool-name safe-name}))
                            [{:type         :tool-output-available
                              :toolCallId   tool-call-id
                              :toolName     tool-name
