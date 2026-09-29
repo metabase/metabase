@@ -199,7 +199,8 @@ function DataFieldPicker({
       isSelected,
     });
     // An empty field list means "every column", so a deselect that would
-    // empty it keeps the first target instead, like the last-column rule.
+    // empty it keeps the first target instead (mirroring the the logic
+    // to disable the the final selected column).
     const fields =
       nextColumns.length > 0 ? nextColumns : targetColumns.slice(0, 1);
     const isEveryColumn = fields.length === columns.length;
