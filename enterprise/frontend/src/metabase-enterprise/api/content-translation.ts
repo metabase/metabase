@@ -15,11 +15,7 @@ export const contentTranslationApi = EnterpriseApi.injectEndpoints({
         DictionaryResponse,
         ListContentTranslationsRequest | void
       >({
-        query: (params) => ({
-          method: "GET",
-          url: contentTranslationEndpoints.getDictionary,
-          params,
-        }),
+        query: (params) => ({}),
         providesTags: () => [listTag("content-translation")],
       }),
       uploadContentTranslationDictionary: builder.mutation<
