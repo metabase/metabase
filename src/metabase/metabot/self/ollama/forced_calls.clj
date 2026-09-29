@@ -21,6 +21,7 @@
   https://docs.ollama.com/capabilities/structured-outputs) and discards `format` as silently as
   `tool_choice`. There a forced call is asked for in words and nothing guarantees it."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.schema :as schema]
@@ -43,25 +44,29 @@
   "What this deployment can actually do about a [[::mode]].
 
   `:grammar` is enforced by the server and cannot be talked out of. `:instruction` is a request in
-  words, which a model may ignore. `:none` means neither is available — on Cloud, which can do
-  neither, and for a `required` turn carrying no tools. It is a plan rather than a nil so that a
-  forced request is always planned for: the token budget has to cover what was asked for whether or
-  not anything can compel it."
+  words, which a model may ignore. `:none` means neither is available — a `required` turn carrying no
+  tools, which has nothing to name. It is a plan rather than a nil so that a forced request is always
+  planned for: the token budget has to cover what was asked for whether or not anything can compel it."
   [:enum :grammar :instruction :none])
 
 (mr/def ::plan
   "How a request's forced tool call will be expressed. `:schema` is present exactly when `:mechanism`
   is `:grammar`: it is the thing the decoder gets constrained by, and the other mechanisms constrain
-  nothing."
+  nothing. `:instruction` is present exactly when `:mechanism` is `:instruction`, and is the words
+  that stand in for a constraint."
   [:and
    [:map {:closed true}
-    [:mode      ::mode]
-    [:mechanism ::mechanism]
-    [:schema    {:optional true} [:map {::mr/deliberately-open true
-                                        :description "a JSON Schema the decoder is constrained by"}]]]
+    [:mode        ::mode]
+    [:mechanism   ::mechanism]
+    [:schema      {:optional true} [:map {::mr/deliberately-open true
+                                          :description "a JSON Schema the decoder is constrained by"}]]
+    [:instruction {:optional true} :string]]
    [:fn {:error/message "a :schema belongs to a :grammar, and every :grammar needs one"}
     (fn [{:keys [mechanism schema]}]
-      (= (= :grammar mechanism) (some? schema)))]])
+      (= (= :grammar mechanism) (some? schema)))]
+   [:fn {:error/message "an :instruction belongs to the :instruction mechanism, and it needs one"}
+    (fn [{:keys [mechanism instruction]}]
+      (= (= :instruction mechanism) (some? instruction)))]])
 
 (mr/def ::probe-verdict
   "What a structured-output probe showed: nil when the mechanism held, or why it did not."
@@ -87,11 +92,21 @@
   the shared builder would have used, so that downstream cannot tell the difference."
   chat-completions/structured-output-tool-name)
 
-(def cloud-instruction
-  "What a Cloud forced call asks for in place of the `tool_choice` Ollama discards. Appended last,
-  where an instruction carries furthest. It is not a guarantee and is not treated as one: a model that
-  answers in chat anyway produces the caller's ordinary missing-tool-call failure."
-  (str "Answer by calling the `" tool-name "` tool. Do not reply in chat."))
+(defn cloud-instruction
+  "What a Cloud forced call asks for in place of the `tool_choice` Ollama discards: a call to one of
+  `tool-names`. Appended last, where an instruction carries furthest. It is not a guarantee and is not
+  treated as one: a model that answers in chat anyway produces the caller's ordinary missing-tool-call
+  failure.
+
+  The tools are named rather than left to `tools` and the discarded `tool_choice`, because naming them
+  is the whole of what the instruction can do — a model told only \"call a tool\" has been told less
+  than the request already said."
+  [tool-names]
+  (str "Answer by calling "
+       (if (next tool-names)
+         (str "one of these tools: " (str/join ", " (map #(str "`" % "`") tool-names)))
+         (str "the `" (first tool-names) "` tool"))
+       ". Do not reply in chat."))
 
 ;;; ------------------------------------------------- The decision -----------------------------------------------
 
@@ -141,7 +156,12 @@
         ;; nothing to choose among: no mechanism can compel a call that has no tool to make, and a
         ;; union grammar over no tools would be a constraint nothing could satisfy
         (and union? (empty? tools)) {:mode mode :mechanism :none}
-        cloud?                      {:mode mode :mechanism (if union? :none :instruction)}
+        cloud?                      {:mode        mode
+                                     :mechanism   :instruction
+                                     :instruction (cloud-instruction
+                                                   (if union?
+                                                     (mapv #(:name (schema/tool-function %)) tools)
+                                                     [tool-name]))}
         :else                       {:mode      mode
                                      :mechanism :grammar
                                      :schema    (if union? (tool-union-schema tools) schema)}))))
@@ -159,7 +179,7 @@
     ;; builder's own rule — `chat-completions/request-body` drops real tools whenever `:schema` is set
     ;; (its `all-tools` binding), so leaving them here would hand the model tools this request never had
     :grammar     (cond-> opts (= :structured (:mode plan)) (dissoc :schema :tools))
-    :instruction (update opts :input #(conj (vec %) {:role "user" :content cloud-instruction}))
+    :instruction (update opts :input #(conj (vec %) {:role "user" :content (:instruction plan)}))
     opts))
 
 (mu/defn body-for :- ::chat-completions-body

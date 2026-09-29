@@ -34,13 +34,13 @@
   (testing "and so is a forced call over the caller's own tools"
     (is (= {:mode :tool-union :mechanism :grammar}
            (decision {:tools tools :tool_choice "required"} false))))
-  (testing "Cloud can only ask for structured output"
+  (testing "Cloud can only ask, for structured output"
     (is (= {:mode :structured :mechanism :instruction}
            (decision {:schema schema} true))))
-  (testing "and can do nothing at all about a forced call over real tools — the tools and the
-           `tool_choice` naming them are already there, and the agent loop handles a turn that answers
-           in text, so an extra instruction would add nothing"
-    (is (= {:mode :tool-union :mechanism :none}
+  (testing "and for a call over the caller's own tools too — `tool_choice` is discarded on the way
+           out, so without the asking a profile that renders nothing but tool results (`:sql`) would
+           take a prose answer it cannot show"
+    (is (= {:mode :tool-union :mechanism :instruction}
            (decision {:tools tools :tool_choice "required"} true))))
   (testing "an `auto` turn is never planned for: a grammar would silently promote it to `required`,
            and the model could then never answer in prose again"
@@ -99,11 +99,19 @@
     (let [plan (forced/plan {:schema schema} true)
           opts (forced/opts-for plan {:schema schema :input [{:role "user" :content "hi"}]})]
       (is (= [{:role "user" :content "hi"}
-              {:role "user" :content forced/cloud-instruction}]
+              {:role "user" :content (forced/cloud-instruction [chat-completions/structured-output-tool-name])}]
              (:input opts)))
       (is (= schema (:schema opts)) "the tool the shared builder mints from it is all Cloud has")
       (is (nil? (:response_format (forced/body-for plan {})))
           "and a grammar Cloud discards is not sent")))
+  (testing "a Cloud forced call names the caller's own tools, since naming them is all the
+           instruction can do that the discarded `tool_choice` did not already say"
+    (let [plan (forced/plan {:tools tools :tool_choice "required"} true)
+          opts (forced/opts-for plan {:tools tools :tool_choice "required" :input []})]
+      (is (= [{:role "user"
+               :content "Answer by calling one of these tools: `search_facts`, `record_table_name`. Do not reply in chat."}]
+             (:input opts)))
+      (is (= tools (:tools opts)) "and keeps them, because they are what it just named")))
   (testing "an unplanned request is passed through untouched, both ways"
     (is (= {:tools tools :input []} (forced/opts-for nil {:tools tools :input []})))
     (is (= {:tool_choice "auto"} (forced/body-for nil {:tool_choice "auto"})))))
@@ -114,6 +122,7 @@
     (is (some? (forced/read-back-xf (forced/plan {:tools tools :tool_choice "required"} false))))
     (is (nil? (forced/read-back-xf (forced/plan {:schema schema} true)))
         "Cloud's tool call arrives the ordinary way and must not be touched")
+    (is (nil? (forced/read-back-xf (forced/plan {:tools tools :tool_choice "required"} true))))
     (is (nil? (forced/read-back-xf nil)))))
 
 (deftest ^:parallel probe-verdict-reads-the-mechanism-that-will-run-test
