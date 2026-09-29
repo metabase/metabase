@@ -248,6 +248,8 @@ The question is visualized as follows:
   The dashboard is stored in the following collection:
   {{dashboard_collection_xml|safe}}
 {% endif %}
+{% if dashboard_filters_xml %}
+{{dashboard_filters_xml|safe}}{% endif %}
 {% if dashboard_tabs_xml %}
 {{dashboard_tabs_xml|safe}}{% endif %}
 </dashboard>
