@@ -10,7 +10,7 @@ msgstr ""
 "#-#-#-#-#  metabase-backend.pot (1.0)  #-#-#-#-#\n"
 "Project-Id-Version: 1.0\n"
 "Report-Msgid-Bugs-To: docs@metabase.com\n"
-"POT-Creation-Date: 2026-09-22 05:47+0000\n"
+"POT-Creation-Date: 2026-09-29 05:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -622,7 +622,7 @@ msgid "Metabot illustration preview"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
-msgid "Show Metabot illustrations in chat sidebar and AI exploration page"
+msgid "Show Metabot illustrations in the chat sidebar"
 msgstr ""
 
 #: enterprise/frontend/src/metabase-enterprise/ai-controls/pages/MetabotCustomizationPage/MetabotIconField.tsx
@@ -4012,6 +4012,7 @@ msgstr ""
 #: frontend/src/metabase/common/components/GroupsMultiSelect/GroupsMultiSelect.tsx
 #: frontend/src/metabase/explorations/components/NewExplorationData/Pills.tsx
 #: frontend/src/metabase/metrics-viewer/components/MetricSearch/MetricPill/MetricPill.tsx
+#: frontend/src/metabase/search/components/SearchUserPicker/SearchUserPicker.tsx
 #, javascript-format
 msgid "Remove {0}"
 msgstr ""
@@ -25737,6 +25738,7 @@ msgstr ""
 
 #: frontend/src/metabase/explorations/components/ExplorationSidebar/ExplorationTreeNode.tsx
 #: frontend/src/metabase/forms/components/FormSubmitButton/FormSubmitButton.tsx
+#: frontend/src/metabase/metabot/components/MetabotChat/MetabotChainOfThought/ToolStep.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskRunStatusPicker/TaskRunStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/components/TaskStatusPicker/TaskStatusPicker.tsx
 #: frontend/src/metabase/monitor/tools/notifications/NotificationDetailSidebar/NotificationRunSummaryLog.tsx
@@ -31129,16 +31131,16 @@ msgid "Model last cached {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
+#, javascript-format
+msgid "Last attempt {0}"
+msgstr ""
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Create now"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
 msgid "Refresh now"
-msgstr ""
-
-#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheManagementSection/ModelCacheManagementSection.tsx
-#, javascript-format
-msgid "Last attempt {0}"
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/QuestionDetails.tsx
@@ -34656,6 +34658,14 @@ msgid "Succeeded"
 msgstr ""
 
 #: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
+#, javascript-format
+msgctxt "{0} is the application name, {1} is the database's own error message"
+msgid ""
+"{0} couldn't read the indexes on this table, so statuses may be out of date. "
+"The database said: {1}"
+msgstr ""
+
+#: frontend/src/metabase/transforms/pages/TransformIndexesPage/TransformIndexesPage.tsx
 msgid "Delete this index?"
 msgstr ""
 
@@ -37095,6 +37105,14 @@ msgstr ""
 
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
 msgid "Number of tick marks"
+msgstr ""
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Left axis label"
+msgstr ""
+
+#: frontend/src/metabase/viz-core/lib/settings/graph.ts
+msgid "Right axis label"
 msgstr ""
 
 #: frontend/src/metabase/viz-core/lib/settings/graph.ts
@@ -42344,6 +42362,14 @@ msgstr ""
 msgid "No LLM provider connection named {0} is configured."
 msgstr ""
 
+#: metabase/metabot/self/adapter.clj
+msgid "{0} API error (HTTP {1})"
+msgstr ""
+
+#: metabase/metabot/self/adapter.clj
+msgid "AI proxy is not supported for {0}"
+msgstr ""
+
 #: metabase/metabot/self/azure.clj
 msgid ""
 "Unsupported Azure model {0}. Only anthropic/* and openai/* models are "
@@ -42355,7 +42381,7 @@ msgid "Azure credentials are not configured"
 msgstr ""
 
 #: metabase/metabot/self/azure.clj
-msgid "AI proxy is not supported for Azure"
+msgid "Azure API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/azure.clj
@@ -42378,10 +42404,6 @@ msgstr ""
 
 #: metabase/metabot/self/azure.clj
 msgid "Azure is not working but not saying why"
-msgstr ""
-
-#: metabase/metabot/self/azure.clj
-msgid "Azure API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/bedrock.clj
@@ -42415,7 +42437,7 @@ msgid ""
 msgstr ""
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AI proxy is not supported for AWS Bedrock"
+msgid "AWS Bedrock API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/bedrock.clj
@@ -42439,13 +42461,13 @@ msgid "AWS Bedrock is not working but not saying why"
 msgstr ""
 
 #: metabase/metabot/self/bedrock.clj
-msgid "AWS Bedrock API error (HTTP {0})"
-msgstr ""
-
-#: metabase/metabot/self/bedrock.clj
 msgid ""
 "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are "
 "supported."
+msgstr ""
+
+#: metabase/metabot/self/claude.clj
+msgid "Anthropic API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/claude.clj
@@ -42476,10 +42498,6 @@ msgstr ""
 msgid "Anthropic API is overloaded and is asking us to wait"
 msgstr ""
 
-#: metabase/metabot/self/claude.clj
-msgid "Anthropic API error (HTTP {0})"
-msgstr ""
-
 #: metabase/metabot/self/core.clj
 msgid "{0} API request failed"
 msgstr ""
@@ -42497,7 +42515,7 @@ msgid "AI proxy is not configured"
 msgstr ""
 
 #: metabase/metabot/self/deepseek.clj
-msgid "AI proxy is not supported for DeepSeek"
+msgid "DeepSeek API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/deepseek.clj
@@ -42537,10 +42555,6 @@ msgstr ""
 msgid "DeepSeek is overloaded and is asking us to wait"
 msgstr ""
 
-#: metabase/metabot/self/deepseek.clj
-msgid "DeepSeek API error (HTTP {0})"
-msgstr ""
-
 #: metabase/metabot/self/google.clj
 msgid ""
 "Invalid Google service account key: token_uri must be a Google OAuth "
@@ -42570,10 +42584,6 @@ msgid ""
 msgstr ""
 
 #: metabase/metabot/self/google.clj
-msgid "AI proxy is not supported for the Google provider"
-msgstr ""
-
-#: metabase/metabot/self/google.clj
 msgid "A Google Cloud project ID is required for the Google provider"
 msgstr ""
 
@@ -42593,6 +42603,10 @@ msgstr ""
 msgid ""
 "Invalid Google model {0} — a publisher and model ID can hold only letters, "
 "digits, and the characters \".\", \"_\", \"-\" and \"@\""
+msgstr ""
+
+#: metabase/metabot/self/google.clj
+msgid "Google API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/google.clj
@@ -42630,10 +42644,6 @@ msgid "Google API is temporarily unavailable"
 msgstr ""
 
 #: metabase/metabot/self/google.clj
-msgid "Google API error (HTTP {0})"
-msgstr ""
-
-#: metabase/metabot/self/google.clj
 msgid "(endpoint: {0})"
 msgstr ""
 
@@ -42642,7 +42652,7 @@ msgid "check that \"{0}\" is a valid location"
 msgstr ""
 
 #: metabase/metabot/self/mistral.clj
-msgid "AI proxy is not supported for Mistral"
+msgid "Mistral API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/mistral.clj
@@ -42661,12 +42671,8 @@ msgstr ""
 msgid "Mistral returned an internal server error"
 msgstr ""
 
-#: metabase/metabot/self/mistral.clj
-msgid "Mistral API error (HTTP {0})"
-msgstr ""
-
 #: metabase/metabot/self/moonshot.clj
-msgid "AI proxy is not supported for Moonshot"
+msgid "Moonshot API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/moonshot.clj
@@ -42694,16 +42700,12 @@ msgstr ""
 msgid "Moonshot returned an internal server error"
 msgstr ""
 
-#: metabase/metabot/self/moonshot.clj
-msgid "Moonshot API error (HTTP {0})"
-msgstr ""
-
 #: metabase/metabot/self/openai.clj
 msgid "The model provider failed to complete the response"
 msgstr ""
 
 #: metabase/metabot/self/openai.clj
-msgid "AI proxy is not supported for OpenAI"
+msgid "OpenAI API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/openai.clj
@@ -42726,16 +42728,12 @@ msgstr ""
 msgid "OpenAI API is not working but not saying why"
 msgstr ""
 
-#: metabase/metabot/self/openai.clj
-msgid "OpenAI API error (HTTP {0})"
-msgstr ""
-
 #: metabase/metabot/self/openai/chat_completions.clj
 msgid "{0} returned an unexpected model list response"
 msgstr ""
 
 #: metabase/metabot/self/openrouter.clj
-msgid "AI proxy is not supported for OpenRouter"
+msgid "OpenRouter API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/openrouter.clj
@@ -42770,20 +42768,12 @@ msgstr ""
 msgid "OpenRouter service is unavailable"
 msgstr ""
 
-#: metabase/metabot/self/openrouter.clj
-msgid "OpenRouter API error (HTTP {0})"
-msgstr ""
-
-#: metabase/metabot/self/vllm.clj
-msgid "AI proxy is not supported for vLLM"
-msgstr ""
-
 #: metabase/metabot/self/vllm.clj
 msgid "No vLLM base URL is set"
 msgstr ""
 
 #: metabase/metabot/self/vllm.clj
-msgid "No vLLM model is set"
+msgid "vLLM API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/vllm.clj
@@ -42813,7 +42803,7 @@ msgid "vLLM returned an internal server error"
 msgstr ""
 
 #: metabase/metabot/self/vllm.clj
-msgid "vLLM API error (HTTP {0})"
+msgid "No vLLM model is set"
 msgstr ""
 
 #: metabase/metabot/self/vllm.clj
@@ -42927,7 +42917,7 @@ msgid ""
 msgstr ""
 
 #: metabase/metabot/self/zai.clj
-msgid "AI proxy is not supported for Z.AI"
+msgid "Z.AI API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/self/zai.clj
@@ -42944,10 +42934,6 @@ msgstr ""
 
 #: metabase/metabot/self/zai.clj
 msgid "Z.AI returned an internal server error"
-msgstr ""
-
-#: metabase/metabot/self/zai.clj
-msgid "Z.AI API error (HTTP {0})"
 msgstr ""
 
 #: metabase/metabot/settings.clj
