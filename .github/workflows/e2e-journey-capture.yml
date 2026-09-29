@@ -66,7 +66,7 @@ concurrency:
 
 # Runs without dispatch inputs (a push trigger) use the smoke-test values after each `||`.
 env:
-  SCHEMA_VERSION: 2
+  SCHEMA_VERSION: 3
   JACOCO_VERSION: "0.8.15"
   JACOCO_AGENT_SHA256: "fb5b0036a0899ea97edfa0fc2c7985b55f3f7c5695028163e5e60d4f3cf6075d"
   JACOCO_PORT: 6300

@@ -82,7 +82,7 @@ In a `branchmap` entry, `type` is Istanbul's branch type (`if`, `cond-expr`, `bi
 ```
 {
   "schema": "metabase-e2e-journey-capture",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "sha", "ref", "event", "runId", "runAttempt",
   "shard": {"index", "count"},
   "inputs": the raw dispatch inputs ({} or null for other triggers),
@@ -105,6 +105,10 @@ Schema 2 adds, and schema 1 artifacts lack:
 - step dumps limited to one per 250 ms, with `dumpSkipped` and `dumpFailed` on cuts and `skippedDumps`, `failedDumpRequests` and `drainStop` in `capture`
 
 In schema 1, an assert event's `chain` and `helpers` describe whatever command was running when the assertion ended, which is rarely the assertion's own chain.
+
+Schema 3 adds, and schema 1 and 2 artifacts lack:
+
+- the counters of same-origin child frames in `f`, `branchHits` and the cuts' `f`
 
 ### Spec files (`tests/`, `snapshots/`, `baselines/start|end/`)
 
@@ -146,7 +150,9 @@ Each test attempt:
 }
 ```
 
-`f`, `routes` and `pages` have the same meaning as in the nightly coverage manifest's raw files, so existing readers work on them. Unlike the nightly, `routes` includes `cy.request` traffic.
+`f`, `routes` and `pages` have the same meaning as in the nightly coverage manifest's raw files, so existing readers work on them. Unlike the nightly, `routes` includes `cy.request` traffic, and `f` includes frames.
+
+`f`, `branchHits` and the cuts' `f` hold the counters of the app window and of its same-origin child frames, nested ones included, where the embedding SDK and static embeds run the app. A frame runs the same files as the window around it, so its counts add to the window's under the same file and function. The capture reads a frame's counters at every cut, at the flush and when the frame loads, so a frame that goes away before the next cut still counts. Frames on another origin are left out, even though the capture's Chrome, which runs without web security, can read them.
 
 `branchHits` only lists arms with a count above zero. Like `f`, it is read at the per-test flush, before the counters are zeroed, and step cuts don't have it.
 
@@ -239,7 +245,7 @@ Each cut holds what ran since the previous cut. The last cut, `end`, is taken in
 
 - Cuts happen inside Cypress event handlers (`window:before:load`, `url:changed`, `log:added`/`log:changed`, `command:end`). They never queue a Cypress command, so the command queue, retries and timing stay as they are. Everything is buffered in the browser and sent once, by the afterEach flush.
 - `document` cuts come before the new page loads, `nav` cuts after every URL change, `assert` cuts when an assertion ends, `command` cuts when a command ends.
-- The frontend cut reads the function counters (`f`) of every tracked app window and compares them with the values at the previous cut. It doesn't zero them, so the per-test `f` is still read straight from the counters at the flush, which keeps the consistency check meaningful. The files each window has registered are kept in a list and only rescanned when the window registers new ones.
+- The frontend cut reads the function counters (`f`) of every tracked app window and frame and compares them with the values at the previous cut. It doesn't zero them, so the per-test `f` is still read straight from the counters at the flush, which keeps the consistency check meaningful. The files each window has registered are kept in a list and only rescanned when the window registers new ones.
 - A cut doesn't wait for the network. `inFlight` says how many app requests were still running, so a cut with requests in flight has a fuzzy boundary: their responses land in a later step. A `fetch` counts until its response headers arrive, an XHR until `loadend`.
 - The backend can't be dumped synchronously from the browser. Each cut sends a fire-and-forget `POST` to a listener the Cypress config process runs on `127.0.0.1:6301` (path `/__journey-capture/backend-dump`), which dumps and resets the JaCoCo agent over its TCP port. Dumps run one at a time in the order they arrive. `latencyMs` is the time from the cut in the browser to the dump in the backend: code that runs in that interval lands in this step rather than the next. The request goes through Cypress's proxy like any browser request.
 - A test sends at most one dump request per 250 ms. A cut less than 250 ms after the last request sends none and has `"dumpSkipped": true`, and its backend code lands in the next cut that has a dump, or in the final cut. Chrome fails keepalive requests once 256 are in flight for a page, and a burst of assertion cuts can send more than that. A request that fails in the browser dumps nothing either, so its code also lands in the next dump. Its cut gets `"dumpFailed": true` when the failure arrives before the flush.
@@ -432,7 +438,7 @@ node e2e/coverage/journey-capture.mjs <run dir> [--subtract] [--baselines <name,
 
 It prints, per shard: counts, recording errors, the step consistency check, the timing comparison against `tests-control/` and against `--compare`, and the backend baselines. `<run dir>` can also be a single shard directory.
 
-As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()`, `compareTiming()`, `firedBranches()` (an attempt's branch arms as `file#branch:arm` keys) and `assertionChains()` (each assert event with the events of its chain). It reads schema 1 and 2 artifacts. Subtraction is per shard, because every shard has its own backend:
+As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()`, `compareTiming()`, `firedBranches()` (an attempt's branch arms as `file#branch:arm` keys) and `assertionChains()` (each assert event with the events of its chain). It reads schema 1 to 3 artifacts. Subtraction is per shard, because every shard has its own backend:
 
 - frontend functions: drop functions the chosen baselines fired (default `coverage-baseline`, both rounds)
 - frontend branch arms: drop arms the same baselines ran
@@ -443,9 +449,8 @@ As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard 
 
 ## Known gaps
 
-- Frontend counters are read from the top app window only. Code running in iframes (the embedding SDK, data apps) has no function counts. Its requests still appear in `events` and `routes`.
+- Frontend counters are read from the top app window and its same-origin frames. Code in a frame on another origin has no function counts, like the app inside the page `embedding-dashboard.cy.spec.js` loads from Cypress's file server. Its requests still appear in `events` and `routes`. Schema 1 and 2 artifacts have counters from the top window only.
 - Background jobs in the backend land in whichever test is running. The idle windows measure how much that is.
 - The nightly `routes` have no `cy.request` traffic. In CI, `cypress-terminal-report` also overwrites `request`, and Cypress's `Commands.overwrite` wraps the original command rather than the previous overwrite, so the last overwrite wins. Journey capture records `cy.request` from `command:start` instead, and `capture.requestOverwrites` shows whether the overwrite ran.
 - App requests made in a suite-level `before()` hook have no body fields: no intercept is live then, and the `fetch` and `xhr` wrappers don't read bodies.
-- Branch hits, like `f`, come from the top app window only.
 - Against a hot dev build (`bun run build-hot`), the capture's `cy.intercept` leaves out the `.hot.bundle.js` and `.hot-update.js` files, so their loads aren't in `routes` or the events. Cypress sends every intercepted response to the browser over its DevTools connection, and Chrome closes that connection on a message over 100 MiB, which the response of an instrumented hot bundle exceeds.

@@ -186,7 +186,7 @@ A test whose step cuts hold none of those counts all its assertions.
 Baseline reach is an inference, and it's loose in both directions:
 
 - The baseline spec signs in as an admin and opens the home page, so its code includes the navigation bar and the home page. A test that only opens a public or embedded page still counts as reaching them.
-- A test with no frontend coverage, like one that runs the app inside an iframe, never reaches baseline frontend code. For those tests the answer is unknown, not "doesn't reach".
+- A test with no frontend coverage, like one that runs the app inside an iframe in a schema 1 or 2 capture, never reaches baseline frontend code. For those tests the answer is unknown, not "doesn't reach".
 
 A test that reaches a location both ways, through a measured key and a baseline key, keeps its measured row in `reach` and `reach_and_assert`, and is listed under both bases.
 
@@ -408,7 +408,7 @@ The other two steps are optional. Without `lines.json`, backend matching is by v
 ### Limits
 
 - **Granularity:** reach is per function or class, not per line or branch. A test that calls a function without taking the changed branch still counts.
-- **Iframes:** frontend counters come from the top window only. Tests that run the app inside an iframe (interactive embedding, the SDK iframe) have no frontend coverage and never show frontend reach.
+- **Iframes:** in schema 1 and 2 captures, frontend counters come from the top window only, so tests that run the app inside an iframe (interactive embedding, the SDK iframe) have no frontend coverage and never show frontend reach. Schema 3 captures also read same-origin frames.
 - **Baseline:** code in every test's baseline has no measured reach, only reach inferred for every test that loaded the app or made an app request, with basis `baseline`. See [Basis](#basis).
 - **Background jobs:** backend code from background jobs lands in whichever test was running.
 - **Assertions:** an assertion counts whether or not it checks anything the location affects.

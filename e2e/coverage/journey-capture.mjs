@@ -16,7 +16,7 @@ import jacoco from "./jacoco.js";
 import { normalizeRoute } from "./routes.mjs";
 
 export const SCHEMA = "metabase-e2e-journey-capture";
-export const SCHEMA_VERSIONS = [1, 2];
+export const SCHEMA_VERSIONS = [1, 2, 3];
 
 const RUNNER_PREFIX = "/home/runner/work/metabase/metabase/";
 

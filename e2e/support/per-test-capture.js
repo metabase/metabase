@@ -43,8 +43,8 @@
  * suite-level before() traffic lands on the suite's first test.
  */
 
+import { createCoverageCounters } from "./coverage-counters";
 import {
-  addBranchHits,
   flattenBranchHits,
   proxyBodyFields,
   requestBodyArg,
@@ -123,58 +123,13 @@ let handlerDepth = 0;
 // The matcher of this module's own pass-through intercept, which keeps its cy.intercept command out of the event stream.
 let captureRoute = null;
 
-// References to the __coverage__ objects of app windows that may still gain
-// counts. Istanbul registers every instrumented chunk into one object per
-// window, so holding the reference sees lazily-loaded files too. A reload
-// creates a fresh object (tracked by the window:load handler below); the old
-// one keeps any counts fired earlier in the same test until the flush.
-let coverageObjects = [];
-
-function trackCoverage(win) {
-  const coverage = win.__coverage__;
-  if (coverage && !coverageObjects.includes(coverage)) {
-    coverageObjects.push(coverage);
-  }
-}
-
-// Sums the per-file function counters across all tracked windows, zeroing
-// every counter (functions, statements, branches) as it goes so the next
-// flush reports only what fired after this one. Dead windows' objects are
-// zeroed and pruned — only the current window can still gain counts.
-// With `branchHits`, the branch arms that ran are added to it before they are zeroed.
-function collectAndZeroFunctionCounts(currentWin, branchHits = null) {
-  trackCoverage(currentWin);
-  const f = {};
-  for (const coverage of coverageObjects) {
-    for (const [file, fileCov] of Object.entries(coverage)) {
-      const fired = fileCov.f || {};
-      for (const [idx, count] of Object.entries(fired)) {
-        if (count > 0) {
-          const fileTotals = (f[file] ??= {});
-          fileTotals[idx] = (fileTotals[idx] || 0) + count;
-          fired[idx] = 0;
-        }
-      }
-      for (const idx of Object.keys(fileCov.s || {})) {
-        fileCov.s[idx] = 0;
-      }
-      if (branchHits) {
-        try {
-          addBranchHits(branchHits, file, fileCov.b || {});
-        } catch {
-          captureStats.errors += 1;
-        }
-      }
-      for (const counts of Object.values(fileCov.b || {})) {
-        counts.fill(0);
-      }
-    }
-  }
-  coverageObjects = coverageObjects.filter(
-    (coverage) => coverage === currentWin.__coverage__,
-  );
-  return f;
-}
+// Journey-capture runs also read the counters of same-origin child frames, where embedding tests run the app.
+const counters = createCoverageCounters({
+  frames: journeyCapture,
+  onError: () => {
+    captureStats.errors += 1;
+  },
+});
 
 function isInternalOrigin(origin) {
   if (origin === RELATIVE_ORIGIN) {
@@ -285,67 +240,6 @@ function stepFileIndex(file) {
   return index;
 }
 
-// Per coverage object, the files a cut walks, each with its counts as of the previous cut.
-const fileTables = new WeakMap();
-
-function fileRecords(coverage) {
-  let table = fileTables.get(coverage);
-  if (!table) {
-    table = { records: [], known: new Set(), size: 0 };
-    fileTables.set(coverage, table);
-  }
-  // Lazily loaded modules add their files the first time they run, so new files show up as a larger key count.
-  const size = Object.keys(coverage).length;
-  if (size !== table.size) {
-    table.size = size;
-    for (const file in coverage) {
-      if (!table.known.has(file)) {
-        table.known.add(file);
-        const counts = coverage[file]?.f;
-        if (counts) {
-          const n = Object.keys(counts).length;
-          table.records.push({
-            file,
-            counts,
-            n,
-            previous: new Uint32Array(n),
-          });
-        }
-      }
-    }
-  }
-  return table.records;
-}
-
-// The flush zeroes the counters after every test, so the counts a cut compares against start from zero too.
-function resetPreviousCounts() {
-  for (const coverage of coverageObjects) {
-    for (const record of fileTables.get(coverage)?.records ?? []) {
-      record.previous.fill(0);
-    }
-  }
-}
-
-// Function counters that grew since the previous cut, as flat [file, fnIndex, delta] triples.
-// The counters themselves are left alone, so the per-test flush still reads the real totals,
-// which is what lets a reader check that the steps add up to them.
-function functionDeltas() {
-  const deltas = [];
-  for (const coverage of coverageObjects) {
-    for (const record of fileRecords(coverage)) {
-      const { counts, n, previous } = record;
-      for (let i = 0; i < n; i++) {
-        const count = counts[i];
-        if (count > previous[i]) {
-          deltas.push(stepFileIndex(record.file), i, count - previous[i]);
-          previous[i] = count;
-        }
-      }
-    }
-  }
-  return deltas;
-}
-
 // A failed request dumps nothing, so the cut's backend code lands in the next dump.
 function markDumpFailed(attempt, step) {
   captureStats.errors += 1;
@@ -394,7 +288,7 @@ function takeStep(trigger, triggerSeq) {
     try {
       const win = cy.state("window");
       if (win) {
-        trackCoverage(win);
+        counters.track(win);
       }
     } catch {
       // A cross-origin app window has no readable counters.
@@ -410,7 +304,7 @@ function takeStep(trigger, triggerSeq) {
       phase: currentPhase(),
       url: currentPath(),
       inFlight,
-      f: functionDeltas(),
+      f: counters.functionDeltas(stepFileIndex),
     };
     steps.push(cut);
     // The final cut gets the backend dump taken by the recordTestCapture task.
@@ -721,14 +615,14 @@ if (isInstrumented) {
     lastDumpRequestAt = -Infinity;
     captureStats = newCaptureStats();
     if (stepLevel > 0) {
-      resetPreviousCounts();
+      counters.resetPreviousCounts();
     }
   });
 
   // Every app page load, including ones triggered inside suite-level
   // before() hooks. At load time all synchronously-executed instrumented
   // chunks have registered, so __coverage__ exists.
-  Cypress.on("window:load", trackCoverage);
+  Cypress.on("window:load", (win) => counters.track(win));
 
   Cypress.on("window:before:load", (win) => {
     // The previous document unloads here: its code gets a final cut and its unfinished requests stop counting.
@@ -977,7 +871,7 @@ if (isInstrumented) {
         stepsClosed = true;
       }
       const branchHits = journeyCapture ? {} : null;
-      const f = collectAndZeroFunctionCounts(win, branchHits);
+      const f = counters.collectAndZero(win, branchHits);
       if (journeyCapture) {
         try {
           journey.branchHits = flattenBranchHits(branchHits);
