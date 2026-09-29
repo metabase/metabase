@@ -143,10 +143,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
       name: string,
       extraction: Lib.ColumnExtraction,
     ) => {
-      trackColumnExtractViaShortcut(query, stageIndex, extraction);
-      handleExpressionChange(clause);
-      setName(name);
-      setIsExtractingColumn(false);
+      return;
     },
     [query, stageIndex, handleExpressionChange],
   );
