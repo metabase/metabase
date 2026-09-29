@@ -549,6 +549,10 @@ categories:
             url: "permissions/notifications"
           - name: "Configuring permissions for embedding"
             url: "permissions/embedding"
+      - name: "Security"
+        pages:
+          - name: "Security best practices for self-hosting"
+            url: "installation-and-operation/security-best-practices-self-hosting"
 
   - name: Other resources
     pages:
