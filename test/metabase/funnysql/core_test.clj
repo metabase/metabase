@@ -1,6 +1,6 @@
 (ns metabase.funnysql.core-test
   (:require
-   [clojure.test :refer :all :exclude [with-test]]
+   [clojure.test :refer [is are deftest testing]]
    [metabase.funnysql.core :as funnysql]
    [metabase.util.honey-sql-2 :as h2x]))
 

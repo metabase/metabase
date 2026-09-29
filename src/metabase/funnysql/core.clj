@@ -1,5 +1,5 @@
 (ns metabase.funnysql.core
-  (:refer-clojure :exclude [compile])
+  (:refer-clojure :exclude [format])
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
