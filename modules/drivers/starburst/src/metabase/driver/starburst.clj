@@ -27,7 +27,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys]])
+   [metabase.util.performance :as perf :refer [select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
@@ -47,7 +47,8 @@
     OffsetTime
     ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   (java.time.temporal ChronoField Temporal)))
+   (java.time.temporal ChronoField Temporal)
+   (java.util UUID)))
 
 (driver/register! :starburst, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
@@ -81,7 +82,8 @@
                               :database-routing                true
                               :connection-impersonation        true
                               :jdbc/set-query-timeout          false
-                              :regex/lookaheads-and-lookbehinds false}]
+                              :regex/lookaheads-and-lookbehinds false
+                              :uuid-type                       true}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
 (defmethod sql.qp/use-ctes-for-stages? :starburst
@@ -323,6 +325,25 @@
   ;; Convert t to locale time, then format as sql. Then add cast.
   (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
+;; The Trino JDBC driver cannot bind `java.util.UUID` parameters, and Trino does not coerce `varchar` to `uuid`, so
+;; UUID literals in equality filters are compiled as `CAST(? AS uuid)` with a String parameter. Keeping the literal
+;; typed as `uuid` (rather than casting the column to text) lets the predicate be pushed down to the connector.
+(defn- cast-uuid-literals
+  [honeysql-form]
+  (perf/postwalk (fn [x]
+                   (if (uuid? x)
+                     (h2x/cast "uuid" (str x))
+                     x))
+                 honeysql-form))
+
+(defmethod sql.qp/->honeysql [:starburst :=]
+  [driver clause]
+  (cast-uuid-literals ((get-method sql.qp/->honeysql [:sql :=]) driver clause)))
+
+(defmethod sql.qp/->honeysql [:starburst :!=]
+  [driver clause]
+  (cast-uuid-literals ((get-method sql.qp/->honeysql [:sql :!=]) driver clause)))
+
 (defmethod sql.qp/->honeysql [:starburst ZonedDateTime]
   [_ ^ZonedDateTime t]
   ;; use the starburst cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
@@ -412,6 +433,8 @@
     [#"(?i)map"                               :type/Dictionary]
     [#"(?i)varbinary.*"                       :type/*]
     [#"(?i)row.*"                             :type/*]
+    ;; anchored because the matcher uses `re-find`; unanchored it would also match e.g. `row(id uuid)`
+    [#"(?i)^uuid$"                            :type/UUID]
     [#".*"                                    :type/*]]))
 
 (defn describe-catalog-sql
@@ -636,6 +659,17 @@
             (t/local-date-time t)
             :else
             t))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:starburst Types/JAVA_OBJECT]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "uuid" (u/lower-case-en (.getColumnTypeName rsmeta i)))
+    (fn read-column-as-UUID []
+      (when-let [s (.getString rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+    ((get-method sql-jdbc.execute/read-column-thunk :default) driver rs rsmeta i)))
 
 (defn- sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
@@ -1012,6 +1046,10 @@
 (defmethod sql.qp/inline-value [:starburst String]
   [_ ^String s]
   (sql.u/quote-literal s :ansi))
+
+(defmethod sql.qp/inline-value [:starburst UUID]
+  [_ uuid]
+  (format "CAST('%s' AS uuid)" uuid))
 
 (defmethod sql.qp/inline-value [:starburst Time]
   [driver t]
