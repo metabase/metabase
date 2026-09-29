@@ -77,8 +77,8 @@ describe("EmbeddingToggle", () => {
       expect(screen.getByText("Enabled")).toBeInTheDocument();
     });
 
-    it("should render a switch in the 'off' position when value is false", () => {
-      setup({ value: false });
+    it("should render a switch in the 'off' position when value is false", async () => {
+      await setup({ value: false });
       const switchElement = screen.getByRole("switch");
       expect(switchElement).toBeInTheDocument();
       expect(switchElement).not.toBeChecked();
