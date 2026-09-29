@@ -4,13 +4,14 @@ import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-
 import type {
   DatasetData,
   RawSeries,
-  ReferencedEntitiesResults,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -62,7 +63,7 @@ describe("static progress chart with a dynamic goal", () => {
 
   it("measures progress against the value answered by the dataset", () => {
     const root = setup({
-      referencedEntities: createReferencedEntitiesResults(250),
+      referencedEntities: createMockReferencedEntitiesResults({ value: 250 }),
     });
 
     expect(root).toHaveTextContent("Goal 250");
@@ -75,23 +76,8 @@ describe("static progress chart with a dynamic goal", () => {
   it("throws for a reference whose query failed", () => {
     expect(() =>
       setup({
-        referencedEntities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
+        referencedEntities: createMockFailedReferencedEntitiesResults(),
       }),
     ).toThrow(GOAL_ERROR);
   });
 });
-
-function createReferencedEntitiesResults(
-  value: number,
-): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
-}

@@ -14,6 +14,8 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -30,9 +32,7 @@ const SETTINGS: VisualizationSettings = {
   "progress.goal": { type: "card", id: 9, column: "goal" },
 };
 
-const FAILED: ReferencedEntitiesResults = {
-  card: { 9: { status: "failed", error: "boom" } },
-};
+const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
   settings?: VisualizationSettings;
@@ -66,7 +66,9 @@ describe("progress chart dynamic goal", () => {
   });
 
   it("measures progress against the value answered by the dataset", async () => {
-    setup({ referencedEntities: createReferencedEntitiesResults(250) });
+    setup({
+      referencedEntities: createMockReferencedEntitiesResults({ value: 250 }),
+    });
 
     expect(await screen.findByText("Goal 250")).toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
@@ -78,7 +80,9 @@ describe("progress chart dynamic goal", () => {
         data: createMockDatasetData({
           cols: COLS,
           rows: ROWS,
-          referenced_entities: createReferencedEntitiesResults(40),
+          referenced_entities: createMockReferencedEntitiesResults({
+            value: 40,
+          }),
         }),
       },
     });
@@ -119,16 +123,3 @@ describe("progress chart dynamic goal", () => {
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });
-
-function createReferencedEntitiesResults(
-  value: number,
-): ReferencedEntitiesResults {
-  return {
-    card: {
-      9: {
-        status: "completed",
-        data: { cols: [createMockColumn({ name: "goal" })], rows: [[value]] },
-      },
-    },
-  };
-}
