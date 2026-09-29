@@ -14,13 +14,10 @@
   (^:private engine [this])
   (^:private result! [this]))
 
-(defprotocol Compile
+(defprotocol ^:private Compile
   (^:private compile! [x context]))
 
-;; TODO -- should `context` always be the first arg, for consistency!
-
 (defn- object! [x context]
-  (assert (not (instance? Character x))) ; NOCOMMIT
   (append-sql! context "?")
   (append-arg! context x))
 
@@ -50,8 +47,6 @@
 (defn- -interpose!
   "Compile all the forms in `xs` and interpose the `separator` string between them."
   [separator xs context]
-  (assert (string? separator)) ; NOCOMMIT
-  (assert (not (string? xs))) ; NOCOMMIT
   (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
 
 (defn- -commas!
@@ -436,8 +431,8 @@
   [honeysql-form
    engine :- [:enum :h2 :postgres :mysql]]
   (let [context (default-context engine)]
-    ;; don't support compiling maps recursively
-    (if (map? honeysql-form)
-      (map! honeysql-form context)
-      (compile! honeysql-form context))
+    ;; [[compile!]] doesn't support compiling maps recursively on purpose
+    ((if (map? honeysql-form)
+       map!
+       compile!) honeysql-form context)
     (result! context)))
