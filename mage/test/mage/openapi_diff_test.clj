@@ -274,3 +274,42 @@
         (is (pos? (get-in d [:counts :breaking])) (str label " must be breaking"))
         (is (empty? (filter #(= :additive (:severity %)) (:changed d)))
             (str label " must not leak into additive"))))))
+
+;; ---- review findings 1-5: tests supplied by the reviewer, verbatim ----
+
+(deftest response-array-items-are-compared-as-output-test
+  (let [resp (fn [props] (op :response {"type" "array" "items" (obj props)}))
+        two  (spec {"/api/x" {"get" (resp {"x" {"type" "string"} "y" {"type" "string"}})}})
+        one  (spec {"/api/x" {"get" (resp {"x" {"type" "string"}})}})]
+    (testing "a field removed from the objects in a response array provides less"
+      (is (breaking? two one)))
+    (testing "a field added to the objects in a response array provides more"
+      (is (not (breaking? one two))))))
+
+(deftest object-nullability-is-compared-test
+  (let [o        (obj {"x" {"type" "string"}})
+        nullable {"oneOf" [o {"type" "null"}]}]
+    (testing "a request object field that no longer accepts null requires more"
+      (is (body-change-breaking? (obj {"a" nullable}) (obj {"a" o}))))
+    (testing "a response object field that may now be null provides less"
+      (is (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" o}))}})
+                     (spec {"/api/x" {"get" (op :response (obj {"a" nullable}))}}))))))
+
+(deftest unconstrained-field-gaining-a-type-is-breaking-test
+  (testing "a request field that accepted any value and now accepts only strings requires more"
+    (is (body-change-breaking? (obj {"a" {}}) (obj {"a" {"type" "string"}})))))
+
+(deftest response-field-becoming-optional-is-breaking-test
+  (testing "a response field that the API may now omit provides less"
+    (is (breaking? (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string"}} ["a"]))}})
+                   (spec {"/api/x" {"get" (op :response (obj {"a" {"type" "string"}}))}})))))
+
+(deftest long-ref-chain-is-compared-test
+  (testing "a change 13 $ref hops down is reported, not hidden behind <deep> on both sides"
+    (let [schemas (fn [leaf]
+                    (into {"S13" leaf}
+                          (for [i (range 13)]
+                            [(str "S" i) (obj {"f" {"$ref" (str "#/components/schemas/S" (inc i))}})])))
+          body    {"$ref" "#/components/schemas/S0"}]
+      (is (breaking? (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a" "b"]})})
+                     (spec {"/api/x" {"post" (op :body body)}} {"schemas" (schemas {"enum" ["a"]})}))))))

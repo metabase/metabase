@@ -29,22 +29,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-ref-depth
-  "How many `$ref` hops to follow before giving up on a chain.
-
-  Counts hops, not nesting levels: a deeply nested schema is ordinary and must still be compared
-  field by field, while a long `$ref` chain is the thing worth bounding. `seen` already breaks
-  cycles, so this only bounds chains that are long without repeating."
-  12)
-
 (defn- resolve-refs
   "Inline `$ref`s in `node` so two specs compare structurally rather than by ref name. Component
-  schemas change too, so a ref that looks identical can point at a different shape."
-  ([node spec] (resolve-refs node spec 0 #{}))
-  ([node spec depth seen]
-   (cond
-     (> depth max-ref-depth) "<deep>"
+  schemas change too, so a ref that looks identical can point at a different shape.
 
+  There is no depth limit: `seen` holds every ref on the current path, so a repeat becomes
+  `<recursive ...>` and every path terminates against a finite component set. A hop limit would
+  instead replace deep nodes with the same literal on both sides, which compares equal and hides
+  the change - the MBQL clause schemas form chains long enough to hit it."
+  ([node spec] (resolve-refs node spec #{}))
+  ([node spec seen]
+   (cond
      (map? node)
      ;; A $ref node holds a STRING pointer. SCIM schemas have a property literally named "$ref"
      ;; (`{"properties": {"$ref": {...}}}`), which is data, not a reference - hence the string check.
@@ -56,10 +51,10 @@
                rest'  (dissoc node "$ref")
                merged (if (seq rest') (merge target rest') target)]
            ;; Only a $ref hop advances depth. Walking into a map or vector does not.
-           (resolve-refs merged spec (inc depth) (conj seen ref))))
-       (update-vals node #(resolve-refs % spec depth seen)))
+           (resolve-refs merged spec (conj seen ref))))
+       (update-vals node #(resolve-refs % spec seen)))
 
-     (sequential? node) (mapv #(resolve-refs % spec depth seen) node)
+     (sequential? node) (mapv #(resolve-refs % spec seen) node)
      :else node)))
 
 (defn- schema-props
@@ -105,9 +100,10 @@
   (cond
     (= old-schema new-schema) true
 
-    ;; An absent/empty old schema constrained nothing, so anything that does not newly demand
-    ;; something is safe.
-    (and (empty? old-schema) (map? new-schema))
+    ;; An ABSENT old schema constrained nothing, so anything that does not newly demand something
+    ;; is safe. `{}` is not absent - it accepts any value, and narrowing it requires more - so it
+    ;; falls through to the type and enum checks below.
+    (and (nil? old-schema) (map? new-schema))
     (not (or (seq (get new-schema "required"))
              (false? (get new-schema "additionalProperties"))))
 
@@ -160,7 +156,10 @@
                             [(str (get p "in") ":" (get p "name"))
                              {:required (boolean (get p "required"))
                               :schema   (resolve-refs (get p "schema" {}) spec)}]))
-            :body (resolve-refs (get-in op ["requestBody" "content" "application/json" "schema"] {}) spec)
+            ;; nil when there is no body at all. An empty MAP means "any value" (Malli `:any`) and
+            ;; must still be compared: narrowing it to a type requires more of the caller.
+            :body (some-> (get-in op ["requestBody" "content" "application/json" "schema"])
+                          (resolve-refs spec))
             :responses (into {}
                              (for [[code resp] (get op "responses")
                                    :when (map? resp)
@@ -220,8 +219,17 @@
 
        :else
        (let [old-keys (set (keys old-props))
-             new-keys (set (keys new-props))]
+             new-keys (set (keys new-props))
+             old-types (type-set old-schema)
+             new-types (type-set new-schema)]
          (concat
+          ;; `schema-props` unwraps a nullable `oneOf`, so both sides reach this branch and the
+          ;; property comparison below never sees the type change. A field that no longer accepts
+          ;; null requires more of the caller.
+          (when (not= old-types new-types)
+            [[(if (or (nil? new-types) (and old-types (set/subset? old-types new-types)))
+                additive breaking)
+              (str pad "~ " label " type: " (sort old-types) " -> " (sort new-types))]])
           (when (and (false? (get new-schema "additionalProperties"))
                      (not (false? (get old-schema "additionalProperties"))))
             [[breaking (str pad "! " label " now rejects undeclared keys (additionalProperties: false)")]])
@@ -248,20 +256,29 @@
   "Compare one response schema, recursively. The rule inverts for output: a caller breaks when the
   API PROVIDES LESS. Returning extra data is additive - clients ignore unknown fields.
 
-  Recurses rather than delegating a nested object to [[widening?]]: swapping that function's
-  arguments inverts value-set semantics (which is why the nullable case reads correctly) but NOT
+  Recurses rather than delegating a nested schema to [[widening?]]: swapping that function's
+  arguments inverts value-set semantics (which is why a nullable string reads correctly) but NOT
   object-property semantics. A schema that drops a property is more permissive as INPUT whichever
-  way the arguments are passed, so a removed nested response field would read as additive."
+  way the arguments are passed, so a removed response field would read as additive. Arrays recurse
+  through their `items` for the same reason."
   ([code old-schema new-schema] (response-lines code old-schema new-schema 0))
   ([code old-schema new-schema depth]
    (let [label (str "response " code)
          pad (str "    " (str/join (repeat depth "  ")))
-         [old-props _] (schema-props old-schema)
-         [new-props _] (schema-props new-schema)]
+         [old-props old-req] (schema-props old-schema)
+         [new-props new-req] (schema-props new-schema)]
      (cond
-       (> depth 4)
+       (> depth 6)
        [[(if (widening? new-schema old-schema) additive breaking)
          (str pad "~ " label ": " (brief old-schema) " -> " (brief new-schema))]]
+
+       ;; An array's element schema carries the output contract, so it recurses in the output
+       ;; direction. Falling through to the leaf branch would compare items as INPUT and invert
+       ;; every finding inside a response array.
+       (and (= "array" (get old-schema "type")) (= "array" (get new-schema "type"))
+            (not= (get old-schema "items") (get new-schema "items")))
+       (response-lines (str code "[]") (get old-schema "items" {}) (get new-schema "items" {})
+                       (inc depth))
 
        (or (nil? old-props) (nil? new-props))
        ;; Leaf/non-object: providing a narrower set of values is safe, a wider one (a new null, a
@@ -271,12 +288,25 @@
 
        :else
        (let [old-keys (set (keys old-props))
-             new-keys (set (keys new-props))]
+             new-keys (set (keys new-props))
+             old-types (type-set old-schema)
+             new-types (type-set new-schema)]
          (concat
+          ;; `schema-props` unwraps a nullable `oneOf`, so both sides reach this branch and the
+          ;; property comparison below never sees the type change. A response that may now be null
+          ;; provides less.
+          (when (not= old-types new-types)
+            [[(if (or (nil? old-types) (and new-types (set/subset? new-types old-types)))
+                additive breaking)
+              (str pad "~ " label " type: " (sort old-types) " -> " (sort new-types))]])
           (for [k (sort (set/difference old-keys new-keys))]
             [breaking (str pad "- " label "." k " REMOVED (provides less): " (brief (get old-props k)))])
           (for [k (sort (set/difference new-keys old-keys))]
             [additive (str pad "+ " label "." k ": " (brief (get new-props k)))])
+          ;; A field the API may now omit provides less, exactly like one that may now be null.
+          (for [k (sort (set/intersection old-keys new-keys))
+                :when (and (contains? old-req k) (not (contains? new-req k)))]
+            [breaking (str pad "! " label "." k " is no longer always returned (provides less)")])
           (mapcat (fn [k]
                     (let [o (get old-props k), n (get new-props k)]
                       (when (not= o n)
@@ -561,9 +591,14 @@
   (let [{:keys [out]} (apply shell/sh* {:quiet? true} "git" "log" "-1" "--format=%ct" "--" paths)]
     (some-> (not-empty (str/trim (str/join out))) parse-long)))
 
-(defn- format-epoch [epoch]
-  (let [{:keys [out]} (shell/sh* {:quiet? true} "date" "-r" (str epoch) "+%Y-%m-%d")]
-    (str/trim (str/join out))))
+(defn- format-epoch
+  "`epoch` seconds as a local `YYYY-MM-DD` date.
+
+  `java.time` rather than `date -r`: only BSD/macOS reads `-r` as epoch seconds, so on GNU
+  coreutils it means \"the mtime of this file\" and silently prints nothing."
+  [epoch]
+  (str (java.time.LocalDate/ofInstant (java.time.Instant/ofEpochSecond epoch)
+                                      (java.time.ZoneId/systemDefault))))
 
 (defn cli-staleness
   "Entry point for `./bin/mage openapi-staleness`.
@@ -594,7 +629,14 @@
           (doseq [line (take 20 out)] (println line)))
         (u/exit 1))
 
-      :else (println "\nOK: spec is current relative to API source."))))
+      :else
+      (do (println "\nOK: no endpoint file is newer than the committed spec.")
+          ;; Deliberately narrower than "the spec is current": 661 of the 763 component schemas
+          ;; live outside `.api` namespaces (`metabase.lib.schema.*` and friends, often `.cljc`),
+          ;; so a shared-schema change moves the generated spec without touching any endpoint file.
+          (println "This reads endpoint files only - a change to a shared schema such as")
+          (println "metabase.lib.schema.* will not show up here. `openapi-diff --refs` generates")
+          (println "both specs from source and is the reliable path.")))))
 
 (defn cli-diff
   "Entry point for `./bin/mage openapi-diff`.
@@ -616,28 +658,30 @@
         _ (when (and (:committed options) (not (:refs options)))
             (u/exit "--committed only applies with --refs." 1))
         tmp-dir (when (:refs options)
-                  (str "/tmp/openapi-diff-specs-" (System/currentTimeMillis)))
-        [old-path new-path stale-refs]
-        (if (:refs options)
-          (let [committed? (boolean (:committed options))]
-            (.mkdirs (io/file tmp-dir))
-            (let [[op ostale] (spec-for-ref! old-arg (str tmp-dir "/old.json") committed?)
-                  [np nstale] (spec-for-ref! new-arg (str tmp-dir "/new.json") committed?)]
-              [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
-          [old-arg new-arg []])]
+                  (str "/tmp/openapi-diff-specs-" (System/currentTimeMillis)))]
     (try
-      (when (:refs options) (println))
-      (let [d (diff (json/parse-string (slurp old-path))
-                    (json/parse-string (slurp new-path)))]
-        (if (:grouped options)
-          (print-grouped d min-severity)
-          (print-diff d min-severity)))
-      (when (seq stale-refs)
-        (println)
-        (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
-        (println "# The committed spec only updates on PRs labelled `openapi-self-healing`, so it lags")
-        (println "# source. This diff UNDER-REPORTS: changes never regenerated into the spec are absent,")
-        (println "# and an empty result does not mean there were no changes."))
+      ;; Spec materialization sits INSIDE the try: `spec-for-ref!` exits when a ref can neither be
+      ;; generated nor read, and doing this in the `let` bindings leaked the first spec.
+      (let [[old-path new-path stale-refs]
+            (if (:refs options)
+              (let [committed? (boolean (:committed options))]
+                (.mkdirs (io/file tmp-dir))
+                (let [[op ostale] (spec-for-ref! old-arg (str tmp-dir "/old.json") committed?)
+                      [np nstale] (spec-for-ref! new-arg (str tmp-dir "/new.json") committed?)]
+                  [op np (cond-> [] ostale (conj old-arg) nstale (conj new-arg))]))
+              [old-arg new-arg []])]
+        (when (:refs options) (println))
+        (let [d (diff (json/parse-string (slurp old-path))
+                      (json/parse-string (slurp new-path)))]
+          (if (:grouped options)
+            (print-grouped d min-severity)
+            (print-diff d min-severity)))
+        (when (seq stale-refs)
+          (println)
+          (println (str "# WARNING: used the committed spec for " (str/join " and " stale-refs) "."))
+          (println "# The committed spec only updates on PRs labelled `openapi-self-healing`, so it lags")
+          (println "# source. This diff UNDER-REPORTS: changes never regenerated into the spec are absent,")
+          (println "# and an empty result does not mean there were no changes.")))
       (finally
         ;; Generated specs are megabytes each; leaving them behind fills /tmp over a few runs.
         (when tmp-dir
