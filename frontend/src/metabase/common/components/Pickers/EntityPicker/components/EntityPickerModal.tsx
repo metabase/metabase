@@ -124,10 +124,7 @@ export function EntityPickerModal({
 
   const modalContentResizeHandler = useCallback(
     (entry: ResizeObserverEntry) => {
-      const width = entry.contentRect.width;
-      setModalContentMinWidth((currentWidth) =>
-        currentWidth < width ? width : currentWidth,
-      );
+      return;
     },
     [],
   );
