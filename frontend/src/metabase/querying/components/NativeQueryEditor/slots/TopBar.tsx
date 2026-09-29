@@ -46,11 +46,7 @@ export const TopBar = forwardRef<HTMLDivElement, TopBarProps>(function TopBar(
   };
 
   const setDatabaseId = (databaseId: DatabaseId) => {
-    if (question.databaseId() !== databaseId) {
-      setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
-      onSetDatabaseId?.(databaseId);
-      focusEditor();
-    }
+    return;
   };
 
   return (
