@@ -222,7 +222,10 @@
                                  "duration_ms"         500
                                  "source"              "oss_metabot"
                                  "tag"                 "oss-sqlgen"}}]
-                        token-events)))
+                        token-events))
+                (testing "carries no cache counts"
+                  (is (=? [{:data {"cache_creation_tokens" nil "cache_read_tokens" nil}}]
+                          token-events))))
               (testing "simple_event"
                 (is (=? [{:data {"event"        "metabot_oss_sqlgen_used"
                                  "duration_ms"  int?

@@ -1720,7 +1720,10 @@
                                     "source"               "metabot_agent"
                                     "tag"                  "test-tag"
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
-                        token-events))))))))))
+                        token-events))
+                (testing "cache counts are 0 when the provider reports none"
+                  (is (=? [{:data {"cache_creation_tokens" 0 "cache_read_tokens" 0}}]
+                          token-events)))))))))))
 
 (deftest call-llm-provider-and-model-test
   (testing (str "call-llm and call-llm-structured log the provider type and the model as the provider names it, "
