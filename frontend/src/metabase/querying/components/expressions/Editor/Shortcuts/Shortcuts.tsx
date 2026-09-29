@@ -15,18 +15,5 @@ export function Shortcuts({
   shortcuts?: Shortcut[];
   className?: string;
 }) {
-  return (
-    <Flex gap="sm" className={className} wrap="wrap">
-      {shortcuts.map((shortcut, index) => (
-        <Button
-          key={index}
-          variant="light"
-          onClick={shortcut.action}
-          leftSection={<Icon name={shortcut.icon} />}
-        >
-          {shortcut.name}
-        </Button>
-      ))}
-    </Flex>
-  );
+  return null;
 }
