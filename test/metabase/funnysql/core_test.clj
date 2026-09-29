@@ -30,6 +30,24 @@
     true ["WHERE \"field\" = true"]
     1    ["WHERE \"field\" = 1"]))
 
+(deftest ^:parallel number-rejects-non-numeric-rendering-test
+  (testing "compiling a Number must fail closed instead of splicing whatever `(str n)` happens to produce"
+    (testing "a hostile Number implementation's toString is not guaranteed to be numeric SQL syntax"
+      (let [evil (proxy [Number] []
+                   (toString [] "1); DROP TABLE users; --")
+                   (intValue [] (int 1))
+                   (longValue [] (long 1))
+                   (floatValue [] (float 1))
+                   (doubleValue [] (double 1)))]
+        (is (thrown? Exception
+                     (funnysql/format {:where [:= :field evil]} :postgres)))))
+    (testing "Double's non-finite values don't render as valid numeric SQL literals either"
+      (are [n] (thrown? Exception
+                        (funnysql/format {:where [:= :field n]} :postgres))
+        Double/NaN
+        Double/POSITIVE_INFINITY
+        Double/NEGATIVE_INFINITY))))
+
 (deftest ^:parallel not-equals-test
   (are [op expected] (= expected
                         (funnysql/format {:where [op :field "x"]} :postgres))
@@ -157,10 +175,10 @@
 (deftest ^:parallel order-by-test
   (are [order-by sql] (= [(str "ORDER BY " sql)]
                          (funnysql/format {:order-by order-by} :postgres))
-    [:field]                              "\"field\" ASC"
-    [[:field :asc]]                       "\"field\" ASC"
-    [[:field :desc]]                      "\"field\" DESC"
-    [[:field :asc] [:other_field :desc]]  "\"field\" ASC, \"other_field\" DESC"))
+    [:field]                             "\"field\" ASC"
+    [[:field :asc]]                      "\"field\" ASC"
+    [[:field :desc]]                     "\"field\" DESC"
+    [[:field :asc] [:other_field :desc]] "\"field\" ASC, \"other_field\" DESC"))
 
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
@@ -288,6 +306,14 @@
     :%sum.total_tokens           "sum(\"total_tokens\")"
     :%isnull.last_edit_timestamp "isnull(\"last_edit_timestamp\")"))
 
+(deftest ^:parallel percent-keyword-rejects-unknown-function-test
+  (testing "the `:%function` shorthand must not let an arbitrary, attacker-derived function name reach the SQL --
+            an unrecognized name must be rejected, not passed through raw"
+    (are [k] (thrown? Exception
+                      (funnysql/format {:where [:= :field k]} :postgres))
+      (keyword "%'; DROP TABLE users; --")
+      (keyword "%count); DROP TABLE users; --"))))
+
 (deftest ^:parallel e2e-test
   (is (= ["SELECT \"X\", \"Y\" AS \"ALIAS\" FROM \"TABLE\" WHERE (\"FIELD\" = 100) AND (\"FIELD\" < ?) AND (\"TABLE\".\"FIELD\" IN (1, 2, 3))"
           "s"]
@@ -329,6 +355,15 @@
     ;; should escape single quotes
     "foo' OR 1 = 1; --"
     "WHERE \"field\" = 'foo'' OR 1 = 1; --'"))
+
+(deftest ^:parallel h2x-literal-backslash-injection-test
+  (testing "backslashes must be escaped too, not just quotes"
+    (testing "MySQL and ClickHouse read `\\'` inside a string literal as an escaped quote, not the end of the
+              string (unless NO_BACKSLASH_ESCAPES is set) -- a trailing backslash right before the closing quote
+              lets the doubled quote that follows become the *real* terminator, and everything after it becomes
+              raw SQL instead of part of the literal"
+      (is (= ["WHERE \"field\" = 'foo\\\\'' OR 1=1; --'"]
+             (funnysql/format {:where [:= :field (h2x/literal "foo\\' OR 1=1; --")]} :postgres))))))
 
 (deftest ^:parallel h2x-extract-test
   (is (= ["WHERE \"field\" = extract(epoch FROM \"created_at\")"]
@@ -438,3 +473,15 @@
        clojure.lang.ExceptionInfo
        #":inline is only allowed for numbers and booleans"
        (funnysql/format [:inline "s"] :mysql))))
+
+(deftest ^:parallel map-recursion-blocked-test
+  (testing "a map used as an ordinary value must never be compiled/recursed into as SQL -- only the top-level
+            entry point (or an explicit subquery-accepting clause) treats a map as a query to compile; anywhere
+            else it must fall through to the generic Object handling and get bound as an opaque `?` parameter,
+            per the comment above the `Compile` protocol's `extend-protocol` in metabase.funnysql.core"
+    (let [subquery-shaped-map {:select [:*] :from [:secrets]}
+          [sql & args]        (funnysql/format {:where [:= :field subquery-shaped-map]} :postgres)]
+      (is (= "WHERE \"field\" = ?" sql)
+          "the map must not be expanded into subquery SQL text")
+      (is (= [subquery-shaped-map] args)
+          "the map must be passed through as an opaque bound parameter"))))

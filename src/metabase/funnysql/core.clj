@@ -31,7 +31,13 @@
 (defn- number! [n context]
   (if (instance? clojure.lang.Ratio n)
     (recur (double n) context)
-    (append-sql! context (str n))))
+    (let [s (str n)]
+      ;; don't trust `(str n)` blindly -- fail closed instead of splicing whatever it produces. This rejects
+      ;; non-finite Doubles (`NaN`, `Infinity`) and guards against a hostile custom `Number` implementation whose
+      ;; `toString` isn't numeric SQL syntax.
+      (when-not (re-matches #"-?\d+(\.\d+)?([eE][+-]?\d+)?" s)
+        (throw (ex-info "Invalid number" {:n n})))
+      (append-sql! context s))))
 
 (defn- interpose-fn
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
@@ -374,8 +380,12 @@
   (interpose-fn parts #(-identifier-part! % context) #(append-sql! context ".")))
 
 (defn- h2x-literal! [s context]
+  ;; escape backslashes *before* doubling quotes: MySQL reads `\'` inside a string literal as an escaped quote rather
+  ;; than the end of the string, so an unescaped trailing backslash could let a doubled quote become the real
+  ;; terminator and let whatever follows it escape the literal.
   (let [s (as-> s s
             (u/qualified-name s)
+            (str/replace s "\\" "\\\\")
             (str/replace s "'" "''"))]
     (append-sql! context "'")
     (append-sql! context s)
@@ -436,6 +446,9 @@
     (append-sql! context "'")))
 
 (defn- -fn-call! [[f & args] context]
+  ;; this `case` has no default/fallthrough clause on purpose: `f` can come from an attacker-derived `:%foo`
+  ;; keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the SQL raw.
+  ;; Do not add a default branch here that echoes `f`'s name into the output.
   (case f
     :not                    (not!     args context)
     :between                (between! args context)
