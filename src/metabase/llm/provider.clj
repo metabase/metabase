@@ -798,8 +798,26 @@
   [type-name]
   (:destination-fields (provider-type type-name) [:base-url]))
 
-(defonce ^:private warned-captured-destinations
+(defonce ^:private warned-captured-fields
+  ;; hashed, not held: a credential this decided not to use has no business outliving the read
   (atom #{}))
+
+(defn- drop-fields-warning-once!
+  "Take fields out of a connection, telling the operator once about each value that goes.
+
+  That log line is the only sign an instance holds something it will not use, so it has to survive
+  being read a thousand times without becoming noise, and one rule's warning must not stand in for
+  another's."
+  [{conn-key :key :keys [config] :as conn} reason captured warn!]
+  (if (empty? captured)
+    conn
+    (do
+      (doseq [field captured
+              :let  [seen [reason conn-key field (hash (get config field))]]
+              :when (not (contains? @warned-captured-fields seen))]
+        (swap! warned-captured-fields conj seen)
+        (warn! field))
+      (update conn :config #(apply dissoc % captured)))))
 
 (defn- drop-captured-destination
   "Drop `conn`'s stored [[destination-fields]] when layering `env-config` over it would send an environment-supplied
@@ -818,8 +836,8 @@
   rather than through the API, so its destination is as trusted as the variable holding the secret. A type whose
   destination has no default — Azure, vLLM — is left incomplete, and so unusable, rather than pointed anywhere.
 
-  Warned about once per value rather than on every read: it is the only trace an operator gets of a destination
-  their instance is configured with but is not using."
+  Warned about once per value: it is the only trace an operator gets of a destination their instance is
+  configured with but is not using."
   [{conn-key :key :keys [type source config] :as conn} env-config]
   (let [stored-value (fn [field]
                        ;; a stored value equal to the registry default is not a destination the API caller
@@ -833,18 +851,70 @@
                        (filterv #(and (stored-value %)
                                       (not (contains? env-config %)))
                                 (destination-fields type)))]
-    (if (empty? captured)
-      conn
-      (do
-        (doseq [field captured
-                :let  [seen [conn-key field (get config field)]]
-                :when (not (contains? @warned-captured-destinations seen))]
-          (swap! warned-captured-destinations conj seen)
-          (log/warnf (str "Ignoring the stored %s of the %s LLM connection: its credentials come from the "
-                          "environment, so its destination has to as well. Set %s to keep using it.")
-                     (name field) conn-key
-                     (get (connection-env-vars type) field "the matching environment variable")))
-        (update conn :config #(apply dissoc % captured))))))
+    (drop-fields-warning-once!
+     conn :destination captured
+     (fn [field]
+       (log/warnf (str "Ignoring the stored %s of the %s LLM connection: its credentials come from the "
+                       "environment, so its destination has to as well. Set %s to keep using it.")
+                  (name field) conn-key
+                  (get (connection-env-vars type) field "the matching environment variable"))))))
+
+(defn- destination-choice
+  "Where a connection points on one field, as far as it ever decided.
+
+  Leaving an optional address blank decides nothing — the vendor's own will do — while a deployment
+  the form makes you pick is a decision even at its preselected value. Not `with-field-defaults`,
+  which fills in every default and so would have the blank address deciding too."
+  [{:keys [key default normalize required?]} config]
+  (when-let [chosen (or (u/trimmed-string (get config key))
+                        (when required? default))]
+    (cond-> chosen normalize normalize)))
+
+(defn- moved-destination-field
+  "The field, if any, by which an environment overlay sends a connection somewhere other than where it
+  was pointing.
+
+  A field the overlay leaves inert sends nothing anywhere — Ollama's base URL once the deployment is
+  Cloud — so only one that still applies counts."
+  [type config env-config]
+  (let [effective (merge config env-config)]
+    (some (fn [field]
+            (let [descriptor (field-descriptor type field)]
+              (when (and (u/trimmed-string (get env-config field))
+                         (field-active? type descriptor effective))
+                (when-let [chosen (destination-choice descriptor config)]
+                  (when (not= chosen (destination-choice descriptor env-config))
+                    field)))))
+          (destination-fields type))))
+
+(defn- drop-captured-secrets
+  "Keep a credential from following a connection the environment has moved, leaving it unusable rather
+  than sent somewhere it was never meant for.
+
+  A secret and the address it reaches have to come from the same place. [[drop-captured-destination]]
+  holds that line when the environment brings the secret; this holds it when the environment brings the
+  address — `MB_LLM_OLLAMA_HOSTING=cloud` over a key an admin typed for a server of their own. Only an
+  address the environment *changes*: filling in one the connection never chose moves nothing, and is
+  the shadowing every other field gets.
+
+  A connection the `MB_LLM_PROVIDERS` JSON supplies is the operator's own, so nothing is taken from it."
+  [{conn-key :key :keys [type source config] :as conn} env-config]
+  (let [moved    (when (= :db source)
+                   (moved-destination-field type config env-config))
+        captured (when moved
+                   (filterv #(and (u/trimmed-string (get config %))
+                                  (not (contains? env-config %)))
+                            ;; sorted so the fields leave in the order they are warned about
+                            (sort (secret-field-keys type))))]
+    (drop-fields-warning-once!
+     conn :secret captured
+     (fn [field]
+       (let [vars (connection-env-vars type)]
+         (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
+                         "its credentials have to come from the environment as well. Set %s to keep using it.")
+                    (name field) conn-key
+                    (get vars moved "the environment")
+                    (get vars field "the matching environment variable")))))))
 
 (defn connections
   "Every connection this instance can use, in admin-facing order.
@@ -856,8 +926,8 @@
   config keys the environment owns, and `:env-vars` the variables supplying them, so the form can disable exactly
   those inputs.
 
-  The one field that does not simply stay editable is a stored base URL the environment's secret would travel to:
-  see [[drop-captured-destination]].
+  The exception is a secret and the address it reaches arriving from different places — see
+  [[drop-captured-destination]] and [[drop-captured-secrets]].
 
   A standalone `:env` connection is synthesized only when a variable marked `:credential?` is set — credentials are
   what bring a connection into existence; a base URL alone shadows but does not create. The managed connection is
@@ -869,6 +939,8 @@
                              ;; only a same-typed overlay applies: the fields describe this provider type's config
                              (if (and overlay (= type (:type overlay)))
                                (-> conn
+                                   ;; first: it reads the stored destination, which the next one removes
+                                   (drop-captured-secrets env-config)
                                    (drop-captured-destination env-config)
                                    (update :config merge env-config)
                                    (update :env-vars (fnil into (sorted-set)) (vals vars))

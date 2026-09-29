@@ -167,11 +167,9 @@
         (is (empty? @seen))))))
 
 (defn- lookup-in-flight?
-  "Whether a lookup for `credentials`'s `model` is still running.
+  "Whether this model's lookup is still running.
 
-  Asked per model because [[ollama.capabilities/in-flight]] is process-wide: every connection's
-  lookups share it, and a background refresh belonging to another test's server would make the map
-  as a whole non-empty while saying nothing about this one."
+  Per model: the in-flight map is process-wide, so any other server's refresh would answer for it."
   [credentials model]
   (contains? @@#'ollama.capabilities/in-flight
              (#'ollama.capabilities/cache-key credentials model)))

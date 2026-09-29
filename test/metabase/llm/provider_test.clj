@@ -586,6 +586,74 @@
         (is (nil? (:base-url (llm.provider/credentials "ollama")))
             "while the address the caller really did choose is still dropped")))))
 
+(def ^:private self-hosted-ollama
+  "A self-hosted Ollama an admin gave a key to — a server of their own behind an authenticating proxy."
+  {:hosting  "self-hosted"
+   :base-url "http://ollama.internal:11434/v1"
+   :api-key  "sk-entered-for-our-own-server"})
+
+(deftest connections-drop-a-stored-secret-an-env-destination-would-move-test
+  (testing (str "The other order: a destination arriving from the environment over a credential already stored. "
+                "MB_LLM_OLLAMA_HOSTING moves a connection to ollama.com's fixed address without the stored key, "
+                "or the stored URL, changing at all.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))
+            "the key an admin entered for a server of their own does not go to ollama.com")
+        (is (false? (llm.provider/connection-usable? "ollama"))
+            "leaving the connection incomplete, the way a destination with no default is")
+        (testing "and the stored list still holds it, so removing the variable brings it back"
+          (is (= "sk-entered-for-our-own-server"
+                 (get-in (first (llm.provider/stored-connections)) [:config :api-key])))))))
+  (testing "a deployment the environment restates is not a move, so the key it was entered with stands"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting "cloud"
+                                                                   :api-key "sk-cloud-key"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (= "sk-cloud-key" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing (str "one destination field moving is enough, where a type has several: the address moves while the "
+                "deployment beside it is untouched")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))))))
+  (testing (str "a deployment the connection never wrote is still the one it runs on, since the field the form "
+                "requires has no unset state")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  (dissoc self-hosted-ollama :hosting))]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (is (nil? (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "an address Cloud makes inert addresses nothing, so an overlay changing it moves no request"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  (assoc self-hosted-ollama :hosting "cloud"))]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
+        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing (str "a variable filling in a field the connection left blank supplies a destination rather than "
+                "moving one, so the field-by-field shadowing every other setting gets is unaffected")
+    (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                  {:api-key "sk-ant-db"})]]
+      (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+        (is (= {:api-key "sk-ant-db" :base-url "https://gateway.example.com"}
+               (llm.provider/credentials "anthropic")))))
+    (testing "and an address the admin did choose is a move like any other"
+      (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
+                                                                    {:api-key  "sk-ant-db"
+                                                                     :base-url "https://chosen.example.com"})]]
+        (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://gateway.example.com"]
+          (is (nil? (:api-key (llm.provider/credentials "anthropic"))))))))
+  (testing "the environment supplying both halves moves nothing it does not also credential"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" self-hosted-ollama)]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"
+                                    mb-llm-ollama-api-key "sk-operator-key"]
+        (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+  (testing "a connection the llm-providers variable supplies is the operator's own, so its key stands"
+    (mt/with-temp-env-var-value! [mb-llm-providers (str "[{\"key\":\"ollama\",\"type\":\"ollama\","
+                                                        "\"name\":\"Ollama\","
+                                                        "\"config\":{\"hosting\":\"self-hosted\","
+                                                        "\"base-url\":\"http://ollama.internal:11434/v1\","
+                                                        "\"api-key\":\"sk-operator-key\"}}]")
+                                  mb-llm-ollama-hosting "cloud"]
+      (is (= "sk-operator-key" (:api-key (llm.provider/credentials "ollama")))))))
+
 (deftest stored-connections-keeps-a-connection-the-environment-shadows-test
   (testing (str "The stored list keeps the credentials the environment shadows, so writes rebuild from here and "
                 "removing the env var brings the stored value back.")
