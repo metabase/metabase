@@ -317,7 +317,7 @@ export const BulkMoveModal = ({
       : t`Move "${selectedItems[0].name}"?`;
 
   const canMoveToDashboard = selectedItems.every(
-    (item) => item.model === "card",
+    (item) => false,
   );
 
   const models: EntityPickerModalProps["models"] = canMoveToDashboard
