@@ -337,7 +337,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
       .should("have.class", "cm-focused");
     cy.realPress("Escape");
     H.expressionEditorWidget().should("not.exist");
-    H.getNotebookStep("data").button("Custom column").click();
+    H.getNotebookStep("expression").icon("add").click();
 
     cy.log("editor with text");
     H.CustomExpressionEditor.type("count(");
@@ -356,7 +356,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.getNotebookStep("data").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
-    H.getNotebookStep("data").button("Custom column").click();
+    H.getNotebookStep("expression").icon("add").click();
 
     cy.log("clicking an interactive element");
     H.CustomExpressionEditor.get().should("be.visible");
