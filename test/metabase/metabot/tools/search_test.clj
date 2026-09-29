@@ -493,7 +493,7 @@
                        (search/search-tool {:keyword_queries ["x"] :limit 0}))))))))
 
 (deftest ^:parallel search-failure-throws-test
-  (testing "an exception from search propagates out of the tool"
+  (testing "an exception from search propagates out of the tool (BOT-2199)"
     (mt/with-dynamic-fn-redefs [search/search (fn [_] (throw (ex-info "Search index unavailable" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
                             (search/search-tool {:keyword_queries ["x"]}))))))
