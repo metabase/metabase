@@ -164,11 +164,21 @@
 
 (deftest ^:parallel limit-test
   (is (= ["LIMIT 10"]
-         (funnysql/format {:limit 10} :postgres))))
+         (funnysql/format {:limit 10} :postgres)))
+  (testing "should validate limit"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid limit"
+         (funnysql/format {:limit -10} :postgres)))))
 
 (deftest ^:parallel offset-test
   (is (= ["OFFSET 5"]
-         (funnysql/format {:offset 5} :postgres))))
+         (funnysql/format {:offset 5} :postgres)))
+  (testing "should validate offset"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid offset"
+         (funnysql/format {:offset "s"} :postgres)))))
 
 (deftest ^:parallel limit-offset-test
   (is (= ["LIMIT 10 OFFSET 5"]

@@ -170,13 +170,15 @@
 
 (defn- limit!
   [n context]
-  (assert (nat-int? n))
+  (when-not (nat-int? n)
+    (throw (ex-info "Invalid limit" {:n n})))
   (append-sql! context "LIMIT ")
   (compile! n context))
 
 (defn- offset!
   [n context]
-  (assert (nat-int? n))
+  (when-not (nat-int? n)
+    (throw (ex-info "Invalid offset" {:n n})))
   (append-sql! context "OFFSET ")
   (compile! n context))
 
