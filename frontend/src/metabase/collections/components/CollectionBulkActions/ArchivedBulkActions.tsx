@@ -60,7 +60,7 @@ export const ArchivedBulkActions = ({
   const showRestore = isRootTrashCollection(collection);
 
   const canRestore = useMemo(() => {
-    return selected.every((item) => item.can_restore);
+    return selected.every((item) => undefined);
   }, [selected]);
 
   const handleBulkRestore = () => {
