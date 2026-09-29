@@ -235,4 +235,4 @@
     (log/info "Reindexing appdb index because the site locale changed.")
     (if search.ingestion/*force-sync*
       (search.engine/reindex! :search.engine/appdb {})
-      (future (search.engine/reindex! :search.engine/appdb {})))))
+      (mdb/do-after-commit #(future (search.engine/reindex! :search.engine/appdb {}))))))
