@@ -6,6 +6,7 @@
    [metabase-enterprise.sandbox.models.sandbox :as sandboxes]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.test-util :as measures.tu]
@@ -387,3 +388,116 @@
                                                    {:content "1 = 1"}))))
             (is (= "ID = 1" (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))
             (is (= 1 (sandboxed-row-count)))))))))
+
+(defn- with-mixed-policies!
+  "Two sandboxes on VENUES, one per group, whose dependency chains mix every entity kind and are spread over six
+  Collections:
+
+    policy-a (policy-coll) -> {{snippet: outer}} (policy-snippet-coll) -> {{snippet: inner}} (dep-snippet-coll)
+      -> {{#nested-card}} (chain-coll) -> [:segment seg-1]
+    policy-b (policy-coll) -> source Card (chain-coll) -> [:measure measure] -> sum-where [:segment seg-2]
+
+  `free-coll` and `free-snippet-coll` hold a Card and a snippet no policy reads. All Users may curate all six
+  Collections and nothing else. Calls `f` with the Collections keyed `:policy`, `:chain`, `:free`, `:policy-snippet`,
+  `:dep-snippet`, and `:free-snippet`."
+  [f]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+      (let [inner-name (mt/random-name)
+            outer-name (mt/random-name)
+            mp         (mt/metadata-provider)]
+        (mt/with-temp [:model/PermissionsGroup   group-a             {}
+                       :model/PermissionsGroup   group-b             {}
+                       :model/Collection         policy-coll         {}
+                       :model/Collection         chain-coll          {}
+                       :model/Collection         free-coll           {}
+                       :model/Collection         policy-snippet-coll {:namespace "snippets"}
+                       :model/Collection         dep-snippet-coll    {:namespace "snippets"}
+                       :model/Collection         free-snippet-coll   {:namespace "snippets"}
+                       :model/Segment            seg-1       {:table_id (mt/id :venues), :definition (price-above 2)}
+                       :model/Segment            seg-2       {:table_id (mt/id :venues), :definition (price-above 3)}
+                       :model/Measure            measure     {:table_id   (mt/id :venues)
+                                                              :definition (sum-where-measure-definition (:id seg-2))}
+                       :model/Card               nested-card {:collection_id (:id chain-coll)
+                                                              :dataset_query (lib/filter (venues-query)
+                                                                                         (lib.metadata/segment mp (:id seg-1)))}
+                       :model/Card               source      {:collection_id (:id chain-coll)
+                                                              :dataset_query (measure-then-filter-query (:id measure))}
+                       :model/Card               _free-card  {:collection_id (:id free-coll)
+                                                              :dataset_query (mt/mbql-query venues)}
+                       :model/NativeQuerySnippet _inner      {:collection_id (:id dep-snippet-coll)
+                                                              :name          inner-name
+                                                              :content       (format "ID IN (SELECT ID FROM {{#%d-nested}})"
+                                                                                     (:id nested-card))}
+                       :model/NativeQuerySnippet outer       {:collection_id (:id policy-snippet-coll)
+                                                              :name          outer-name
+                                                              :content       (format "{{snippet: %s}}" inner-name)}
+                       :model/NativeQuerySnippet _free-snip  {:collection_id (:id free-snippet-coll), :content "1 = 1"}
+                       :model/Card               policy-a    {:collection_id (:id policy-coll)
+                                                              :dataset_query (snippet-query outer)}
+                       :model/Card               policy-b    {:collection_id (:id policy-coll)
+                                                              :dataset_query (lib/query mp (lib.metadata/card mp (:id source)))}
+                       :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                              :group_id (:id group-a)
+                                                              :card_id  (:id policy-a)}
+                       :model/Sandbox            _           {:table_id (mt/id :venues)
+                                                              :group_id (:id group-b)
+                                                              :card_id  (:id policy-b)}]
+          (let [colls {:policy         policy-coll
+                       :chain          chain-coll
+                       :free           free-coll
+                       :policy-snippet policy-snippet-coll
+                       :dep-snippet    dep-snippet-coll
+                       :free-snippet   free-snippet-coll}]
+            (doseq [coll (vals colls)]
+              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
+            (f colls)))))))
+
+(defn- archive-collection! [coll]
+  (collection/archive-collection! (t2/select-one :model/Collection :id (:id coll))))
+
+(defn- archived? [coll]
+  (t2/select-one-fn :archived :model/Collection :id (:id coll)))
+
+(deftest archiving-or-deleting-a-collection-respects-the-sandbox-dependency-set-test
+  (testing "archiving or deleting a Collection cascades to its Cards and snippets, and the guard fires per row"
+    (mt/with-premium-features #{:sandboxes}
+      (testing "for a non-admin"
+        (with-mixed-policies!
+         (fn [{:keys [policy chain free policy-snippet dep-snippet free-snippet]}]
+           (mt/with-test-user :rasta
+             (doseq [[coll msg] [[policy         card-msg]
+                                 [chain          card-msg]
+                                 [policy-snippet snippet-msg]
+                                 [dep-snippet    snippet-msg]]]
+               (testing (str "a Collection with a policy dependency in it: " (:name coll))
+                 (testing "archiving is refused and rolled back"
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
+                   (is (false? (archived? coll)))
+                   (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
+                   (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
+                 (testing "deleting is refused and nothing is deleted"
+                   (let [before (+ (t2/count :model/Card :collection_id (:id coll))
+                                   (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
+                     (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection (:id coll))))
+                     (is (t2/exists? :model/Collection :id (:id coll)))
+                     (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
+                                      (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))
+             (doseq [coll [free free-snippet]]
+               (testing (str "a Collection with no policy dependency in it: " (:name coll))
+                 (testing "may be archived"
+                   (archive-collection! coll)
+                   (is (true? (archived? coll))))
+                 (testing "and deleted"
+                   (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))
+      (testing "an admin may archive and then delete all of them"
+        (with-mixed-policies!
+         (fn [colls]
+           (mt/with-test-user :crowberto
+             (doseq [coll (vals colls)]
+               (testing (:name coll)
+                 (archive-collection! coll)
+                 (is (true? (archived? coll)))))
+             (doseq [coll (vals colls)]
+               (testing (:name coll)
+                 (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))))
