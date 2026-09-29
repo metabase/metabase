@@ -186,20 +186,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     // In cases where there are horizontal scrollbars are visible AND the data grid has to scroll vertically as well,
     // the left sidebar and the main grid can get out of ScrollSync due to slightly differing heights
     function scrollBarOffsetSize() {
-      if (!gridContainerRef.current) {
-        return 0;
-      }
-      // get the size of the scrollbars
-      const scrollBarSize = getScrollBarSize();
-      const scrollsHorizontally =
-        gridContainerRef.current.scrollWidth >
-        parseInt(gridContainerRef.current.style.width);
-
-      if (scrollsHorizontally && scrollBarSize > 0) {
-        return scrollBarSize;
-      } else {
-        return 0;
-      }
+      return 0;
     }
 
     const { fontSize } = theme.other.pivotTable.cell;
