@@ -9,6 +9,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.subscription :as tools.subscription]
    [metabase.test :as mt]
@@ -33,9 +34,14 @@
   (boolean (or error (:isError result))))
 
 (defn- response-text
-  "The outcome's text block, or a registry-level rejection's message."
+  "The outcome's text block, or a registry-level rejection's message. A successful result must open with a
+   data boundary, which is stripped; error text is returned raw."
   [{:keys [result error]}]
-  (if error (message/render (:message error)) (-> result :content first :text)))
+  (let [text (-> result :content first :text)]
+    (cond
+      error             (message/render (:message error))
+      (:isError result) text
+      :else             (v2.tu/strip-data-boundary text))))
 
 (defn- tool-result
   [outcome]

@@ -292,7 +292,11 @@
                                       [id (into []
                                                 (comp (keep #(get-in % [:target :table_id]))
                                                       (remove #{id})
-                                                      (distinct))
+                                                      (distinct)
+                                                      ;; Cap before the lookup so its `IN` stays bounded. The
+                                                      ;; `:target` hydration already dropped unreadable targets,
+                                                      ;; so only inactive or unbrowsable ones can shrink the list.
+                                                      (take max-related-tables))
                                                 fields)]))
                                metadata-rows)
         related-ids      (into #{} (mapcat val) targets-by-table)
@@ -314,7 +318,6 @@
                  (fn [target-ids]
                    (into []
                          (comp (keep related)
-                               (take max-related-tables)
                                (map-indexed
                                 (fn [i {:keys [id name display_name schema]}]
                                   (cond-> {:id id :name name :display_name display_name :schema schema}
@@ -418,8 +421,8 @@
 (defn- slice-table-payload
   "The explicit single-table slice: fields in position order from `offset`, as many as fit the
    budget (never fewer than one, so paging always advances), plus counts and — when fields
-   remain — the continuation message naming the next offset."
-  [payload offset]
+   remain — the continuation message naming table `table-id` and the exact next call."
+  [table-id payload offset]
   (let [all-fields (vec (:fields payload))
         total      (count all-fields)
         base       (assoc payload :fields [] :total_fields total :offset offset)
@@ -432,21 +435,22 @@
                            (drop offset all-fields))
         next-offset (+ offset (count included))
         line        (when (< next-offset total)
-                      (message/msg ["%s: %d of %d fields, continue with `offset: %d`."]
-                                   (or (:name payload) (:id payload)) (count included) total next-offset))]
+                      (message/msg ["Table %d: %d of %d fields, continue with `table_ids: [%d], offset: %d`."]
+                                   table-id (count included) total table-id next-offset))]
     {:payload (assoc base :fields included)
      :message line}))
 
 (defn- assemble-tables
   "Apply the byte budget to `payloads` (in request order): whole tables until the budget runs out.
    When the first table alone exceeds the budget — or the caller passed an explicit `offset` — it
-   is returned as a single-table slice instead. Returns `{:tables [...] :message ...}`; `:tables`
-   is always a prefix of `payloads`, so the caller names what was dropped from its own source rows."
-  [payloads offset]
+   is returned as a single-table slice instead. `table-ids` are the tables' ids, index-aligned with
+   `payloads`. Returns `{:tables [...] :message ...}`; `:tables` is always a prefix of `payloads`,
+   so the caller names what was dropped from its own source rows."
+  [payloads table-ids offset]
   (if (and (seq payloads)
            (or (some? offset)
                (> (byte-size (first payloads)) get-fields-byte-budget)))
-    (let [{:keys [payload] line :message} (slice-table-payload (first payloads) (or offset 0))]
+    (let [{:keys [payload] line :message} (slice-table-payload (first table-ids) (first payloads) (or offset 0))]
       {:tables  [payload]
        :message line})
     (loop [[payload & more :as remaining] payloads
@@ -493,7 +497,7 @@
                       detailed? withhold-restricted-fingerprints)
           related   (related-tables-by-requested-table browsable-db-ids rows)
           payloads  (mapv #(project-table args related %) rows)
-          {:keys [tables] line :message} (assemble-tables payloads offset)
+          {:keys [tables] line :message} (assemble-tables payloads (mapv :id rows) offset)
           ;; `tables` is a prefix of `payloads`, which is index-aligned with `rows`, so the tables
           ;; the budget dropped are the matching suffix of `rows` — named from the source rows
           ;; because a `fields` projection can strip `:id`/`:name` off the payloads.
@@ -509,7 +513,7 @@
           body      (cond-> {:tables tables}
                       (seq omitted) (assoc :omitted omitted))]
       (common/success-content (if line
-                                (message/msg ["%s" "%s"] (message/raw (json/encode body)) line)
+                                (message/msg ["%s" "%s"] (message/data body) line)
                                 body)))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------
@@ -709,7 +713,7 @@
                       (message/msg ["Returned %d of %d — continue with `offset: %d`."]
                                    (count rows) total (+ offset limit))))]
     (common/success-content (if line
-                              (message/msg ["%s" "%s"] (message/raw (json/encode envelope)) line)
+                              (message/msg ["%s" "%s"] (message/data envelope) line)
                               envelope))))
 
 ;;; --------------------------------------------- browse_collection tree -------------------------------------------

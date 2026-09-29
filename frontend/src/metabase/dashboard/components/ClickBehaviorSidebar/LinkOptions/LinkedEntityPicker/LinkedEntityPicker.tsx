@@ -90,8 +90,8 @@ function PickerControl({
         rightSection={<Icon name="chevrondown" size={12} />}
         size="lg"
         variant="filled"
+        flex="1 1 auto"
         classNames={{
-          root: S.ButtonRoot,
           label: S.ButtonLabel,
         }}
         w="100%"

@@ -22,9 +22,13 @@
        (apply (requiring-resolve 'metabase.test.data/id) args))))
 
 ;; TODO: druid-id-fn is just temporary until I figure out proper solution for rebinding that symb.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-name-fn-symb*      `field-name)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-base-type-fn-symb* `field-base-type)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *mbql-version*      4)
 
 (defn- token->sigil [token]

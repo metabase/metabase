@@ -27,7 +27,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -97,6 +96,13 @@
          ::mr/deliberately-open true
          :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
 
+(def LLMQueryArgument
+  "Schema for the `:query` argument of `construct_notebook_query` and the tools that reuse it.
+
+  Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the `:json-schema`
+  override only changes what the LLM sees. See [[construct-notebook-query-json-schema]]."
+  (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema}))
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -113,9 +119,7 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
-   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema})]
+   [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
    [:description :string]])
@@ -892,16 +896,4 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
-      ;; and it means the user can't have the card they named rather than that anything broke.
-      (if (or (:agent-error? (ex-data e))
-              (= 403 (:status-code (ex-data e))))
-        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
-        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
-        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
-        (do
-          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
-          {:output (ex-message e)})
-        (do
-          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
-          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))
+      (tools.u/handle-agent-or-api-error e))))

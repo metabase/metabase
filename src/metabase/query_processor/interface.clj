@@ -9,11 +9,13 @@
 ;;
 ;; TODO - I think we should just remove this entirely, it's not used consistently and it's more trouble than it's
 ;; worth. Just dial down the log level a bit where we're currently using this
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-middleware-because-app-db-access*
   "Dynamic variable that skips middleware (when bound to true) because it accesses the app-db. Will be replaced in
   QUE2-488"

@@ -150,6 +150,7 @@
 (mr/def ::maybe-columns
   [:maybe [:sequential {:min 1} ::column]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *card-metadata-columns-card-ids*
   "Used to track the ID of Cards we're resolving columns for, to avoid infinite recursion for Cards that have circular
   references between one another."

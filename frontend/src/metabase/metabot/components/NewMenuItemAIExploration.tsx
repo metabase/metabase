@@ -7,16 +7,20 @@ import type { CollectionId } from "metabase-types/api";
 
 interface NewMenuItemAIExplorationProps {
   collectionId?: CollectionId;
+  hasNlqAccess?: boolean;
 }
 
 export function NewMenuItemAIExploration({
   collectionId,
+  hasNlqAccess,
 }: NewMenuItemAIExplorationProps) {
-  const url = Urls.newQuestion({
-    mode: "ask",
-    collectionId,
-    cardType: "question",
-  });
+  const url = hasNlqAccess
+    ? Urls.newQuestion({
+        mode: "ask",
+        collectionId,
+        cardType: "question",
+      })
+    : Urls.newExploration();
 
   return (
     <Menu.Item
