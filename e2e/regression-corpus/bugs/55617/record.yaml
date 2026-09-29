@@ -1,7 +1,0 @@
-id: reg-55617
-origin:
-  kind: regression
-  issue: 55617
-  alias_of: 55618
-  fix_commit: a5343da112790434e3b2d9c848a67e7ecedb192c
-notes: "same fix commit as 55618 (#55539), which GitHub also names as this issue's fix; this issue is the semantic-type picker in the data reference field view, 55618 the FK target picker; the mutant, statement and hint live in reg-55618; the shared e2e repros name both issues and are in reg-55618's fix_tests"

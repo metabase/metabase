@@ -1,7 +1,0 @@
-id: reg-34447
-origin:
-  kind: regression
-  issue: 34447
-  alias_of: 44106
-  fix_commit: f4f71ea7bdb7669bbabc06b6855ce599c8c9a7ba
-notes: "same fix commit as 44106 (#44639), which GitHub also names as this issue's fix; the mutant, statement and hint live in reg-44106; the shared e2e repro names both issues and is in reg-44106's fix_tests"

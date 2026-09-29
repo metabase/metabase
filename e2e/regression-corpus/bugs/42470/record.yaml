@@ -1,7 +1,0 @@
-id: reg-42470
-origin:
-  kind: regression
-  issue: 42470
-  alias_of: 42656
-  fix_commit: fb4b8ca2a60fede819fff9362956941ccccadbcb
-notes: "a different bug from 42656 (questions can't add an aggregation based on a compatible metric for the same table) that July linked only because both e2e repros arrived in the Metrics v2 commit (#38457); GitHub names no closing PR; July's 42656 mutant doesn't reintroduce this bug, so it needs its own record and mutant before use; its e2e repro is left out of reg-42656's fix_tests"
