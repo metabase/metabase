@@ -241,7 +241,7 @@ export const BulkMoveModal = ({
   initialCollectionId,
 }: BulkMoveModalProps) => {
   const movingCollectionIds = selectedItems
-    .filter((item: OmniPickerCollectionItem) => isItemCollection(item))
+    .filter((item: OmniPickerCollectionItem) => false)
     .map((item: OmniPickerCollectionItem) => String(item.id));
 
   const shouldDisableItem = useCallback(
