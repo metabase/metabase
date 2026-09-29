@@ -488,6 +488,26 @@
                   {:choices [{:index 0 :delta {:tool_calls [{:index 0 :function {:arguments ""}}]}}]}
                   {:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}])))))
 
+(deftest ^:parallel chunks-xf-arguments-without-an-open-call-are-dropped-test
+  (testing "arguments that belong to no open call emit no delta, so aggregation never sees a delta without a toolCallId"
+    (doseq [[label entries]
+            {"a new id without a name"
+             [{:index 0 :id "call-1" :type "function" :function {:name "t" :arguments "{\"a\":1}"}}
+              {:index 1 :id "call-2" :type "function" :function {:arguments "{\"b\":2}"}}]
+
+             "arguments before any call has started"
+             [{:index 0 :function {:arguments "{\"b\":2}"}}
+              {:index 0 :id "call-1" :type "function" :function {:name "t" :arguments "{\"a\":1}"}}]}]
+      (testing label
+        (is (=? [{:type :start}
+                 {:type :tool-input :id "call-1" :function "t" :arguments {:a 1}}]
+                (into [] (comp (chat-completions/chat-completions->aisdk-chunks-xf)
+                               (self.core/aisdk-xf))
+                      (concat [{:id "chatcmpl-o" :model "m" :choices [{:index 0 :delta {:role "assistant"}}]}]
+                              (for [entry entries]
+                                {:choices [{:index 0 :delta {:tool_calls [entry]}}]})
+                              [{:choices [{:index 0 :delta {} :finish_reason "tool_calls"}]}]))))))))
+
 (deftest ^:parallel chunks-xf-reasoning-deltas-open-no-text-block-test
   (testing "reasoning_content deltas and empty-string content produce no chunks"
     ;; Without `:forward-reasoning?` reasoning deltas are dropped rather than surfaced as text.

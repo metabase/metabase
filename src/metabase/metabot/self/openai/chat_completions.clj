@@ -234,7 +234,10 @@
                ;; whitespace-only one deletes those characters from the JSON string. Inside a string
                ;; they are content, not formatting — indentation in streamed SQL, and syntax in
                ;; streamed Python.
-               (not-empty arguments)           (rf {:type           :tool-input-delta
+               ;; arguments with no open call to belong to — a new `id` without a `:name`, or no call
+               ;; started yet — are dropped: a delta without a `toolCallId` has no block to join
+               (and (not-empty arguments)
+                    (:toolCallId @payload))    (rf {:type           :tool-input-delta
                                                     :toolCallId     (:toolCallId @payload)
                                                     :inputTextDelta arguments})))]
        (fn
