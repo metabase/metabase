@@ -28,6 +28,7 @@ import {
   ORDERS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 
 import { SET_CURRENT_STATE } from "../store/actions";
@@ -289,6 +290,45 @@ describe("QB Actions > updateUrl (navigation producer contract)", () => {
     });
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("carries the model's own card for an ad-hoc model (metabase#56775)", async () => {
+    const modelCard = createStructuredModelCard({ id: 1 });
+    const entities = createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [modelCard],
+    });
+    const baseState = createMockState({ entities });
+    const metadata = createMockMetadataFromState(baseState);
+    const modelQuestion = checkNotNull(metadata.question(modelCard.id));
+    // Opening a model gives the query builder an ad-hoc question that reads from the model.
+    const adHocModelQuestion = modelQuestion.composeQuestion();
+
+    expect(adHocModelQuestion.card().dataset_query).not.toEqual(
+      modelCard.dataset_query,
+    );
+
+    const dispatch = jest.fn();
+    const qb = createMockQueryBuilderState({
+      card: modelCard,
+      originalCard: modelCard,
+      currentState: null,
+      uiControls: createMockQueryBuilderUIControlsState({
+        queryBuilderMode: "view",
+      }),
+    });
+    const getState = () => ({ ...baseState, qb });
+
+    await updateUrl(adHocModelQuestion, { dirty: true, replaceState: false })(
+      dispatch,
+      getState,
+    );
+
+    // The back button restores the card that updateUrl passes to setCurrentState.
+    const setStateCall = dispatchedSetCurrentState(dispatch);
+    expect(setStateCall).toBeDefined();
+    const newState = setStateCall?.[0].payload;
+    expect(newState.card.dataset_query).toEqual(modelCard.dataset_query);
   });
 
   it("flows objectId through onto location.state", async () => {
