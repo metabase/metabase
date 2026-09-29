@@ -9,8 +9,8 @@ No test run reads this folder. It's data plus the scripts that built it. It live
 - `bugs/<issue>/record.yaml` is the entry: one bug per directory, named after the GitHub issue it was reported in.
 - `bugs/INDEX.jsonl` has one line per record, with the fields you'd filter on.
 - `bugs/<issue>/rebuilt/` holds a mutant rebuilt on a recent master, for entries whose original mutant stopped applying or reintroduced the wrong behaviour.
-- Everything else in `bugs/<issue>/` is from the first pass over the corpus in July 2026 and is kept as it was: the original mutant (`inverse.patch`, `mutation.patch` or `reconstruction.patch`), `witness.patch` when a unit test was written to catch it, the old `config.yaml` and `e2eonly.yaml`, and the agent reports. `record.yaml` is the file to read.
-- `FINDINGS.md`, `E2E-ONLY.md`, `E2E-ORACLE-PILOT.md`, `FE-TEST-GUIDANCE.md` and `MATRIX.md` are the write-ups of that July pass. `scripts/` has the scripts and agent instructions that built its entries.
+- Everything else in `bugs/<issue>/` is from the first pass over the corpus in July 2026 and is kept as it was: the original mutant (`inverse.patch`, `mutation.patch` or `reconstruction.patch`), `witness.patch` when a unit test was written to catch it, and the agent reports. `record.yaml` is the file to read.
+- `scripts/` has the scripts and agent instructions that built the July entries.
 - `generators/` has the scripts that plant synthetic mutants and run mutants against the unit suites.
 
 ## The record
@@ -94,7 +94,9 @@ The scripts in `scripts/` and `generators/` take three paths from the environmen
 
 ## Results stay out of git
 
-Kill runs, coverage and verdicts are produced per commit, as CI artifacts or on a local machine, and are never committed here. A record says what the bug is and how to put it back, not which tests caught it on a given day. The July write-ups are the one exception, kept as the report of that pass.
+Kill runs, coverage and verdicts are produced per commit, as CI artifacts or on a local machine, and are never committed here. A record says what the bug is and how to put it back, not which tests caught it on a given day.
+
+The July pass's write-ups (`FINDINGS.md`, `MATRIX.md`, `E2E-ONLY.md`, `E2E-ORACLE-PILOT.md` and `FE-TEST-GUIDANCE.md`), each entry's old `config.yaml` or `e2eonly.yaml`, and its CI evidence are outside git too, under `local/regression-corpus/overnight/july-corpus/` in the checkout that ran it. Some `notes` in `record.yaml` cite those files.
 
 ## Strata
 
