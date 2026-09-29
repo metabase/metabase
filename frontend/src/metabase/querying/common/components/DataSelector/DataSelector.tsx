@@ -912,22 +912,6 @@ export class UnconnectedDataSelector extends Component<
   }
 
   hasPreloadedStepData(stepName: DataSelectorStep): boolean {
-    const {
-      hasLoadedDatabasesWithTables,
-      hasLoadedDatabasesWithTablesSaved,
-      hasLoadedDatabasesWithSaved,
-    } = this.props;
-    if (stepName === DATABASE_STEP) {
-      return hasLoadedDatabasesWithTablesSaved || hasLoadedDatabasesWithSaved;
-    } else if (stepName === SCHEMA_STEP || stepName === TABLE_STEP) {
-      return (
-        hasLoadedDatabasesWithTablesSaved ||
-        (hasLoadedDatabasesWithTables &&
-          !this.state.selectedDatabase?.is_saved_questions)
-      );
-    } else if (stepName === FIELD_STEP) {
-      return this.state.fields.length > 0;
-    }
     return false;
   }
 
