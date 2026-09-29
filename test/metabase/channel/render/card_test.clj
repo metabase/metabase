@@ -453,7 +453,7 @@
                 true)))))))
 
 (deftest href-includes-scroll
-  (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+  (testing "the title href for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
                    :model/Dashboard      dashboard {}
@@ -466,8 +466,8 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href)))))))
-  (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+          (is (= [expected-href] (match/match-many rendered-card-content {:href href} href)))))))
+  (testing "the title href for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
                    :model/Dashboard      dashboard {}
@@ -480,7 +480,7 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href))))))))
+          (is (= [expected-href] (match/match-many rendered-card-content {:href href} href))))))))
 
 (deftest dashcard-title-override-wins-over-card-name-test
   (testing "a dashcard's card.title override wins over the underlying card's own name in rendered emails (#18344)"
