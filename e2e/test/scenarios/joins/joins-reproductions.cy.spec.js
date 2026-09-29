@@ -167,20 +167,29 @@ describe("issue 15578", () => {
   });
 });
 
-describe("issue 17710", () => {
+describe("issue 17710, 39448", () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     H.restore();
-    cy.signInAsAdmin();
+    cy.signInAsNormalUser();
   });
 
-  it("should remove only invalid join clauses (metabase#17710)", () => {
+  it("should suggest join conditions and remove only invalid join clauses (metabase#17710, metabase#39448)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     cy.button("Join data").click();
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
+    });
+
+    H.getNotebookStep("join").within(() => {
+      cy.findByLabelText("Right table").should("have.text", "Products");
+      cy.findByLabelText("Left column")
+        .findByText("Product ID")
+        .should("be.visible");
+      cy.findByLabelText("Right column").findByText("ID").should("be.visible");
+      cy.findByLabelText("Change operator").should("have.text", "=");
     });
 
     H.getNotebookStep("join").icon("add").click();
@@ -193,8 +202,9 @@ describe("issue 17710", () => {
     H.openNotebook();
 
     cy.findByTestId("step-join-0-0").within(() => {
-      cy.findByText("ID");
-      cy.findByText("Product ID");
+      cy.findAllByLabelText("Left column").should("have.length", 1);
+      cy.findByLabelText("Left column").findByText("Product ID");
+      cy.findByLabelText("Right column").findByText("ID");
     });
   });
 });
@@ -306,7 +316,13 @@ describe("issue 18818", () => {
     );
 
     H.openNotebook();
-    cy.findAllByText("CC Rating");
+    H.getNotebookStep("expression")
+      .findByText("CC Rating")
+      .should("be.visible");
+    H.getNotebookStep("join").within(() => {
+      cy.findByLabelText("Left column").should("contain.text", "CC Rating");
+      cy.findByLabelText("Right column").should("contain.text", "Quantity");
+    });
   });
 });
 
@@ -668,30 +684,6 @@ describe("issue 31769", () => {
   });
 });
 
-describe("issue 39448", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should load joined table metadata for suggested join conditions (metabase#39448)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByTestId("action-buttons").button("Join data").click();
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Products").click();
-    });
-    H.getNotebookStep("join").within(() => {
-      cy.findByLabelText("Right table").should("have.text", "Products");
-      cy.findByLabelText("Left column")
-        .findByText("Product ID")
-        .should("be.visible");
-      cy.findByLabelText("Right column").findByText("ID").should("be.visible");
-      cy.findByLabelText("Change operator").should("have.text", "=");
-    });
-  });
-});
-
 // See TODO inside this test when unskipping
 describe("issue 27521", () => {
   beforeEach(() => {
@@ -846,6 +838,7 @@ describe("issue 42385", { tags: "@external" }, () => {
       cy.findByText("Reviews").click();
     });
 
+    H.getNotebookStep("data").findByText("Reviews").should("be.visible");
     H.getNotebookStep("join").should("not.exist");
   });
 });
@@ -951,7 +944,7 @@ describe("issue 46675", () => {
     H.tableInteractive().should("be.visible");
   });
 
-  it("should reset the draft join state when the source table changes (metabase#46675)", () => {
+  it("should reset the draft join state when the rhs table changes (metabase#46675)", () => {
     cy.log("change the rhs table and verify that the state was reset");
     H.getNotebookStep("join")
       .findByLabelText("Right table")
