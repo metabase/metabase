@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [hiccup.core :refer [html]]
+   [hickory.core :as hik]
+   [hickory.select :as hik.s]
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.channel.email.result-attachment :as email.result-attachment]
@@ -1354,6 +1356,35 @@
           (is (true? (has-link? (assoc pulse :disable_links nil)))))
         (testing "test that disable_links: true will disable all links in the email subscription"
           (is (false? (has-link? pulse))))))))
+
+(deftest dashboard-subscription-email-table-is-not-a-link-test
+  (testing "The table in a dashboard subscription email is not wrapped in a link, so its cells can be selected (#34165)"
+    (mt/with-temp [:model/Card                  {card-id :id} {:name          "Test card"
+                                                               :dataset_query (mt/mbql-query orders {:limit 2})
+                                                               :display       :table}
+                   :model/Dashboard             {dashboard-id :id} {:name "Orders dashboard"}
+                   :model/DashboardCard         {dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                         :card_id      card-id}
+                   :model/Pulse                 {pulse-id :id} {:name         "Pulse Name"
+                                                                :dashboard_id dashboard-id}
+                   :model/PulseCard             _ {:pulse_id          pulse-id
+                                                   :card_id           card-id
+                                                   :dashboard_card_id dashboard-card-id}
+                   :model/PulseChannel          {pc-id :id} {:pulse_id pulse-id}
+                   :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+      (mt/with-temporary-setting-values [site-url "https://testmb.com"]
+        (let [doc (-> (pulse.test-util/with-captured-channel-send-messages!
+                        (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                      :channel/email first :message first :content
+                      hik/parse
+                      hik/as-hickory)]
+          (is (seq (hik.s/select (hik.s/class "pulse-body") doc)))
+          (is (empty? (hik.s/select (hik.s/descendant (hik.s/tag :a) (hik.s/tag :table)) doc)))
+          (testing "the card title still links to the dashcard"
+            (is (= #{(format "https://testmb.com/dashboard/%d#scrollTo=%d" dashboard-id dashboard-card-id)}
+                   (->> (hik.s/select (hik.s/and (hik.s/tag :a) (hik.s/find-in-text #"Test card")) doc)
+                        (into #{} (map (comp :href :attrs))))))))))))
 
 (deftest attachments-test
   (tests!
