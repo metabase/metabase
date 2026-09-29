@@ -247,10 +247,7 @@
                                   (assoc :document_id document-id)
                                   (cond-> (nil? (:collection_id card-data))
                                     (assoc :collection_id document-collection-id)))
-             new-card         (if source-card-id
-                                (let [source-card (api/read-check :model/Card source-card-id)]
-                                  (card/with-copy-source-card source-card
-                                    (create-card! merged-card-data creator)))
+             new-card         (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
                                 (create-card! merged-card-data creator))]
          (assoc result-map original-key (:id new-card))))
      {}
