@@ -5,9 +5,7 @@ import { getSetting } from "metabase/settings";
 import { PivotTableView } from "./PivotTableInner";
 import { PIVOT_TABLE_DEFINITION } from "./definition";
 
-const mapStateToProps = (state: State) => ({
-  fontFamily: getSetting(state, "application-font"),
-});
+const mapStateToProps = (state: State) => ({});
 
 export const PivotTable = Object.assign(
   connect(mapStateToProps)(PivotTableView),
