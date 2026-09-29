@@ -114,7 +114,7 @@ export const MembershipSelect = ({
         <li
           className={S.membershipSelectItem}
           aria-label={group.name}
-          aria-disabled={addDisabledReason != null || undefined}
+          aria-disabled={isDisabled || undefined}
           onClick={() =>
             isDisabled ? undefined : handleToggleMembership(group.id)
           }
