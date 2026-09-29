@@ -3714,7 +3714,6 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Permissions
-                    :model/PermissionsGroup
                     :model/Table}}
 
   enterprise/data-studio

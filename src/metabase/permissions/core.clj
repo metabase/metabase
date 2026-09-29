@@ -39,7 +39,8 @@
 
 (p/import-vars
  [metabase.permissions.db
-  group-tenant-flags]
+  group-tenant-flags
+  groups-by-ids]
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
