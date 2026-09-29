@@ -18,26 +18,7 @@ export function useInitialClause({
 }: {
   initialExpressionClause?: Lib.DefinedClauseName | null;
 }) {
-  return useCallback(
-    (view: EditorView) => {
-      if (!initialExpressionClause) {
-        return;
-      }
-
-      const clause = getClauseDefinition(initialExpressionClause);
-
-      snippet(expressionClauseSnippet(clause))(
-        {
-          state: view.state,
-          dispatch: view.dispatch,
-        },
-        null,
-        view.state.selection.main.from,
-        view.state.selection.main.to,
-      );
-    },
-    [initialExpressionClause],
-  );
+  return () => {};
 }
 
 export function hasActiveSnippet(state: EditorState) {
