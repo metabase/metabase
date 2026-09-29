@@ -52,6 +52,35 @@
     (when-let [tag (helpers/effective-clause-tag x)]
       (keyword "metabase.legacy-mbql.schema" (name tag)))))
 
+(defn- normalize-dropping-undeclared-keys
+  "A `:decode/normalize` interceptor for a closed clause options map that applies `normalize-fn` and drops the keys the map does not declare."
+  [normalize-fn]
+  {:compile (fn [schema _options]
+              (let [declared-keys (set (mc/explicit-keys schema))]
+                (fn [m]
+                  (when-let [m (normalize-fn m)]
+                    (reduce-kv (fn [m k _v]
+                                 (cond-> m
+                                   (not (contains? declared-keys k)) (dissoc k)))
+                               m
+                               m)))))})
+
+(def ^:private common-clause-option-entries
+  "The entries of `:metabase.lib.schema.common/options` that converting any MBQL 5 clause to legacy MBQL can leave in its options: the type and name keys and the query processor's internal keys."
+  (into []
+        (filter (fn [[k]]
+                  (or (lib.schema.common/internal-key? k)
+                      (contains? #{:base-type :effective-type :semantic-type :database-type :name :display-name} k))))
+        (-> (mc/schema ::lib.schema.common/options) mc/deref-all mc/children first mc/children)))
+
+(defn- with-common-clause-option-entries
+  "Add the [[common-clause-option-entries]] that closed map schema `map-schema` does not declare itself."
+  [[tag properties & entries :as _map-schema]]
+  (let [own-keys (into #{} (map first) entries)]
+    (-> [tag properties]
+        (into (remove (comp own-keys first)) common-clause-option-entries)
+        (into entries))))
+
 (defn- normalize-mbql-clause [x]
   (when-let [schema (infer-mbql-clause-schema x)]
     (lib.normalize/normalize schema x)))
@@ -254,14 +283,17 @@
 
 (mr/def ::ValueTypeInfo
   [:map
-   {:decode/normalize (fn [m]
-                        (when (map? m)
-                          (update-keys m (comp keyword u/->snake_case_en))))
+   {:closed true, :decode/normalize (normalize-dropping-undeclared-keys
+                                     (fn [m]
+                                       (when (map? m)
+                                         (update-keys m (comp keyword u/->snake_case_en)))))
     :description      (str "Type info about a value in a `:value` clause. Added automatically by `wrap-value-literals`"
                            " middleware to values in filter clauses based on the Field in the clause.")}
    [:database_type {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:base_type     {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:semantic_type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:coercion_strategy {:optional true} [:maybe ::lib.schema.common/coercion-strategy]]
    [:unit          {:optional true} [:maybe ::DateTimeUnit]]
    [:name          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
@@ -824,8 +856,9 @@
         lib.schema.expression.temporal/datetime-modes))
 
 (mr/def ::DatetimeOptions
-  [:map {:decode/normalize lib.schema.common/normalize-map}
-   [:mode {:optional true} [:ref ::DatetimeOptionsMode]]])
+  (with-common-clause-option-entries
+    [:map {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     [:mode {:optional true} [:ref ::DatetimeOptionsMode]]]))
 
 (defclause datetime
   value   [:ref ::ExpressionArg]
@@ -1079,10 +1112,11 @@
 (defclause not-empty field [:ref ::Emptyable])
 
 (mr/def ::StringFilterOptions
-  [:map
-   {:decode/normalize lib.schema.common/normalize-map}
-   ;; default true
-   [:case-sensitive {:optional true} :boolean]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     ;; default true
+     [:case-sensitive {:optional true} :boolean]]))
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
   (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
@@ -1102,11 +1136,12 @@
                      "more-strings-or-fields" [:rest [:ref ::StringExpressionArg]])]))
 
 (mr/def ::TimeIntervalOptions
-  [:map
-   {:decode/normalize lib.schema.common/normalize-map}
-   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
-   ;; include them.
-   [:include-current {:optional true} :boolean]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)}
+     ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
+     ;; include them.
+     [:include-current {:optional true} :boolean]]))
 
 ;; Filter subclause. Syntactic sugar for specifying a specific time interval.
 ;;
@@ -1206,10 +1241,11 @@
   [:sequential {:min 1} ::CaseSubclause])
 
 (mr/def ::CaseOptions
-  [:map
-   {:decode/normalize lib.schema.common/normalize-map
-    :error/message    ":case options"}
-   [:default {:optional true} [:ref ::ExpressionArg]]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :decode/normalize (normalize-dropping-undeclared-keys lib.schema.common/normalize-map)
+      :error/message    ":case options"}
+     [:default {:optional true} [:ref ::ExpressionArg]]]))
 
 (defclause case
   clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
@@ -1369,17 +1405,19 @@
 
 (mr/def ::AggregationOptionsOptions
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
-  [:map
-   {:error/message    ":aggregation-options options"
-    :decode/normalize (fn [m]
-                        (let [m (if (nil? m)
-                                  {}
-                                  m)]
-                          (lib.schema.common/normalize-map m)))}
-   ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   ;; user-facing display name for this aggregation instead of the default one
-   [:display-name {:optional true} ::lib.schema.common/non-blank-string]])
+  (with-common-clause-option-entries
+    [:map
+     {:closed true, :error/message    ":aggregation-options options"
+      :decode/normalize (normalize-dropping-undeclared-keys
+                         (fn [m]
+                           (let [m (if (nil? m)
+                                     {}
+                                     m)]
+                             (lib.schema.common/normalize-map m))))}
+     ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
+     [:name         {:optional true} ::lib.schema.common/non-blank-string]
+     ;; user-facing display name for this aggregation instead of the default one
+     [:display-name {:optional true} ::lib.schema.common/non-blank-string]]))
 
 (defclause* aggregation-options
   [:and
@@ -1510,7 +1548,8 @@
    [:display-name ::lib.schema.common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]])
+   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]
+   [:sectionid {:optional true} ::lib.schema.common/non-blank-string]])
 
 ;; Example:
 ;;
@@ -1522,14 +1561,16 @@
 ;;     :snippet-id   1}
 (mr/def ::TemplateTag.Snippet
   "Schema for a native query snippet template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map
-    [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
-    [:snippet-name ::lib.schema.common/non-blank-string]
-    [:snippet-id   ::lib.schema.id/snippet]
-    ;; database to which this Snippet belongs. Doesn't always seen to be specified.
-    [:database {:optional true} ::lib.schema.id/database]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type         [:= {:decode/normalize helpers/normalize-keyword} :snippet]]
+     [:snippet-name ::lib.schema.common/non-blank-string]
+     [:snippet-id   ::lib.schema.id/snippet]
+     ;; database to which this Snippet belongs. Doesn't always seen to be specified.
+     [:database {:optional true} ::lib.schema.id/database]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 ;; Example:
 ;;
@@ -1540,15 +1581,19 @@
 ;;     :card-id      1635}
 (mr/def ::TemplateTag.SourceQuery
   "Schema for a source query template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map
-    [:type    [:= {:decode/normalize helpers/normalize-keyword} :card]]
-    [:card-id ::lib.schema.id/card]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type     [:= {:decode/normalize helpers/normalize-keyword} :card]]
+     [:card-id  ::lib.schema.id/card]
+     [:default  {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
+     [:required {:optional true} :boolean]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag.SourceFilter
   "Schema for a single source-filter applied to a table template tag."
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       (into [:enum] lib.schema.template-tag/allowed-source-filter-ops)]
    [:value    [:ref ::lib.schema.parameter/parameter.value]]])
@@ -1563,13 +1608,17 @@
 ;;     :source-filters [{:op :> :field-id 3 :value 500}]}
 (mr/def ::TemplateTag.SourceTable
   "Schema for a source query template tag."
-  [:merge
-   ::TemplateTag.Common
-   [:map
-    [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
-    [:table-id              ::lib.schema.id/table]
-    [:emit-alias            {:optional true} :boolean]
-    [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]]])
+  [:and
+   [:merge
+    ::TemplateTag.Common
+    [:map {:closed true}
+     [:type                  [:= {:decode/normalize helpers/normalize-keyword} :table]]
+     [:table-id              ::lib.schema.id/table]
+     [:emit-alias            {:optional true} :boolean]
+     [:source-filters        {:optional true} [:sequential [:ref ::TemplateTag.SourceFilter]]]
+     [:default               {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
+     [:required              {:optional true} :boolean]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag.Value.Common
   "Stuff shared between the Field filter and raw value template tag schemas."
@@ -1594,9 +1643,9 @@
   `:metabase.lib.schema.template-tag/field-filter.options`; the map stays open there and here because these options
   are merged into the parameter value the QP builds for the tag."
   [:map
-   {:decode/normalize (fn [m]
-                        (when (map? m)
-                          (update-keys m lib.schema.common/normalize-keyword)))}
+   {:closed true, :decode/normalize (fn [m]
+                                      (when (map? m)
+                                        (update-keys m lib.schema.common/normalize-keyword)))}
    [:case-sensitive  {:optional true} :boolean]
    [:include-current {:optional true} :boolean]])
 
@@ -1604,7 +1653,7 @@
   "Schema for a field filter template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map
+   [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :dimension]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]
@@ -1630,7 +1679,7 @@
   "Schema for a temporal unit template tag."
   [:merge
    ::TemplateTag.Value.Common
-   [:map
+   [:map {:closed true}
     [:type      [:= {:decode/normalize helpers/normalize-keyword} :temporal-unit]]
     [:dimension [:ref ::field]]
     [:alias     {:optional true} :string]]])
@@ -1645,15 +1694,18 @@
 ;;     :default      "1"}
 (mr/def ::TemplateTag.RawValue
   "Schema for a raw value template tag."
-  [:merge
-   ::TemplateTag.Value.Common
-   [:map
-    [:type
-     [:ref
-      {:description
-       "`:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
-  which types of parameters are allowed to be passed in for this template tag."}]
-     ::lib.schema.template-tag/raw-value.type]]])
+  [:and
+   [:merge
+    ::TemplateTag.Value.Common
+    [:map {:closed true}
+     [:type
+      [:ref
+       {:description
+        "`:type` is used be the FE to determine which type of widget to display for the template tag, and to determine
+  which types of parameters are allowed to be passed in for this template tag."}
+       ::lib.schema.template-tag/raw-value.type]]
+     [:widget-type {:optional true} [:maybe [:ref ::WidgetType]]]]]
+   [:ref ::lib.schema.template-tag/disallow-dimension]])
 
 (mr/def ::TemplateTag
   "Schema for a template tag as specified in a native query. There are four types of template tags, differentiated by
@@ -1726,12 +1778,40 @@
       (remove-empty-keys m {:non-empty-keys #{:template-tags}
                             :non-nil-keys   #{:collection}}))))
 
+(def ^:private inner-query-internal-keys
+  "Map entries for the keys the query processor adds to an MBQL 5 stage, which conversion to legacy MBQL copies onto the inner query."
+  [[:parameters                    {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
+   [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
+   [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
+   [:qp/skip-persisted-cache       {:optional true} :boolean]
+   [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
+   [:source-query/model?           {:optional true} :boolean]
+   [:source-query/native-model?    {:optional true} [:maybe :boolean]]
+   [:metabase.query-processor.middleware.add-remaps/remaps {:optional true} [:ref :metabase.lib.schema/external-remappings]]
+   [:metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes {:optional true} [:set [:int {:min 0}]]]])
+
+(mr/def ::native-query-form
+  "The native query itself: a SQL string, or for drivers like MongoDB a query in the driver's own shape."
+  [:or
+   :string
+   [:schema {::mr/deliberately-open true
+             :description "a driver's native query when it is not a string, e.g. a MongoDB pipeline; its shape is the driver's"}
+    :some]])
+
 (mr/def ::NativeQuery.Common
   [:and
-   [:map
-    [:template-tags {:optional true} [:ref ::TemplateTagMap]]
-    ;; collection (table) this query should run against. Needed for MongoDB
-    [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
+   (into
+    [:map
+     [:template-tags {:optional true} [:ref ::TemplateTagMap]]
+     ;; collection (table) this query should run against. Needed for MongoDB
+     [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+     [:params        {:optional true} [:maybe [:sequential [:ref ::lib.schema.literal/param-value]]]]
+     [:projections   {:optional true} [:maybe [:sequential :string]]]
+     [:mbql?         {:optional true} [:maybe :boolean]]
+     [:qp/table-name {:optional true} [:maybe :string]]
+     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+     [:query-permissions/sandboxed-table     {:optional true} [:ref ::lib.schema.id/table]]]
+    inner-query-internal-keys)
    (lib.schema.common/disallowed-keys
     {:lib/type     "Legacy MBQL inner queries must not have :lib/type"
      :type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
@@ -1744,8 +1824,8 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map
-     [:query :some]]]
+    [:map {:closed true}
+     [:query ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:native "A top-level native inner query should have the :query key, not :native"})])
 
@@ -1754,8 +1834,8 @@
    [:merge
     {:decode/normalize #'remove-empty-keys-from-native-inner-query}
     ::NativeQuery.Common
-    [:map
-     [:native :some]]]
+    [:map {:closed true}
+     [:native ::native-query-form]]]
    (lib.schema.common/disallowed-keys
     {:query "A top-level native inner query should have the :native key, not :query"})])
 
@@ -1853,6 +1933,17 @@
 (mr/def ::legacy-column-metadata.qualified-keys
   (legacy-column-metadata-qualified-keys-schema))
 
+(mr/def ::driver-column
+  "A column as a driver's `execute-reducible-query` reports it, before annotation adds the rest of its metadata."
+  [:map {:closed true}
+   [:name           :string]
+   [:base_type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective_type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic_type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
+   [:database_type  {:optional true} [:maybe :string]]
+   [:display_name   {:optional true} [:maybe :string]]
+   [:field_ref      {:optional true} [:maybe [:ref ::Reference]]]])
+
 (mr/def ::legacy-column-metadata
   "Schema for a single legacy metadata column. This is the pre-Lib equivalent of
   `:metabase.lib.schema.metadata/column`."
@@ -1919,7 +2010,8 @@
     [:ref ::legacy-column-metadata.qualified-keys]]
    (lib.schema.common/disallowed-keys
     {:lib/type          "Legacy results metadata should not have :lib/type, use :metabase.lib.schema.metadata/column for Lib metadata"
-     :model/inner_ident ":model/inner_ident is deprecated"})
+     :model/inner_ident ":model/inner_ident is deprecated"
+     :lib/model-display-name ":lib/model-display-name is deprecated"})
    (letfn [(disallowed-key? [k]
              (or (not (keyword? k))
                  (let [disallowed-char (if (qualified-keyword? k)
@@ -1970,7 +2062,7 @@
     [:field \"my_field\" {:base-type :field/Integer, :join-alias \"my_join_alias\"}]"
   [:and
    [:map
-    {:decode/normalize lib.schema.common/normalize-map}
+    {:closed true, :decode/normalize lib.schema.common/normalize-map}
     [:source-table
      {:optional true
       :description "*What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where
@@ -2030,7 +2122,16 @@
      {:optional true
       :description "Metadata about the source query being used, if pulled in from a Card via the
   `:source-table \"card__id\"` syntax. added automatically by the `resolve-card-id-source-tables` middleware."}
-     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
+     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
+    [:qp/is-implicit-join
+     {:optional true
+      :description "Set by the `add-implicit-joins` middleware to mark a join it generated."}
+     :boolean]
+    [:fk-field-name              {:optional true} [:maybe :string]]
+    [:fk-join-alias              {:optional true} [:maybe ::lib.schema.join/alias]]
+    [:qp/keep-default-join-alias {:optional true} :boolean]
+    [:qp/stage-is-from-source-card {:optional true} [:ref ::lib.schema.id/card]]
+    [:parameters                 {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]]
    ;; additional constraints
    [:fn
     {:error/message "Joins must have either a `source-table` or `source-query`, but not both."}
@@ -2113,24 +2214,31 @@
 
 (mr/def ::MBQLInnerQuery
   [:and
-   [:map
-    {:decode/normalize lib.schema.common/normalize-map}
-    [:source-query {:optional true} [:ref ::SourceQuery]]
-    [:source-table {:optional true} [:ref ::SourceTable]]
-    [:aggregation  {:optional true} [:ref ::Aggregations]]
-    [:breakout     {:optional true} [:ref ::Breakouts]]
-    [:expressions  {:optional true} [:ref ::Expressions]]
-    [:fields       {:optional true} [:ref ::Fields]]
-    [:filter       {:optional true} [:ref ::Filter]]
-    [:limit        {:optional true} nat-int?]
-    [:order-by     {:optional true} [:ref ::OrderBys]]
-    [:page         {:optional true} [:ref :metabase.lib.schema/page]]
-    [:joins        {:optional true} [:ref ::Joins]]
-    [:source-metadata
-     {:optional    true
-      :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
+   (into
+    [:map
+     {:closed true, :decode/normalize lib.schema.common/normalize-map}
+     [:source-query {:optional true} [:ref ::SourceQuery]]
+     [:source-table {:optional true} [:ref ::SourceTable]]
+     [:aggregation  {:optional true} [:ref ::Aggregations]]
+     [:breakout     {:optional true} [:ref ::Breakouts]]
+     [:expressions  {:optional true} [:ref ::Expressions]]
+     [:fields       {:optional true} [:ref ::Fields]]
+     [:filter       {:optional true} [:ref ::Filter]]
+     [:limit        {:optional true} nat-int?]
+     [:order-by     {:optional true} [:ref ::OrderBys]]
+     [:page         {:optional true} [:ref :metabase.lib.schema/page]]
+     [:joins        {:optional true} [:ref ::Joins]]
+     [:source-metadata
+      {:optional    true
+       :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
   primarily used to let power things like binning when used with Field Literals instead of normal Fields."}
-     [:maybe [:sequential [:ref ::legacy-column-metadata]]]]]
+      [:maybe [:sequential [:ref ::legacy-column-metadata]]]]
+     [:qp/added-implicit-fields? {:optional true} :boolean]
+     [:query-permissions/sandboxed-table {:optional true} [:ref ::lib.schema.id/table]]
+     [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
+     [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set :string]]
+     [:pivot {:optional true} [:ref :metabase.lib.schema/pivot]]]
+    inner-query-internal-keys)
    ;; remove empty query keys; this is done AFTER the map schema above because normalizing things like
    ;; `::Aggregations` will remove things like the `ROWS` aggregation which was removed in MBQL 4.
    ;; e.g. the schema above will normalize
@@ -2254,7 +2362,7 @@
    {:decode/normalize #'normalize-query}
    ;; need to move source metadata to the correct location FIRST so it gets normalized by the schema below
    [:ref ::CheckQueryDoesNotHaveSourceMetadata]
-   [:map
+   [:map {:closed true}
     [:database   {:optional true} ::DatabaseID]
     [:type
      [:enum
@@ -2280,6 +2388,35 @@
       :description "Used when recording info about this run in the QueryExecution log; things like context query was
   ran in and User who ran it."}
      [:maybe [:ref ::lib.schema.info/info]]]
+    [:cache-strategy {:optional true} [:maybe :metabase.lib.schema/cache-strategy]]
+    [:impersonation/role         {:optional true} ::lib.schema.common/non-blank-string]
+    [:impersonation/admin?       {:optional true} :boolean]
+    [:impersonation/allow-write? {:optional true} :boolean]
+    [:qp/compiled        {:optional true} :metabase.lib.schema/compiled-native-query]
+    [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
+    [:async?                               {:optional true} :boolean]
+    [:was-pivot                            {:optional true} [:maybe :boolean]]
+    [:pivot-rows                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-cols                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:pivot-measures                       {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:show-row-totals                      {:optional true} [:maybe :boolean]]
+    [:show-column-totals                   {:optional true} [:maybe :boolean]]
+    [:viz-settings                         {:optional true} [:maybe [:ref ::lib.schema.common/visualization-settings]]]
+    [:user-parameters                      {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
+    [:qp/source-card-id                    {:optional true} [:ref ::lib.schema.id/card]]
+    [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
+    [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
+    [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
+    [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
+    [:qp.pivot/num-unremapped-breakouts        {:optional true} [:int {:min 0}]]
+    [:qp.pivot/num-remapped-breakouts          {:optional true} [:int {:min 0}]]
+    [:qp.pivot/remapped-indexes                {:optional true} [:map-of [:int {:min 0}] [:int {:min 0}]]]
+    [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::lib.schema.id/card]]]
+    [:destination-database/id               {:optional true} ::DatabaseID]
+    [:metabase.query-processor.middleware.add-remaps/external-remaps {:optional true} :metabase.lib.schema/external-remappings]
+    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+     {:optional true}
+     :metabase.lib.schema/sandboxing.original-metadata]
     ;;
     ;; ACTIONS
     ;;

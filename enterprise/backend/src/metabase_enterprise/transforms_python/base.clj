@@ -261,7 +261,13 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform
+   db :- :metabase.warehouses.schema/database
+   run-id :- pos-int?
+   cancel-chan :- ::transforms-base.schema/chan
+   message-log :- ::transforms-base.schema/atom
+   {:keys [with-stage-timing-fn source-range-params]}
+   :- ::transforms-base.schema/execute-base-options]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]

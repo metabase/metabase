@@ -7,9 +7,11 @@
    [metabase-enterprise.semantic-search.schema :as semantic-search.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn library-root-collections
@@ -27,7 +29,8 @@
   authoritative."
   []
   (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:where [:and
+                       {:from [(warehouse-schema-overlay/table-query)]
+                        :where [:and
                                 [:= :active true]
                                 [:or [:= :is_published true]
                                  [:= :data_authority ^:allow-raw-sql [:inline "authoritative"]]]]}))
@@ -92,10 +95,11 @@
   [search-results :- [:sequential [:map {:closed true}
                                    [:id [:or :string ms/PositiveInt]]
                                    [:model :string]]]
-   search-ctx     :- [:map
+   search-ctx     :- [:map {:closed true}
                       [:current-user-id {:optional true} [:maybe ms/PositiveInt]]
-                      [:context {:optional true} [:maybe :keyword]]
-                      [:weights {:optional true} [:maybe [:map-of :keyword number?]]]]]
+                      [:context         {:optional true} [:maybe :keyword]]
+                      [:weights         {:optional true} [:maybe ::search.config/weights]]
+                      [:limit-int       {:optional true} [:maybe ms/Int]]]]
   (let [scorers (appdb-scoring/appdb-scorers search-ctx)]
     (t2/query (cond-> (search.scoring/with-scores search-ctx scorers (search-index-select search-results))
                 (:bookmarked scorers) (search.scoring/join-bookmarks (:current-user-id search-ctx))))))

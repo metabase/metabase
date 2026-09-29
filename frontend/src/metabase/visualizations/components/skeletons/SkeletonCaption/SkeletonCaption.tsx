@@ -1,36 +1,28 @@
 import type { HTMLAttributes } from "react";
 
 import { Markdown } from "metabase/common/components/Markdown";
-import { Tooltip } from "metabase/ui";
-import {
-  LegendDescriptionIcon,
-  LegendRightContent,
-} from "metabase/visualizations/components/legend/LegendCaption";
+import { Box, Ellipsified, Flex, Icon, Tooltip } from "metabase/ui";
 import type { VisualizationSkeletonProps } from "metabase/visualizations/components/skeletons/VisualizationSkeleton/VisualizationSkeleton";
 
-import {
-  SkeletonCaptionDescription,
-  SkeletonCaptionRoot,
-  SkeletonCaptionTitle,
-} from "./SkeletonCaption.styled";
-import type { SkeletonCaptionSize } from "./types";
+import S from "./SkeletonCaption.module.css";
 
 export type SkeletonCaptionProps = HTMLAttributes<HTMLDivElement> &
-  VisualizationSkeletonProps & {
-    size?: SkeletonCaptionSize;
-  };
+  VisualizationSkeletonProps;
 
 const SkeletonCaption = ({
   name,
   description,
   actionMenu,
   className,
-  size = "medium",
 }: SkeletonCaptionProps): JSX.Element => {
   return (
-    <SkeletonCaptionRoot className={className}>
-      {name && <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>}
-      <LegendRightContent>
+    <Flex className={className} justify="center" align="center" w="100%">
+      {name && (
+        <Ellipsified c="text-primary" fw="bold">
+          {name}
+        </Ellipsified>
+      )}
+      <Flex justify="flex-end" align="center" ml="auto">
         {description && (
           <Tooltip
             maw="22em"
@@ -40,21 +32,22 @@ const SkeletonCaption = ({
               </Markdown>
             }
           >
-            <LegendDescriptionIcon
+            <Box
+              component="span"
+              className={S.descriptionIcon}
+              mx="xxs"
               data-testid="skeleton-description-icon"
-              name="info"
-            />
+            >
+              <Icon name="info" />
+            </Box>
           </Tooltip>
         )}
 
         {actionMenu}
-      </LegendRightContent>
-    </SkeletonCaptionRoot>
+      </Flex>
+    </Flex>
   );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(SkeletonCaption, {
-  Title: SkeletonCaptionTitle,
-  Description: SkeletonCaptionDescription,
-});
+export default SkeletonCaption;

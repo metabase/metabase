@@ -127,7 +127,7 @@ export async function sendPreReleaseStatus({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('core-release')}`,
+				"text": `_<https://github.com/metabase/metabase/milestone/${milestoneId}|:direction-sign: Milestone> targeted for release on ${date}_ ${mentionSlackTeam('release-managers')}`,
 			}
 		},
   ];
@@ -332,7 +332,7 @@ export function buildAutoReleaseSkipMessage({
   const messageByReason: Record<AutoReleaseSkipReason, string> = {
     "no-green-commit": `:x: ${label} for *v${majorVersion}* skipped: no commit found suitable for the release. ${runLink}`,
     "no-next-version": noNextVersion,
-    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${runLink}`,
+    "already-released": `:information_source: ${label} for *v${majorVersion}* skipped: latest green commit has already been released — ${alreadyReleasedSuffix}. ${mentionSlackTeam('release-managers')} monitor the v${majorVersion} branch and manually release the next green commit. ${runLink}`,
   };
 
   return messageByReason[reason];

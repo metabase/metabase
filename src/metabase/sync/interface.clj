@@ -26,17 +26,18 @@
   [:ref ::DatabaseMetadataTable])
 
 (mr/def ::DatabaseMetadata
-  [:map
+  [:map {:closed true}
    [:tables [:fn {:error/message "a set, sequential, or reducible collection of tables"}
              (fn [x] (or (set? x) (sequential? x) (instance? clojure.lang.IReduceInit x)))]]
-   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+   [:version {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:metabase-metadata-tables {:optional true} (ms/InstanceOfClass clojure.lang.Volatile)]])
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
   [:ref ::DatabaseMetadata])
 
 (mr/def ::TableMetadataField
-  [:map
+  [:map {:closed true}
    [:name              ::lib.schema.common/non-blank-string]
    [:database-type     [:maybe ::lib.schema.common/non-blank-string]] ; blank if the Field is all NULL & untyped, i.e. in Mongo
    [:base-type         ::lib.schema.common/base-type]
@@ -51,7 +52,7 @@
    [:json-unfolding             {:optional true} :boolean]
    ;; TODO (Cam 8/11/25) -- this should be required to be a sequence of strings but we'll need to go fix some code
    [:nfc-path                   {:optional true} [:maybe [:sequential [:or :keyword :string]]]]
-   [:custom                     {:optional true} :map]
+   [:custom                     {:optional true} ms/OpaqueJSONObject]
    [:database-default           {:optional true} :string]
    [:database-is-auto-increment {:optional true} :boolean]
    [:database-is-generated      {:optional true} :boolean]
@@ -59,7 +60,11 @@
    ;; nullable for databases that don't support field partition
    [:database-partitioned       {:optional true} [:maybe :boolean]]
    [:database-required          {:optional true} :boolean]
-   [:visibility-type            {:optional true} [:maybe :keyword]]])
+   [:visibility-type            {:optional true} [:maybe :keyword]]
+   [:jdbc-type                  {:optional true} [:maybe :int]]
+   [:preview-display            {:optional true} :boolean]
+   [:table-name                 {:optional true} ::lib.schema.common/non-blank-string]
+   [:table-schema               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (def TableMetadataField
   "Schema for a given Field as provided in [[metabase.driver/describe-table]]."
@@ -116,7 +121,7 @@
   [:ref ::TableFKMetadataEntry])
 
 (mr/def ::FKMetadataEntry
-  [:map
+  [:map {:closed true}
    [:fk-table-name   ::lib.schema.common/non-blank-string]
    [:fk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
    [:fk-column-name  ::lib.schema.common/non-blank-string]

@@ -4,9 +4,9 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { skipToken, useListRevisionsQuery } from "metabase/api";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {

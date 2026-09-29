@@ -32,14 +32,17 @@
 
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
-   opts :- [:map
+   opts :- [:map {:closed true}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
       :or   {token-check? true
-             require-initialized-db? true}}]
+             require-initialized-db? true}}
+   :- [:maybe [:map {:closed true}
+               [:token-check?            {:optional true} [:maybe :boolean]]
+               [:require-initialized-db? {:optional true} [:maybe :boolean]]]]]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
   (when (and require-initialized-db? (not (setup/has-user-setup)))
@@ -59,7 +62,7 @@
 
    opts are passed to load-metabase"
   [path :- :string
-   opts :- [:map
+   opts :- [:map {:closed true}
             [:continue-on-error {:optional true} [:maybe :boolean]]
             [:full-stacktrace {:optional true} [:maybe :boolean]]]]
   (let [timer    (u/start-timer)

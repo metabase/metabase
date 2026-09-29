@@ -5,7 +5,7 @@ import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { useSelector } from "metabase/redux";
 import type { UseCardDataResult } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
@@ -104,7 +104,7 @@ export function useCardData({
 
   const cardToUse = cardWithDraft ?? card;
 
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const isPivotTable = cardToUse?.display === "pivot";
 

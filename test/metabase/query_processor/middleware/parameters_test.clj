@@ -310,12 +310,10 @@
             meta/metadata-provider
             {:native-query-snippets [{:id          1
                                       :content     "name, price"
-                                      :creator-id  (mt/user->id :rasta)
                                       :description "Fields to SELECT"
                                       :name        "Venue fields"}
                                      {:id          2
                                       :content     "price > 2"
-                                      :creator-id  (mt/user->id :rasta)
                                       :description "Meant for use in WHERE clause"
                                       :name        "Filter: expensive venues"}]
              :cards                 [{:id            1

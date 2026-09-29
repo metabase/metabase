@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
@@ -15,13 +15,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.sample-data.core :as sample-data]
@@ -46,14 +45,10 @@
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
+   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-;; Forward declaration so `add-schemas` (near the top-of-file helpers) can
-;; reuse the same per-schema permission check used by `/api/database/:id/schemas`
-;; lower in the file.
-(declare can-read-schema?)
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
@@ -100,7 +95,7 @@
         (let [db-id       (:id db)
               raw-schemas (get schemas-by-db db-id [])
               readable    (->> raw-schemas
-                               (filter (partial can-read-schema? db-id))
+                               (filter (partial schema.table/can-read-schema? db-id))
                                (map #(if (nil? %) "" %))
                                distinct
                                sort
@@ -119,7 +114,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :native_permissions
@@ -137,7 +132,7 @@
                                           [:transforms_permissions [:enum :write :none]]]]]
   "For each database in DBS add a `:transforms_permissions` field describing the current user's permissions for
   creating/running Transforms. Will be either `:write` or `:none`."
-  [dbs :- [:maybe [:sequential :map]]]
+  [dbs :- [:maybe [:sequential ::warehouses.schema/database]]]
   (for [db dbs]
     (assoc db
            :transforms_permissions
@@ -179,8 +174,7 @@
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{query :dataset_query, :as _card} :- [:map
-                                         [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]
+  [{query :dataset_query, :as _card} :- ::queries.schema/card]
   (match/match-one (lib/aggregations query) [#{:cum-count :cum-sum} & _] true))
 
 (defn card-can-be-used-as-source-query?
@@ -192,10 +186,10 @@
 
 (defn- ids-of-dbs-that-support-source-queries []
   ;; the nested-queries check only reads the engine — don't realize full rows (decrypted :details etc.) for it
-  (set (keep (fn [db]
+  (set (keep (fn [{:keys [id engine]}]
                (try
-                 (when (driver.u/supports? (driver.u/database->driver db) :nested-queries db)
-                   (:id db))
+                 (when (driver.u/supports? (keyword engine) :nested-queries nil)
+                   id)
                  (catch Throwable e
                    (log/errorf "Error determining whether Database supports nested queries: %s" (ex-message e)))))
              (warehouses-rest.db/database-engines))))
@@ -203,7 +197,11 @@
 (mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::queries.schema/card.type
-   & {:keys [collection-scope xform], :or {xform identity}}]
+   & {:keys [collection-scope xform], :or {xform identity}}
+   :- [:maybe [:map {:closed true}
+               [:collection-scope {:optional true}
+                [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+               [:xform {:optional true} [:maybe [:fn ifn?]]]]]]
   (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
     (transduce
      (comp (map (partial mi/do-after-select :model/Card))
@@ -224,13 +222,17 @@
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-fields?]}]
+   & {:keys [include-fields?]}
+   :- [:maybe [:map {:closed true} [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (schema.table/cards->virtual-tables (source-query-cards card-type)
                                       :include-fields? include-fields?))
 
 (mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::queries.schema/card.type
-   & {:keys [include-tables? include-fields?]}]
+   & {:keys [include-tables? include-fields?]}
+   :- [:maybe [:map {:closed true}
+               [:include-tables? {:optional true} [:maybe :boolean]]
+               [:include-fields? {:optional true} [:maybe :boolean]]]]]
   (when (lib-be/enable-nested-queries)
     (cond-> {:name               (trs "Saved Questions")
              :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -251,17 +253,11 @@
   can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
   name and ID of these databases, removing all other fields."
   [dbs]
-  (let [filtered-dbs
-        (if-let [f (when config/ee-available?
-                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
-          (f dbs)
-          dbs)]
-    (map
-     (fn [db] (if (mi/can-read? db)
-                db
-                (select-keys db [:id :name :tables])))
-     filtered-dbs)))
+  (map
+   (fn [db] (if (mi/can-read? db)
+              db
+              (select-keys db [:id :name :tables])))
+   (schema.table/filter-databases-by-data-model-perms dbs)))
 
 (defn- check-db-data-model-perms
   "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
@@ -341,8 +337,9 @@
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
-    Enterprise Edition code is available the advanced-permissions feature is enabled.
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those
+    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,
+    this is admin-only.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
@@ -358,6 +355,7 @@
   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
   `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
   lacks permission to change the database details."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
            router_database_id can-query can-write-metadata]}
@@ -441,10 +439,10 @@
                             (= include "tables.fields") apply-sandbox-column-filter))))))
 
 (mu/defn- check-database-exists
-  ([id] (check-database-exists id {}))
+  ([id :- ms/PositiveInt] (check-database-exists id {}))
   ([id :- ms/PositiveInt
     {:keys [include-destination-databases?]}
-    :- [:map
+    :- [:map {:closed true}
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (warehouses-rest.db/database-exists? id)
@@ -477,14 +475,15 @@
    returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
    Passing include_editable_data_model will only return tables for which the current user has data model editing
-   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-   and tables, with no additional metadata.
+   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+   advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.
 
    Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
    [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`
    in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the
    database details."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include include_editable_data_model exclude_uneditable_details]}
@@ -493,8 +492,7 @@
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
        [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
   (present-database
-   (warehouses/get-database id {:include include
-                                :include-editable-data-model? include_editable_data_model
+   (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
                                 :exclude-uneditable-details? exclude_uneditable_details
                                 :include-destination-databases? true})
    {:include include
@@ -587,9 +585,9 @@
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-  and tables, with no additional metadata."
+  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
+  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the
+  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
@@ -663,6 +661,7 @@
   Tables are returned in the format `[table_name \"Table\"]`;
   When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
@@ -699,6 +698,7 @@
   "Return a list of `Card` autocomplete suggestions for a given `query` in a given `Database`.
 
   This is intended for use with the ACE Editor when the User is typing in a template tag for a `Card`, e.g. {{#...}}."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
@@ -1209,25 +1209,6 @@
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
-(defenterprise current-user-can-manage-schema-metadata?
-  "Returns a boolean whether the current user has permission to edit table metadata for any tables in the schema.
-  On OSS, this is only available to admins."
-  metabase-enterprise.advanced-permissions.common
-  [_db-id _schema-name]
-  (mi/superuser?))
-
-(defn- can-read-schema?
-  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
-  at least some of its tables?)"
-  [database-id schema-name]
-  (or
-   (contains? #{:query-builder :query-builder-and-native}
-              (perms/schema-permission-for-user api/*current-user-id*
-                                                :perms/create-queries
-                                                database-id
-                                                schema-name))
-   (current-user-can-manage-schema-metadata? database-id schema-name)))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -1249,37 +1230,6 @@
          (vec)
          (sort))))
 
-(defn database-schemas
-  "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
-  (let [filter-schemas (fn [schemas]
-                         (if include-editable-data-model?
-                           (if-let [f (u/ignore-exceptions
-                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                        (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
-                           (filter (partial can-read-schema? id) schemas)))
-        ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
-        filter-schemas-by-tables (fn [schemas]
-                                   (if (or can-query? can-write-metadata?)
-                                     (let [tables (warehouses-rest.db/active-tables-for-database id)
-                                           _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (cond->> tables
-                                                             can-query?          (filter mi/can-query?)
-                                                             can-write-metadata? (filter mi/can-write?))
-                                           allowed-schemas (set (map :schema filtered-tables))]
-                                       (filter #(contains? allowed-schemas %) schemas))
-                                     schemas))]
-    (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
-    (->> (warehouses-rest.db/active-table-schemas id include-hidden?)
-         filter-schemas
-         filter-schemas-by-tables
-         ;; for `nil` schemas return the empty string
-         (map #(if (nil? %) "" %))
-         distinct
-         sort)))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1290,6 +1240,7 @@
   Optional filters:
   - `can-query=true` - filter to only schemas containing tables the user can query
   - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
@@ -1300,10 +1251,10 @@
                                     [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
                                     [:can-query                   {:optional true} [:maybe :boolean]]
                                     [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
-  (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden?              include_hidden
-                        :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata}))
+  (schema.table/database-schemas id {:include-editable-data-model? include_editable_data_model
+                                     :include-hidden?              include_hidden
+                                     :can-query?                   can-query
+                                     :can-write-metadata?          can-write-metadata}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1335,33 +1286,6 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
-(defn- schema-tables-list
-  ([db-id schema]
-   (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? can-write-metadata? include-measures?]}]
-   (when-not include-editable-data-model?
-     (api/read-check :model/Database db-id)
-     (api/check-403 (can-read-schema? db-id schema)))
-   (let [candidate-tables (if include-hidden?
-                            (warehouses-rest.db/active-tables-in-schema db-id schema)
-                            (warehouses-rest.db/active-visible-tables-in-schema db-id schema))
-         _                (perms/prime-table-perms-cache {:db-ids #{db-id}})
-         filtered-tables  (cond->> (if include-editable-data-model?
-                                     (if-let [f (when config/ee-available?
-                                                  (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                                  (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-                                       (f candidate-tables)
-                                       candidate-tables)
-                                     (filter mi/can-read? candidate-tables))
-                            can-query?          (filter mi/can-query?)
-                            can-write-metadata? (filter mi/can-write?))
-         hydration-keys   (cond-> []
-                            (premium-features/any-transforms-enabled?)   (conj :transform)
-                            include-measures? (conj :measures))]
-     (if (seq hydration-keys)
-       (apply t2/hydrate filtered-tables hydration-keys)
-       filtered-tables))))
-
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
@@ -1380,6 +1304,7 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  {:scope api-scope/data-app}
   [{:keys [id schema]} :- [:map {:closed true}
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
@@ -1389,7 +1314,7 @@
                                                                                                           [:can-query                   {:optional true} [:maybe :boolean]]
                                                                                                           [:can-write-metadata          {:optional true} [:maybe :boolean]]
                                                                                                           [:include_measures            {:optional true} [:maybe :boolean]]]]
-  (api/check-404 (seq (schema-tables-list
+  (api/check-404 (seq (schema.table/schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
@@ -1415,6 +1340,10 @@
   Optional filters:
   - `can-query=true` - filter to only tables the user can query
   - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  ;; Tagged for the same reason as the `/:id/schema/:schema` sibling, and it is this route the SDK
+  ;; usually reaches: `GET /:id/schemas` reports a nil schema as "", and the sibling's `NonBlankString`
+  ;; route regex cannot match an empty segment, so every schemaless warehouse lands here.
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
@@ -1430,9 +1359,9 @@
               :can-write-metadata?          can-write-metadata
               :include-measures?            include_measures}]
     (api/check-404 (seq (if (str/blank? schema)
-                          (concat (schema-tables-list id nil opts)
-                                  (schema-tables-list id "" opts))
-                          (schema-tables-list id schema opts))))))
+                          (concat (schema.table/schema-tables-list id nil opts)
+                                  (schema.table/schema-tables-list id "" opts))
+                          (schema.table/schema-tables-list id schema opts))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

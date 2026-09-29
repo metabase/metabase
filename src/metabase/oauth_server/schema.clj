@@ -7,16 +7,10 @@
 
 (mr/def ::oauth-access-token
   "A OAuthAccessToken as selected from the app DB: every column of `:oauth_access_token`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:token      :string]
-   [:user_id    [:maybe ::lib.schema.id/user]]
-   [:client_id  :string]
-   [:scope      [:sequential :string]]
-   [:expiry     :int]
-   [:resource   [:maybe [:or :string [:sequential :string]]]]
-   [:revoked_at [:maybe ms/TemporalInstant]]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::oauth-access-token.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::oauth-access-token.update
   "What an update (or insert) of a OAuthAccessToken accepts: every column of `:oauth_access_token` except `id`, all optional."
@@ -32,19 +26,10 @@
 
 (mr/def ::oauth-authorization-code
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
-  [:map {:closed true}
-   [:id                    ms/PositiveInt]
-   [:code                  :string]
-   [:user_id               ::lib.schema.id/user]
-   [:client_id             :string]
-   [:redirect_uri          :string]
-   [:scope                 [:sequential :string]]
-   [:nonce                 [:maybe :string]]
-   [:expiry                :int]
-   [:code_challenge        [:maybe :string]]
-   [:code_challenge_method [:maybe [:or :keyword :string]]]
-   [:resource              [:maybe [:or :string [:sequential :string]]]]
-   [:created_at            ms/TemporalInstant]])
+  [:merge
+   ::oauth-authorization-code.update
+   [:map {:closed true}
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::oauth-authorization-code.update
   "What an update (or insert) of a OAuthAuthorizationCode accepts: every column of `:oauth_authorization_code` except `id`, all optional."
@@ -63,25 +48,10 @@
 
 (mr/def ::oauth-client
   "A OAuthClient as selected from the app DB: every column of `:oauth_client`."
-  [:map {:closed true}
-   [:id                             ms/PositiveInt]
-   [:client_id                      :string]
-   [:client_secret_hash             [:maybe :string]]
-   [:redirect_uris                  [:sequential :string]]
-   [:grant_types                    [:sequential :string]]
-   [:response_types                 [:sequential :string]]
-   [:scopes                         [:sequential :string]]
-   [:token_endpoint_auth_method     [:maybe [:or :keyword :string]]]
-   [:client_name                    [:maybe :string]]
-   [:client_uri                     [:maybe :string]]
-   [:logo_uri                       [:maybe :string]]
-   [:contacts                       [:maybe [:sequential :string]]]
-   [:registration_type              [:or :keyword :string]]
-   [:client_type                    [:or :keyword :string]]
-   [:application_type               [:maybe [:or :keyword :string]]]
-   [:registration_access_token_hash [:maybe :string]]
-   [:created_at                     ms/TemporalInstant]
-   [:updated_at                     ms/TemporalInstant]])
+  [:merge
+   ::oauth-client.update
+   [:map {:closed true}
+    [:id                             ms/PositiveInt]]])
 
 (mr/def ::oauth-client.update
   "What an update (or insert) of a OAuthClient accepts: every column of `:oauth_client` except `id`, all optional."
@@ -106,12 +76,10 @@
 
 (mr/def ::oauth-client-event
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."
-  [:map {:closed true}
-   [:id              ms/PositiveInt]
-   [:oauth_client_id [:maybe ms/PositiveInt]]
-   [:user_id         [:maybe ::lib.schema.id/user]]
-   [:event_type      [:or :keyword :string]]
-   [:created_at      ms/TemporalInstant]])
+  [:merge
+   ::oauth-client-event.update
+   [:map {:closed true}
+    [:id              ms/PositiveInt]]])
 
 (mr/def ::oauth-client-event.update
   "What an update (or insert) of a OAuthClientEvent accepts: every column of `:oauth_client_event` except `id`, all optional."
@@ -123,16 +91,10 @@
 
 (mr/def ::oauth-refresh-token
   "A OAuthRefreshToken as selected from the app DB: every column of `:oauth_refresh_token`."
-  [:map {:closed true}
-   [:id         ms/PositiveInt]
-   [:token      :string]
-   [:user_id    [:maybe ::lib.schema.id/user]]
-   [:client_id  :string]
-   [:scope      [:sequential :string]]
-   [:resource   [:maybe [:or :string [:sequential :string]]]]
-   [:expiry     [:maybe :int]]
-   [:revoked_at [:maybe ms/TemporalInstant]]
-   [:created_at ms/TemporalInstant]])
+  [:merge
+   ::oauth-refresh-token.update
+   [:map {:closed true}
+    [:id         ms/PositiveInt]]])
 
 (mr/def ::oauth-refresh-token.update
   "What an update (or insert) of a OAuthRefreshToken accepts: every column of `:oauth_refresh_token` except `id`, all optional."
