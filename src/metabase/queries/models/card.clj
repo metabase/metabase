@@ -765,7 +765,9 @@
       ;; diff process.
       ;; However, here we really do want to run the upgrades, so we can write back a card which is fully updated in
       ;; lockstep.
-      (let [upgraded (upgrade-card-schema-to-latest original false)
+      (let [upgraded (upgrade-card-schema-to-latest
+                      (merge original changes {:card_schema (:card_schema original)})
+                      false)
             ;; Keep the `upgraded` version of any [[card-schema/schema-governed-columns]], but prefer those in `changes`.
             columns  (remove (set (keys changes)) card-schema/schema-governed-columns)
             relevant (when (seq columns)
