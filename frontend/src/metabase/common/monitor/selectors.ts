@@ -30,6 +30,13 @@ export function canAccessAlertsManagement(state: State) {
   return getUserIsAdmin(state);
 }
 
+export function canAccessSessionManagement(state: State) {
+  if (isWithinIframe()) {
+    return false;
+  }
+  return getUserIsAdmin(state);
+}
+
 export function canAccessAiAuditing(state: State) {
   if (isWithinIframe()) {
     return false;

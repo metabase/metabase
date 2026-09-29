@@ -1,0 +1,78 @@
+import { t } from "ttag";
+
+import { SidebarNavButton } from "metabase/monitor/components/DetailSidebar";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
+import { ActionIcon, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
+import * as Urls from "metabase/urls";
+
+import { getSessionUserName } from "../utils";
+
+import type { SidebarHeaderProps } from "./types";
+
+export const SidebarHeader = ({
+  sessionId,
+  session,
+  prevSessionId,
+  nextSessionId,
+  onNavigate,
+  onClose,
+}: SidebarHeaderProps) => {
+  const dispatch = useDispatch();
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}${Urls.monitorSessionDetail(sessionId)}`;
+    await navigator.clipboard.writeText(url);
+    dispatch(addUndo({ message: t`Link copied to clipboard` }));
+  };
+
+  return (
+    <Stack gap="xl">
+      <Flex justify="space-between" align="center">
+        <Group gap="sm">
+          <SidebarNavButton
+            direction="previous"
+            label={t`Previous session`}
+            disabled={prevSessionId === undefined}
+            onClick={() => prevSessionId && onNavigate(prevSessionId)}
+          />
+          <SidebarNavButton
+            direction="next"
+            label={t`Next session`}
+            disabled={nextSessionId === undefined}
+            onClick={() => nextSessionId && onNavigate(nextSessionId)}
+          />
+        </Group>
+        <Group gap="sm">
+          <ActionIcon
+            aria-label={t`Copy link to clipboard`}
+            size="lg"
+            c="icon-primary"
+            onClick={handleCopyLink}
+          >
+            <Icon name="link" />
+          </ActionIcon>
+          <ActionIcon
+            aria-label={t`Close`}
+            size="lg"
+            c="icon-primary"
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </ActionIcon>
+        </Group>
+      </Flex>
+
+      {session && (
+        <Stack gap={0}>
+          <Text size="sm" c="text-secondary">
+            {t`Session`}
+          </Text>
+          <Title order={3} c="text-primary">
+            {getSessionUserName(session.user)}
+          </Title>
+        </Stack>
+      )}
+    </Stack>
+  );
+};

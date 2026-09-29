@@ -382,6 +382,7 @@ export const tokenFeatures = [
   "library",
   "library_retrieval",
   "support-users",
+  "session-management",
   "tenants",
   "writable_connection",
   "admin_security_center",

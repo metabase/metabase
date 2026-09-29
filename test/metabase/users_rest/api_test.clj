@@ -1747,10 +1747,12 @@
              (is (=? {:session_id string/valid-uuid?
                       :success true}
                      resp))
-             ;; Original session should be gone
+             ;; Original session should be ended: its key destroyed, the change attributed to the user
              (is (not (t2/exists?
                        :model/Session
                        :key_hashed (session/hash-session-key original-session-key))))
+             (is (=? {:end_reason "password-change", :ended_by_user_id user-id, :key_hashed nil}
+                     (t2/select-one :model/Session :id (:id original-session))))
              (let [new-session-key  (:session_id resp)
                    new-session      (t2/select-one
                                      :model/Session
@@ -1777,8 +1779,9 @@
             "sanity check: the session exists before the password change")
         (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user))
                               {:password "abc123!!DEF", :old_password "def"})
-        (is (nil? (t2/select-one :model/Session :id (:id session)))
-            "the user's pre-existing session should be deleted after the password change")))))
+        (is (=? {:end_reason "password-change", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
+                (t2/select-one :model/Session :id (:id session)))
+            "the user's pre-existing session should be ended by the admin after the password change")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
