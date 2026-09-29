@@ -7,7 +7,9 @@
   mixed (serdes + data apps), and serdes-only."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.sync :as data-apps.sync]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.search.test-util :as search.tu]
@@ -55,7 +57,7 @@
 (deftest data-app-only-pull-counts-app-changes-test
   (testing "a pull whose only change is a data app is reported as a real pull, not pull-skipped / 0 changes"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             (let [outcome (pull-outcome! (app-tree! "sales" "BUNDLE-V1")
@@ -66,7 +68,7 @@
 (deftest data-only-pull-excludes-unchanged-apps-test
   (testing "a serdes-only pull counts serdes content; unchanged data apps add nothing"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
@@ -78,7 +80,7 @@
 (deftest mixed-pull-counts-serdes-and-apps-test
   (testing "a mixed pull counts serdes content AND the changed data apps"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection AND changes the data app's bundle.
@@ -86,3 +88,39 @@
                                          (merge coll-file (app-tree! "ops" "BUNDLE-V2")))]
               (is (= "pulled" (:kind outcome)))
               (is (= 2 (:count outcome)) "the collection (1) plus the changed data app (1)"))))))))
+
+(deftest data-apps-land-with-the-version-test
+  (testing "a pull records the data apps at the snapshot version it commits as the sync base"
+    (search.tu/with-index-disabled
+      (mt/with-premium-features #{:data-apps}
+        (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+            (let [src (rs.test/versioned-source :trees {"v0" (app-tree! "sales" "BUNDLE-V1")
+                                                        "v1" (app-tree! "sales" "BUNDLE-V2")}
+                                                :current "v0")]
+              (is (= :success (:status (import-at! src "v0" :force? true))))
+              (is (= :success (:status (import-at! src "v1"))))
+              (is (= "v1" (remote-sync.task/last-version)))
+              (is (= "v1" (t2/select-one-fn :last_synced_sha :model/DataApp :name "sales"))))))))))
+
+(deftest data-app-failure-rolls-back-the-version-test
+  (testing "a crash while materializing data apps rolls the version back, so the next pull redoes the import
+            instead of skipping a version whose data apps never landed"
+    (search.tu/with-index-disabled
+      (mt/with-premium-features #{:data-apps}
+        (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
+          (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+            (let [src (rs.test/versioned-source :trees {"v0" (app-tree! "sales" "BUNDLE-V1")
+                                                        "v1" (app-tree! "sales" "BUNDLE-V2")}
+                                                :current "v0")]
+              (is (= :success (:status (import-at! src "v0" :force? true))))
+              (let [v0-hash (t2/select-one-fn :bundle_hash :model/DataApp :name "sales")]
+                (mt/with-dynamic-fn-redefs [data-apps.sync/sync-from-snapshot! (fn [_] (throw (ex-info "materialization died" {})))]
+                  (is (= :error (:status (import-at! src "v1")))))
+                (is (= "v0" (remote-sync.task/last-version)) "the failed pull is not the sync base")
+                (is (= v0-hash (t2/select-one-fn :bundle_hash :model/DataApp :name "sales"))
+                    "the v0 app is untouched"))
+              (is (=? {:status :success :outcome {:kind "pulled"}} (import-at! src "v1"))
+                  "the next pull redoes the import rather than skipping v1")
+              (is (= "v1" (remote-sync.task/last-version)))
+              (is (= "v1" (t2/select-one-fn :last_synced_sha :model/DataApp :name "sales"))))))))))

@@ -2,8 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]
-   [metabase.models.serialization :as serdes]))
+   [metabase.models.serialization :as serdes]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- fake-uuid
   "Deterministic placeholder `:lib/uuid` for tests, e.g. `(fake-uuid 1)` => \"00000000-0000-0000-0000-000000000001\"."
@@ -182,6 +184,17 @@
 
         ["fk->" ["field-id" 1] ["field-id" 2]]
         ["fk->" [:field-id ["A" "B" "C" "D"]] [:field-id ["A" "B" "C" "D"]]]))))
+
+(deftest ^:parallel normalize-field-ref-reuses-cached-coercer-test
+  (testing "normalizing :field refs hits the registry coercer cache after the first call"
+    (let [misses (atom 0)]
+      (binding [mr/*cache-miss-hook* (fn [k _schema _value]
+                                       (when (= k ::lib.normalize/coercer)
+                                         (swap! misses inc)))]
+        (dotimes [_ 3]
+          (#'serdes/normalize-mbql-ref [:field 1 nil])
+          (#'serdes/normalize-mbql-ref [:field {:lib/uuid (fake-uuid 1)} 1])))
+      (is (<= @misses 1)))))
 
 (deftest ^:parallel export-visualization-settings-test
   (binding [serdes/*export-field-fk* (constantly ["A" "B" "C" "D"])

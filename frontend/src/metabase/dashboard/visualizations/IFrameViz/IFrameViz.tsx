@@ -98,7 +98,7 @@ function IFrameVizInner({
             </Text>{" "}
             <Box ml="auto">
               <Button
-                size="compact-md"
+                size="sm"
                 variant="filled"
                 style={{ pointerEvents: "all" }}
                 onClick={onTogglePreviewing}
@@ -163,8 +163,8 @@ function IFrameVizInner({
 function ForbiddenDomainError({ url }: { url: string }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const { url: docsUrl, showMetabaseLinks } = useDocsUrl(
-    "configuring-metabase/settings",
-    { anchor: "allowed-domains-for-iframes-in-dashboards" },
+    "configuring-metabase/domains",
+    { anchor: "allow-iframes-from-a-site-in-dashboards" },
   );
 
   const domain = useMemo(() => {

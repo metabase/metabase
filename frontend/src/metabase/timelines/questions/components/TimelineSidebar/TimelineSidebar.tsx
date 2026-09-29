@@ -3,7 +3,8 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { type Dayjs, type OpUnitType, dayjs } from "metabase/dayjs";
-import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
@@ -133,10 +134,10 @@ export const TimelineSidebar = ({
   return (
     <SidebarContent title={title} onClose={onClose}>
       {focusedTimelineEventIds != null && (
-        <Box mx="xl" mb="sm">
+        <Box mx="xl" mb="md">
           <Button
-            p={0}
-            variant="subtle"
+            variant="transparent"
+            size="compact-md"
             leftSection={<Icon name="chevronleft" />}
             onClick={handleShowAllEvents}
             data-testid="timeline-sidebar-show-all"

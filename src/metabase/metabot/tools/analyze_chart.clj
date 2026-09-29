@@ -8,7 +8,7 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.util.log :as log]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.malli :as mu]
    [tech.v3.resource :as resource]))
 
@@ -60,17 +60,17 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
   [{:keys [series] :as _chart-config}]
   (when (empty? series)
     (throw (ex-info "This chart has no series data to analyze."
-                    {:type ::malformed-chart-config})))
+                    {:agent-error? true, :type ::malformed-chart-config})))
   (doseq [[series-name {:keys [y_values]}] series]
     (when (empty? y_values)
       (throw (ex-info (format "Series \"%s\" has no data points to analyze." series-name)
-                      {:type ::malformed-chart-config, :series series-name})))
+                      {:agent-error? true, :type ::malformed-chart-config, :series series-name})))
     (when (non-numeric-y-value? y_values)
       ;; compute-chart-stats assumes each series has numeric y-values.
       (throw (ex-info (format (str "Series \"%s\" has non-numeric y-values. Chart analysis "
                                    "requires a numeric y-axis metric.")
                               series-name)
-                      {:type ::malformed-chart-config, :series series-name})))))
+                      {:agent-error? true, :type ::malformed-chart-config, :series series-name})))))
 
 (mu/defn ^{:tool-name "analyze_chart"
            :scope     scope/agent-viz-read}
@@ -101,5 +101,4 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
       {:output (str "Chart config not found: " chart_config_id
                     ". Available chart configs can be found in the viewing context.")})
     (catch Exception e
-      (log/errorf "Error analyzing chart: %s" (ex-message e))
-      {:output (str "Failed to analyze chart: " (or (ex-message e) "Unknown error"))})))
+      (metabot.tools.u/handle-agent-error e))))

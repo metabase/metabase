@@ -263,6 +263,7 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -2296,3 +2297,12 @@
                                                         :q table-name :models "table" :search_engine "appdb"))]
                   (is (seq rows))
                   (is (every? (comp nil? :is_published) rows)))))))))))
+
+(deftest exploration-description-searchable-in-place-test
+  (testing "explorations match on :description in the in-place engine (parity with the appdb spec)"
+    (let [description (mt/random-name)]
+      (mt/with-temp [:model/Exploration _ {:name        "desc-probe-exploration"
+                                           :description description
+                                           :creator_id  (mt/user->id :crowberto)}]
+        (is (=? [{:model "exploration" :name "desc-probe-exploration"}]
+                (search-request-data :crowberto :q description :search_engine "in-place")))))))

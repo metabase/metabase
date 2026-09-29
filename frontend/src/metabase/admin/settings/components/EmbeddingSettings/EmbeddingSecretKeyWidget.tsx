@@ -54,7 +54,7 @@ export const EmbeddingSecretKeyWidget = () => {
           {value ? (
             <>
               <Button
-                variant="outline"
+                size="lg"
                 onClick={openModal}
                 style={{ flexShrink: 0 }}
               >{t`Regenerate key`}</Button>
@@ -72,6 +72,7 @@ export const EmbeddingSecretKeyWidget = () => {
           ) : (
             <Button
               variant="filled"
+              size="lg"
               onClick={generateToken}
               style={{ flexShrink: 0 }}
             >{t`Generate key`}</Button>

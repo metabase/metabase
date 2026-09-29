@@ -20,6 +20,15 @@
         terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
+(defn handle-agent-or-api-error
+  "Return an agent output for agent errors and API check refusals, re-throw `e` otherwise. A refusal is an exception
+  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]]."
+  [e]
+  (let [{:keys [agent-error? status-code]} (ex-data e)]
+    (if (and (not agent-error?) (int? status-code) (<= 400 status-code 499))
+      {:output (ex-message e) :status-code status-code}
+      (handle-agent-error e))))
+
 (defn convert-field-type
   "Return tool type for `column`."
   [column]

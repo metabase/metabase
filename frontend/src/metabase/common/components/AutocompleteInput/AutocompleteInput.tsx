@@ -4,10 +4,8 @@ import { useMemo, useRef } from "react";
 
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { Popover, TextInput, type TextInputProps } from "metabase/ui";
+import { Popover, TextInput, type TextInputProps, rem } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
-
-import { OptionsList } from "./AutocompleteInput.styled";
 
 export interface AutocompleteInputProps extends Omit<
   TextInputProps,
@@ -123,7 +121,12 @@ export const AutocompleteInput = ({
         />
       </Popover.Target>
       <Popover.Dropdown>
-        <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
+        <SelectList
+          ref={optionsListRef}
+          p="sm"
+          miw={rem(300)}
+          onMouseDown={handleListMouseDown}
+        >
           {filteredOptions.map((item, index) => (
             <SelectList.Item
               isSelected={cursorIndex === index}
@@ -138,7 +141,7 @@ export const AutocompleteInput = ({
               {item}
             </SelectList.Item>
           ))}
-        </OptionsList>
+        </SelectList>
       </Popover.Dropdown>
     </Popover>
   );

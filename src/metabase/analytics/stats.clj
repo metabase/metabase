@@ -590,8 +590,7 @@
       :new_users_last_24h              (analytics.db/new-active-user-count-since one-day-ago)
       :pivot_tables                    (analytics.db/unarchived-pivot-table-count)
       :query_executions_last_24h       (analytics.db/query-execution-count-since one-day-ago)
-      :entity_id_translations_last_24h total-translation-count
-      :scim_users_last_24h             (analytics.db/new-scim-user-count-since one-day-ago)}
+      :entity_id_translations_last_24h total-translation-count}
      (transform-metrics))))
 
 (def ^:private string-keyed-int-histogram
@@ -966,6 +965,9 @@
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
     :enabled   (premium-features/enable-python-transforms?)}
+   {:name      :transforms-testing
+    :available (premium-features/enable-transform-testing?)
+    :enabled   (premium-features/enable-transform-testing?)}
    {:name      :dependencies
     :available (premium-features/enable-dependencies?)
     :enabled   (premium-features/enable-dependencies?)}

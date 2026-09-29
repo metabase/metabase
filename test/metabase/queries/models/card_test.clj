@@ -1836,3 +1836,16 @@
         (is (not (contains? extracted (eid summary-card)))
             "a card belonging to an exploration Summary is never exported — its name and dataset_query
              carry values discovered under the creator's lens, and its parent document is excluded")))))
+
+(deftest before-update-schema-upgrade-uses-incoming-query-test
+  (testing "a query edit to a legacy metric persists dimensions derived from the new query, not the old one"
+    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema 23, :dimensions nil, :dimension_mappings nil}
+                     :where  [:= :id card-id]})
+      (t2/update! :model/Card card-id {:dataset_query (mt/mbql-query categories {:aggregation [[:count]]})})
+      (is (= #{(mt/id :categories)}
+             (into #{} (map :table-id) (t2/select-one-fn :dimension_mappings :model/Card :id card-id)))))))

@@ -548,6 +548,7 @@
   (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
     (queries.db/delete-actions! action-ids)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *update-baseline-select?*
   "True when the select is being for the purposes of fetching the current baseline before diffing it in
   [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
@@ -770,7 +771,9 @@
       ;; diff process.
       ;; However, here we really do want to run the upgrades, so we can write back a card which is fully updated in
       ;; lockstep.
-      (let [upgraded (upgrade-card-schema-to-latest original false)
+      (let [upgraded (upgrade-card-schema-to-latest
+                      (merge original changes {:card_schema (:card_schema original)})
+                      false)
             ;; Keep the `upgraded` version of any [[card-schema/schema-governed-columns]], but prefer those in `changes`.
             columns  (remove (set (keys changes)) card-schema/schema-governed-columns)
             relevant (when (seq columns)
