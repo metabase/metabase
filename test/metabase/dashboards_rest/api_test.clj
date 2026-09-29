@@ -5813,6 +5813,37 @@
                                :tabs []})
         (is (every? #(= 1 (count %)) (t2/select-fn-vec :parameter_mappings :model/DashboardCard :dashboard_id dash-id)))))))
 
+(deftest param-values-no-field-ids-unreadable-card-test
+  (testing "a field-ref-only param mapped to a card the user cannot read is a 403"
+    (let [mp        (mt/metadata-provider)
+          target    [:dimension [:field "SOURCE" {:base-type :type/Text}]]
+          no-perms  #(format "You do not have permissions to view Card %d." %)
+          all-users (perms-group/all-users)]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection private-coll {:name "Private native card collection"}
+                       :model/Card {native-id :id} (assoc (qp.test-util/card-with-source-metadata-for-query
+                                                           (lib/native-query mp "select * from people"))
+                                                          :collection_id (:id private-coll))
+                       :model/Collection dash-coll {:name "Readable dashboard collection"}
+                       :model/Dashboard {dashboard-id :id}
+                       {:collection_id (:id dash-coll)
+                        :parameters    [{:name "User Source" :slug "user_source" :id "_US_" :type :string/=}]}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      native-id
+                                               :parameter_mappings [{:card_id      native-id
+                                                                     :parameter_id "_US_"
+                                                                     :target       target}]}]
+          (perms/grant-collection-read-permissions! all-users dash-coll)
+          (let [values-url (str "dashboard/" dashboard-id "/params/_US_/values")]
+            (testing "read on the dashboard does not grant read on the mapped card"
+              (is (= (no-perms native-id)
+                     (mt/user-http-request :rasta :get 403 values-url))))
+            (testing "the values come back once the user can read the mapped card"
+              (perms/grant-collection-read-permissions! all-users private-coll)
+              (is (= {:values          [["Affiliate"] ["Facebook"] ["Google"] ["Organic"] ["Twitter"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 values-url))))))))))
+
 (deftest param-search-no-field-ids-test
   (testing "GET .../params/:param-key/search/:query for field-ref-only (nested-native) params currently returns the same unfiltered set as /values"
     (let [mp (mt/metadata-provider)]
