@@ -5,7 +5,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.event :as analytics.event]
    [metabase.analytics.util :as analytics.util]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -14,7 +13,7 @@
 (def ^:private snowplow-arg-keys
   [:request-id :model-id :total-tokens :prompt-tokens :completion-tokens :estimated-costs-usd
    :cache-creation-tokens :cache-read-tokens :user-id :duration-ms :source :tag :session-id :profile
-   :hashed-metabase-license-token :provider :model-name :reported-cost-usd])
+   :hashed-metabase-license-token :provider :model-name])
 
 (def ^:private SnowplowArgs
   [:map {:closed true}
@@ -26,7 +25,6 @@
    [:prompt-tokens                                  ms/IntGreaterThanOrEqualToZero]
    [:completion-tokens                              ms/IntGreaterThanOrEqualToZero]
    [:estimated-costs-usd                            number?]
-   [:reported-cost-usd             {:optional true} [:maybe number?]]
    [:cache-creation-tokens         {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:cache-read-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:user-id                       {:optional true} [:maybe :int]]
@@ -37,18 +35,11 @@
    [:profile                       {:optional true} [:maybe :string]]
    [:hashed-metabase-license-token {:optional true} [:maybe :string]]])
 
-(defn- event-cost
-  "`cost` when it is a finite, non-negative number, or nil.
-  The `token_usage` schema would reject the whole event over a negative, non-finite or non-numeric cost."
-  [cost]
-  (when (and (u/real-number? cost) (not (neg? cost)))
-    cost))
-
 (mu/defn track-snowplow!
   "Track snowplow token_usage event."
   [{:keys [request-id model-id provider model-name total-tokens prompt-tokens completion-tokens
            cache-creation-tokens cache-read-tokens
-           estimated-costs-usd reported-cost-usd user-id duration-ms source tag session-id profile
+           estimated-costs-usd user-id duration-ms source tag session-id profile
            hashed-metabase-license-token]}
    :- SnowplowArgs]
   (analytics.event/track-event! :snowplow/token_usage
@@ -64,7 +55,6 @@
                                  :cache-creation-tokens         cache-creation-tokens
                                  :cache-read-tokens             cache-read-tokens
                                  :estimated-costs-usd           estimated-costs-usd
-                                 :reported-cost-usd             (event-cost reported-cost-usd)
                                  :user-id                       user-id
                                  :duration-ms                   (some-> duration-ms long)
                                  :source                        source

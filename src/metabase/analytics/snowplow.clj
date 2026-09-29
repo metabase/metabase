@@ -152,7 +152,6 @@
    [:prompt-tokens                 {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:completion-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:estimated-costs-usd           {:optional true} [:maybe number?]]
-   [:reported-cost-usd             {:optional true} [:maybe number?]]
    [:cache-creation-tokens         {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:cache-read-tokens             {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:user-id                       {:optional true} [:maybe :int]]

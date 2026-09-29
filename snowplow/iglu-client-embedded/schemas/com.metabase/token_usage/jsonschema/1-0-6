@@ -95,16 +95,7 @@
         },
         "estimated_costs_usd": {
             "type": "number",
-            "description": "Always 0 from the Metabase app, which does not estimate costs. reported_cost_usd carries the charge a provider reports.",
-            "minimum": 0,
-            "maximum": 2147483647
-        },
-        "reported_cost_usd": {
-            "type": [
-                "number",
-                "null"
-            ],
-            "description": "The charge the provider reported for the call, in USD. Only Metabot's OpenRouter calls carry one; for a call OpenRouter ran on the customer's own upstream key (OpenRouter BYOK), it is OpenRouter's fee plus the upstream charge. 0 is a free call. Null means no charge was reported: other providers, an OpenRouter BYOK call without the upstream charge, or a negative or non-finite figure.",
+            "description": "The estimated cost of for the tokens in USD",
             "minimum": 0,
             "maximum": 2147483647
         },

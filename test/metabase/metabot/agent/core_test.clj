@@ -780,31 +780,6 @@
                   (let [parent-llm (first (filter #(= (:parent-id search) (:id %)) llms))]
                     (is (some? parent-llm) "tool's parent-id resolves to an llm.call in the tree")))))))))))
 
-(deftest eval-capture-usage-test
-  (testing "the eval capture records token counts without a provider's charge, so evals price at list rates"
-    (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
-                                         llm-metabot-provider test-provider]
-        (mt/with-dynamic-fn-redefs [ait.log/emit!         (fn [& _] nil)
-                                    openrouter/openrouter (constantly
-                                                           (mut/mock-llm-response
-                                                            [{:type :start :id "msg-1"}
-                                                             {:type :text :text "Done"}
-                                                             {:type  :usage
-                                                              :usage {:promptTokens     100
-                                                                      :completionTokens 20
-                                                                      :costUsd          0.0042}
-                                                              :model "test"
-                                                              :id    "msg-1"}]))]
-          (let [{:keys [trace]} (mt/with-log-level [metabase.metabot.agent.core :warn]
-                                  (ait/capture-reducible
-                                   (agent/run-agent-loop {:messages   [{:role :user :content "hi"}]
-                                                          :state      {}
-                                                          :profile-id :internal
-                                                          :context    {}})))]
-            (is (= {test-provider {:promptTokens 100 :completionTokens 20}}
-                   (get-in (first trace) [:attributes :ai/usage])))))))))
-
 (deftest cumulative-usage-test
   (mt/as-admin
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

@@ -64,7 +64,6 @@
                                           :cache-creation-tokens 250
                                           :cache-read-tokens     900
                                           :estimated-costs-usd   0.0
-                                          :reported-cost-usd     0.0125
                                           :user-id               42
                                           :duration-ms           1234
                                           :source                "oss_metabot"
@@ -83,7 +82,6 @@
                             "cache_creation_tokens"        250
                             "cache_read_tokens"            900
                             "estimated_costs_usd"          0.0
-                            "reported_cost_usd"            0.0125
                             "duration_ms"                  1234
                             "source"                       "oss_metabot"
                             "tag"                          "oss-sqlgen"
@@ -101,17 +99,11 @@
                                  (ValidatorConfig. FormatValidationPolicy/ALWAYS))
                (.parse (JsonParser. ^String (json/encode event-data))))))
 
-(defn- token-usage-events! []
-  (->> (snowplow-test/pop-event-data-and-user-id!)
-       (map :data)
-       (filter #(contains? % "total_tokens"))))
-
 (deftest track-snowplow!-matches-schema-test
   (testing "the event validates against its schema, with every optional field set and with none of them"
     (snowplow-test/with-fake-snowplow-collector
       (llm-token-usage/track-snowplow! (merge base-usage {:provider              "openrouter"
                                                           :model-name            "anthropic/claude-haiku-4.5"
-                                                          :reported-cost-usd     0.0125
                                                           :cache-creation-tokens 250
                                                           :cache-read-tokens     900
                                                           :user-id               42
@@ -121,30 +113,14 @@
                                                           :session-id            "session-abc"
                                                           :profile               "internal"}))
       (llm-token-usage/track-snowplow! base-usage)
-      (let [events (token-usage-events!)]
+      (let [events (->> (snowplow-test/pop-event-data-and-user-id!)
+                        (map :data)
+                        (filter #(contains? % "total_tokens")))]
         (is (= 2 (count events)))
         (doseq [event events]
           (is (nil? (schema-violation event))))
         (testing "and the schema rejects a field it does not declare"
           (is (some? (schema-violation (assoc (first events) "cost" 0.0125)))))))))
-
-(deftest track-snowplow!-keeps-a-zero-cost-test
-  (testing "a free model's charge goes out as 0, not null"
-    (snowplow-test/with-fake-snowplow-collector
-      (llm-token-usage/track-snowplow! (assoc base-usage :reported-cost-usd 0))
-      (is (=? [{"reported_cost_usd" 0}]
-              (token-usage-events!))))))
-
-(deftest track-snowplow!-drops-a-cost-the-schema-rejects-test
-  (testing "a negative or non-finite cost goes out as null instead of failing the whole event"
-    (snowplow-test/with-fake-snowplow-collector
-      (doseq [cost [-0.25 ##NaN ##Inf]]
-        (llm-token-usage/track-snowplow! (assoc base-usage :reported-cost-usd cost)))
-      (let [events (token-usage-events!)]
-        (is (= 3 (count events)))
-        (doseq [event events]
-          (is (nil? (get event "reported_cost_usd")))
-          (is (nil? (schema-violation event))))))))
 
 ;;; ------------------------------------------- track-prometheus! -------------------------------------------
 
