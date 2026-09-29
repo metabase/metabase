@@ -40,7 +40,8 @@
   (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
 
 (defn- -commas! [xs context]
-  (-interpose! ", " xs context))
+  (when (seq xs)
+    (-interpose! ", " xs context)))
 
 (defn- -parens! [x context]
   (append-sql! context "(")
@@ -238,17 +239,20 @@
 (defn- -identifier-component!
   "Emit a single quoted and escaped identifier part."
   [part context]
-  (when-not (re-matches #"^[A-Za-z_][A-Za-z0-9_-]*$" part)
-    (throw (ex-info "Invalid identifier" {:identifier part})))
-  (let [engine     (engine context)
-        quote-char (case engine
-                     :mysql "`"
-                     "\"")]
-    (append-sql! context quote-char)
-    (append-sql! context (case engine
-                           :h2 (u/upper-case-en part)
-                           part))
-    (append-sql! context quote-char)))
+  (if (= part "*")
+    (append-sql! context "*")
+    (do
+      (when-not (re-matches #"^[A-Za-z_][A-Za-z0-9_-]*$" part)
+        (throw (ex-info "Invalid identifier" {:identifier part})))
+      (let [engine     (engine context)
+            quote-char (case engine
+                         :mysql "`"
+                         "\"")]
+        (append-sql! context quote-char)
+        (append-sql! context (case engine
+                               :h2 (u/upper-case-en part)
+                               part))
+        (append-sql! context quote-char)))))
 
 (defn -identifier!
   "Emit a (possibly qualified) identifier composed of multiple [[-identifier-component]]s."
@@ -258,11 +262,21 @@
 (defn- keyword!
   "Compile a keyword as a quoted and escaped identifier."
   [k context]
-  (when (qualified-keyword? k)
-    (-identifier! (namespace k) context)
-    (append-sql! context "."))
-  (if (= (name k) "*")
-    (append-sql! context "*")
+  (cond
+    (qualified-keyword? k)
+    (do
+      (-identifier! (namespace k) context)
+      (append-sql! context ".")
+      (-identifier! (name k) context))
+
+    ;; function keyword e.g. `:%now` or `%count.*`
+    (and (simple-keyword? k)
+         (str/starts-with? (name k) "%"))
+    (let [[f & args] (str/split (name k) #"\.")
+          f          (subs f 1)]
+      (compile! (into [(keyword f)] (map keyword) args) context))
+
+    :else
     (-identifier! (name k) context)))
 
 (defn- -equals! [sql nil-sql [x y] context]
@@ -358,7 +372,21 @@
     (:< :<= :> :>= :like :not-like)
     (-binary-operator! f args context)
 
-    (:lower :upper :concat :coalesce :count :sum :avg :min :max :distinct)
+    (:avg
+     :coalesce
+     :concat
+     :count
+     :current_database
+     :current_schema
+     :database
+     :distinct
+     :isnull
+     :lower
+     :max
+     :min
+     :now
+     :sum
+     :upper)
     (-simple-fn! f args context)))
 
 (defn- vector! [xs context]

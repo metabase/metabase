@@ -234,6 +234,29 @@
                             :where  [:= :model "Card"]
                             :for    :update} :postgres))))
 
+(deftest ^:parallel percent-keyword-niladic-function-test
+  (are [k sql] (= [(str "WHERE \"field\" = " sql)]
+                  (funnysql/compile {:where [:= :field k]} :postgres))
+    :%now              "now()"
+    :%current_schema   "current_schema()"
+    :%current_database "current_database()"
+    :%database         "database()"))
+
+(deftest ^:parallel percent-keyword-function-with-arg-test
+  (are [k sql] (= [(str "WHERE \"field\" = " sql)]
+                  (funnysql/compile {:where [:= :field k]} :postgres))
+    :%count.*                    "count(*)"
+    :%count.id                   "count(\"id\")"
+    :%lower.email                "lower(\"email\")"
+    :%lower.name                 "lower(\"name\")"
+    :%max.id                     "max(\"id\")"
+    :%max.started_at             "max(\"started_at\")"
+    :%min.date_joined            "min(\"date_joined\")"
+    :%min.executor_id            "min(\"executor_id\")"
+    :%avg.running_time           "avg(\"running_time\")"
+    :%sum.total_tokens           "sum(\"total_tokens\")"
+    :%isnull.last_edit_timestamp "isnull(\"last_edit_timestamp\")"))
+
 (deftest ^:parallel e2e-test
   (is (= ["SELECT \"X\", \"Y\" AS \"ALIAS\" FROM \"TABLE\" WHERE (\"FIELD\" = 100) AND (\"FIELD\" < ?) AND (\"TABLE\".\"FIELD\" IN (1, 2, 3))"
           "s"]
@@ -244,6 +267,13 @@
                                      [:< :field "s"]
                                      [:in :table.field [1 2 3]]]}
                            :h2))))
+
+(deftest ^:parallel star-keyword-test
+  (are [k expected] (= [expected]
+                       (funnysql/compile {:select [k]} :postgres))
+    :*       "SELECT *"
+    :table.* "SELECT \"table\".*"
+    :table/* "SELECT \"table\".*"))
 
 (deftest ^:parallel validate-identifier-test
   (testing "valid identifiers"
