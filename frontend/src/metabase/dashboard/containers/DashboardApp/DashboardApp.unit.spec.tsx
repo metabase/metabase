@@ -49,7 +49,10 @@ import {
   createMockDataset,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "metabase-types/api/mocks/query";
 
 registerVisualizations();
 
@@ -435,6 +438,36 @@ describe("DashboardApp ad-hoc dashboards", () => {
     );
 
     expect(await screen.findByText("saved dashboard")).toBeInTheDocument();
+  });
+
+  it("does not run an unsaved native tile until the user asks", async () => {
+    setupAdhoc({
+      ...definition,
+      dashcards: [
+        {
+          ...definition.dashcards[0],
+          title: "Raw orders",
+          dataset_query: createMockNativeDatasetQuery({ database: 1 }),
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Raw orders")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Here's where your results will appear"),
+    ).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("dataset-post")).toBe(false);
+
+    await userEvent.click(screen.getByRole("button", { name: "Run query" }));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("dataset-post")).toBe(true);
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Here's where your results will appear"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("offers to save a Metabot-generated dashboard and opens the saved dashboard", async () => {

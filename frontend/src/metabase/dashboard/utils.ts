@@ -7,6 +7,7 @@ import type { Location } from "metabase/router";
 import type { AdhocDashboardDefinition } from "metabase/urls";
 import {
   getAdhocDashboardEncodedDefinition,
+  isAdhocDashboardId,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
@@ -35,6 +36,7 @@ import type {
   DashCardDataMap,
   Dashboard,
   DashboardCard,
+  DashboardId,
   Database,
   Dataset,
   DatasetQuery,
@@ -46,6 +48,7 @@ import type {
   VirtualDashboardCard,
 } from "metabase-types/api";
 import { isVisualizerDashboardCard } from "metabase-types/guards/dashboard";
+import { isNativeDatasetQuery } from "metabase-types/guards/query";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -172,6 +175,19 @@ export function expandAdhocDashboard(dashId: string): AdhocDashboard {
       },
     })),
   };
+}
+
+export function isUnsavedNativeAdhocDashcard(
+  dashboardId: DashboardId | undefined,
+  dashcard: Pick<BaseDashboardCard, "card_id">,
+  card: Pick<Card, "dataset_query"> | undefined,
+): boolean {
+  return (
+    isAdhocDashboardId(dashboardId) &&
+    dashcard.card_id == null &&
+    card?.dataset_query != null &&
+    isNativeDatasetQuery(card.dataset_query)
+  );
 }
 
 export function expandInlineCard(card?: Card | VirtualCard) {

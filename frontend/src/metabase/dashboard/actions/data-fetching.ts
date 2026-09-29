@@ -33,6 +33,7 @@ import {
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
+  isUnsavedNativeAdhocDashcard,
 } from "metabase/dashboard/utils";
 import {
   paramFieldsFetched,
@@ -59,6 +60,7 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 import type {
   Card,
   CardId,
+  DashCardDataMap,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -511,10 +513,15 @@ export const fetchDashboardCardData =
     const selectedTabId = getSelectedTabId(getState());
     const dashboardLoadId = uuid();
     const loadingIds = getLoadingDashCards(getState()).loadingIds;
+    const dashcardData = getState().dashboard.dashcardData;
     const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
       selectedTabId,
-    ).filter(({ dashcard }) => !isVirtualDashCard(dashcard));
+    ).filter(
+      ({ dashcard }) =>
+        !isVirtualDashCard(dashcard) &&
+        !awaitsManualRun(dashboard.id, dashcard, dashcardData),
+    );
 
     let nonVirtualDashcardsToFetch = [];
     if (isRefreshing) {
@@ -586,6 +593,17 @@ export const fetchDashboardCardData =
     }
   };
 
+// like the query builder, an unsaved native query is never run on load
+// (#25675): the SQL comes straight from the URL, so the user has to run it
+const awaitsManualRun = (
+  dashboardId: DashboardId | undefined,
+  dashcard: DashboardCard,
+  dashcardData: DashCardDataMap,
+) =>
+  isQuestionDashCard(dashcard) &&
+  isUnsavedNativeAdhocDashcard(dashboardId, dashcard, dashcard.card) &&
+  getIn(dashcardData, [dashcard.id, dashcard.card.id]) == null;
+
 export const reloadDashboardCards =
   () => async (dispatch: Dispatch, getState: GetState) => {
     const dashboard = getDashboardComplete(getState());
@@ -594,8 +612,13 @@ export const reloadDashboardCards =
       return;
     }
 
+    const dashcardData = getState().dashboard.dashcardData;
     const reloadTasks = getAllDashboardCards(dashboard)
-      .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
+      .filter(
+        ({ dashcard }) =>
+          !isVirtualDashCard(dashcard) &&
+          !awaitsManualRun(dashboard.id, dashcard, dashcardData),
+      )
       .map(({ card, dashcard }) => async () => {
         await dispatch(
           // TODO: fix the return type of getAllDashboardCards to make sure

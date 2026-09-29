@@ -42,9 +42,9 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
-  NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
+import { isNativeDatasetQuery } from "metabase-types/guards/query";
 
 import { useSubmitMetabotSourceFeedbackMutation } from "../../api";
 
@@ -72,11 +72,6 @@ type SourceFeedbackTarget = Pick<
   MetabotSourceFeedback,
   "source_id" | "source_type"
 >;
-
-const isNativeDatasetQuery = (
-  datasetQuery: DatasetQuery,
-): datasetQuery is NativeDatasetQuery =>
-  "type" in datasetQuery && datasetQuery.type === "native";
 
 const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
   try {

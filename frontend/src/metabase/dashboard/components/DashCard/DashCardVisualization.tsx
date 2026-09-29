@@ -14,10 +14,12 @@ import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-respons
 import {
   getDashCardInlineValuePopulatedParameters,
   getDashcardData,
+  getLoadingDashCards,
 } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
   isDashcardAccessRestricted,
+  isUnsavedNativeAdhocDashcard,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -27,7 +29,10 @@ import { useNavigate } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { isVirtualDashCard } from "metabase/utils/dashboard";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
@@ -87,6 +92,7 @@ import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/Click
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
+import { RunNativeDashcardView } from "./RunNativeDashcardView";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type { DashCardOnChangeCardAndRunHandler } from "./types";
 import {
@@ -211,6 +217,12 @@ export function DashCardVisualization({
   );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
+  const isFetching = useSelector((state) =>
+    getLoadingDashCards(state).loadingIds.includes(dashcard.id),
+  );
+  const awaitsManualRun =
+    !isFetching &&
+    isUnsavedNativeAdhocDashcard(dashboard?.id, dashcard, question?.card());
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
@@ -585,9 +597,15 @@ export function DashCardVisualization({
       formatVisualizerClickObject(clicked, rawSeries, columnValuesMapping);
   }, [dashcard, rawSeries]);
 
-  const renderLoadingView = (loadingViewProps: LoadingViewProps) => (
-    <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
-  );
+  const renderLoadingView = (loadingViewProps: LoadingViewProps) =>
+    awaitsManualRun && isQuestionDashCard(dashcard) ? (
+      <RunNativeDashcardView dashcard={dashcard} />
+    ) : (
+      <DashCardLoadingView
+        {...loadingViewProps}
+        display={question?.display()}
+      />
+    );
 
   return (
     <div
