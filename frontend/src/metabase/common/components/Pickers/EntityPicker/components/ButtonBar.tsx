@@ -41,18 +41,7 @@ export const ButtonBar = ({
   }, [canConfirm, onConfirm, path]);
 
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.isComposing) {
-        return;
-      }
-      if (canConfirm && e.key === "Enter") {
-        handleConfirm();
-      }
-    };
-    document.addEventListener("keydown", handleKeyPress);
-    return () => {
-      document.removeEventListener("keydown", handleKeyPress);
-    };
+    return () => {};
   }, [handleConfirm, canConfirm]);
 
   const confirmText =
