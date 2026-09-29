@@ -34,9 +34,14 @@ Without it, the entry's own lists count, a candidate's results as removed and ev
 
 Each test's execution state on a mutant is killed, symptom kill, unconfirmed, unconfirmed symptom kill, errored, missed,
 or not run (selected, and not in `ran`), and only missed is a miss.
-The remaining side's result on a mutant is killed, missed, unresolved (only errored, unconfirmed or not run),
+The remaining side's result on a mutant is killed, missed, unresolved (no miss, and an errored or unconfirmed test),
 statically excluded (no remaining test ran it and a remaining layer excluded tests) or unmeasured at the head (no remaining test ran it).
-Its scope is selected when any remaining layer that has a result for the mutant has a selected scope.
+A kill in any remaining layer, or by a checker, makes it killed.
+Over a candidates file, every other result comes from the remaining layers named `*_head` alone,
+so a mutant that only other remaining layers missed is unmeasured at the head.
+Its scope is selected when any remaining layer that has a result for the mutant has a selected scope,
+counting only the `*_head` layers over a candidates file.
+Its text names the layers its kills and misses came from, and over a candidates file the other remaining layers' misses.
 A mutant's states are among four: caught by a removed test, missed by the selected remaining tests, statically excluded,
 and unmeasured at the head.
 
@@ -195,6 +200,7 @@ SYMPTOM_FIELDS = {"symptom_kills": "killed_by", "symptom_unconfirmed_by": "uncon
 TEST_FIELDS = ("killed_by", "unconfirmed_by", "errored", "ran")
 LIST_FIELDS = TEST_FIELDS + tuple(SYMPTOM_FIELDS) + ("selected",)
 CHECKERS = {"tsc": "type checker", "contract": "contract checker"}
+CHECKER_LAYERS = {name: layer for layer, name in CHECKERS.items()}
 LAYERS = ("tsc", "contract", "jest", "deftest", "e2e")
 ROLES = ("removed", "remaining", "reference")
 ALL_LAYERS = "all"
@@ -360,10 +366,14 @@ def revision_checks(layer, p, against):
         yield "production revision", p["base"], index
         if layer == "e2e" or layer.startswith("e2e_"):
             yield "test revision", p["tests_rev"], index
-    elif layer.endswith("_head"):
+    elif head_layer(layer):
         yield "production revision", p["base"], [against["head"]] if against["head"] else None
     else:
         yield "production revision", p["base"], [against["removed_at"]]
+
+
+def head_layer(name):
+    return name.endswith("_head")
 
 
 def read_layer_roles(meta, entries):
@@ -471,10 +481,11 @@ def equivalence_resolution(entry, killed, base):
     return found
 
 
-def load(path, run):
+def load(path, run, head_only=False):
     """The kill matrix mapped onto the run: per mutant and field, the ids of the run's tests and the ids of every other test.
 
     With layer roles, the run's tests count through the removed layers and every other test through the remaining layers.
+    With `head_only`, as over a candidates file, only a kill or the `*_head` layers decide the remaining side's result.
     """
     kills_file = read_kills_file(path)
     entries = kills_file["entries"]
@@ -548,7 +559,7 @@ def load(path, run):
         m["checker_kills"] = checked
         m["killed_by_others"] |= set(checked)
         m["ran_others"] |= set(checked)
-        m["remaining"] = remaining_side(m, [layer for layer in layers if layer["role"] != "removed"], by_base_key)
+        m["remaining"] = remaining_side(m, [layer for layer in layers if layer["role"] != "removed"], by_base_key, head_only)
         mutants[str(mid)] = m
     suspects = collections.Counter(m["suspect"] for m in mutants.values() if m["suspect"])
     return {
@@ -577,17 +588,24 @@ def load(path, run):
     }
 
 
-def remaining_side(m, layers, candidates):
+def remaining_side(m, layers, candidates, head_only=False):
     """What the remaining tests and checkers did on the mutant: a result, the scope it was measured at, and each test by its state.
 
-    The result is killed, missed, unresolved (only errored, unconfirmed or not run), statically excluded or unmeasured at the head.
+    The result is killed, missed, unresolved (no miss, and an errored or unconfirmed test), statically excluded
+    or unmeasured at the head.
+    A kill in any remaining layer, or by a checker, makes it killed.
+    With `head_only`, every other result, the scope and the tests in each state other than killed come from the `*_head` layers,
+    and the other layers' misses only go into the text.
     """
-    lists = {field: m[f"{field}_others"] for field in LIST_FIELDS}
-    groups = by_state(side_states(lists))
-    killed = sorted(groups["killed"] + groups["symptom kill"])
+    everywhere = side_states({field: m[f"{field}_others"] for field in LIST_FIELDS})
+    killed = sorted(t for t, state in everywhere.items() if state in ("killed", "symptom kill"))
+    deciding = [layer for layer in layers if head_layer(layer["name"])] if head_only else layers
+    elsewhere = [layer for layer in layers if not head_layer(layer["name"])] if head_only else []
+    groups = by_state(side_states({field: {t for layer in deciding for t in layer[field] if t not in candidates}
+                                   for field in LIST_FIELDS}))
     unconfirmed = sorted(groups["unconfirmed"] + groups["unconfirmed symptom kill"])
-    excluded = [x for layer in layers for x in layer["excluded"]]
-    scope = "selected" if any(layer["scope"] == "selected" for layer in layers) else "full" if layers else None
+    excluded = [x for layer in deciding for x in layer["excluded"]]
+    scope = "selected" if any(layer["scope"] == "selected" for layer in deciding) else "full" if deciding else None
     if killed:
         result = "killed"
     elif groups["missed"]:
@@ -605,8 +623,39 @@ def remaining_side(m, layers, candidates):
         "errored": groups["errored"], "unconfirmed_by": unconfirmed, "not_run": groups["not run"], "excluded": excluded,
         "layers": {layer["name"]: layer_counts(layer, candidates) for layer in layers},
     }
-    side["text"] = remaining_text(side)
+    killed_in = tally(layers, candidates, ("killed", "symptom kill"), killed)
+    killed_in.update(CHECKER_LAYERS[t] for t in killed if t in CHECKER_LAYERS)
+    missed_in = tally(deciding, candidates, ("missed",), groups["missed"])
+    missed_elsewhere = tally(elsewhere, candidates, ("missed",)) if result != "killed" else {}
+    side["text"] = remaining_text(side, killed_in, missed_in, missed_elsewhere, head_only)
     return side
+
+
+def kind_of(test_id):
+    """The kind of test an id names: e2e, jest, deftest, or unknown."""
+    spec, sep, _ = test_id.partition("::")
+    if not sep:
+        return "deftest" if re.fullmatch(r"[\w-]+(\.[\w-]+)+/[^\s/]+", test_id, re.ASCII) else "unknown"
+    if re.search(r"\.cy\.(spec\.)?[cm]?[jt]sx?$", spec):
+        return "e2e"
+    if re.search(r"\.(spec|test)\.[cm]?[jt]sx?$", spec):
+        return "jest"
+    return "unknown"
+
+
+def tally(layers, candidates, states, among=None):
+    """How many tests other than the candidates each layer gives one of the states, counting only those in `among` when given.
+
+    A layer counts under its name, and the one layer of a kills file without layer roles counts each test under its kind.
+    """
+    among = None if among is None else set(among)
+    counts = collections.Counter()
+    for layer in layers:
+        lists = {field: {t for t in layer[field] if t not in candidates} for field in LIST_FIELDS}
+        for t, state in side_states(lists).items():
+            if state in states and (among is None or t in among):
+                counts[kind_of(t) if layer["role"] is None else layer["name"]] += 1
+    return counts
 
 
 def layer_counts(layer, candidates):
@@ -617,25 +666,33 @@ def layer_counts(layer, candidates):
             **{state: counts[state] for state in TEST_STATES if counts[state]}, "excluded": len(layer["excluded"])}
 
 
-def remaining_text(side):
-    """The remaining side's result in words, with the tests that gave no result and the tests excluded."""
+def remaining_text(side, killed_in, missed_in, missed_elsewhere, at_head):
+    """The remaining side's result in words, with the layers its kills or misses came from, the tests that gave no result,
+    the tests excluded, and the misses in the remaining layers the result doesn't come from.
+    """
     tail = [f"{n} {what}" for n, what in (
         (len(side["errored"]), "errored"), (len(side["unconfirmed_by"]), "unconfirmed"),
         (len(side["not_run"]), "selected but not run"),
         (len(side["excluded"]) if side["result"] != "statically excluded" else 0, "excluded")) if n]
+    tail += [f"{n} missed in {layer}" for layer, n in sorted(missed_elsewhere.items())]
     selected = "selected " if side["scope"] == "selected" else ""
+    head = " at the head" if at_head else ""
     if side["result"] == "killed":
-        text = f"killed by {len(side['killed_by'])} {selected}remaining tests"
+        text = f"killed by {len(side['killed_by'])} {selected}remaining tests ({in_layers(killed_in)})"
     elif side["result"] == "missed":
-        text = f"missed by {side['missed']} {selected}remaining tests"
+        text = f"missed by {side['missed']} {selected}remaining tests ({in_layers(missed_in)})"
     elif side["result"] == "unresolved":
-        text = f"no result from the {selected}remaining tests"
+        text = f"no result from the {selected}remaining tests{head}"
     elif side["result"] == "statically excluded":
         reasons = sorted({"no reason given" if x["reason"] is None else str(x["reason"]) for x in side["excluded"]})
         text = f"statically excluded: {'; '.join(reasons)}"
     else:
-        text = "not run by any remaining test"
+        text = f"not run by any remaining test{head}"
     return ", ".join([text, *tail])
+
+
+def in_layers(counts):
+    return ", ".join(f"{layer} {n}" for layer, n in sorted(counts.items()))
 
 
 def removed_side(m, key_of):
@@ -1458,7 +1515,7 @@ def evaluate_candidates_file(kills_path, candidates_file, min_mutants=MIN_MUTANT
     accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path, acceptances_path)
     candidates = [types.SimpleNamespace(id=i, key=cid, base_key=cid, state=None, captured=False)
                   for i, cid in enumerate(candidates_file["tests"])]
-    kills = load(kills_path, types.SimpleNamespace(tests=candidates))
+    kills = load(kills_path, types.SimpleNamespace(tests=candidates), head_only=True)
     entries = kills_file["entries"]
     mutants = {}
     for mid, m in kills["mutants"].items():

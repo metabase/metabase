@@ -13,6 +13,10 @@ const TEST_LAYERS = ["jest", "deftest", "e2e"];
 const KEPT = ["keep", "provisional-keep"];
 const SYMPTOM_ONLY = "all symptom kills";
 const NO_CREDIT = ["unresolved", "reviewed equivalence", "scope decision"];
+const CHECKER_LAYERS = {
+  "type checker": "tsc",
+  "contract checker": "contract",
+};
 const COARSE_STRATA = {
   logic: "logic",
   "intra-frontend-wiring": "wiring",
@@ -45,15 +49,27 @@ const testIds = (groups) => TEST_LAYERS.flatMap((layer) => groups[layer] ?? []);
  */
 function remainingSide(m, position) {
   const counts = Object.fromEntries(TEST_STATES.map((s) => [s, 0]));
-  for (const layerCounts of Object.values(m.test_states ?? {})) {
-    for (const [s, n] of Object.entries(layerCounts)) {
-      counts[s] += n;
-    }
+  const byLayer = {};
+  for (const [layer, layerCounts] of Object.entries(m.test_states ?? {})) {
+    byLayer[layer] = { ...layerCounts };
   }
   for (const [id, s] of Object.entries(m.e2e_states ?? {})) {
     if (position.has(id)) {
-      counts[s] -= 1;
+      byLayer.e2e[s] -= 1;
     }
+  }
+  const killedIn = {};
+  const missedIn = {};
+  for (const [layer, layerCounts] of Object.entries(byLayer)) {
+    for (const [s, n] of Object.entries(layerCounts)) {
+      counts[s] += n;
+    }
+    killedIn[layer] =
+      (layerCounts.killed ?? 0) + (layerCounts["symptom kill"] ?? 0);
+    missedIn[layer] = layerCounts.missed ?? 0;
+  }
+  for (const name of m.checker_kills ?? []) {
+    killedIn[CHECKER_LAYERS[name]] = 1;
   }
   const killed =
     counts.killed + counts["symptom kill"] + (m.checker_kills ?? []).length;
@@ -89,14 +105,21 @@ function remainingSide(m, position) {
     ),
   ].sort();
   const text = {
-    killed: `killed by ${killed} ${selected}remaining tests`,
-    missed: `missed by ${counts.missed} ${selected}remaining tests`,
+    killed: `killed by ${killed} ${selected}remaining tests (${inLayers(killedIn)})`,
+    missed: `missed by ${counts.missed} ${selected}remaining tests (${inLayers(missedIn)})`,
     unresolved: `no result from the ${selected}remaining tests`,
     "statically excluded": `statically excluded: ${reasons.join("; ")}`,
     "unmeasured at the head": "not run by any remaining test",
   }[result];
   return { result, scope, text: [text, ...tail].join(", ") };
 }
+
+const inLayers = (counts) =>
+  Object.entries(counts)
+    .filter(([, n]) => n > 0)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([layer, n]) => `${layer} ${n}`)
+    .join(", ");
 
 /**
  * For a candidate that killed none of its sampled mutants, with extreme ones among them, what it shows, as kills.py's sample_reading() gives it.

@@ -1624,20 +1624,24 @@ PR_KILLS = {
 }
 PR_CANDIDATES = [D1, D2, D3, D4]
 PR_REMAINING = {
-    "selected-miss": ("missed", "selected", "missed by 3 selected remaining tests, 1 excluded",
+    "selected-miss": ("missed", "selected", "missed by 3 selected remaining tests (e2e_head 2, jest_head 1), 1 excluded",
                       ["caught by a removed test", "missed by the selected remaining tests"]),
-    "error-only": ("unresolved", "selected", "no result from the selected remaining tests, 1 errored", ["caught by a removed test"]),
-    "unconfirmed": ("unresolved", "selected", "no result from the selected remaining tests, 1 unconfirmed", ["caught by a removed test"]),
-    "unrun": ("unmeasured at the head", "selected", "not run by any remaining test, 2 selected but not run",
+    "error-only": ("unresolved", "selected", "no result from the selected remaining tests at the head, 1 errored",
+                   ["caught by a removed test"]),
+    "unconfirmed": ("unresolved", "selected", "no result from the selected remaining tests at the head, 1 unconfirmed",
+                    ["caught by a removed test"]),
+    "unrun": ("unmeasured at the head", "selected", "not run by any remaining test at the head, 2 selected but not run",
               ["caught by a removed test", "unmeasured at the head"]),
-    "partial-run": ("missed", "selected", "missed by 1 selected remaining tests, 1 errored, 1 selected but not run",
+    "partial-run": ("missed", "selected", "missed by 1 selected remaining tests (e2e_head 1), 1 errored, 1 selected but not run",
                     ["caught by a removed test", "missed by the selected remaining tests"]),
     "excluded": ("statically excluded", "selected", "statically excluded: no e2e test at the head prints a document",
                  ["caught by a removed test", "statically excluded"]),
-    "head-unmeasured": ("unmeasured at the head", None, "not run by any remaining test", ["caught by a removed test", "unmeasured at the head"]),
-    "jest-kill": ("killed", "full", "killed by 1 remaining tests", ["caught by a removed test"]),
-    "reference-kill": ("unmeasured at the head", None, "not run by any remaining test", ["caught by a removed test", "unmeasured at the head"]),
-    "kept-in-base": ("missed", "full", "missed by 1 remaining tests", ["missed by the selected remaining tests"]),
+    "head-unmeasured": ("unmeasured at the head", None, "not run by any remaining test at the head",
+                        ["caught by a removed test", "unmeasured at the head"]),
+    "jest-kill": ("killed", "full", "killed by 1 remaining tests (jest_head 1)", ["caught by a removed test"]),
+    "reference-kill": ("unmeasured at the head", None, "not run by any remaining test at the head",
+                       ["caught by a removed test", "unmeasured at the head"]),
+    "kept-in-base": ("missed", "full", "missed by 1 remaining tests (e2e_head 1)", ["missed by the selected remaining tests"]),
 }
 
 
@@ -1693,14 +1697,14 @@ class PullRequestKills(unittest.TestCase):
 
     def test_a_keep_names_the_scope_its_unique_kills_rest_on(self):
         expected = {
-            D1: ("keep", "selected", "unique kills; head-unmeasured: not run by any remaining test; "
-                                     "selected-miss: missed by 3 selected remaining tests, 1 excluded"),
-            D2: ("keep", "unmeasured", "unique kills; error-only: no result from the selected remaining tests, 1 errored; "
-                                       "unconfirmed: no result from the selected remaining tests, 1 unconfirmed"),
+            D1: ("keep", "selected", "unique kills; head-unmeasured: not run by any remaining test at the head; "
+                                     "selected-miss: missed by 3 selected remaining tests (e2e_head 2, jest_head 1), 1 excluded"),
+            D2: ("keep", "unmeasured", "unique kills; error-only: no result from the selected remaining tests at the head, 1 errored; "
+                                       "unconfirmed: no result from the selected remaining tests at the head, 1 unconfirmed"),
             D3: ("keep", "selected", "unique kills; excluded: statically excluded: no e2e test at the head prints a document; "
-                                     "partial-run: missed by 1 selected remaining tests, 1 errored, 1 selected but not run; "
-                                     "unrun: not run by any remaining test, 2 selected but not run"),
-            D4: ("keep", "unmeasured", "unique kills; reference-kill: not run by any remaining test"),
+                                     "partial-run: missed by 1 selected remaining tests (e2e_head 1), 1 errored, 1 selected but not run; "
+                                     "unrun: not run by any remaining test at the head, 2 selected but not run"),
+            D4: ("keep", "unmeasured", "unique kills; reference-kill: not run by any remaining test at the head"),
         }
         self.assertEqual({c: (r["verdict"], r["scope"], r["reason"]) for c, r in self.rows.items()}, expected)
         self.assertEqual(self.rows[D1]["unique_kills"], {"logic": ["head-unmeasured", "selected-miss"]})
@@ -1746,10 +1750,10 @@ class PullRequestKills(unittest.TestCase):
                                             f"revision {PR_HEAD[:11]}: 21 layer results match, kills file sha256 "), lines[2])
         self.assertEqual(lines[3], "Kills file format 2, layer roles: e2e_base removed, e2e_head remaining, jest_base reference, "
                                    "jest_head remaining")
-        self.assertIn(f"\n  {D1}\n      unique kills: logic 2\n      scope selected: head-unmeasured: not run by any remaining test; ",
-                      done.stdout)
+        self.assertIn(f"\n  {D1}\n      unique kills: logic 2\n      scope selected: head-unmeasured: "
+                      "not run by any remaining test at the head; ", done.stdout)
         self.assertIn("\nCaught by a removed test and killed by no remaining test\n  logic error-only: no result from the selected "
-                      f"remaining tests, 1 errored\n      {D2}\n  boundary-wiring excluded: statically excluded: ", done.stdout)
+                      f"remaining tests at the head, 1 errored\n      {D2}\n  boundary-wiring excluded: statically excluded: ", done.stdout)
         self.assertIn("\n  10 with reach taken from `ran`, since a candidates file reads no index\n4 candidates\n", done.stdout)
         self.assertNotEqual(both.returncode, 0)
         self.assertIn("a candidates file with `removed_at` must be the only --candidates", both.stderr)
@@ -1772,6 +1776,88 @@ class PullRequestKills(unittest.TestCase):
                 json.dump({"tests": [D1]}, f)
             with self.assertRaisesRegex(ValueError, "has no `removed_at`"):
                 kills.read_candidates_file(path)
+
+
+HEAD_ROLES = PR_ROLES | {"jest_base": "remaining"}
+HEAD_KILLS = {
+    "base-miss-only": pr_mutant("logic", e2e_base=layer_result([D1], [D1]),
+                                jest_base=layer_result([], [J1, J2], scope="selected", selected=[J1, J2])),
+    "head-e2e-miss": pr_mutant("logic", e2e_base=layer_result([D1], [D1]),
+                               e2e_head=head_result(ran=[H1, H2], scope="selected", selected=[H1, H2]), jest_base=layer_result([], [J1])),
+    "base-kill": pr_mutant("logic", e2e_base=layer_result([D2], [D2]),
+                           e2e_head=head_result(ran=[H1], scope="selected", selected=[H1]), jest_base=layer_result([J1], [J1])),
+    "head-errored": pr_mutant("logic", e2e_base=layer_result([D2], [D2]),
+                              e2e_head=head_result(ran=[H1], errored=[H1], scope="selected", selected=[H1]),
+                              jest_base=layer_result([], [J1, J2])),
+    "head-unconfirmed": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([D2], [D2]),
+                                  jest_head=head_result(ran=[J1], unconfirmed_by=[J1]), jest_base=layer_result([], [J2])),
+}
+HEAD_REMAINING = {
+    "base-miss-only": ("unmeasured at the head", None, "not run by any remaining test at the head, 2 missed in jest_base",
+                       ["caught by a removed test", "unmeasured at the head"]),
+    "head-e2e-miss": ("missed", "selected", "missed by 2 selected remaining tests (e2e_head 2), 1 missed in jest_base",
+                      ["caught by a removed test", "missed by the selected remaining tests"]),
+    "base-kill": ("killed", "selected", "killed by 1 selected remaining tests (jest_base 1)", ["caught by a removed test"]),
+    "head-errored": ("unresolved", "selected", "no result from the selected remaining tests at the head, 1 errored, 2 missed in jest_base",
+                     ["caught by a removed test"]),
+    "head-unconfirmed": ("unresolved", "full", "no result from the remaining tests at the head, 1 unconfirmed, 1 missed in jest_base",
+                         ["caught by a removed test"]),
+}
+
+
+class HeadLayersDecide(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.result = evaluate_pr(format_2(HEAD_KILLS, roles=HEAD_ROLES), [D1, D2])
+        cls.mutants = cls.result["mutants"]
+
+    def test_only_a_head_layer_can_find_a_mutant_missed_and_the_text_names_the_layers(self):
+        for mid, (result, scope, text, states) in HEAD_REMAINING.items():
+            with self.subTest(mid):
+                m = self.mutants[mid]
+                self.assertEqual((m["remaining"]["result"], m["remaining"]["scope"], m["remaining"]["text"], m["states"]),
+                                 (result, scope, text, states))
+
+    def test_the_lists_come_from_the_head_layers_and_every_remaining_layer_is_counted(self):
+        side = self.mutants["base-miss-only"]["remaining"]
+        self.assertEqual({k: side[k] for k in ("killed_by", "missed", "errored", "not_run", "excluded")},
+                         {"killed_by": [], "missed": 0, "errored": [], "not_run": [], "excluded": []})
+        self.assertEqual(side["layers"], {"jest_base": {"role": "remaining", "scope": "selected", "selected": 2, "missed": 2,
+                                                        "excluded": 0}})
+        self.assertEqual(self.mutants["head-errored"]["remaining"]["errored"], [H1])
+        self.assertEqual(self.mutants["base-kill"]["remaining"]["killed_by"], [J1])
+        self.assertEqual(self.result["mutant_states"]["states"], {
+            "caught by a removed test": 5, "missed by the selected remaining tests": 1, "statically excluded": 0,
+            "unmeasured at the head": 1,
+        })
+
+    def test_a_keep_ends_in_each_ground_mutants_result_at_the_head(self):
+        rows = self.result["candidates"]
+        self.assertEqual({c: (r["verdict"], r["scope"], r["reason"]) for c, r in rows.items()}, {
+            D1: ("keep", "selected", "unique kills; base-miss-only: not run by any remaining test at the head, 2 missed in jest_base; "
+                                     "head-e2e-miss: missed by 2 selected remaining tests (e2e_head 2), 1 missed in jest_base"),
+            D2: ("keep", "unmeasured", "unique kills; head-errored: no result from the selected remaining tests at the head, 1 errored, "
+                                       "2 missed in jest_base; head-unconfirmed: no result from the remaining tests at the head, "
+                                       "1 unconfirmed, 1 missed in jest_base"),
+        })
+
+    @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+    def test_over_the_index_a_miss_in_any_remaining_layer_is_a_miss(self):
+        path = write_json(format_2(HEAD_KILLS, roles=HEAD_ROLES))
+        try:
+            result = kills.evaluate(INDEX, path, [D1, D2], allow_provenance_mismatch=True)
+        finally:
+            os.unlink(path)
+        remaining = {mid: (m["remaining"]["result"], m["remaining"]["scope"], m["remaining"]["text"])
+                     for mid, m in result["mutants"].items()}
+        self.assertEqual(remaining, {
+            "base-miss-only": ("missed", "selected", "missed by 2 selected remaining tests (jest_base 2)"),
+            "head-e2e-miss": ("missed", "selected", "missed by 3 selected remaining tests (e2e_head 2, jest_base 1)"),
+            "base-kill": ("killed", "selected", "killed by 1 selected remaining tests (jest_base 1)"),
+            "head-errored": ("missed", "selected", "missed by 2 selected remaining tests (jest_base 2), 1 errored"),
+            "head-unconfirmed": ("missed", "full", "missed by 1 remaining tests (jest_base 1), 1 unconfirmed"),
+        })
+        self.assertEqual(result["mutant_states"]["states"]["unmeasured at the head"], 0)
 
 
 def shared_kills(n, stratum="logic", candidate=D5, killer=J1, **extra):
@@ -1821,7 +1907,7 @@ class DeleteGates(unittest.TestCase):
         self.assertEqual(self.verdict(unconfirmed), ("provisional-keep", "unconfirmed unique kills"))
         self.assertEqual(self.verdict(remaining_confirmed), ("delete", "no unique kill"))
         self.assertEqual(self.verdict(remaining_unconfirmed),
-                         ("keep", "unique kills; own: no result from the remaining tests, 1 unconfirmed"))
+                         ("keep", "unique kills; own: no result from the remaining tests at the head, 1 unconfirmed"))
 
 
 SUSPECT_PRIOR = {"files": {PR_FILE: {"module": "fe:documents", "score": 0.1}}}
@@ -1985,7 +2071,7 @@ def index_meta():
 LEDGER_SCOPE_KILLS = format_2({
     "errored-remaining": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, errored=[REMAINING]),
     "unconfirmed-remaining": mutant("intra-frontend-wiring", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]),
-    "selected": mutant("logic", [PAIRED], [PAIRED, REMAINING], L_PAIRED) | {"layer_results": {"e2e": {
+    "selected": mutant("logic", [PAIRED], [PAIRED, REMAINING, JEST], L_PAIRED) | {"layer_results": {"e2e": {
         "scope": "selected", "selected": [PAIRED, REMAINING, BOOKMARK_MODEL],
         "excluded": [{"test": BOOKMARK_COLLECTION, "reason": "reaches no collection page"}]}}},
     "suspect-unresolved": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)),
@@ -2013,8 +2099,8 @@ class LedgerScopeAndSuspects(unittest.TestCase):
         self.assertEqual({c: (rows[c]["verdict"], rows[c]["scope"], rows[c]["reason"]) for c in (UNIQUE, PAIRED)}, {
             UNIQUE: ("keep", "unmeasured", "unique kills; errored-remaining: no result from the remaining tests, 1 errored; "
                                            "unconfirmed-remaining: no result from the remaining tests, 1 unconfirmed"),
-            PAIRED: ("keep", "selected", "unique kills; selected: missed by 1 selected remaining tests, 1 selected but not run, "
-                                         "1 excluded"),
+            PAIRED: ("keep", "selected", "unique kills; selected: missed by 2 selected remaining tests (e2e 1, jest 1), "
+                                         "1 selected but not run, 1 excluded"),
         })
         self.assertEqual(rows[UNIT]["equivalent_suspects"], {
             "suspect-incomplete": "unresolved", "suspect-reviewed": "reviewed equivalence", "suspect-scoped": "scope decision",
@@ -2048,7 +2134,7 @@ class LedgerScopeAndSuspects(unittest.TestCase):
 
     def test_misses_leave_out_unconfirmed_results(self):
         self.assertEqual(self.joined.ledger["mutants"]["unconfirmed-remaining"]["misses"], 0)
-        self.assertEqual(self.joined.ledger["mutants"]["selected"]["misses"], 1)
+        self.assertEqual(self.joined.ledger["mutants"]["selected"]["misses"], 2)
 
 
 def sampled_kills(candidate):
