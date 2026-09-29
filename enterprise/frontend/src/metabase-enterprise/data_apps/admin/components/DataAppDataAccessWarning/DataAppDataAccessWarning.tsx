@@ -13,27 +13,22 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type {
+  DataAppGroupPermissionWarning,
   DataAppMissingTable,
-  DataAppUserPermissionWarning,
 } from "metabase-types/api";
 
 import S from "./DataAppDataAccessWarning.module.css";
 
 interface Props {
-  warning: DataAppUserPermissionWarning;
-  userName: string;
+  warning: DataAppGroupPermissionWarning;
+  groupName: string;
 }
 
-export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
+export const DataAppDataAccessWarning = ({ warning, groupName }: Props) => {
   const label = t`Missing data access`;
 
   return (
-    <HoverCard
-      position="bottom-end"
-      openDelay={150}
-      closeDelay={100}
-      shadow="md"
-    >
+    <HoverCard position="bottom-end" shadow="md">
       <HoverCard.Target>
         <UnstyledButton
           className={S.button}
@@ -59,7 +54,7 @@ export const DataAppDataAccessWarning = ({ warning, userName }: Props) => {
       >
         <Stack gap="lg">
           <Text size="sm">
-            {t`${userName} doesn’t have permission to view these tables used in this app:`}
+            {t`${groupName} doesn’t have permission to view these tables used in this app:`}
           </Text>
 
           <Stack

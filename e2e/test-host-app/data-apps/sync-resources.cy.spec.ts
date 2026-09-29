@@ -1,19 +1,6 @@
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addUserToGroup,
-  buildDataAppHostApp,
-  createDataAppApiKey,
-  createSecondDataApp,
-  dataAppHostAppRoot,
-  dataAppPermissionGroupId,
-  declareDataAppQueries,
-  removeDataAppQueryDeclaration,
-  resetDataAppHostAppSources,
-  setDataAppCollectionAccess,
-  syncDataAppResources,
-} from "e2e/support/helpers";
-import type { Card, DataApp } from "metabase-types/api";
+import type { Card, Collection, DataApp } from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -24,7 +11,7 @@ const APP_SLUG = "vite-6-data-app-host-app";
 /** The fields these specs read off a card the app collection holds. */
 type AppCard = { id: number; name: string; collection_id: number | null };
 
-const APP_ROOT = () => dataAppHostAppRoot();
+const APP_ROOT = () => H.dataAppHostAppRoot();
 const LOCKFILE = () => `${APP_ROOT()}/resources_metadata.json`;
 const QUERIES_FILE = () => `${APP_ROOT()}/queries/orders.query.ts`;
 const MANIFEST_FILE = () => `${APP_ROOT()}/data_app.yaml`;
@@ -42,7 +29,7 @@ allowed_hosts:
  */
 describe("Embedding SDK: data-app sync-resources (queries)", () => {
   const resetHostAppSources = () => {
-    resetDataAppHostAppSources();
+    H.resetDataAppHostAppSources();
     cy.writeFile(MANIFEST_FILE(), AUTHORED_MANIFEST);
   };
 
@@ -53,7 +40,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
     // The query and actions specs share a checked-in host app, so start clean.
     resetHostAppSources();
-    createDataAppApiKey().as("apiKey");
+    H.createDataAppApiKey().as("apiKey");
   });
 
   after(() => {
@@ -62,7 +49,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
   const sync = () =>
     cy.get<string>("@apiKey").then((apiKey) => {
-      syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
+      H.syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
         expect(error, "sync-resources failed").to.eq(null);
         expect(ok).to.eq(true);
       });
@@ -70,7 +57,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
   const syncExpectingRefusal = (message: string) =>
     cy.get<string>("@apiKey").then((apiKey) => {
-      syncDataAppResources(apiKey, APP_ROOT()).should(({ ok, error }) => {
+      H.syncDataAppResources(apiKey, APP_ROOT()).should(({ ok, error }) => {
         expect(ok, "sync-resources should have refused").to.eq(false);
         expect(error).to.contain(message);
       });
@@ -91,13 +78,15 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
   /** Declares one query and syncs it, handing back the card Metabase created. */
   const syncOneQuery = () => {
-    declareDataAppQueries(APP_ROOT(), [{ name: "Orders", tableId: ORDERS_ID }]);
+    H.declareDataAppQueries(APP_ROOT(), [
+      { name: "Orders", tableId: ORDERS_ID },
+    ]);
     sync();
-    return savedQuestions().then(([card]) => cy.wrap(card, { log: false }));
+    return savedQuestions().should("have.length", 1).its("0");
   };
 
   it("names the definition whose query Metabase could not resolve", () => {
-    declareDataAppQueries(APP_ROOT(), [{ name: "Orders", tableId: 999999 }]);
+    H.declareDataAppQueries(APP_ROOT(), [{ name: "Orders", tableId: 999999 }]);
 
     syncExpectingRefusal("Could not resolve queries/orders.query.ts:Orders");
 
@@ -105,7 +94,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   it("creates the saved question, writes its ID back, and re-syncs without changes", () => {
-    declareDataAppQueries(APP_ROOT(), [
+    H.declareDataAppQueries(APP_ROOT(), [
       { name: "Orders", tableId: ORDERS_ID, limit: 5 },
     ]);
 
@@ -133,7 +122,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
 
   it("deletes the saved question when its declaration is removed", () => {
     syncOneQuery().then(() => {
-      removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+      H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
       sync();
 
       savedQuestions().should("have.length", 0);
@@ -154,7 +143,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
           "the sync wrote the copy's ID into the source",
         ).to.contain(`savedQuestionSourceId: ${card.id}`);
 
-        removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+        H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
         sync();
         savedQuestions().should("have.length", 0);
 
@@ -181,7 +170,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       cy.readFile(QUERIES_FILE()).then((authored: string) => {
         cy.request("PUT", `/api/card/${card.id}`, { archived: true });
 
-        removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+        H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
         sync();
         cy.readFile(LOCKFILE()).then((lockfile) => {
           expect(lockfile.queries, "the entry is dropped").to.have.length(0);
@@ -338,7 +327,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   it("restores savedQuestionSourceId from the lockfile when the source loses it", () => {
     syncOneQuery().then((card) => {
       // Rewriting the declaration drops the injected ID, as a bad merge would.
-      declareDataAppQueries(APP_ROOT(), [
+      H.declareDataAppQueries(APP_ROOT(), [
         { name: "Orders", tableId: ORDERS_ID },
       ]);
 
@@ -379,7 +368,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   it("leaves a trashed card in the trash when its declaration is removed", () => {
     syncOneQuery().then((card) => {
       cy.request("PUT", `/api/card/${card.id}`, { archived: true });
-      removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+      H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
 
       sync();
 
@@ -399,7 +388,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
           cy.request("PUT", `/api/card/${card.id}`, {
             collection_id: collection.id,
           });
-          removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+          H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
 
           syncExpectingRefusal(`Move card ${card.id} back to`);
           cy.request(`/api/card/${card.id}`)
@@ -435,37 +424,38 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("the app's lifecycle", () => {
-    it("takes the collection and the group with it when the app is removed", () => {
-      syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-            cy.request("DELETE", `/api/apps/${APP_SLUG}`);
+    it("removes the app's resources and preserves its assigned group", () => {
+      syncOneQuery().as("card");
+      H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+      cy.request<DataApp>(`/api/apps/${APP_SLUG}`).its("body").as("app");
 
-            // Nothing is left for a former viewer to reach.
-            cy.request({
-              url: `/api/collection/${app.resource_collection_id}`,
-              failOnStatusCode: false,
-            })
-              .its("status")
-              .should("eq", 404);
-            cy.request({
-              url: `/api/permissions/group/${groupId}`,
-              failOnStatusCode: false,
-            })
-              .its("status")
-              .should("eq", 404);
-            cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
-              .its("status")
-              .should("eq", 404);
-          });
-        });
+      cy.request("DELETE", `/api/apps/${APP_SLUG}`);
+
+      cy.get<number>("@groupId").then((groupId) => {
+        cy.request(`/api/permissions/group/${groupId}`)
+          .its("body.id")
+          .should("eq", groupId);
+      });
+
+      cy.get<DataApp>("@app").then(({ resource_collection_id }) => {
+        cy.request({
+          url: `/api/collection/${resource_collection_id}`,
+          failOnStatusCode: false,
+        })
+          .its("status")
+          .should("eq", 404);
+      });
+      cy.get<AppCard>("@card").then(({ id }) => {
+        cy.request({ url: `/api/card/${id}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 404);
       });
     });
 
     // Everything the CLI drives is superuser-gated, starting with the draft it
     // asks for first, so a key that is not an admin's gets nowhere.
     it("refuses to synchronize at all for a key that is not an admin's", () => {
-      declareDataAppQueries(APP_ROOT(), [
+      H.declareDataAppQueries(APP_ROOT(), [
         { name: "Orders", tableId: ORDERS_ID },
       ]);
 
@@ -473,7 +463,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         name: `data-app-sync-e2e-non-admin-${Date.now()}`,
         group_id: USER_GROUPS.COLLECTION_GROUP,
       }).then(({ body: key }) => {
-        syncDataAppResources(key.unmasked_key, APP_ROOT()).should(
+        H.syncDataAppResources(key.unmasked_key, APP_ROOT()).should(
           ({ ok, error }) => {
             expect(ok, "sync-resources should have refused").to.eq(false);
             expect(error).to.contain("403");
@@ -495,51 +485,52 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   describe("two apps on one instance", () => {
     const OTHER_SLUG = "sync-resources-second-app";
 
-    it("keeps each app's copies in its own collection, reachable only by its own group", () => {
-      const otherRoot = createSecondDataApp(OTHER_SLUG);
+    it("keeps each app's copies in its own collection, reachable only by its assigned groups", () => {
+      const otherRoot = H.createSecondDataApp(OTHER_SLUG);
 
-      syncOneQuery().then((card) => {
-        declareDataAppQueries(otherRoot, [
-          { name: "OtherOrders", tableId: ORDERS_ID },
-        ]);
-        cy.get<string>("@apiKey").then((apiKey) => {
-          syncDataAppResources(apiKey, otherRoot).then(({ error }) => {
-            expect(error, "second app sync failed").to.eq(null);
-          });
+      syncOneQuery().as("card");
+      H.declareDataAppQueries(otherRoot, [
+        { name: "OtherOrders", tableId: ORDERS_ID },
+      ]);
+      cy.get<string>("@apiKey")
+        .then((apiKey) => H.syncDataAppResources(apiKey, otherRoot))
+        .then(({ error }) => {
+          expect(error, "second app sync failed").to.eq(null);
         });
 
-        cy.request(`/api/apps/${OTHER_SLUG}`).then(({ body: otherApp }) => {
-          dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-            expect(
-              otherApp.resource_collection_id,
-              "each app gets its own collection",
-            ).not.to.eq(null);
-            expect(otherApp.permission_group_id).not.to.eq(groupId);
+      cy.request<DataApp>(`/api/apps/${OTHER_SLUG}`).its("body").as("otherApp");
+      H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+      cy.get<number>("@groupId").then((groupId) =>
+        H.addUserToGroup(groupId, USERS.normal.email),
+      );
 
-            // Joining one app's group must not reach the other app's copy.
-            addUserToGroup(groupId, USERS.normal.email);
+      cy.get<DataApp>("@otherApp")
+        .then(({ resource_collection_id }) => {
+          expect(
+            resource_collection_id,
+            "the second app has its own collection",
+          ).to.be.a("number");
+          return cy.request(
+            `/api/collection/${resource_collection_id}/items?models=card`,
+          );
+        })
+        .its("body.data")
+        .should("have.length", 1)
+        .its("0")
+        .as("otherCard");
 
-            cy.request(
-              `/api/collection/${otherApp.resource_collection_id}/items?models=card`,
-            ).then(({ body }) => {
-              const otherCard = body.data[0];
-              expect(otherCard.id, "the apps hold different cards").not.to.eq(
-                card.id,
-              );
+      cy.get<AppCard>("@card").then(({ id }) => {
+        cy.get<AppCard>("@otherCard").its("id").should("not.equal", id);
+      });
 
-              cy.signInAsNormalUser();
-              cy.request(`/api/card/${card.id}`)
-                .its("body.id")
-                .should("eq", card.id);
-              cy.request({
-                url: `/api/card/${otherCard.id}`,
-                failOnStatusCode: false,
-              })
-                .its("status")
-                .should("eq", 403);
-            });
-          });
-        });
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) => {
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id);
+      });
+      cy.get<AppCard>("@otherCard").then(({ id }) => {
+        cy.request({ url: `/api/card/${id}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403);
       });
     });
   });
@@ -547,7 +538,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   describe("the build guard", () => {
     /** `cy.exec` reports the command's output; vite prints this only on success. */
     const expectBuildToSucceed = () =>
-      buildDataAppHostApp().should((result) => {
+      H.buildDataAppHostApp().should((result) => {
         expect(`${result.stdout}${result.stderr}`).to.contain("built in");
       });
 
@@ -558,11 +549,11 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
         expectBuildToSucceed();
 
         // A hand-edited declaration no longer matches its lockfile entry.
-        declareDataAppQueries(APP_ROOT(), [
+        H.declareDataAppQueries(APP_ROOT(), [
           { name: "Orders", tableId: ORDERS_ID, limit: 3 },
         ]);
 
-        buildDataAppHostApp().should((result) => {
+        H.buildDataAppHostApp().should((result) => {
           const output = `${result.stdout}${result.stderr}`;
           expect(output, "the build is refused").to.contain(
             "is not synchronized",
@@ -578,24 +569,27 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
   });
 
   describe("permissions", () => {
-    /** Puts the normal user in the app's group, as granting app access does. */
-    const joinAppGroup = () =>
-      dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-        addUserToGroup(groupId, USERS.normal.email);
-        return cy.wrap(groupId, { log: false });
-      });
+    beforeEach(() => {
+      syncOneQuery().as("card");
+    });
+
+    const joinAppGroup = () => {
+      H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+      return cy
+        .get<number>("@groupId")
+        .then((groupId) => H.addUserToGroup(groupId, USERS.normal.email));
+    };
 
     it("does not let a viewer modify the copy it can read", () => {
-      syncOneQuery().then((card) => {
-        joinAppGroup();
+      joinAppGroup();
 
-        cy.signInAsNormalUser();
-        cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) => {
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id);
 
-        // The grant is collection read, never readwrite.
         cy.request({
           method: "PUT",
-          url: `/api/card/${card.id}`,
+          url: `/api/card/${id}`,
           body: { name: "Renamed by a viewer" },
           failOnStatusCode: false,
         })
@@ -603,7 +597,7 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
           .should("eq", 403);
         cy.request({
           method: "DELETE",
-          url: `/api/card/${card.id}`,
+          url: `/api/card/${id}`,
           failOnStatusCode: false,
         })
           .its("status")
@@ -611,112 +605,115 @@ describe("Embedding SDK: data-app sync-resources (queries)", () => {
       });
     });
 
-    // The app collection is server-owned, so each sync reasserts exclusive
-    // access — including over a grant an admin made deliberately.
-    it("takes back access an admin granted another group on the app collection", () => {
-      syncOneQuery().then((card) => {
-        cy.request(`/api/apps/${APP_SLUG}`).then(({ body: app }) => {
-          setDataAppCollectionAccess(app.resource_collection_id, "read");
-
-          cy.signInAsNormalUser();
-          cy.request(`/api/card/${card.id}`)
-            .its("body.id")
-            .should("eq", card.id);
-
-          cy.signInAsAdmin();
-          sync();
-
-          cy.signInAsNormalUser();
-          cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
-            .its("status")
-            .should("eq", 403);
-        });
+    // Sync reasserts access for assigned groups, including over an admin's manual grant.
+    it("takes back access an admin granted an unassigned group on the app collection", () => {
+      cy.request<DataApp>(`/api/apps/${APP_SLUG}`).its("body").as("app");
+      cy.get<DataApp>("@app").then(({ resource_collection_id }) => {
+        if (resource_collection_id === null) {
+          throw new Error("The synchronized app has no resource collection");
+        }
+        H.setDataAppCollectionAccess(resource_collection_id, "read");
       });
-    });
 
-    it("grants the group nothing beyond the app's own collection", () => {
-      cy.request("POST", "/api/collection", { name: "Private" }).then(
-        ({ body: collection }) => {
-          // The normal user belongs to groups that can read new collections, so
-          // close this one: the claim under test is that joining the app group
-          // grants the app's collection and nothing else.
-          setDataAppCollectionAccess(collection.id, "none");
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id),
+      );
 
-          H.createQuestion({
-            name: "Private question",
-            query: { "source-table": ORDERS_ID },
-            collection_id: collection.id,
-          }).then(({ body: unrelated }) => {
-            syncOneQuery().then((card) => {
-              joinAppGroup();
+      cy.signInAsAdmin();
+      sync();
 
-              cy.signInAsNormalUser();
-              cy.request(`/api/card/${card.id}`)
-                .its("body.id")
-                .should("eq", card.id);
-              cy.request({
-                url: `/api/card/${unrelated.id}`,
-                failOnStatusCode: false,
-              })
-                .its("status")
-                .should("eq", 403);
-            });
-          });
-        },
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy
+          .request({ url: `/api/card/${id}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403),
       );
     });
 
-    it("leaves the group with nothing once the declaration is removed", () => {
-      syncOneQuery().then((card) => {
-        joinAppGroup();
+    it("grants the group nothing beyond the app's own collection", () => {
+      cy.request<Collection>("POST", "/api/collection", { name: "Private" })
+        .its("body")
+        .as("privateCollection");
+      cy.get<Collection>("@privateCollection").then(({ id }) =>
+        H.setDataAppCollectionAccess(id, "none"),
+      );
+      cy.get<Collection>("@privateCollection")
+        .then(({ id }) =>
+          H.createQuestion({
+            name: "Private question",
+            query: { "source-table": ORDERS_ID },
+            collection_id: id,
+          }),
+        )
+        .its("body")
+        .as("unrelatedCard");
+      joinAppGroup();
 
-        cy.signInAsNormalUser();
-        cy.request(`/api/card/${card.id}`).its("body.id").should("eq", card.id);
-
-        cy.signInAsAdmin();
-        removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
-        sync();
-
-        // The copy is deleted with its declaration, so there is nothing left to
-        // read — the group's collection grant now covers an empty collection.
-        cy.signInAsNormalUser();
-        cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id),
+      );
+      cy.get<Card>("@unrelatedCard").then(({ id }) =>
+        cy
+          .request({ url: `/api/card/${id}`, failOnStatusCode: false })
           .its("status")
-          .should("eq", 404);
-      });
+          .should("eq", 403),
+      );
     });
 
-    // The copy exists so an app's viewers can read it: they are given the app's
-    // own group, which holds read on the app's collection and nothing else.
-    it("lets the app's group read the copy while the rest of the instance cannot", () => {
-      syncOneQuery().then((card) => {
-        dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-          cy.signInAsNormalUser();
-          cy.request({ url: `/api/card/${card.id}`, failOnStatusCode: false })
-            .its("status")
-            .should("eq", 403);
+    it("leaves the group with no copy to read once the declaration is removed", () => {
+      joinAppGroup();
 
-          cy.signInAsAdmin();
-          addUserToGroup(groupId, USERS.normal.email);
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id),
+      );
 
-          cy.signInAsNormalUser();
-          cy.request(`/api/card/${card.id}`)
-            .its("body.id")
-            .should("eq", card.id);
-        });
-      });
+      cy.signInAsAdmin();
+      H.removeDataAppQueryDeclaration(APP_ROOT(), "Orders");
+      sync();
+
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy
+          .request({ url: `/api/card/${id}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 404),
+      );
     });
 
-    // `read-check-data-app` 403s a non-member, and the app view turns that status
-    // into its own empty state instead of loading the bundle.
+    it("lets members of an assigned group read the copy while other users cannot", () => {
+      H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy
+          .request({ url: `/api/card/${id}`, failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403),
+      );
+
+      cy.signInAsAdmin();
+      cy.get<number>("@groupId").then((groupId) =>
+        H.addUserToGroup(groupId, USERS.normal.email),
+      );
+
+      cy.signInAsNormalUser();
+      cy.get<AppCard>("@card").then(({ id }) =>
+        cy.request(`/api/card/${id}`).its("body.id").should("eq", id),
+      );
+    });
+
     it("tells a viewer outside the group that the app is not theirs to open", () => {
-      syncOneQuery().then(() => {
-        cy.signInAsNormalUser();
-        cy.visit(`/apps/${APP_SLUG}`);
+      cy.signInAsNormalUser();
+      H.openDataApp(APP_SLUG);
 
-        cy.findByText("You don’t have access to this data app").should("exist");
-        cy.get("iframe").should("not.exist");
-      });
+      H.main()
+        .findByText("You don’t have access to this data app")
+        .should("be.visible");
+      cy.get("iframe").should("not.exist");
     });
   });
 });

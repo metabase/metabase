@@ -1,11 +1,10 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ALL_USERS_GROUP_ID,
   COLLECTION_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  type DataApp,
   DataPermission,
   DataPermissionValue,
   type FieldsPermissions,
@@ -20,7 +19,7 @@ const APP_NAME = "legacy-permission-test";
 
 // Exercise real queries: preserving the permission graph alone does not prove that data still loads.
 describe("scenarios > data apps > legacy view data permissions", () => {
-  describe("preserves 'no self-service' access level when a user is added to data app group", () => {
+  describe("preserves 'no self-service' access level when their group is assigned to a data app", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -66,7 +65,7 @@ describe("scenarios > data apps > legacy view data permissions", () => {
       // every table is no self-service
       setViewDataPermissions(DataPermissionValue.LEGACY_NO_SELF_SERVICE);
 
-      assertAccessSurvivesAppMembership();
+      assertAccessSurvivesGroupAssignment();
     });
 
     it("with some tables being unrestricted", () => {
@@ -96,12 +95,12 @@ describe("scenarios > data apps > legacy view data permissions", () => {
         setViewDataPermissions(permissions);
       });
 
-      assertAccessSurvivesAppMembership();
+      assertAccessSurvivesGroupAssignment();
     });
   });
 });
 
-function assertAccessSurvivesAppMembership() {
+function assertAccessSurvivesGroupAssignment() {
   cy.log("legacy access should let the no data user load the saved question");
   cy.signIn("nodata");
   H.visitQuestion("@questionId");
@@ -112,20 +111,13 @@ function assertAccessSurvivesAppMembership() {
   );
 
   cy.signInAsAdmin();
-  cy.request<DataApp>("POST", `/api/apps/${APP_NAME}/draft`)
-    .its("body")
-    .as("app");
+  cy.request("POST", `/api/apps/${APP_NAME}/draft`);
 
-  cy.log("assign the no data user to the data app group");
-  cy.get<DataApp>("@app").then(({ permission_group_id }) => {
-    if (permission_group_id === null) {
-      throw new Error("data app must have a permission group");
-    }
-
-    H.addUserToGroup(permission_group_id, USERS.nodata.email);
+  cy.request("POST", `/api/apps/${APP_NAME}/groups`, {
+    group_ids: [COLLECTION_GROUP_ID],
   });
 
-  cy.log("the same saved question must still load after app membership");
+  cy.log("the same saved question must still load after group assignment");
   cy.signIn("nodata");
   H.visitQuestion("@questionId");
 

@@ -37,9 +37,9 @@
   (testing "the /embed/apps/:name entrypoint is served only with :data-apps-preview; without it it
             responds nil so routing falls through to the generic embed handler — exactly as if data
             apps did not exist"
-    ;; Stub the raw shell so the test needs no built frontend HTML; the feature gate lives in
-    ;; `index/data-app` itself, which is what we're exercising here.
-    (with-redefs [index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
+    ;; Stub authorization and HTML rendering to isolate the feature gate.
+    (with-redefs [index/check-data-app-access! (constantly nil)
+                  index/data-app-shell (fn [_req respond _raise] (respond {:status 200 :body "DATA-APP"}))]
       (let [request {:uri "/embed/apps/sales" :metabase-user-id (mt/user->id :rasta)}]
         ;; `enable-data-apps?` also requires the EE code to be present (`config/ee-available?`), so the
         ;; served path exists only on EE; on OSS the entrypoint always falls through.

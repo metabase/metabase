@@ -1,15 +1,9 @@
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addUserToGroup,
-  createDataAppApiKey,
-  dataAppIframe,
-  dataAppPermissionGroupId,
-  mockDataApp,
-  syncDataAppResources,
-} from "e2e/support/helpers";
+import type { Dataset, DatasetQuery } from "metabase-types/api";
 
 const { H } = cy;
+
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
@@ -74,111 +68,102 @@ describe("scenarios > data apps > sync-resources in production", () => {
     H.activateToken("bleeding-edge");
 
     restoreAuthoredFixture();
-    createDataAppApiKey().as("apiKey");
+    H.createDataAppApiKey().as("apiKey");
+
+    cy.get<string>("@apiKey")
+      .then((apiKey) => H.syncDataAppResources(apiKey, APP_ROOT()))
+      .then(({ ok, error }) => {
+        expect(error, "sync-resources failed").to.eq(null);
+        expect(ok).to.eq(true);
+      });
+
+    cy.readFile(LOCKFILE())
+      .its("queries")
+      .should("have.length", 1)
+      .its("0.savedQuestionSourceId")
+      .should("be.a", "number")
+      .as("cardId");
   });
 
   after(() => {
     restoreAuthoredFixture();
   });
 
-  /** Synchronizes the fixture and returns the card the app must now address. */
-  const syncApp = () =>
-    cy.get<string>("@apiKey").then((apiKey) =>
-      syncDataAppResources(apiKey, APP_ROOT()).then(({ ok, error }) => {
-        expect(error, "sync-resources failed").to.eq(null);
-        expect(ok).to.eq(true);
-
-        return cy
-          .readFile(`${APP_ROOT()}/resources_metadata.json`)
-          .then((lockfile) => {
-            const cardId = lockfile.queries?.[0]?.savedQuestionSourceId;
-
-            if (typeof cardId !== "number") {
-              throw new Error("The sync wrote no query entry to the lockfile.");
-            }
-
-            return cy.wrap(cardId, { log: false });
-          });
-      }),
+  it("runs the synchronized card and preserves the authored query's results", () => {
+    cy.get<number>("@cardId").then((cardId) =>
+      cy
+        .readFile(QUERY_FILE())
+        .should("contain", `savedQuestionSourceId: ${cardId}`),
     );
 
-  it("runs the synchronized card rather than the authored table query", () => {
-    syncApp().then((cardId) => {
-      cy.readFile(QUERY_FILE()).should(
-        "contain",
-        `savedQuestionSourceId: ${cardId}`,
-      );
+    // The dev preview runs the authored query; production must return the same rows.
+    cy.request<Dataset>("POST", "/api/dataset", {
+      type: "query",
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.USER_ID, null]],
+      },
+    })
+      .its("body")
+      .as("authoredResult");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-      cy.visit(`/apps/${APP_SLUG}`);
+    cy.get<number>("@cardId")
+      .then((cardId) =>
+        cy.request<Dataset>("POST", `/api/card/${cardId}/query`),
+      )
+      .its("body")
+      .as("publishedResult");
 
-      dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("synced-app-total", { timeout: 30000 }).should(
-          ($total) => {
-            expect(Number($total.text())).to.be.greaterThan(0);
-          },
-        );
-      });
-
-      // The proof that production took the synchronized path: the query runs
-      // against the copied card, not the table the declaration names.
-      cy.wait("@dataset").then(({ request }) => {
-        const [stage] = request.body.stages ?? [];
-        expect(stage?.["source-card"], "runs the synchronized card").to.eq(
-          cardId,
-        );
-        expect(stage?.["source-table"], "not the authored table").to.be
-          .undefined;
-      });
+    cy.get<Dataset>("@authoredResult").then(({ data: { rows } }) => {
+      expect(rows, "authored results").not.to.be.empty;
+      cy.get<Dataset>("@publishedResult")
+        .its("data.rows")
+        .should("deep.equal", rows);
     });
-  });
 
-  // The swap is only safe if both sides return the same thing. The dev preview
-  // runs the authored query unswapped; production runs the card it was published
-  // as. A deployed app cannot run the authored query at all, so the two sides are
-  // captured separately rather than side by side.
-  it("returns the same rows from the published card as from the authored query", () => {
-    syncApp().then((cardId) => {
-      cy.request("POST", "/api/dataset", {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.USER_ID, null]],
-        },
-      }).then(({ body: authored }) => {
-        cy.request("POST", `/api/card/${cardId}/query`).then(
-          ({ body: published }) => {
-            expect(published.data.rows).to.deep.eq(authored.data.rows);
-            expect(
-              published.data.rows[0][1],
-              "a match on two empty results would be vacuous",
-            ).to.be.greaterThan(0);
-          },
-        );
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+    H.openDataApp(APP_SLUG);
+
+    H.dataAppIframe(APP_DISPLAY_NAME)
+      .findByTestId("synced-app-total", { timeout: 30000 })
+      .should("be.visible")
+      .and(($total) => {
+        expect(Number($total.text())).to.be.greaterThan(0);
       });
-    });
-  });
 
-  it("serves the app to a member of its permission group", () => {
-    syncApp().then(() => {
-      dataAppPermissionGroupId(APP_SLUG).then((groupId) => {
-        addUserToGroup(groupId, USERS.normal.email);
-
-        cy.signInAsNormalUser();
-        mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
-        cy.visit(`/apps/${APP_SLUG}`);
-
-        dataAppIframe(APP_DISPLAY_NAME).within(() => {
-          cy.findByTestId("synced-app-total", { timeout: 30000 }).should(
-            ($total) => {
-              expect(Number($total.text())).to.be.greaterThan(0);
-            },
-          );
+    cy.wait("@dataset").its("request.body").as("appQuery");
+    cy.get<number>("@cardId").then((cardId) => {
+      cy.get<DatasetQuery>("@appQuery")
+        .its("stages")
+        .should("have.length", 1)
+        .its("0")
+        .should((stage) => {
+          expect(stage).to.have.property("source-card", cardId);
+          expect(stage).not.to.have.property("source-table");
         });
-      });
     });
+  });
+
+  it("runs the synchronized query for a member of an assigned group", () => {
+    H.assignDataAppTestGroup(APP_SLUG).as("groupId");
+    cy.get<number>("@groupId").then((groupId) =>
+      H.addUserToGroup(groupId, USERS.normal.email),
+    );
+
+    cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
+    H.openDataApp(APP_SLUG);
+
+    cy.wait("@dataset");
+    H.dataAppIframe(APP_DISPLAY_NAME)
+      .findByTestId("synced-app-total", { timeout: 30000 })
+      .should("be.visible")
+      .and(($total) => {
+        expect(Number($total.text())).to.be.greaterThan(0);
+      });
   });
 });

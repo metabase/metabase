@@ -75,6 +75,13 @@
   "The magic-group type of the \"Data Analysts\" magic group."
   "data-analyst")
 
+(defn group-display-name
+  "The group's display name, with internal membership explicit when tenants are enabled."
+  [{:keys [magic_group_type name]} using-tenants?]
+  (if (= magic_group_type all-users-magic-group-type)
+    (if using-tenants? (tru "All internal users") (tru "All Users"))
+    name))
+
 (def ^{:arglists '([])} data-analyst
   "Fetch the `Data Analysts` permissions group"
   (magic-group data-analyst-magic-group-type))

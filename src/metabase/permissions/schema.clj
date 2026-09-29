@@ -173,8 +173,7 @@
    [:name              {:optional true} [:maybe :string]]
    [:entity_id         {:optional true} [:maybe :string]]
    [:magic_group_type  {:optional true} [:maybe [:or :keyword :string]]]
-   [:is_tenant_group   {:optional true} [:maybe :boolean]]
-   [:is_data_app_group {:optional true} [:maybe :boolean]]])
+   [:is_tenant_group   {:optional true} [:maybe :boolean]]])
 
 (mr/def ::permissions-group-membership
   "A PermissionsGroupMembership as selected from the app DB: every column of `:permissions_group_membership`."

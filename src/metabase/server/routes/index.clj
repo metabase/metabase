@@ -144,6 +144,12 @@
                  (seq query-string) (str "?" query-string))]
     (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
 
+(premium-features/defenterprise check-data-app-access!
+  "Authorize the data app before serving its HTML entry point."
+  metabase-enterprise.data-apps.entry-point
+  [_request]
+  nil)
+
 (defn data-app
   "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
@@ -155,4 +161,8 @@
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else                                      (data-app-shell request respond raise)))
+    :else (try
+            (check-data-app-access! request)
+            (data-app-shell request respond raise)
+            (catch Throwable e
+              (raise e)))))
