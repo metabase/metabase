@@ -10,6 +10,7 @@ No test run reads this folder. It's data plus the scripts that built it. It live
 - `bugs/INDEX.jsonl` has one line per record, with the fields you'd filter on.
 - `bugs/<issue>/rebuilt/` holds a mutant rebuilt on a recent master, for entries whose original mutant stopped applying or reintroduced the wrong behaviour.
 - Everything else in `bugs/<issue>/` is from the first pass over the corpus in July 2026 and is kept as it was: the original mutant (`inverse.patch`, `mutation.patch` or `reconstruction.patch`), `witness.patch` when a unit test was written to catch it, and the agent reports. `record.yaml` is the file to read.
+- `docs/july-study.md` describes how the first pass in July built its entries and what it found.
 - `scripts/` has the scripts and agent instructions that built the July entries.
 - `generators/` has the scripts that plant synthetic mutants and run mutants against the unit suites.
 
