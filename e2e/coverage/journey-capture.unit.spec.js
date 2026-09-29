@@ -15,6 +15,7 @@ import {
 import jacoco from "./jacoco";
 import {
   assertionChains,
+  attemptTestIds,
   checkSteps,
   firedBranches,
   subtractBaselines,
@@ -492,6 +493,32 @@ describe("assertionChains", () => {
       [3, [1]],
       [5, [0]],
       [6, []],
+    ]);
+  });
+});
+
+describe("attemptTestIds", () => {
+  it("should give the nth test of a spec with a repeated title the suffix [n]", () => {
+    const spec = "e2e/test/scenarios/filters/filter.cy.spec.js";
+    const entry = {
+      spec,
+      tests: [
+        { title: "loop", attempt: 0 },
+        { title: "loop", attempt: 1 },
+        { title: "other", attempt: 0 },
+        { title: "loop", attempt: 0 },
+        { title: "loop", attempt: 1 },
+        { title: "loop", attempt: 0 },
+      ],
+    };
+
+    expect(attemptTestIds(entry)).toEqual([
+      `${spec}::loop`,
+      `${spec}::loop`,
+      `${spec}::other`,
+      `${spec}::loop [2]`,
+      `${spec}::loop [2]`,
+      `${spec}::loop [3]`,
     ]);
   });
 });

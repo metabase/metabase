@@ -514,8 +514,11 @@ function* shardRecords(dir, source, shardTimings) {
     });
     let k = 0;
     for (const entry of controlFinals) {
+      const occurrences = new Map();
       for (const test of entry.tests) {
-        control.set(`${entry.spec}\u0000${test.title}`, {
+        const occurrence = occurrences.get(test.title) ?? 0;
+        occurrences.set(test.title, occurrence + 1);
+        control.set(`${entry.spec}\u0000${test.title}\u0000${occurrence}`, {
           test,
           net: controlNet[k],
         });
@@ -777,7 +780,9 @@ function* shardRecords(dir, source, shardTimings) {
         );
       }
 
-      const other = control.get(`${spec}\u0000${test.title}`);
+      const other = control.get(
+        `${spec}\u0000${test.title}\u0000${occurrence}`,
+      );
       if (other) {
         const controlEvents = other.test.events ?? [];
         const controlPath = buildPath(controlEvents).tokens;

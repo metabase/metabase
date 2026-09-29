@@ -939,6 +939,76 @@ class JointDeletion(unittest.TestCase):
         self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
 
 
+class Ordinals(unittest.TestCase):
+    SPEC = "e2e/test/scenarios/filters/filter.cy.spec.js"
+    TITLE = "scenarios > question > filter should convert negative filter to custom expression (metabase#14880)"
+    FIRST = f"{SPEC}::{TITLE}"
+    SECOND = f"{FIRST} [2]"
+    ALONE = UNIQUE
+    LOCATION = fn_location("frontend/src/metabase/querying/filters/utils.ts", "negate", 12, 2)
+
+    def test_a_title_stands_for_every_index_test_with_it(self):
+        index_tests = [
+            {"id": self.FIRST, "spec": self.SPEC, "title": self.TITLE},
+            {"id": self.SECOND, "spec": self.SPEC, "title": self.TITLE},
+            {"id": self.ALONE, "spec": UNIQUE.split("::")[0], "title": UNIQUE.split("::", 1)[1]},
+        ]
+        self.assertEqual(kills.ordinal_members(index_tests, [self.FIRST, self.SECOND, self.ALONE, ABSENT]), {
+            self.FIRST: [self.FIRST, self.SECOND],
+            self.SECOND: [self.SECOND],
+            self.ALONE: [self.ALONE],
+            ABSENT: [ABSENT],
+        })
+
+    def test_merged_tests_pass_only_when_all_of_them_passed(self):
+        tests = {self.FIRST: {"state": "passed", "keys": [3, 1]}, self.SECOND: {"state": "failed", "keys": [2, 3]}}
+        members = {self.FIRST: [self.FIRST, self.SECOND], self.SECOND: [self.SECOND], ABSENT: [ABSENT]}
+        self.assertEqual(kills.merge_ordinals(tests, members), {
+            self.FIRST: {"state": "failed", "keys": [1, 2, 3]},
+            self.SECOND: {"state": "failed", "keys": [2, 3]},
+        })
+
+    def evaluate(self, second_state):
+        """Verdicts for the title, with a mutant that only its second test reaches, over a stub of reach.mjs."""
+        kills_matrix = {"negate": mutant("logic", [REMAINING], [self.FIRST, REMAINING], self.LOCATION)}
+        reach = {
+            "sha": "8317274709c", "runs": ["36482017221"],
+            "tests": {self.FIRST: {"state": "passed", "keys": [1]}, self.SECOND: {"state": second_state, "keys": [2]}},
+            "locations": {"negate": {"resolved": [{"file": self.LOCATION["file"], "keys": 1, "notes": []}],
+                                     "reach": [self.SECOND], "reach_by_basis": {"subtraction": [self.SECOND]}}},
+        }
+        asked = []
+
+        def index_reach(index_dir, test_ids, locations, repo=None, sha=None):
+            asked.extend(test_ids)
+            return reach
+
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "tests.json"), "w") as f:
+                json.dump([{"id": i, "spec": self.SPEC, "title": self.TITLE} for i in (self.FIRST, self.SECOND)], f)
+            kills_file = os.path.join(d, "kills.json")
+            with open(kills_file, "w") as f:
+                json.dump(kills_matrix, f)
+            with mock.patch.object(kills, "index_reach", index_reach):
+                result = kills.evaluate(d, kills_file, [self.FIRST], 1, [])
+        self.assertEqual(asked, [self.FIRST, self.SECOND])
+        return result
+
+    def test_a_title_reaches_what_either_of_its_tests_reached(self):
+        result = self.evaluate("passed")
+        self.assertEqual(result["ordinals"], {self.FIRST: [self.FIRST, self.SECOND]})
+        self.assertEqual(result["mutants"]["negate"]["candidates_reaching"], 1)
+        row = result["candidates"][self.FIRST]
+        self.assertEqual((row["state"], row["qualifying_mutants"], row["qualifying_basis"]),
+                         ("passed", {"logic": 1}, {"subtraction": ["negate"]}))
+        self.assertIn("1 candidates each stand for several index tests that share their title", kills.report(result))
+
+    def test_a_title_whose_second_test_failed_is_unmeasured(self):
+        row = self.evaluate("failed")["candidates"][self.FIRST]
+        self.assertEqual((row["state"], row["verdict"], row["reason"]),
+                         ("failed", "unmeasured", "failed in the capture run, so its reached code is incomplete"))
+
+
 @unittest.skipUnless(INDEX and all(os.path.isfile(p) for p in (REAL_KILLS, REAL_CANDIDATES, REAL_PRIOR)),
                      "needs JOURNEY_LOOKUP_INDEX and the corpus files under JOURNEY_LOCAL_DIR")
 class RealData(unittest.TestCase):

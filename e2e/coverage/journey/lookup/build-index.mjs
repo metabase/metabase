@@ -232,27 +232,20 @@ for (const run of runs) {
       fnmap[relative(file)] ??= fns;
     }
     const net = reader.subtractBaselines(shard);
-    const rawByKey = new Map();
-    for (const entry of shard.tests) {
-      for (const test of entry.tests) {
-        rawByKey.set(
-          `${entry.spec}\u0000${test.title}\u0000${test.attempt}`,
-          test,
-        );
-      }
-    }
-    // Group attempts per test and keep the last passing one, or the last one when none passed.
     const byTest = new Map();
-    for (const attempt of net) {
-      const id = `${attempt.spec}::${attempt.title}`;
-      const list = byTest.get(id) ?? [];
-      list.push(attempt);
-      byTest.set(id, list);
+    let k = 0;
+    for (const entry of shard.tests) {
+      reader.attemptTestIds(entry).forEach((id, i) => {
+        const attempts = byTest.get(id) ?? [];
+        attempts.push({ net: net[k], raw: entry.tests[i] });
+        byTest.set(id, attempts);
+        k += 1;
+      });
     }
+    // Keep each test's last passing attempt, or its last one when none passed.
     for (const [id, attempts] of byTest) {
-      attempts.sort((a, b) => a.attempt - b.attempt);
-      const passing = attempts.filter((a) => a.state === "passed");
-      const chosen = passing.at(-1) ?? attempts.at(-1);
+      const passing = attempts.filter((a) => a.net.state === "passed");
+      const { net: chosen, raw } = passing.at(-1) ?? attempts.at(-1);
       const existing = tests.get(id);
       if (isRerun) {
         // The rerun only replaces tests that had no passing attempt in the full run.
@@ -265,9 +258,6 @@ for (const run of runs) {
       ) {
         continue;
       }
-      const raw = rawByKey.get(
-        `${chosen.spec}\u0000${chosen.title}\u0000${chosen.attempt}`,
-      );
       tests.set(id, {
         id,
         spec: chosen.spec,

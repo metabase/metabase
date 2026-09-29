@@ -154,6 +154,29 @@ function classNames(shard, dump) {
 }
 
 /**
+ * The test id of each attempt in a spec entry, in order: `<spec>::<title>`, with ` [n]` on the nth test of the spec with that title.
+ * Tests that share a title run one after the other, so an attempt whose number doesn't go up starts the next of them.
+ */
+export function attemptTestIds(entry) {
+  const open = new Map();
+  const counts = new Map();
+  return entry.tests.map((test) => {
+    let current = open.get(test.title);
+    if (!current || test.attempt <= current.attempt) {
+      const n = (counts.get(test.title) ?? 0) + 1;
+      counts.set(test.title, n);
+      current = {
+        id: `${entry.spec}::${test.title}${n > 1 ? ` [${n}]` : ""}`,
+        attempt: test.attempt,
+      };
+      open.set(test.title, current);
+    }
+    current.attempt = test.attempt;
+    return current.id;
+  });
+}
+
+/**
  * Removes from each test's sets whatever any attempt of the chosen baselines fired.
  * Empty lists give the raw sets.
  */

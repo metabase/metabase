@@ -438,7 +438,7 @@ node e2e/coverage/journey-capture.mjs <run dir> [--subtract] [--baselines <name,
 
 It prints, per shard: counts, recording errors, the step consistency check, the timing comparison against `tests-control/` and against `--compare`, and the backend baselines. `<run dir>` can also be a single shard directory.
 
-As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()`, `compareTiming()`, `firedBranches()` (an attempt's branch arms as `file#branch:arm` keys) and `assertionChains()` (each assert event with the events of its chain). It reads schema 1 to 3 artifacts. Subtraction is per shard, because every shard has its own backend:
+As a library it exports `shardDirs()`, `loadShard()`, `iterateRun()` (one shard at a time), `subtractBaselines()`, `checkSteps()`, `compareTiming()`, `firedBranches()` (an attempt's branch arms as `file#branch:arm` keys), `assertionChains()` (each assert event with the events of its chain) and `attemptTestIds()` (each attempt's test id, with ` [n]` on the nth test of a spec that repeats a title). It reads schema 1 to 3 artifacts. Subtraction is per shard, because every shard has its own backend:
 
 - frontend functions: drop functions the chosen baselines fired (default `coverage-baseline`, both rounds)
 - frontend branch arms: drop arms the same baselines ran

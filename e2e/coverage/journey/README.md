@@ -15,7 +15,7 @@ An e2e test is `<spec path>::<full title>`, where the full title is Mocha's `ful
 e2e/test/scenarios/question/saved.cy.spec.js::scenarios > question > saved should duplicate a saved question into a collection
 ```
 
-When a spec has two tests with the same full title, the pipeline keys the second one `<id> [2]`, the third `<id> [3]`, and so on. A kills file uses the id without the suffix, which matches every test with that title.
+When a spec has two tests with the same full title, the pipeline and the index key the second one `<id> [2]`, the third `<id> [3]`, and so on, in the order they ran, which is their order in the spec. A kills file uses the id without the suffix, which matches every test with that title.
 
 In a kills file, a jest test is `<spec path>::<jest fullName>` and a Clojure test is `<namespace>/<var>`.
 
@@ -238,6 +238,7 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 - **Reach:** a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`, in any form from [Locations](#locations). A candidate reaches the mutant when it ran a function or class the location resolves to, so reach is per function where the pipeline's is per file. A `file` with nothing else means the whole file, as in the pipeline. No candidate reaches a location that resolves to nothing.
 - **Basis:** reach of either [basis](#basis) counts, and each candidate's `qualifying_basis` lists its located qualifying mutants under the basis of its reach, so a verdict that rests on inferred reach shows it. The pipeline's reach is always `subtraction`.
 - **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
+- **Repeated titles:** a candidate id without a suffix stands for every index test with its spec and title. It reaches what any of them reached, and it passed in the capture when all of them passed. `ordinals` in the output lists the candidates that stand for more than one test, with their index ids.
 - **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
 
 It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
@@ -397,7 +398,7 @@ The other two steps are optional. Without `lines.json`, backend matching is by v
 | File                | Content                                                                                                       |
 | ------------------- | ------------------------------------------------------------------------------------------------------------- |
 | `meta.json`         | runs, captured sha and its `appBase`, counts                                                                   |
-| `tests.json`        | per test: id, spec, title, run, shard, attempt, state, passing assertion count, and optionally `loadedApp` and `madeRequest`, with `loadAsserts` and `requestAsserts`, the passing assertions from the first step cut after each, or null when no cut holds one, and `pages`, the paths of its top-window page loads. See [Basis](#basis) |
+| `tests.json`        | per test: id (with ` [n]` on the nth test of a spec that repeats a title), spec, title, run, shard, attempt, state, passing assertion count, and optionally `loadedApp` and `madeRequest`, with `loadAsserts` and `requestAsserts`, the passing assertions from the first step cut after each, or null when no cut holds one, and `pages`, the paths of its top-window page loads. See [Basis](#basis) |
 | `keys.json`         | the keys (`fe:<file>#<fnIndex>` or `be:<class>`) with offsets into `postings.bin`                              |
 | `postings.bin`      | per key, `uint32` pairs: test index, and 1 + assertions after the first cut holding the key (0 when no cut held it) |
 | `fnmap.json`        | Istanbul function names and positions per file                                                                 |

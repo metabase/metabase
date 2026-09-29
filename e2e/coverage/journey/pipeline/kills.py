@@ -86,6 +86,10 @@ As a command, it takes the candidates' reached code from a reach index instead o
                    [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
                    [--joint-check-report-only]
 
+The index keys the nth test of a spec with a repeated title `<spec>::<title> [n]`, and the kill matrix only knows `<spec>::<title>`,
+so a candidate id stands for every index test with its spec and title. Its reach is the union of theirs,
+it passed when they all passed, and the result lists those tests under `ordinals`.
+
 There a mutant's location is its `locations` list, its `location`, or its own `file`, `fn`, `line`, `column`, `ns` and `var`,
 in any form lookup.mjs takes, and a candidate reaches the mutant when it ran a function or class the location resolves to.
 That reach has basis subtraction when the index measured it, and basis baseline when it is inferred for code in every test's baseline.
@@ -667,6 +671,27 @@ def index_reach(index_dir, test_ids, locations, repo=None, sha=None):
     return json.loads(done.stdout)
 
 
+def ordinal_members(index_tests, candidate_ids):
+    """Per candidate id, the ids of the index tests with its spec and title, or the id itself when there are none."""
+    by_title = collections.defaultdict(list)
+    for t in index_tests:
+        by_title[f"{t['spec']}::{t['title']}"].append(t["id"])
+    return {cid: by_title.get(cid) or [cid] for cid in candidate_ids}
+
+
+def merge_ordinals(tests, members):
+    """Each candidate's state and reached keys from those of its index tests: passed when every one passed, else the first other state."""
+    merged = {}
+    for cid, ids in members.items():
+        found = [tests[i] for i in ids if i in tests]
+        if not found:
+            continue
+        states = [t["state"] for t in found]
+        keys = found[0]["keys"] if len(found) == 1 else sorted(set().union(*(t["keys"] for t in found)))
+        merged[cid] = {"state": next((st for st in states if st != "passed"), "passed"), "keys": keys}
+    return merged
+
+
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
              repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR,
              callers_path=None):
@@ -674,9 +699,16 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     candidate_ids = list(dict.fromkeys(candidate_ids))
     with open(kills_path) as f:
         raw = json.load(f)
+    with open(os.path.join(index_dir, "tests.json")) as f:
+        index_tests = json.load(f)
+    members = ordinal_members(index_tests, candidate_ids)
+    owners = collections.defaultdict(list)
+    for cid, ids in members.items():
+        for i in ids:
+            owners[i].append(cid)
     locations = {str(mid): mutant_locations(entry) for mid, entry in raw.items()}
-    reach = index_reach(index_dir, candidate_ids, {mid: locs for mid, locs in locations.items() if locs}, repo, sha)
-    in_index = reach["tests"]
+    reach = index_reach(index_dir, list(owners), {mid: locs for mid, locs in locations.items() if locs}, repo, sha)
+    in_index = merge_ordinals(reach["tests"], members)
     # A candidate missing from the index has state None.
     candidates = [
         types.SimpleNamespace(id=i, key=cid, base_key=cid, state=in_index[cid]["state"] if cid in in_index else None)
@@ -691,10 +723,10 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
         resolved = reach["locations"].get(mid)
         m["located"] = resolved is not None
         m["files"] = {r["file"] for r in resolved["resolved"] if r["file"]} if resolved else set()
-        m["reached_by"] = {position[cid] for cid in resolved["reach"]} if resolved else set()
+        m["reached_by"] = {position[cid] for i in resolved["reach"] for cid in owners[i]} if resolved else set()
         m["reach_bases"] = {}
-        for basis, cids in (resolved or {}).get("reach_by_basis", {}).items():
-            for cid in cids:
+        for basis, ids in (resolved or {}).get("reach_by_basis", {}).items():
+            for cid in {cid for i in ids for cid in owners[i]}:
                 m["reach_bases"].setdefault(position[cid], []).append(basis)
         if not resolved:
             how = "no location, so every candidate that ran it counts as reaching it"
@@ -716,8 +748,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     results = verdicts(run, kills, set(kept), min_mutants, required_strata,
                        reach=lambda t: lambda m: m["reach_bases"].get(t.id), accept=accept)
 
-    with open(os.path.join(index_dir, "tests.json")) as f:
-        index_ids = {t["id"] for t in json.load(f)}
+    index_ids = {t["id"] for t in index_tests}
     by_reach = collections.Counter(m["reach"] for m in mutants.values())
     return {
         "joint_check": joint_check(candidates, kills["mutants"], results),
@@ -735,6 +766,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
         "min_mutants": min_mutants,
         "required_strata": required_strata,
         "candidates_not_in_index": [c.key for c in candidates if c.state is None],
+        "ordinals": {cid: ids for cid, ids in members.items() if len(ids) > 1},
         "summary": summarize(results),
         "accepted": accepted_section(results, accept),
         "kills_cover": {"mutants": universe, "kept": [candidates[i].key for i in sorted(kept)]},
@@ -812,6 +844,8 @@ def report(result):
         f"{k['mutants']} mutants: {by_stratum(k['strata'])}",
         *(f"  {n} with {how}" for how, n in sorted(k["reach"].items())),
         f"{s['candidates']} candidates, {len(result['candidates_not_in_index'])} of them not in the index",
+        *([f"{len(result['ordinals'])} candidates each stand for several index tests that share their title"]
+          if result.get("ordinals") else []),
         f"A delete needs {result['min_mutants']} qualifying mutants, among them {', '.join(result['required_strata']) or 'any stratum'}",
         "",
         *(f"{v:<16} {n}" for v, n in s["verdicts"].items()),
