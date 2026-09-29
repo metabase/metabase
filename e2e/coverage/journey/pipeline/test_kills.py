@@ -335,6 +335,40 @@ class Helpers(unittest.TestCase):
                          {"role": "information only", "count": 13, "unscored": 1, "max": 0.11})
         self.assertEqual(list(summary["highest"].items()), [(f"i{n:02}.ts", n / 100) for n in range(11, 1, -1)])
 
+    def test_the_cover_keeps_an_assertion_killer_over_a_symptom_killer(self):
+        primary, secondary = [{"m"}, {"m"}], [{1, 2}, {1}]
+        self.assertEqual(kills.kills_first_cover(primary, secondary, [1, 1]), ([0], 1))
+        self.assertEqual(kills.kills_first_cover(primary, secondary, [1, 1], [{"m"}, set()]), ([1], 1))
+
+    def test_the_cover_counts_the_new_kills_that_are_not_symptom_kills(self):
+        primary, secondary = [{"a", "b"}, {"a", "b"}], [{1, 2}, {1}]
+        self.assertEqual(kills.kills_first_cover(primary, secondary, [1, 1], [{"b"}, set()]), ([1], 2))
+        self.assertEqual(kills.kills_first_cover(primary, secondary, [1, 1], [{"b"}, {"a"}]), ([0], 2))
+        self.assertEqual(kills.kills_first_cover([{"a", "b", "c"}, {"a"}], [set(), {1}], [1, 1], [{"a", "b", "c"}, set()]), ([0], 3))
+
+    def test_the_cover_drops_a_symptom_killer_first_when_either_of_two_could_go(self):
+        assertion, symptom = {"m", "a1", "a2"}, {"m", "s1", "s2"}
+        primary = [assertion, symptom, {"a1", "b1"}, {"a2", "c1"}, {"s1", "d1"}, {"s2", "e1"}]
+        secondary = [set(), {1, 2, 3}, set(), set(), set(), set()]
+        kept, _ = kills.kills_first_cover(primary, secondary, [1] * 6, [set(), {"m"}, set(), set(), set(), set()])
+        self.assertEqual(sorted(kept), [0, 2, 3, 4, 5])
+
+    def test_symptom_kills_leave_the_order_among_assertion_killers_unchanged(self):
+        covers = [
+            (([{"a", "b"}, {"b", "c"}, {"c", "d"}, {"a", "d"}], [{1}, {1, 2}, {3}, {1, 2, 3}], [1, 1, 1, 1]), [3, 1]),
+            (([{"a", "b", "c"}, {"a"}, {"b"}, {"c", "d"}, {"d"}], [set(), {1, 2, 3}, {4}, {5}, {6, 7}], [3, 1, 2, 1, 1]), [0, 4]),
+            (([{"m"}, {"m"}, {"m"}, {"n", "m"}, {"n"}], [{1}, {1, 2}, {3, 4, 5}, set(), {9}], [2, 1, 1, 1, 1]), [3]),
+            (([{"a", "b"}, {"a", "b"}, {"c"}, {"c"}, {"b", "c"}], [{1, 2}, {3}, {4}, {4, 5}, set()], [1, 1, 1, 1, 1]), [0, 3]),
+        ]
+        for n, ((primary, secondary, costs), kept) in enumerate(covers):
+            with self.subTest(n):
+                none = [set() for _ in primary]
+                self.assertEqual(kills.kills_first_cover(primary, secondary, costs)[0], kept)
+                self.assertEqual(kills.kills_first_cover(primary, secondary, costs, none)[0], kept)
+                with_symptom_killer = kills.kills_first_cover(
+                    primary + [{"z"}], secondary + [set()], costs + [1], none + [{"z"}])[0]
+                self.assertEqual([i for i in with_symptom_killer if i < len(primary)], kept)
+
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
 class Verdicts(unittest.TestCase):
@@ -1098,6 +1132,22 @@ class SymptomKills(unittest.TestCase):
             last: ("no unique kill", {}),
         })
 
+    def test_the_cover_keeps_the_twin_that_kills_with_an_assertion(self):
+        twins = [TWIN_MYSQL, TWIN_POSTGRES]
+        for symptom_twin, kept in ((TWIN_MYSQL, TWIN_POSTGRES), (TWIN_POSTGRES, TWIN_MYSQL)):
+            cases = {
+                "confirmed": (mutant("logic", twins, twins + [REMAINING], L_TWIN, symptom_kills=[symptom_twin]),
+                              ("keep", COVER_KEEPS)),
+                "unconfirmed": (mutant("logic", [], twins + [REMAINING], L_TWIN, unconfirmed_by=twins,
+                                       symptom_unconfirmed_by=[symptom_twin]), ("provisional-keep", COVER_KEEPS_UNCONFIRMED)),
+            }
+            for name, (shared, verdict) in cases.items():
+                with self.subTest(f"{name}, {symptom_twin}"):
+                    result = self.evaluate_entries({"twins": shared}, twins, 1, [])
+                    self.assertEqual(result["kills_cover"]["kept"], [kept])
+                    row = result["candidates"][kept]
+                    self.assertEqual((row["verdict"], row["reason"]), verdict)
+
     def test_pipeline_gives_the_same_verdicts(self):
         pipeline = pipeline_verdicts(self.kills_file, SYMPTOM_CANDIDATES)
         for cid in SYMPTOM_CANDIDATES:
@@ -1137,7 +1187,9 @@ def ledger_run(entries, candidate_ids, min_mutants, strata):
             csv_rows = list(csv.DictReader(f))
         with open(os.path.join(out, "summary.md")) as f:
             summary = f.read()
-    return types.SimpleNamespace(ledger=ledger, csv=csv_rows, summary=summary, check=check)
+        with open(verdicts) as f:
+            result = json.load(f)
+    return types.SimpleNamespace(ledger=ledger, csv=csv_rows, summary=summary, check=check, result=result)
 
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
@@ -1188,6 +1240,15 @@ class Ledger(unittest.TestCase):
         run = ledger_run(finer, [UNIT], 2, ["logic", "wiring"])
         self.assertEqual(run.check.returncode, 0, run.check.stdout)
         self.assertIn('Verdicts from the ledger: {"delete":1}', run.check.stdout)
+
+    def test_the_ledger_cover_keeps_the_twin_that_kills_with_an_assertion(self):
+        twins = [TWIN_MYSQL, TWIN_POSTGRES]
+        for symptom_twin, kept in ((TWIN_MYSQL, TWIN_POSTGRES), (TWIN_POSTGRES, TWIN_MYSQL)):
+            with self.subTest(symptom_twin):
+                shared = mutant("logic", twins, twins + [REMAINING], L_TWIN, symptom_kills=[symptom_twin])
+                run = ledger_run({"twins": shared}, twins, 1, [])
+                self.assertEqual(run.check.returncode, 0, run.check.stdout)
+                self.assertEqual(run.result["kills_cover"]["kept"], [kept])
 
     def test_an_older_kills_file_gives_the_same_verdicts_without_markers(self):
         run = ledger_run(without_symptoms(SYMPTOM_KILLS), SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)

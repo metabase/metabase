@@ -243,19 +243,23 @@ def file_reach(run):
     return for_test
 
 
-def kills_first_cover(primary, secondary, costs):
-    """Greedy cover of the primary items: the most new primary items first, then the most new secondary items, then the lowest cost.
+def kills_first_cover(primary, secondary, costs, symptom=None):
+    """Greedy cover of the primary items: the most new primary items first, then the most new of them outside the test's `symptom`
+    items, then the most new secondary items, then the lowest cost.
 
-    Afterwards, drop chosen tests whose primary items the other chosen tests already keep, most expensive first.
+    Afterwards, drop chosen tests whose primary items the other chosen tests already keep,
+    most expensive first, then those with the most `symptom` items first.
     """
+    symptom = symptom or [set() for _ in primary]
+    assertion = [p - symptom[i] for i, p in enumerate(primary)]
     universe = set().union(*primary) if primary else set()
     covered, covered_secondary = set(), set()
-    heap = [(-len(p), -len(secondary[i]), costs[i], i) for i, p in enumerate(primary) if p]
+    heap = [(-len(p), -len(assertion[i]), -len(secondary[i]), costs[i], i) for i, p in enumerate(primary) if p]
     heapq.heapify(heap)
     chosen = []
     while len(covered) < len(universe) and heap:
-        _, _, _, i = heapq.heappop(heap)
-        entry = (-len(primary[i] - covered), -len(secondary[i] - covered_secondary), costs[i], i)
+        i = heapq.heappop(heap)[-1]
+        entry = (-len(primary[i] - covered), -len(assertion[i] - covered), -len(secondary[i] - covered_secondary), costs[i], i)
         if entry[0] == 0:
             continue
         if heap and entry > heap[0]:
@@ -266,7 +270,7 @@ def kills_first_cover(primary, secondary, costs):
         covered_secondary |= secondary[i]
     counts = collections.Counter(x for i in chosen for x in primary[i])
     kept = []
-    for i in sorted(chosen, key=lambda i: -costs[i]):
+    for i in sorted(chosen, key=lambda i: (-costs[i], -len(symptom[i]))):
         if all(counts[x] > 1 for x in primary[i]):
             for x in primary[i]:
                 counts[x] -= 1
@@ -291,13 +295,17 @@ def cover_killers(m):
 
 
 def cover_kills(tests, mutants, secondary, costs):
-    """Keeps every mutant that cover_killers() gives a passing candidate for."""
+    """Keeps every mutant that cover_killers() gives a passing candidate for, preferring a candidate whose kill isn't a symptom kill."""
     primary = [set() for _ in tests]
+    symptom = [set() for _ in tests]
     for mid, m in mutants.items():
+        marked = m["symptom_kills"] if m["killed_by"] else m["symptom_unconfirmed_by"]
         for i in cover_killers(m):
             if tests[i].state == "passed":
                 primary[i].add(mid)
-    return kills_first_cover(primary, secondary, costs)
+                if i in marked:
+                    symptom[i].add(mid)
+    return kills_first_cover(primary, secondary, costs, symptom)
 
 
 def reach_bases(reached):

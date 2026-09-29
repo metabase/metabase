@@ -6,7 +6,7 @@ Writes <out dir>/journey-overlap.json.
 Tests are "<spec path>::<full title>" throughout.
   granularities   per-test overlap at each granularity
   weighted_cover  coverage ceiling: cheapest tests by measured duration that keep every item. Not a deletion list
-  kills_cover     with --kills: the tests that keep every kill, then the most code and checks, then the least time
+  kills_cover     with --kills: the tests that keep every kill, then the fewest symptom kills, then the most code and checks, then the least time
   verdicts        duplicate verdicts that combine code, path and assertions
   deletion        keep, provisional-keep, delete or unmeasured per test, from --kills (kills.py has the format)
   prefix_subtraction  inferred (totals minus totals) against measured (step deltas) for tests whose paths extend another's
@@ -385,12 +385,13 @@ def weighted_covers(run, sets):
 def kills_cover(run, sets, kills, tie_breaks=FINE):
     """Keeps every mutant that some e2e test of the run kills and no other test does.
 
-    Code and checks break ties, then time.
+    Kills that aren't symptom kills break ties, then code and checks, then time.
     """
     costs = [t.cost_ms for t in run.tests]
     kept, universe = kill_matrix.cover_kills(run.tests, kills["mutants"], tagged(run, sets, *tie_breaks), costs)
     return cover_report(run, kept, universe, costs) | {
-        "what": "kept tests for every mutant only e2e tests kill, ordered by kills, then code and checks, then time",
+        "what": "kept tests for every mutant only e2e tests kill, ordered by kills, then kills that aren't symptom kills, "
+                "then code and checks, then time",
         "tie_breaks": list(tie_breaks),
     }, set(kept)
 

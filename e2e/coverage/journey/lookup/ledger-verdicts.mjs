@@ -101,25 +101,33 @@ function coverKillers(m) {
 }
 
 /**
- * Greedy cover of the primary items: the most new primary items first, then the most new secondary items, then candidate order.
- * Afterwards, it drops chosen candidates whose primary items the other chosen candidates already keep.
+ * Greedy cover of the primary items: the most new primary items first, then the most new of them outside the candidate's `symptom` items,
+ * then the most new secondary items, then candidate order.
+ * Afterwards, it drops chosen candidates whose primary items the other chosen candidates already keep,
+ * those with the most `symptom` items first.
  */
-function killsFirstCover(primary, secondary) {
+function killsFirstCover(primary, secondary, symptom) {
   const universe = new Set(primary.flatMap((p) => [...p]));
+  const assertion = primary.map(
+    (p, i) => new Set([...p].filter((x) => !symptom[i].has(x))),
+  );
   const covered = new Set();
   const coveredSecondary = new Set();
   const chosen = [];
   const fresh = (set, seen) => [...set].filter((x) => !seen.has(x)).length;
+  const better = (a, b) => {
+    const k = a.findIndex((x, j) => x !== b[j]);
+    return k !== -1 && a[k] > b[k];
+  };
   while (covered.size < universe.size) {
     let best = null;
     primary.forEach((p, i) => {
-      const score = [fresh(p, covered), fresh(secondary[i], coveredSecondary)];
-      if (
-        score[0] > 0 &&
-        (!best ||
-          score[0] > best.score[0] ||
-          (score[0] === best.score[0] && score[1] > best.score[1]))
-      ) {
+      const score = [
+        fresh(p, covered),
+        fresh(assertion[i], covered),
+        fresh(secondary[i], coveredSecondary),
+      ];
+      if (score[0] > 0 && (!best || better(score, best.score))) {
         best = { i, score };
       }
     });
@@ -135,7 +143,8 @@ function killsFirstCover(primary, secondary) {
     primary[i].forEach((x) => counts.set(x, (counts.get(x) ?? 0) + 1)),
   );
   const kept = [];
-  for (const i of chosen) {
+  const order = [...chosen].sort((a, b) => symptom[b].size - symptom[a].size);
+  for (const i of order) {
     if ([...primary[i]].every((x) => counts.get(x) > 1)) {
       primary[i].forEach((x) => counts.set(x, counts.get(x) - 1));
     } else {
@@ -210,10 +219,17 @@ export function verdictsFromLedger(
   }
 
   const primary = candidates.map(() => new Set());
+  const symptom = candidates.map(() => new Set());
   for (const [mid, m] of Object.entries(mutants)) {
+    const marked = m.killed_by.size
+      ? m.symptom_kills
+      : m.symptom_unconfirmed_by;
     coverKillers(m).forEach((i) => {
       if (candidates[i].state === "passed") {
         primary[i].add(mid);
+        if (marked.has(i)) {
+          symptom[i].add(mid);
+        }
       }
     });
   }
@@ -222,6 +238,7 @@ export function verdictsFromLedger(
     killsFirstCover(
       primary,
       candidates.map((t) => new Set(ledger.candidate_keys?.[t.id] ?? [])),
+      symptom,
     ),
   );
 

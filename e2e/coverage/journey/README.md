@@ -139,6 +139,8 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 
 A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason ends in ", all symptom kills", as in "unique kills, all symptom kills".
 
+When tests share a kill, the kills-first cover prefers one that kills with an assertion, because a timeout or retry change can lose a symptom kill. Among tests with the same number of new kills, it takes the one with the most new kills that aren't its symptom kills, confirmed or not, before it looks at code, checks or time. When it drops tests whose kills the other kept tests already have, it tries the most expensive first, and among equal costs, the ones with the most symptom kills.
+
 A kept test is one with a keep or provisional-keep verdict. Every delete, accepted or unmeasured test also gets `depends_on`: each mutant it killed that no remaining test kills, grouped by stratum, with the kept tests that kill it. The cover keeps one of them for each such mutant, so the test is safe to delete only while they stay. See [Depends on and the joint check](#depends-on-and-the-joint-check).
 
 ## Reach lookup
@@ -246,7 +248,7 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 - **Basis:** reach of either [basis](#basis) counts, and each candidate's `qualifying_basis` lists its located qualifying mutants under the basis of its reach, so a verdict that rests on inferred reach shows it. The pipeline's reach is always `subtraction`.
 - **No location:** a mutant without one counts as reached by every candidate that ran against it, as in the pipeline, and the output marks it: under `reach` for the mutant, and in `qualifying_without_location` for each candidate.
 - **Repeated titles:** a candidate id without a suffix stands for every index test with its spec and title. It reaches what any of them reached, and it passed in the capture when all of them passed. `ordinals` in the output lists the candidates that stand for more than one test, with their index ids.
-- **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on reached code, then on the order of `--candidates`.
+- **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on the kills that aren't symptom kills, then on reached code, then on the order of `--candidates`.
 
 It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
 
