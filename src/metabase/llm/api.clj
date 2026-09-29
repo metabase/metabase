@@ -225,6 +225,7 @@
                 :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
                 :model-id            (:model usage)
                 :provider            "anthropic"
+                :model-name          (:model usage)
                 :prompt-tokens       (:prompt usage)
                 :completion-tokens   (:completion usage)
                 :total-tokens        (+ (:prompt usage) (:completion usage))

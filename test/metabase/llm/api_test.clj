@@ -213,6 +213,8 @@
               (is (= "SELECT * FROM users" (:sql response)))
               (testing "token_usage event"
                 (is (=? [{:data {"model_id"            "claude-sonnet-4-5-20250929"
+                                 "provider"            "anthropic"
+                                 "model_name"          "claude-sonnet-4-5-20250929"
                                  "prompt_tokens"       1000
                                  "completion_tokens"   200
                                  "total_tokens"        1200

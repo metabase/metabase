@@ -606,6 +606,8 @@
                             ;; triggered by instance-creation setting being read for the first time)
                             (filter #(get-in % [:data "tag"])))]
             (is (=? [{:data {"model_id"      "test-model"
+                             "provider"      "ai-service"
+                             "model_name"    "test-model"
                              "total_tokens"  5
                              "prompt_tokens" 5
                              "tag"           "embedding_generation"}}]
