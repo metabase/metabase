@@ -504,3 +504,22 @@
           "the map must not be expanded into subquery SQL text")
       (is (= [subquery-shaped-map] args)
           "the map must be passed through as an opaque bound parameter"))))
+
+(deftest ^:parallel rewrite-empty-in-clauses-test
+  (testing "rewrites nested empty IN clauses"
+    (are [expected clause] (= [expected]
+                              (funnysql/format clause :postgres))
+      "false"         [:in :id []]
+      "false"         [:in :id nil]
+      "false"         [:in :id '()]
+      "false"         [:in :id #{}]
+      "false"         [:in :id (lazy-seq [])]
+      "false"         [:in :id {}]
+      "true"          [:not-in :id []]
+      "true"          [:not-in :id nil]
+      "true"          [:not-in :id '()]
+      "true"          [:not-in :id #{}]
+      "true"          [:not-in :id (lazy-seq [])]
+      "\"id\" IN (1)" [:in :id [1]]
+      "\"id\" IN (1)" [:in :id #{1}]
+      "\"id\" IN (1)" [:in :id (lazy-seq [1])])))

@@ -313,10 +313,18 @@
   (append-sql! context "NOT ")
   (-parens! x context))
 
-(defn- -in! [sql [lhs vs] context]
-  (compile! lhs context)
-  (append-sql! context sql)
-  (-list! vs context))
+(defn- -in! [f [lhs vs] context]
+  (if (empty? vs)
+    (compile! (case f
+                :in     false
+                :not-in true)
+              context)
+    (do
+      (compile! lhs context)
+      (append-sql! context (case f
+                             :in     " IN "
+                             :not-in " NOT IN "))
+      (-list! vs context))))
 
 (defn- between! [[x y z] context]
   (compile! x context)
@@ -462,8 +470,8 @@
     (:<> :!= :not= :is-not) (-equals! " <> " " IS NOT NULL" args context)
     :and                    (-compound! " AND " args context)
     :or                     (-compound! " OR "  args context)
-    :in                     (-in! " IN "     args context)
-    :not-in                 (-in! " NOT IN " args context)
+    :in                     (-in! f args context)
+    :not-in                 (-in! f args context)
     :exists                 (-exists! "EXISTS "     (first args) context)
     :not-exists             (-exists! "NOT EXISTS " (first args) context)
     :inline                 (inline! (first args) context)
