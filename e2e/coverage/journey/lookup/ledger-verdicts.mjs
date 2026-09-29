@@ -318,7 +318,8 @@ export function verdictsFromLedger(
         ]),
       ),
     };
-    const missing = requiredStrata.filter((s) => !strata[s]);
+    const coarse = new Set(qualifying.map((mid) => mutants[mid].coarse));
+    const missing = requiredStrata.filter((s) => !coarse.has(s));
     let verdict;
     let reason;
     if (unique.length) {

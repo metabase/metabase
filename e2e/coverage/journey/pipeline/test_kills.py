@@ -1182,6 +1182,13 @@ class Ledger(unittest.TestCase):
         self.assertEqual(run.check.returncode, 0, run.check.stdout)
         self.assertIn('Verdicts from the ledger: {"unmeasured":1}', run.check.stdout)
 
+    def test_the_ledger_compares_required_strata_by_coarse_stratum(self):
+        finer = {"a": mutant("extreme", [UNIT, JEST], [UNIT, JEST], L_UNIT) | {"stratum_coarse": "logic"},
+                 "b": mutant("intra-frontend-wiring", [UNIT, JEST], [UNIT, JEST], L_UNIT)}
+        run = ledger_run(finer, [UNIT], 2, ["logic", "wiring"])
+        self.assertEqual(run.check.returncode, 0, run.check.stdout)
+        self.assertIn('Verdicts from the ledger: {"delete":1}', run.check.stdout)
+
     def test_an_older_kills_file_gives_the_same_verdicts_without_markers(self):
         run = ledger_run(without_symptoms(SYMPTOM_KILLS), SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
         self.assertEqual(run.check.returncode, 0, run.check.stdout)
