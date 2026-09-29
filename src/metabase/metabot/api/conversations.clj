@@ -285,11 +285,15 @@
   (query, display, grid position) so no agent state is needed; chart-backed tiles
   get their card origin stamped like the agent's own `save_entity` path.
 
-  Accessible to any participant in the conversation or to any superuser."
+  Only a participant in the conversation may save from it: the saved dashboard is
+  keyed to the conversation, so a save by anyone else would take the slot the
+  participants' own save reuses."
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [generated_dashboard_id dashboard]} :- SaveDashboardBody]
-  (api/read-check :model/MetabotConversation id)
+  (let [conversation (api/read-check :model/MetabotConversation id)]
+    (api/check-403 (or (= (:user_id conversation) api/*current-user-id*)
+                       (metabot.db/participant? id api/*current-user-id*))))
   (let [{dash :dashboard} (generated-dashboard/materialize!
                            {:name            (:name dashboard)
                             :description     (:description dashboard)

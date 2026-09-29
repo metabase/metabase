@@ -45,13 +45,12 @@ export const getDebugMode = createSelector(
   (state) => state.debugMode,
 );
 
-export const getSavedEntityId = createSelector(
-  [getMetabotState, (_state: State, entityId: string) => entityId],
-  (metabotState, entityId): number | undefined =>
-    Object.values(metabotState.savedEntityIds).find(
-      (savedIds) => entityId in savedIds,
-    )?.[entityId],
-);
+export const getSavedEntityId = (
+  state: State,
+  conversationId: string,
+  entityId: string,
+): number | undefined =>
+  getMetabotState(state).savedEntityIds[conversationId]?.[entityId];
 
 export const getMetabotReactionsState = createSelector(
   getMetabotState,

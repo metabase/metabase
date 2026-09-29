@@ -672,29 +672,47 @@ export const GeneratedDashboardTablePills = ({
   messageId?: string;
   value: GeneratedAdhocDashboard;
 }) => {
-  const sources = useMemo(() => {
+  const { mbql, native } = useMemo(() => {
     const decoded = value.dashcards.map((dashcard) =>
       decodeQuery(dashcard.dataset_query),
     );
-    const mbql = decoded.flatMap((query) =>
+    const mbqlQueries = decoded.flatMap((query) =>
       query.kind === "mbql" ? [query] : [],
     );
     return {
-      tableIds: uniqueNumbers(mbql.flatMap((query) => query.tableIds)),
-      cardIds: uniqueNumbers(mbql.flatMap((query) => query.cardIds)),
-      fieldIds: uniqueNumbers(mbql.flatMap((query) => query.fieldIds)),
+      mbql: {
+        tableIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.tableIds)),
+        cardIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.cardIds)),
+        fieldIds: uniqueNumbers(mbqlQueries.flatMap((query) => query.fieldIds)),
+      },
+      native: decoded.flatMap((query) =>
+        query.kind === "native" ? [query] : [],
+      ),
     };
   }, [value.dashcards]);
 
-  const hasContent =
-    sources.tableIds.length > 0 ||
-    sources.cardIds.length > 0 ||
-    sources.fieldIds.length > 0;
-  if (!hasContent) {
+  const hasMbqlContent =
+    mbql.tableIds.length > 0 ||
+    mbql.cardIds.length > 0 ||
+    mbql.fieldIds.length > 0;
+  if (!hasMbqlContent && native.length === 0) {
     return null;
   }
 
-  return <MbqlSourcesRow {...sources} messageId={messageId} />;
+  return (
+    <>
+      {hasMbqlContent && <MbqlSourcesRow {...mbql} messageId={messageId} />}
+      {native.map((query, index) => (
+        <NativeSourcesRow
+          key={index}
+          databaseId={query.databaseId}
+          messageId={messageId}
+          sql={query.sql}
+          templateTags={query.templateTags}
+        />
+      ))}
+    </>
+  );
 };
 
 export const NavigateToTablePills = ({

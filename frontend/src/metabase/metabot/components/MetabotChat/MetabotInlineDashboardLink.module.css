@@ -29,6 +29,6 @@
   flex-shrink: 0;
 }
 
-.root .saveAction[data-variant="subtle"]:hover {
+.root .saveAction[data-variant="transparent"]:hover {
   background-color: var(--mb-color-background_surface-brand-subtle);
 }

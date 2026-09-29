@@ -15,9 +15,9 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +29,7 @@
   (let [card (metabot.db/card card-id)]
     (when-not (and card (not (:archived card)) (mi/can-read? card))
       (agent-error!
-       (tru "No saved question found with id `{0}` that you can read. Find questions with `search` first."
+       (tru "No saved question found with id `{0}` that you can read. Find questions with your search/discovery tool first."
             card-id)))
     (when (:dashboard_id card)
       (agent-error!
@@ -260,7 +260,4 @@
                              :description description
                              :dashcards   (mapv tile->definition positioned)})]})
     (catch Exception e
-      (log/errorf "Error creating dashboard: %s" (ex-message e))
-      (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to create dashboard: " (or (ex-message e) "Unknown error"))}))))
+      (metabot.tools.u/handle-agent-error e))))

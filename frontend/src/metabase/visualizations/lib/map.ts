@@ -1,4 +1,5 @@
 import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
+import { isAdhocDashboardId } from "metabase/utils/dashboard";
 import { isJWT } from "metabase/utils/jwt";
 import { isUuid } from "metabase/utils/uuid";
 import type {
@@ -53,8 +54,9 @@ export function getTileUrl(params: TileUrlParams): string {
   const isDashboard = dashboardId && dashcardId && cardId;
 
   if (isDashboard) {
-    // isAutoDashboard
-    if (typeof dashboardId === "string" && dashboardId.startsWith("/auto")) {
+    const isAutoDashboard =
+      typeof dashboardId === "string" && dashboardId.startsWith("/auto");
+    if (isAutoDashboard || isAdhocDashboardId(dashboardId)) {
       return adhocQueryTileUrl(zoom, coord, latField, lonField, datasetQuery);
     }
 

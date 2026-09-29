@@ -726,8 +726,8 @@
                      :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
         (mt/user-http-request :crowberto :post 400
                               (str "metabot/conversations/" convo-id "/saved-dashboard")
-                              {:dashboard_id (apply str (repeat 37 "d"))
-                               :dashboard    {:name "Too long" :dashcards []}})))))
+                              {:generated_dashboard_id (apply str (repeat 37 "d"))
+                               :dashboard              {:name "Too long" :dashcards []}})))))
 
 (deftest record-saved-dashboard-reuse-is-read-checked-test
   (testing "a participant who cannot read the dashboard already saved from the conversation does not get it back"
@@ -744,6 +744,61 @@
             (mt/user-http-request :crowberto :post 200 path body)
             (mt/user-http-request :rasta :post 403 path (assoc-in body [:dashboard :collection_id] nil))
             (is (= 1 (t2/count :model/Dashboard :metabot_conversation_id convo-id)))))))))
+
+(deftest record-saved-dashboard-permissions-test
+  (let [tile {:title "t" :display "table" :dataset_query (venues-query) :row 0 :col 0 :size_x 12 :size_y 6}]
+    (testing "a superuser who is not a participant cannot save into someone else's conversation"
+      (let [user-id (mt/user->id :rasta)]
+        (mt/with-model-cleanup [:model/Dashboard]
+          (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                         :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+            (mt/user-http-request :crowberto :post 403
+                                  (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                  {:generated_dashboard_id "d-admin"
+                                   :dashboard              {:name "Audited" :dashcards [tile]}})
+            (is (zero? (t2/count :model/Dashboard :name "Audited")))))))
+    (testing "a participant without write access to the target collection gets a 403"
+      (let [user-id (mt/user->id :rasta)]
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-model-cleanup [:model/Dashboard]
+            (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                           :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                           :model/Collection {coll-id :id} {}]
+              (mt/user-http-request :rasta :post 403
+                                    (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                    {:generated_dashboard_id "d-no-write"
+                                     :dashboard              {:name          "No write"
+                                                              :collection_id coll-id
+                                                              :dashcards     [tile]}})
+              (is (zero? (t2/count :model/Dashboard :name "No write"))))))))
+    (testing "a participant without data access to a tile's query gets a 403"
+      (let [user-id (mt/user->id :rasta)]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-model-cleanup [:model/Dashboard]
+            (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                           :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}]
+              (mt/user-http-request :rasta :post 403
+                                    (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                    {:generated_dashboard_id "d-no-data"
+                                     :dashboard              {:name          "No data"
+                                                              :collection_id (:id (collection/user->personal-collection user-id))
+                                                              :dashcards     [tile]}})
+              (is (zero? (t2/count :model/Dashboard :name "No data"))))))))))
+
+(deftest record-saved-dashboard-rejects-archived-questions-test
+  (testing "an archived question cannot be placed on the saved dashboard"
+    (let [user-id (mt/user->id :crowberto)]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
+                       :model/MetabotMessage _ {:conversation_id convo-id :user_id user-id :role "user"}
+                       :model/Card {card-id :id} {:archived true :dataset_query (venues-query)}]
+          (mt/user-http-request :crowberto :post 400
+                                (str "metabot/conversations/" convo-id "/saved-dashboard")
+                                {:generated_dashboard_id "d-archived"
+                                 :dashboard              {:name      "From the trash"
+                                                          :dashcards [{:title "t" :display "table" :dataset_query (venues-query)
+                                                                       :row 0 :col 0 :size_x 12 :size_y 6 :card_id card-id}]}})
+          (is (zero? (t2/count :model/Dashboard :name "From the trash"))))))))
 
 (deftest record-saved-dashboard-rejects-document-questions-test
   (testing "a question that belongs to a document cannot be placed on the saved dashboard"

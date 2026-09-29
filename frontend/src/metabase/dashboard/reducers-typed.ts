@@ -445,7 +445,7 @@ export const dashcardData = createReducer(
         const { dashcard_id, card_id, result } = action.payload ?? {};
         if (dashcard_id && card_id && result != null) {
           // mutate the draft rather than assocIn: icepick freezes its result in
-          // dev, which stops immer from finalizing the draft children embedded
+          // tests, which stops immer from finalizing the draft children embedded
           // in it and leaves revoked proxies in the state
           state[dashcard_id] ??= {};
           // error-only results share the Dataset slot: every consumer reads

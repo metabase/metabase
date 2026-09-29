@@ -180,8 +180,8 @@
                             :conversation-id (shared/current-conversation-id)
                             :generated-id    generated-id})]
     {:dashboard        dash
-     :destination      {:type "collection" :id collection-id}
-     :destination-name (collection-name collection-id)
+     :destination      {:type "collection" :id (:collection_id dash)}
+     :destination-name (collection-name (:collection_id dash))
      :link             (str "metabase://dashboard/" (:id dash))}))
 
 (defn- save-dashboard-result
@@ -224,7 +224,7 @@
   creation).
 
   A generated dashboard can ONLY be saved to a `collection` destination; saving it
-  creates the real dashboard along with a question for each of its tiles.
+  creates the real dashboard, with a new question for each chart or query tile.
 
   Choose a `destination`:
   - To save into a collection, set `target_type` to `collection` and pass a

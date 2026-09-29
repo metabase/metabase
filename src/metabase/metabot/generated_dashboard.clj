@@ -29,12 +29,13 @@
                 true
                 false))]
     (metabot.db/insert-dashcard!
-     {:dashboard_id dashboard-id
-      :card_id      (or card-id (:id card))
-      :row          row
-      :col          col
-      :size_x       size-x
-      :size_y       size-y})
+     {:dashboard_id           dashboard-id
+      :card_id                (or card-id (:id card))
+      :row                    row
+      :col                    col
+      :size_x                 size-x
+      :size_y                 size-y
+      :visualization_settings (if card-id {:card.title name} {})})
     (when (and card conversation-id chart-id)
       (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
     card))
@@ -42,6 +43,8 @@
 (defn- check-tile-permissions! [{:keys [card-id dataset-query]}]
   (if card-id
     (let [card (api/read-check :model/Card card-id)]
+      (api/check (not (:archived card))
+                 [400 (tru "Question {0} is archived and cannot be placed on a dashboard." card-id)])
       (api/check (nil? (:dashboard_id card))
                  [400 (tru "Question {0} belongs to another dashboard and cannot be placed on this one." card-id)])
       (api/check (nil? (:document_id card))
@@ -85,7 +88,7 @@
   "Create the dashboard `name`/`description` in `collection-id` (nil for the root
   collection) with one dashcard per tile, at the tile's `:row`/`:col`/`:size-x`/
   `:size-y` grid position. A tile with a `:card-id` places that existing saved
-  question as-is; otherwise its `:name`, legacy `:dataset-query`, `:display`
+  question as-is, titled by the tile's `:name`; otherwise its `:name`, legacy `:dataset-query`, `:display`
   keyword and optional `:visualization-settings` become a new dashboard question, stamped with the conversation + chart
   origin when `conversation-id` and `:chart-id` are known; the dashboard itself is
   stamped with `conversation-id` + `generated-id` (the id `create_dashboard` gave it). Saving the same generated

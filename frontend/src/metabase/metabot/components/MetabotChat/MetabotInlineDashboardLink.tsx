@@ -7,7 +7,7 @@ import type {
   GeneratedDashboard,
 } from "metabase/api/ai-streaming/schemas";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { getSavedEntityId, markEntitySaved } from "metabase/metabot/state";
+import { getSavedEntityId } from "metabase/metabot/state";
 import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
@@ -39,7 +39,9 @@ export function MetabotInlineDashboardLink({
   conversationId: string;
 }) {
   const savedDashboardId = useSelector((state) =>
-    value.id != null ? getSavedEntityId(state, value.id) : undefined,
+    value.id != null
+      ? getSavedEntityId(state, conversationId, value.id)
+      : undefined,
   );
   const url =
     savedDashboardId != null
@@ -158,13 +160,6 @@ function SaveDashboardAction({
 
   const handleSaved = (saved: SaveMetabotDashboardResponse) => {
     dispatch(
-      markEntitySaved({
-        conversationId,
-        entityId: dashboard.id,
-        savedId: saved.id,
-      }),
-    );
-    dispatch(
       addUndo({
         icon: "check_filled",
         message: t`Saved`,
@@ -184,9 +179,8 @@ function SaveDashboardAction({
         component={ForwardRefLink}
         to={Urls.dashboard({ id: savedDashboardId, name: dashboard.title })}
         target="_blank"
-        variant="subtle"
-        color="text-secondary"
-        size="compact-xs"
+        variant="transparent"
+        size="compact-md"
         leftSection={<Icon name="check" size={14} />}
       >
         {t`Saved`}
@@ -198,8 +192,8 @@ function SaveDashboardAction({
     <>
       <Button
         className={S.saveAction}
-        variant="subtle"
-        size="compact-xs"
+        variant="transparent"
+        size="compact-md"
         onClick={openSaveModal}
       >
         {t`Save`}

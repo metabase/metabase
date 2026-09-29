@@ -45,6 +45,7 @@ export const MetabotConversationPage = () => {
       : urlConvoId,
     {
       pollingInterval: isInProgress ? IN_PROGRESS_POLL_MS : 0,
+      refetchOnMountOrArgChange: true,
     },
   );
 

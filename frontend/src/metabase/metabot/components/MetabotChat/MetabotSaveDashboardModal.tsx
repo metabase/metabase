@@ -5,6 +5,8 @@ import {
   CreateDashboardForm,
   type CreateDashboardProperties,
 } from "metabase/common/CreateDashboard/CreateDashboardForm";
+import { markEntitySaved } from "metabase/metabot/state";
+import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import type {
   AdhocDashcard,
@@ -30,6 +32,7 @@ export function MetabotSaveDashboardModal({
   onSaved: (saved: SaveMetabotDashboardResponse) => void;
   onClose: () => void;
 }) {
+  const dispatch = useDispatch();
   const [saveMetabotDashboard] = useSaveMetabotDashboardMutation();
   const initialValues = useMemo(
     () => ({ name, description: description ?? null }),
@@ -42,6 +45,13 @@ export function MetabotSaveDashboardModal({
       generated_dashboard_id: dashboardId,
       dashboard: { ...values, dashcards },
     }).unwrap();
+    dispatch(
+      markEntitySaved({
+        conversationId,
+        entityId: dashboardId,
+        savedId: saved.id,
+      }),
+    );
     onSaved(saved);
   };
 

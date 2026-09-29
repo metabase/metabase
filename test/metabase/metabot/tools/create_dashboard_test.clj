@@ -163,6 +163,15 @@
       (is (nil? (:data-parts result)))
       (is (re-find #"No saved question found" (:output result))))))
 
+(deftest create-dashboard-archived-card-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card card {:archived true :dataset_query (venues-query)}]
+      (let [result (create! (chart-memory)
+                            {:name  "Trashed"
+                             :tiles [{:card_id (:id card) :title "Archived"}]})]
+        (is (nil? (:data-parts result)))
+        (is (re-find #"No saved question found" (:output result)))))))
+
 (deftest create-dashboard-unknown-chart-test
   (let [result (create! (chart-memory)
                         {:name  "Broken"

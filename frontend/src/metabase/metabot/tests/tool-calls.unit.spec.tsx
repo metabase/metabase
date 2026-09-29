@@ -1,10 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
+import {
+  setupCollectionByIdEndpoint,
+  setupDashboardEndpoints,
+} from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
-import { getMetabotConversation } from "metabase/metabot/state";
+import {
+  getMetabotConversation,
+  getSavedEntityId,
+} from "metabase/metabot/state";
+import {
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
 import {
   assertConversation,
+  conversationIdForAgent,
   createMockSSEStream,
   createPauses,
   enterChatMessage,
@@ -102,6 +114,42 @@ describe("metabot > tool calls", () => {
       expect(
         screen.queryByTestId("metabot-inline-dashboard-loader"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  it("should mark a generated dashboard saved when the agent streams entity_saved", async () => {
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 5, name: "Ops" })],
+    });
+    setupDashboardEndpoints(
+      createMockDashboard({ id: 9, name: "Ops overview" }),
+    );
+    const { store } = setup();
+
+    mockAgentEndpoint({
+      stream: createMockSSEStream(
+        (async function* () {
+          yield {
+            type: "data-entity_saved",
+            data: {
+              type: "dashboard",
+              generated_dashboard_id: "dash-1",
+              dashboard_id: 9,
+              destination: { type: "collection", id: 5 },
+            },
+          };
+          yield { type: "finish", finishReason: "stop" };
+        })(),
+      ),
+    });
+
+    await enterChatMessage("Save the dashboard");
+
+    const conversationId = conversationIdForAgent(store, "omnibot");
+    await waitFor(() => {
+      expect(getSavedEntityId(store.getState(), conversationId, "dash-1")).toBe(
+        9,
+      );
     });
   });
 

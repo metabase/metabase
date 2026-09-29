@@ -354,7 +354,28 @@
             (is (= [(:id existing)]
                    (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dash-id :card_id (:id existing))))
             (is (= ["Venues by price"]
-                   (t2/select-fn-vec :name :model/Card :dashboard_id dash-id)))))))))
+                   (t2/select-fn-vec :name :model/Card :dashboard_id dash-id))))
+          (testing "the saved-question tile keeps the title it had in the preview"
+            (is (= {:card.title "Existing"}
+                   (t2/select-one-fn :visualization_settings :model/DashboardCard
+                                     :dashboard_id dash-id :card_id (:id existing))))))))))
+
+(deftest save-generated-dashboard-reports-existing-collection-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card :model/Dashboard]
+      (mt/with-temp [:model/Collection first-coll {:name "First"}
+                     :model/Collection second-coll {:name "Second"}
+                     :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+        (let [memory (doto (dashboard-memory) (swap! assoc :conversation-id convo-id))
+              _      (save-dashboard! memory {:target_type "collection" :collection_id (:id first-coll)})
+              result (save-dashboard! memory {:target_type "collection" :collection_id (:id second-coll)})]
+          (testing "saving again to another collection reports where the dashboard actually is"
+            (is (re-find #"in First\." (:output result)))
+            (is (= {:type "collection" :id (:id first-coll)}
+                   (get-in result [:structured-output :destination])))
+            (is (= {:type "collection" :id (:id first-coll)}
+                   (get-in (first (:data-parts result)) [:data :destination])))
+            (is (= 1 (t2/count :model/Dashboard :metabot_conversation_id convo-id)))))))))
 
 (deftest save-generated-dashboard-stamps-card-origin-test
   (mt/with-current-user (mt/user->id :crowberto)

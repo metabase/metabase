@@ -300,6 +300,46 @@ describe("MetabotAgentDataSourcePills", () => {
     expect(screen.getAllByRole("link", { name: "Orders" })).toHaveLength(1);
   });
 
+  it("extracts sources for a generated dashboard's native SQL dashcards", async () => {
+    const sql = "SELECT * FROM ORDERS";
+    setupNativeEndpoints();
+
+    renderWithProviders(
+      <GeneratedDashboardTablePills
+        messageId="message-6"
+        value={{
+          type: "dashboard",
+          id: "dash-2",
+          title: "SQL overview",
+          dashcards: [
+            {
+              title: "Orders",
+              display: "table",
+              dataset_query: {
+                type: "native",
+                database: 1,
+                native: { query: sql },
+              },
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 6,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Orders" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(EXTRACT_SOURCES_ENDPOINT, {
+        body: { database_id: 1, sql },
+      }),
+    ).toHaveLength(1);
+  });
+
   it("parses native SQL queries and requests extracted sources", async () => {
     const sql = "SELECT * FROM ORDERS";
     setupNativeEndpoints();

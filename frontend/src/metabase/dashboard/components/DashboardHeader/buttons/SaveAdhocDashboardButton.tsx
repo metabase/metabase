@@ -4,21 +4,15 @@ import { t } from "ttag";
 
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getAdhocDashboardDefinition } from "metabase/dashboard/utils";
-import {
-  MetabotSaveDashboardModal,
-  getSavedEntityId,
-  markEntitySaved,
-} from "metabase/metabot";
-import { useDispatch, useSelector } from "metabase/redux";
+import { MetabotSaveDashboardModal, getSavedEntityId } from "metabase/metabot";
+import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { Button } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isAdhocDashboardId } from "metabase/utils/dashboard";
-import type { SaveMetabotDashboardResponse } from "metabase-types/api";
 
 export const SaveAdhocDashboardButton = () => {
   const { dashboard } = useDashboardContext();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
@@ -34,7 +28,11 @@ export const SaveAdhocDashboardButton = () => {
   const metabot = definition?.metabot;
   const savedDashboardId = useSelector((state) =>
     metabot != null
-      ? getSavedEntityId(state, metabot.generated_dashboard_id)
+      ? getSavedEntityId(
+          state,
+          metabot.conversation_id,
+          metabot.generated_dashboard_id,
+        )
       : undefined,
   );
 
@@ -47,17 +45,6 @@ export const SaveAdhocDashboardButton = () => {
   if (definition == null || metabot == null) {
     return null;
   }
-
-  const handleSaved = (saved: SaveMetabotDashboardResponse) => {
-    dispatch(
-      markEntitySaved({
-        conversationId: metabot.conversation_id,
-        entityId: metabot.generated_dashboard_id,
-        savedId: saved.id,
-      }),
-    );
-    closeSaveModal();
-  };
 
   return (
     <>
@@ -75,7 +62,7 @@ export const SaveAdhocDashboardButton = () => {
           name={definition.name}
           description={definition.description}
           dashcards={definition.dashcards}
-          onSaved={handleSaved}
+          onSaved={closeSaveModal}
           onClose={closeSaveModal}
         />
       )}

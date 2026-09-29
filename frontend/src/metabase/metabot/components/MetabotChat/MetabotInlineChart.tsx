@@ -60,7 +60,7 @@ export function MetabotInlineChart({
   const datasetQuery = query.query;
   const clipboard = useClipboard();
   const recordedCardId = useSelector((state) =>
-    getSavedEntityId(state, chartId),
+    getSavedEntityId(state, conversationId, chartId),
   );
   const siteUrl = useSetting("site-url");
 

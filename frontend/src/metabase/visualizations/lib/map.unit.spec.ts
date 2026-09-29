@@ -109,6 +109,30 @@ describe("map", () => {
         );
       });
 
+      it("should handle an ad-hoc dashboard", () => {
+        const datasetQuery: JsonQuery = {
+          database: 1,
+          type: "query",
+          query: { "source-table": 1 },
+        };
+        const encodedQuery = JSON.stringify(datasetQuery);
+
+        const url = getTileUrl({
+          dashboardId: "/dashboard#eyJuYW1lIjoiT3BzIn0",
+          dashcardId: 20,
+          cardId: 30,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          datasetQuery,
+        });
+
+        expect(url).toBe(
+          `/api/tiles/${zoom}/${coord.x}/${coord.y}?query=${encodeURIComponent(encodedQuery)}&latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
+        );
+      });
+
       it("should generate url for dashboard with parameters", () => {
         const url = getTileUrl({
           dashboardId: 10,

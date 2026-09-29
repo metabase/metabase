@@ -9,6 +9,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection.model]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
@@ -832,39 +833,54 @@
   (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
                                                    :metabot_chart_id        chart-id}))
 
-(defn saved-dashboards-for-conversation
+(mu/defn saved-dashboards-for-conversation
   "The ID and generated dashboard ID of the unarchived Dashboards saved from the MetabotConversation with
   `conversation-id`, in ID order."
-  [conversation-id]
+  [conversation-id :- :string]
   (t2/select [:model/Dashboard :id :metabot_dashboard_id]
              :metabot_conversation_id conversation-id
              :archived false
              {:order-by [[:id :asc]]}))
 
-(defn saved-dashboard-for-conversation
+(mu/defn saved-dashboard-for-conversation
   "The unarchived Dashboard already saved from the MetabotConversation with `conversation-id` as the generated
   dashboard `generated-id`, or nil."
-  [conversation-id generated-id]
+  [conversation-id :- :string
+   generated-id    :- :string]
   (t2/select-one :model/Dashboard
                  :metabot_conversation_id conversation-id
                  :metabot_dashboard_id    generated-id
                  :archived                false))
 
-(defn link-dashboard-to-conversation!
+(mu/defn link-dashboard-to-conversation!
   "Record that the Dashboard with `dashboard-id` was saved from the MetabotConversation with `conversation-id` as
   the generated dashboard `generated-id`."
-  [dashboard-id conversation-id generated-id]
+  [dashboard-id    :- ::lib.schema.id/dashboard
+   conversation-id :- :string
+   generated-id    :- :string]
   (t2/update! (t2/table-name :model/Dashboard) dashboard-id {:metabot_conversation_id conversation-id
                                                              :metabot_dashboard_id    generated-id}))
 
-(defn insert-dashboard!
+(mu/defn insert-dashboard!
   "Insert `dashboard` and return the created Dashboard row."
-  [dashboard]
+  [dashboard :- [:map {:closed true}
+                 [:name          :string]
+                 [:description   [:maybe :string]]
+                 [:parameters    ::dashboards.schema/parameters]
+                 [:creator_id    ::lib.schema.id/user]
+                 [:collection_id [:maybe ::lib.schema.id/collection]]]]
   (first (t2/insert-returning-instances! :model/Dashboard dashboard)))
 
-(defn insert-dashcard!
+(mu/defn insert-dashcard!
   "Insert the DashboardCard `dashcard`."
-  [dashcard]
+  [dashcard :- [:map {:closed true}
+                [:dashboard_id           ::lib.schema.id/dashboard]
+                [:card_id                ::lib.schema.id/card]
+                [:row                    :int]
+                [:col                    :int]
+                [:size_x                 :int]
+                [:size_y                 :int]
+                [:visualization_settings ::dashboards.schema/dashboard-card.visualization-settings]]]
   (t2/insert! :model/DashboardCard dashcard))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------

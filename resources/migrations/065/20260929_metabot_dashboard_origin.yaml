@@ -7,7 +7,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v64.3a85fu
+      id: v65.2026-09-29T00:00:00
       author: undrfined
       comment: Add metabot_conversation_id column to report_dashboard
       changes:
@@ -26,7 +26,7 @@ databaseChangeLog:
             columnName: metabot_conversation_id
 
   - changeSet:
-      id: v64.qwfu1f
+      id: v65.2026-09-29T00:00:01
       author: undrfined
       comment: Add metabot_dashboard_id column to report_dashboard
       changes:
@@ -45,7 +45,7 @@ databaseChangeLog:
             columnName: metabot_dashboard_id
 
   - changeSet:
-      id: v64.735exz
+      id: v65.2026-09-29T00:00:02
       author: undrfined
       comment: Add index for report_dashboard.metabot_conversation_id
       changes:
@@ -57,7 +57,7 @@ databaseChangeLog:
                   name: metabot_conversation_id
 
   - changeSet:
-      id: v64.zbahki
+      id: v65.2026-09-29T00:00:03
       author: undrfined
       comment: Add foreign key on report_dashboard(metabot_conversation_id)
       changes:

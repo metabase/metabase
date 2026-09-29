@@ -123,8 +123,7 @@ export const DashboardApp = () => {
   };
 
   const onLoadDashboard = async (dashboard: IDashboard) => {
-    // an ad-hoc dashboard's hash IS its definition: no edit/add options to apply,
-    // and rewriting the hash would drop the dashboard itself
+    // an ad-hoc dashboard's hash is its definition, so there are no edit/add options to apply
     if (isAdhocDashboard) {
       return;
     }
