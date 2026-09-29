@@ -166,6 +166,16 @@
         (Thread/sleep 100)
         (is (empty? @seen))))))
 
+(defn- lookup-in-flight?
+  "Whether a lookup for `credentials`'s `model` is still running.
+
+  Asked per model because [[ollama.capabilities/in-flight]] is process-wide: every connection's
+  lookups share it, and a background refresh belonging to another test's server would make the map
+  as a whole non-empty while saying nothing about this one."
+  [credentials model]
+  (contains? @@#'ollama.capabilities/in-flight
+             (#'ollama.capabilities/cache-key credentials model)))
+
 (defn- age-out-lookups!
   "Backdate every entry so the next read finds it stale — what the refresh interval elapsing does.
   Emptying the cache would not do: that is forgetting, which is the thing under test."
@@ -199,7 +209,8 @@
             (is (true? (ollama.capabilities/cached-reasoning-model? credentials "gpt-oss:20b"))))
           (testing "once the re-ask has actually failed, the answer still stands — a server that
                    would not answer is not evidence that the model changed"
-            (is (tu/poll-until 5000 (and (pos? @attempts) (empty? @@#'ollama.capabilities/in-flight))))
+            (is (tu/poll-until 5000 (and (pos? @attempts)
+                                         (not (lookup-in-flight? credentials "gpt-oss:20b")))))
             (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
       (finally
         (ollama.capabilities/clear-cache!)))))
@@ -225,15 +236,17 @@
     (try
       (mt/with-dynamic-fn-redefs [http/request (fn [_] (throw (ex-info "down" {})))]
         (is (false? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))
-      (testing "a minute short of the retry interval the failure still stands, and nothing is re-asked"
-        (age-lookups-by! (dec @#'ollama.capabilities/retry-after-ms))
+      (testing "just short of the retry interval the failure still stands, and nothing is re-asked"
+        ;; ten seconds either side of the interval rather than a millisecond: the wall clock this test
+        ;; spends between backdating an entry and reading it counts towards that entry's age
+        (age-lookups-by! (- @#'ollama.capabilities/retry-after-ms 10000))
         (let [seen (atom [])]
           (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]} seen)]
             (is (false? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b")))
             (Thread/sleep 100)
             (is (empty? @seen)))))
       (testing "past it, the recovered server is asked and answers"
-        (age-lookups-by! 2)
+        (age-lookups-by! 20000)
         (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]})]
           (is (true? (tu/poll-until 5000 (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
       (finally
