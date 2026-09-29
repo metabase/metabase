@@ -3,11 +3,13 @@
   (:require
    [malli.error :as me]
    [metabase.actions.args :as actions.args]
+   [metabase.actions.audit :as actions.audit]
    [metabase.actions.db :as actions.db]
    [metabase.actions.events :as actions.events]
    [metabase.actions.hierarchy :as actions.hierarchy]
    [metabase.actions.scope :as actions.scope]
    [metabase.actions.settings :as actions.settings]
+   [metabase.actions.types :as actions.types]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -15,6 +17,8 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.actions :as lib.schema.actions]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
@@ -24,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -171,12 +176,27 @@
     (doseq [[event-type payloads] (u/group-by first second effects)]
       (handle-effects!* event-type sans-effects payloads))))
 
+(def ^:private RowDiff
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:db-id    ::lib.schema.id/database]
+   [:before   [:maybe ::lib.schema.actions/row]]
+   [:after    [:maybe ::lib.schema.actions/row]]])
+
+(def ^:private ActionContext
+  [:map {:closed true}
+   [:user-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:scope            {:optional true} [:maybe ::actions.types/scope.hydrated]]
+   [:driver           {:optional true} [:maybe :keyword]]
+   [:invocation-id    {:optional true} [:maybe :string]]
+   [:invocation-stack {:optional true} [:maybe [:sequential [:tuple qualified-keyword? :string]]]]
+   [:effects          {:optional true} [:maybe [:sequential [:tuple qualified-keyword? RowDiff]]]]])
+
 (mu/defn- perform-action-internal!
   [action-kw :- qualified-keyword?
-   ctx       :- :map
+   ctx       :- ActionContext
    ;; Since the inner map shape will depend on action-kw, we will need to dynamically validate it.
-   inputs    :- [:sequential :map]
-   & {:as _opts}]
+   inputs    :- [:sequential ::actions.args/any-arg-map]]
   (driver.conn/with-write-connection
     (lib-be/with-metadata-provider-cache
       (let [invocation-id  (u/generate-nano-id)
@@ -240,7 +260,7 @@
 (mu/defn- check-permissions
   [policy   :- :keyword
    arg-maps :- [:sequential [:or
-                             ::actions.args/common
+                             ::actions.args/any-arg-map
                              [:= {:description "empty map"} {}]]]]
   (when (#{:model-action :ad-hoc-invocation} policy)
     (doseq [arg-map arg-maps
@@ -251,15 +271,28 @@
                              (lib-be/normalize-query arg-map))]]
       (qp.perms/check-query-action-permissions* query))))
 
+(def ^:private PerformActionOpts
+  [:map {:closed true}
+   [:policy           {:optional true} [:maybe [:enum :model-action :ad-hoc-invocation :data-editing]]]
+   [:existing-context {:optional true} [:maybe ActionContext]]
+   [:user-id          {:optional true} [:maybe ms/PositiveInt]]
+   [:action-id        {:optional true} [:maybe ms/PositiveInt]]
+   [:dashboard-id     {:optional true} [:maybe ms/PositiveInt]]
+   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]])
+
 ;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
 (mu/defn perform-action-v2!
   "Perform an *implicit* `action`. This is the main entry point that handles validation, permissions, and more.
   Implement [[perform-action!*]] to add support for a new driver/action combo.
   The shape of `arg-map` depends on the `action` being performed. "
-  [action
-   scope
-   arg-map-or-maps
-   & {:keys [policy existing-context user-id]}]
+  [action          :- [:or :keyword ms/NonBlankString]
+   scope           :- ::actions.types/scope.raw
+   arg-map-or-maps :- [:or ::actions.args/any-arg-map [:sequential ::actions.args/any-arg-map]]
+   ;; `action-id`, `dashboard-id` and `audit-context` are attribution for the audit row; the scope maps are closed
+   ;; schemas, so they ride along as kwargs instead.
+   & {:keys [policy existing-context user-id action-id dashboard-id]
+      audit-context :context}
+   :- [:maybe PerformActionOpts]]
   (when (and existing-context user-id)
     (assert (= user-id (:user-id existing-context)) "Existing context has a consistent user-id"))
   (log/with-context {:action action}
@@ -308,27 +341,46 @@
             (check-data-editing-enabled-for-database! db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]
-          (check-permissions policy arg-maps)
-          (let [result (let [context (-> existing-context
-                                         ;; TODO fix tons of tests which execute without user scope
-                                         (u/assoc-default :user-id (identity #_api/check-500
-                                                                    (or user-id api/*current-user-id*)))
-                                         (u/assoc-default :scope scope))]
-                         (if-not driver
-                           (perform-action-internal! action-kw context arg-maps)
-                           (driver/with-driver driver
-                             (let [context (assoc context
-                                                  ;; Legacy drivers dispatch on this, for now.
-                                                  ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
-                                                  ;;      on this and just fail if the dynamically determined driver is incompatible.
-                                                  :driver driver)]
-                               (perform-action-internal! action-kw context arg-maps)))))]
+          (let [context  (-> existing-context
+                             ;; TODO fix tons of tests which execute without user scope
+                             (u/assoc-default :user-id (identity #_api/check-500
+                                                        (or user-id api/*current-user-id*)))
+                             (u/assoc-default :scope scope))
+                ;; the permission check is inside the audited span so that a denial is traced the same way a
+                ;; driver error is
+                result   (actions.audit/with-audited-execution
+                           {:action       action-kw
+                            :action-id    action-id
+                            :dashboard-id dashboard-id
+                            :database-id  (:id db)
+                            :user-id      (:user-id context)
+                            :context      (or audit-context :action-execute)
+                            :native?      false
+                            :template     {:type     :internal
+                                           :action   (u/qualified-name action-kw)
+                                           :database (:id db)
+                                           :scope    (actions.scope/normalize-scope scope)}
+                            :inputs       arg-maps}
+                           (fn [{:keys [outputs]}] {:result_rows (count outputs)})
+                           (check-permissions policy arg-maps)
+                           (if-not driver
+                             (perform-action-internal! action-kw context arg-maps)
+                             (driver/with-driver driver
+                               (let [context (assoc context
+                                                    ;; Legacy drivers dispatch on this, for now.
+                                                    ;; TODO As far as I'm aware we only have :sql-jdbc defined actions, so can stop dispatching
+                                                    ;;      on this and just fail if the dynamically determined driver is incompatible.
+                                                    :driver driver)]
+                                 (perform-action-internal! action-kw context arg-maps)))))]
             {:effects (:effects (:context result))
              :outputs (:outputs result)}))))))
 
 (mu/defn perform-action!
   "This is the Old School version of [[perform-action!], before we returned effects and added generic bulk application."
-  [action arg-map & {:keys [scope] :as opts}]
+  [action  :- [:or :keyword ms/NonBlankString]
+   arg-map :- ::actions.args/any-arg-map
+   & {:keys [scope] :as opts}
+   :- [:maybe [:merge PerformActionOpts [:map [:scope {:optional true} [:maybe ::actions.types/scope.raw]]]]]]
   (try (let [scope             (or scope {:unknown :model-action})
              {:keys [outputs]} (perform-action-v2! action scope [arg-map] (dissoc opts :scope))]
          (assert (= 1 (count outputs)) "The legacy action APIs do not support actions with multiple outputs")

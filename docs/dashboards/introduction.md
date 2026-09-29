@@ -132,7 +132,7 @@ To provide values for the variable, you'll need to add a filter to the dashboard
 
 ## Iframe cards
 
-[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
+[Iframes](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe) allow you to nest one HTML page in another HTML page. With iframe cards in Metabase, you can embed a webpage in your dashboard. You can embed:
 
 - Spreadsheets or surveys for data entry or workflows
 - Videos or slides for contextualizing and storytelling on dashboards
@@ -166,6 +166,8 @@ src="https://www.youtube.com/embed/{{video_id}}
 ```
 
 To provide values for the variable, you'll need to add a filter to the dashboard, and connect that filter to the card's variable (in this case `video_id`). You can optionally set a default value for the variable. See [Connecting a filter or parameter widget to dashboard cards](./filters.md#connecting-a-filter-or-parameter-widget-to-dashboard-cards).
+
+If Metabase blocks the iframe, an admin needs to [allow iframes from that site](../configuring-metabase/domains.md#allow-iframes-from-a-site-in-dashboards).
 
 ## Dashboard tabs
 
@@ -325,7 +327,7 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/static-embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](../embedding/tenants.md).
 
 Admins can also [create an account](../people-and-groups/managing.md#creating-an-account) for someone and point them to a specific dashboard or question. On a dashboard or question, click the **Sharing** icon and select **Invite someone to view this**.
 
@@ -343,11 +345,12 @@ To configure a dashboard using its URL, you can add the following optional keywo
 
 - `fullscreen`
 - `refresh`
+- `theme`
 
 Here's an example URL:
 
 ```
-https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&night
+https://metabase.mydomain.com/dash/2#refresh=60&fullscreen&theme=night
 ```
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode. Use an ampersand, `&`, in between keywords, and make sure there's a hash, `#`, after the dashboard's ID number.
@@ -356,7 +359,7 @@ There is one important limitation with the `fullscreen` option: for security rea
 
 ## Dashboard version history
 
-For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
+For [questions](../questions/start.md), dashboards, and [models](../data-modeling/models/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../exploration-and-organization/history.md).
 

@@ -504,10 +504,10 @@
                      :model/Database {db-id :id} {:engine :h2}
                      :model/Table {table-id :id} {:db_id db-id}
                      :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:dataset_query {:database      db-id
-                                                       :type          :query
-                                                       :collection_id collection-id
-                                                       :query         {:source-table table-id}}}
+                     :model/Card card {:collection_id collection-id
+                                       :dataset_query {:database db-id
+                                                       :type     :query
+                                                       :query    {:source-table table-id}}}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
         ;; Grant read access on the card but no download permission
@@ -538,10 +538,10 @@
                      :model/Database {db-id :id} {:engine :h2}
                      :model/Table {table-id :id} {:db_id db-id}
                      :model/Collection {collection-id :id} {:name "Test Collection"}
-                     :model/Card card {:dataset_query {:database      db-id
-                                                       :collection_id collection-id
-                                                       :type          :query
-                                                       :query         {:source-table table-id}}}
+                     :model/Card card {:collection_id collection-id
+                                       :dataset_query {:database db-id
+                                                       :type     :query
+                                                       :query    {:source-table table-id}}}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
         ;; Grant read and download permissions

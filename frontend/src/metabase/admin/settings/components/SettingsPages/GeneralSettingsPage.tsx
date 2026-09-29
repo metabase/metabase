@@ -1,16 +1,16 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_SEMANTIC_SEARCH } from "metabase/plugins";
+import {
+  AdminSettingInput,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 
 import { DevInstanceBanner } from "../GeneralSettings/DevInstanceBanner";
-import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { HomepageSetting } from "../widgets/HomepageSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";

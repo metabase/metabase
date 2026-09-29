@@ -12,7 +12,6 @@ effective_type: type/Float
 semantic_type: type/Longitude
 dimensions: []
 position: 6
-custom_position: 0
 database_position: 6
 serdes/meta:
 - id: Sample Database

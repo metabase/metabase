@@ -669,7 +669,7 @@
                                 body))))))
 
 (deftest record-saved-entity-strips-extra-query-keys-test
-  (testing "POST /api/metabot/conversations/:id/saved-entity validates and strips undeclared keys from :dataset_query"
+  (testing "POST /api/metabot/conversations/:id/saved-entity strips the query processor's internal keys from :dataset_query"
     (let [user-id (mt/user->id :crowberto)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
@@ -678,9 +678,13 @@
                                               (str "metabot/conversations/" convo-id "/saved-entity")
                                               {:chart_id "chart-1"
                                                :card     {:name          "Venues"
-                                                          :dataset_query (assoc (venues-query) :a 1 :a/b 2)
+                                                          ;; internal keys the QP adds while a query runs; a client
+                                                          ;; must not be able to smuggle them in through a save
+                                                          :dataset_query (-> (venues-query)
+                                                                             (assoc :qp/source-card-id 1)
+                                                                             (assoc-in [:stages 0 :qp/stage-had-source-card] 1))
                                                           :display       "bar"}})
                 stored  (:dataset_query (t2/select-one :model/Card :id (:id created)))]
             (is (= :mbql/query (:lib/type stored)))
-            (is (not (contains? stored :a)))
-            (is (not (contains? stored :a/b)))))))))
+            (is (not (contains? stored :qp/source-card-id)))
+            (is (not (contains? (first (:stages stored)) :qp/stage-had-source-card)))))))))

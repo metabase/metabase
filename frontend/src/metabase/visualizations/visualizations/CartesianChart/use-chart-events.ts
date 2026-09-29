@@ -3,6 +3,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
+import { useStore } from "metabase/redux";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -85,7 +86,6 @@ export const useChartEvents = (
     onVisualizationClick,
     onHoverChange,
     clicked,
-    metadata,
     isDashboard,
   }: VisualizationProps,
   // The ECharts instance, mirrored into state by the caller. Used as a signal
@@ -94,6 +94,8 @@ export const useChartEvents = (
   // has measured it.
   chartInstance?: EChartsType,
 ) => {
+  // Read at call time so the handler list does not rebuild on metadata change.
+  const store = useStore();
   const isBrushing = useRef<boolean>();
   useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
@@ -255,8 +257,8 @@ export const useChartEvents = (
             }
           } else {
             const eventData = getBrushData(
+              store.getState(),
               isVisualizerCard ? visualizerRawSeries : rawSeries,
-              metadata,
               chartModel,
               adjustedBrushEndEvent,
             );
@@ -285,7 +287,7 @@ export const useChartEvents = (
       rawSeries,
       visualizerRawSeries,
       isVisualizerCard,
-      metadata,
+      store,
       onChangeCardAndRun,
       onBrush,
     ],

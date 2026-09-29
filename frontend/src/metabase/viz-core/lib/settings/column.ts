@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import {
   currency,
   getCurrency,
@@ -57,7 +57,10 @@ import type {
 import { getVisualization, getVisualizationRaw } from "../registry";
 
 import { nestedSettings } from "./nested";
-import { getDeduplicatedTableColumnSettings } from "./utils";
+import {
+  getDeduplicatedTableColumnSettings,
+  insertNewColumnSettings,
+} from "./utils";
 
 type GetColumnsFn = (
   series: Series,
@@ -540,7 +543,7 @@ export const getTitleForColumn = (
   const pivoted = isPivoted(series, settings);
 
   if (pivoted) {
-    return displayNameForColumn(column) || NULL_DISPLAY_VALUE;
+    return displayNameForColumn(column) || getNullDisplayValue();
   }
 
   return (
@@ -574,19 +577,18 @@ export function tableColumnSettings({
           uniqColumnSettings,
         );
 
-        return [
+        return insertNewColumnSettings(
           // retain settings with matching columns only
-          ...uniqColumnSettings.filter(
+          uniqColumnSettings.filter(
             (_, settingIndex) => columnIndexes[settingIndex] >= 0,
           ),
-          // add columns that do not have matching settings to the end
-          ...cols
-            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-            .map((column) => ({
-              name: column.name,
-              enabled: true,
-            })),
-        ];
+          cols,
+          {
+            getColumnName: (setting) => setting.name,
+            isNewColumn: (_, columnIndex) => settingIndexes[columnIndex] < 0,
+            createSetting: (column) => ({ name: column.name, enabled: true }),
+          },
+        );
       },
       getProps: (series, settings) => {
         const [

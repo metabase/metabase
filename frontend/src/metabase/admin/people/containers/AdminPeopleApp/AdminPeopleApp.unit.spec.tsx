@@ -71,7 +71,9 @@ const setupTenantRoute = async (initialRoute: string) => {
   const state = createMockState({
     admin: createMockAdminState({
       app: createMockAdminAppState({
-        paths: [{ key: "people", name: "People", path: "/admin/people" }],
+        paths: [
+          { key: "people", getName: () => "People", path: "/admin/people" },
+        ],
       }),
     }),
     currentUser: createMockUser({

@@ -120,7 +120,7 @@
               (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
                                           (update :cache_strategy assoc
                                                   ;; Enable caching for current query
-                                                  :avg-execution-time 5000
+                                                  :avg-execution-ms   5000
                                                   :min_duration_ms 1
                                                   :multiplier 100000
                                                   :type :ttl))]

@@ -117,5 +117,5 @@
 
 (mu/defn internal-query? :- :boolean
   "Returns `true` if query is an internal query."
-  [{query-type :type} :- :map]
+  [{query-type :type} :- ::qp.schema/any-query]
   (= :internal (keyword query-type)))

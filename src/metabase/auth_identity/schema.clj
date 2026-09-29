@@ -5,28 +5,62 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::auth-identity.credentials.password
+  "Credentials of the `password` provider."
+  [:map {:closed true}
+   [:plaintext_password {:optional true} [:maybe :string]]
+   [:password_hash      {:optional true} [:maybe :string]]
+   [:password_salt      {:optional true} [:maybe :string]]])
+
+(mr/def ::auth-identity.credentials.token
+  "Credentials of a hashed-token provider (password reset, support access grant)."
+  [:map {:closed true}
+   [:token_hash    {:optional true} [:maybe :string]]
+   [:expires_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:consumed_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:grant_ends_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::auth-identity.credentials.totp
+  "Credentials of the `totp` (MFA) provider."
+  [:map {:closed true}
+   [:secret          {:optional true} :string]
+   [:last_used_step  {:optional true} :int]
+   [:used_jtis       {:optional true} [:sequential [:map {:closed true}
+                                                    [:jti :string]
+                                                    [:exp :int]]]]
+   [:recovery_codes  {:optional true} [:sequential :string]]
+   [:email_otp       {:optional true} [:map {:closed true}
+                                       [:hash :string]
+                                       [:exp  :int]]]])
+
 (mr/def ::auth-identity.credentials
   "The `:credentials` column of a AuthIdentity, decoded."
-  :map)
+  [:or ::auth-identity.credentials.password ::auth-identity.credentials.token ::auth-identity.credentials.totp])
+
+(mr/def ::auth-identity.metadata.emailed-secret
+  "Metadata of an emailed-secret token."
+  [:map {:closed true}
+   [:email           {:optional true} [:maybe ms/Email]]
+   [:ip_address      {:optional true} [:maybe :string]]
+   [:request_context {:optional true} [:maybe [:map {:closed true}
+                                               [:user_agent {:optional true} [:maybe :string]]
+                                               [:timestamp  {:optional true} [:maybe [:or ms/TemporalInstant :string]]]]]]])
+
+(mr/def ::auth-identity.metadata.slack-connect
+  "Metadata of the `slack-connect` provider."
+  [:map {:closed true}
+   [:signing_secret_version {:optional true} [:maybe :int]]])
 
 (mr/def ::auth-identity.metadata
   "The `:metadata` column of a AuthIdentity, decoded."
-  :map)
+  [:or ::auth-identity.metadata.emailed-secret ::auth-identity.metadata.slack-connect])
 
 (mr/def ::auth-identity
   "A AuthIdentity as selected from the app DB: every column of `:auth_identity`."
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:user_id      ::lib.schema.id/user]
-   [:provider     [:or :keyword :string]]
-   [:credentials  [:maybe ::auth-identity.credentials]]
-   [:metadata     [:maybe ::auth-identity.metadata]]
-   [:provider_id  [:maybe :string]]
-   [:last_used_at [:maybe ms/TemporalInstant]]
-   [:expires_at   [:maybe ms/TemporalInstant]]
-   [:created_at   ms/TemporalInstant]
-   [:updated_at   ms/TemporalInstant]
-   [:confirmed_at [:maybe ms/TemporalInstant]]])
+  [:merge
+   ::auth-identity.update
+   [:map {:closed true}
+    [:id           ms/PositiveInt]]])
 
 (mr/def ::auth-identity.update
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."

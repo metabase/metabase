@@ -15,11 +15,9 @@
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.settings :as mfa.settings]
    [metabase-enterprise.mfa.throttling :as mfa.throttling]
-   [metabase-enterprise.mfa.totp :as totp]
    [metabase-enterprise.mfa.verification :as verification]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -97,7 +95,7 @@
   `otpauth_uri` for QR display; enrollment is not active until confirmed with a live code."
   [_route-params
    _query-params
-   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+   {:keys [password]} :- [:map {:closed true} [:password ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
   (when-not (mfa.settings/mfa-enabled?)
     (throw (ex-info (tru "Two-factor authentication is not enabled on this instance.")
@@ -110,14 +108,11 @@
                  (throw (ex-info (tru "Invalid password.")
                                  {:status-code 400
                                   :errors      {:password (tru "Invalid password.")}})))
-               (let [secret     (or (enrollment/start-enrollment! api/*current-user-id*)
-                                    (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
-                                                    {:status-code 400})))
-                     user-email (mfa.db/user-email api/*current-user-id*)]
-                 {:secret      secret
-                  :otpauth_uri (totp/otpauth-uri {:issuer (or (appearance/site-name) "Metabase")
-                                                  :account user-email
-                                                  :secret  secret})}))))
+               ;; Precondition for [[enrollment/start-enrollment!]] is met: this user is logged in and we just
+               ;; re-validated their password.
+               (or (enrollment/start-enrollment! api/*current-user-id*)
+                   (throw (ex-info (tru "Two-factor authentication is already set up. Disable it before re-enrolling.")
+                                   {:status-code 400}))))))
 
 (api.macros/defendpoint :post "/enroll/confirm" :- [:map
                                                     [:recovery_codes [:sequential ms/NonBlankString]]]
@@ -125,23 +120,23 @@
   factor and returns the single-use recovery codes — the only time they exist in plaintext."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (premium-features/assert-has-feature :multi-factor-auth (tru "Multi-factor authentication"))
-  (let [codes (throttled :enroll
-                         (fn []
-                           (or (enrollment/confirm-enrollment! api/*current-user-id* code)
-                               (throw (invalid-code-ex)))))
+  (let [{:keys [recovery-codes]} (throttled :enroll
+                                            (fn []
+                                              (or (enrollment/confirm-enrollment! api/*current-user-id* code)
+                                                  (throw (invalid-code-ex)))))
         user  (mfa.db/user api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
-    {:recovery_codes codes}))
+    {:recovery_codes recovery-codes}))
 
 (api.macros/defendpoint :post "/disable" :- nil
   "Disable two-factor authentication for the current user. Re-auth is a fresh second factor — a
   TOTP code or an unused recovery code — never just the password."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (throttled :disable
              (fn []
                ;; one transaction so a consumed recovery code and the enrollment removal land together
@@ -185,7 +180,7 @@
   strip its own 2FA with only a cookie, turning transient access into a permanent password bypass."
   [_route-params
    _query-params
-   {user-id :user_id} :- [:map [:user_id ms/PositiveInt]]]
+   {user-id :user_id} :- [:map {:closed true} [:user_id ms/PositiveInt]]]
   (api/check-superuser)
   (when (= user-id api/*current-user-id*)
     (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
@@ -261,7 +256,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+   {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (user-list-response true query))
 
@@ -272,7 +267,7 @@
 
   Takes `limit`/`offset` for pagination, and `query` to search on first name, last name, and email."
   [_route-params
-   {:keys [query]} :- [:map [:query {:optional true} [:maybe :string]]]]
+   {:keys [query]} :- [:map {:closed true} [:query {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (user-list-response false query))
 
@@ -284,7 +279,7 @@
   never rotate the codes. The plaintext codes are returned exactly once; only hashes are stored."
   [_route-params
    _query-params
-   {:keys [code]} :- [:map [:code ms/NonBlankString]]]
+   {:keys [code]} :- [:map {:closed true} [:code ms/NonBlankString]]]
   (throttled :regenerate
              (fn []
                (t2/with-transaction [_conn]

@@ -10,7 +10,6 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Button, Group, Modal, Paper, Stack, Text } from "metabase/ui";
-import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey, UpdateApiKeyRequest } from "metabase-types/api";
 
 import {
@@ -20,9 +19,7 @@ import {
 
 import S from "./EditApiKeyModal.module.css";
 import { SecretKeyModal } from "./SecretKeyModal";
-import { API_KEY_VALIDATION_SCHEMA } from "./utils";
-
-const { fontFamilyMonospace } = getThemeOverrides();
+import { getApiKeyValidationSchema } from "./utils";
 
 type EditModalName = "edit" | "regenerate" | "secretKey";
 
@@ -142,7 +139,7 @@ export const EditApiKeyModal = ({
         <FormProvider
           initialValues={{ ...apiKey, group_id: apiKey.group.id }}
           onSubmit={handleSubmit}
-          validationSchema={API_KEY_VALIDATION_SCHEMA}
+          validationSchema={getApiKeyValidationSchema()}
         >
           {({ dirty }) => (
             <Form>
@@ -161,8 +158,7 @@ export const EditApiKeyModal = ({
                     input: {
                       // override the disabled-gray so the masked key stays readable in both themes
                       color: "var(--mb-color-text-primary) !important",
-                      // Unjustified type cast. FIXME
-                      fontFamily: fontFamilyMonospace as string,
+                      fontFamily: "var(--mb-default-monospace-font-family)",
                     },
                   }}
                   disabled

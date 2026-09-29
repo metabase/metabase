@@ -79,9 +79,9 @@
 
 (deftest ^:parallel normalize-test-8
   (testing ":value clauses should keep snake_case keys in the options (#23354)"
-    (let [clause [:value "some value" {:some_key "some key value"}]]
+    (let [clause [:value "some value" {:database_type "some key value"}]]
       (is (= clause
-             (mbql.normalize/normalize ::mbql.s/value [:value "some value" {:some_key "some key value"}]))))))
+             (mbql.normalize/normalize ::mbql.s/value [:value "some value" {:database_type "some key value"}]))))))
 
 (deftest ^:parallel normalize-test-9
   (testing ":value clauses should keep snake_case keys in the type info args (#23354)"
@@ -1632,9 +1632,9 @@
 (deftest ^:parallel normalize-datetime-test
   (is (= [:datetime ""]
          (mbql.normalize/normalize [:datetime ""])))
-  (testing "if we add other options, they are preserved (and don't break anything)"
-    (is (= [:datetime "" {:x "x"}]
-           (mbql.normalize/normalize [:datetime "" {"x" "x"}]))))
+  (testing "if we add other options, they are dropped (and don't break anything)"
+    (is (= [:datetime "" {:mode :iso}]
+           (mbql.normalize/normalize [:datetime "" {"x" "x", "mode" "iso"}]))))
   (is (= [:datetime "" {:mode :iso}]
          (mbql.normalize/normalize [:datetime "" {:mode :iso}])
          (mbql.normalize/normalize [:datetime "" {:mode "iso"}])
@@ -1686,6 +1686,33 @@
              ["field" 3]
              nil]]
            {"default" ["field" 5 {}]}]))))
+
+(deftest ^:parallel normalize-undeclared-clause-options-test
+  (testing "Undeclared keys in clause options are dropped instead of leaving the clause and its parents un-normalized, and keys MBQL 5 options allow are kept"
+    (is (= {:database 1
+            :type     :query
+            :query    {:source-table 2
+                       :expressions  {"c" [:case [[[:> [:field 3 nil] 0] [:field 3 nil]]] {:default [:field 5 nil]}]
+                                      "d" [:datetime [:field 6 nil] {:mode :iso}]}
+                       :aggregation  [[:aggregation-options [:count] {:display-name "C"}]]
+                       :filter       [:and
+                                      [:contains [:field 1 nil] "x" {:case-sensitive false, :display-name "f"}]
+                                      [:time-interval [:field 4 nil] :current :day {:include-current true}]
+                                      [:= [:field 1 nil] [:value "x" {:base_type :type/Text}]]
+                                      [:between [:field 2 nil] 1 10]]}}
+           (mbql.normalize/normalize
+            {"database" 1
+             "type"     "query"
+             "query"    {"source-table" 2
+                         "expressions"  {"c" ["case" [[[">" ["field" 3 nil] 0] ["field" 3 nil]]]
+                                              {"default" ["field" 5 nil], "x" 1}]
+                                         "d" ["datetime" ["field" 6 nil] {"mode" "iso", "x" 1}]}
+                         "aggregation"  [["aggregation-options" ["count"] {"display-name" "C", "x" 1}]]
+                         "filter"       ["and"
+                                         ["contains" ["field" 1 nil] "x" {"case-sensitive" false, "display-name" "f", "x" 1}]
+                                         ["time-interval" ["field" 4 nil] "current" "day" {"include-current" true, "x" 1}]
+                                         ["=" ["field" 1 nil] ["value" "x" {"base_type" "type/Text", "x" 1}]]
+                                         ["between" ["field" 2 nil] 1 10]]}})))))
 
 (deftest ^:parallel normalize-literal-strings-in-custom-aggregations-test
   (testing "Strings are allowed as arguments to a custom aggregation (#66199)"

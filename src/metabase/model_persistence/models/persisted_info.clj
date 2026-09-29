@@ -56,24 +56,16 @@
   {:field-name field-name
    :base-type (or effective_type base_type)})
 
-(def ^:private Metadata
-  "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [:maybe
-   [:sequential
-    [:map
-     [:name      :string]
-     [:base_type ::lib.schema.common/base-type]
-     [:effective_type {:optional true} ::lib.schema.common/base-type]]]])
-
 (mu/defn metadata->definition :- ::lib.schema.metadata/persisted-info.definition
   "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata :- Metadata table-name]
+  [metadata   :- [:maybe ::lib.schema.metadata/card.result-metadata]
+   table-name :- ::lib.schema.common/non-blank-string]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
 
 (mu/defn query-hash
   "Base64 string of the hash of a query."
-  [query :- :map]
+  [query :- :metabase.lib-be.schema/maybe-legacy-or-empty-query]
   (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*

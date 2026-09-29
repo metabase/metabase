@@ -1,9 +1,8 @@
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useUserKeyValue } from "metabase/current-user";
+import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
   PLUGIN_DEPENDENCIES,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
 } from "metabase/plugins";
@@ -14,6 +13,7 @@ import {
   Route,
   type RouteComponent,
   redirect,
+  useIsNavigating,
 } from "metabase/router";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
@@ -155,13 +155,14 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
 
 export function DataStudioIndexRedirect() {
   const indexPath = useSelector(getIndexPath);
+  const isNavigating = useIsNavigating();
   const { value: hasSeenGuide, isLoading } = useUserKeyValue({
     namespace: "data_studio",
     key: "hasSeenGuide",
     defaultValue: false,
   });
 
-  if (isLoading) {
+  if (isLoading || isNavigating) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -171,7 +172,7 @@ export function DataStudioIndexRedirect() {
 }
 
 function getIndexPath(state: State) {
-  if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)) {
+  if (canAccessDataModel(state)) {
     return Urls.dataStudioData();
   }
   if (canAccessTransforms(state)) {

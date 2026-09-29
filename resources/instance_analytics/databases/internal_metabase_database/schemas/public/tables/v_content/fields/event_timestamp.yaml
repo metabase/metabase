@@ -8,7 +8,6 @@ base_type: type/DateTimeWithLocalTZ
 effective_type: type/DateTimeWithLocalTZ
 dimensions: []
 position: 20
-custom_position: 0
 database_position: 20
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}

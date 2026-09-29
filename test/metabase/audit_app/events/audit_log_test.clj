@@ -573,7 +573,7 @@
    (mt/with-current-user (mt/user->id :rasta)
      (mt/with-temp [:model/Document {doc-id :id}     {}
                     :model/Comment  comment {:target_id doc-id
-                                             :content "{}"}]
+                                             :content   {:type "doc", :content []}}]
        (testing :event/comment-create
          (is (= {:object comment}
                 (events/publish-event! :event/comment-create {:object comment})))

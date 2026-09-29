@@ -1,11 +1,10 @@
 import { Group } from "@visx/group";
 import { init } from "echarts/core";
-import { t } from "ttag";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
 import { getChartHeight } from "metabase/static-viz/lib/utils";
-import { useAreAllDataPointsOutOfRange } from "metabase/visualizations/visualizations/CartesianChart/use-data-points-visible";
 import {
   getCartesianChartModel,
   getCartesianChartOption,
@@ -15,17 +14,13 @@ import {
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
 const WIDTH = 540;
 const HEIGHT = 360;
 const LEGEND_PADDING = 8;
-
-const DATA_OUT_OF_RANGE_RECT = {
-  height: 40,
-  width: 210,
-};
 
 registerEChartsModules();
 
@@ -90,12 +85,11 @@ export const ComboChart = ({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
+
   chart.dispose();
 
-  const allPointsOutOfRange = useAreAllDataPointsOutOfRange(
-    chartModel,
-    settings,
-  );
   const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
@@ -121,21 +115,11 @@ export const ComboChart = ({
           />
         )}
         {allPointsOutOfRange && (
-          <g>
-            <rect
-              x={width / 2 - DATA_OUT_OF_RANGE_RECT.width / 2}
-              y={totalHeight / 2 - DATA_OUT_OF_RANGE_RECT.height / 2}
-              fill={renderingContext.getColor("background_page-primary")}
-              stroke={renderingContext.getColor("border-neutral")}
-              strokeWidth="1"
-              width={DATA_OUT_OF_RANGE_RECT.width}
-              height={DATA_OUT_OF_RANGE_RECT.height}
-              rx="8"
-            />
-            <text x="50%" y={totalHeight / 2 + 4} textAnchor="middle">
-              {t`Every data point is out of range`}
-            </text>
-          </g>
+          <DataOutOfRangeOverlay
+            width={width}
+            height={totalHeight}
+            renderingContext={renderingContext}
+          />
         )}
       </svg>
     </>

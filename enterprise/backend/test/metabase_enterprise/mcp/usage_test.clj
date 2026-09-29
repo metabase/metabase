@@ -5,8 +5,9 @@
   :none`); PII is gated by `analytics-pii-retention-enabled` (itself `:audit-app`-gated)."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [metabase.mcp.tools :as mcp.tools]
    [metabase.mcp.usage :as usage]
+   [metabase.mcp.v2.registry :as v2.registry]
+   [metabase.mcp.v2.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -264,21 +265,30 @@
 
 ;;; ---------------------------------------- call-tool instrumentation --------------------------------------
 
-(deftest ^:parallel call-tool-records-error-when-handler-throws-test
-  (testing "a handler that throws (rather than returning error content) still records an error row,
-           then the exception is rethrown so the client still sees the failure"
+;; Not ^:parallel: `register-tool!` mutates the shared tool registry.
+(deftest call-tool-records-error-when-handler-throws-test
+  (testing "a v2 tool handler that throws still records an error row, and the client sees a
+           (redacted) error rather than a silent success"
     (mt/with-premium-features #{:audit-app}
-      (let [sid  (str "throw-session-" (mt/random-name))
-            tool (str "boom-" (mt/random-name))]
+      ;; A tool name unique to this run. Driving the real `test_echo` would make the select read a sibling
+      ;; ^:parallel test's row, and the cleanup would then delete every test_echo row in the app DB — the rest
+      ;; of this ns isolates by a unique column value for exactly that reason.
+      (let [sid       (str "throw-session-" (mt/random-name))
+            tool-name (str "throwing-" (mt/random-name))]
         (try
-          (mt/with-dynamic-fn-redefs [mcp.tools/dispatch-tool-call
-                                      (fn [& _] (throw (ex-info "kaboom" {})))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"kaboom"
-                                  (mcp.tools/call-tool #{} sid tool {}))))
-          (let [row (t2/select-one :model/McpToolCallLog :tool_name tool)]
+          (v2.registry/register-tool! {:name        tool-name
+                                       :scope       "agent:content:read"
+                                       :description "throws on purpose"
+                                       :args        [:map]
+                                       :handler     (fn [_ _] (throw (ex-info "kaboom" {})))})
+          (let [{:keys [result error]} (v2.registry/call-tool #{"agent:content:read"} sid tool-name {})]
+            (is (or error (:isError result)) "the client sees an error result"))
+          (let [row (t2/select-one :model/McpToolCallLog :tool_name tool-name)]
             (is (some? row) "an error row is recorded even though the handler threw")
             (is (= "error" (:status row))))
-          (finally (cleanup-calls! :tool_name tool)))))))
+          (finally
+            (swap! @#'v2.registry/tools* dissoc tool-name)
+            (cleanup-calls! :tool_name tool-name)))))))
 
 ;;; --------------------------------------------- Feature gating --------------------------------------------
 
@@ -355,12 +365,11 @@
                          (test.users/username->token :crowberto)
                          :post "mcp"
                          {:request-options {:headers {"mcp-session-id" sid}}}
-                         (jsonrpc "tools/call" {:name "read_resource"
-                                                :arguments {:uris ["metabase://databases"]}} 2))]
+                         (jsonrpc "tools/call" {:name "test_echo" :arguments {}} 2))]
           (testing "successful tools/call writes a success row with identity denormalized on it"
             (is (= 200 (:status call-resp)))
             (is (false? (boolean (get-in call-resp [:body :result :isError]))))
-            (let [row (t2/select-one :model/McpToolCallLog :tool_name "read_resource" :client_version ver)]
+            (let [row (t2/select-one :model/McpToolCallLog :tool_name "test_echo" :client_version ver)]
               (is (some? row))
               (is (= "success" (:status row)))
               (is (= crowberto (:user_id row)))
@@ -374,17 +383,24 @@
                           :post "mcp"
                           {:request-options {:headers {"mcp-session-id" sid}}}
                           (jsonrpc "tools/call" {:name "no_such_tool" :arguments {}} 3))]
-            (is (true? (boolean (get-in err-resp [:body :result :isError]))))
+            ;; The bare alias now serves v2, whose registry rejects an unknown tool before dispatch:
+            ;; that is `{:error ...}`, not a handler result carrying `:isError`.
+            (is (boolean (or (get-in err-resp [:body :error])
+                             (get-in err-resp [:body :result :isError]))))
             (let [row (t2/select-one :model/McpToolCallLog :tool_name "no_such_tool" :client_version ver)]
               (is (some? row))
               (is (= "error" (:status row)))
               ;; unknown tool -> JSON-RPC "method not found"; error_code is non-PII, always recorded
               (is (= -32601 (:error_code row))))))
-        (testing "DELETE stamps ended_at on the session row"
-          (client/client-full-response (test.users/username->token :crowberto)
-                                       :delete "mcp"
-                                       {:request-options {:headers {"mcp-session-id" sid}}})
-          (is (some? (:ended_at (t2/select-one :model/McpSessionLog :id sid)))))
+        (testing "DELETE is refused: v2 does not support client-initiated termination"
+          ;; v1 tore the session down here and stamped `ended_at` on the way out. The v2 transport
+          ;; answers 405 instead, so nothing on this path ends the session row. `record-mcp-session-end!`
+          ;; is now callerless -- tracked separately rather than wired up here, since choosing where a
+          ;; v2 session ends is a design question, not a test fix.
+          (is (= 405 (:status (client/client-full-response
+                               (test.users/username->token :crowberto)
+                               :delete "mcp"
+                               {:request-options {:headers {"mcp-session-id" sid}}})))))
         (finally
           (cleanup-calls! :client_version ver)
           (cleanup! sid))))))

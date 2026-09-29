@@ -9,6 +9,7 @@ import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSing
 import {
   type MetabaseEmbeddingTheme,
   isEmbeddingThemeV1,
+  isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
@@ -39,6 +40,16 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
 
   const resolvedColorScheme = getResolvedColorSchemeFromTheme(theme);
 
+  const whitelabelColors = useSetting("application-colors");
+
+  const themeBrandColor = isEmbeddingThemeV2(theme)
+    ? (theme.colors?.["core-brand"] ?? theme.colors?.brand)
+    : theme?.colors?.brand;
+
+  const hasCustomBrandColor = Boolean(
+    themeBrandColor ?? whitelabelColors?.brand,
+  );
+
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
 
@@ -60,8 +71,13 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
             theme={themeOverride}
             resolvedColorScheme={resolvedColorScheme}
             cssVariablesSelector=".mb-wrapper"
+            forceDynamicBrandRamp={hasCustomBrandColor}
           >
-            {isInstanceToRender && <GlobalSdkCssVariables />}
+            {isInstanceToRender && (
+              <GlobalSdkCssVariables
+                forceDynamicBrandRamp={hasCustomBrandColor}
+              />
+            )}
 
             {children}
           </ThemeProvider>
@@ -88,7 +104,11 @@ export const SdkThemeProviderWithStore = ({
   </MetabaseReduxProvider>
 );
 
-function GlobalSdkCssVariables() {
+function GlobalSdkCssVariables({
+  forceDynamicBrandRamp,
+}: {
+  forceDynamicBrandRamp: boolean;
+}) {
   const theme = useMantineTheme();
   const whitelabelColors = useSetting("application-colors");
 
@@ -96,8 +116,13 @@ function GlobalSdkCssVariables() {
   const font = useSelector(getFont) ?? DEFAULT_FONT;
 
   const styles = useMemo(() => {
-    return getMetabaseSdkCssVariables({ theme, font, whitelabelColors });
-  }, [theme, font, whitelabelColors]);
+    return getMetabaseSdkCssVariables({
+      theme,
+      font,
+      whitelabelColors,
+      forceDynamicBrandRamp,
+    });
+  }, [theme, font, whitelabelColors, forceDynamicBrandRamp]);
 
   return <Global styles={styles} />;
 }

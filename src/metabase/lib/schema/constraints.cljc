@@ -11,7 +11,8 @@
    [:map
     {:decode/normalize lib.schema.common/normalize-map
      :decode/api       lib.schema.common/remove-internal-keys
-     :encode/serialize lib.schema.common/remove-internal-keys}
+     :encode/serialize lib.schema.common/remove-internal-keys
+     :closed           true}
     [:max-results
      {:optional true
       :description

@@ -42,7 +42,7 @@
   :can-read-from-env? true)
 
 (defsetting remote-sync-url
-  (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
+  (deferred-tru "The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`")
   :type :string
   :visibility :admin
   :encryption :when-encryption-key-set
@@ -83,7 +83,7 @@
   :default 5)
 
 (defsetting remote-sync-task-time-limit-ms
-  (deferred-tru "The maximum amount of time a remote sync task will be given to complete")
+  (deferred-tru "How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.")
   :type :integer
   :visibility :authenticated
   :export? false

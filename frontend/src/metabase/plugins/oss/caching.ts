@@ -13,6 +13,8 @@ import type {
   CardId,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 // Types
 
 export type StrategyLabel =
@@ -148,13 +150,13 @@ export const getPerformanceTabMetadata = () =>
   // Unjustified type cast. FIXME
   [
     {
-      name: t`Database caching`,
+      getName: () => t`Database caching`,
       path: "/admin/performance/databases",
       key: "performance-databases",
       tabId: PerformanceTabId.Databases,
     },
     {
-      name: t`Model persistence`,
+      getName: () => t`Model persistence`,
       path: "/admin/performance/models",
       key: "performance-models",
       tabId: PerformanceTabId.Models,
@@ -191,11 +193,4 @@ const getDefaultPluginCaching = () => ({
     PluginPlaceholder as ComponentType<MetricCachingModalProps>,
 });
 
-export const PLUGIN_CACHING = getDefaultPluginCaching();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_CACHING, getDefaultPluginCaching());
-}
+export const PLUGIN_CACHING = definePluginSlot(getDefaultPluginCaching);

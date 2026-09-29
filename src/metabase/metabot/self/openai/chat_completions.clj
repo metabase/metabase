@@ -328,15 +328,20 @@
 
 ;;; Request body
 
+(def ^:private CCOpts
+  "Dialect hooks for [[request-body]] that are not request options."
+  [:maybe [:map {:closed true}
+           [:reasoning-part->message {:optional true} [:maybe [:fn fn?]]]]])
+
 (mu/defn request-body
   "Build the Chat Completions request body for an LLM request.
 
   The optional `cc-opts` map holds dialect hooks that are not request options —
   today only `:reasoning-part->message`, threaded to [[parts->cc-messages]]. A
   fn-valued hook stays out of the traced and logged `LLMRequestOpts` on purpose."
-  ([opts] (request-body opts nil))
+  ([opts :- core/LLMRequestOpts] (request-body opts nil))
   ([{:keys [model system input tools temperature max-tokens tool_choice schema]} :- core/LLMRequestOpts
-    cc-opts]
+    cc-opts :- CCOpts]
    (let [messages  (cond-> (parts->cc-messages input cc-opts)
                      system (as-> msgs (into [{:role "system" :content system}] msgs)))
          all-tools (or (when schema
@@ -369,9 +374,11 @@
   never actually reached and leaves an empty model picker with no diagnostic. Throw instead.
 
   `provider-name` is the display name, used in the message. The exception is tagged `:api-error` so the
-  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and carries
-  no `:status`: this isn't a credentials problem, and `metabase.metabot.api`'s `provider-client-error?`
-  renders any 4xx under the admin API-key field, which would attach the wrong message to the wrong input.
+  adapter's surrounding [[metabase.metabot.self.core/rethrow-api-error!]] rethrows it unchanged, and
+  `:status-code 400` so it reaches the admin as their misconfiguration. Without it `metabase.llm.api.provider`'s
+  `provider-client-error?` does not recognise it, and the Connect path rethrows it as an unhandled 500:
+  the admin still sees the sentence, but it bumps the unhandled-error counter and collapses to \"Something
+  went wrong\" under `MB_HIDE_STACKTRACES=true`, losing the diagnostic for the operators who enabled that.
 
   A well-formed but empty `data` is a legitimate response — an account with no accessible models — and passes.
 
@@ -382,6 +389,7 @@
      (when-not (sequential? data)
        (throw (ex-info (cond-> (tru "{0} returned an unexpected model list response" provider-name)
                          detail (str ". " detail))
-                       {:api-error  true
-                        :error-code :malformed-model-catalog})))
+                       {:api-error   true
+                        :status-code 400
+                        :error-code  :malformed-model-catalog})))
      data)))
