@@ -48947,7 +48947,6 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "expected_branch" ],
                 "additionalProperties" : false
               }
             }
@@ -55343,7 +55342,7 @@
       "get" : {
         "operationId" : "get-api-index",
         "summary" : "GET /api/index",
-        "description" : "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged\n  `:metabase_managed`; managed ones also carry `:request` (status + definition).",
+        "description" : "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged\n  `:metabase_managed`; managed ones also carry `:request` (status + definition). If the warehouse can't be read, the\n  managed requests are still listed (as absent) and `:warehouse_error` carries the reason.",
         "parameters" : [ {
           "in" : "query",
           "name" : "transform-id",
@@ -55477,6 +55476,13 @@
                         "required" : [ "metabase_managed", "present_in_warehouse", "name", "kind", "key_columns", "include_columns", "is_unique", "is_primary", "is_valid", "partial_predicate", "access_method" ],
                         "additionalProperties" : false
                       }
+                    },
+                    "warehouse_error" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
                     }
                   },
                   "required" : [ "data" ]
@@ -74667,7 +74673,7 @@
               "type" : "null"
             } ]
           },
-          "description" : "Whether to include all readable models with executable actions. Database scope applies when provided."
+          "description" : "Include models with actions. Database scope filters models; library scope does not. Without a scope, returns models only."
         } ],
         "responses" : {
           "2XX" : {
