@@ -470,7 +470,7 @@
   [sql-type :- ms/KeywordOrString
    expr     :- ::honeysql-expr]
   (-> (if (raw-type-name? sql-type)
-        [:cast expr ^:allow-raw-sql [:raw (name sql-type)]]
+        [:cast expr (name sql-type)]
         [:cast expr (identifier :type-name (name sql-type))])
       (with-database-type-info sql-type)))
 

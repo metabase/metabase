@@ -503,6 +503,11 @@
   (when (= engine :postgres)
     (append-sql! context "'")))
 
+(defn- postgres-full-text-search-match [[lhs rhs] context]
+  (compile! lhs context)
+  (append-sql! context " @@ ")
+  (compile! rhs context))
+
 (defn- -fn-call! [[f & args] context]
   ;; this `case` has no default/fallthrough clause on purpose: `f` can come from an attacker-derived `:%foo`
   ;; keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the SQL raw.
@@ -522,7 +527,11 @@
     :not-exists             (-exists! "NOT EXISTS " (first args) context)
     :inline                 (inline! (first args) context)
 
-    (:< :<= :> :>= :like :not-like)
+    ;; TODO -- confirm this is the correct way to implement `:lift`
+    :lift
+    (compile! (first args) context)
+
+    (:< :<= :> :>= :like :not-like :+ :- :/ :*)
     (-binary-operator! f args context)
 
     (:avg
@@ -533,15 +542,24 @@
      :current_schema
      :database
      :distinct
+     :escape
+     :greatest
+     :least
      :isnull
      :lower
      :max
      :min
      :now
+     :regexp_replace
+     :replace
      :sum
+     :to_tsquery
+     :trim
+     :ts_rank
      :upper)
     (-simple-fn! f args context)
 
+    ;; custom legacy `h2x/` operators
     :metabase.util.honey-sql-2/identifier        (h2x-identifier! args context)
     :metabase.util.honey-sql-2/literal           (h2x-literal! (first args) context)
     :metabase.util.honey-sql-2/extract           (h2x-extract! args context)
@@ -551,7 +569,11 @@
     :metabase.util.honey-sql-2/at-time-zone      (h2x-at-time-zone! args context)
     :metabase.util.honey-sql-2/typed             (compile! (first args) context)
     :metabase.util.honey-sql-2/postgres-interval (-h2x-interval! :postgres args context)
-    :metabase.util.honey-sql-2/mysql-interval    (-h2x-interval! :mysql args context)))
+    :metabase.util.honey-sql-2/mysql-interval    (-h2x-interval! :mysql args context)
+
+    ;; other custom operators
+    :metabase.funnysql.core/postgres-full-text-search-match
+    (postgres-full-text-search-match args context)))
 
 (defn- vector! [xs context]
   (if (keyword? (first xs))
