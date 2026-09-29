@@ -123,7 +123,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
             icon: "arrow_split",
             action: () => setIsExtractingColumn(true),
           },
-      ].filter((x): x is Shortcut => Boolean(x)),
+      ].filter((x): x is Shortcut => false),
     [expressionMode, query, availableColumns],
   );
 
