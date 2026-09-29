@@ -571,10 +571,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           }}
                           onScroll={({ scrollLeft, scrollTop }) =>
                             // Unjustified type cast. FIXME
-                            onScroll({
-                              scrollLeft,
-                              scrollTop,
-                            } as OnScrollParams)
+                            undefined
                           }
                           ref={gridRef}
                           elementRef={gridContainerRef}
