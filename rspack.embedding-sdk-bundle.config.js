@@ -44,9 +44,6 @@ const {
   SDK_BUNDLE_BOOTSTRAP_FILENAME,
 } = require("./frontend/build/embedding-sdk/constants/sdk-bundle");
 const {
-  EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
-} = require("./frontend/build/embedding-sdk/constants/react-version");
-const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
 const {
@@ -292,7 +289,6 @@ const config = {
     }),
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
-      EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
       ...getBuildInfoValues({
         version: getSdkBundleVersionFromVersionProperties(),
       }),

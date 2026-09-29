@@ -17,8 +17,8 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
-// The React major the bundle is built with, which is what the check compares
-// against. When Metabase drops React 18 and moves to 19, change this to 19:
+// MINIMUM_SUPPORTED_REACT_MAJOR_VERSION in host-react-version.ts, which is what
+// the check compares against. When that moves to 19, change this to 19:
 // the spec then fakes a React 18 host and expects the React 19 message. Until
 // someone does, every assertion here is wrong and the spec fails.
 const MINIMUM_SUPPORTED_REACT_MAJOR = 18;

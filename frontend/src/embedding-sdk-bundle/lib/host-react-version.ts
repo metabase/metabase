@@ -1,9 +1,7 @@
 import { version as reactVersion } from "react";
 
-// Set at build time from the React version Metabase itself depends on.
-const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = Number(
-  process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION,
-);
+// Raise this when the SDK bundle starts to need a newer React major.
+const MINIMUM_SUPPORTED_REACT_MAJOR_VERSION = 18;
 
 export function getHostReactMajorVersion(): number | null {
   const majorVersion = parseInt(reactVersion, 10);

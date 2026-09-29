@@ -1,6 +1,12 @@
-import type * as HostReactVersion from "./host-react-version";
-import { getHostReactMajorVersion } from "./host-react-version";
+import {
+  getHostReactMajorVersion,
+  getUnsupportedReactVersionMessage,
+  isHostReactVersionSupported,
+  logUnsupportedReactVersionOnce,
+} from "./host-react-version";
 
+// MINIMUM_SUPPORTED_REACT_MAJOR_VERSION is 18, so React 17 stands in for an
+// unsupported host throughout. When it moves to 19, move these versions up by one.
 let mockReactVersion: string | undefined;
 
 jest.mock("react", () => ({
@@ -9,30 +15,6 @@ jest.mock("react", () => ({
     return mockReactVersion;
   },
 }));
-
-const originalMinimum = process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION;
-
-afterEach(() => {
-  process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION = originalMinimum;
-});
-
-// The minimum is read once when the module loads, so each case loads it fresh.
-function loadWithMinimum(minimum: string) {
-  process.env.EMBEDDING_SDK_MINIMUM_REACT_MAJOR_VERSION = minimum;
-
-  let hostReactVersion: typeof HostReactVersion | undefined;
-  jest.isolateModules(() => {
-    hostReactVersion = jest.requireActual<typeof HostReactVersion>(
-      "./host-react-version",
-    );
-  });
-
-  if (!hostReactVersion) {
-    throw new Error("host-react-version did not load");
-  }
-
-  return hostReactVersion;
-}
 
 describe("getHostReactMajorVersion", () => {
   it.each([
@@ -53,55 +35,54 @@ describe("getHostReactMajorVersion", () => {
 });
 
 describe("isHostReactVersionSupported", () => {
-  it("supports React 18 when the minimum is 18", () => {
-    mockReactVersion = "18.3.1";
+  it("does not support React 17", () => {
+    mockReactVersion = "17.0.2";
 
-    expect(loadWithMinimum("18").isHostReactVersionSupported()).toBe(true);
+    expect(isHostReactVersionSupported()).toBe(false);
   });
 
-  it("does not support React 18 when the minimum is 19", () => {
+  it("supports React 18", () => {
     mockReactVersion = "18.3.1";
 
-    expect(loadWithMinimum("19").isHostReactVersionSupported()).toBe(false);
+    expect(isHostReactVersionSupported()).toBe(true);
   });
 
-  it("supports React 19 when the minimum is 19", () => {
+  it("supports React 19", () => {
     mockReactVersion = "19.0.0";
 
-    expect(loadWithMinimum("19").isHostReactVersionSupported()).toBe(true);
+    expect(isHostReactVersionSupported()).toBe(true);
   });
 
   it("treats an unknown host React version as supported", () => {
     mockReactVersion = undefined;
 
-    expect(loadWithMinimum("19").isHostReactVersionSupported()).toBe(true);
+    expect(isHostReactVersionSupported()).toBe(true);
   });
 });
 
 describe("getUnsupportedReactVersionMessage", () => {
   it("names the required and the detected React major versions", () => {
-    mockReactVersion = "18.3.1";
+    mockReactVersion = "17.0.2";
 
-    expect(loadWithMinimum("19").getUnsupportedReactVersionMessage()).toBe(
-      "The Metabase modular embedding SDK requires React 19 or newer, but this application is running React 18. Upgrade your application to React 19 to display embedded content.",
+    expect(getUnsupportedReactVersionMessage()).toBe(
+      "The Metabase modular embedding SDK requires React 18 or newer, but this application is running React 17. Upgrade your application to React 18 to display embedded content.",
     );
   });
 });
 
 describe("logUnsupportedReactVersionOnce", () => {
   it("logs the unsupported React message once across calls", () => {
-    mockReactVersion = "18.3.1";
+    mockReactVersion = "17.0.2";
     const consoleError = jest
       .spyOn(console, "error")
       .mockImplementation(() => {});
-    const { logUnsupportedReactVersionOnce } = loadWithMinimum("19");
 
     logUnsupportedReactVersionOnce();
     logUnsupportedReactVersionOnce();
 
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith(
-      "The Metabase modular embedding SDK requires React 19 or newer, but this application is running React 18. Upgrade your application to React 19 to display embedded content.",
+      "The Metabase modular embedding SDK requires React 18 or newer, but this application is running React 17. Upgrade your application to React 18 to display embedded content.",
     );
 
     consoleError.mockRestore();
