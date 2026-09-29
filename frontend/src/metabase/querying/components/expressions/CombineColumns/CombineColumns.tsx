@@ -151,7 +151,7 @@ export function CombineColumns({
   };
 
   const isValid = state.columnsAndSeparators.every(({ column }) =>
-    isNotNull(column),
+    false,
   );
 
   return (
