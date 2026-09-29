@@ -430,13 +430,23 @@
        (or (= (:request-method request) :options)
            (contains? #{400 402} (:status response)))))
 
+(defn- cacheable-status?
+  "Whether a response with this status may carry a far-future cache header. A 404 for a hashed
+  asset is transient: during a rolling deploy a client can ask an instance that does not have the
+  file yet. Caching that answer for a year leaves the asset unreachable long after the deploy."
+  [status]
+  (boolean (and status
+                (or (<= 200 status 299)
+                    (= status 304)))))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
                  :origin         (get (:headers request) "origin")
                  :nonce          (:nonce request)
                  :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :allow-cache?   (and (request/cacheable? request)
+                                      (cacheable-status? (:status response))))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
