@@ -9,6 +9,7 @@ import {
   getDefaultPlaceholder,
   getExtraFormFieldProps,
   getStoredFieldValue,
+  resetFieldsToInitial,
 } from "metabase/admin/settings/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -299,19 +300,11 @@ export const SettingsLdapForm = () => {
                 data-testid="ldap-group-mapping-section"
                 disabled={!isConfigured}
                 onToggle={(enabled) => {
-                  // the group fields hide with the switch, so unsaved edits must not ride along on the next save
                   if (!enabled) {
-                    setFieldValue(
+                    resetFieldsToInitial(setFieldValue, initialValues, [
                       "ldap-group-base",
-                      initialValues["ldap-group-base"],
-                    );
-                    // the membership filter only exists on EE, so the key can be missing from the form
-                    if ("ldap-group-membership-filter" in initialValues) {
-                      setFieldValue(
-                        "ldap-group-membership-filter",
-                        initialValues["ldap-group-membership-filter"],
-                      );
-                    }
+                      "ldap-group-membership-filter",
+                    ]);
                   }
                 }}
               >

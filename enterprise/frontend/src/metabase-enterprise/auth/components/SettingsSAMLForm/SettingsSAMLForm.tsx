@@ -11,6 +11,7 @@ import {
   getEnvNoticeProps,
   getExtraFormFieldProps,
   getStoredFieldValue,
+  resetFieldsToInitial,
 } from "metabase/admin/settings/utils";
 import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
@@ -289,12 +290,10 @@ export function SettingsSAMLForm() {
                 data-testid="saml-group-mapping-section"
                 disabled={!isConfigured}
                 onToggle={(enabled) => {
-                  // the attribute field hides with the switch, so an unsaved edit must not ride along on the next save
                   if (!enabled) {
-                    setFieldValue(
+                    resetFieldsToInitial(setFieldValue, initialValues, [
                       "saml-attribute-group",
-                      initialValues["saml-attribute-group"],
-                    );
+                    ]);
                   }
                 }}
               >

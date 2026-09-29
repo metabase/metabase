@@ -1,3 +1,4 @@
+import type { FormikHelpers } from "formik";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
@@ -59,4 +60,18 @@ export const getStoredFieldValue = <Key extends EnterpriseSettingKey>(
     return envValue ?? null;
   }
   return setting?.value ?? null;
+};
+
+/** Puts fields a card just hid back to their saved values, so an unsaved edit never rides along on the next save */
+export const resetFieldsToInitial = <Values extends object>(
+  setFieldValue: FormikHelpers<Values>["setFieldValue"],
+  initialValues: Values,
+  fieldNames: (keyof Values & string)[],
+) => {
+  for (const name of fieldNames) {
+    // a key can be missing from the form, like the EE-only membership filter on OSS
+    if (name in initialValues) {
+      setFieldValue(name, initialValues[name]);
+    }
+  }
 };

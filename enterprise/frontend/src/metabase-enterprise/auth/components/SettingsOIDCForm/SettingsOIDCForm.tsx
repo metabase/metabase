@@ -3,7 +3,10 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { SETTINGS_FIELD_DESCRIPTION_PROPS } from "metabase/admin/settings/utils";
+import {
+  SETTINGS_FIELD_DESCRIPTION_PROPS,
+  resetFieldsToInitial,
+} from "metabase/admin/settings/utils";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -422,12 +425,10 @@ export function SettingsOIDCForm() {
                 isPageSaving={isSubmitting}
                 data-testid="oidc-group-mapping-section"
                 onToggle={(enabled) => {
-                  // the attribute field hides with the switch, so an unsaved edit must not ride along on the next save
                   if (!enabled) {
-                    setFieldValue(
+                    resetFieldsToInitial(setFieldValue, initialValues, [
                       "group-attribute",
-                      initialValues["group-attribute"],
-                    );
+                    ]);
                   }
                 }}
               >
