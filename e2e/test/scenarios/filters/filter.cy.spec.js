@@ -36,6 +36,11 @@ describe("scenarios > question > filter", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    H.queryBuilderMain().within(() => {
+      cy.contains("37.65").should("exist");
+      cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs
+    });
+
     H.summarize();
     H.rightSidebar().button("Done").click();
     cy.wait("@dataset");

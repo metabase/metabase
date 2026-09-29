@@ -65,7 +65,10 @@ describe("scenarios > question > view", () => {
       cy.log("admin sees filters by search for Vendor");
       H.visitQuestion("@questionId");
       cy.findAllByText("VENDOR").first().click();
-      H.popover().findByPlaceholderText("Search the list").should("exist");
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Search the list").should("exist");
+        cy.findByText("Search the list").should("not.exist");
+      });
 
       cy.signIn("nodata");
       H.visitQuestion("@questionId");
