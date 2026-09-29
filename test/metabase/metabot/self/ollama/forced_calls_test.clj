@@ -208,6 +208,17 @@
                  "for a `stop` the grammar failed to shape — on `length` the buffer is a half-written "
                  "call, and half a JSON object is not an answer to show anyone"))))))
 
+(deftest ^:parallel read-back-mints-no-call-from-a-stream-without-a-finish-chunk-test
+  (testing (str "a stream that ends without a finish chunk leaves no `stop` to vouch for the buffer, so "
+                "no call is minted from it — `:structured`'s name is fixed, so it would mint one from "
+                "half-written JSON and the caller would see `structured-output-invalid`")
+    (doseq [[plan fragment] [[structured-plan "{\"title\": \"Late or"]
+                             [tool-union-plan "{\"name\": \"search_facts\", \"parame"]]]
+      (testing (:mode plan)
+        (let [out (read-back plan [(content-chunk fragment)])]
+          (is (empty? (tool-calls out)))
+          (is (empty? (keep #(get-in % [:choices 0 :delta :content]) out))))))))
+
 (deftest ^:parallel read-back-passes-on-the-chunks-it-holds-content-from-test
   (testing (str "Ollama opens a stream with content rather than OpenAI's empty chunk "
                 "(ollama/ollama#17485), so a held content chunk may be the first one carrying the "

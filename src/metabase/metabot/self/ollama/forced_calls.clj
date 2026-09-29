@@ -221,14 +221,12 @@
       (fn [rf]
         (let [buffer        (StringBuilder.)
               take!         (fn [] (let [held (str buffer)] (.setLength buffer 0) held))
-              flush!        (fn [result]
-                              (if-let [chunk (forced-call-chunk mode (take!))]
-                                (rf result chunk)
-                                result))
               strip-content #(update-in % [:choices 0 :delta] dissoc :content)]
           (fn
+            ;; a stream that ends without a finish chunk has no `stop` to vouch for the buffer, so it
+            ;; is dropped for the same reason a `length` finish drops it below
             ([result]
-             (rf (cond-> result (pos? (.length buffer)) (flush!))))
+             (rf result))
             ([result chunk]
              (let [{:keys [delta finish_reason]} (get-in chunk [:choices 0])
                    content                       (not-empty (:content delta))]
