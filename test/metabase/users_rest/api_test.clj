@@ -1346,6 +1346,21 @@
            (is (not (user-is-data-analyst? user-id)))
            (is (not (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
 
+(deftest reasserting-data-analyst-status-is-idempotent-test
+  (testing "PUT /api/user/:id with is_data_analyst true on someone already in the group"
+    (mt/when-ee-evailable
+     (mt/with-temp [:model/User {user-id :id} {:email "reasserted-analyst@metabase.com"}]
+       (mt/with-premium-features #{:advanced-permissions}
+         (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+         (testing "is a no-op while the feature is available"
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))))
+       (mt/with-premium-features #{}
+         (testing "and still a no-op after a downgrade: nothing is being added"
+           (mt/user-http-request :crowberto :put 200 (str "user/" user-id) {:is_data_analyst true})
+           (is (user-is-data-analyst? user-id))
+           (is (true? (t2/select-one-fn :is_data_analyst :model/User :id user-id)))))))))
+
 (deftest invite-user-into-data-analyst-group-requires-advanced-permissions-test
   (testing "POST /api/user cannot put a new user in the Data Analysts group without :advanced-permissions"
     (let [email    (format "invited-analyst-%s@metabase.com" (random-uuid))

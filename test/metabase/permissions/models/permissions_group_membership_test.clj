@@ -166,6 +166,26 @@
         (perms/add-user-to-group! user-id group-id)
         (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id))))))
 
+(deftest re-adding-an-existing-member-is-a-no-op-test
+  (testing "adding a user to a group they are already in changes nothing"
+    (mt/with-temp [:model/User {user-id :id} {}
+                   :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+      (perms/add-user-to-group! user-id group-id)
+      (let [before (t2/select-one :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
+        (perms/add-user-to-group! user-id group-id)
+        (is (= before (t2/select-one :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))))))
+
+(mt/when-ee-evailable
+ (deftest re-adding-an-existing-data-analyst-is-not-gated-test
+   (testing "re-asserting an existing Data Analyst's membership without the feature adds nothing, so nothing is refused"
+     (mt/with-temp [:model/User {user-id :id} {}]
+       (mt/with-premium-features #{:advanced-permissions}
+         (perms/add-user-to-group! user-id (data-analyst-group-id)))
+       (mt/with-premium-features #{}
+         (perms/add-user-to-group! user-id (data-analyst-group-id))
+         (is (in-data-analyst-group? user-id))
+         (is (true? (boolean (is-data-analyst-flag user-id)))))))))
+
 (deftest add-to-data-analyst-group-in-a-batch-is-gated-test
   (testing "a batched add that includes the Data Analysts group is refused entirely"
     (mt/with-temp [:model/User {user-id :id} {}

@@ -160,6 +160,11 @@
                                                                    (throw (ex-info "Conflicting permissions group memberships"
                                                                                    {:conflicts (distinct pgms)})))
                                                                  (boolean (:is-group-manager? (first pgms))))))
+          ;; re-adding an existing member is a no-op, so everything below only ever sees genuine additions:
+          ;; the tenant checks, the Data Analysts gate, the insert, the flag updates and the events
+          user-id-group-id->is-group-manager? (apply dissoc user-id-group-id->is-group-manager?
+                                                     (permissions.db/existing-membership-pairs
+                                                      (keys user-id-group-id->is-group-manager?)))
           [user-ids group-ids] (->> user-id-group-id->is-group-manager?
                                     keys
                                     (reduce (fn [[uids gids] [user-id group-id]]
@@ -202,25 +207,26 @@
                                     (keep (fn [[user-id group-id]]
                                             (when (= group-id (:id (perms-group/data-analyst)))
                                               user-id))))]
-      (t2/with-transaction [_conn]
-        (when (< (permissions.db/insert-group-memberships-from-mapping! user-id-group-id->is-group-manager?)
-                 (count user-id-group-id->is-group-manager?))
-          ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
-          ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
-          ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
-          (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
-        (when (seq new-admin-ids)
-          (permissions.db/update-users! new-admin-ids {:is_superuser true}))
-        (when (seq new-data-analyst-ids)
-          (permissions.db/update-users! new-data-analyst-ids {:is_data_analyst true}))
-        ;; Publish events for each new membership
-        (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
-          (events/publish-event! :event/group-membership-create
-                                 {:user-id api/*current-user-id*
-                                  :object (t2/instance :model/PermissionsGroupMembership
-                                                       {:user_id user-id
-                                                        :group_id group-id
-                                                        :is_group_manager is-group-manager?})}))))))
+      (when (seq user-id-group-id->is-group-manager?)
+        (t2/with-transaction [_conn]
+          (when (< (permissions.db/insert-group-memberships-from-mapping! user-id-group-id->is-group-manager?)
+                   (count user-id-group-id->is-group-manager?))
+            ;; Theoretically, there could be a race condition in the above check: a user or group may be changed to a tenant
+            ;; user/group or vice versa AFTER we check (above) but BEFORE the insert (below). So just make sure that the
+            ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
+            (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
+          (when (seq new-admin-ids)
+            (permissions.db/update-users! new-admin-ids {:is_superuser true}))
+          (when (seq new-data-analyst-ids)
+            (permissions.db/update-users! new-data-analyst-ids {:is_data_analyst true}))
+          ;; Publish events for each new membership
+          (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+            (events/publish-event! :event/group-membership-create
+                                   {:user-id api/*current-user-id*
+                                    :object (t2/instance :model/PermissionsGroupMembership
+                                                         {:user_id user-id
+                                                          :group_id group-id
+                                                          :is_group_manager is-group-manager?})})))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"

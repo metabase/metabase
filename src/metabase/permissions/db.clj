@@ -441,6 +441,19 @@
   [group-id :- ms/PositiveInt]
   (t2/select :model/PermissionsGroupMembership :group_id group-id))
 
+(mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
+  "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
+  [pairs :- [:sequential [:tuple ms/PositiveInt ms/PositiveInt]]]
+  (if (empty? pairs)
+    #{}
+    (let [wanted (set pairs)]
+      (into #{}
+            (comp (map (juxt :user_id :group_id))
+                  (filter wanted))
+            (t2/select [:model/PermissionsGroupMembership :user_id :group_id]
+                       :user_id  [:in (map first pairs)]
+                       :group_id [:in (map second pairs)])))))
+
 (mu/defn delete-memberships-for-user!
   "Delete the PermissionsGroupMemberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
