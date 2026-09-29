@@ -19,11 +19,15 @@ import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 import { PublishTableModal } from "./PublishTableModal";
 
 export const CreateMenu = ({
+  libraryCollectionId,
+  canWriteToLibrary,
   metricCollectionId,
   canWriteToMetricCollection,
   dataCollectionId,
   canWriteToDataCollection,
 }: {
+  libraryCollectionId?: CollectionId;
+  canWriteToLibrary?: boolean;
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
   dataCollectionId?: CollectionId;
@@ -47,7 +51,10 @@ export const CreateMenu = ({
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
+  const canCreateLibraryFolder = !!(libraryCollectionId && canWriteToLibrary);
+
   const canCreateCollection =
+    canCreateLibraryFolder ||
     (dataCollectionId && canWriteToDataCollection) ||
     (metricCollectionId && canWriteToMetricCollection) ||
     (hasNativeWrite && PLUGIN_SNIPPET_FOLDERS.isEnabled);
@@ -55,6 +62,7 @@ export const CreateMenu = ({
   const collectionNamespaces: CollectionNamespace[] = [];
 
   if (
+    canCreateLibraryFolder ||
     (dataCollectionId && canWriteToDataCollection) ||
     (metricCollectionId && canWriteToMetricCollection)
   ) {
@@ -65,7 +73,9 @@ export const CreateMenu = ({
     collectionNamespaces.push("snippets");
   }
 
+  // Default to a new top-level folder in the Library; the picker lets you nest it instead.
   const initialCollectionId =
+    (canCreateLibraryFolder && libraryCollectionId) ||
     (dataCollectionId && canWriteToDataCollection && dataCollectionId) ||
     (metricCollectionId && canWriteToMetricCollection && metricCollectionId) ||
     null;
@@ -105,23 +115,24 @@ export const CreateMenu = ({
     canCreateCollection && (
       <Menu.Item
         key="collection"
-        leftSection={<FixedSizeIcon name="folder" />}
+        leftSection={<FixedSizeIcon name="new_folder" />}
         onClick={() =>
           dispatch(
             setOpenModalWithProps({
               id: "collection",
               props: {
+                title: t`New folder`,
                 initialCollectionId,
                 namespaces: collectionNamespaces,
                 pickerOptions: LIBRARY_COLLECTION_PICKER_OPTIONS,
                 showAuthorityLevelPicker: false,
-                inDataStudio: true,
+                showIconPicker: true,
               },
             }),
           )
         }
       >
-        {t`Collection`}
+        {t`Folder`}
       </Menu.Item>
     ),
   ].filter(Boolean);

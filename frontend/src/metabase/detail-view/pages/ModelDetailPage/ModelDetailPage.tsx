@@ -1,21 +1,15 @@
-import { useEffect, useMemo } from "react";
-import { useUnmount } from "react-use";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetCardQuery, useGetCardQueryMetadataQuery } from "metabase/api";
 import { skipToken } from "metabase/api/api";
 import { useGetAdhocQueryQuery } from "metabase/api/dataset";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import { DetailViewPage } from "metabase/detail-view/components";
-import {
-  filterByPk,
-  getRowName,
-  getTableQuery,
-} from "metabase/detail-view/utils";
-import { useDispatch, useSelector } from "metabase/redux";
-import { closeNavbar, setDetailView } from "metabase/redux/app";
+import { filterByPk, getTableQuery } from "metabase/detail-view/utils";
+import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import * as Urls from "metabase/urls";
 import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
@@ -70,27 +64,10 @@ export function ModelDetailPage() {
     return dataset ? extractRemappedColumns(dataset.data) : undefined;
   }, [dataset]);
 
-  const collectionId = card?.collection_id ?? null;
   const columns = useMemo(() => data?.cols ?? [], [data]);
   const row = useMemo(() => (data?.rows ?? [])[0], [data]);
-  const rowName = getRowName(columns, row) || rowId;
 
-  const dispatch = useDispatch();
-  const isNavBarOpen = useSelector(getIsNavbarOpen);
-
-  useEffect(() => {
-    dispatch(closeNavbar());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (table) {
-      dispatch(setDetailView({ rowName, table, collectionId }));
-    }
-  }, [dispatch, rowName, table, collectionId]);
-
-  useUnmount(() => {
-    dispatch(setDetailView(null));
-  });
+  useHeaderCollection(card?.collection_id);
 
   if (!table || !dataset || !row || error || isLoading) {
     const rowError = !row && !isLoading ? t`Row not found` : undefined;
@@ -101,12 +78,6 @@ export function ModelDetailPage() {
   }
 
   return (
-    <DetailViewPage
-      columns={columns}
-      isNavBarOpen={isNavBarOpen}
-      row={row}
-      rowId={rowId}
-      table={table}
-    />
+    <DetailViewPage columns={columns} row={row} rowId={rowId} table={table} />
   );
 }

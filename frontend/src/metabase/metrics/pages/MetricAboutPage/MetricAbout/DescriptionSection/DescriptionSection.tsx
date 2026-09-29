@@ -7,6 +7,13 @@ import {
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
+import {
+  FactCard,
+  FactRow,
+  FactRowLink,
+  FactSection,
+  MaintainerFact,
+} from "metabase/common/components/EntityFactRail";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetricUrls } from "metabase/common/metrics/types";
@@ -17,15 +24,17 @@ import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import type { Card as CardApiType, CardType } from "metabase-types/api";
 
-import { MetadataCard, MetadataRow, MetadataRowLink } from "./MetadataCard";
-import { MetricSubSection } from "./MetricSubSection";
-
 interface DescriptionSectionProps {
   card: CardApiType;
   urls: MetricUrls;
+  isInlineEditable: boolean;
 }
 
-export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
+export function DescriptionSection({
+  card,
+  urls,
+  isInlineEditable,
+}: DescriptionSectionProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -90,7 +99,7 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
         </Text>
       </Tooltip>
       <Box mt="lg" data-testid="metric-description-section">
-        {card.can_write ? (
+        {isInlineEditable && card.can_write ? (
           <EditableText
             initialValue={card.description ?? ""}
             placeholder={t`No description`}
@@ -101,70 +110,88 @@ export function DescriptionSection({ card, urls }: DescriptionSectionProps) {
             px={0}
           />
         ) : (
-          <Markdown>{card.description || t`No description`}</Markdown>
+          // Mirrors EditableText's resting box (padding, transparent border, line height,
+          // placeholder color) so the read-only text sits exactly where the editable one did.
+          <Box
+            py="xxs"
+            bd="1px solid transparent"
+            lh={1.57}
+            c={card.description ? "text-primary" : "text-disabled"}
+            style={{ overflowWrap: "break-word" }}
+          >
+            {card.description ? (
+              <Markdown>{card.description}</Markdown>
+            ) : (
+              t`No description`
+            )}
+          </Box>
         )}
       </Box>
 
+      <MaintainerFact
+        creator={card.creator}
+        createdAt={card.created_at}
+        lastEditInfo={card["last-edit-info"]}
+      />
+
       {hasSource && (
-        <MetricSubSection title={t`Source`} mt="xxl">
-          <MetadataCard>
+        <FactSection title={t`Source`} mt="xxl">
+          <FactCard>
             {database && (
-              <MetadataRow icon="database">
+              <FactRow icon="database">
                 {databaseUrl ? (
-                  <MetadataRowLink to={databaseUrl}>
-                    {database.name}
-                  </MetadataRowLink>
+                  <FactRowLink to={databaseUrl}>{database.name}</FactRowLink>
                 ) : (
                   database.name
                 )}
-              </MetadataRow>
+              </FactRow>
             )}
             {table && (
-              <MetadataRow icon="table">
+              <FactRow icon="table">
                 {tableUrl ? (
-                  <MetadataRowLink to={tableUrl}>
+                  <FactRowLink to={tableUrl}>
                     {table.display_name || table.name}
-                  </MetadataRowLink>
+                  </FactRowLink>
                 ) : (
                   (table.display_name ?? table.name)
                 )}
-              </MetadataRow>
+              </FactRow>
             )}
-          </MetadataCard>
-        </MetricSubSection>
+          </FactCard>
+        </FactSection>
       )}
 
       {canSeeRelationships && (
-        <MetricSubSection title={t`Relationships`} mt="xxl">
-          <MetadataCard>
-            <MetadataRow icon="dependencies" muted={dependenciesCount === 0}>
+        <FactSection title={t`Relationships`} mt="xxl">
+          <FactCard>
+            <FactRow icon="dependencies" muted={dependenciesCount === 0}>
               {dependenciesCount > 0 ? (
-                <MetadataRowLink to={dependenciesUrl}>
+                <FactRowLink to={dependenciesUrl}>
                   {ngettext(
                     msgid`${dependenciesCount} dependency`,
                     `${dependenciesCount} dependencies`,
                     dependenciesCount,
                   )}
-                </MetadataRowLink>
+                </FactRowLink>
               ) : (
                 t`No dependencies`
               )}
-            </MetadataRow>
-            <MetadataRow icon="dependent" muted={dependentsCount === 0}>
+            </FactRow>
+            <FactRow icon="dependent" muted={dependentsCount === 0}>
               {dependentsCount > 0
                 ? jt`${(
-                    <MetadataRowLink key="count" to={dependenciesUrl}>
+                    <FactRowLink key="count" to={dependenciesUrl}>
                       {ngettext(
                         msgid`${dependentsCount} chart`,
                         `${dependentsCount} charts`,
                         dependentsCount,
                       )}
-                    </MetadataRowLink>
+                    </FactRowLink>
                   )} ${ngettext(msgid`uses`, `use`, dependentsCount)} this metric`
                 : t`No charts use this metric`}
-            </MetadataRow>
-          </MetadataCard>
-        </MetricSubSection>
+            </FactRow>
+          </FactCard>
+        </FactSection>
       )}
     </Stack>
   );

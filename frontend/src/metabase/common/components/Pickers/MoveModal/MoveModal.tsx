@@ -25,7 +25,11 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../EntityPicker";
-import { getCollectionType, getValidNamespaces } from "../EntityPicker/utils";
+import {
+  getCollectionPlacementTarget,
+  getCollectionType,
+  getValidNamespaces,
+} from "../EntityPicker/utils";
 
 interface BaseMoveModalProps {
   title: string;
@@ -76,7 +80,7 @@ export const MoveModal = ({
 
         return !canPlaceEntityInCollectionOrDescendants(
           movingItem.model,
-          getCollectionType(item),
+          getCollectionPlacementTarget(item),
         );
       }
 
@@ -111,7 +115,10 @@ export const MoveModal = ({
 
       if (
         item.model === "collection" &&
-        !canPlaceEntityInCollection(movingItem.model, getCollectionType(item))
+        !canPlaceEntityInCollection(
+          movingItem.model,
+          getCollectionPlacementTarget(item),
+        )
       ) {
         return false;
       }
@@ -205,6 +212,12 @@ export const MoveModal = ({
   );
 };
 
+/**
+ * Mirrors the backend rule in `metabase-enterprise.library.validation/check-library-update`: a
+ * library collection may only move under a parent of the same `type`. The seeded Library root and
+ * the folders a user creates under it are both `"library"`, so those nest freely; a Data or Metrics
+ * subfolder stays inside its own section.
+ */
 export function canMoveCollectionToLibraryDestination(
   movingItem: OmniPickerCollectionItem,
   destination: OmniPickerCollectionItem,
@@ -217,10 +230,6 @@ export function canMoveCollectionToLibraryDestination(
 
   if (!PLUGIN_LIBRARY.isLibraryCollectionType(destinationType)) {
     return true;
-  }
-
-  if (destinationType === "library") {
-    return PLUGIN_LIBRARY.isLibrarySubCollectionType(movingItem.type);
   }
 
   return movingItem.type === destinationType;
@@ -269,7 +278,7 @@ export const BulkMoveModal = ({
             !canMoveCollectionToLibraryDestination(selectedItem, item) ||
             !canPlaceEntityInCollectionOrDescendants(
               selectedItem.model,
-              getCollectionType(item),
+              getCollectionPlacementTarget(item),
             ),
         );
         if (hasInvalidItem) {
@@ -336,7 +345,7 @@ export const BulkMoveModal = ({
             ) &&
             canPlaceEntityInCollection(
               selectedItem.model,
-              getCollectionType(item),
+              getCollectionPlacementTarget(item),
             ),
         );
       }

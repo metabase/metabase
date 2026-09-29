@@ -4,10 +4,12 @@ import type { Crumb } from "metabase/common/components/Breadcrumbs";
 import { isNotNull } from "metabase/utils/types";
 import type { Collection, CollectionId } from "metabase-types/api";
 
-export const findCollectionById = (
-  collectionsTree?: Collection[],
+export const findCollectionById = <
+  T extends { id: CollectionId; children?: T[] },
+>(
+  collectionsTree?: T[],
   collectionId?: CollectionId,
-): Collection | null => {
+): T | null => {
   if (!collectionsTree?.length || !collectionId) {
     return null;
   }
@@ -19,7 +21,7 @@ export const findCollectionById = (
   }
 
   return findCollectionById(
-    collectionsTree.map((c) => c.children || []).flat(),
+    collectionsTree.flatMap((c) => c.children ?? []),
     collectionId,
   );
 };

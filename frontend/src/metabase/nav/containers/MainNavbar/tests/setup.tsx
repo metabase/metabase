@@ -231,7 +231,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
+      element={<RoutedMainNavbar dashboard={storeDashboard} />}
     />,
     {
       storeInitialState,

@@ -9,13 +9,13 @@ import {
 } from "metabase/common/collections/utils";
 import { EditableDescription } from "metabase/common/components/EditableDescription";
 import { EditableText } from "metabase/common/components/EditableText";
-import { getIsTenantUser, getUser } from "metabase/current-user";
+import { getUser } from "metabase/current-user";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
-import { Box, Flex, Icon, rem } from "metabase/ui";
+import { Box, Flex, Icon, isValidIconName, rem } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 import S from "./CollectionCaption.module.css";
@@ -90,8 +90,6 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
-  const isTenantUser = useSelector(getIsTenantUser);
-
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
@@ -103,11 +101,6 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     );
   }
 
-  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
-    // external users should see the normal icon, they should not know about what synced collections are
-    return <Icon name="synced_collection" size={24} c="core-brand" />;
-  }
-
   if (isRootTrashCollection(collection)) {
     return <Icon name="trash" size={24} c="text-disabled" />;
   }
@@ -117,6 +110,10 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
     return <Icon name="folder" size={24} c="text-disabled" />;
+  }
+
+  if (collection.icon && isValidIconName(collection.icon)) {
+    return <Icon name={collection.icon} size={24} c="core-brand" />;
   }
 
   return (

@@ -38,10 +38,18 @@ type CollectionRowMenuProps = {
   }) => void;
   onArchiveSuccess?: () => void;
   customArchiveMessage?: string;
+  /** When supplied, the menu offers a "New folder" entry that invokes this. */
+  onNewFolder?: () => void;
 };
 
 export function CollectionRowMenu(props: CollectionRowMenuProps) {
-  const { collection, onArchiveSuccess, onSave, customArchiveMessage } = props;
+  const {
+    collection,
+    onArchiveSuccess,
+    onSave,
+    customArchiveMessage,
+    onNewFolder,
+  } = props;
   const dispatch = useDispatch();
 
   const isAdmin = useSelector(getUserIsAdmin);
@@ -60,7 +68,10 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
     (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
     collection.namespace !== "transforms";
 
-  const isRoot = isRootCollection(collection);
+  // The seeded Library/Data/Metrics collections are renamed, moved and archived by the backend only;
+  // `isRootCollection` covers the "Our analytics" sentinel.
+  const isImmutable =
+    isRootCollection(collection) || !!collection.is_library_root;
 
   if (!collection.can_write || remoteSyncReadOnly) {
     return null;
@@ -161,7 +172,15 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          {!isRoot && (
+          {onNewFolder && (
+            <Menu.Item
+              leftSection={<Icon name="new_folder" />}
+              onClick={onNewFolder}
+            >
+              {t`New folder`}
+            </Menu.Item>
+          )}
+          {!isImmutable && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
               onClick={toggleEditModal}
@@ -179,7 +198,7 @@ export function CollectionRowMenu(props: CollectionRowMenuProps) {
               {t`Change permissions`}
             </Menu.Item>
           )}
-          {!isRoot && (
+          {!isImmutable && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={onArchiveClick}

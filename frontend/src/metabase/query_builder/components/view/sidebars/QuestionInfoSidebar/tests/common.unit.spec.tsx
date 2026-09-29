@@ -246,7 +246,7 @@ describe("QuestionInfoSidebar", () => {
 
       const link = await screen.findByRole("link", { name: /Actions/ });
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", Urls.modelDetail(card));
+      expect(link).toHaveAttribute("href", Urls.modelDetail(card, "actions"));
     });
 
     it("isn't shown for questions", async () => {

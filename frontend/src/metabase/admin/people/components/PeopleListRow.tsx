@@ -26,8 +26,6 @@ import type {
   User,
 } from "metabase-types/api";
 
-import { userToColor } from "../colors";
-
 import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
 
@@ -75,7 +73,7 @@ export const PeopleListRow = ({
   return (
     <tr key={user.id}>
       <Flex component="td" align="center" gap="lg" c="text-primary-inverse">
-        <UserAvatar bg={userToColor(user)} user={user} />
+        <UserAvatar user={user} />
         <Text fw="700">{getFullName(user) ?? "-"}</Text>
       </Flex>
       <td>

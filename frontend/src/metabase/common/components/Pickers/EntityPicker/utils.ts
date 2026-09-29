@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import type { CollectionPlacementTarget } from "metabase/common/data-studio/collection-utils";
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import type { ColorName } from "metabase/ui/colors/types";
@@ -21,15 +22,9 @@ export const useGetEntityPickerIcon = () => {
   return useCallback(
     (
       item: OmniPickerItem,
-      {
-        isSelected,
-        isTenantUser,
-      }: {
-        isSelected?: boolean;
-        isTenantUser?: boolean;
-      } = {},
+      { isSelected }: { isSelected?: boolean } = {},
     ): IconData & { c?: ColorName } => {
-      const icon = getIcon(item, { isTenantUser });
+      const icon = getIcon(item);
 
       if (item.id === "search-results") {
         icon.name = "search";
@@ -232,6 +227,20 @@ export function getCollectionType(
     return item.type;
   }
   return null;
+}
+
+/**
+ * The shape the collection placement rules need: the type plus whether this is one of the seeded
+ * Library roots, which share `type: "library"`/`"library-data"` with user-created folders but hold
+ * different things.
+ */
+export function getCollectionPlacementTarget(
+  item: OmniPickerCollectionItem,
+): CollectionPlacementTarget {
+  return {
+    type: getCollectionType(item),
+    is_library_root: item.is_library_root,
+  };
 }
 
 const namespaceMap: Record<string, CollectionNamespace[]> = {

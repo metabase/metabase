@@ -16,6 +16,7 @@ export function MetricDependenciesPage({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  isInlineEditable,
 }: MetricPageProps) {
   const { cardId } = useParams<MetricPageParams>();
 
@@ -29,6 +30,7 @@ export function MetricDependenciesPage({
             renderBreadcrumbs={renderBreadcrumbs}
             showAppSwitcher={showAppSwitcher}
             showDataStudioLink={showDataStudioLink}
+            isInlineEditable={isInlineEditable}
           />
           <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
             value={{

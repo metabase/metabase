@@ -18,7 +18,7 @@ interface SavedEntityListProps {
   type: CardType;
   selectedId?: string;
   databaseId?: DatabaseId | null;
-  collection?: Collection;
+  collection?: Pick<Collection, "id">;
   onSelect: (tableOrModelId: string) => void;
 }
 

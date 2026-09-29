@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { Avatar, Ellipsified, Flex, Icon } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import type { Transform } from "metabase-types/api";
@@ -13,10 +14,10 @@ export const TransformOwnerAvatar = ({
   const hasUserName = owner?.first_name || owner?.last_name;
 
   if (hasUserName) {
-    const displayName = getUserName(owner);
+    const displayName = getUserName(owner) ?? "";
     return (
       <Flex align="center" gap="sm">
-        <Avatar size="sm" name={displayName} />
+        <UserAvatar user={{ common_name: displayName }} size="sm" decorative />
         <Ellipsified>{displayName}</Ellipsified>
       </Flex>
     );

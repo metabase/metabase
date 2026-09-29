@@ -7,7 +7,6 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { userToColor } from "metabase/admin/people/colors";
 import { useListUsersQuery } from "metabase/api";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import {
@@ -203,7 +202,7 @@ export const AddDataAppUsers = ({
               p="0.5rem 1rem"
               onClick={() => addUser(user)}
             >
-              <UserAvatar bg={userToColor(user)} user={user} />
+              <UserAvatar user={user} />
               <Text fw="bold" size="lg">
                 {user.common_name}
               </Text>

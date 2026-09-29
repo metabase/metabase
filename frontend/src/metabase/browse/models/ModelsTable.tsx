@@ -8,6 +8,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityItemName } from "metabase/common/components/EntityItemName";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
+  ColumnHeader,
   ItemNameCell,
   TBody,
   Table,
@@ -17,6 +18,7 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useNavigate } from "metabase/router";
 import {
@@ -25,6 +27,7 @@ import {
   Flex,
   Repeat,
   Skeleton,
+  Text,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { SortingOptions } from "metabase-types/api";
@@ -53,6 +56,13 @@ const collectionProps: ResponsiveProps = {
   containerName: itemsTableContainerName,
 };
 
+const ownerProps: ResponsiveProps = {
+  hideAtContainerBreakpoint: "md",
+  containerName: itemsTableContainerName,
+};
+
+const OWNER_WIDTH = 180;
+
 const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
   sort_column: "collection",
   sort_direction: "asc",
@@ -67,7 +77,7 @@ export const ModelsTable = ({
   const sortedModels = sortModels(models, sortingOptions);
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
-  const collectionWidth = 38.5;
+  const collectionWidth = 34;
   const descriptionWidth = 100 - collectionWidth;
 
   const handleUpdateSortOptions = skeleton
@@ -87,6 +97,9 @@ export const ModelsTable = ({
 
         {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+
+        {/* <col> for Owner column */}
+        <TableColumn {...ownerProps} width={OWNER_WIDTH} />
 
         <Columns.RightEdge.Col />
       </colgroup>
@@ -127,6 +140,10 @@ export const ModelsTable = ({
           >
             {t`Description`}
           </SortableColumnHeader>
+          {/* Not sortable: `SortColumn` only covers name/collection/description. */}
+          <ColumnHeader {...ownerProps} style={{ paddingInline: ".5rem" }}>
+            {t`Owner`}
+          </ColumnHeader>
           <Columns.RightEdge.Header />
         </tr>
       </thead>
@@ -174,7 +191,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       }
 
       const { id, name } = model;
-      const url = Urls.model({ id, name, type: "model" });
+      const url = Urls.modelDetail({ id, name, type: "model" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
@@ -199,6 +216,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       <NameCell model={model} />
       <CollectionCell model={model} />
       <DescriptionCell model={model} />
+      <OwnerCell model={model} />
       <Columns.RightEdge.Cell />
     </tr>
   );
@@ -220,7 +238,11 @@ function NameCell({ model }: { model?: ModelResult }) {
         />
         {model ? (
           <Link
-            to={Urls.model({ id: model.id, name: model.name, type: "model" })}
+            to={Urls.modelDetail({
+              id: model.id,
+              name: model.name,
+              type: "model",
+            })}
             onClick={preventDefault}
             style={{ overflow: "hidden" }}
           >
@@ -285,6 +307,27 @@ function DescriptionCell({ model }: { model?: ModelResult }) {
       ) : (
         <SkeletonText />
       )}
+    </td>
+  );
+}
+
+function OwnerCell({ model }: { model?: ModelResult }) {
+  const name = model
+    ? (model.last_editor_common_name ?? model.creator_common_name)
+    : null;
+
+  return (
+    <td className={cx(BrowseTableS.cell, BrowseTableS.hideAtMd)}>
+      {!model ? (
+        <SkeletonText />
+      ) : name ? (
+        <Flex align="center" gap="sm">
+          <UserAvatar user={{ common_name: name }} size="1.25rem" decorative />
+          <Text size="sm" truncate>
+            {name}
+          </Text>
+        </Flex>
+      ) : null}
     </td>
   );
 }

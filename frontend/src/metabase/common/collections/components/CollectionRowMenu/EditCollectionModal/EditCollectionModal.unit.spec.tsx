@@ -7,6 +7,8 @@ import {
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_LIBRARY, reinitialize } from "metabase/plugins";
+import type { LibraryCollectionType } from "metabase/plugins/oss/library";
 import type { Collection, CollectionItem } from "metabase-types/api";
 import {
   createMockCollection,
@@ -81,6 +83,7 @@ describe("EditCollectionModal", () => {
     expect(await request?.json()).toEqual({
       name: "Updated name",
       description: "Updated description",
+      icon: null,
       parent_id: parentCollection.id,
     });
   });
@@ -109,7 +112,53 @@ describe("EditCollectionModal", () => {
     )?.request;
     expect(await request?.json()).toEqual({
       name: "Updated item name",
+      icon: null,
       parent_id: itemParentCollection.id,
+    });
+  });
+
+  describe("library collections", () => {
+    beforeEach(() => {
+      PLUGIN_LIBRARY.isLibraryCollectionType = (
+        type?: string | null,
+      ): type is LibraryCollectionType =>
+        type === "library" ||
+        type === "library-data" ||
+        type === "library-metrics";
+    });
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("submits the icon picked for a library folder", async () => {
+      const collection = createMockCollection({
+        id: 3,
+        name: "Finance",
+        type: "library",
+        parent_id: parentCollection.id,
+      });
+      setup(collection);
+
+      await userEvent.click(screen.getByRole("button", { name: "Icon" }));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "star" }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.lastCall("update-collection-3"),
+        ).toBeTruthy(),
+      );
+      const request = fetchMock.callHistory.lastCall(
+        "update-collection-3",
+      )?.request;
+      expect(await request?.json()).toEqual({
+        name: "Finance",
+        icon: "star",
+        parent_id: parentCollection.id,
+      });
     });
   });
 });

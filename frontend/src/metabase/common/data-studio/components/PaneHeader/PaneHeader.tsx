@@ -23,7 +23,7 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   menu?: ReactNode;
   tabs?: ReactNode;
   actions?: ReactNode;
-  breadcrumbs: ReactNode;
+  breadcrumbs?: ReactNode;
   showAppSwitcher?: boolean;
 }
 
@@ -40,13 +40,15 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xxs" {...rest}>
-      <Flex mb="xl" mt="lg" w="100%" h="xxl">
-        {breadcrumbs}
+      {(breadcrumbs || showAppSwitcher) && (
+        <Flex mb="xl" mt="lg" w="100%" h="xxl">
+          {breadcrumbs}
 
-        <Group ml="auto" gap="lg" className={S.ButtonGroup}>
-          {showAppSwitcher && <AppSwitcher />}
-        </Group>
-      </Flex>
+          <Group ml="auto" gap="lg" className={S.ButtonGroup}>
+            {showAppSwitcher && <AppSwitcher />}
+          </Group>
+        </Flex>
+      )}
       <Group
         className={className}
         gap="sm"
@@ -70,13 +72,19 @@ export const PaneHeader = ({
   );
 };
 
+export type PaneHeaderTitleSize = "h1" | "h3";
+
 type PaneHeaderTitleProps = {
   children?: ReactNode;
+  size?: PaneHeaderTitleSize;
 };
 
-export function PanelHeaderTitle({ children }: PaneHeaderTitleProps) {
+export function PanelHeaderTitle({
+  children,
+  size = "h3",
+}: PaneHeaderTitleProps) {
   return (
-    <Box fw="bold" fz="h3" lh="h3">
+    <Box fw="bold" fz={size} lh={size}>
       {children}
     </Box>
   );
@@ -88,6 +96,7 @@ type PaneHeaderInputProps = {
   maxLength?: number;
   isOptional?: boolean;
   readOnly?: boolean;
+  size?: PaneHeaderTitleSize;
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
@@ -100,6 +109,7 @@ export function PaneHeaderInput({
   "data-testid": dataTestId,
   isOptional,
   readOnly = false,
+  size = "h3",
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -110,8 +120,8 @@ export function PaneHeaderInput({
       maxLength={maxLength}
       p={0}
       fw="bold"
-      fz="h3"
-      lh="h3"
+      fz={size}
+      lh={size}
       px={isOptional ? "xxs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border-neutral)" : undefined}
       isOptional={isOptional}

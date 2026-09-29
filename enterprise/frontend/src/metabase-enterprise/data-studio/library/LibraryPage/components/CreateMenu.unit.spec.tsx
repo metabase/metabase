@@ -15,6 +15,8 @@ import { CreateMenu } from "./CreateMenu";
 
 interface SetupOptions {
   user?: Partial<User>;
+  libraryCollectionId?: number;
+  canWriteToLibrary?: boolean;
   dataCollectionId?: number;
   canWriteToDataCollection?: boolean;
   canWriteToMetricCollection?: boolean;
@@ -31,6 +33,8 @@ const fullPermissionsUser: Partial<User> = {
 
 const setup = ({
   user,
+  libraryCollectionId = 7,
+  canWriteToLibrary = true,
   dataCollectionId = 2,
   canWriteToDataCollection = true,
   canWriteToMetricCollection = true,
@@ -50,6 +54,8 @@ const setup = ({
   setupEnterprisePlugins();
   const utils = renderWithProviders(
     <CreateMenu
+      libraryCollectionId={libraryCollectionId}
+      canWriteToLibrary={canWriteToLibrary}
       metricCollectionId={1}
       dataCollectionId={dataCollectionId}
       canWriteToDataCollection={canWriteToDataCollection}
@@ -71,17 +77,17 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Metric", "Snippet", "Collection"]);
+    ).toEqual(["Published table", "Metric", "Snippet", "Folder"]);
   });
 
-  it("renders publish and collection options for data analysts", async () => {
+  it("renders publish and folder options for data analysts", async () => {
     setup({ user: { is_data_analyst: true } });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Collection"]);
+    ).toEqual(["Published table", "Folder"]);
   });
 
   it("renders publish and metric options if user only has query builder access", async () => {
@@ -91,7 +97,7 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Metric", "Collection"]);
+    ).toEqual(["Published table", "Metric", "Folder"]);
   });
 
   it("does not render Metric option when canWriteToMetricCollection is false", async () => {
@@ -110,10 +116,10 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Snippet", "Collection"]);
+    ).toEqual(["Published table", "Snippet", "Folder"]);
   });
 
-  it("renders Collection option when only Data collection is writable", async () => {
+  it("renders Folder option when only Data collection is writable", async () => {
     setup({
       user: { is_data_analyst: true },
       canWriteToDataCollection: true,
@@ -124,12 +130,13 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Published table", "Collection"]);
+    ).toEqual(["Published table", "Folder"]);
   });
 
-  it("does not render Collection option without writable Library collections or native write", async () => {
+  it("does not render Folder option without writable Library collections or native write", async () => {
     setup({
       user: {},
+      canWriteToLibrary: false,
       canWriteToDataCollection: false,
       canWriteToMetricCollection: false,
     });
@@ -141,20 +148,21 @@ describe("CreateMenu", () => {
     ).toEqual(["Published table"]);
   });
 
-  it("opens the collection modal with Library and snippets picker options", async () => {
+  it("defaults a new folder to the top level of the Library", async () => {
     const { store } = setup({
       user: fullPermissionsUser,
+      libraryCollectionId: 7,
       dataCollectionId: 42,
     });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Folder/ }));
 
     expect(store.getState().modal).toEqual({
       id: "collection",
       props: {
-        inDataStudio: true,
-        initialCollectionId: 42,
+        title: "New folder",
+        initialCollectionId: 7,
         namespaces: [null, "snippets"],
         pickerOptions: {
           hasLibrary: true,
@@ -166,19 +174,36 @@ describe("CreateMenu", () => {
           canCreateCollections: false,
         },
         showAuthorityLevelPicker: false,
+        showIconPicker: true,
       },
+    });
+  });
+
+  it("falls back to the Data collection when the Library root is not writable", async () => {
+    const { store } = setup({
+      user: fullPermissionsUser,
+      canWriteToLibrary: false,
+      dataCollectionId: 42,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Folder/ }));
+
+    expect(store.getState().modal.props).toMatchObject({
+      initialCollectionId: 42,
     });
   });
 
   it("opens the collection modal scoped to snippets when only native write is available", async () => {
     const { store } = setup({
       user: { permissions: { can_create_native_queries: true } },
+      canWriteToLibrary: false,
       canWriteToDataCollection: false,
       canWriteToMetricCollection: false,
     });
 
     await userEvent.click(screen.getByRole("button", { name: /New/ }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Collection/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Folder/ }));
 
     expect(store.getState().modal.props).toMatchObject({
       initialCollectionId: null,

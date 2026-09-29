@@ -22,11 +22,13 @@ const IRREGULAR_ICON_PROPS = {
 type CollectionBadgeInnerProps = {
   collection: CollectionType;
   onClick?: () => void;
+  showIcon: boolean;
 };
 
 const CollectionBadgeInner = ({
   collection,
   onClick,
+  showIcon,
 }: CollectionBadgeInnerProps) => {
   const tc = useTranslateContent();
   const getIcon = useGetIcon();
@@ -43,8 +45,8 @@ const CollectionBadgeInner = ({
 
   return (
     <Breadcrumb
-      icon={icon.name}
-      iconColor={icon.color}
+      icon={showIcon ? icon.name : undefined}
+      iconColor={showIcon ? icon.color : undefined}
       to={
         onClick ? undefined : modelToUrl({ model: "collection", ...collection })
       }
@@ -58,11 +60,13 @@ const CollectionBadgeInner = ({
 type CollectionBadgeProps = {
   collectionId?: CollectionId;
   onClick?: () => void;
+  showIcon?: boolean;
 };
 
 export const CollectionBadge = ({
   collectionId,
   onClick,
+  showIcon = true,
 }: CollectionBadgeProps) => {
   const { data: collection } = useGetCollectionQuery({
     id: collectionId || "root",
@@ -70,5 +74,11 @@ export const CollectionBadge = ({
   if (!collection) {
     return null;
   }
-  return <CollectionBadgeInner collection={collection} onClick={onClick} />;
+  return (
+    <CollectionBadgeInner
+      collection={collection}
+      onClick={onClick}
+      showIcon={showIcon}
+    />
+  );
 };

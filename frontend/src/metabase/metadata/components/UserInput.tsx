@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { Ellipsified } from "metabase/ui";
 import { Avatar, Flex, Icon, Select, type SelectProps } from "metabase/ui";
 import { isEmail } from "metabase/utils/email";
@@ -69,7 +70,11 @@ export const UserInput = ({
       data={data}
       leftSection={
         userName ? (
-          <Avatar name={userName} />
+          <UserAvatar
+            user={{ common_name: userName }}
+            size="1.5rem"
+            decorative
+          />
         ) : email ? (
           <Avatar color="initials" name="emails">
             <Icon name="mail" />
@@ -89,7 +94,13 @@ export const UserInput = ({
         const option = item.option as Option;
         return (
           <Flex align="center" gap="sm" p="sm" w="100%">
-            {option.type === "user" && <Avatar name={item.option.label} />}
+            {option.type === "user" && (
+              <UserAvatar
+                user={{ common_name: item.option.label }}
+                size="1.5rem"
+                decorative
+              />
+            )}
             {option.type === "unknown" && (
               <Avatar color="background_page-secondary">
                 <Icon name="person" c="text-secondary" />

@@ -1,0 +1,5 @@
+/* Applied after `.browseHeader`, whose `3rem` of bottom padding is too much now that the header
+   sits directly above a bordered panel. `/browse/databases` still uses the original. */
+.header {
+  padding-bottom: var(--mantine-spacing-lg);
+}

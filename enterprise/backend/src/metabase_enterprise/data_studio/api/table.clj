@@ -171,8 +171,8 @@
    body :- ::publish-table-selectors]
   (api/check-data-analyst)
   (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
-        _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
-                                          (tru "Tables can only be published to Library/Data collections."))
+        _                  (api/check-400 (collection/can-contain-published-tables? target-collection)
+                                          (tru "Tables can only be published to Library/Data collections or Library folders."))
         selectors          (body->table-selectors body)
         upstream-ids       (all-upstream-table-ids selectors)
         ;; Don't move already-published upstream tables; only publish unpublished ones. Get table IDs before update

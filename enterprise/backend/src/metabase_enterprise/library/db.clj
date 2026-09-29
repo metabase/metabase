@@ -34,10 +34,11 @@
                            :archive-operation-id      nil})]
               :order-by [[:%lower.name :asc]]}))
 
-(mu/defn collection-type
-  "The type of the Collection with `collection-id`."
+(mu/defn collection-type-and-entity-id
+  "The `:type` and `:entity_id` of the Collection with `collection-id` — enough to tell a library folder from one of
+  the seeded Library roots via [[metabase.collections.models.collection/library-root-collection?]]."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
+  (t2/select-one [:model/Collection :type :entity_id] :id collection-id))
 
 (mu/defn unarchived-card-collection-types-reducible
   "Reducible distinct Collection ID and Card type pairs of the unarchived Cards."

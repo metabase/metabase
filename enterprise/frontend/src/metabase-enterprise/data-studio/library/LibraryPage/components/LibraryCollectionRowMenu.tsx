@@ -1,7 +1,10 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { getArchiveLibraryCollectionsMessage } from "../utils";
@@ -9,31 +12,16 @@ import { getArchiveLibraryCollectionsMessage } from "../utils";
 type LibraryCollectionRowMenuProps = {
   childCount: number;
   collection: Collection;
-  refreshMetricCollections: (collectionIds: CollectionId[]) => void;
-  refreshTableCollections: (collectionIds: CollectionId[]) => void;
+  refreshCollections: (collectionIds: CollectionId[]) => void;
 };
 
 export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
-  const {
-    childCount,
-    collection,
-    refreshMetricCollections,
-    refreshTableCollections,
-  } = props;
+  const { childCount, collection, refreshCollections } = props;
+  const [isNewFolderModalOpen, { open: openNewFolder, close: closeNewFolder }] =
+    useDisclosure(false);
+
   const isLibraryDataCollection =
     collection.type === "library-data" && !collection.is_library_root;
-  const refreshCollections = useCallback(
-    (collectionIds: CollectionId[]) => {
-      if (collection.type === "library-metrics") {
-        refreshMetricCollections(collectionIds);
-      }
-
-      if (collection.type === "library-data") {
-        refreshTableCollections(collectionIds);
-      }
-    },
-    [refreshMetricCollections, refreshTableCollections, collection.type],
-  );
 
   const onArchiveSuccess = useCallback(() => {
     const parentId = getParentCollectionId(collection);
@@ -45,19 +33,38 @@ export function LibraryCollectionRowMenu(props: LibraryCollectionRowMenuProps) {
     refreshCollections([parentId]);
   }, [collection, refreshCollections]);
 
+  const onFolderCreated = useCallback(() => {
+    closeNewFolder();
+    refreshCollections([collection.id]);
+  }, [closeNewFolder, collection.id, refreshCollections]);
+
   return (
-    <CollectionRowMenu
-      collection={collection}
-      onSave={(details) => {
-        refreshCollections(getAffectedCollectionIds(details));
-      }}
-      customArchiveMessage={
-        isLibraryDataCollection && childCount > 0
-          ? getArchiveLibraryCollectionsMessage(1)
-          : undefined
-      }
-      onArchiveSuccess={onArchiveSuccess}
-    />
+    <>
+      <CollectionRowMenu
+        collection={collection}
+        onNewFolder={openNewFolder}
+        onSave={(details) => {
+          refreshCollections(getAffectedCollectionIds(details));
+        }}
+        customArchiveMessage={
+          isLibraryDataCollection && childCount > 0
+            ? getArchiveLibraryCollectionsMessage(1)
+            : undefined
+        }
+        onArchiveSuccess={onArchiveSuccess}
+      />
+      {isNewFolderModalOpen && (
+        <CreateCollectionModal
+          title={t`New folder`}
+          initialCollectionId={collection.id}
+          showCollectionPicker={false}
+          showAuthorityLevelPicker={false}
+          showIconPicker
+          onCreate={onFolderCreated}
+          onClose={closeNewFolder}
+        />
+      )}
+    </>
   );
 }
 

@@ -4,22 +4,22 @@ import type { State } from "metabase/redux/store";
 
 import { useDispatch, useSelector } from "./hooks";
 
-const getIsNavbarOpen = (state: State) => state.app.isNavbarOpen;
+const getIsDndAvailable = (state: State) => state.app.isDndAvailable;
 
 describe("useSelector", () => {
   it("should allow access to redux store", () => {
     const Component = () => {
-      const isNavbarOpen = useSelector((state) => getIsNavbarOpen(state));
-      return <>{isNavbarOpen ? "Navbar open" : "Navbar closed"}</>;
+      const isDndAvailable = useSelector((state) => getIsDndAvailable(state));
+      return <>{isDndAvailable ? "Dnd available" : "Dnd unavailable"}</>;
     };
 
     renderWithProviders(<Component />, {
       storeInitialState: {
-        app: createMockAppState({ isNavbarOpen: false }),
+        app: createMockAppState({ isDndAvailable: false }),
       },
     });
-    expect(screen.getByText("Navbar closed")).toBeInTheDocument();
-    expect(screen.queryByText("Navbar open")).not.toBeInTheDocument();
+    expect(screen.getByText("Dnd unavailable")).toBeInTheDocument();
+    expect(screen.queryByText("Dnd available")).not.toBeInTheDocument();
   });
 });
 
@@ -47,20 +47,20 @@ describe("useDispatch", () => {
     });
 
     it("should properly dispatch thunks that use `getState`", () => {
-      const foundNavbarOpenState = jest.fn();
-      const didNotFindNavbarOpenState = jest.fn();
+      const foundDndState = jest.fn();
+      const didNotFindDndState = jest.fn();
 
       setup({
         thunk: () => (_dispatch: any, getState: () => State) => {
-          if (getIsNavbarOpen(getState())) {
-            foundNavbarOpenState();
+          if (getIsDndAvailable(getState())) {
+            foundDndState();
           } else {
-            didNotFindNavbarOpenState();
+            didNotFindDndState();
           }
         },
       });
-      expect(foundNavbarOpenState).toHaveBeenCalled();
-      expect(didNotFindNavbarOpenState).not.toHaveBeenCalled();
+      expect(foundDndState).toHaveBeenCalled();
+      expect(didNotFindDndState).not.toHaveBeenCalled();
     });
 
     it("should properly dispatch thunks that use `dispatch`", () => {

@@ -22,7 +22,7 @@ import { MoveableDragTypes, isItemDragPayload } from ".";
 const EMPTY_DRAGGED_ITEMS: CollectionItem[] = [];
 
 export type DropTargetCollection = Pick<Collection, "id"> &
-  Partial<Pick<CollectionItem, "type" | "can_write">>;
+  Partial<Pick<CollectionItem, "type" | "can_write" | "is_library_root">>;
 
 interface CollectionDropTargetOwnProps {
   collection: DropTargetCollection;
@@ -65,10 +65,10 @@ export function canDropItemsIntoCollection({
     return (
       isMovable(item) &&
       item.model !== "collection" &&
-      canPlaceEntityInCollection(
-        item.model,
-        getDropTargetCollectionType(collection),
-      ) &&
+      canPlaceEntityInCollection(item.model, {
+        type: getDropTargetCollectionType(collection),
+        is_library_root: collection.is_library_root,
+      }) &&
       !droppingToSameCollection &&
       !droppingToTrashFromTrash
     );

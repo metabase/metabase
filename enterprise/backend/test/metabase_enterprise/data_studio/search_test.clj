@@ -182,7 +182,8 @@
   (mt/with-premium-features #{:library}
     (let [search-term (random-name)]
       (mt/with-temp
-        [:model/Collection {lib-id :id}          {:name "Library" :type collection/library-collection-type :location "/"}
+        [:model/Collection {lib-id :id}          {:name "Library" :type collection/library-collection-type :location "/"
+                                                  :entity_id collection/library-entity-id}
          :model/Collection {data-coll :id}       {:name "Data"
                                                   :type collection/library-data-collection-type
                                                   :location (collection/location-path lib-id)}

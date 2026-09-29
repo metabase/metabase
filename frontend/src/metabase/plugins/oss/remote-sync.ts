@@ -7,8 +7,6 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { TagType } from "metabase/api/tags";
 import type { UseQuery } from "metabase/api/types/rtk";
-import type { CollectionTreeItem } from "metabase/common/collections/utils";
-import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type {
   GitSyncSetupMenuItemProps,
   SyncedCollectionsSidebarSectionProps,
@@ -21,12 +19,6 @@ import type {
 } from "metabase-types/api";
 
 import { definePluginSlot } from "../slot";
-
-export type CollectionsNavTreeProps = {
-  collections: CollectionTreeItem[];
-  selectedId?: number | string;
-  onSelect?: (item: ITreeNodeItem) => void;
-};
 
 export interface GitSettingsModalProps {
   isOpen: boolean;
@@ -44,8 +36,6 @@ export interface RemoteSyncDirtyState {
   hasRemovedItems: boolean;
   /** Whether data is loading */
   isLoading: boolean;
-  /** Check if a specific collection has dirty items */
-  isCollectionDirty: (collectionId: number | string | undefined) => boolean;
   /** Check if any collection in a set has dirty items */
   hasAnyCollectionDirty: (collectionIds: Set<number> | number[]) => boolean;
   /** Check if any dirty entity (including collections) is in the given set of IDs */
@@ -69,8 +59,6 @@ const getDefaultPluginRemoteSync = () => ({
   GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
   GitSyncSetupMenuItem: PluginPlaceholder,
   // Unjustified type cast. FIXME
-  CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
-  // Unjustified type cast. FIXME
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
@@ -87,9 +75,7 @@ const getDefaultPluginRemoteSync = () => ({
   getIsRemoteSyncReadOnly: () => false,
   useRemoteSyncDirtyState: () =>
     // Unjustified type cast. FIXME
-    ({
-      isCollectionDirty: false,
-    }) as unknown as RemoteSyncDirtyState,
+    ({}) as unknown as RemoteSyncDirtyState,
 });
 
 export const PLUGIN_REMOTE_SYNC: {
@@ -100,7 +86,6 @@ export const PLUGIN_REMOTE_SYNC: {
   GitSyncAppBarControls: ComponentType;
   GitSettingsModal: ComponentType<GitSettingsModalProps>;
   GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
-  CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<string>[] | null;
   useSyncStatus: () => {

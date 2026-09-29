@@ -13,7 +13,7 @@ import {
   type EntityPickerModalProps,
   type OmniPickerItem,
 } from "../EntityPicker";
-import { getCollectionType } from "../EntityPicker/utils";
+import { getCollectionPlacementTarget } from "../EntityPicker/utils";
 
 import type { CollectionPickerValueItem } from "./types";
 
@@ -53,7 +53,7 @@ export const CollectionPickerModal = ({
           if (item.model === "collection") {
             return !canPlaceEntityInCollectionOrDescendants(
               entityType,
-              getCollectionType(item),
+              getCollectionPlacementTarget(item),
             );
           }
           return false;
@@ -86,8 +86,12 @@ export const CollectionPickerModal = ({
       }
 
       if (entityType && item.model === "collection") {
-        const collectionType = getCollectionType(item);
-        if (!canPlaceEntityInCollection(entityType, collectionType)) {
+        if (
+          !canPlaceEntityInCollection(
+            entityType,
+            getCollectionPlacementTarget(item),
+          )
+        ) {
           return false;
         }
       }

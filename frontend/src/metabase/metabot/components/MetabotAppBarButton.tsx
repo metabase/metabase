@@ -6,7 +6,7 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { useSetting } from "metabase/settings";
-import { ActionIcon, type ActionIconProps, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Box, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
 import { trackMetabotChatOpened } from "../analytics";
@@ -21,10 +21,16 @@ export function MetabotAppBarButton({
   className,
   ...rest
 }: MetabotAppBarButtonProps) {
-  const { hasMetabotAccess } = useUserMetabotPermissions();
+  const { hasMetabotAccess, isLoading } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useSetting("metabot-name");
   const isFullPageMetabot = useIsFullPageMetabot();
+
+  if (isLoading) {
+    // Hold the button's space while permissions load, so the header controls beside it
+    // don't jump sideways when it appears.
+    return <Box w="2rem" h="2rem" flex="0 0 auto" aria-hidden />;
+  }
 
   if (!hasMetabotAccess) {
     return null;

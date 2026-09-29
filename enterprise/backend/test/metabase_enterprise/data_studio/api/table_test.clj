@@ -101,9 +101,9 @@
      (testing "returns 400 when collection_id is missing"
        (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
                              {:table_ids [(mt/id :users)]}))
-     (testing "returns 400 when target collection is not a library-data collection"
+     (testing "returns 400 when target collection cannot hold published tables"
        (mt/with-temp [:model/Collection {collection-id :id} {}]
-         (is (= "Tables can only be published to Library/Data collections."
+         (is (= "Tables can only be published to Library/Data collections or Library folders."
                 (mt/user-http-request :crowberto :post 400 "ee/data-studio/table/publish-tables"
                                       {:table_ids     [(mt/id :users)]
                                        :collection_id collection-id})))))

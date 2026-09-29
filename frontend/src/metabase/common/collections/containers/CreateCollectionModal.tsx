@@ -20,12 +20,14 @@ export interface CreateCollectionModalOwnProps extends Omit<
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
   shouldNavigateOnCreate?: boolean;
+  title?: string;
 }
 
 function CreateCollectionModal({
   onCreate,
   onClose,
   shouldNavigateOnCreate = true,
+  title = t`New collection`,
   ...props
 }: CreateCollectionModalOwnProps) {
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ function CreateCollectionModal({
       size="lg"
       data-testid="new-collection-modal"
       padding="40px"
-      title={t`New collection`}
+      title={title}
     >
       <CreateCollectionForm
         {...props}

@@ -1,0 +1,22 @@
+## Library folders can carry a user-chosen icon. The column is nullable everywhere: when it is NULL the UI keeps
+## deriving the icon from the collection's `type` (Data, Metrics, plain folder), so existing rows need no backfill.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-09-20T12:00:00
+      author: kdoh
+      comment: Add icon column to collection table
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: icon
+                  type: varchar(64)
+                  remarks: Optional user-chosen icon name, overriding the icon derived from the collection type.
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: collection
+            columnName: icon

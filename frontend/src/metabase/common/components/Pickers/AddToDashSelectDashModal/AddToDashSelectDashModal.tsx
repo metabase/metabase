@@ -11,7 +11,7 @@ import type { Card, Dashboard } from "metabase-types/api";
 
 import { DashboardPickerModal } from "../DashboardPicker";
 import { type OmniPickerItem, isInDbTree } from "../EntityPicker";
-import { getCollectionType } from "../EntityPicker/utils";
+import { getCollectionPlacementTarget } from "../EntityPicker/utils";
 
 import { isInPersonalCollection } from "./utils";
 
@@ -111,7 +111,7 @@ export const AddToDashSelectDashModal = ({
       if (
         !canPlaceEntityInCollectionOrDescendants(
           "dashboard",
-          getCollectionType(item),
+          getCollectionPlacementTarget(item),
         )
       ) {
         return true;

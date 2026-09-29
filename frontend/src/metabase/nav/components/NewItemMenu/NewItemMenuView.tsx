@@ -24,7 +24,6 @@ export interface NewItemMenuProps {
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
-  onCloseNavbar: () => void;
 }
 
 export const NewItemMenuView = ({

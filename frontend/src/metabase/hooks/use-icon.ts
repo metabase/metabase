@@ -4,6 +4,7 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { modelIconMap } from "metabase/common/utils/icon";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
+import { isValidIconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/viz-core";
 import type { VisualizationDisplay } from "metabase-types/api";
 
@@ -32,7 +33,7 @@ export const useGetIconBase = () => {
 
   return useCallback(
     /** get an Icon for any entity object, doesn't depend on the entity system */
-    (item: ObjectWithModel, _opts?: { isTenantUser?: boolean }): IconData => {
+    (item: ObjectWithModel): IconData => {
       if (item.model === "card" && item.display) {
         return getIconForVizType(item.display);
       }
@@ -51,6 +52,10 @@ export const useGetIconBase = () => {
 
       if (item.model === "collection" && item.id === "databases") {
         return { name: "database" };
+      }
+
+      if (item.icon && isValidIconName(item.icon)) {
+        return { name: item.icon };
       }
 
       if (item.model === "collection" && item.is_library_root === true) {

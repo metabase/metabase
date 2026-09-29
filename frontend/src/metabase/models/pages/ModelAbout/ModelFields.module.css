@@ -1,0 +1,17 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  padding: 0 0.5rem 0.5rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.table td {
+  padding: 0.5rem;
+  border-top: 1px solid var(--mb-color-border);
+  vertical-align: top;
+}

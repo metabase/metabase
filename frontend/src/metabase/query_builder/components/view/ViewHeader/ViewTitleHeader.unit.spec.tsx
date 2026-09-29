@@ -191,7 +191,6 @@ function setup({
       : new Question(card, metadata);
 
   const viewTitleHeaderProps: ComponentProps<typeof ViewTitleHeader> = {
-    isNavBarOpen: false,
     isObjectDetail: false,
     isBookmarked: false,
     isSaved: false,

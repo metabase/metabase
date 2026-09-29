@@ -62,25 +62,13 @@ export function useLibraryTreeTableInstance({
     useLibraryCollections(collections);
 
   const {
-    tree: tablesTree,
-    isLoading: loadingTables,
-    error: tablesError,
-    watchRows: watchTableRows,
-    isChildrenLoading: isTableChildrenLoading,
-    refreshCollections: refreshTableCollections,
-  } = useLibraryCollectionTree(tableCollection, "data");
-  const {
-    tree: metricsTree,
-    isLoading: loadingMetrics,
-    error: metricsError,
-    watchRows: watchMetricRows,
-    isChildrenLoading: isMetricChildrenLoading,
-    refreshCollections: refreshMetricCollections,
-  } = useLibraryCollectionTree(
-    metricCollection,
-    "metrics",
-    metricCollection?.id,
-  );
+    tree: libraryTree,
+    isLoading: loadingLibrary,
+    error: libraryError,
+    watchRows: watchLibraryRows,
+    isChildrenLoading: isLibraryChildrenLoading,
+    refreshCollections,
+  } = useLibraryCollectionTree(libraryCollection);
   const {
     tree: snippetTree,
     isLoading: loadingSnippets,
@@ -95,20 +83,16 @@ export function useLibraryTreeTableInstance({
   } = useLibrarySearch(searchQuery, libraryCollection?.id, snippetTree);
 
   const combinedTree = useMemo(
-    () =>
-      isSearchActive
-        ? searchTree
-        : [...tablesTree, ...metricsTree, ...snippetTree],
-    [isSearchActive, searchTree, tablesTree, metricsTree, snippetTree],
+    () => (isSearchActive ? searchTree : [...libraryTree, ...snippetTree]),
+    [isSearchActive, searchTree, libraryTree, snippetTree],
   );
 
   const isLoading =
     isLoadingCollections ||
-    loadingTables ||
-    loadingMetrics ||
+    loadingLibrary ||
     loadingSnippets ||
     isSearchLoading;
-  useErrorHandling(tablesError || metricsError || snippetsError);
+  useErrorHandling(libraryError || snippetsError);
 
   const libraryHasContent = useMemo(
     () =>
@@ -213,18 +197,12 @@ export function useLibraryTreeTableInstance({
         cell: ({ row }) => (
           <ActionCell
             treeItem={row.original}
-            refreshMetricCollections={refreshMetricCollections}
-            refreshTableCollections={refreshTableCollections}
+            refreshCollections={refreshCollections}
           />
         ),
       },
     ],
-    [
-      isRemoteSyncReadOnly,
-      onPublishTableClick,
-      refreshMetricCollections,
-      refreshTableCollections,
-    ],
+    [isRemoteSyncReadOnly, onPublishTableClick, refreshCollections],
   );
 
   const snippetRootId = snippetTree[0]?.id;
@@ -315,15 +293,8 @@ export function useLibraryTreeTableInstance({
 
   // Lazy-load subcollection items when expanded
   useEffect(() => {
-    watchTableRows(treeTableInstance.rows);
-    watchMetricRows(treeTableInstance.rows);
-  }, [treeTableInstance.rows, watchTableRows, watchMetricRows]);
-
-  const isChildrenLoading = useCallback(
-    (row: Parameters<typeof isTableChildrenLoading>[0]) =>
-      isTableChildrenLoading(row) || isMetricChildrenLoading(row),
-    [isTableChildrenLoading, isMetricChildrenLoading],
-  );
+    watchLibraryRows(treeTableInstance.rows);
+  }, [treeTableInstance.rows, watchLibraryRows]);
 
   let emptyMessage = null;
   if (!libraryHasContent) {
@@ -337,10 +308,9 @@ export function useLibraryTreeTableInstance({
   return {
     treeTableInstance,
     allRows,
-    isChildrenLoading,
+    isChildrenLoading: isLibraryChildrenLoading,
     isLoading,
     emptyMessage,
-    refreshTableCollections,
-    refreshMetricCollections,
+    refreshCollections,
   };
 }

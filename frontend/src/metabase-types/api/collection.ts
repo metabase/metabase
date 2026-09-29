@@ -9,6 +9,7 @@ import type {
 
 import type { CardId, CardType } from "./card";
 import type { DatabaseId } from "./database";
+import type { IconName } from "./icon";
 import type { SortDirection } from "./sorting";
 import type { TableId } from "./table";
 import type { UserId, UserInfo } from "./user";
@@ -67,6 +68,9 @@ export interface Collection {
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
+  // User-chosen icon override for the icon that would otherwise be derived
+  // from the collection's type/identity. Only surfaced for library folders.
+  icon?: IconName | null;
   is_remote_synced?: boolean;
   namespace: CollectionNamespace | null;
 
@@ -135,6 +139,7 @@ export interface CollectionItem {
   can_restore?: boolean;
   can_delete?: boolean;
   is_library_root?: boolean;
+  icon?: IconName | null;
   "last-edit-info"?: LastEditInfo;
   location?: string | null;
   effective_location?: string;
@@ -214,6 +219,7 @@ export interface UpdateCollectionRequest {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
+  icon?: IconName | null;
 }
 
 export interface CreateCollectionRequest {
@@ -223,6 +229,7 @@ export interface CreateCollectionRequest {
   namespace?: CollectionNamespace;
   authority_level?: CollectionAuthorityLevel;
   is_shared_tenant_collection?: boolean;
+  icon?: IconName | null;
 }
 
 export type ListCollectionsRequest = {

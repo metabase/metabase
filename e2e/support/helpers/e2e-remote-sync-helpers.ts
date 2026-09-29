@@ -164,9 +164,6 @@ export const wrapSyncedCollection = (alias = "syncedCollection", n = 0) => {
   });
 };
 
-export const getSyncStatusIndicators = () =>
-  navigationSidebar().findAllByTestId("remote-sync-status");
-
 export const updateRemoteQuestion = (
   updateFn: (val: Record<string, any>) => Record<string, any>,
   assertionsFn?: (val: Record<string, any>) => void,
@@ -210,8 +207,6 @@ export const moveCollectionItemToSyncedCollection = (
     entityPickerModalItem(1, targetCollection).click();
     cy.button("Move").click();
   });
-
-  getSyncStatusIndicators().should("have.length", 1);
 
   navigationSidebar()
     .findByRole("treeitem", { name: new RegExp(targetCollection) })

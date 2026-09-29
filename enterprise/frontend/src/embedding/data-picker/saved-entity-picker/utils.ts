@@ -1,9 +1,11 @@
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
-export const findCollectionById = (
-  collections: Collection[],
+export const findCollectionById = <
+  T extends { id: CollectionId; children?: T[] },
+>(
+  collections: T[],
   collectionId: CollectionId,
-): Collection | null => {
+): T | null => {
   if (!collections || collections.length === 0) {
     return null;
   }

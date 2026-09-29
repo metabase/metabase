@@ -70,9 +70,6 @@ describe("Remote Sync", () => {
       });
 
       cy.visit("/");
-
-      // Ensure that status icon is present
-      H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
       H.navigationSidebar()
         .findByRole("link", { name: /Test Synced Collection/ })
         .click();
@@ -90,11 +87,6 @@ describe("Remote Sync", () => {
         event: "remote_sync_push_changes",
         triggered_from: "app-bar",
       });
-
-      H.navigationSidebar()
-        .findByRole("link", { name: /Test Synced Collection/ })
-        .findByTestId("remote-sync-status")
-        .should("not.exist");
 
       H.updateRemoteQuestion(
         (doc) => {
@@ -128,8 +120,6 @@ describe("Remote Sync", () => {
       );
 
       cy.visit("/collection/root");
-
-      H.getSyncStatusIndicators().should("have.length", 0);
 
       const expectedError = "Uses content that is not remote synced.";
 
@@ -167,8 +157,6 @@ describe("Remote Sync", () => {
         H.entityPickerModalItem(1, "Test Synced Collection").click();
         cy.button("Move").click();
       });
-
-      H.getSyncStatusIndicators().should("have.length", 1);
     });
 
     it("should show a warning modal when you try to push but are out of date", () => {
@@ -1056,57 +1044,12 @@ describe("Remote Sync", () => {
 
             cy.visit("/");
 
-            // Verify sync status indicator appears
-            H.getSyncStatusIndicators().should("have.length.greaterThan", 0);
-
             // Push changes
             H.clickPushOption();
             H.modal()
               .button(/Push changes/)
               .click();
             H.waitForTask({ taskName: "export" });
-
-            // Verify changes were pushed (status indicator should clear)
-            H.navigationSidebar()
-              .findByRole("link", { name: /Syncable Tenant Collection/ })
-              .findByTestId("remote-sync-status")
-              .should("not.exist");
-          },
-        );
-      });
-
-      it("shows sync status badge on synced tenant collections in sidebar", () => {
-        H.configureGitAndPullChanges("read-write");
-
-        // Create a tenant collection
-        H.createSharedTenantCollection("Badge Test Collection").then(
-          (response) => {
-            const collectionId = response.body.id;
-
-            // Enable sync
-            cy.visit("/admin/settings/remote-sync");
-            // Mantine Switch has a hidden input (0x0 pixels), so we need force: true
-            cy.findByTestId("admin-layout-content")
-              .findByRole("switch", { name: "Sync Badge Test Collection" })
-              .click({ force: true });
-            cy.findByTestId("admin-layout-content")
-              .button("Save changes")
-              .click();
-
-            // Create content to trigger dirty state
-            H.createQuestion({
-              name: "Status Badge Test Question",
-              query: { "source-table": PRODUCTS_ID },
-              collection_id: collectionId,
-            });
-
-            cy.visit("/");
-
-            // Verify the sync status badge appears on the tenant collection
-            H.navigationSidebar()
-              .findByRole("treeitem", { name: /Badge Test Collection/ })
-              .findByTestId("remote-sync-status")
-              .should("exist");
           },
         );
       });

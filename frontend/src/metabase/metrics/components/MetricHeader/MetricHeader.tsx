@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import {
   PaneHeader,
+  type PaneHeaderTitleSize,
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
 import type { MetricUrls } from "metabase/common/metrics/types";
@@ -9,8 +10,8 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex, Group } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
+import { MetricBackLink } from "./MetricBackLink";
 import { MetricNameInput } from "./MetricNameInput";
-import { MetricTabs } from "./MetricTabs";
 import { MetricToolbar } from "./MetricToolbar";
 
 interface MetricHeaderProps {
@@ -20,6 +21,8 @@ interface MetricHeaderProps {
   breadcrumbs?: ReactNode;
   showAppSwitcher?: boolean;
   showDataStudioLink: boolean;
+  titleSize?: PaneHeaderTitleSize;
+  isInlineEditable: boolean;
 }
 
 export function MetricHeader({
@@ -29,6 +32,8 @@ export function MetricHeader({
   breadcrumbs,
   showAppSwitcher = false,
   showDataStudioLink,
+  titleSize,
+  isInlineEditable,
 }: MetricHeaderProps) {
   return (
     <PaneHeader
@@ -36,18 +41,17 @@ export function MetricHeader({
       showAppSwitcher={showAppSwitcher}
       title={
         <Flex align="center" gap="sm">
-          {card.can_write ? (
-            <MetricNameInput card={card} />
+          {isInlineEditable && card.can_write ? (
+            <MetricNameInput card={card} size={titleSize} />
           ) : (
-            <PanelHeaderTitle>{card.name}</PanelHeaderTitle>
+            <PanelHeaderTitle size={titleSize}>{card.name}</PanelHeaderTitle>
           )}
           <PLUGIN_MODERATION.EntityModerationIcon
             moderationReviews={card.moderation_reviews}
           />
         </Flex>
       }
-      icon="metric"
-      tabs={<MetricTabs card={card} urls={urls} />}
+      tabs={<MetricBackLink card={card} urls={urls} />}
       actions={
         <Group wrap="nowrap" align="center">
           {actions}

@@ -92,45 +92,6 @@ describe("useRemoteSyncDirtyState", () => {
     });
   });
 
-  describe("isCollectionDirty", () => {
-    it("returns false for collection without dirty items", async () => {
-      const { result } = setup({
-        dirty: [createMockDirtyEntity({ collection_id: 1 })],
-      });
-
-      await waitFor(() => {
-        expect(result.current.dirty.length).toBeGreaterThan(0);
-      });
-
-      expect(result.current.isCollectionDirty(2)).toBe(false);
-    });
-
-    it("returns true for collection with dirty items", async () => {
-      const { result } = setup({
-        dirty: [createMockDirtyEntity({ collection_id: 1 })],
-      });
-
-      await waitFor(() => {
-        expect(result.current.dirty.length).toBeGreaterThan(0);
-      });
-
-      expect(result.current.isCollectionDirty(1)).toBe(true);
-    });
-
-    it("returns false for non-numeric collection id", async () => {
-      const { result } = setup({
-        dirty: [createMockDirtyEntity({ collection_id: 1 })],
-      });
-
-      await waitFor(() => {
-        expect(result.current.dirty.length).toBeGreaterThan(0);
-      });
-
-      expect(result.current.isCollectionDirty("root")).toBe(false);
-      expect(result.current.isCollectionDirty(undefined)).toBe(false);
-    });
-  });
-
   describe("hasAnyCollectionDirty", () => {
     it("returns false when no collections in set are dirty", async () => {
       const { result } = setup({

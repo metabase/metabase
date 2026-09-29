@@ -14,18 +14,65 @@
         (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric, :collection_id (:id regular-collection)}))))
         (is (some? (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id regular-collection)}))))))))
 
-(deftest library-completely-locked-down
+(defn- library-root-defaults
+  "Temp-collection properties that make a collection look like the seeded Library root: the hard-coded
+  `entity_id` is what [[collection/library-root-collection?]] keys off."
+  []
+  {:name      "Test Library"
+   :type      collection/library-collection-type
+   :entity_id collection/library-entity-id})
+
+(defn- collection-under
+  "Fresh `:model/Collection` insert properties for a child of `parent`, with `:type` set to `folder-type`."
+  [parent folder-type]
+  (merge (mt/with-temp-defaults :model/Collection)
+         {:location (str (:location parent) (:id parent) "/")
+          :type     folder-type}))
+
+(deftest library-root-holds-only-folders
   (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/Collection no-allowed-content {:name "Test No Content" :type collection/library-collection-type}]
-      (testing "Cannot add anything to library collections"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
-                              (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id no-allowed-content) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the Library collection"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id no-allowed-content)}))))))))
+    (mt/with-temp [:model/Collection library (library-root-defaults)]
+      (testing "folders of every library type can be created at the top level of the Library"
+        (doseq [folder-type [collection/library-collection-type
+                             collection/library-data-collection-type
+                             collection/library-metrics-collection-type]]
+          (testing (str "type " folder-type)
+            (is (= 1 (t2/insert! :model/Collection (collection-under library folder-type)))))))
+      (testing "the Library root rejects leaf content and untyped collections"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only folders can be added to the Library"
+                              (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table)
+                                                              {:collection_id (:id library)
+                                                               :is_published  true}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only folders can be added to the Library"
+                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id library)}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only folders can be added to the Library"
+                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id library)}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only folders can be added to the Library"
+                              (t2/insert! :model/Collection (collection-under library nil))))))))
+
+(deftest library-folder-holds-tables-metrics-and-folders
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection library (library-root-defaults)
+                   :model/Collection folder  {:name     "My Folder"
+                                              :type     collection/library-collection-type
+                                              :location (str "/" (:id library) "/")}]
+      (testing "a Library folder holds published tables"
+        (mt/with-temp [:model/Table table {:collection_id (:id folder)
+                                           :is_published  true}]
+          (is (some? table))))
+      (testing "a Library folder holds metrics"
+        (mt/with-temp [:model/Card metric {:collection_id (:id folder)
+                                           :type          :metric}]
+          (is (some? metric))))
+      (testing "a Library folder holds nested Library folders"
+        (is (= 1 (t2/insert! :model/Collection (collection-under folder collection/library-collection-type)))))
+      (testing "a Library folder rejects everything else"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables, metrics, and folders to a Library folder"
+                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id folder)}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables, metrics, and folders to a Library folder"
+                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id folder)}))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables, metrics, and folders to a Library folder"
+                              (t2/insert! :model/Collection (collection-under folder nil))))))))
 
 (deftest check-allowed-content-table
   (mt/with-premium-features #{:library}
@@ -185,7 +232,7 @@
 
 (deftest cannot-move-library-collections-to-vanilla-collection-test
   (mt/with-premium-features #{:library}
-    (mt/with-temp [:model/Collection library-root   {:name "Library"  :type collection/library-collection-type}
+    (mt/with-temp [:model/Collection library-root   (library-root-defaults)
                    :model/Collection data-root      {:name "Data"     :type collection/library-data-collection-type
                                                      :location (str "/" (:id library-root) "/")}
                    :model/Collection metrics-root   {:name "Metrics"  :type collection/library-metrics-collection-type

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -10,7 +9,6 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import S from "metabase/reference/components/List/List.module.css";
 import { Revision } from "metabase/segments";
-import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import type {
   Revision as RevisionData,
   Segment,
@@ -54,16 +52,6 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
     const { style, revisions, segment, table, user, loading, loadingError } =
       this.props;
 
-    const userColorAssignments: Record<string | number, string> =
-      user && Object.keys(revisions).length > 0
-        ? assignUserColors(
-            Object.values(revisions).map((revision) =>
-              String(getIn(revision, ["user", "id"])),
-            ),
-            String(user.id),
-          )
-        : {};
-
     return (
       <div style={style} className={CS.full} data-testid="segment-revisions">
         <ReferenceHeader
@@ -96,12 +84,6 @@ class SegmentRevisions extends Component<SegmentRevisionsProps> {
                             tableId={table.id}
                             objectName={segment?.name ?? ""}
                             currentUser={user || {}}
-                            userColor={
-                              userColorAssignments[
-                                // Unjustified type cast. FIXME
-                                getIn(revision, ["user", "id"]) as string
-                              ]
-                            }
                           />
                         ) : null,
                       )

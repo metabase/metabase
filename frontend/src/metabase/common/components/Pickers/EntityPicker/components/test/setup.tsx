@@ -118,6 +118,7 @@ const createMockLibraryCollectionItem = (
     archived: collection.archived,
     model: "collection",
     type: collection.type,
+    is_library_root: collection.is_library_root,
     can_write: collection.can_write,
     location: collection.location,
     effective_location: collection.effective_location,

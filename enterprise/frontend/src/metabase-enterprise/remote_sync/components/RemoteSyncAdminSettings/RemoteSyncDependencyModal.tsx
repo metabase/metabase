@@ -134,7 +134,6 @@ const RequiredSyncItem = ({
     type: row.type,
     is_personal: row.personal,
     location: "/",
-    is_remote_synced: isSynced,
     is_library_root: row.type === "library",
   });
 

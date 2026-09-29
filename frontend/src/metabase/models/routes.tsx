@@ -22,6 +22,11 @@ const modelDetailPage = () =>
     /* webpackChunkName: "model-detail" */ "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage"
   ).then(({ ModelDetailPage }) => ({ Component: ModelDetailPage }));
 
+const modelAboutPage = () =>
+  import(
+    /* webpackChunkName: "model-about" */ "metabase/models/pages/ModelAbout"
+  ).then(({ ModelAboutPage }) => ({ Component: ModelAboutPage }));
+
 export const getRoutes = () => {
   const modalProps: Partial<ModalProps> = {
     ...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
@@ -34,9 +39,9 @@ export const getRoutes = () => {
         {lazyModalRouteElement(":actionId", actionCreatorModal, { modalProps })}
       </Route>
       <Route path=":rowId" lazy={modelDetailPage} />
-      <Route index element={redirect("actions")} />
-      <Route path="usage" element={redirect("../actions")} />
-      <Route path="schema" element={redirect("../actions")} />
+      <Route index lazy={modelAboutPage} />
+      <Route path="usage" element={redirect("..")} />
+      <Route path="schema" element={redirect("..")} />
       <Route path="*" element={redirect("../actions")} />
     </Route>
   );

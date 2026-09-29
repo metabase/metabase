@@ -84,7 +84,7 @@ export const QuestionInfoSidebar = ({
           {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
           <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>
           {question.type() === "model" && !question.isArchived() && (
-            <Link to={Urls.modelDetail(question.card())}>
+            <Link to={Urls.modelDetail(question.card(), "actions")}>
               <Flex gap="xxs" className={SidesheetStyles.TabSibling}>
                 <Icon name="external" />
                 {t`Actions`}

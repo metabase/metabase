@@ -29,16 +29,6 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     [dirty],
   );
 
-  const isCollectionDirty = useCallback(
-    (collectionId: number | string | undefined) => {
-      if (typeof collectionId !== "number") {
-        return false;
-      }
-      return !!changedCollections[collectionId];
-    },
-    [changedCollections],
-  );
-
   const hasAnyCollectionDirty = useCallback(
     (collectionIds: Set<number> | number[]) => {
       const ids =
@@ -78,7 +68,6 @@ export function useRemoteSyncDirtyState(): RemoteSyncDirtyState {
     isDirty,
     hasRemovedItems,
     isLoading,
-    isCollectionDirty,
     hasAnyCollectionDirty,
     hasDirtyInCollectionTree,
     refetch,

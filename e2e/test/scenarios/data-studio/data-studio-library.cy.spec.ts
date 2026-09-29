@@ -170,7 +170,7 @@ describe("scenarios > data studio > library", () => {
   });
 
   describe("Library collection management", () => {
-    it("should create a new library collection from the New button", () => {
+    it("should create a top-level library folder from the New button", () => {
       H.createLibrary();
       H.createCollection({ name: "Outside Library" });
       H.DataStudio.Library.visit();
@@ -178,11 +178,15 @@ describe("scenarios > data studio > library", () => {
       cy.intercept("POST", "/api/collection").as("createCollection");
 
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Collection").click();
+      H.popover().findByText("Folder").click();
 
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("New Library Collection");
-        cy.findByTestId("collection-picker-button").should("contain", "Data");
+        cy.findByLabelText("Name").type("New Library Folder");
+        cy.log("a new folder goes to the top level of the Library by default");
+        cy.findByTestId("collection-picker-button").should(
+          "contain",
+          "Library",
+        );
         cy.findByTestId("collection-picker-button").click();
       });
 
@@ -197,11 +201,44 @@ describe("scenarios > data studio > library", () => {
       H.modal().button("Create").click();
       cy.wait("@createCollection").then(({ response }) => {
         expect(response?.statusCode).to.equal(200);
+        expect(response?.body.type).to.equal("library");
       });
 
-      H.DataStudio.Library.collectionItem("New Library Collection").should(
+      H.DataStudio.Library.collectionItem("New Library Folder").should(
         "be.visible",
       );
+    });
+
+    it("should create a subfolder from a library section's row menu and give it a custom icon", () => {
+      H.createLibrary();
+      H.DataStudio.Library.visit();
+
+      cy.intercept("POST", "/api/collection").as("createCollection");
+
+      cy.log(
+        "the seeded Data section offers New folder but not rename/archive",
+      );
+      H.DataStudio.Library.collectionItem("Data")
+        .findByLabelText("Collection options")
+        .click();
+      H.popover().findByText("Edit collection details").should("not.exist");
+      H.popover().findByText("Archive").should("not.exist");
+      H.popover().findByText("New folder").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText("Name").type("Warehouse");
+        cy.findByLabelText("Icon").click();
+      });
+      H.popover().findByLabelText("gem").click();
+      H.modal().button("Create").click();
+
+      cy.wait("@createCollection").then(({ request, response }) => {
+        expect(request.body.icon).to.equal("gem");
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.type).to.equal("library-data");
+      });
+
+      H.DataStudio.Library.collectionItem("Warehouse").should("be.visible");
     });
 
     it("should edit a library collection name and description", () => {

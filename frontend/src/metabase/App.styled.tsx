@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-
 export const AppContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -27,11 +25,25 @@ export const AppContentContainer = styled.div<{
   }
 `;
 
+export const AppMain = styled.div`
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+
+  @media print {
+    height: 100%;
+    overflow: visible !important;
+  }
+`;
+
 export const AppContent = styled.main`
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  scroll-margin-top: ${APP_BAR_HEIGHT};
 
   @media print {
     overflow: visible !important;

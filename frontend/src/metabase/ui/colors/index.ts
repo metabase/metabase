@@ -1,6 +1,5 @@
 export * from "./palette";
 export * from "./colors";
-export * from "./formatting-colors";
 
 export { METABASE_DARK_THEME } from "./constants/themes/dark";
 export { METABASE_LIGHT_THEME } from "./constants/themes/light";

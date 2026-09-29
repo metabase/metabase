@@ -1,28 +1,47 @@
+import { forwardRef } from "react";
+
 import {
+  type Named,
   type PartialGroup,
   type PartialTenant,
   type PartialUser,
+  avatarSeed,
   prepareInitials,
 } from "metabase/common/utils/user";
+import { Avatar, type AvatarProps } from "metabase/ui";
 
-import type { AvatarProps } from "./UserAvatar.styled";
-import { Avatar as StyledAvatar } from "./UserAvatar.styled";
+import { avatarDataUri } from "./avatar-image";
 
-interface UserAvatarProps extends AvatarProps {
-  user: PartialUser;
-}
+export type UserAvatarProps = Omit<AvatarProps, "src" | "name"> & {
+  user: PartialUser | PartialGroup | PartialTenant;
+  /** For places that already render the name next to the avatar. */
+  decorative?: boolean;
+};
 
-interface GroupProps extends AvatarProps {
-  user: PartialGroup;
-}
+export const UserAvatar = forwardRef<HTMLDivElement, UserAvatarProps>(
+  function UserAvatar({ user, decorative, size = "3em", ...props }, ref) {
+    // Mantine falls back to initials if the generated image ever fails to paint.
+    const initials = prepareInitials(user) ?? undefined;
+    const label = getLabel(user);
 
-interface TenantProps extends AvatarProps {
-  user: PartialTenant;
-}
+    return (
+      <Avatar
+        {...props}
+        ref={ref}
+        size={size}
+        src={avatarDataUri(avatarSeed(user))}
+        name={initials}
+        alt={decorative ? "" : label}
+        aria-hidden={decorative || undefined}
+        title={decorative ? undefined : label}
+      />
+    );
+  },
+);
 
-export function UserAvatar({
-  user,
-  ...props
-}: UserAvatarProps | GroupProps | TenantProps) {
-  return <StyledAvatar {...props}>{prepareInitials(user) || "?"}</StyledAvatar>;
+function getLabel(namedParty: Named): string {
+  if ("name" in namedParty) {
+    return namedParty.name;
+  }
+  return namedParty.common_name ?? namedParty.email ?? "";
 }

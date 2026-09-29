@@ -26,7 +26,6 @@ import S from "./DetailViewPage.module.css";
 
 interface Props {
   columns: DatasetColumn[];
-  isNavBarOpen: boolean;
   row: RowValues;
   rowId: string | number;
   table: Table;
@@ -38,7 +37,6 @@ const BREAKPOINT_SMALL = 640;
 
 export function DetailViewPage({
   columns,
-  isNavBarOpen,
   row,
   rowId,
   table,
@@ -48,8 +46,8 @@ export function DetailViewPage({
   const rowName = getRowName(columns, row) || rowId;
   const icon = getEntityIcon(table.entity_type);
   const viewport = useViewportSize();
-  const navBarWidth = isNavBarOpen ? parseInt(NAV_SIDEBAR_WIDTH, 10) : 0;
-  const width = viewport.width - navBarWidth;
+  // The nav rail is always shown, so it always takes width off the viewport.
+  const width = viewport.width - parseInt(NAV_SIDEBAR_WIDTH, 10);
   const isMediumBreakpoint = width <= BREAKPOINT_MEDIUM;
   const isSmallBreakpoint = width <= BREAKPOINT_SMALL;
   const paddingLeft = isSmallBreakpoint ? 32 : DETAIL_VIEW_PADDING_LEFT;

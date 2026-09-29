@@ -282,6 +282,21 @@
   [collection]
   (library-entity-id? (:entity_id collection)))
 
+(defn library-folder?
+  "Is this a generic, user-created Library folder — a `library`-typed collection that is not one of the
+  immutable system-created roots (Library, Data, Metrics)? These folders hold published tables, metrics,
+  and further folders."
+  [collection]
+  (and (is-library? collection)
+       (not (library-root-collection? collection))))
+
+(defn can-contain-published-tables?
+  "Can published Tables live directly in this collection? True for `library-data` collections and for generic
+  Library folders, false for everything else (including the Library root itself)."
+  [collection]
+  (or (is-library-data-collection? collection)
+      (library-folder? collection)))
+
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
   Only overrides names for the system-created library collections, not user-created subcollections.
@@ -2186,6 +2201,7 @@
           :authority_level
           :description
           :entity_id
+          :icon
           :is_remote_synced
           :is_sample
           :name

@@ -1,12 +1,10 @@
 import cx from "classnames";
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Revision } from "metabase/segments";
-import { assignUserColors } from "metabase/ui/colors/formatting-colors";
 import * as Urls from "metabase/urls";
 import type {
   Revision as RevisionType,
@@ -21,17 +19,6 @@ interface Props {
 }
 
 export function RevisionHistory({ revisions, segment, user }: Props) {
-  const userColorAssignments = useMemo(() => {
-    if (!revisions) {
-      return {};
-    }
-
-    return assignUserColors(
-      revisions.map((revision) => String(revision.user.id)),
-      String(user.id),
-    );
-  }, [revisions, user]);
-
   return (
     <LoadingAndErrorWrapper
       loading={!segment || !revisions}
@@ -70,7 +57,6 @@ export function RevisionHistory({ revisions, segment, user }: Props) {
                     objectName={segment.name}
                     revision={revision}
                     tableId={segment.table_id}
-                    userColor={userColorAssignments[revision.user.id]}
                   />
                 ))}
               </ol>

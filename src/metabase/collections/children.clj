@@ -739,7 +739,8 @@
                 ;; selected as `collection_type` for fast sorting on "when it's a collection, type"
                 [:type :collection_type]
                 [(h2x/literal "collection") :model]
-                :authority_level])
+                :authority_level
+                :icon])
       ;; the nil indicates that collections are never pinned.
       (sql.helpers/where (pinned-state->clause pinned-state nil))))
 
@@ -869,7 +870,7 @@
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
-            (dissoc :collection_position :display :moderated_status :icon
+            (dissoc :collection_position :display :moderated_status
                     :collection_preview :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))

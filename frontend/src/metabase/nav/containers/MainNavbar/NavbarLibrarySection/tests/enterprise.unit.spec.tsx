@@ -52,6 +52,48 @@ describe("NavbarLibrarySection", () => {
       expect(screen.getByLabelText("metric icon")).toBeInTheDocument();
     });
 
+    it("should render a user-created top-level folder with its custom icon", async () => {
+      const libraryCollection = createLibraryCollection({
+        children: [
+          createChildCollection({ name: "Metrics" }),
+          createMockCollection({
+            id: 42,
+            name: "Finance",
+            type: "library",
+            is_library_root: false,
+            icon: "gem",
+            location: "/1/",
+          }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      await waitFor(() => {
+        expect(screen.getByText("Finance")).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText("gem icon")).toBeInTheDocument();
+    });
+
+    it("should fall back to the folder icon when none is set", async () => {
+      const libraryCollection = createLibraryCollection({
+        children: [
+          createMockCollection({
+            id: 42,
+            name: "Finance",
+            type: "library",
+            is_library_root: false,
+            location: "/1/",
+          }),
+        ],
+      });
+      setup({ collections: [libraryCollection] });
+
+      await waitFor(() => {
+        expect(screen.getByText("Finance")).toBeInTheDocument();
+      });
+      expect(screen.getByLabelText("folder icon")).toBeInTheDocument();
+    });
+
     it("should not render when no library collection exists", () => {
       const regularCollection = createMockCollection({
         id: 2,
@@ -61,110 +103,6 @@ describe("NavbarLibrarySection", () => {
       setup({ collections: [regularCollection] });
 
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("dirty state badges", () => {
-    it("should not show badge when git sync is not visible", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-      setup({
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should not show badge when collection has no dirty changes", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-      setup({
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      expect(
-        screen.queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("should show badge when collection has dirty changes and git sync is visible", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [createChildCollection({ id: 10, name: "Metrics" })],
-      });
-
-      fetchMock.get("path:/api/ee/remote-sync/dirty", {
-        dirty: [
-          {
-            collection_id: 10,
-          },
-        ],
-      });
-
-      setup({
-        isEnterprise: true,
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Metrics")).toBeInTheDocument();
-      });
-
-      await waitFor(() => {
-        expect(screen.getByTestId("remote-sync-status")).toBeInTheDocument();
-      });
-    });
-
-    it("should show badge only for collections with changes", async () => {
-      const libraryCollection = createLibraryCollection({
-        children: [
-          createChildCollection({
-            id: 10,
-            name: "Dirty Collection",
-            type: "library-metrics",
-          }),
-          createChildCollection({
-            id: 11,
-            name: "Clean Collection",
-            type: "library-data",
-          }),
-        ],
-      });
-
-      fetchMock.get("path:/api/ee/remote-sync/dirty", {
-        dirty: [
-          {
-            collection_id: 10,
-          },
-        ],
-      });
-
-      setup({
-        isEnterprise: true,
-        collections: [libraryCollection],
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Dirty Collection")).toBeInTheDocument();
-      });
-
-      expect(screen.getByText("Clean Collection")).toBeInTheDocument();
-
-      await waitFor(() => {
-        const badges = screen.getAllByTestId("remote-sync-status");
-        expect(badges).toHaveLength(1);
-      });
     });
   });
 });

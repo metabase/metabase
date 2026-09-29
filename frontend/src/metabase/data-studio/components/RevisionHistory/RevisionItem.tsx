@@ -13,7 +13,6 @@ import type { DefinitionType, RevisionActionDescriptor } from "./types";
 
 type RevisionItemProps = {
   revision: Revision;
-  userColor?: string;
   getActionDescription: RevisionActionDescriptor;
   definitionLabel: string;
   definitionType: DefinitionType;
@@ -21,7 +20,6 @@ type RevisionItemProps = {
 
 export function RevisionItem({
   revision,
-  userColor,
   getActionDescription,
   definitionLabel,
   definitionType,
@@ -38,7 +36,7 @@ export function RevisionItem({
   const diffKeys = getDiffKeys(revision);
 
   return (
-    <Timeline.Item bullet={<UserAvatar user={revision.user} bg={userColor} />}>
+    <Timeline.Item bullet={<UserAvatar user={revision.user} />}>
       <Stack gap="sm" ml="lg">
         <Flex justify="space-between" align="flex-start" gap="lg">
           <Stack gap={2}>

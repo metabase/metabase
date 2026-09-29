@@ -4,13 +4,14 @@ import { t } from "ttag";
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { PaneHeaderTitleSize } from "metabase/common/data-studio/components/PaneHeader";
+import { useHeaderCollection } from "metabase/common/hooks/use-header-collection";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { useNavigate } from "metabase/router";
 import type { Card } from "metabase-types/api";
 
-import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
 import { MetricHeader } from "../MetricHeader";
 
 interface MetricPageShellProps {
@@ -20,6 +21,8 @@ interface MetricPageShellProps {
   renderBreadcrumbs?: (card: Card) => ReactNode;
   showAppSwitcher?: boolean;
   showDataStudioLink?: boolean;
+  titleSize?: PaneHeaderTitleSize;
+  isInlineEditable?: boolean;
 }
 
 export function MetricPageShell({
@@ -29,11 +32,15 @@ export function MetricPageShell({
   renderBreadcrumbs,
   showAppSwitcher,
   showDataStudioLink = true,
+  titleSize,
+  isInlineEditable = false,
 }: MetricPageShellProps) {
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useHeaderCollection(card.collection_id);
 
   return (
     <>
@@ -77,13 +84,9 @@ export function MetricPageShell({
         actions={actions}
         showAppSwitcher={showAppSwitcher}
         showDataStudioLink={showDataStudioLink}
-        breadcrumbs={
-          renderBreadcrumbs ? (
-            renderBreadcrumbs(card)
-          ) : (
-            <CollectionBreadcrumbs card={card} />
-          )
-        }
+        breadcrumbs={renderBreadcrumbs?.(card)}
+        titleSize={titleSize}
+        isInlineEditable={isInlineEditable}
       />
     </>
   );

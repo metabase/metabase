@@ -36,6 +36,8 @@ const libraryCollection = createMockCollection({
   id: 9,
   name: "Library",
   type: "library",
+  // The API marks the seeded Library root; user-created folders share type "library" without it.
+  is_library_root: true,
   can_write: false,
   location: "/",
   here: ["collection"],

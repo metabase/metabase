@@ -129,10 +129,11 @@ export const SaveQuestionProvider = ({
 
   const isValidLastSelectedCollection =
     lastSelectedCollection &&
-    canPlaceEntityInCollection(
-      entityType,
-      lastSelectedCollection.collection_type,
-    );
+    // Recents never surface the seeded Library root — it is a container you cannot save into —
+    // so a `library` type here is always a folder the user created.
+    canPlaceEntityInCollection(entityType, {
+      type: lastSelectedCollection.collection_type,
+    });
 
   const initialDashboardId =
     question.type() === "question" &&

@@ -2,18 +2,15 @@ import type { KeyboardEvent } from "react";
 import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
-import { getCollectionIcon } from "metabase/common/collections/utils";
+import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import { CollectionDropTarget } from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
-import { getIsTenantUser } from "metabase/current-user";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
-import type { Collection } from "metabase-types/api";
 
 import {
   CollectionNodeRoot,
@@ -32,7 +29,7 @@ type DroppableProps = {
 type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
     nonNavigable?: boolean;
-    collection: Collection;
+    collection: CollectionTreeItem;
   };
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
@@ -55,7 +52,6 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   ) {
     const wasHovered = usePrevious(isHovered);
     const timeoutId = useRef<number>();
-    const isTenantUser = useSelector(getIsTenantUser);
 
     useEffect(() => {
       const justHovered = !wasHovered && isHovered;
@@ -94,9 +90,16 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       [isExpanded, hasChildren, onToggleExpand],
     );
 
-    const icon = getCollectionIcon(collection, { isTenantUser });
-    const isRegularCollection =
-      PLUGIN_COLLECTIONS.isRegularCollection(collection);
+    // `buildCollectionTree` already resolved this node's icon, and that is where a collection's own
+    // `icon` is honoured. Re-deriving here would drop it and fall back to the type default.
+    const icon =
+      typeof collection.icon === "string"
+        ? { name: collection.icon }
+        : collection.icon;
+    const isRegularCollection = PLUGIN_COLLECTIONS.isRegularCollection({
+      authority_level: collection.authority_level,
+      type: collection.type,
+    });
 
     const content = (
       <>
@@ -147,7 +150,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     ref,
   ) {
     // Unjustified type cast. FIXME
-    const collection = item as unknown as Collection;
+    const collection = item as unknown as CollectionTreeItem;
 
     const link = (droppableProps?: DroppableProps) => (
       <SidebarCollectionLink

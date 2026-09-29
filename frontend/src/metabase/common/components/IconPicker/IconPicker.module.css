@@ -1,0 +1,4 @@
+.grid {
+  max-height: 14rem;
+  overflow-y: auto;
+}

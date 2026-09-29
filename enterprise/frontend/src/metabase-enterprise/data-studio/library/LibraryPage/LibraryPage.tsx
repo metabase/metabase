@@ -62,8 +62,7 @@ function LibraryPageContent() {
     isChildrenLoading,
     isLoading,
     emptyMessage,
-    refreshTableCollections,
-    refreshMetricCollections,
+    refreshCollections,
   } = useLibraryTreeTableInstance({
     collections,
     isLoadingCollections,
@@ -102,16 +101,13 @@ function LibraryPageContent() {
     .otherwise(() => undefined);
 
   const handleActionComplete = useCallback(
-    (section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
-      if (section === "data") {
-        refreshTableCollections(affectedCollectionIds);
-      } else if (section === "metrics") {
-        refreshMetricCollections(affectedCollectionIds);
-      }
-      // Snippet sections refetch via RTK tag invalidation.
+    (_section: LibrarySection, affectedCollectionIds: CollectionId[]) => {
+      // Snippet sections refetch via RTK tag invalidation; library rows are refreshed explicitly
+      // because their children are held in a local lazy-load cache.
+      refreshCollections(affectedCollectionIds);
       clearSelection();
     },
-    [refreshTableCollections, refreshMetricCollections, clearSelection],
+    [refreshCollections, clearSelection],
   );
 
   return (
@@ -145,6 +141,8 @@ function LibraryPageContent() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <CreateMenu
+                  libraryCollectionId={libraryCollection?.id}
+                  canWriteToLibrary={!!libraryCollection?.can_write}
                   metricCollectionId={writableMetricCollection?.id}
                   canWriteToMetricCollection={!!writableMetricCollection}
                   dataCollectionId={tableCollection?.id}

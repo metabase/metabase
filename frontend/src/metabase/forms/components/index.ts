@@ -7,6 +7,7 @@ export * from "./FormErrorMessage";
 export * from "./FormField";
 export * from "./FormFileInput";
 export * from "./FormGroupWidget";
+export * from "./FormIconPicker";
 export * from "./FormInlineUpdater";
 export * from "./FormMessage";
 export * from "./FormMultiSelect";

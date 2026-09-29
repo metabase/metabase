@@ -9,10 +9,11 @@ import {
 } from "metabase/api";
 import type { CommentExtraRenderer } from "metabase/comments/types";
 import { getCommentNodeId } from "metabase/comments/utils";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Avatar, Stack, Timeline, rem } from "metabase/ui";
+import { Stack, Timeline, rem } from "metabase/ui";
 import type {
   Comment,
   CommentEntityType,
@@ -217,7 +218,7 @@ export const Discussion = ({
         {!comments[0]?.is_resolved && currentUser && (
           <Timeline.Item
             className={S.commentRoot}
-            bullet={<Avatar name={currentUser.common_name} />}
+            bullet={<UserAvatar user={currentUser} size="1.5rem" decorative />}
           >
             <CommentEditor
               active={false}

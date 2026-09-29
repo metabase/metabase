@@ -32,8 +32,6 @@ interface ViewTitleHeaderProps {
   onOpenQuestionInfo: () => void;
   onSave: (newQuestion: Question) => any;
 
-  isNavBarOpen: boolean;
-
   originalQuestion?: Question;
   isSummarized?: boolean;
 
@@ -85,7 +83,6 @@ export function ViewTitleHeader({
   onOpenQuestionInfo,
   onSave,
   onOpenModal,
-  isNavBarOpen,
   originalQuestion,
   result,
   queryBuilderMode,
@@ -152,9 +149,12 @@ export function ViewTitleHeader({
   return (
     <>
       <ViewSection
-        className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
-          [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
-        })}
+        className={cx(
+          ViewTitleHeaderS.ViewHeaderContainer,
+          // The nav rail is always shown, so the narrow-viewport layout always applies.
+          ViewTitleHeaderS.isNavBarOpen,
+          className,
+        )}
         style={style}
         data-testid="qb-header"
       >

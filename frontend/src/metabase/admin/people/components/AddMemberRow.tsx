@@ -7,8 +7,6 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
 import type { Group, Member, User } from "metabase-types/api";
 
-import { userToColor } from "../colors";
-
 import { AddRow } from "./AddRow";
 
 interface AddMemberRowProps {
@@ -116,7 +114,7 @@ export function AddMemberRow({
                   p="0.5rem 1rem"
                   onClick={() => handleAddUser(user)}
                 >
-                  <UserAvatar bg={userToColor(user)} user={user} />
+                  <UserAvatar user={user} />
                   <Text fw="bold" size="lg">
                     {user.common_name}
                   </Text>

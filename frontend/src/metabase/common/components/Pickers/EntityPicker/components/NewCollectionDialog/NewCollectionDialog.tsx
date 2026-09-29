@@ -19,7 +19,7 @@ import * as Errors from "metabase/utils/errors";
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerCollectionItem } from "../../types";
 import {
-  getCollectionType,
+  getCollectionPlacementTarget,
   isCollection,
   isInRecentsOrSearch,
 } from "../../utils";
@@ -64,7 +64,7 @@ export const NewCollectionDialog = () => {
     lastCollection.can_write &&
     canPlaceEntityInCollection(
       "collection",
-      getCollectionType(lastCollection),
+      getCollectionPlacementTarget(lastCollection),
     ) &&
     PLUGIN_TENANTS.canPlaceEntityInCollection({
       entityType: "collection",

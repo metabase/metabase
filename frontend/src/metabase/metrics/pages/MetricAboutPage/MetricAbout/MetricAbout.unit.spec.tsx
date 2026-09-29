@@ -2,17 +2,26 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupMetricDatasetEndpoint,
+  setupMetricDimensionsEndpoints,
   setupMetricEndpoint,
+  setupRevisionsEndpoints,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { Card, Dataset, Field, Metric } from "metabase-types/api";
+import type {
+  Card,
+  Dataset,
+  DimensionMapping,
+  Field,
+  Metric,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -120,26 +129,39 @@ const BINNED_NUMERIC_DATASET = createMockDataset({
 interface SetupOptions {
   metric?: Metric;
   metricDataset?: Dataset;
+  showManagementPanels?: boolean;
 }
 
 function setup(
   card: Card,
   dataset: Dataset = SCALAR_DATASET,
-  { metric, metricDataset }: SetupOptions = {},
+  { metric, metricDataset, showManagementPanels }: SetupOptions = {},
 ) {
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);
-  setupCardQueryMetadataEndpoint(
-    card,
-    createMockCardQueryMetadata({ databases: [SAMPLE_DB] }),
-  );
+  const metadata = createMockCardQueryMetadata({ databases: [SAMPLE_DB] });
+  setupCardQueryMetadataEndpoint(card, metadata);
   setupMetricEndpoint(
     metric ?? createMockMetric({ id: card.id, name: card.name }),
   );
   setupMetricDatasetEndpoint(metricDataset ?? dataset);
+  // Data Studio also renders the Dimensions and History panels.
+  setupMetricDimensionsEndpoints(card.id, { added: [], addable: [] });
+  setupRevisionsEndpoints([]);
+  setupAdhocQueryMetadataEndpoint(metadata);
 
   renderWithProviders(
-    <Route path="/" element={<MetricAbout card={card} urls={mockUrls} />} />,
+    <Route
+      path="/"
+      element={
+        <MetricAbout
+          card={card}
+          metadata={metadata}
+          urls={mockUrls}
+          showManagementPanels={showManagementPanels}
+        />
+      }
+    />,
     {
       storeInitialState: createMockState(),
       withRouter: true,
@@ -148,12 +170,23 @@ function setup(
   );
 }
 
-async function getMetricDatasetRequest(): Promise<unknown> {
+async function getMetricDatasetRequests(): Promise<unknown[]> {
   await waitFor(() => {
-    expect(fetchMock.callHistory.calls("metric-dataset")).toHaveLength(1);
+    expect(
+      fetchMock.callHistory.calls("metric-dataset").length,
+    ).toBeGreaterThan(0);
   });
 
-  return fetchMock.callHistory.lastCall("metric-dataset")?.request?.json();
+  return Promise.all(
+    fetchMock.callHistory
+      .calls("metric-dataset")
+      .map((call) => call.request?.json()),
+  );
+}
+
+async function getMetricDatasetRequest(): Promise<unknown> {
+  const requests = await getMetricDatasetRequests();
+  return requests.at(-1);
 }
 
 describe("MetricAbout", () => {
@@ -181,6 +214,51 @@ describe("MetricAbout", () => {
     // isn't trivially true (the page hasn't loaded yet).
     expect(await screen.findByText("Source")).toBeInTheDocument();
     expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
+  });
+
+  it("collapses the definition by default and expands it on click", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+    );
+
+    const toggle = await screen.findByRole("button", { name: /Definition/ });
+    const definition = await screen.findByTestId("metric-definition");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(definition).not.toBeVisible();
+
+    await userEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await waitFor(() => expect(definition).toBeVisible());
+  });
+
+  it("hides the Dimensions and History panels on the main app page", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Definition/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Dimensions")).not.toBeInTheDocument();
+    expect(screen.queryByText("History")).not.toBeInTheDocument();
+  });
+
+  it("shows the Dimensions and History panels when showManagementPanels is set", async () => {
+    setup(
+      makeMetricCard([
+        createMockField({ name: "count", base_type: "type/Integer" }),
+      ]),
+      undefined,
+      { showManagementPanels: true },
+    );
+
+    expect(await screen.findByText("Dimensions")).toBeInTheDocument();
+    expect(await screen.findByText("History")).toBeInTheDocument();
   });
 
   describe("curated default dimension", () => {
@@ -368,23 +446,21 @@ describe("MetricAbout", () => {
         metricDataset,
       });
 
-      const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Product - Created At: Day",
-      });
-      expect(dimensionSelect).toHaveTextContent("Product - Created At: Day");
+      expect(
+        await screen.findByRole("button", {
+          name: /Product - Created At: Day/,
+          pressed: true,
+        }),
+      ).toBeInTheDocument();
 
-      await userEvent.click(dimensionSelect);
-      const categoryOption = await screen.findByRole("option", {
-        name: /Product Category/,
-      });
-      expect(categoryOption).toContainElement(
-        within(categoryOption).getByLabelText("label icon"),
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Product Category/ }),
       );
-      await userEvent.click(categoryOption);
 
       expect(
         await screen.findByRole("button", {
-          name: "Select dimension: Product Category",
+          name: /Product Category/,
+          pressed: true,
         }),
       ).toBeInTheDocument();
 
@@ -453,17 +529,87 @@ describe("MetricAbout", () => {
         metricDataset,
       });
 
-      const dimensionSelect = await screen.findByRole("button", {
-        name: "Select dimension: Product - Rating: 8 bins",
+      const activePill = await screen.findByRole("button", {
+        name: /Product - Rating: 8 bins/,
+        pressed: true,
       });
-      expect(dimensionSelect).toHaveTextContent("Product - Rating: 8 bins");
+      expect(activePill).toHaveTextContent("Product - Rating: 8 bins");
+    });
 
-      await userEvent.click(dimensionSelect);
-      const ratingOption = await screen.findByRole("option", {
-        name: /Product - Rating/,
+    it("limits break-out pills like the breakdowns grid while keeping the default visible", async () => {
+      const categoryFields = [
+        { id: "product-category", name: "Category", field: PRODUCTS.CATEGORY },
+        { id: "product-vendor", name: "Vendor", field: PRODUCTS.VENDOR },
+        { id: "product-title", name: "Title", field: PRODUCTS.TITLE },
+        { id: "product-ean", name: "Ean", field: PRODUCTS.EAN },
+        { id: "product-id", name: "Product ID", field: PRODUCTS.ID },
+      ];
+      const defaultDimensionId = "created-at";
+      const metric = createMockMetric({
+        id: 42,
+        dimensions: [
+          ...categoryFields.map(({ id, name }) =>
+            createMockMetricDimension({
+              id,
+              display_name: name,
+              effective_type: "type/Text",
+              semantic_type: "type/Category",
+              status: "status/active",
+            }),
+          ),
+          createMockMetricDimension({
+            id: defaultDimensionId,
+            display_name: "Created At",
+            effective_type: "type/DateTime",
+            semantic_type: "type/CreationTimestamp",
+            default: true,
+            status: "status/active",
+          }),
+        ],
+        dimension_mappings: [
+          ...categoryFields.map(
+            ({ id, field }): DimensionMapping => ({
+              dimension_id: id,
+              table_id: PRODUCTS_ID,
+              target: ["field", { "source-field": ORDERS.PRODUCT_ID }, field],
+            }),
+          ),
+          {
+            dimension_id: defaultDimensionId,
+            table_id: ORDERS_ID,
+            target: ["field", {}, ORDERS.CREATED_AT],
+          },
+        ],
       });
-      expect(ratingOption).toHaveTextContent("Product - Rating");
-      expect(ratingOption).not.toHaveTextContent("8 bins");
+
+      setup(makeMetricCard([createMockField({ name: "count" })]), undefined, {
+        metric,
+        metricDataset: TIME_SERIES,
+      });
+
+      const pills = await screen.findByRole("group", { name: "Break out by" });
+      expect(
+        await screen.findByRole("button", {
+          name: /Created At/,
+          pressed: true,
+        }),
+      ).toBeInTheDocument();
+      for (const name of ["Category", "Vendor", "Title", "Ean"]) {
+        expect(
+          screen.getByRole("button", { name: new RegExp(`${name}$`) }),
+        ).toBeInTheDocument();
+      }
+      expect(
+        screen.queryByRole("button", { name: /Product ID$/ }),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: /Show more/ }));
+
+      expect(
+        await screen.findByRole("button", { name: /Product ID$/ }),
+      ).toBeInTheDocument();
+      expect(pills).not.toHaveTextContent("Show more");
+      expect(screen.queryByText("Breakdowns")).not.toBeInTheDocument();
     });
   });
 
@@ -549,10 +695,11 @@ describe("MetricAbout", () => {
       expect(await screen.findByTestId("scalar-value")).toHaveTextContent(
         "150",
       );
+      // The dimension is offered as a pill but nothing is broken out by it yet.
       expect(
-        screen.queryByRole("button", { name: /Select dimension:/ }),
+        screen.queryByRole("button", { pressed: true }),
       ).not.toBeInTheDocument();
-      expect(await getMetricDatasetRequest()).toEqual(
+      expect(await getMetricDatasetRequests()).toContainEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({
             projections: expect.anything(),
@@ -578,9 +725,9 @@ describe("MetricAbout", () => {
         "150",
       );
       expect(
-        screen.queryByRole("button", { name: /Select dimension:/ }),
+        screen.queryByRole("group", { name: "Break out by" }),
       ).not.toBeInTheDocument();
-      expect(await getMetricDatasetRequest()).toEqual(
+      expect(await getMetricDatasetRequests()).toContainEqual(
         expect.objectContaining({
           definition: expect.not.objectContaining({
             projections: expect.anything(),

@@ -23,7 +23,7 @@ export const CollectionSyncRow = ({
   const icon = getIcon({
     model: "collection",
     type: collection.type,
-    is_remote_synced: isChecked,
+    icon: collection.icon,
   });
 
   return (

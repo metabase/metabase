@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
-import { PaneHeaderInput } from "metabase/common/data-studio/components/PaneHeader";
+import {
+  PaneHeaderInput,
+  type PaneHeaderTitleSize,
+} from "metabase/common/data-studio/components/PaneHeader";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { Card } from "metabase-types/api";
 
@@ -9,10 +12,10 @@ import { NAME_MAX_LENGTH } from "../../../constants";
 
 type MetricNameInputProps = {
   card: Card;
-  onChangeName?: (name: string) => void;
+  size?: PaneHeaderTitleSize;
 };
 
-export function MetricNameInput({ card }: MetricNameInputProps) {
+export function MetricNameInput({ card, size }: MetricNameInputProps) {
   const [updateCard] = useUpdateCardMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
@@ -33,6 +36,7 @@ export function MetricNameInput({ card }: MetricNameInputProps) {
     <PaneHeaderInput
       initialValue={card.name}
       maxLength={NAME_MAX_LENGTH}
+      size={size}
       onChange={handleChangeName}
     />
   );
