@@ -75,7 +75,8 @@
         (doseq [[metabot-id profile-id] [[open-metabot :internal] [nil nil] [curated-metabot :nlq]]]
           (is (not (denied? (first (read-uris metabot-id profile-id (str "metabase://table/" raw))))))
           (is (= #{published authoritative raw}
-                 (item-ids (first (read-uris metabot-id profile-id (str "metabase://database/" db-id "/tables")))))))))))
+                 (item-ids (first (read-uris metabot-id profile-id
+                                             (str "metabase://database/" db-id "/tables")))))))))))
 
 (deftest read-resource-curated-only-cards-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -89,7 +90,8 @@
       (testing "denies uncurated cards"
         (is (denied? (first (read-uris metabot-id :internal (str "metabase://model/" plain-model "/fields"))))))
       (testing "reads curated cards"
-        (is (not (denied? (first (read-uris metabot-id :internal (str "metabase://model/" verified-model "/fields")))))))
+        (is (not (denied? (first (read-uris metabot-id :internal
+                                            (str "metabase://model/" verified-model "/fields")))))))
       (testing "lists only curated cards"
         (let [models (item-ids (first (read-uris metabot-id :internal (str "metabase://database/" (mt/id) "/models"))))]
           (is (contains? models verified-model))
@@ -115,7 +117,7 @@
             (is (=? [{:type "model" :id verified-model}]
                     (filterv (comp #{verified-model plain-question raw-table} :id) items)))))))))
 
-(deftest curation-subject-test
+(deftest ^:parallel curation-subject-test
   (testing "transforms can never be curated"
     (is (= :metabase.metabot.tools.resources/never
            (#'read-resource/curation-subject ["transform" "1" "sources"]))))
@@ -235,7 +237,8 @@
       (binding [tools.shared/*metabot-id* metabot-id
                 tools.shared/*profile-id* :internal]
         (testing "list_available_fields reports uncurated tables as errors"
-          (let [{:keys [tables errors]} (:structured-output (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]}))]
+          (let [{:keys [tables errors]} (:structured-output
+                                         (metadata-tools/get-metadata {:table-ids [(mt/id :orders)]}))]
             (is (empty? tables))
             (is (some #(str/includes? % "only uses curated content") errors))))
         (testing "get_field_values rejects uncurated tables"

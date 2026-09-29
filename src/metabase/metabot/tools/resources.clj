@@ -392,7 +392,6 @@
                         :recents)
                     [])
         items   (mapv (fn [{:keys [id model timestamp] item-name :name}]
-
                         (let [type (case model
                                      :card    "question"
                                      :dataset "model"
@@ -885,7 +884,8 @@
   [label subject]
   (when (or (= subject ::never)
             (and subject (empty? (curation/curated-ids [subject]))))
-    (throw (ex-info (tru "`{0}` is not available: this Metabot only uses curated content (verified, official, or Library content). Use `search` to find curated tables, models, or metrics instead."
+    (throw (ex-info (tru (str "`{0}` is not available: this Metabot only uses curated content (verified, official, or "
+                              "Library content). Use `search` to find curated tables, models, or metrics instead.")
                          label)
                     {:agent-error? true
                      :status-code  403
