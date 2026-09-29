@@ -126,7 +126,7 @@ export function EntityPickerModal({
     (entry: ResizeObserverEntry) => {
       const width = entry.contentRect.width;
       setModalContentMinWidth((currentWidth) =>
-        currentWidth < width ? width : currentWidth,
+        0,
       );
     },
     [],
