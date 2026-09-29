@@ -29,8 +29,8 @@
 (mu/defn queries-reducible
   "A reducible over `conn` of the hash and query of the Queries with `query-hashes`."
   [conn         :- (ms/InstanceOfClass java.sql.Connection)
-   query-hashes :- [:sequential bytes?]]
-  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in query-hashes]))
+   query-hashes :- [:sequential {:min 1} bytes?]]
+  (t2/reducible-select :conn conn [:model/Query :query_hash :query] :query_hash [:in [:auto/param query-hashes]]))
 
 (mu/defn delete-segment-rollups-before!
   "Delete the SourceSegmentDaily rollup rows bucketed before `bucket-date`."
@@ -115,22 +115,22 @@
 (mu/defn field-names
   "The id, name, and display name of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :display_name] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :name :display_name] :id [:in (mapv long field-ids)] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn table-names
   "The id, name, display name, Database id, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :display_name :db_id :schema] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-database-ids
   "The id and Database id of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id] :id [:in (mapv long table-ids)] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn card-names
   "The id and name of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name] :id [:in (mapv long card-ids)]))
 
 (defn- grouped-rollup-where
   [source-type source-id bucket-start bucket-end]
