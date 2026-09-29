@@ -548,6 +548,7 @@
   (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
     (queries.db/delete-actions! action-ids)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *update-baseline-select?*
   "True when the select is being for the purposes of fetching the current baseline before diffing it in
   [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
