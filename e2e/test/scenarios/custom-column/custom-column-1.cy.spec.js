@@ -610,10 +610,23 @@ describe("scenarios > question > custom column", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
+    cy.log("non-existent field reference");
     H.enterCustomColumnDetails({
-      formula: "concat('foo', ",
+      formula: "abcdef",
       name: "A custom expression",
     });
+    H.popover()
+      .contains(/^Unknown column: abcdef/i)
+      .should("be.visible");
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+
+    cy.log("argument validation");
+    H.enterCustomColumnDetails({ formula: "SUBSTRING('foo', 0, 1)" });
+    H.popover().should("contain", "Expected positive integer but found 0");
+    H.expressionEditorWidget().button("Done").should("be.disabled");
+
+    cy.log("incomplete expression");
+    H.enterCustomColumnDetails({ formula: "concat('foo', " });
 
     H.CustomExpressionEditor.formatButton().should("not.exist");
     H.expressionEditorWidget().button("Done").should("be.disabled");

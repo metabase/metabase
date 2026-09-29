@@ -2,7 +2,7 @@ const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 function addCustomColumns(columns) {
   cy.wrap(columns).each((column, index) => {
@@ -43,29 +43,33 @@ describe("scenarios > question > custom column > data type", () => {
     });
   });
 
-  it("should relay the type of a date field, directly and through COALESCE", () => {
+  it("should relay the type of a date field", () => {
+    H.openTable({ table: PEOPLE_ID, mode: "notebook" });
+    addCustomColumns([{ name: "DoB", formula: "[Birth Date]" }]);
+    assertRelativeDateFilter("DoB");
+  });
+
+  it("should handle COALESCE", () => {
     H.openTable({ table: ORDERS_ID, mode: "notebook" });
     addCustomColumns([
-      { name: "DoB", formula: "[User → Birth Date]" },
       {
         name: "MiscDate",
         formula: "COALESCE([Product → Created At], [Created At])",
       },
     ]);
-
-    ["DoB", "MiscDate"].forEach((name) => {
-      H.filter({ mode: "notebook" });
-      H.popover().within(() => {
-        cy.findByText(name).click();
-        cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative date range…").click();
-        cy.findByText("Previous").click();
-        cy.findByDisplayValue("days").should("be.visible");
-      });
-      cy.realPress("Escape");
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
-    });
+    assertRelativeDateFilter("MiscDate");
   });
+
+  function assertRelativeDateFilter(columnName) {
+    H.filter({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText(columnName).click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByText("Relative date range…").click();
+      cy.findByText("Previous").click();
+      cy.findByDisplayValue("days").should("be.visible");
+    });
+  }
 });
 
 describe(
@@ -109,6 +113,17 @@ describe(
         },
       ];
       addCustomColumns(dateColumns);
+
+      cy.log(
+        "the editor accepts convertTimezone without the optional source timezone",
+      );
+      H.getNotebookStep("expression").icon("add").click();
+      H.enterCustomColumnDetails({
+        formula: 'convertTimezone([Created At], "Asia/Ho_Chi_Minh")',
+        name: "ConvertTimezone 2 args",
+      });
+      H.expressionEditorWidget().button("Done").should("be.enabled");
+      H.expressionEditorWidget().button("Cancel").click();
 
       H.visualize(({ body }) => {
         expect(body.error).to.not.exist;
