@@ -316,7 +316,6 @@ describe("scenarios > question > custom column > aggregation", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    H.openOrdersTable({ mode: "notebook" });
   });
 
   it("should be possible to resolve aggregations from the question directly", () => {
@@ -737,79 +736,79 @@ describe("scenarios > question > custom column > aggregation", () => {
         firstRows: [["49"]],
       });
     });
+  });
 
-    it("should be possible reference both aggregations with same name in follow up stage", () => {
-      H.openOrdersTable({ mode: "notebook" });
+  it("should be possible reference both aggregations with same name in follow up stage", () => {
+    H.openOrdersTable({ mode: "notebook" });
 
-      H.summarize({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
 
-      H.popover().findByText("Custom Expression").scrollIntoView().click();
-      H.CustomExpressionEditor.type("Count() + 1");
-      H.CustomExpressionEditor.nameInput().type("Count");
-      H.popover().button("Done").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("Count() + 1");
+    H.CustomExpressionEditor.nameInput().type("Count");
+    H.popover().button("Done").click();
 
-      H.getNotebookStep("summarize").icon("add").click();
-      H.popover().findByText("Custom Expression").scrollIntoView().click();
-      H.CustomExpressionEditor.type("[Count] + 1");
-      H.CustomExpressionEditor.nameInput().type("Count");
-      H.popover().button("Done").click();
+    H.getNotebookStep("summarize").icon("add").click();
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("[Count] + 1");
+    H.CustomExpressionEditor.nameInput().type("Count");
+    H.popover().button("Done").click();
 
-      H.getNotebookStep("summarize")
-        .findByText("Pick a column to group by")
-        .click();
-      H.popover().findByText("Created At").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    H.popover().findByText("Created At").click();
 
-      cy.log("Filter by the first Count");
-      H.getNotebookStep("summarize").within(() => {
-        H.filter({ mode: "notebook" });
-      });
-      H.popover().within(() => {
-        cy.findAllByText("Count").should("have.length", 2);
+    cy.log("Filter by the first Count");
+    H.getNotebookStep("summarize").within(() => {
+      H.filter({ mode: "notebook" });
+    });
+    H.popover().within(() => {
+      cy.findAllByText("Count").should("have.length", 2);
 
-        cy.findAllByText("Count").eq(0).click();
+      cy.findAllByText("Count").eq(0).click();
 
-        // if this was referencing the second Count, it would filter out all rows
-        cy.findByPlaceholderText("Max").type("2.5");
-        cy.button("Add filter").click();
-      });
+      // if this was referencing the second Count, it would filter out all rows
+      cy.findByPlaceholderText("Max").type("2.5");
+      cy.button("Add filter").click();
+    });
 
-      cy.log("Filter by the second Count");
-      H.getNotebookStep("filter", { stage: 1 }).icon("add").click();
-      H.popover().within(() => {
-        cy.findAllByText("Count").should("have.length", 2);
+    cy.log("Filter by the second Count");
+    H.getNotebookStep("filter", { stage: 1 }).icon("add").click();
+    H.popover().within(() => {
+      cy.findAllByText("Count").should("have.length", 2);
 
-        cy.findAllByText("Count").eq(1).click();
+      cy.findAllByText("Count").eq(1).click();
 
-        // if this was referencing the first Count, it would filter out all rows
-        cy.findByPlaceholderText("Min").type("2.5");
-        cy.button("Add filter").click();
-      });
+      // if this was referencing the first Count, it would filter out all rows
+      cy.findByPlaceholderText("Min").type("2.5");
+      cy.button("Add filter").click();
+    });
 
-      H.visualize();
-      H.assertTableData({
-        columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2025", "2", "3"]],
-      });
+    H.visualize();
+    H.assertTableData({
+      columns: ["Created At: Month", "Count", "Count"],
+      firstRows: [["April 2025", "2", "3"]],
+    });
 
-      cy.log(
-        "Swapping the aggregation clauses should not change the results, but the column order will be different",
-      );
-      H.openNotebook();
-      H.getNotebookStep("summarize")
-        .findAllByText("Count")
-        .should("have.length", 2)
-        .last()
-        .as("dragElement");
-      H.moveDnDKitElementByAlias("@dragElement", {
-        horizontal: -400,
-        useMouseEvents: true,
-      });
+    cy.log(
+      "Swapping the aggregation clauses should not change the results, but the column order will be different",
+    );
+    H.openNotebook();
+    H.getNotebookStep("summarize")
+      .findAllByText("Count")
+      .should("have.length", 2)
+      .last()
+      .as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
+      horizontal: -400,
+      useMouseEvents: true,
+    });
 
-      H.visualize();
-      H.assertTableData({
-        columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2025", "3", "2"]],
-      });
+    H.visualize();
+    H.assertTableData({
+      columns: ["Created At: Month", "Count", "Count"],
+      firstRows: [["April 2025", "3", "2"]],
     });
   });
 

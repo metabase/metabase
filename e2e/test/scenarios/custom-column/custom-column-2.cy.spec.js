@@ -4,52 +4,77 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-describe(
-  "scenarios > question > custom column > data type",
-  { tags: "@external" },
-  () => {
-    function addCustomColumns(columns) {
-      cy.wrap(columns).each((column, index) => {
-        if (index) {
-          H.getNotebookStep("expression").icon("add").click();
-        } else {
-          cy.findByLabelText("Custom column").click();
-        }
-
-        H.enterCustomColumnDetails(column);
-        cy.button("Done").click({ force: true });
-      });
+function addCustomColumns(columns) {
+  cy.wrap(columns).each((column, index) => {
+    if (index) {
+      H.getNotebookStep("expression").icon("add").click();
+    } else {
+      cy.findByLabelText("Custom column").click();
     }
 
-    function openCustomColumnInTable(table) {
-      H.openTable({ table, mode: "notebook" });
-      cy.findByText("Custom column").click();
-    }
+    H.enterCustomColumnDetails(column);
+    cy.button("Done").click({ force: true });
+  });
+}
 
-    beforeEach(() => {
-      H.restore();
-      H.restore("postgres-12");
+describe("scenarios > question > custom column > data type", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
 
-      cy.signInAsAdmin();
+  it("should understand string functions (metabase#13217)", () => {
+    H.openTable({ table: PRODUCTS_ID, mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({
+      formula: "concat([Category], [Title])",
+      name: "CategoryTitle",
     });
 
-    it("should understand string functions (metabase#13217)", () => {
-      openCustomColumnInTable(PRODUCTS_ID);
+    cy.button("Done").click();
 
-      H.enterCustomColumnDetails({
-        formula: "concat([Category], [Title])",
-        name: "CategoryTitle",
-      });
+    H.filter({ mode: "notebook" });
 
-      cy.button("Done").click();
+    H.popover().within(() => {
+      cy.findByText("CategoryTitle").click();
+      cy.findByPlaceholderText("Enter a number").should("not.exist");
+      cy.findByPlaceholderText("Enter some text").should("be.visible");
+    });
+  });
 
+  it("should relay the type of a date field, directly and through COALESCE", () => {
+    H.openTable({ table: ORDERS_ID, mode: "notebook" });
+    addCustomColumns([
+      { name: "DoB", formula: "[User → Birth Date]" },
+      {
+        name: "MiscDate",
+        formula: "COALESCE([Product → Created At], [Created At])",
+      },
+    ]);
+
+    ["DoB", "MiscDate"].forEach((name) => {
       H.filter({ mode: "notebook" });
-
       H.popover().within(() => {
-        cy.findByText("CategoryTitle").click();
+        cy.findByText(name).click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByPlaceholderText("Enter some text").should("be.visible");
+        cy.findByText("Relative date range…").click();
+        cy.findByText("Previous").click();
+        cy.findByDisplayValue("days").should("be.visible");
       });
+      cy.realPress("Escape");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+    });
+  });
+});
+
+describe(
+  "scenarios > question > custom column > data type > date functions",
+  { tags: "@external" },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
     });
 
     it("should understand date functions", () => {
@@ -87,30 +112,6 @@ describe(
 
       H.visualize(({ body }) => {
         expect(body.error).to.not.exist;
-      });
-    });
-
-    it("should relay the type of a date field, directly and through COALESCE", () => {
-      H.openTable({ table: ORDERS_ID, mode: "notebook" });
-      addCustomColumns([
-        { name: "DoB", formula: "[User → Birth Date]" },
-        {
-          name: "MiscDate",
-          formula: "COALESCE([Product → Created At], [Created At])",
-        },
-      ]);
-
-      ["DoB", "MiscDate"].forEach((name) => {
-        H.filter({ mode: "notebook" });
-        H.popover().within(() => {
-          cy.findByText(name).click();
-          cy.findByPlaceholderText("Enter a number").should("not.exist");
-          cy.findByText("Relative date range…").click();
-          cy.findByText("Previous").click();
-          cy.findByDisplayValue("days").should("be.visible");
-        });
-        cy.realPress("Escape");
-        cy.get(H.POPOVER_ELEMENT).should("not.exist");
       });
     });
   },
