@@ -730,10 +730,10 @@ export function buildDataAppHostApp() {
   });
 }
 
-/** Create and assign an ordinary group for an access-control test. */
+/** Create and assign an ordinary group for access control tests. */
 export function assignDataAppTestGroup(slug: string) {
   cy.request<GroupInfo>("POST", "/api/permissions/group", {
-    name: `Test app readers: ${slug}`,
+    name: `Data app test group: ${slug}`,
   })
     .its("body")
     .as("dataAppTestGroup");

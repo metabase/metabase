@@ -179,7 +179,7 @@
                     :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "abc123" :version 1)
         (t2/insert! :model/DataApp :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
                     :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "def456" :version 2)
-        (let [group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "App readers"}))]
+        (let [group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Data app test group"}))]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
                   :let [app (t2/select-one :model/DataApp :name slug)]]
