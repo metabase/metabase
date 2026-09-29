@@ -230,6 +230,45 @@ describe("getChartLayout", () => {
     );
   });
 
+  it("does not reserve padding for empty x- or y-axis titles", () => {
+    const chartContext = getChartContext();
+    const {
+      fontSize: axisTitleFontSize,
+      marginX,
+      marginY,
+    } = chartContext.theme.cartesian.axisTitle;
+    const chartSettings = createMockVisualizationSettings({
+      ...settings,
+      "graph.x_axis.labels_enabled": true,
+      "graph.y_axis.labels_enabled": true,
+    });
+
+    const getLayout = (xLabel: string, yLabel: string) =>
+      getChartLayout(
+        {
+          ...input,
+          xAxisModel: { ...xAxisModel, label: xLabel },
+          leftAxisModel: { ...yAxisModel, label: yLabel },
+        },
+        chartSettings,
+        false,
+        640,
+        360,
+        chartContext,
+      );
+
+    const empty = getLayout("", "");
+    const titled = getLayout("Created At", "Count");
+
+    expect(empty.padding.bottom).toBe(CHART_STYLE.padding.y);
+    expect(titled.padding.bottom).toBe(
+      empty.padding.bottom + axisTitleFontSize / 2 + marginX,
+    );
+    expect(titled.padding.left).toBe(
+      empty.padding.left + axisTitleFontSize + marginY,
+    );
+  });
+
   it("measures actual y-axis tick labels for a zero-pinned axis (#74568)", () => {
     const chartContext = getChartContext();
 

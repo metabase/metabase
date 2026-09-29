@@ -652,7 +652,7 @@ export const getCartesianChartPadding = (
   chartWidth: number,
   renderingContext: RenderingContext,
 ): Padding => {
-  const { leftAxisModel, rightAxisModel } = input;
+  const { xAxisModel, leftAxisModel, rightAxisModel } = input;
   const { fontSize: seriesLabelFontSize } =
     renderingContext.theme.cartesian.label;
   const {
@@ -682,8 +682,7 @@ export const getCartesianChartPadding = (
 
   padding.bottom += ticksDimensions.xTicksHeight;
 
-  const hasXAxisName = settings["graph.x_axis.labels_enabled"];
-  if (hasXAxisName) {
+  if (xAxisModel.label) {
     padding.bottom += axisTitleFontSize / 2 + marginX;
   }
 
