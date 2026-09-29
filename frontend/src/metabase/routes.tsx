@@ -361,6 +361,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
+                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,

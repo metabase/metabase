@@ -284,6 +284,7 @@
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *override-describe-database-to-filter-by-db-name?*
   "Whether to override the production implementation for `describe-database` with a special one that only syncs
   the tables qualified by the database name. This is `true` by default during tests to fake database isolation.
