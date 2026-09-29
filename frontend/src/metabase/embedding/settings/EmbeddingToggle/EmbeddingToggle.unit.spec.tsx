@@ -6,7 +6,12 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import type { SettingDefinition } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -92,6 +97,8 @@ describe("EmbeddingToggle", () => {
       expect(puts).toHaveLength(1);
       const [{ body }] = puts;
       expect(body).toEqual({ "enable-embedding-modular": true });
+
+      await settlePendingUpdates();
     });
 
     it("should send a PUT request with value=false when setting is on", async () => {
