@@ -30,10 +30,12 @@ const isFailFastEnabled = Cypress.expose("FAIL_FAST");
 if (Cypress.expose("codeCoverageTasksRegistered") === true) {
   before(() => {
     cy.task("resetCoverage", { isInteractive: true }, { log: false });
-    // Companion reset for the per-test capture state (per-test-capture.js);
-    // headless runs also reset it in after:spec, but that event doesn't fire
-    // between interactive re-runs.
-    cy.task("resetTestCapture", null, { log: false });
+    // Headless runs take the per-test capture state in after:spec, which doesn't fire between interactive reruns.
+    // Cypress also runs this hook when it reloads a spec for a new top origin,
+    // so a headless reset here would drop the tests recorded before the reload.
+    if (Cypress.config("isInteractive")) {
+      cy.task("resetTestCapture", null, { log: false });
+    }
   });
 }
 
