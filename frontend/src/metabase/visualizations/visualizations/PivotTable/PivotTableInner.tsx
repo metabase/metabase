@@ -518,7 +518,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           scrollTop={scrollTop}
                           onScroll={({ scrollTop }) =>
                             // Unjustified type cast. FIXME
-                            onScroll({ scrollTop } as OnScrollParams)
+                            undefined
                           }
                         />
                       )}
