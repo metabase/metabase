@@ -62,7 +62,9 @@ describe("scenarios > filters > filter types", () => {
       });
       assertFilterName(expectedDisplayName);
       H.visualize();
-      assertFiltersExist();
+      H.queryBuilderFiltersPanel()
+        .findByText(expectedDisplayName)
+        .should("be.visible");
 
       H.openNotebook();
       H.getNotebookStep("filter")
@@ -78,8 +80,4 @@ function assertFilterName(filterName, options) {
   H.getNotebookStep("filter", options)
     .findByText(filterName)
     .should("be.visible");
-}
-
-function assertFiltersExist() {
-  cy.findByTestId("qb-filters-panel").should("be.visible");
 }

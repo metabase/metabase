@@ -1205,13 +1205,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
       });
     }
 
-    function testExport() {
+    function testExport({ values }: { values: string[] }) {
       cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert({
           fileType: "csv",
           questionId: Number(questionId),
           isDashboard: false,
           enableFormatting: true,
+          assertResponseBody: (body) => {
+            // formatted numbers carry thousands separators
+            const digits = body.replaceAll(",", "");
+            values.forEach((value) => expect(digits).to.include(value));
+          },
         });
       });
     }
@@ -1220,16 +1225,18 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     setupTables();
 
     cy.log("BIGINT");
+    const bigIntValues = [MIN_BIGINT_VALUE, MAX_BIGINT_VALUE];
     setupTableQuestion({ tableName: BIGINT_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: bigIntValues });
     setupNestedQuestion({ sourceQuestionDetails: bigIntQuestionDetails });
-    testExport();
+    testExport({ values: bigIntValues });
 
     cy.log("DECIMAL");
+    const decimalValues = [NEGATIVE_DECIMAL_VALUE, POSITIVE_DECIMAL_VALUE];
     setupTableQuestion({ tableName: DECIMAL_PK_TABLE_NAME });
-    testExport();
+    testExport({ values: decimalValues });
     setupNestedQuestion({ sourceQuestionDetails: decimalQuestionDetails });
-    testExport();
+    testExport({ values: decimalValues });
   });
 
   it("dashboards + click behavior", () => {

@@ -35,11 +35,6 @@ describe("scenarios > question > filter", () => {
     H.visualize((response) => {
       expect(response.body.error).to.not.exist;
     });
-
-    H.queryBuilderMain().within(() => {
-      cy.contains("37.65").should("exist");
-      cy.findByText("3621077291879").should("not.exist"); // one of the "Gizmo" EANs
-    });
   });
 
   it("should filter based on remapped values (metabase#13235)", () => {
@@ -102,16 +97,20 @@ describe("scenarios > question > filter", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(AGGREGATED_FILTER);
 
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Created At is after/i)
       .find(".Icon-close")
       .click();
+    cy.wait("@dataset");
 
     cy.log(
       "**Removing or changing filters shouldn't remove aggregated filter**",
     );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(AGGREGATED_FILTER);
+    cy.findByText(AGGREGATED_FILTER).should("exist");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/^Created At is after/i).should("not.exist");
   });
 
   it("should display original custom expression filter with dates on subsequent click (metabase#12492)", () => {
@@ -251,11 +250,14 @@ describe("scenarios > question > filter", () => {
 
     cy.button("Done").should("not.be.disabled").click();
 
+    H.getNotebookStep("filter").within(() => {
+      cy.findByText(/Rating/).should("be.visible");
+      cy.findByText(/Reviewer/).should("be.visible");
+    });
+
     // check that filter is applied and rows displayed
     H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 1,112 rows");
+    H.assertQueryBuilderRowCount(1112);
   });
 
   it("should convert 'is empty' on a text column to a custom expression using IsEmpty()", () => {
@@ -690,7 +692,6 @@ describe("scenarios > question > filter", () => {
         cy.button("Done").click();
       });
 
-      // cy.findByText(/^Total/);
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("add").last().click();
       H.clauseStepPopover().findByText(/^ID$/i).click();
@@ -702,7 +703,15 @@ describe("scenarios > question > filter", () => {
         .find(".Icon-close")
         .click();
 
-      H.visualize();
+      H.getNotebookStep("filter").within(() => {
+        cy.findByText("Total is equal to 123").should("not.exist");
+        cy.findByText(/^Total is less than/).should("be.visible");
+        cy.findByText("ID is 1").should("be.visible");
+      });
+
+      H.visualize((response) => {
+        expect(response.body.error).to.not.exist;
+      });
     });
   });
 

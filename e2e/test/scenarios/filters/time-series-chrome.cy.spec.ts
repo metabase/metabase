@@ -205,9 +205,10 @@ describe("time-series chrome filter widget", () => {
       });
 
       updateOperator("Next", "Current");
-      cy.findByTestId("date-filter-picker")
-        .findByLabelText("Include today")
-        .should("not.exist");
+      cy.findByTestId("date-filter-picker").within(() => {
+        cy.findByDisplayValue("Current").should("be.visible");
+        cy.findByLabelText("Include this year").should("not.exist");
+      });
 
       updateOperator("Current", "Previous");
       cy.findByTestId("date-filter-picker").within(() => {

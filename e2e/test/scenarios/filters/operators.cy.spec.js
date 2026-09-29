@@ -77,7 +77,7 @@ describe("operators in questions", () => {
       });
 
       cy.findByRole("menu").within(() => {
-        expected.text.expected.map((e) => cy.contains(e).should("exist"));
+        expected.text.expected.map((e) => cy.findByText(e).should("exist"));
         expected.text.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
       reselectOperatorAndGoBack("Is");
@@ -89,7 +89,7 @@ describe("operators in questions", () => {
       });
 
       cy.findByRole("menu").within(() => {
-        expected.number.expected.map((e) => cy.contains(e).should("exist"));
+        expected.number.expected.map((e) => cy.findByText(e).should("exist"));
         expected.number.unexpected.map((e) =>
           cy.contains(e).should("not.exist"),
         );
@@ -103,7 +103,7 @@ describe("operators in questions", () => {
       });
 
       cy.findByRole("menu").within(() => {
-        expected.id.expected.map((e) => cy.contains(e).should("exist"));
+        expected.id.expected.map((e) => cy.findByText(e).should("exist"));
         expected.id.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });
@@ -120,7 +120,7 @@ describe("operators in questions", () => {
 
       H.clauseStepPopover().within(() => {
         expected.relativeDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.specificDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -142,7 +142,7 @@ describe("operators in questions", () => {
 
       H.popover().within(() => {
         expected.specificDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.relativeDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -161,7 +161,7 @@ describe("operators in questions", () => {
 
       H.popover().within(() => {
         expected.excludeDates.expected.map((e) =>
-          cy.contains(e).should("exist"),
+          cy.findByText(e).should("exist"),
         );
         expected.relativeDates.expected.map((e) =>
           cy.contains(e).should("not.exist"),
@@ -184,7 +184,7 @@ describe("operators in questions", () => {
       });
 
       cy.findByRole("menu").within(() => {
-        expected.geo.expected.map((e) => cy.contains(e).should("exist"));
+        expected.geo.expected.map((e) => cy.findByText(e).should("exist"));
         expected.geo.unexpected.map((e) => cy.contains(e).should("not.exist"));
       });
     });

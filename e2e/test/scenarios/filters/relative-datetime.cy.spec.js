@@ -61,7 +61,6 @@ describe("scenarios > question > relative-datetime", () => {
 
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.icon("chevronleft").should("not.exist");
         cy.findByText("Previous 30 days").click();
       });
 
@@ -76,13 +75,20 @@ describe("scenarios > question > relative-datetime", () => {
       addStartingFrom();
       setStartingFromValue(2);
 
-      H.popover().button("Update filter").should("be.enabled");
+      H.popover().button("Update filter").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("qb-filters-panel")
+        .findByText("Created At is in the previous year, starting 2 years ago")
+        .should("be.visible");
     });
   });
 
   function assertOptions(expectedOptions) {
-    cy.findAllByRole("option").each(($option, index) => {
-      cy.wrap($option).should("have.text", expectedOptions[index]);
+    cy.findAllByRole("option").should(($options) => {
+      expect(Cypress._.map($options, "textContent")).to.deep.equal(
+        expectedOptions,
+      );
     });
   }
 

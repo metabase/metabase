@@ -146,9 +146,13 @@ describe("scenarios > filters > bulk filtering", () => {
     H.queryBuilderFiltersPanel()
       .findByText("Product → Category is Gadget")
       .should("be.visible");
-    H.queryBuilderFooter()
-      .findByText("Showing first 2,000 rows")
-      .should("be.visible");
+
+    H.summarize();
+    H.rightSidebar().button("Done").click();
+    cy.wait("@dataset");
+    H.queryBuilderMain()
+      .findByTestId("scalar-value")
+      .should("have.text", "4,939");
   });
 
   it("should update an existing filter", () => {
