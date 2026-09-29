@@ -326,20 +326,6 @@ export const BulkMoveModal = ({
 
   const shouldHideItem = useCallback(
     (item: OmniPickerItem) => {
-      if (item.model === "collection") {
-        return !selectedItems.every(
-          (selectedItem) =>
-            canMoveCollectionToLibraryDestination(
-              // Unjustified type cast. FIXME
-              selectedItem as OmniPickerCollectionItem,
-              item,
-            ) &&
-            canPlaceEntityInCollection(
-              selectedItem.model,
-              getCollectionType(item),
-            ),
-        );
-      }
       return false;
     },
     [selectedItems],
