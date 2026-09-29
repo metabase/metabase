@@ -37,11 +37,12 @@
   "Iterate all elements in `xs`. Execute `(x-fn <x>)` for each item in `xs`. Execute `(separator-fn)` in between each
   item in `xs`."
   [xs x-fn separator-fn]
-  (loop [[x & more] xs]
-    (x-fn x)
-    (when (seq more)
-      (separator-fn)
-      (recur more))))
+  (when (seq xs)
+    (loop [[x & more] xs]
+      (x-fn x)
+      (when (seq more)
+        (separator-fn)
+        (recur more)))))
 
 (defn- -interpose!
   "Compile all the forms in `xs` and interpose the `separator` string between them."
@@ -49,8 +50,7 @@
   (interpose-fn xs #(compile! % context) #(append-sql! context separator)))
 
 (defn- -commas! [xs context]
-  (when (seq xs)
-    (-interpose! ", " xs context)))
+  (-interpose! ", " xs context))
 
 (defn- -parens! [x context]
   (append-sql! context "(")
