@@ -161,7 +161,7 @@
 
 (deftest ^:parallel request-body-supplies-a-default-temperature-test
   (testing "a caller that supplies none gets the adapter default rather than vLLM's own 1.0"
-    (is (= @#'vllm/default-temperature
+    (is (= adapter/default-temperature
            (:temperature (vllm/vllm-request-body {:model "vllm-test"
                                                   :input [{:role :user :content "hi"}]}))))))
 

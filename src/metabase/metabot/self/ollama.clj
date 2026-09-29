@@ -58,14 +58,10 @@
   {:socket-timeout     (llm/llm-request-timeout-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
-(def ^:private probe-timeout-ceiling-ms
-  "Upper bound on a single preflight probe, which blocks the admin behind a spinner."
-  120000)
-
 (defn- probe-timeouts
-  "Timeouts for a preflight probe, capped at [[probe-timeout-ceiling-ms]]."
+  "Timeouts for a preflight probe, capped at [[adapter/probe-timeout-ceiling-ms]]."
   []
-  {:socket-timeout     (min (llm/llm-ollama-request-timeout-ms) probe-timeout-ceiling-ms)
+  {:socket-timeout     (min (llm/llm-ollama-request-timeout-ms) adapter/probe-timeout-ceiling-ms)
    :connection-timeout (llm/llm-connection-timeout-ms)})
 
 ;;; ----------------------------------------------- Transport errors ---------------------------------------------
@@ -119,40 +115,6 @@
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 
-(def ^:private probe-tool
-  {:type     "function"
-   :function {:name        "record_table_name"
-              :description "Record the name of the table the user mentioned."
-              :parameters  {:type                 "object"
-                            :properties           {:table_name {:type        "string"
-                                                                :description "The table name the user mentioned."}}
-                            :required             ["table_name"]
-                            :additionalProperties false}}})
-
-(def ^:private probe-messages
-  [{:role "user" :content "Record the table name: orders"}])
-
-(def ^:private probe-max-tokens
-  "Generation ceiling for a preflight probe. High enough to clear a reasoning model's thinking, which
-  is billed against it — a probe truncated before the tool call looks like a model that cannot call
-  tools at all."
-  2048)
-
-(def ^:private forced-tool-call-token-floor
-  "Floor for a forced tool call: below it a reasoning model spends the budget thinking and emits no
-  call. Equal to [[probe-max-tokens]], which [[preflight!]] proves the model can clear."
-  probe-max-tokens)
-
-(def ^:private reasoning-model-token-floor
-  "Smallest `max_tokens` a request on a reasoning model gets. Chat Completions bills thinking, answer,
-  and tool call against one budget."
-  16384)
-
-(def ^:private default-temperature
-  "Sampling temperature when the caller supplies none. Ollama's per-model Modelfile default is
-  commonly far too high for tool calling and SQL generation, and no server-side default corrects it."
-  0.3)
-
 (defn- preflight-ex
   "A preflight failure, tagged so `metabase.metabot.api` surfaces the message verbatim, not as a 500."
   [msg]
@@ -172,7 +134,7 @@
                                      :as     :json
                                      :body   (json/encode (merge {:model       model
                                                                   :temperature 0
-                                                                  :max_tokens  probe-max-tokens}
+                                                                  :max_tokens  adapter/probe-max-tokens}
                                                                  body)))
                               (probe-timeouts))]
     (get-in res [:body :choices 0])))
@@ -185,8 +147,8 @@
   model rather than only the probed one. Thinking is still read here, to tell \"spent the budget
   thinking\" apart from \"generated too much\" when nothing came back."
   [req model]
-  (let [{:keys [message finish_reason]} (probe-chat! req model {:messages probe-messages
-                                                                :tools    [probe-tool]})
+  (let [{:keys [message finish_reason]} (probe-chat! req model {:messages adapter/probe-messages
+                                                                :tools    [adapter/probe-tool]})
         content    (str (:content message))
         ;; `reasoning` is the OpenAI-compatible spelling; `reasoning_content` is the older one some
         ;; builds still emit.
@@ -201,7 +163,7 @@
 
       (seq tool-calls)
       (let [{:keys [function]}                          (first tool-calls)
-            {offered :name {required :required} :parameters} (:function probe-tool)
+            {offered :name {required :required} :parameters} (:function adapter/probe-tool)
             parsed                                      (try (json/decode+kw (str (:arguments function)))
                                                              (catch Exception _ nil))]
         (cond
@@ -214,7 +176,7 @@
           (throw (preflight-ex
                   (if truncated?
                     (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
-                         (str model) (str probe-max-tokens))
+                         (str model) (str adapter/probe-max-tokens))
                     (tru "{0} returned a tool call whose arguments are not valid JSON. Pull a larger or more capable model — Metabot needs reliable tool calling."
                          (str model)))))
 
@@ -227,12 +189,12 @@
       (and truncated? (not (str/blank? reasoning)))
       (throw (preflight-ex
               (tru "{0} spent the entire {1} token connection-test budget reasoning without calling a tool. A model that thinks this long about a trivial prompt is too slow to drive Metabot."
-                   (str model) (str probe-max-tokens))))
+                   (str model) (str adapter/probe-max-tokens))))
 
       truncated?
       (throw (preflight-ex
               (tru "{0} reached the {1} token connection-test ceiling before completing a tool call. A model that generates this much before calling a tool is too slow to drive Metabot."
-                   (str model) (str probe-max-tokens))))
+                   (str model) (str adapter/probe-max-tokens))))
 
       :else
       (throw (preflight-ex
@@ -257,7 +219,7 @@
               (case verdict
                 :truncated
                 (tru "{0} reached the {1} token connection-test ceiling before completing the structured answer it was asked for. Metabot needs structured output for conversation titles and SQL generation."
-                     (str model) (str probe-max-tokens))
+                     (str model) (str adapter/probe-max-tokens))
 
                 :not-honored
                 (if cloud?
@@ -438,7 +400,7 @@
   "The Chat Completions body, as [[chat-completions/request-body]] builds it plus the adapter-local
   adjustments: `max_tokens` is always sent (uncapped, a looping small model burns the whole context
   window in one call), raised to the floors above where they apply; `temperature` falls back to
-  [[default-temperature]]; and the model's thinking is replayed (see [[reasoning-message]]). They
+  [[adapter/default-temperature]]; and the model's thinking is replayed (see [[reasoning-message]]). They
   stay here rather than in the shared builder, which also serves Z.AI, Mistral and OpenRouter.
 
   A forced tool call is [[metabase.metabot.self.ollama.forced-calls]]' subject, because `tool_choice`
@@ -466,14 +428,14 @@
     (assoc (ollama-reasoning-spelling
             (chat-completions/request-body
              (cond-> (forced/opts-for plan opts)
-               (nil? temperature) (assoc :temperature default-temperature))
+               (nil? temperature) (assoc :temperature adapter/default-temperature))
              (when reasoning? {:reasoning-part->message reasoning-message})))
            :max_tokens (cond-> (or max-tokens (llm/llm-max-tokens))
                          (some? plan)
-                         (max forced-tool-call-token-floor)
+                         (max adapter/forced-tool-call-token-floor)
 
                          (caps/reasoning-model? credentials model)
-                         (max reasoning-model-token-floor))))))
+                         (max adapter/reasoning-model-token-floor))))))
 
 (defn- stream-io-ex
   "Transport failure while *consuming* a stream. `:retryable? false` is required, not decorative:
@@ -508,20 +470,6 @@
              e)
     (unreachable-ex e url {:retryable? false})))
 
-(defn- io-guarded
-  "Surface an `IOException` raised while *consuming* the stream as [[stream-io-ex]]; the adapter's
-  own `try` covers only establishing the request.
-
-  Goes inside `core/reducible-with-api-errors`, never outside — [[stream-io-ex]] tags `:api-error`,
-  which `rethrow-api-error!` passes through, so this translation wins for IO."
-  [reducible timeout-ms]
-  (reify clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (try
-        (.reduce ^clojure.lang.IReduceInit reducible rf init)
-        (catch IOException e
-          (throw (stream-io-ex e timeout-ms)))))))
-
 (mu/defn ollama-raw
   "Stream a Chat Completions request. `:credentials` come from the connection serving it; `:ai-proxy?` is
   unsupported and throws."
@@ -534,7 +482,7 @@
                       :body             (ollama-request-body opts plan)
                       :request-options  (inference-timeouts)
                       :span-attrs       {:forced (some-> (:mechanism plan) name)}
-                      :wrap-stream      #(io-guarded % timeout-ms)
+                      :wrap-stream      #(adapter/io-guarded % (fn [e] (stream-io-ex e timeout-ms)))
                       ;; clj-http raises an `IOException` only when there is no response at all, so the
                       ;; IO branch cannot swallow a failure the provider's own messages would translate.
                       :on-request-error (fn [e]
