@@ -6,21 +6,13 @@ import type {
   RequireAggregationsForBreakouts,
 } from "./types";
 
-type SavedQuestionBinding = {
-  savedQuestionSourceId?: number;
-};
-
-/**
- * Defines a source-controlled data app query that can be synchronized to a
- * saved question.
- */
+/** Defines a source-controlled data app query. */
 export function defineQuery<
   TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
   const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
 >(
   query: TQuery &
-    (TQuery extends SavedQuestionBinding ? unknown : SavedQuestionBinding) &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
         ? RequireAggregationsForBreakouts<TQuery>

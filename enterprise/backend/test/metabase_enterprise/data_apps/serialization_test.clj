@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as extract]
@@ -12,6 +11,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- insert-draft!
+  "A draft row with `slug`: a slug reserved before the app exists, which an import fills."
+  [slug]
+  (t2/insert-returning-instance! :model/DataApp {:name slug :display_name slug :bundle_path "dist/index.js"
+                                                 :draft true}))
 
 (defn- insert-app! [& {:as extra}]
   (t2/insert-returning-instance! :model/DataApp
@@ -80,7 +85,7 @@
 
 (deftest drafts-are-not-exported-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (data-apps.apps/ensure-draft! "draft-app")
+    (insert-draft! "draft-app")
     (is (empty? (into [] (serdes/extract-all "DataApp" {}))))))
 
 (deftest round-trip-test
@@ -155,8 +160,7 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (ts/with-random-dump-dir [dump-dir "data-app-draft-"]
-        (let [draft (data-apps.apps/ensure-draft! "draft-app")
-              id    (t2/select-one-pk :model/DataApp :name "draft-app")]
+        (let [{id :id :as draft} (insert-draft! "draft-app")]
           (write-app-files! dump-dir "draft_app" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "draft-app")
                             {"dist/index.js" "BUNDLE"})
           (import! dump-dir)

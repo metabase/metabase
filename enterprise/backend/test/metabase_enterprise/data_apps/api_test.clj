@@ -145,275 +145,6 @@
 (deftest ^:parallel query-definition-request-schema-is-closed-test
   (is (empty? (closed-schemas/findings ::query-definition/query-definition))))
 
-(deftest superuser-can-resolve-a-query-definition-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [response (mt/user-http-request
-                      :crowberto :post 200 "apps/demo/query"
-                      {:stages [{:source {:type "table" :id (mt/id :venues) :name "Venues"
-                                          :fields {:price {:type "column" :name "PRICE" :jsType "number"}}
-                                          :segments {} :measures {}
-                                          :columns [{:name "PRICE" :jsType "number"}]}
-                                 :orderBys [{:type "column" :name "PRICE" :tableId (mt/id :venues)
-                                             :fieldId (mt/id :venues :price) :baseType "type/Integer"
-                                             :effectiveType "type/Integer" :defaultTemporalBucket nil
-                                             :direction "asc" :jsType "number" :description "Price tier"}]
-                                 :filters [{:type "operator" :operator ">"
-                                            :args [{:type "column" :name "PRICE" :description "Price tier"}
-                                                   {:type "literal" :value 2}]}]
-                                 :limit 5}]})]
-        (is (= (mt/id) (:database_id response)))
-        (is (=? {:dataset_query {:lib/type "mbql/query"
-                                 :database (mt/id)
-                                 :stages [{:lib/type "mbql.stage/mbql"
-                                           :source-table (mt/id :venues)
-                                           :filters [[">" {} ["field" {} (mt/id :venues :price)] 2]]
-                                           :order-by [["asc" {} ["field" {} (mt/id :venues :price)]]]
-                                           :limit 5}]}}
-                response))))))
-
-(deftest query-definition-normalizes-nested-binning-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (doseq [[field-name field-id binning expected]
-              [["PRICE" (mt/id :venues :price)
-                {:strategy "num-bins" :numBins 10} {:strategy "num-bins" :num-bins 10}]
-               ["LATITUDE" (mt/id :venues :latitude)
-                {:strategy "bin-width" :binWidth 20.0} {:strategy "bin-width" :bin-width 20.0}]
-               ["PRICE" (mt/id :venues :price)
-                {:strategy "default"} {:strategy "default"}]]]
-        (let [column {:type "column" :name field-name :description "A numeric field" :binning binning}
-              response (mt/user-http-request
-                        :crowberto :post 200 "apps/demo/query"
-                        {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                   :aggregations [{:type "operator" :operator "count" :args []}]
-                                   :breakouts [column]
-                                   :orderBys [(assoc column :direction "asc")]}]})]
-          (is (=? {:dataset_query
-                   {:stages [{:breakout [["field" {:binning expected} field-id]]
-                              :order-by [["asc" {} ["field" {:binning expected} field-id]]]}]}}
-                  response)))))))
-
-(deftest query-definition-rejects-unknown-nested-binning-options-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [response (mt/user-http-request
-                      :crowberto :post 400 "apps/demo/query"
-                      {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                 :breakouts [{:type "column" :name "PRICE"
-                                              :binning {:strategy "num-bins" :numBins 10 :unexpected true}}]}]})]
-        (is (= {:errors {:stages [{:breakouts [{:binning {:unexpected ["disallowed key"]}}]}]}}
-               response))))))
-
-(deftest query-definition-resolves-an-aggregation-with-sdk-metadata-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [response (mt/user-http-request
-                      :crowberto :post 200 "apps/demo/query"
-                      {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                 :aggregations [{:type "operator"
-                                                 :operator "count"
-                                                 :args []
-                                                 :columns [{:name "count"
-                                                            :displayName "Count"
-                                                            :jsType "number"}]}]}]})]
-        (is (=? {:dataset_query {:stages [{:aggregation [["count" {}]]}]}}
-                response))))))
-
-(deftest query-definition-ignores-the-enabled-option-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [table-id (mt/id :venues)
-            response (mt/user-http-request
-                      :crowberto :post 200 "apps/demo/query"
-                      {:stages [{:source {:type "table" :id table-id}
-                                 :enabled false}]})]
-        (is (=? {:dataset_query {:stages [{:source-table table-id}]}}
-                response))))))
-
-(deftest query-definition-rejects-unsupported-fields-over-http-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (doseq [[path expected-errors]
-              [[[:unexpected] {:unexpected ["disallowed key"]}]
-               [[:stages 0 :joins] {:stages [{:joins ["disallowed key"]}]}]
-               [[:stages 0 :expressions] {:stages [{:expressions ["disallowed key"]}]}]
-               [[:stages 0 :source :unexpected] {:stages [{:source {:unexpected ["disallowed key"]}}]}]
-               [[:stages 0 :fields 0 :unexpected] {:stages [{:fields [{:unexpected ["disallowed key"]}]}]}]]]
-        (testing (str "Reject unsupported fields at " path)
-          (let [query {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                 :fields [{:type "column" :name "PRICE"}]}]}
-                response (mt/user-http-request :crowberto :post 400 "apps/demo/query"
-                                               (assoc-in query path []))]
-            (is (= {:errors expected-errors} response))))))))
-
-(deftest query-definition-resolves-a-metric-with-sdk-metadata-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [metadata-provider (mt/metadata-provider)
-            venue-count-query (-> (lib/query metadata-provider
-                                             (lib.metadata/table metadata-provider (mt/id :venues)))
-                                  (lib/aggregate (lib/count)))]
-        (mt/with-temp [:model/Card {metric-id :id}
-                       {:name          "Venue count"
-                        :type          :metric
-                        :database_id   (mt/id)
-                        :table_id      (mt/id :venues)
-                        :dataset_query venue-count-query}]
-          (let [response (mt/user-http-request
-                          :crowberto :post 200 "apps/demo/query"
-                          {:stages [{:source {:type "table" :id (mt/id :venues)}
-                                     :aggregations [{:type "metric" :id metric-id :name "Venue count"
-                                                     :databaseId (mt/id) :sourceTableId (mt/id :venues)
-                                                     :sourceCardId nil :mappedTableIds [(mt/id :venues)]
-                                                     :columns {:count {:type "column" :name "count" :jsType "number"}}
-                                                     :dimensions {}}]}]})]
-            (is (= [metric-id] (mapv :id (:metrics response))))))))))
-
-(deftest rejects-metrics-whose-definition-reads-another-card-test
-  (testing "sync copies a referenced metric but rewrites nothing inside the copy, so a metric that
-            itself reads another card would publish and then fail for viewers without access to that
-            card's collection -- resolving the query has to refuse it"
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (let [metadata-provider (mt/metadata-provider)
-              venues            (lib.metadata/table metadata-provider (mt/id :venues))
-              venue-count-query (-> (lib/query metadata-provider venues)
-                                    (lib/aggregate (lib/count)))
-              orders-query      (lib/query metadata-provider
-                                           (lib.metadata/table metadata-provider (mt/id :orders)))
-              app-query         (fn [metric-id]
-                                  {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                             :aggregations [{:type "metric" :id metric-id}]}]})]
-          (mt/with-temp [:model/Card {inner-metric-id :id}
-                         {:name          "Venue count"
-                          :type          :metric
-                          :database_id   (mt/id)
-                          :table_id      (mt/id :venues)
-                          :dataset_query venue-count-query}
-                         :model/Card {question-id :id}
-                         {:name          "Orders"
-                          :type          :question
-                          :database_id   (mt/id)
-                          :table_id      (mt/id :orders)
-                          :dataset_query orders-query}]
-            (let [;; built after the cards exist, so the provider can resolve them
-                  provider     (mt/metadata-provider)
-                  nested-query (lib/test-query provider (app-query inner-metric-id))
-                  question-sourced-query (lib/query provider (lib.metadata/card provider question-id))]
-              (testing "the inner metric on its own resolves"
-                (is (= [inner-metric-id]
-                       (mapv :id (:metrics (mt/user-http-request
-                                            :crowberto :post 200 "apps/demo/query"
-                                            (app-query inner-metric-id)))))))
-              (mt/with-temp [:model/Card {nested-metric-id :id}
-                             {:name          "Nested venue count"
-                              :type          :metric
-                              :database_id   (mt/id)
-                              :table_id      (mt/id :venues)
-                              :dataset_query nested-query}
-                             :model/Card {question-metric-id :id}
-                             {:name          "Orders question metric"
-                              :type          :metric
-                              :database_id   (mt/id)
-                              :table_id      (mt/id :orders)
-                              :dataset_query question-sourced-query}]
-                (testing "a metric that references another metric is refused"
-                  (is (= (str "Data app queries cannot use metrics that reference other saved questions"
-                              " or metrics: Nested venue count")
-                         (mt/user-http-request
-                          :crowberto :post 400 "apps/demo/query"
-                          (app-query nested-metric-id)))))
-                (testing "so is one built on a saved question, which sync does not copy either"
-                  (is (= (str "Data app queries cannot use metrics that reference other saved questions"
-                              " or metrics: Orders question metric")
-                         (mt/user-http-request
-                          :crowberto :post 400 "apps/demo/query"
-                          (app-query question-metric-id)))))))))))))
-
-(deftest resolved-query-includes-implicitly-joined-tables-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [orders-id            (mt/id :orders)
-            products-id          (mt/id :products)
-            product-id-field-id  (mt/id :orders :product_id)
-            response             (mt/user-http-request
-                                  :crowberto :post 200 "apps/demo/query"
-                                  {:stages [{:source    {:type "table" :id orders-id}
-                                             :breakouts [{:type            "column"
-                                                          :name            "CATEGORY"
-                                                          :source-field-id product-id-field-id}]}]})]
-        (is (= #{orders-id products-id}
-               (set (:table_ids response))))))))
-
-(deftest saved-query-table-dependencies-include-implicitly-joined-tables-test
-  (testing "sync copies models, actions and metrics whose queries never pass through /query, and the
-            table an implicit join reaches is named nowhere in such a query -- only this lookup finds it"
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (let [metadata-provider (mt/metadata-provider)
-              orders-query      (lib/query metadata-provider
-                                           (lib.metadata/table metadata-provider (mt/id :orders)))
-              category          (->> (lib/breakoutable-columns orders-query)
-                                     (filter #(= (:id %) (mt/id :products :category)))
-                                     first)
-              model-query       (lib/breakout orders-query category)]
-          (mt/with-temp [:model/Card {model-id :id}
-                         {:name          "Orders by category"
-                          :type          :model
-                          :database_id   (mt/id)
-                          :table_id      (mt/id :orders)
-                          :dataset_query model-query}]
-            (let [dataset-query (t2/select-one-fn :dataset_query :model/Card :id model-id)
-                  response      (mt/user-http-request
-                                 :crowberto :post 200 "apps/demo/query-table-dependencies"
-                                 {:dataset_queries [dataset-query]})]
-              (is (= #{(mt/id :orders) (mt/id :products)}
-                     (set (:table_ids response)))))))))))
-
-(deftest superuser-can-store-table-dependencies-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (let [table-ids [(mt/id :venues) (mt/id :orders)]]
-        (is (= (sort table-ids)
-               (:table_ids
-                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
-                                      {:table_ids (reverse table-ids)}))))
-        (is (= (sort table-ids)
-               (t2/select-one-fn :table_ids :model/DataApp :name "demo")))
-        (is (= []
-               (:table_ids
-                (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
-                                      {:table_ids []}))))))))
-
-(deftest non-superuser-cannot-store-table-dependencies-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "apps/demo/table-dependencies"
-                                   {:table_ids [(mt/id :venues)]}))))))
-
-(deftest table-dependencies-validates-table-ids-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (= "One or more tables do not exist."
-             (mt/user-http-request :crowberto :put 400 "apps/demo/table-dependencies"
-                                   {:table_ids [Integer/MAX_VALUE]})))
-      (is (= [] (t2/select-one-fn :table_ids :model/DataApp :name "demo"))))))
-
 (deftest user-permission-warnings-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Sandbox]
@@ -428,8 +159,7 @@
             (is (= []
                    (mt/user-http-request :crowberto :post 200 "apps/demo/user-permission-warnings"
                                          {:user_ids [user-id]}))))
-          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
-                                {:table_ids [allowed-table-id missing-table-id]})
+          (t2/update! :model/DataApp :name "demo" {:table_ids [allowed-table-id missing-table-id]})
           (perms/add-user-to-group! user-id app-group-id)
           (perms/set-table-permission! app-group-id
                                        missing-table-id
@@ -513,8 +243,7 @@
                              (filter (comp #{"demo"} :name))
                              first
                              :has_user_permission_warnings)]
-          (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
-                                {:table_ids [table-id]})
+          (t2/update! :model/DataApp :name "demo" {:table_ids [table-id]})
           (perms/add-user-to-group! user-id app-group-id)
           (is (true? (warning?)))
           (perms/set-table-permission! (perms/all-users-group)
@@ -534,8 +263,7 @@
           (mt/with-temp [:model/User {user-id :id} {:email "deactivated-data-app-user@example.com"}]
             (perms/add-user-to-group! user-id app-group-id)
             (t2/update! :model/User :id user-id {:is_active false})
-            (mt/user-http-request :crowberto :put 200 "apps/demo/table-dependencies"
-                                  {:table_ids [table-id]})
+            (t2/update! :model/DataApp :name "demo" {:table_ids [table-id]})
             (is (false? (->> (mt/user-http-request :crowberto :get 200 "apps")
                              (filter (comp #{"demo"} :name))
                              first
@@ -581,11 +309,8 @@
 
 (deftest data-app-write-endpoints-require-feature-token-test
   (mt/with-premium-features #{}
-    (mt/user-http-request :crowberto :put 402 "apps/demo/table-dependencies"
-                          {:table_ids []})
     (mt/user-http-request :crowberto :post 402 "apps/demo/user-permission-warnings"
-                          {:user_ids [(mt/user->id :rasta)]})
-    (mt/user-http-request :crowberto :post 402 "apps/demo/draft")))
+                          {:user_ids [(mt/user->id :rasta)]})))
 
 (deftest data-app-membership-additions-require-feature-token-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -631,56 +356,6 @@
         (mt/user-http-request :crowberto :put 204 endpoint)
         (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id)))))))
 
-(deftest query-definition-must-use-a-table-source-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
-                                       {:stages [{:source {:type "card" :id 1}}]}))))))
-
-(deftest query-definition-source-must-be-valid-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (some? (mt/user-http-request :crowberto :post 400 "apps/demo/query"
-                                       {:stages [{:source {:type 1 :id (mt/id :venues)}}]}))))))
-
-(deftest non-superuser-cannot-resolve-a-query-definition-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (create-app!)
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "apps/demo/query"
-                                   {:stages [{:source {:type "table" :id (mt/id :venues)}}]}))))))
-
-(deftest superuser-can-create-or-reuse-a-data-app-draft-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [first-response  (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")
-            second-response (mt/user-http-request :crowberto :post 200 "apps/draft-app/draft")]
-        (is (=? {:name "draft-app"
-                 :resource_collection_id pos-int?
-                 :permission_group_id pos-int?}
-                first-response))
-        (is (= (select-keys first-response [:resource_collection_id :permission_group_id])
-               (select-keys second-response [:resource_collection_id :permission_group_id])))
-        (is (=? {:bundle nil :draft true}
-                (t2/select-one [:model/DataApp :bundle :draft] :name "draft-app")))))))
-
-(deftest non-superuser-cannot-create-a-data-app-draft-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "apps/draft-app/draft")))
-      (is (not (t2/exists? :model/DataApp :name "draft-app"))))))
-
-(deftest data-app-draft-must-have-a-valid-slug-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (is (=? {:errors {:slug #".*lowercase letters.*"}}
-              (mt/user-http-request :crowberto :post 400 "apps/Draft/draft")))
-      (is (not (t2/exists? :model/DataApp :name "Draft"))))))
-
 (deftest data-app-group-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when its model lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
@@ -689,7 +364,11 @@
           ;; Its own slug: the `Data App: <slug>` group outlives other tests in
           ;; this namespace, so sharing "demo" collides on the group name.
           (let [{:keys [permission_group_id resource_collection_id]}
-                (data-apps.apps/ensure-draft! "action-perms-app")
+                (data-app.resources/ensure-resources!
+                 (first (t2/insert-returning-instances! :model/DataApp
+                                                        {:name         "action-perms-app"
+                                                         :display_name "Action perms app"
+                                                         :bundle_path  "data_apps/action-perms-app/index.js"})))
                 metadata-provider (mt/metadata-provider)
                 venues            (lib.metadata/table metadata-provider (mt/id :venues))]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
@@ -698,8 +377,7 @@
                :model/Card       {source-model-id :id}      {:type          :model
                                                              :collection_id source-collection-id
                                                              :dataset_query (lib/query metadata-provider venues)}
-               ;; What `npm run sync-resources` produces: a copy of the model in the
-               ;; app's own collection, carrying its own copy of the action.
+               ;; A copy of the model in the app's own collection, carrying its own copy of the action.
                :model/Card       {copied-model-id :id}      {:type          :model
                                                              :collection_id resource_collection_id
                                                              :dataset_query (lib/query metadata-provider venues)}]
@@ -862,7 +540,8 @@
 (deftest create-endpoint-fills-a-draft-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [draft (mt/user-http-request :crowberto :post 200 "apps/demo/draft")]
+      (let [draft (t2/insert-returning-instance! :model/DataApp {:name "demo" :display_name "demo"
+                                                                   :bundle_path "dist/index.js" :draft true})]
         (is (=? {:id                     (:id draft)
                  :draft                  false
                  :resource_collection_id (:resource_collection_id draft)}

@@ -5,7 +5,6 @@ import type {
   SdkActionInput,
 } from "embedding-sdk-bundle/types/action";
 import { executeAction as executeActionMutation } from "metabase/api/action";
-import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import type {
   BaseEntityId,
   ParametersForActionExecution,
@@ -50,34 +49,8 @@ const isActionDefinition = (
   input: SdkActionInput,
 ): input is SdkActionDefinition => isObject(input) && "action" in input;
 
-/**
- * The action that actually runs. Outside the dev preview the synchronized copy
- * replaces the authored action: the copy is what grants an app's viewers
- * permission to run it, through the app's collection.
- */
-function toExecutableActionId(input: SdkActionInput): SdkActionId {
-  if (!isActionDefinition(input)) {
-    if (isDataApp()) {
-      throw new Error(
-        `Action ${input} was passed to \`useAction\` as a raw id. A data app must pass the \`defineAction(...)\` export, so the synchronized action runs.`,
-      );
-    }
-
-    return input;
-  }
-
-  if (isDataAppDev() || !isDataApp()) {
-    return input.action.id;
-  }
-
-  if (input.copiedActionId === null || input.copiedActionId === undefined) {
-    throw new Error(
-      "This action has not been synchronized. Run `npm run sync-resources` and rebuild.",
-    );
-  }
-
-  return input.copiedActionId;
-}
+const toExecutableActionId = (input: SdkActionInput): SdkActionId =>
+  isActionDefinition(input) ? input.action.id : input;
 
 /**
  * Triggers a pre-existing Metabase action. The curried `(store) => fn` shape

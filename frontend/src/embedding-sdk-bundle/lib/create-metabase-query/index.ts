@@ -8,7 +8,6 @@ import {
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
@@ -39,47 +38,19 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
       );
     }
 
-    const sourceInput = toSourceInput(input);
-
-    validateQueryInput(sourceInput);
+    validateQueryInput(input);
     validateDynamicQuery(dynamicQuery);
 
-    await loadSourceMetadata(store, sourceInput);
+    await loadSourceMetadata(store, input);
 
     return resolveQueryFromLoadedMetadata(
-      sourceInput,
+      input,
       dynamicQuery,
       store.getState(),
     );
   };
 
 type SdkState = ReturnType<SdkStore["getState"]>;
-
-/**
- * The query whose source actually runs. Outside the dev preview a published card
- * replaces the table source: the card is what grants an app's viewers permission
- * to run the query, through the collection it lives in. Its static clauses are
- * already baked into the card, so only the source and the dynamic stage remain.
- */
-function toSourceInput(input: QueryInput): QueryInput {
-  // Only a data app runs published cards. In the dev preview they do not exist
-  // yet, and outside a data app they never do, so the table is what runs.
-  if (!isTableInput(input) || isDataAppDev() || !isDataApp()) {
-    return input;
-  }
-
-  if (
-    input.savedQuestionSourceId === null ||
-    input.savedQuestionSourceId === undefined
-  ) {
-    // An app's viewers can only read the published cards, so a table source 403s.
-    throw new Error(
-      "This query has not been synchronized. Define it with `defineQuery(...)` in `queries/`, run `npm run sync-resources`, and rebuild.",
-    );
-  }
-
-  return { source: { type: "card", id: input.savedQuestionSourceId } };
-}
 
 function resolveQueryFromLoadedMetadata(
   input: QueryInput,

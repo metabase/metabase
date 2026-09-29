@@ -51,16 +51,10 @@ export function CreateOrderForm({ onCreated }: { onCreated: () => void }) {
 
 Rules:
 
-- This directory sits beside `package.json`, not under `src/`. Synchronization
-  (`npm run sync-resources`, run by `npm run build`) scans only `queries/` and
-  `actions/`, so a definition anywhere else is never synchronized, and the
-  authored action is refused for the app's viewers in production.
+- This directory sits beside `package.json`, not under `src/`.
 - Actions exist only when the generated schema includes actions
-  (`include-actions=true`). Synchronization copies actions; it never creates
-  them, and a missing one is created as a query action without a model.
+  (`include-actions=true`).
 - Pass the export itself to `useAction`. Never pass
   `schema.actions.<action>` or its `.id`.
-- `copiedActionId` is written by synchronization. Never add, edit, or remove it
-  by hand; commit it together with `resources_metadata.json`.
 - After `execute` resolves, refresh every query on screen the action could have
   changed.

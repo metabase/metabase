@@ -61,11 +61,6 @@ only a bundle, or an export that touches an app, takes the full rather than the 
 An app's directory also holds its source, which serialization doesn't own, so exports replace only
 the YAML and resource files in `data_apps/`.
 
-## Drafts
-
-`POST /api/apps/:slug/draft` reserves a slug and creates the app's resources before the app itself
-exists, so its resources can be prepared ahead of time. Creating the app fills the draft.
-
 ## Serving
 
 Routes are mounted at `/api/apps` (`api.clj`). Not `/app/*` — the server reserves that for static
@@ -82,9 +77,6 @@ assets (`metabase.server.routes/static-files-handler`).
   the same slug (superuser).
 - `PUT /api/apps/:slug` — update manifest fields or the bundle, or toggle `enabled` (superuser).
 - `DELETE /api/apps/:slug` — drop a row, its bundle, and its owned resources (superuser).
-- `POST /api/apps/:slug/draft` — create or reuse a draft row with its resources (superuser).
-- `POST /api/apps/:slug/query` — resolve an authored query definition into a serializable
-  Metabase query plus the table IDs it touches (superuser).
 - `GET /api/apps/repo-status` — whether a repo is connected (superuser).
 
 Responses are field-filtered by role: superusers get full metadata, everyone else gets `name` and
@@ -118,8 +110,7 @@ view-data of its own, so a viewer without access to an app's tables (e.g. a sand
 data from it — their own groups' permissions and sandboxes apply unchanged. Because the group grants
 nothing, it can never lift another group's sandbox, so sandboxing needs no data-app special-casing.
 
-**Managing is superuser-only** — enabling, disabling, deleting, drafts, query resolution, and repo
-status.
+**Managing is superuser-only** — enabling, disabling, deleting, and repo status.
 
 ## Namespace map
 

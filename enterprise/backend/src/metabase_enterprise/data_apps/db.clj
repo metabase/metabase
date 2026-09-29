@@ -63,31 +63,10 @@
                          filter-column       (assoc :where [:in filter-column filter-ids])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(defn table-database-id
-  "The database ID for the Table with `table-id`, or nil."
-  [table-id]
-  (t2/select-one-fn :db_id :model/Table :id table-id
-                    {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(defn existing-table-ids
-  "The IDs from `table-ids` that belong to existing Tables."
-  [table-ids]
-  (if (seq table-ids)
-    (t2/select-pks-set :model/Table :id [:in table-ids]
-                       {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})
-    #{}))
-
 (defn users-for-permission-warnings
   "The fields needed to calculate permission warnings for Users with `user-ids`."
   [user-ids]
   (t2/select [:model/User :id :is_superuser :is_active :tenant_id] :id [:in user-ids]))
-
-(defn metrics-by-ids
-  "The metric Cards with `metric-ids`."
-  [metric-ids]
-  (if (seq metric-ids)
-    (t2/select :model/Card :id [:in metric-ids] :type "metric")
-    []))
 
 (mu/defn data-app-exists?
   "Whether a DataApp named `slug` exists."

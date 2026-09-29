@@ -15,27 +15,11 @@ import { TEST_SCHEMA } from "./fixtures";
 
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
-const queryWithInvalidSavedQuestionSourceId = {
-  savedQuestionSourceId: "54",
-  source: TEST_SCHEMA.tables.orders,
-} as const;
-
-// @ts-expect-error saved-question source IDs are numeric
-defineQuery(queryWithInvalidSavedQuestionSourceId);
-
 // @ts-expect-error query definitions with breakouts require aggregations
 defineQuery({
   source: TEST_SCHEMA.tables.orders,
   breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
 });
-
-const actionWithInvalidActionSourceId = {
-  copiedActionId: "91",
-  action: TEST_SCHEMA.actions.createOrder,
-} as const;
-
-// @ts-expect-error generated action source IDs are numeric
-defineAction(actionWithInvalidActionSourceId);
 
 // @ts-expect-error action definitions must reference a generated action
 defineAction({ action: TEST_SCHEMA.tables.orders });
@@ -121,7 +105,6 @@ breakout(TEST_SCHEMA.tables.orders.fields.status, { unit: "month" });
 function InvalidTypeFixtures() {
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionSourceId: 41,
   });
 
   // @ts-expect-error a query is a `defineQuery` export from `queries/`, never an inline object

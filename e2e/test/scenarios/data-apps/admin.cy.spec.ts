@@ -53,8 +53,9 @@ describe("scenarios > data apps > admin management", () => {
   });
 
   it("keeps a data app's permission group out of the admin Groups list", () => {
-    // Provisioning a data app draft creates its permission group as a side effect.
-    cy.request("POST", "/api/apps/orders-app/draft").then(({ body }) => {
+    // Pulling an app creates its permission group as a side effect.
+    H.pullExampleDataApps();
+    cy.request<DataApp>("GET", "/api/apps/good").then(({ body }) => {
       const dataAppGroupId = body.permission_group_id;
 
       // The groups API does not return data-app groups.
@@ -66,7 +67,7 @@ describe("scenarios > data apps > admin management", () => {
       cy.visit("/admin/people/groups");
       cy.findByTestId("admin-panel").within(() => {
         cy.findByText("All Users").should("be.visible");
-        cy.findByText("Data App: orders-app").should("not.exist");
+        cy.findByText("Data App: good").should("not.exist");
       });
     });
   });
@@ -101,10 +102,11 @@ describe("scenarios > data apps > admin management", () => {
   describe("outdated apps", () => {
     // Only a bump of the supported version makes a real app outdated, so the flag
     // the API computes is patched onto a real app's responses instead.
-    const OUTDATED_APP = "orders-app";
+    const OUTDATED_APP = "good";
 
     function markAppOutdated() {
-      cy.request<DataApp>("POST", `/api/apps/${OUTDATED_APP}/draft`)
+      H.pullExampleDataApps();
+      cy.request<DataApp>("GET", `/api/apps/${OUTDATED_APP}`)
         .its("body.display_name")
         .as("outdatedAppName");
 
