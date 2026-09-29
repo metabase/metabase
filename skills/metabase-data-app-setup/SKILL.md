@@ -134,6 +134,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    ```yaml
    name: Sales App        # display name shown in the admin UI
    description: Pipeline health and quota attainment by region  # optional — see below
+   version: 1             # data app contract version — leave as-is (see below)
    path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
    # allowed_hosts:       # optional — external origins the app may fetch/XHR (see below)
    #   - https://api.example.com
@@ -149,6 +150,15 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    so a sentence reads well there and a paragraph crowds out the rows around it.
    Replace the template's placeholder with a real sentence about *this* app, or
    delete the line entirely if it adds nothing beyond the name.
+
+   **`version`** — the data app contract version this app's code targets, a
+   whole number. The template ships the version this skill targets; do not
+   change it by hand. Metabase bumps the version it serves only on a breaking
+   change to the contract. An app on an older version is marked *Outdated* in
+   the admin list, hidden from every other user, and refuses to open until it
+   is migrated to the current contract, its `version` raised to match, rebuilt,
+   and synced. Migrating an app from one version to the next is a separate,
+   instructed procedure; never do it ad hoc.
 
    **`allowed_hosts`** — only needed if the app calls an **external** API directly
    with `fetch`/`XHR`. The sandbox blocks all network egress by default; listing an

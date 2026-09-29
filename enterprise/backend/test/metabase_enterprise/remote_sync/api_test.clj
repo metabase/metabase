@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [diehard.core :as dh]
    [java-time.api :as t]
@@ -13,10 +14,12 @@
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.driver.settings :as driver.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -206,6 +209,79 @@
             (is (=? {:status "success" :task_id int?} resp))
             (is (remote-sync.task/successful? completed-task))))))))
 
+(defn- gui-model-yaml
+  "YAML for a GUI model over `db-name`'s PUBLIC.VENUES, in the shape an export writes: the result metadata
+  carries only the model overrides, with no `base_type` and no field `id`."
+  [entity-id collection-id db-name]
+  (-> (test-helpers/generate-card-yaml entity-id "Venues Model" collection-id "model")
+      (str/replace "database_id: test-data (h2)" (str "database_id: " db-name))
+      (str/replace "dataset_query: {}"
+                   (format (str "dataset_query:\n"
+                                "  database: %s\n"
+                                "  type: query\n"
+                                "  query:\n"
+                                "    source-table:\n"
+                                "    - %s\n"
+                                "    - PUBLIC\n"
+                                "    - VENUES")
+                           db-name db-name))
+      (str/replace "result_metadata: null"
+                   (str "result_metadata:\n"
+                        (str/join (for [[col-name display-name] [["ID" "ID"]
+                                                                 ["NAME" "Venue Name"]
+                                                                 ["CATEGORY_ID" "Category ID"]
+                                                                 ["LATITUDE" "Latitude"]
+                                                                 ["LONGITUDE" "Longitude"]
+                                                                 ["PRICE" "Price"]]]
+                                    (format "- display_name: %s\n  name: %s\n  visibility_type: normal\n"
+                                            display-name col-name)))))))
+
+(deftest import-gui-model-before-schema-sync-test
+  (testing (str "GHY-4213: a GUI model imported before the target has synced its table stores untyped columns. "
+                "Once the schema sync runs, the model's columns must get their types and field ids, so that "
+                "the query builder offers typed filters on them.")
+    (let [details       (:details (mt/db))
+          db-name       (mt/random-name)
+          collection-id "ghy4213collectionxxxx"
+          card-eid      "ghy4213modelxxxxxxxxx"]
+      ;; Keep the new database from being synced when it is created, so its tables do not exist yet at import.
+      (mt/with-temporary-setting-values [disable-auto-sync  true
+                                         remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (test-helpers/commit-with-temp
+         (fn []
+           (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details details :name db-name}]
+             (let [source (test-helpers/create-mock-source
+                           :initial-files {"main" {(format "collections/%s_ghy/%s_ghy.yaml" collection-id collection-id)
+                                                   (test-helpers/generate-collection-yaml collection-id "GHY 4213" :is-remote-synced true)
+                                                   (format "collections/%s_ghy/cards/%s_venues_model.yaml" collection-id card-eid)
+                                                   (gui-model-yaml card-eid collection-id db-name)}})]
+               (try
+                 (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)]
+                   (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:force true :expected_branch "main"})]
+                     (is (remote-sync.task/successful? (wait-for-task-completion task_id)))))
+                 (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                       (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                         (f)))]
+                   (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                 (let [card-id  (t2/select-one-pk :model/Card :entity_id card-eid)
+                       table-id (t2/select-one-pk :model/Table :db_id db-id :name "VENUES")
+                       field-id (fn [field-name]
+                                  (t2/select-one-pk :model/Field :table_id table-id :name field-name))]
+                   (is (=? [{:name "ID"          :base_type "type/BigInteger" :id (field-id "ID")}
+                            {:name "NAME"        :base_type "type/Text"       :id (field-id "NAME")
+                             :display_name "Venue Name"}
+                            {:name "CATEGORY_ID" :base_type "type/Integer"    :id (field-id "CATEGORY_ID")}
+                            {:name "LATITUDE"    :base_type "type/Float"      :id (field-id "LATITUDE")}
+                            {:name "LONGITUDE"   :base_type "type/Float"      :id (field-id "LONGITUDE")}
+                            {:name "PRICE"       :base_type "type/Integer"    :id (field-id "PRICE")}]
+                           (:result_metadata (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
+                 (finally
+                   (t2/delete! :model/Card :entity_id card-eid)
+                   (t2/delete! :model/Collection :entity_id collection-id)))))))))))
+
 (deftest import-with-specific-branch-test
   (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
     (let [mock-develop (test-helpers/create-mock-source :branch "develop")]
@@ -238,6 +314,19 @@
               (is (true? (:conflicts resp)))
               (is (some (comp #{"Local Metric"} :name) (:dirty_objects resp))
                   "the response lists the un-pushed local metric"))))))))
+
+(deftest import-without-expected-branch-succeeds-test
+  (testing "GHY-4636: `mb git-sync import` sends only `branch`; the import must run without `expected_branch`"
+    (let [mock-main (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:branch "main"})
+                completed-task (wait-for-task-completion task_id)]
+            (is (=? {:status "success" :task_id int?} resp))
+            (is (remote-sync.task/successful? completed-task))))))))
 
 (deftest import-rejects-expected-branch-mismatch-test
   (testing "POST /api/ee/remote-sync/import rejects when expected_branch disagrees with the configured setting"
@@ -693,6 +782,32 @@
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
+(deftest export-after-collection-rename-moves-contents-test
+  (testing "GHY-4642: pushing after a synced collection is renamed moves its contents' files under the new collection path"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Collection 2" :location "/"}
+                     :model/Card _ {:name "Question 2" :collection_id coll-id}]
+        (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+              repo-files #(set (source.p/list-files (source.p/snapshot source)))
+              push!      #(wait-for-task-completion
+                           (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                        settings/check-and-update-remote-settings! (constantly nil)
+                                        impl/finish-remote-config! (constantly nil)]
+              (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/collection_2.yaml"
+                       "collections/main/collection_2/question_2.yaml"}
+                     (repo-files)))
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:name "Marketing Reports"})
+              (is (remote-sync.task/successful? (push!)))
+              (is (= #{"collections/main/marketing_reports.yaml"
+                       "collections/main/marketing_reports/question_2.yaml"}
+                     (repo-files))))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test
@@ -755,7 +870,66 @@
                :error_message "Task cancelled"}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
+(deftest current-task-closes-a-stale-open-task-test
+  (testing "GET /api/ee/remote-sync/current-task closes an open task whose owner is gone and returns it cancelled"
+    (let [old-time (t/minus (t/offset-date-time) (t/hours 1))]
+      (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                     :started_at old-time
+                                                     :last_progress_report_at old-time}]
+        (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+          (is (=? {:id id
+                   :status "cancelled"
+                   :cancelled true
+                   :ended_at some?
+                   :error_message #"^Sync was interrupted.*"}
+                  first-response))
+          (testing "a second GET returns the same closed row"
+            (is (=? (select-keys first-response [:id :status :cancelled :ended_at :error_message])
+                    (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))))
+
+(deftest current-task-leaves-a-live-task-running-test
+  (testing "GET /api/ee/remote-sync/current-task returns a task with a fresh heartbeat as running even when its progress is stale"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "import"
+                                                   :started_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_progress_report_at (t/minus (t/offset-date-time) (t/hours 1))
+                                                   :last_heartbeat_at :%now}]
+      (is (=? {:id id :status "running" :ended_at nil}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
+(deftest current-task-carries-the-trimmed-initiating-user-test
+  (testing "GET /api/ee/remote-sync/current-task carries the initiating user as id, first_name, last_name, email only"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [user (:initiated_by_user (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))]
+        (is (= {:id         (mt/user->id :rasta)
+                :first_name "Rasta"
+                :last_name  "Toucan"
+                :email      "rasta@metabase.com"}
+               user))))))
+
+(deftest current-task-initiating-user-is-nil-for-system-tasks-test
+  (testing "GET /api/ee/remote-sync/current-task carries a nil initiating user for a task with no initiator (auto-import)"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                            :initiated_by nil
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")]
+        (is (contains? response :initiated_by_user))
+        (is (nil? (:initiated_by_user response)))))))
+
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-carries-the-trimmed-initiating-user-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel returns the cancelled task with its trimmed initiating user"
+    (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "export"
+                                            :initiated_by (mt/user->id :rasta)
+                                            :started_at :%now
+                                            :last_progress_report_at :%now}]
+      (is (=? {:status            "cancelled"
+               :initiated_by_user {:id (mt/user->id :rasta) :email "rasta@metabase.com"}}
+              (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel"))))))
 
 (deftest cancel-task-requires-superuser-test
   (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"

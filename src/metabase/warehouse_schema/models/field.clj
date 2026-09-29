@@ -30,7 +30,6 @@
 
 (comment metabase.lib.schema.metadata/keep-me)
 
-#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
 (p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (def data-sensitivity-types
