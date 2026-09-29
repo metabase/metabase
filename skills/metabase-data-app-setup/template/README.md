@@ -63,9 +63,8 @@ your coding agent by the same command as the other data-app skills; do not edit
 ```
 
 `queries/` and `actions/` are not optional: the query hooks accept only a
-`defineQuery(...)` export and `useAction` only a `defineAction(...)` export, and
-`npm run build` synchronizes exactly those two directories to Metabase. Read
-their READMEs before the first hook call.
+`defineQuery(...)` export and `useAction` only a `defineAction(...)` export.
+Read their READMEs before the first hook call.
 
 The build, dev server, Near-Membrane sandbox, and bundle contract all live in
 the SDK behind `dataAppConfig()` — there's no `index.html` or separate dev entry
