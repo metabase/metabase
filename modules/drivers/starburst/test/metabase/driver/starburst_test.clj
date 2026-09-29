@@ -152,6 +152,29 @@
                                           {:page {:page  2
                                                   :items 5}})))))
 
+(deftest uuid-type-mapping-test
+  (testing "uuid columns are synced as :type/UUID"
+    (are [database-type base-type] (= base-type (starburst/starburst-type->base-type database-type))
+      "uuid"         :type/UUID
+      "UUID"         :type/UUID
+      "row(id uuid)" :type/*)))
+
+(deftest uuid-filter-compilation-test
+  (mt/test-driver :starburst
+    (mt/dataset uuid-dogs
+      (let [uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
+        (testing "UUID literals are bound as String parameters cast to uuid"
+          (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query people {:filter [:= $id uuid]}))]
+            (is (str/includes? query "\"default\".\"people\".\"id\" = CAST(? AS uuid)"))
+            (is (= [uuid] params)))
+          (let [{:keys [query params]} (qp.compile/compile (mt/mbql-query people {:filter [:!= $id uuid]}))]
+            (is (str/includes? query "\"default\".\"people\".\"id\" <> CAST(? AS uuid)"))
+            (is (= [uuid] params))))
+        (testing "Inlined UUID literals are cast to uuid"
+          (is (str/includes? (:query (qp.compile/compile-with-inline-parameters
+                                      (mt/mbql-query people {:filter [:= $id uuid]})))
+                             (format "\"default\".\"people\".\"id\" = CAST('%s' AS uuid)" uuid))))))))
+
 (deftest db-timezone-id-test
   (mt/test-driver :starburst
     (testing "If global timezone is 'SYSTEM', should use system timezone"
