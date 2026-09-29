@@ -243,10 +243,14 @@ export const dashboardApi = Api.injectEndpoints({
           url: `/api/dashboard/${id}/copy`,
           body,
         }),
-        invalidatesTags: (_, error) =>
+        invalidatesTags: (dashboard, error) =>
           invalidateTags(error, [
             listTag("dashboard"),
+            listTag("card"),
             tag("parameter-values"),
+            ...(dashboard
+              ? [idTag("collection", dashboard.collection_id ?? "root")]
+              : []),
           ]),
       }),
       listEmbeddableDashboards: builder.query<GetEmbeddableDashboard[], void>({
