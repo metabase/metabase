@@ -1,5 +1,5 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
-import { screen, userEvent, within } from "@storybook/test";
+import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
 import _ from "underscore";
 
@@ -399,6 +399,10 @@ const createDefaultArgs = ({
 };
 
 function getLastPopover() {
+  return within(getLastPopoverElement());
+}
+
+function getLastPopoverElement() {
   const popovers = document.documentElement.querySelectorAll<HTMLElement>(
     '[data-element-id="mantine-popover"]',
   );
@@ -407,7 +411,7 @@ function getLastPopover() {
     .filter((popover) => popover.checkVisibility())
     .at(-1);
 
-  return within(checkNotNull(lastPopover));
+  return checkNotNull(lastPopover);
 }
 
 export const LightThemeText = {
@@ -430,12 +434,12 @@ export const LightThemeTextWithValue = {
     const filter = await canvas.findByRole("button", { name: "Category" });
     await userEvent.click(filter);
 
-    const popover = await screen.findByRole("dialog", { name: "Category" });
+    const popover = getLastPopover();
     await userEvent.type(
-      within(popover).getByPlaceholderText("Enter some text"),
+      popover.getByPlaceholderText("Enter some text"),
       "filter value",
     );
-    await userEvent.click(popover);
+    await userEvent.click(getLastPopoverElement());
   },
 };
 
@@ -914,12 +918,10 @@ export const LightThemeNumber = {
     });
     await userEvent.click(filter);
 
-    const popover = await screen.findByRole("dialog", {
-      name: "Number Equals",
-    });
-    const searchInput = within(popover).getByPlaceholderText("Enter a number");
+    const popover = getLastPopover();
+    const searchInput = popover.getByPlaceholderText("Enter a number");
     await userEvent.type(searchInput, "11");
-    await userEvent.click(popover);
+    await userEvent.click(getLastPopoverElement());
 
     await userEvent.type(searchInput, "99");
   },
