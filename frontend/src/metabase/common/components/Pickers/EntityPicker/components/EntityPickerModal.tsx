@@ -134,17 +134,7 @@ export function EntityPickerModal({
 
   const modalContentCallbackRef = useCallback(
     (element: HTMLDivElement | null) => {
-      if (element) {
-        resizeObserver.subscribe(element, modalContentResizeHandler);
-        modalContentRef.current = element;
-      } else {
-        if (modalContentRef.current) {
-          resizeObserver.unsubscribe(
-            modalContentRef.current,
-            modalContentResizeHandler,
-          );
-        }
-      }
+      return;
     },
     [modalContentResizeHandler],
   );
