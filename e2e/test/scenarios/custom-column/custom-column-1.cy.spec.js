@@ -669,21 +669,6 @@ describe("scenarios > question > custom column", () => {
     H.expressionEditorWidget().button("Done").should("not.be.disabled");
   });
 
-  it("should allow choosing a suggestion with Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.enterCustomColumnDetails({ formula: "[Cre", blur: false });
-
-    H.CustomExpressionEditor.completions().should("be.visible");
-
-    // Suggestion popover shows up and this select the first one
-    cy.realPress("Tab");
-
-    // Focus remains on the expression editor
-    cy.focused().should("have.attr", "role", "textbox");
-  });
-
   it("should be possible to use the suggestion templates", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();

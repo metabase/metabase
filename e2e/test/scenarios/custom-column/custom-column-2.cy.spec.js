@@ -193,11 +193,14 @@ describe("scenarios > question > custom column > help text", () => {
   });
 
   it("should not appear when formula field is not in focus (metabase#15891)", () => {
-    H.enterCustomColumnDetails({
-      formula: "rou{enter}1.5{leftArrow}",
-      blur: false,
-    });
+    H.enterCustomColumnDetails({ formula: "rou{enter}", blur: false });
 
+    cy.log("Accepting a function suggestion should show its help text");
+    H.CustomExpressionEditor.helpText()
+      .should("be.visible")
+      .should("contain", "round([Temperature])");
+
+    H.CustomExpressionEditor.type("1.5{leftArrow}", { focus: false });
     H.CustomExpressionEditor.helpText()
       .should("be.visible")
       .should("contain", "round([Temperature])");

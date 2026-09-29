@@ -775,6 +775,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    cy.focused().should("have.attr", "role", "textbox");
   });
 });
 
@@ -880,25 +881,6 @@ describe("issue 49304", () => {
       cy.findByText("gizmo").should("be.visible");
       cy.findByLabelText("Case sensitive").should("be.checked");
     });
-  });
-});
-
-describe("issue 41305", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .findByText("The column or text to check.")
-      .rightclick();
-    H.popover().should("have.length", 2);
   });
 });
 

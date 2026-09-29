@@ -34,17 +34,6 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.value().should("equal", "[Rating]");
   });
 
-  it("should correctly accept the chosen function suggestion", () => {
-    addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "le", blur: false });
-
-    H.CustomExpressionEditor.acceptCompletion();
-
-    H.CustomExpressionEditor.helpText()
-      .should("be.visible")
-      .should("contain", "length([Comment])");
-  });
-
   it("should correctly insert function suggestion with the template", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "bet", blur: false });
@@ -119,6 +108,13 @@ describe("scenarios > question > custom column > typing suggestion", () => {
       // We want to trigger the "covered element" error if this is true without actually clicking the external link
       cy.findByText("Learn more").trigger("mousemove");
     });
+    H.CustomExpressionEditor.helpText().should("be.visible");
+
+    cy.log("right-clicking the help text should not close it (metabase#41305)");
+    H.CustomExpressionEditor.helpText()
+      .findByText("Combine two or more strings of text together.")
+      .rightclick();
+    H.popover().should("have.length", 2);
     H.CustomExpressionEditor.helpText().should("be.visible");
   });
 
