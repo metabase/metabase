@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [compile])
   (:require
    [clojure.string :as str]
+   [flatland.ordered.map :as ordered-map]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -226,52 +227,47 @@
 (defn- union-all! [subqueries context]
   (interpose-fn subqueries #(map! % context) #(append-sql! context " UNION ALL ")))
 
+(def ^:private clause-fns
+  (ordered-map/ordered-map
+   :with            with!
+   :with-recursive  with-recursive!
+   :insert-into     insert-into!
+   :values          values!
+   :update          update!
+   :set             set!
+   :delete-from     delete-from!
+   :select          select!
+   :select-distinct select-distinct!
+   :from            from!
+   :join            (partial join! :join)
+   :left-join       (partial join! :left)
+   :right-join      (partial join! :right)
+   :inner-join      (partial join! :inner)
+   :where           where!
+   :group-by        group-by!
+   :having          having!
+   :order-by        order-by!
+   :limit           limit!
+   :offset          offset!
+   :for             for!
+   :on-conflict     on-conflict!
+   :do-update-set   do-update-set!
+   :returning       returning!
+   :union           union!
+   :union-all       union-all!))
+
+(def ^:private clause-rank
+  (into {}
+        (map-indexed (fn [i [k _f]] [k i]))
+        clause-fns))
+
 (defn- map!
   "Compile a map. This is normally only allowed by [[compile]] but not by [[compile!]] to avoid accidentally compiling
   subqueries where unintended."
   [m context]
-  ;; TODO -- ICK. It seems like it would be faster to just iterate the keys in the map and then do things in the
-  ;; appropriate order rather than iterate all the known keys even tho 99% of maps don't have them
-  (transduce
-   (comp (keep (fn [[k f]]
-                 (when-let [v (k m)]
-                   [f v])))
-         (interpose ::space)
-         (map (fn [x]
-                (if (= x ::space)
-                  (append-sql! context " ")
-                  (let [[f v] x]
-                    (f v context))))))
-   (constantly nil)
-   nil
-   [[:with            with!]
-    [:with-recursive  with-recursive!]
-    [:insert-into     insert-into!]
-    [:values          values!]
-    [:update          update!]
-    [:set             set!]
-    [:delete-from     delete-from!]
-    [:select          select!]
-    [:select-distinct select-distinct!]
-    [:from            from!]
-    [:join            (partial join! :join)]
-    [:left-join       (partial join! :left)]
-    [:right-join      (partial join! :right)]
-    [:inner-join      (partial join! :inner)]
-    [:where           where!]
-    [:group-by        group-by!]
-    [:having          having!]
-    [:order-by        order-by!]
-    [:limit           limit!]
-    [:offset          offset!]
-    [:for             for!]
-    [:on-conflict     on-conflict!]
-    [:do-update-set   do-update-set!]
-    [:returning       returning!]
-    [:union           union!]
-    [:union-all       union-all!]
-    ;; TODO -- this should error on unknown keys
-    ]))
+  (interpose-fn (sort-by clause-rank (keys m))
+                (fn [k] ((clause-fns k) (get m k) context))
+                #(append-sql! context " ")))
 
 (defn- -identifier-component!
   "Emit a single quoted and escaped identifier part."
