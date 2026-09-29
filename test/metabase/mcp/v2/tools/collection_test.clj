@@ -12,6 +12,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive, and the :collection projection its echo is built from.
    [metabase.mcp.v2.tools.collection :as tools.collection]
    [metabase.permissions.core :as perms]
@@ -45,7 +46,7 @@
   (when (:isError result)
     (throw (ex-info (str "tool call failed: " (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text json/decode+kw))
+  (-> result :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
