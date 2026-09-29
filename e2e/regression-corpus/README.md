@@ -51,7 +51,7 @@ notes: "..."
 - `bug.stratum` is the kind of fault, described under Strata below. `bug.lowest_level` is the cheapest level that can observe the bug: `unit`, `integration`, or `browser-measurement` when it needs a real browser's layout (`getBoundingClientRect`, scroll geometry, `ResizeObserver`). `bug.odc` is the Orthogonal Defect Classification type and qualifier, and `bug.fe_be_boundary` says whether the bug crosses the frontend/backend contract.
 - `mutant.patch` is relative to the entry's directory and applies at `mutant.base_commit`. `mutant.method` is `inverse` for July's reversed fix diffs, `reconstructed` for a patch written from the fix by hand, or `generated`. An `inverse` patch is stored in the fix's direction, so it applies with `git apply -R`.
 - `mutant.status` is `live` when the patch applies at `base_commit` and a test fails on it, `pending` when it applies but no test has been shown to fail on it yet, `stale` when it no longer applies or reintroduces a different behaviour from the statement and needs rebuilding, and `retired` when there's no patch or it can't be made to reproduce any more. `retired_reason` says which.
-- `hint.test` is a test that fails on the mutant, and `hint.expected_failure` is the failure it gives. It's where to start when the patch needs rebuilding. It doesn't define the bug, and a different test failing on the mutant is just as good a kill. Jest ids are `<spec path>::<full test name>` and deftest ids are `<namespace>/<test>`.
+- `hint.test` is a test that fails on the mutant, and `hint.expected_failure` is the failure it gives. It's where to start when the patch needs rebuilding. It doesn't define the bug. A different test failing on the mutant, or a checker rejecting it, is just as good a kill. Jest ids are `<spec path>::<full test name>` and deftest ids are `<namespace>/<test>`.
 - `notes` has provenance and caveats.
 
 ## rebuilt/
@@ -83,7 +83,7 @@ The first run should pass and the second should fail with the hint's expected fa
 - `test-unit` rebuilds the ClojureScript before running jest, which a `.cljc` mutant needs because jest imports the compiled output. `test-unit-keep-cljs` skips the rebuild when the patch only touches TypeScript.
 - Run the whole spec file rather than filtering with `-t`, because test names often have brackets and parentheses in them.
 
-It counts as a kill when the test passes clean, fails with an assertion on the mutant, and does the same again when rerun on its own. A crash, timeout or setup failure is an error, not a kill. A mutant that breaks compilation or fails every test is thrown away.
+A test kills a mutant when it passes on clean code, fails on the mutant, and fails again when rerun on its own. The failure can be an assertion, or it can be the bug's own symptom, such as a `cy.wait` for a request the mutant never sends or a click refused by a control the mutant leaves disabled. A symptom failure is a kill because CI would go red. It's flagged as a symptom kill, because a change to timeouts or retries can lose it. The type checker or the API contract checker rejecting the mutant is also a kill, at that layer. That covers a mutant that breaks compilation: the type checker kills it, and it stays in the results. A setup crash, a harness error, a failing hook, or a test that also fails on clean code is an error, not a kill.
 
 ## Running the scripts
 
