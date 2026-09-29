@@ -6,6 +6,7 @@
   transport errors propagate to the caller."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-sensitivity.context :as context]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -209,7 +210,7 @@
 ;;; Parse
 
 (mr/def ::entry
-  [:map
+  [:map {:closed true}
    [:data-sensitivity [:maybe :keyword]]
    [:confidence       [:maybe :string]]
    [:semantic-type    [:maybe :keyword]]
@@ -235,8 +236,8 @@
   "Turn the model's `{:fields [...]}` into one entry per input field, keyed by name. Entries naming an unknown field
   are counted and ignored; an invalid category drops the field; `UNSURE` abstains; an invalid semantic type is
   nulled and counted; fields with no entry are dropped. When a name appears twice the first entry wins."
-  [fields   :- [:sequential [:map [:name :string]]]
-   response :- [:maybe :map]]
+  [fields   :- [:sequential ::context/field]
+   response :- [:maybe [:map {::mr/deliberately-open true}]]]
   (let [known   (into #{} (map :name) fields)
         counts  (volatile! {:dropped-unknown 0 :dropped-invalid 0 :dropped-missing 0 :semantic-dropped 0})
         count!  (fn [k] (vswap! counts update k inc))
@@ -296,8 +297,8 @@
 (mu/defn classify-packet :- ::classification
   "Classify every field of `packet` in chunks of `chunk-size`, merging parsed entries by field name. `model` defaults
   to the mini model. A packet with no fields makes no call."
-  [packet :- [:map [:table :map] [:fields [:sequential :map]]]
-   & {:keys [model chunk-size]} :- [:maybe [:map
+  [packet :- ::context/packet
+   & {:keys [model chunk-size]} :- [:maybe [:map {:closed true}
                                             [:model      {:optional true} [:maybe :string]]
                                             [:chunk-size {:optional true} [:maybe pos-int?]]]]]
   (let [model  (or model (metabot.settings/llm-mini-model))

@@ -4,12 +4,13 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id))
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -21,7 +22,8 @@
   included."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
-             {:where    [:and
+             {:from     [(warehouse-schema-overlay/field-query)]
+              :where    [:and
                          [:= :table_id table-id]
                          [:= :active true]
                          [:not= :visibility_type "retired"]]
@@ -37,18 +39,21 @@
 (mu/defn field-names-and-tables
   "The id, name, and table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]))
+  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]
+             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn tables-by-id
   "A map of table id to the id, name, and schema of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids])))
+  (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids]
+                                                {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn active-tables
   "The active Tables of `database-id`, restricted to `schema` when it is non-nil, ordered by schema then name."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
-             {:where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
+             {:from     [(warehouse-schema-overlay/table-query)]
+              :where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
                           schema (conj [:= :schema schema]))
               :order-by [[:schema :asc] [:name :asc]]}))

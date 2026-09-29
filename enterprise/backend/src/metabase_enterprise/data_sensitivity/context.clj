@@ -27,15 +27,33 @@
    :cached-values-cap 15})
 
 (mr/def ::options
-  [:map
+  [:map {:closed true}
    [:include-values?   {:optional true} [:maybe :boolean]]
    [:sample-rows       {:optional true} [:maybe pos-int?]]
    [:truncation        {:optional true} [:maybe pos-int?]]
    [:sample-values-cap {:optional true} [:maybe pos-int?]]
    [:cached-values-cap {:optional true} [:maybe pos-int?]]])
 
+(mr/def ::fingerprint
+  [:map {:closed true}
+   [:distinct_count {:optional true} :int]
+   [:nil_pct        {:optional true} number?]
+   [:text           {:optional true} [:map {:closed true}
+                                      [:percent-json   {:optional true} [:maybe number?]]
+                                      [:percent-url    {:optional true} [:maybe number?]]
+                                      [:percent-email  {:optional true} [:maybe number?]]
+                                      [:percent-state  {:optional true} [:maybe number?]]
+                                      [:average-length {:optional true} [:maybe number?]]]]
+   [:number         {:optional true} [:map {:closed true}
+                                      [:min {:optional true} [:maybe number?]]
+                                      [:max {:optional true} [:maybe number?]]
+                                      [:avg {:optional true} [:maybe number?]]]]
+   [:temporal       {:optional true} [:map {:closed true}
+                                      [:earliest {:optional true} [:maybe :string]]
+                                      [:latest   {:optional true} [:maybe :string]]]]])
+
 (mr/def ::field
-  [:map
+  [:map {:closed true}
    [:id              pos-int?]
    [:name            :string]
    [:display_name    [:maybe :string]]
@@ -46,17 +64,17 @@
    [:position        [:maybe :int]]
    [:visibility_type [:maybe :keyword]]
    [:fk_target       [:maybe :string]]
-   [:fingerprint     [:maybe :map]]
+   [:fingerprint     [:maybe ::fingerprint]]
    [:human_set       [:set :keyword]]
-   [:current         [:map
+   [:current         [:map {:closed true}
                       [:data_sensitivity [:maybe :keyword]]
                       [:human_set       :boolean]]]
    [:cached_values   [:maybe [:sequential :string]]]
    [:sample_values   [:maybe [:sequential :string]]]])
 
 (mr/def ::packet
-  [:map
-   [:table  [:map
+  [:map {:closed true}
+   [:table  [:map {:closed true}
              [:id           pos-int?]
              [:name         :string]
              [:schema       [:maybe :string]]
@@ -66,7 +84,7 @@
              [:db_id        pos-int?]
              [:engine       [:maybe :keyword]]]]
    [:fields [:sequential ::field]]
-   [:sample [:map
+   [:sample [:map {:closed true}
              [:rows       :int]
              [:truncation :int]
              [:error      [:maybe :string]]]]])

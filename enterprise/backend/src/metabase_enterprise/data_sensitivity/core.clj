@@ -101,14 +101,14 @@
 (mr/def ::table-options
   [:merge
    ::context/options
-   [:map
+   [:map {:closed true}
     [:model      {:optional true} [:maybe :string]]
     [:chunk-size {:optional true} [:maybe pos-int?]]]])
 
 (mr/def ::database-options
   [:merge
    ::table-options
-   [:map
+   [:map {:closed true}
     [:schema      {:optional true} [:maybe :string]]
     [:parallelism {:optional true} [:maybe pos-int?]]]])
 

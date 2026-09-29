@@ -9,7 +9,7 @@
 
 (defn- field
   [name & {:as overrides}]
-  (merge {:id              (hash name)
+  (merge {:id              (inc (mod (hash name) 1000000))
           :name            name
           :display_name    name
           :description     nil

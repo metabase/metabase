@@ -3671,14 +3671,15 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.data-sensitivity.api}
    :uses #{api
-           config
            database-routing
            driver
-           lib
+           lib.schema
            metabot
            request
            util
-           warehouse-schema}
+           util.config
+           warehouse-schema-overlay
+           warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
