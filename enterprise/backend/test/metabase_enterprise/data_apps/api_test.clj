@@ -331,13 +331,15 @@
       (create-app!)
       (mt/with-temp [:model/PermissionsGroup group {}]
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
-          (group-access/add-groups! app [(:id group)])
-          (mt/user-http-request :crowberto :delete 204 "apps/demo")
-          (is (not (t2/exists? :model/DataApp :id (:id app))))
-          (is (not (t2/exists? :model/Collection :id resource_collection_id)))
-          (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
-          (is (t2/exists? :model/PermissionsGroup :id (:id group))))))))
+              {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)]
+          (mt/with-temp [:model/Card {card-id :id} {:collection_id collection-id}]
+            (group-access/add-groups! app [(:id group)])
+            (mt/user-http-request :crowberto :delete 204 "apps/demo")
+            (is (not (t2/exists? :model/DataApp :id (:id app))))
+            (is (not (t2/exists? :model/Collection :id collection-id)))
+            (is (not (t2/exists? :model/Card :id card-id)))
+            (is (empty? (t2/select :model/DataAppGroup :data_app_id (:id app))))
+            (is (t2/exists? :model/PermissionsGroup :id (:id group)))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
