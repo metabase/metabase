@@ -952,7 +952,7 @@
                                                                             (when (perms/is-data-analyst? current-user-id)
                                                                               ^:allow-subquery {:select visible-union-columns
                                                                                                 :from [[:collection :c]]
-                                                                                                :where [:= :namespace ^:allow-raw-sql [:inline "transforms"]]})])}
+                                                                                                :where [:= :namespace "transforms"]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
@@ -2107,7 +2107,7 @@
        [:not= (maybe-alias :type) instance-analytics-collection-type]
        [:not= (maybe-alias :type) trash-collection-type]]]
      [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
+      [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]

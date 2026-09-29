@@ -560,6 +560,7 @@
      :current_database
      :current_schema
      :database
+     :date_part
      :distinct
      :escape
      :greatest

@@ -94,7 +94,7 @@
                 :left-join [[:core_user :user] [:= :api_key.user_id :user.id]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :api_key.key_prefix ^:allow-raw-sql [:raw "?"]]]
+                            [:= :api_key.key_prefix (Object.)]] ; to produce `?` in the SQL
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -117,7 +117,7 @@
                 :from      [[:core_user :user]]
                 :where     [:and
                             [:= :user.is_active true]
-                            [:= :user.id ^:allow-raw-sql [:raw "?"]]]
+                            [:= :user.id (Object.)]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->

@@ -601,3 +601,7 @@
   (is (= ["timestampdiff(second, \"col_a\", \"col_b\")"]
          (funnysql/format [:timestampdiff :second :col_a :col_b]
                           :postgres))))
+
+(deftest ^:parallel date-part-test
+  (is (= ["date_part(?, \"started_at\")" "year"]
+         (funnysql/format [:date_part "year" :started_at] :postgres))))

@@ -705,7 +705,7 @@
 
 (defmethod calculate-interval-honeysql-form :mysql
   [_db-type end-form start-form]
-  [:timestampdiff ^:allow-raw-sql [:raw "MICROSECOND"] start-form end-form])
+  [:timestampdiff :microsecond start-form end-form])
 
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]
