@@ -79,7 +79,7 @@
     ;; Emit comments to provide context for agents
     (is (str/includes? body "// Description: Saved orders"))
     (is (str/includes? body "// Description: Total order revenue"))
-    (is (str/includes? body "// Filters: Status is paid; Created At is in the previous 30 days"))
+    (is (re-find #"// Filters:\n\s*// - Status is paid\n\s*// - Created At is in the previous 30 days\n" body))
     (is (str/includes? body "// Display name: Payment Method"))
     (is (str/includes? body "// Semantic type: type/Category"))
     ;; Emit metadata needed for the Lib.createTestQuery DSL
