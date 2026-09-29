@@ -227,12 +227,9 @@
       (do (when (http/success? resp)
             (analytics/inc! :metabase-token-check/attempt {:status :success}))
           (or (some-> (parse-status-body body) canonical)
-              ;; a bare (bodyless) 403/404 is the store rejecting the token — a verdict. An
-              ;; undecodable body (a WAF's HTML page) is not: only the store sends bodyless rejections
-              (when (and (#{403 404} status) (str/blank? body))
-                (canonical {:valid         false
-                            :status        "Token is not valid."
-                            :error-details (format "Token check returned %d with no details." status)}))
+              ;; a 2xx/4xx whose body is missing or undecodable (a proxy's or WAF's error page, a stripped
+              ;; body) carries no verdict from the store, so it is transient like a network error: not cached,
+              ;; retried under the breaker, and the previous canonical status stands meanwhile
               (throw (ex-info "Token validation provided no response." {:status status}))))
       ;; exceptions are not cached.
       (do (analytics/inc! :metabase-token-check/attempt {:status :failure})

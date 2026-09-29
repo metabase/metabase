@@ -238,26 +238,26 @@
         (finally
           (token-check/-clear-cache! checker))))))
 
-(deftest bare-rejection-is-authoritative-test
+(deftest bare-rejection-is-transient-test
   (doseq [http-status [403 404]]
-    (testing (format "the store may reject a token with a bare %d (no body); that is a definitive verdict: cached, not transient"
+    (testing (format "a bare %d (no body) carries no verdict from the store: a proxy may have stripped it, so it is transient, not cached"
                      http-status)
       (let [token      (tu/random-token)
             call-count (atom 0)
+            ;; no local-ttl: it negative-caches failures, and this pins that the durable tiers never store them
             checker    (binding [token-check/*customize-checker* true]
-                         (token-check/make-checker {:local-ttl (t/seconds 5)
-                                                    :soft-ttl  (t/hours 12)
-                                                    :hard-ttl  (t/hours 36)}))]
+                         (token-check/make-checker {:soft-ttl (t/minutes 1)
+                                                    :hard-ttl (t/minutes 2)}))]
         (try
           (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
                                                                (swap! call-count inc)
                                                                {:status http-status})]
-            (is (=? {:valid      false
-                     :canonical? true
-                     :status     "Token is not valid."}
-                    (token-check/check-token checker token)))
-            (token-check/check-token checker token)
-            (is (= 1 @call-count) "definitive verdicts are cached"))
+            (dotimes [_ 5] (token-check/check-token checker token))
+            (is (= 5 @call-count) "not cached: every check goes back to the store")
+            (is (=? {:valid         false
+                     :canonical?    false
+                     :error-details "Token validation provided no response."}
+                    (token-check/check-token checker token))))
           (finally
             (token-check/-clear-cache! checker)))))))
 
