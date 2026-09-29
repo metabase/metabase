@@ -114,9 +114,10 @@
              {:order-by [[:name :asc]]}))
 
 (mu/defn unarchived-models-for-table
-  "The id, query, result metadata, and schema of the unarchived model Cards whose primary table is `table-id`."
+  "The id, query, query type, result metadata, and schema of the unarchived model Cards whose primary table is
+  `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :dataset_query :result_metadata :card_schema]
+  (t2/select [:model/Card :id :dataset_query :query_type :result_metadata :card_schema]
              :table_id table-id
              :type     :model
              :archived false))

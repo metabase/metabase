@@ -43,8 +43,8 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
+   [metabase.sync.events.schema]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -54,19 +54,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.util :as t2.util]))
-
-;; derive through a local key, never straight from :metabase/event: a handler also derives this topic from its own key
-;; under :metabase/event, and a direct edge next to that path makes `events/underive!` throw
-(events/derive! ::event :metabase/event)
-(events/derive! :event/table-fields-added ::event)
-
-(mr/def :event/table-fields-added
-  [:map {:closed true}
-   [:table-id ::lib.schema.id/table]])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -120,14 +110,16 @@
         num-synced   (sync-instances/sync-instances! table db-metadata before)
         ;; Re-fetch our metadata because there might be some things that have changed after calling
         ;; `sync-instances`
-        after        (fields.our-metadata/our-metadata table)]
+        after        (fields.our-metadata/our-metadata table)
+        ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+        num-updated  (sync-metadata/update-metadata! database table db-metadata after)]
     ;; our metadata holds only active Fields, so an ID that is new in `after` was created or reactivated. Publish
-    ;; after `sync-instances!` has retired Fields, so a renamed column's old Field is already inactive.
-    (when (seq (set/difference (field-ids after) (field-ids before)))
+    ;; after `sync-instances!` has retired Fields, so a renamed column's old Field is already inactive. A Table with no
+    ;; active Fields before this sync is new, so no model can use it yet.
+    (when (and (seq before)
+               (seq (set/difference (field-ids after) (field-ids before))))
       (events/publish-event! :event/table-fields-added {:table-id (u/the-id table)}))
-    (+ num-synced
-       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-       (sync-metadata/update-metadata! database table db-metadata after))))
+    (+ num-synced num-updated)))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.

@@ -5600,9 +5600,9 @@
     (mt/with-model-cleanup [:model/Card]
       (let [db       (mt/db)
             mp       (mt/metadata-provider)
+            query    (lib/query mp (lib.metadata/table mp (mt/id :grid_view)))
             model-id (:id (mt/user-http-request :crowberto :post 200 "card"
-                                                (assoc (card-with-name-and-query (mt/random-name)
-                                                                                 (lib/query mp (lib.metadata/table mp (mt/id :grid_view))))
+                                                (assoc (card-with-name-and-query (mt/random-name) query)
                                                        :type :model)))]
         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec db) [ddl])
         (sync/sync-database! db)
