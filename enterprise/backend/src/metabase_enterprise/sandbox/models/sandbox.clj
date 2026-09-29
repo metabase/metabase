@@ -219,17 +219,7 @@
 
 (defenterprise pre-update-check-sandbox-constraints-for-snippet
   "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches `:content`, `:name`,
-  or `:archived`.
-
-  `:name` is guarded here and not for Segments or Measures because snippet references resolve by name. A Card's
-  `{{snippet: x}}` tags are re-pointed at whichever snippet is currently named `x` whenever its native text's template
-  tags are re-extracted ([[metabase.lib.core/extract-template-tags]]), and a snippet's own tags whenever it is saved
-  (`add-template-tags` in the snippet model); so renaming a policy snippet and creating an impostor under the old name
-  would re-point the policy on its next legitimate save. `[:segment N]` and `[:measure N]` references are id-only.
-
-  Snippet creation is deliberately unguarded: a non-admin can create a snippet under a name a policy tag references,
-  which would re-point a dangling or admin-renamed policy tag on its next save; that is out of scope here.
-  `:collection_id` moves are not guarded either: the guard is on the entity, not its container."
+  or `:archived`."
   :feature :sandboxes
   [{snippet-id :id} changes]
   (when (some #(contains? changes %) [:content :name :archived])
