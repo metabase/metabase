@@ -273,18 +273,19 @@
     ;; TODO -- this should error on unknown keys
     ]))
 
-;; TODO -- escape identifier
 (defn- -identifier-component!
   "Emit a single quoted and escaped identifier part."
   [part context]
+  (when-not (re-matches #"^[A-Za-z_][A-Za-z0-9_-]*$" part)
+    (throw (ex-info "Invalid identifier" {:identifier part})))
   (let [engine     (engine context)
         quote-char (case engine
                      :mysql "`"
                      "\"")]
     (append-sql! context quote-char)
     (append-sql! context (case engine
-                            :h2 (u/upper-case-en part)
-                            part))
+                           :h2 (u/upper-case-en part)
+                           part))
     (append-sql! context quote-char)))
 
 (defn -identifier!
@@ -341,14 +342,14 @@
   (append-sql! context " AND ")
   (compile! z context))
 
-(defn- cast! [[x tyype] context]
+(defn- cast! [[x type-name] context]
   (append-sql! context "CAST(")
   (compile! x context)
   (append-sql! context " AS ")
-  (let [tyype (name tyype)]
-    (assert (re-matches #"^[()\w_-]+$" tyype)
-            "Invalid type!")
-    (append-sql! context tyype)
+  (let [type-name (name type-name)]
+    (when-not (re-matches #"^[A-Za-z_][()A-Za-z0-9_-]*$" type-name)
+      (throw (ex-info "Invalid type" {:type type-name})))
+    (append-sql! context type-name)
     (append-sql! context ")")))
 
 (defn- case! [args context]

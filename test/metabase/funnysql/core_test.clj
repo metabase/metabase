@@ -73,10 +73,25 @@
 (deftest ^:parallel cast-test
   (is (= ["WHERE CAST(\"field\" AS integer) = 1"]
          (funnysql/compile {:where [:= [:cast :field :integer] 1]} :postgres)))
-  (is (thrown-with-msg?
-       AssertionError
-       #"Invalid type!"
-       (funnysql/compile {:where [:= [:cast :field "X) OR SELECT * FROM another_table; --"] 1]} :postgres))))
+  (testing "type validation"
+    (testing "valid types"
+      (are [type-name] (some? (funnysql/compile {:where [:= [:cast :field type-name] 1]} :postgres))
+        :integer
+        "integer"
+        "timestamp"
+        (keyword "timestamp(6)")
+        "timestamp(6)"
+        "datetime2"
+        :datetime2))
+    (testing "invalid types"
+      (are [type-name] (thrown-with-msg?
+                        clojure.lang.ExceptionInfo
+                        #"Invalid type"
+                        (funnysql/compile {:where [:= [:cast :field type-name] 1]} :postgres))
+        "X) OR SELECT * FROM another_table; --"
+        (keyword "X) OR SELECT * FROM another_table; --")
+        :2
+        "2"))))
 
 (deftest ^:parallel case-test
   (is (= ["WHERE \"field\" = CASE WHEN \"other\" > 1 THEN ? ELSE ? END" "big" "small"]
@@ -229,3 +244,19 @@
                                      [:< :field "s"]
                                      [:in :table.field [1 2 3]]]}
                            :h2))))
+
+(deftest ^:parallel validate-identifier-test
+  (testing "valid identifiers"
+    (are [identifier] (some? (funnysql/compile {:select [identifier]} :postgres))
+      :field
+      :field_x
+      :field-y))
+  (testing "invalid identifiers"
+    (are [identifier] (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Invalid identifier"
+                       (funnysql/compile {:select [identifier]} :postgres))
+      :2field
+      (keyword "field()")
+      (keyword "field;")
+      (keyword "\" OR 1 = 1; --"))))
