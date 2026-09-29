@@ -88,12 +88,7 @@ export const CollapseSection = ({
 
   const { collapsed, expanded } = ICON_VARIANTS[iconVariant];
   const headerIcon = (
-    <Icon
-      name={isExpanded ? expanded : collapsed}
-      size={iconSize}
-      ml={iconPosition === "right" ? "sm" : undefined}
-      mr={iconPosition === "left" ? "sm" : undefined}
-    />
+    <Icon name={isExpanded ? expanded : collapsed} size={iconSize} />
   );
 
   return (
@@ -104,14 +99,13 @@ export const CollapseSection = ({
         role="button"
         tabIndex={0}
         align="center"
-        justify="space-between"
         mih={rem(28)}
         aria-expanded={isExpanded}
         aria-controls={regionId}
         onKeyDown={onKeyDown}
         onClick={toggle}
       >
-        <Flex align="center" flex={1}>
+        <Flex align="center" flex={1} gap="sm">
           {iconPosition === "left" && headerIcon}
           <Flex component="span" align="center">
             {header}
