@@ -294,9 +294,9 @@
   "Does this instance support remote syncing collections."
   :remote-sync)
 
-(define-premium-feature ^{:added "0.65.0"} enable-data-apps?
+(define-premium-feature ^{:added "0.57.0"} enable-data-apps?
   "Should we allow users to publish and run data apps?"
-  :data-apps-preview)
+  :data-apps)
 
 (define-premium-feature ^{:added "0.59.0"} enable-basic-transforms?
   "Should we allow users to use transforms? Replacement for transforms"
@@ -305,6 +305,10 @@
 (define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
   "Should we allow users to use Python transforms?"
   :transforms-python)
+
+(define-premium-feature enable-transform-testing?
+  "Should we allow users to author and run tests against their transforms?"
+  :transforms-testing)
 
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
@@ -437,6 +441,7 @@
    :tenants                        (enable-tenants?)
    :transforms-basic               (enable-basic-transforms?)
    :transforms-python              (enable-python-transforms?)
+   :transforms-testing             (enable-transform-testing?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)

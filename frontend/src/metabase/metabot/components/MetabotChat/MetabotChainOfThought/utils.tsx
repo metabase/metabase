@@ -158,12 +158,19 @@ export type DisplayItem =
   | { kind: "tool"; step: ToolChainStep; index: number }
   | { kind: "resourceGroup"; steps: ToolChainStep[]; index: number };
 
+const isGroupableResourceStep = (step: MetabotChainStep) =>
+  isResourceStep(step) && step.status !== "errored";
+
 const groupConsecutiveResources = (
   steps: MetabotChainStep[],
 ): MetabotChainStep[][] =>
   steps.reduce<MetabotChainStep[][]>((groups, step) => {
     const last = groups.at(-1);
-    if (last && isResourceStep(step) && isResourceStep(last[0])) {
+    if (
+      last &&
+      isGroupableResourceStep(step) &&
+      isGroupableResourceStep(last[0])
+    ) {
       return [...groups.slice(0, -1), [...last, step]];
     }
     return [...groups, [step]];

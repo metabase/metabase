@@ -15,6 +15,11 @@
    [:term       ms/NonBlankString]
    [:definition ms/NonBlankString]])
 
+(mu/defn entries :- [:sequential ::glossary.schema/glossary]
+  "Every glossary entry, in term order."
+  []
+  (glossary.db/glossary-entries nil))
+
 (mu/defn create-entry! :- ::glossary.schema/glossary
   "Insert a glossary entry created by `user-id` and publish `:event/glossary-create`. Returns the new entry."
   [user-id                   :- ::lib.schema.id/user

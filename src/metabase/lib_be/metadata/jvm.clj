@@ -170,7 +170,8 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details
+                   :admin_details :timezone :default_schema :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -577,6 +578,7 @@
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metadata-provider-cache*
   "Bind this to a `(atom (clojure.core.cache/basic-cache-factory {}))` or similar cache-atom, and
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`

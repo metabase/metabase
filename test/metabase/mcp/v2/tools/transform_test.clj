@@ -14,6 +14,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the :transform projection the write echo projects through.
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.mcp.v2.tools.transform :as tools.transform]
@@ -71,7 +72,7 @@
   (when (:isError response)
     (throw (ex-info (str "tool call failed: " (-> response :content first :text))
                     {:response response})))
-  (-> response :content first :text json/decode+kw))
+  (-> response :content first :text v2.tu/strip-data-boundary json/decode+kw))
 
 (defn- tool-error
   "Tool-level error text of a tool response; throws when the call succeeded, so a passing call
@@ -150,6 +151,23 @@
               (is (some? stored))
               (is (= :mbql (:source_type stored)))
               (is (= (mt/user->id :crowberto) (:creator_id stored))))
+            (finally
+              (t2/delete! :model/Transform :id (:id result)))))))))
+
+(deftest transform-write-result-is-text-only-test
+  (testing "GHY-4554: a successful transform_write result has no structuredContent, and its text block opens
+            with a data boundary. Claude Code shows the model structuredContent in place of the text block,
+            so a structured copy of the payload would reach the model with no boundary around it."
+    (with-transforms
+      (with-target-db-support
+        (let [response (write! {:method     "create"
+                                :name       "Text-only transform"
+                                :definition (query-definition)
+                                :target     {:name "mcp_text_only" :schema (venues-schema)}})
+              result   (tool-result response)]
+          (try
+            (is (not (contains? response :structuredContent)))
+            (is (some? (v2.tu/data-parts (-> response :content first :text))))
             (finally
               (t2/delete! :model/Transform :id (:id result)))))))))
 

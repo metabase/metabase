@@ -277,6 +277,7 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *audit-refusals?*
   "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
   and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare

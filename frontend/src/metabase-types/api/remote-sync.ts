@@ -217,6 +217,13 @@ export type RemoteSyncOutcome =
   | { kind: "push-skipped" }
   | { kind: "merged"; pulled: number; pushed: number; branch: string };
 
+export type RemoteSyncTaskUser = {
+  id: UserId;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+};
+
 export type RemoteSyncTask = {
   id: number;
   sync_task_type: RemoteSyncTaskType;
@@ -225,9 +232,12 @@ export type RemoteSyncTask = {
   started_at: string | null;
   ended_at: string | null;
   last_progress_report_at: string | null;
+  last_heartbeat_at?: string | null;
   error_message: string | null;
   outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;
+  /** Absent on auto-imports, which have no initiating user. */
+  initiated_by_user?: RemoteSyncTaskUser | null;
   conflicts?: string[];
 };
 

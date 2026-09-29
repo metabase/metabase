@@ -59,6 +59,7 @@
   model
   instance])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *deserializing?*
   "This is dynamically bound to true when deserializing. A few pieces of the Toucan magic are undesirable for
   deserialization and are skipped based on this var. (Entity ids are not one of them: the insert hook generates an

@@ -29,6 +29,7 @@ Manage your Metabase Cloud instance, subscription, and billing via the [Metabase
 
 - [Changing which region your Metabase is hosted in](./change-region.md)
 - [IP addresses to whitelist](ip-addresses-to-whitelist.md)
+- [IP allowlist](./ip-allowlist.md)
 - [Changing your domain name](./custom-domain.md)
 
 ### Migrations

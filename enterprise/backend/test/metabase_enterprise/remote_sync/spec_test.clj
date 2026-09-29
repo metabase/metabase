@@ -131,8 +131,9 @@
       (is (contains? types "Measure"))
       (is (contains? types "Transform"))
       (is (contains? types "TransformTag"))
+      (is (contains? types "TransformTest"))
       (is (contains? types "Glossary"))
-      (is (= 14 (count types))))))
+      (is (= 15 (count types))))))
 
 (deftest specs-by-identity-type-test
   (testing "specs-by-identity-type filters correctly"
@@ -677,3 +678,8 @@
               "the Table has no settings row of its own")
           (is (contains? (set (get exportable "TableUserSettings")) table-id)
               "the Table is still exportable, synthesized from its Field's edit"))))))
+
+(deftest ^:parallel exportable-entity-count-test
+  (testing "exportable-entity-count sums the ids across every model in the targets map"
+    (is (= 0 (spec/exportable-entity-count {})))
+    (is (= 5 (spec/exportable-entity-count {"Card" [1 2 3] "Collection" [4 5]})))))

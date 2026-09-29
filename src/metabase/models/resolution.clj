@@ -148,6 +148,8 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
+    :model/TransformTest                     metabase-enterprise.transform-testing.models
+    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -189,6 +191,7 @@
        (t2.model/resolve-model metabase-models-keyword)))
    (next-method symb)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *table-name-resolved* false)
 
 (methodical/defmethod t2.model/table-name :around :default

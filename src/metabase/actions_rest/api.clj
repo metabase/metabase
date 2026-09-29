@@ -5,6 +5,7 @@
    [metabase.actions.core :as actions]
    [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.eid-translation.core :as eid-translation]
@@ -32,6 +33,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id]} :- [:map {:closed true}
                           [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
@@ -55,6 +57,7 @@
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
@@ -193,6 +196,7 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
+  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params
@@ -235,6 +239,7 @@
   "Execute the Action.
 
    `parameters` should be the mapped dashboard parameters with values."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params

@@ -474,7 +474,7 @@ export const NativeQueryModal = ({
           bg="background_page-primary"
           className={S.footer}
         >
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button

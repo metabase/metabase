@@ -16,8 +16,10 @@
      {:statistics (-> (or (:global fp) {})
                       (set/rename-keys {:nil% :percent-null})
                       (into (vals (:type fp))))})
-   (when-let [fvs (-> fvs :values not-empty)]
-     {:field_values (into [] (if limit (take limit) identity) fvs)})))
+   (when-let [values (-> fvs :values not-empty)]
+     {:field_values       (into [] (if limit (take limit) identity) values)
+      :field_values_total (count values)
+      :has_more_values    (:has_more_values fvs)})))
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint

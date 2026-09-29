@@ -97,7 +97,7 @@ export function CreateTransformCollectionModal({
             />
             <Group justify="flex-end">
               <FormErrorMessage />
-              <Button variant="subtle" onClick={onClose}>
+              <Button variant="subtle" color="neutral" onClick={onClose}>
                 {t`Cancel`}
               </Button>
               <FormSubmitButton label={t`Create`} variant="filled" />
