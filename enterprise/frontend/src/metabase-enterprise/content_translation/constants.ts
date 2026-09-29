@@ -16,9 +16,6 @@ export const dictionaryEndpointStore = {
     return () => listeners.delete(listener);
   },
   setEndpoint: (endpoint: string | null) => {
-    if (contentTranslationEndpoints.getDictionary !== endpoint) {
-      contentTranslationEndpoints.getDictionary = endpoint;
-      listeners.forEach((listener) => listener());
-    }
+    return;
   },
 };
