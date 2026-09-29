@@ -12,7 +12,7 @@ const authConfig = defineMetabaseAuthConfig({
 const Example = ({ children }: PropsWithChildren) => {
   // [<snippet example>]
   const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
-    /* do whatever you need to do - e.g. send analytics events, show notifications */
+    // Send analytics events, show notifications, etc.
   };
 
   const eventHandlers = {

@@ -49,23 +49,7 @@ For the full list of settings, see [config reference](./config-reference.md).
 To configure the React SDK, pass your config as props to `MetabaseProvider`. The only required prop is `authConfig`, which you create with `defineMetabaseAuthConfig()`:
 
 ```typescript
-import React from "react";
-import {
-  MetabaseProvider,
-  defineMetabaseAuthConfig,
-} from "@metabase/embedding-sdk-react";
-
-const authConfig = defineMetabaseAuthConfig({
-  metabaseInstanceUrl: "https://your-metabase.example.com", // Required
-});
-
-export default function App() {
-  return (
-    <MetabaseProvider authConfig={authConfig}>
-      {/* Metabase components go here */}
-    </MetabaseProvider>
-  );
-}
+{% include_file "{{ dirname }}/sdk/snippets/config/config-base.tsx" %}
 ```
 
 For the full list of props, see [`MetabaseProvider` props](./config-reference.md#react-sdk-metabaseprovider-props).
@@ -110,7 +94,7 @@ defineMetabaseConfig({
 Pass `locale` to `MetabaseProvider`:
 
 ```tsx
-<MetabaseProvider authConfig={authConfig} locale="de">
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-locale.tsx" snippet="example" %}
 ```
 
 ## Set a theme
@@ -137,13 +121,7 @@ defineMetabaseConfig({
 Create a theme with `defineMetabaseTheme()` and pass it to `MetabaseProvider`:
 
 ```tsx
-const theme = defineMetabaseTheme({
-  colors: {
-    brand: "#509EE3",
-  }
-});
-
-<MetabaseProvider authConfig={authConfig} theme={theme}>
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-theme.tsx" snippet="example" %}
 ```
 
 ## Configure plugins
@@ -151,12 +129,7 @@ const theme = defineMetabaseTheme({
 To customize the behavior of embedded components, add plugins. For web components, add a `pluginsConfig` object to the page-level config. For the SDK, pass `pluginsConfig` to `MetabaseProvider`:
 
 ```tsx
-<MetabaseProvider
-  authConfig={authConfig}
-  pluginsConfig={{
-    mapQuestionClickActions: () => [], // Add your custom actions here
-  }}
->
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-plugins.tsx" snippet="example" %}
 ```
 
 Plugins you set this way apply to every embed. Components also take their own `plugins` prop, which overrides the global config.
@@ -168,16 +141,7 @@ For available plugins and their APIs, see [plugins](./sdk/plugins.md).
 To run your own code when embeds load, like sending analytics events, pass an `eventHandlers` object to `MetabaseProvider`:
 
 ```typescript
-const handleDashboardLoad: SdkDashboardLoadEvent = (dashboard) => {
-  // Send analytics events, show notifications, etc.
-};
-
-const eventHandlers = {
-  onDashboardLoad: handleDashboardLoad,
-  onDashboardLoadWithoutCards: handleDashboardLoad,
-};
-
-<MetabaseProvider authConfig={authConfig} eventHandlers={eventHandlers}>
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-event-handlers.tsx" snippet="example" %}
 ```
 
 - `onDashboardLoad` fires when a dashboard loads with all visible cards and their content.
@@ -188,11 +152,7 @@ const eventHandlers = {
 To replace the SDK's default loading and error screens, pass `loaderComponent` and `errorComponent` to `MetabaseProvider`:
 
 ```tsx
-<MetabaseProvider
-  authConfig={authConfig}
-  loaderComponent={MyLoader}
-  errorComponent={MyError}
->
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-loader-and-error.tsx" snippet="example" %}
 ```
 
 ## Allow custom visualizations
@@ -215,14 +175,7 @@ For the full naming rules and the SDK example, see [custom visualizations in emb
 Metabase components don't detect your app's data changes. To reload an embed after your app's data changes, change the component's `key` prop:
 
 ```tsx
-const [dataVersion, setDataVersion] = useState(0);
-
-const saveOrder = async (order) => {
-  await api.saveOrder(order); // Your app changes its data...
-  setDataVersion(v => v + 1); // ...then changes the key, reloading the embed.
-};
-
-return <InteractiveQuestion key={dataVersion} questionId={yourQuestionId} />;
+{% include_file "{{ dirname }}/sdk/snippets/config/reload-metabase-provider.tsx" snippet="example" %}
 ```
 
 ## Further reading
