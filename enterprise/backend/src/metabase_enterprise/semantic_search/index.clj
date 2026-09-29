@@ -48,6 +48,7 @@
   [honey-sql & {:as opts}]
   (sql/format honey-sql (merge opts {:quoted true})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "The number of documents to process per batch when updating the index."
   150)
@@ -396,6 +397,7 @@
             opts)))
        (merge-with + stats)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *retrying* false)
 
 (defonce ^:private

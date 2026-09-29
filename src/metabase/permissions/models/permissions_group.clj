@@ -92,6 +92,7 @@
   (when (exists-with-name? group-name)
     (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *allow-modifying-magic-groups*
   "Dynamic var that, when bound to true, allows modifying magic groups. Used by [[sync-data-analyst-group-for-oss!]]."
   false)

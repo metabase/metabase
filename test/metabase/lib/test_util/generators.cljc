@@ -104,6 +104,7 @@
     -1
     (tu.rng/rand-int (count (:stages query)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *safe-for-old-refs*
   "Controls whether the generators will construct queries with things like multiple joins to the same table, which
   create ambiguous refs in classic MBQL 5.
@@ -331,6 +332,7 @@
 (add-step {:kind   :join
            :weight 30})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *available-cards*
   "To be bound to cards available for use by generator in joins.
 
@@ -487,6 +489,7 @@
   ```"
   (mk-step-control 0.04 0.16))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *step-control* step-control:default)
 
 (defn- choose-step [kinds]

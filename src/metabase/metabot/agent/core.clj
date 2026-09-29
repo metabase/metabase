@@ -47,6 +47,7 @@
 ;; Or via the API with `"debug": true` in the request body, which emits the
 ;; debug log as a "debug_log" data part in the SSE stream.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-log*
   "When bound to an atom, collects full LLM request/response data per iteration.
   Each entry is a map with :iteration, :request, and :response keys.

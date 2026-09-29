@@ -1269,6 +1269,7 @@
   (u.date/greater-than-period-duration? (u.date/period-duration (:created_at (mt/db)) (t/zoned-date-time))
                                         (t/seconds max-age-seconds)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
 (defn- count-of-grouping! [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
