@@ -97,6 +97,13 @@
          ::mr/deliberately-open true
          :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
 
+(def LLMQueryArgument
+  "Schema for the `:query` argument of `construct_notebook_query` and the tools that reuse it.
+
+  Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the `:json-schema`
+  override only changes what the LLM sees. See [[construct-notebook-query-json-schema]]."
+  (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema}))
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -113,9 +120,7 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
-   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema})]
+   [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]
    [:description :string]])

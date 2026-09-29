@@ -3,7 +3,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.skills :as skills]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -176,6 +180,16 @@
       (is (string? content))
       (is (not (str/includes? content "{% include"))
           "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))
+
+(deftest ^:parallel build-system-message-content-document-skills-test
+  (testing "the document prompt lists the notebook query skills its model chart tool needs"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :document-generate-content)
+            content (prompts/build-system-message-content profile {} (profiles/profile->tools profile []) [])]
+        (doseq [skill-id [:construct-notebook-query-core
+                          :construct-notebook-query-advanced
+                          :construct-notebook-query-operators]]
+          (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
 
 (deftest ^:parallel build-system-message-content-test-9
   (testing "renders sql querying template with literal model syntax"

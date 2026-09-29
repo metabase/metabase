@@ -95,6 +95,8 @@
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
     (is (contains? tools "document_construct_model_chart"))
+    (is (contains? tools "load_skill")
+        "the model chart tool's query skills make load_skill available")
     (testing "both SQL tools need the SQL capability, like the tools they delegate to"
       (is (not (contains? tools "document_construct_sql_chart")))
       (is (contains? sql-tools "document_construct_sql_chart")))
