@@ -123,6 +123,13 @@ export const FieldPicker = ({
     selectFirstOption();
   };
 
+  const handleSearchClear = () => {
+    handleSearchChange("");
+    // The clear button unmounts once the search is empty, which would drop
+    // focus to the document body.
+    combobox.focusSearchInput();
+  };
+
   const handleOptionSubmit = (id: string) => {
     const item = items.find((item) => item.id === id);
     if (item && !item.isDisabled) {
@@ -156,7 +163,7 @@ export const FieldPicker = ({
                   <Input.ClearButton
                     aria-label={t`Clear search`}
                     c="text-secondary"
-                    onClick={() => handleSearchChange("")}
+                    onClick={handleSearchClear}
                   />
                 ) : null
               }

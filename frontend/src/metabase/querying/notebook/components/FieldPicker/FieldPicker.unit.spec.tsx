@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { setupForContentTranslationTest } from "metabase/content-translation/test-utils";
 import * as Lib from "metabase-lib";
 
@@ -301,6 +301,15 @@ describe("FieldPicker", () => {
       expect(getSearchInput()).toHaveValue("");
       expect(screen.getByLabelText("Select all")).toBeInTheDocument();
       expect(getOptions()).toHaveLength(columns.length);
+    });
+
+    it("should return focus to the search box when the search is cleared", async () => {
+      setupSearchable();
+
+      await userEvent.type(getSearchInput(), "email");
+      await userEvent.click(screen.getByLabelText("Clear search"));
+
+      await waitFor(() => expect(getSearchInput()).toHaveFocus());
     });
 
     it("should render each column once across repeated searches", async () => {
