@@ -7,7 +7,9 @@ export function checkGroupMappingsWidget(authenticationMethod) {
   addGroupsToMapping("cn=People1", ["Administrators", "data", "nosql"]);
 
   createMapping("cn=People2");
-  addGroupsToMapping("cn=People2", ["data", "collection"]);
+  // Administrators is never deleted along with a mapping's groups, so
+  // cn=People1 keeps it below
+  addGroupsToMapping("cn=People2", ["Administrators", "data", "collection"]);
 
   createMapping("cn=People3");
   addGroupsToMapping("cn=People3", ["collection", "readonly"]);

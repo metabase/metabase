@@ -83,7 +83,6 @@ const databaseTestCases = [
       { label: "Password", value: "testpass" },
       { label: "Use a secure connection (SSL)", value: "on", isChecked: true },
     ],
-    shouldEnableSave: true,
   },
   {
     engine: "Oracle",
@@ -206,11 +205,24 @@ const databaseTestCases = [
 ];
 
 describe("Database connection strings", () => {
-  it("should parse connection strings for all supported databases without clearing existing values", () => {
+  it("should enable 'Save' for a valid connection string, and parse connection strings for all supported databases without clearing existing values", () => {
+    cy.log(
+      "should enable the 'Save' button when the connection string is valid",
+    );
+    // Runs on a fresh form: engine changes keep earlier values, which could
+    // enable Save before the paste
+    cy.visit("/admin/databases/create");
+    chooseDatabase("MySQL");
+    cy.findByLabelText("Connection string (optional)").paste(
+      "jdbc:mysql://testuser:testpass@host:3306/dbname?ssl=true",
+    );
+    cy.button("Save").should("be.enabled");
+
+    cy.log("should parse connection strings for all supported databases");
     cy.visit("/admin/databases/create");
 
     databaseTestCases.forEach(
-      ({ engine, connectionString, expectedFields, shouldEnableSave }) => {
+      ({ engine, connectionString, expectedFields }) => {
         chooseDatabase(engine);
 
         cy.findByLabelText("Connection string (optional)").paste(
@@ -225,10 +237,6 @@ describe("Database connection strings", () => {
             cy.findByLabelText(label).should("be.checked");
           }
         });
-
-        if (shouldEnableSave) {
-          cy.button("Save").should("be.enabled");
-        }
       },
     );
 
@@ -265,6 +273,46 @@ describe("Database connection strings", () => {
 
       cy.findByLabelText("Host").should("have.value", "localhost");
       cy.findByLabelText("Port").should("have.value", QA_MYSQL_PORT.toString());
+      cy.findByLabelText("Database name").should("have.value", "sample");
+      cy.findByLabelText("Username").should("have.value", "metabase");
+      cy.findByLabelText("Password").should("have.value", "metasample123");
+
+      cy.button("Save").should("be.enabled").click();
+
+      cy.wait("@createDatabase").then(({ response }) => {
+        expect(response?.statusCode).to.equal(200);
+        expect(response?.body.name).to.equal("sample");
+      });
+
+      cy.url().should("match", /\/admin\/databases\/\d/);
+      waitForDbSync();
+
+      cy.findByRole("link", { name: "Manage permissions" }).should(
+        "be.visible",
+      );
+      cy.findByRole("link", { name: /Browse data/ }).should("be.visible");
+    });
+
+    it("should successfully connect to PostgreSQL using connection string", () => {
+      cy.visit("/admin/databases/create");
+
+      chooseDatabase("PostgreSQL");
+
+      const connectionString = `jdbc:postgresql://metabase:metasample123@localhost:${QA_POSTGRES_PORT}/sample`;
+
+      cy.findByLabelText("Connection string (optional)").paste(
+        connectionString,
+      );
+
+      cy.findByTextEnsureVisible("Connection details pre-filled below.").should(
+        "exist",
+      );
+
+      cy.findByLabelText("Host").should("have.value", "localhost");
+      cy.findByLabelText("Port").should(
+        "have.value",
+        QA_POSTGRES_PORT.toString(),
+      );
       cy.findByLabelText("Database name").should("have.value", "sample");
       cy.findByLabelText("Username").should("have.value", "metabase");
       cy.findByLabelText("Password").should("have.value", "metasample123");

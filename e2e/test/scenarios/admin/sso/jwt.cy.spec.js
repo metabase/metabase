@@ -106,11 +106,11 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       cy.log("Every mapping is saved as soon as it is added");
       selectGroupMappingMode("Manual");
       addMapping("cn=People1", ["Administrators", "data", "nosql"]);
-      addMapping("cn=People2", ["data", "collection"]);
+      addMapping("cn=People2", ["Administrators", "data", "collection"]);
       addMapping("cn=People3", ["collection", "readonly"]);
 
       cy.log(
-        "Deleting a mapping's groups removes them from the other mappings too",
+        "Deleting a mapping's groups removes them from the other mappings too, but never deletes Administrators",
       );
       deleteMapping(
         "cn=People2",
