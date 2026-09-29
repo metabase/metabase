@@ -1,20 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
+import { CORPUS_OUT, DATA_DIR, MUTANTS } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const OVERNIGHT = path.join(HERE, "..");
-const MUTANTS = path.join(OVERNIGHT, "mutants");
-const REG_RESULTS = path.join(HERE, "results-reg");
-const E2E_RESULTS = path.join(HERE, "e2e-results.json");
+const REG_RESULTS = path.join(DATA_DIR, "results-reg");
+const E2E_RESULTS = path.join(DATA_DIR, "e2e-results.json");
 
 const readJson = (f, fallback) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : fallback);
 const uniq = (xs) => [...new Set(xs)];
 
 const unit = readJson(path.join(MUTANTS, "unit-results.json"), {});
-const regs = readJson(path.join(HERE, "regressions.json"), []);
+const regs = readJson(path.join(DATA_DIR, "regressions.json"), []);
 const e2e = readJson(E2E_RESULTS, {});
 const reach = fs
-  .readFileSync(path.join(OVERNIGHT, "..", "reach-counts.jsonl"), "utf8")
+  .readFileSync(path.join(CORPUS_OUT, "..", "reach-counts.jsonl"), "utf8")
   .split("\n")
   .filter(Boolean)
   .map((l) => JSON.parse(l));
@@ -56,7 +54,7 @@ for (const [id, u] of Object.entries(unit)) {
 
 const cleanTests = new Map();
 for (const dir of ["coverage", "coverage-extra"]) {
-  const f = path.join(HERE, dir, "per-spec.jsonl");
+  const f = path.join(DATA_DIR, dir, "per-spec.jsonl");
   if (!fs.existsSync(f)) continue;
   for (const line of fs.readFileSync(f, "utf8").split("\n")) {
     if (!line) continue;
@@ -67,8 +65,8 @@ for (const dir of ["coverage", "coverage-extra"]) {
   }
 }
 const cleanDeftests = new Set();
-for (const f of fs.readdirSync(path.join(HERE, "results")).filter((f) => f.startsWith("_clean-module-"))) {
-  for (const k of Object.keys(readJson(path.join(HERE, "results", f), { tests: {} }).tests)) cleanDeftests.add(k);
+for (const f of fs.readdirSync(path.join(DATA_DIR, "results")).filter((f) => f.startsWith("_clean-module-"))) {
+  for (const k of Object.keys(readJson(path.join(DATA_DIR, "results", f), { tests: {} }).tests)) cleanDeftests.add(k);
 }
 
 function isWitnessTest(e, testId) {
@@ -104,5 +102,5 @@ for (const e of regs) {
   kills[e.id] = attachE2e(e.id, entry);
 }
 
-fs.writeFileSync(path.join(OVERNIGHT, "kills.json"), JSON.stringify(kills, null, 1) + "\n");
+fs.writeFileSync(path.join(CORPUS_OUT, "kills.json"), JSON.stringify(kills, null, 1) + "\n");
 console.log(`${Object.keys(kills).length} mutants written to kills.json`);

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { WORKTREE } from "./paths.mjs";
 
-const WORKTREE = "/private/tmp/metabase-corpus-mutants";
 const require = createRequire(path.join(WORKTREE, "package.json"));
 const ts = require("typescript");
 

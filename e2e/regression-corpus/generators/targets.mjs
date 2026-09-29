@@ -1,10 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
+import { BUGS, DATA_DIR, WORKTREE } from "./paths.mjs";
 
-const CORPUS = "/Users/fraser/Documents/code/metabase/local/regression-corpus/overnight/july-corpus/bugs";
-const WORKTREE = "/private/tmp/metabase-corpus-mutants";
-const OUT = path.join(path.dirname(new URL(import.meta.url).pathname), "targets.json");
+const OUT = path.join(DATA_DIR, "targets.json");
 
 const SKIP = [
   /\.unit\.spec\./,
@@ -19,10 +18,10 @@ const SKIP = [
 ];
 
 const counts = new Map();
-for (const bug of fs.readdirSync(CORPUS)) {
+for (const bug of fs.readdirSync(BUGS)) {
   const files = new Set();
   for (const name of ["mutation.patch", "reconstruction.patch", "inverse.patch"]) {
-    const p = path.join(CORPUS, bug, name);
+    const p = path.join(BUGS, bug, name);
     if (!fs.existsSync(p)) continue;
     for (const line of fs.readFileSync(p, "utf8").split("\n")) {
       const m = line.match(/^diff --git a\/(\S+) b\//);
@@ -67,6 +66,7 @@ const targets = [...counts.entries()]
   })
   .sort((a, b) => b.freq - a.freq || a.file.localeCompare(b.file));
 
+fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(targets, null, 1));
 const by = (k) => targets.reduce((acc, t) => ((acc[t[k]] = (acc[t[k]] || 0) + 1), acc), {});
 console.log({ total: targets.length, lang: by("lang"), exists: by("exists") });

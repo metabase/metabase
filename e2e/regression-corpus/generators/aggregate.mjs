@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
+import { DATA_DIR, MUTANTS } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const MUTANTS = path.join(HERE, "..", "mutants");
-const RESULTS = path.join(HERE, "results");
+const RESULTS = path.join(DATA_DIR, "results");
 
 const metas = fs
   .readdirSync(MUTANTS)

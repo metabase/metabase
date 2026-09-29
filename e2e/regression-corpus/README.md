@@ -11,7 +11,7 @@ No test run reads this folder. It's data plus the scripts that built it. It live
 - `bugs/<issue>/rebuilt/` holds a mutant rebuilt on a recent master, for entries whose original mutant stopped applying or reintroduced the wrong behaviour.
 - Everything else in `bugs/<issue>/` is from the first pass over the corpus in July 2026 and is kept as it was: the original mutant (`inverse.patch`, `mutation.patch` or `reconstruction.patch`), `witness.patch` when a unit test was written to catch it, the old `config.yaml` and `e2eonly.yaml`, and the agent reports. `record.yaml` is the file to read.
 - `FINDINGS.md`, `E2E-ONLY.md`, `E2E-ORACLE-PILOT.md`, `FE-TEST-GUIDANCE.md` and `MATRIX.md` are the write-ups of that July pass. `scripts/` has the scripts and agent instructions that built its entries.
-- `generators/` has the scripts that plant synthetic mutants and run mutants against the unit suites. They're committed as they last ran, so the worktree and input paths at the top of each are machine-specific, and they write their output next to themselves. Point both somewhere outside the repo before running one.
+- `generators/` has the scripts that plant synthetic mutants and run mutants against the unit suites.
 
 ## The record
 
@@ -83,6 +83,14 @@ The first run should pass and the second should fail with the hint's expected fa
 - Run the whole spec file rather than filtering with `-t`, because test names often have brackets and parentheses in them.
 
 It counts as a kill when the test passes clean, fails with an assertion on the mutant, and does the same again when rerun on its own. A crash, timeout or setup failure is an error, not a kill. A mutant that breaks compilation or fails every test is thrown away.
+
+## Running the scripts
+
+The scripts in `scripts/` and `generators/` take three paths from the environment:
+
+- `REPO_ROOT` is the checkout the corpus is in. It defaults to the checkout the script sits in.
+- `CORPUS_WORKTREE` is where patches get applied and tests run, and where `dispatch-e2e.sh` checks out its mutant branches. It defaults to `REPO_ROOT`, so point it at a separate worktree to keep mutants out of the checkout you're working in. The worktree needs `node_modules`, from `bun install` or a symlink to the main checkout's.
+- `CORPUS_OUT` is where they write. It defaults to `local/regression-corpus/overnight` under `REPO_ROOT`, which git ignores. The generators write under `generators/` and `mutants/` in it, and the July scripts under `july-corpus/`.
 
 ## Results stay out of git
 

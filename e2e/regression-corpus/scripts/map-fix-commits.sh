@@ -7,19 +7,23 @@
 #   introduced: commits where occurrence count of the title-ref changed (oldest last =
 #   the introduction; later entries can be deletions/edits, e.g. PR #77163 removals)
 set -u
-cd "$(dirname "$0")/../.."
-OUT="regression-corpus/fix-commits.jsonl"
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
+mkdir -p "$DATA"
+OUT="$DATA/fix-commits.jsonl"
 touch "$OUT"
 
 issues=$(node -e '
 const fs=require("fs");
 const done=new Set();
-try{for(const l of fs.readFileSync("regression-corpus/fix-commits.jsonl","utf8").trim().split("\n"))if(l)done.add(JSON.parse(l).issue);}catch(e){}
+try{for(const l of fs.readFileSync(process.argv[1],"utf8").trim().split("\n"))if(l)done.add(JSON.parse(l).issue);}catch(e){}
 const s=new Set();
-for(const l of fs.readFileSync("regression-corpus/repro-tests.jsonl","utf8").trim().split("\n"))
+for(const l of fs.readFileSync(process.argv[2],"utf8").trim().split("\n"))
   for(const i of JSON.parse(l).issues) s.add(i);
 console.log([...s].filter(i=>!done.has(i)).sort((a,b)=>b-a).join("\n"));
-')
+' "$OUT" "$DATA/repro-tests.jsonl")
 
 for N in $issues; do
   pick=$(git log --format='%H|%as|%s' --pickaxe-regex \

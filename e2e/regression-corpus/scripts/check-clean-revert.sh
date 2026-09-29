@@ -6,8 +6,11 @@
 # Writes revert-check.jsonl: {issue, commit, date, subject, product_files, status}
 #   status: clean | conflict | test_only | no_candidate
 set -u
-cd "$(dirname "$0")/../.."
-OUT="regression-corpus/revert-check.jsonl"
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
+OUT="$DATA/revert-check.jsonl"
 MAX="${1:-50}"
 
 EXCLUDES=(':(exclude)e2e/*' ':(exclude)test/*' ':(exclude)enterprise/backend/test/*'
@@ -44,11 +47,11 @@ console.log(`cdate=${c?c.date:""}`);
     fi
   fi
   echo "{\"issue\":$issue,\"commit\":\"$commit\",\"date\":\"$cdate\",\"subject\":\"$subject\",\"product_files\":$files,\"status\":\"$status\"}" >> "$OUT"
-done < regression-corpus/fix-commits.jsonl
+done < "$DATA/fix-commits.jsonl"
 
 node -e '
 const fs=require("fs");
-const rows=fs.readFileSync("regression-corpus/revert-check.jsonl","utf8").trim().split("\n").map(JSON.parse);
+const rows=fs.readFileSync(process.argv[1],"utf8").trim().split("\n").map(JSON.parse);
 const by={};for(const r of rows)by[r.status]=(by[r.status]||0)+1;
 console.log("checked:",rows.length,JSON.stringify(by));
-'
+' "$OUT"

@@ -4,20 +4,18 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { parse } from "./gen-ts.mjs";
+import { DATA_DIR, MUTANTS, WORKTREE } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const WORKTREE = "/private/tmp/metabase-corpus-mutants";
-const MUTANTS = path.join(HERE, "..", "mutants");
-const RESULTS = path.join(HERE, "results");
-const COVERAGE = path.join(HERE, "coverage");
-const COVERAGE_EXTRA = path.join(HERE, "coverage-extra");
-const TMP = path.join(HERE, "tmp");
+const RESULTS = path.join(DATA_DIR, "results");
+const COVERAGE = path.join(DATA_DIR, "coverage");
+const COVERAGE_EXTRA = path.join(DATA_DIR, "coverage-extra");
+const TMP = path.join(DATA_DIR, "tmp");
 let SPEC_CAP = 120;
 export const setSpecCap = (n) => {
   SPEC_CAP = n;
 };
 const JEST_TIMEOUT_MS = 25 * 60 * 1000;
-const TSC_BASELINE = path.join(HERE, "tsc-baseline.txt");
+const TSC_BASELINE = path.join(DATA_DIR, "tsc-baseline.txt");
 
 fs.mkdirSync(RESULTS, { recursive: true });
 fs.mkdirSync(TMP, { recursive: true });
@@ -353,7 +351,7 @@ function runFe(meta, patch) {
 }
 
 function moduleFor(file) {
-  const prefixes = JSON.parse(fs.readFileSync(path.join(HERE, "module-prefixes.json"), "utf8"));
+  const prefixes = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "module-prefixes.json"), "utf8"));
   const ns = file.replace(/^src\//, "").replace(/\.cljc?$/, "").replace(/_/g, "-").replace(/\//g, ".");
   let best = null;
   for (const [module, prefix] of Object.entries(prefixes)) {

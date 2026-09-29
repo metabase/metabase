@@ -9,10 +9,13 @@
 # forward `git apply` restores the fix. An EXIT trap force-restores the in-flight
 # patch so a crash/kill never leaves the shared tree mutated.
 set -u
-cd "$(dirname "$0")/../.."
-CORPUS="regression-corpus"
-LOGS="$CORPUS/logs"; mkdir -p "$LOGS"
-OUT="$CORPUS/coverage-results.jsonl"
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+BUGS="$REPO_ROOT/e2e/regression-corpus/bugs"
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
+LOGS="$DATA/logs"; mkdir -p "$LOGS"
+OUT="$DATA/coverage-results.jsonl"
 SKIP="66670 70451"
 
 # --- crash safety: restore whatever patch is currently applied ------------------
@@ -32,11 +35,11 @@ num_before() {  # num_before "<text>" "<word>"  -> first integer preceding <word
   echo "$1" | grep -oE "[0-9]+ $2" | grep -oE '[0-9]+' | head -1
 }
 
-issues="${*:-$(ls "$CORPUS/bugs")}"
+issues="${*:-$(ls "$BUGS")}"
 
 for issue in $issues; do
   case " $SKIP " in *" $issue "*) continue;; esac
-  dir="$CORPUS/bugs/$issue"
+  dir="$BUGS/$issue"
   patch="$dir/inverse.patch"
   [ -f "$patch" ] || continue
 

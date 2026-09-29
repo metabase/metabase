@@ -1,9 +1,14 @@
 #!/usr/bin/env bb
 (require '[rewrite-clj.zip :as z]
+         '[babashka.fs :as fs]
          '[cheshire.core :as json]
          '[clojure.string :as str])
 
-(def worktree "/private/tmp/metabase-corpus-mutants")
+(def repo-root
+  (or (System/getenv "REPO_ROOT")
+      (str (fs/normalize (fs/path (fs/parent (fs/absolutize *file*)) ".." ".." "..")))))
+
+(def worktree (or (System/getenv "CORPUS_WORKTREE") repo-root))
 
 (defn line-starts [s]
   (loop [i 0 acc [0]]

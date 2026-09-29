@@ -3,11 +3,9 @@ import path from "node:path";
 import os from "node:os";
 import { execFileSync, spawnSync } from "node:child_process";
 import * as g from "./gen-ts.mjs";
+import { DATA_DIR, HERE, MUTANTS, WORKTREE } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const WORKTREE = "/private/tmp/metabase-corpus-mutants";
-const OUT = path.join(HERE, "..", "mutants");
-const targets = JSON.parse(fs.readFileSync(path.join(HERE, "targets.json"), "utf8")).filter((t) => t.exists);
+const targets = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "targets.json"), "utf8")).filter((t) => t.exists);
 
 const TOTAL_CAP = 150;
 const PER_FILE_PER_OP = 3;
@@ -183,8 +181,8 @@ for (const { file, match } of BASELINE.pick) {
 }
 
 const final = selected.slice(0, TOTAL_CAP);
-fs.mkdirSync(OUT, { recursive: true });
-for (const f of fs.readdirSync(OUT)) if (/^syn-.*\.(patch|json)$/.test(f)) fs.rmSync(path.join(OUT, f));
+fs.mkdirSync(MUTANTS, { recursive: true });
+for (const f of fs.readdirSync(MUTANTS)) if (/^syn-.*\.(patch|json)$/.test(f)) fs.rmSync(path.join(MUTANTS, f));
 
 const counters = {};
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "mutant-"));
@@ -200,7 +198,7 @@ for (const c of final) {
   fs.writeFileSync(a, original);
   fs.writeFileSync(b, mutated);
   const diff = spawnSync("diff", ["-u", "--label", `a/${c.file}`, "--label", `b/${c.file}`, a, b], { encoding: "utf8" }).stdout;
-  fs.writeFileSync(path.join(OUT, `${id}.patch`), `diff --git a/${c.file} b/${c.file}\n${diff}`);
+  fs.writeFileSync(path.join(MUTANTS, `${id}.patch`), `diff --git a/${c.file} b/${c.file}\n${diff}`);
   const meta = {
     id,
     stratum: c.stratum,
@@ -213,11 +211,11 @@ for (const c of final) {
     corpus_weight: weight.get(c.file) || 0,
     ...(c.reached_via && { reached_via: c.reached_via }),
   };
-  fs.writeFileSync(path.join(OUT, `${id}.json`), JSON.stringify(meta, null, 2) + "\n");
+  fs.writeFileSync(path.join(MUTANTS, `${id}.json`), JSON.stringify(meta, null, 2) + "\n");
   manifest.push(meta);
 }
-fs.writeFileSync(path.join(HERE, "manifest.json"), JSON.stringify(manifest, null, 1));
-fs.writeFileSync(path.join(HERE, "generated-counts.json"), JSON.stringify(generatedCounts, null, 1));
+fs.writeFileSync(path.join(DATA_DIR, "manifest.json"), JSON.stringify(manifest, null, 1));
+fs.writeFileSync(path.join(DATA_DIR, "generated-counts.json"), JSON.stringify(generatedCounts, null, 1));
 const tally = {};
 for (const m of manifest) tally[`${m.stratum}/${m.operator}/${m.lang}`] = (tally[`${m.stratum}/${m.operator}/${m.lang}`] || 0) + 1;
 console.log(`selected ${manifest.length}`, tally);

@@ -1,12 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { BUGS, CORPUS_OUT, DATA_DIR, WORKTREE } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const OVERNIGHT = path.join(HERE, "..");
-const WORKTREE = "/private/tmp/metabase-corpus-mutants";
-const OUT = path.join(HERE, "reg-patches");
-const RECORDS = "/private/tmp/metabase-corpus-v2/regression-corpus/bugs/INDEX.jsonl";
+const OUT = path.join(DATA_DIR, "reg-patches");
+const RECORDS = path.join(BUGS, "INDEX.jsonl");
 fs.mkdirSync(OUT, { recursive: true });
 
 const git = (argv, opts = {}) => {
@@ -47,8 +45,8 @@ function capture(id, kind) {
 const entries = [];
 if (status().length) throw new Error("mutants worktree must start clean");
 
-for (const d of fs.readdirSync(path.join(OVERNIGHT, "reconstructed"))) {
-  const dir = path.join(OVERNIGHT, "reconstructed", d);
+for (const d of fs.readdirSync(path.join(CORPUS_OUT, "reconstructed"))) {
+  const dir = path.join(CORPUS_OUT, "reconstructed", d);
   const r = JSON.parse(fs.readFileSync(path.join(dir, "result.json"), "utf8"));
   if (r.status !== "live") continue;
   const id = `reg-${r.issue}`;
@@ -82,7 +80,7 @@ for (const d of fs.readdirSync(path.join(OVERNIGHT, "reconstructed"))) {
 }
 
 const fresh = fs
-  .readFileSync(path.join(OVERNIGHT, "freshness.jsonl"), "utf8")
+  .readFileSync(path.join(CORPUS_OUT, "freshness.jsonl"), "utf8")
   .split("\n")
   .filter(Boolean)
   .map((l) => JSON.parse(l))
@@ -92,7 +90,7 @@ for (const x of fresh) {
   const id = `reg-${x.issue}`;
   const rec = records.get(x.issue) ?? {};
   const e = { id, issue: x.issue, set: x.status === "live" ? "freshness" : "gap-69160", stratum: rec.stratum ?? null, hint: x.hint, hint_kind: x.hint_kind, layer: x.layer, cljs_rebuild_needed: x.cljs_rebuild_needed, apply: x.apply };
-  const patch = x.apply_cmd.match(/(\/Users\S+\.patch)/)[1];
+  const patch = path.join(BUGS, String(x.issue), x.patch_file);
   const argv = ["apply"];
   if (/ -R /.test(x.apply_cmd)) argv.push("-R");
   if (/--3way/.test(x.apply_cmd)) argv.push("--3way");
@@ -120,7 +118,7 @@ for (const e of entries) {
   const files = e.mutant_files ?? [];
   e.lang = files.every((f) => CLJ_RE.test(f)) ? "clj" : files.some((f) => CLJ_RE.test(f)) ? "both" : "fe";
 }
-fs.writeFileSync(path.join(HERE, "regressions.json"), JSON.stringify(entries, null, 1) + "\n");
+fs.writeFileSync(path.join(DATA_DIR, "regressions.json"), JSON.stringify(entries, null, 1) + "\n");
 console.log(`${entries.length} entries, ${entries.filter((e) => e.error).length} errors`);
 for (const e of entries.filter((e) => e.error)) console.log(e.id, e.error);
 const counts = {};

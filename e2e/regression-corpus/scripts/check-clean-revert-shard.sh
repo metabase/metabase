@@ -5,9 +5,12 @@
 # working tree, so N of these run concurrently safely. Merge the shards afterwards.
 # Usage: SHARD_IDX=<0..N-1> SHARD_TOTAL=<N> check-clean-revert-shard.sh
 set -u
-cd "$(dirname "$0")/../.."
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
 : "${SHARD_IDX:?}" "${SHARD_TOTAL:?}"
-OUT="regression-corpus/revert-check.shard-$SHARD_IDX.jsonl"
+OUT="$DATA/revert-check.shard-$SHARD_IDX.jsonl"
 
 EXCLUDES=(':(exclude)e2e/*' ':(exclude)test/*' ':(exclude)enterprise/backend/test/*'
   ':(exclude)frontend/test/*' ':(exclude)*_test.clj' ':(exclude)*_test.cljc'
@@ -43,5 +46,5 @@ console.log(`cdate=${c?c.date:""}`);
     fi
   fi
   echo "{\"issue\":$issue,\"commit\":\"$commit\",\"date\":\"$cdate\",\"subject\":\"$subject\",\"product_files\":$files,\"status\":\"$status\"}" >> "$OUT"
-done < regression-corpus/fix-commits.jsonl
+done < "$DATA/fix-commits.jsonl"
 echo "scan shard $SHARD_IDX/$SHARD_TOTAL done ($(wc -l < "$OUT" | tr -d ' ') rows)"

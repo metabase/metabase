@@ -4,9 +4,13 @@
 # Creates bugs/<issue>/{config.yaml,inverse.patch}. The patch is the fix's product-code
 # diff (test files excluded); applying it in reverse reintroduces the bug.
 set -eu
-cd "$(dirname "$0")/../.."
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+BUGS="$REPO_ROOT/e2e/regression-corpus/bugs"
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
 ISSUE="$1"; COMMIT="$2"
-DIR="regression-corpus/bugs/$ISSUE"
+DIR="$BUGS/$ISSUE"
 mkdir -p "$DIR"
 
 EXCLUDES=(':(exclude)e2e/*' ':(exclude)test/*' ':(exclude)enterprise/backend/test/*'
@@ -28,11 +32,11 @@ fix_pr=$(printf '%s' "$subject" | grep -oE '#[0-9]+\)?$' | grep -oE '[0-9]+' || 
 node -e '
 const fs=require("fs");
 const issue=+process.argv[1];
-const rows=fs.readFileSync("regression-corpus/repro-tests.jsonl","utf8").trim().split("\n").map(JSON.parse);
+const rows=fs.readFileSync(process.argv[3],"utf8").trim().split("\n").map(JSON.parse);
 const mine=rows.filter(r=>r.issues.includes(issue));
 const yaml=mine.map(r=>`    - spec: ${r.spec}\n      line: ${r.line}\n      kind: ${r.kind}\n      title: ${JSON.stringify(r.title)}`).join("\n");
 fs.writeFileSync(process.argv[2], yaml+"\n");
-' "$ISSUE" "$DIR/.repro_tests.yaml"
+' "$ISSUE" "$DIR/.repro_tests.yaml" "$DATA/repro-tests.jsonl"
 
 cat > "$DIR/config.yaml" <<EOF
 issue: $ISSUE

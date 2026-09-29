@@ -4,8 +4,12 @@
 # Single-line appends to fix-commits.jsonl are atomic (O_APPEND, line < 4096B).
 # Usage: SHARD_IDX=<0..N-1> SHARD_TOTAL=<N> map-fix-commits-shard.sh
 set -u
-cd "$(dirname "$0")/../.."
-OUT="regression-corpus/fix-commits.jsonl"
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+DATA="$CORPUS_OUT/july-corpus"
+cd "${CORPUS_WORKTREE:-$REPO_ROOT}"
+mkdir -p "$DATA"
+OUT="$DATA/fix-commits.jsonl"
 touch "$OUT"
 : "${SHARD_IDX:?set SHARD_IDX}" "${SHARD_TOTAL:?set SHARD_TOTAL}"
 
@@ -13,12 +17,12 @@ issues=$(SHARD_IDX="$SHARD_IDX" SHARD_TOTAL="$SHARD_TOTAL" node -e '
 const fs=require("fs");
 const idx=+process.env.SHARD_IDX, total=+process.env.SHARD_TOTAL;
 const done=new Set();
-try{for(const l of fs.readFileSync("regression-corpus/fix-commits.jsonl","utf8").trim().split("\n"))if(l)done.add(JSON.parse(l).issue);}catch(e){}
+try{for(const l of fs.readFileSync(process.argv[1],"utf8").trim().split("\n"))if(l)done.add(JSON.parse(l).issue);}catch(e){}
 const s=new Set();
-for(const l of fs.readFileSync("regression-corpus/repro-tests.jsonl","utf8").trim().split("\n"))
+for(const l of fs.readFileSync(process.argv[2],"utf8").trim().split("\n"))
   for(const i of JSON.parse(l).issues) s.add(i);
 console.log([...s].filter(i=>!done.has(i) && (((i % total)+total)%total)===idx).sort((a,b)=>b-a).join("\n"));
-')
+' "$OUT" "$DATA/repro-tests.jsonl")
 
 for N in $issues; do
   pick=$(git log --format='%H|%as|%s' --pickaxe-regex \

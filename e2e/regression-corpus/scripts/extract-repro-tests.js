@@ -4,7 +4,11 @@
 const fs = require("fs");
 const path = require("path");
 
-const ROOT = path.resolve(__dirname, "../../e2e/test");
+const REPO_ROOT = path.resolve(process.env.REPO_ROOT || path.join(__dirname, "../../.."));
+const WORKTREE = path.resolve(process.env.CORPUS_WORKTREE || REPO_ROOT);
+const CORPUS_OUT = path.resolve(process.env.CORPUS_OUT || path.join(REPO_ROOT, "local/regression-corpus/overnight"));
+const DATA = path.join(CORPUS_OUT, "july-corpus");
+const ROOT = path.join(WORKTREE, "e2e/test");
 const out = [];
 
 function walk(dir) {
@@ -34,7 +38,7 @@ function scan(file) {
       }
       if (issues.size) {
         out.push({
-          spec: path.relative(path.resolve(__dirname, "../.."), file),
+          spec: path.relative(WORKTREE, file),
           line: i + 1,
           kind,
           skipped: !!skip,
@@ -48,8 +52,9 @@ function scan(file) {
 
 walk(ROOT);
 out.sort((a, b) => a.spec.localeCompare(b.spec) || a.line - b.line);
+fs.mkdirSync(DATA, { recursive: true });
 fs.writeFileSync(
-  path.join(__dirname, "../repro-tests.jsonl"),
+  path.join(DATA, "repro-tests.jsonl"),
   out.map((o) => JSON.stringify(o)).join("\n") + "\n"
 );
 

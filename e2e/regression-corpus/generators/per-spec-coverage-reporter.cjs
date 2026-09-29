@@ -1,7 +1,8 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-const BUN = "/Users/fraser/Documents/code/metabase/node_modules/.bun";
+const REPO_ROOT = path.resolve(process.env.REPO_ROOT || path.join(__dirname, "../../.."));
+const BUN = path.join(REPO_ROOT, "node_modules/.bun");
 const reportersDir = fs.readdirSync(BUN).find((d) => d.startsWith("@jest+reporters@"));
 const libDir = path.join(BUN, reportersDir, "node_modules");
 const libCoverage = require(path.join(libDir, "istanbul-lib-coverage"));

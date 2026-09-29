@@ -4,10 +4,13 @@ ID=$1
 PATCH=$2
 SPEC=$3
 GREP=$4
-WT=/private/tmp/metabase-corpus-ci
+REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
+WT=${CORPUS_WORKTREE:-$REPO_ROOT}
 BASE=8317274709c
-LOG=/Users/fraser/Documents/code/metabase/local/regression-corpus/overnight/generators/e2e-dispatches.jsonl
+CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}
+LOG=$CORPUS_OUT/generators/e2e-dispatches.jsonl
 BRANCH=corpus-mutant/$ID
+mkdir -p "$(dirname "$LOG")"
 
 cd "$WT"
 test -z "$(git status --porcelain)"

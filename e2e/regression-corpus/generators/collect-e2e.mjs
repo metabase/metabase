@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { DATA_DIR } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const DISPATCHES = path.join(HERE, "e2e-dispatches.jsonl");
-const LOGS = path.join(HERE, "e2e-logs");
-const OUT = path.join(HERE, "e2e-results.json");
+const DISPATCHES = path.join(DATA_DIR, "e2e-dispatches.jsonl");
+const LOGS = path.join(DATA_DIR, "e2e-logs");
+const OUT = path.join(DATA_DIR, "e2e-results.json");
 const REPO = "metabase/metabase";
 fs.mkdirSync(LOGS, { recursive: true });
 

@@ -5,13 +5,21 @@
 // = does the spec file still exist on HEAD? Read-only. Writes fe-fix-presence.jsonl.
 const { execSync } = require("child_process");
 const fs = require("fs");
+const path = require("path");
+
+const REPO_ROOT = path.resolve(process.env.REPO_ROOT || path.join(__dirname, "../../.."));
+const WORKTREE = path.resolve(process.env.CORPUS_WORKTREE || REPO_ROOT);
+const CORPUS_OUT = path.resolve(process.env.CORPUS_OUT || path.join(REPO_ROOT, "local/regression-corpus/overnight"));
+const DATA = path.join(CORPUS_OUT, "july-corpus");
+process.chdir(WORKTREE);
+
 const sh = (c) => { try { return execSync(c, { maxBuffer: 1e9 }).toString(); } catch (e) { return e.stdout ? e.stdout.toString() : ""; } };
 
 const isProd = (f) => /^(frontend|enterprise\/frontend)\/src\/.*\.(ts|tsx|js|jsx)$/.test(f) && !/\.(unit\.)?spec\.|\.stories\./.test(f);
 const isTest = (f) => /^(frontend|enterprise\/frontend).*\.(unit\.spec|spec)\.(ts|tsx|js|jsx)$/.test(f);
 const existsHead = (f) => { try { execSync(`git cat-file -e HEAD:'${f}' 2>/dev/null`); return true; } catch (e) { return false; } };
 
-const rows = fs.readFileSync("regression-corpus/revert-check.jsonl", "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
+const rows = fs.readFileSync(path.join(DATA, "revert-check.jsonl"), "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
 const conflicts = rows.filter((r) => r.status === "conflict" && r.commit);
 
 const out = [];
@@ -27,7 +35,7 @@ for (const r of conflicts) {
   const cls = liveTests.length === 0 ? "all_specs_gone" : goneTests.length ? "partial" : "live_candidate";
   out.push({ issue: r.issue, commit: r.commit, class: cls, prod, live_specs: liveTests, gone_specs: goneTests });
 }
-fs.writeFileSync("regression-corpus/fe-fix-presence.jsonl", out.map((o) => JSON.stringify(o)).join("\n") + "\n");
+fs.writeFileSync(path.join(DATA, "fe-fix-presence.jsonl"), out.map((o) => JSON.stringify(o)).join("\n") + "\n");
 const by = {}; for (const o of out) by[o.class] = (by[o.class] || 0) + 1;
 console.log(`FE-with-shipped-test conflict candidates: ${cand}`);
 console.log(`by class: ${JSON.stringify(by)}`);

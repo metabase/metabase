@@ -3,9 +3,17 @@
 // commit touched BE product code AND shipped a BE test, check whether the deftests the fix
 // ADDED still exist in the current tree. Gone => the fix was reverted/superseded (zombie);
 // present => live candidate (confirm by running at HEAD in Level 2).
-// Writes regression-corpus/fix-presence.jsonl. Read-only on the working tree.
+// Writes fix-presence.jsonl. Read-only on the working tree.
 const { execSync } = require("child_process");
 const fs = require("fs");
+const path = require("path");
+
+const REPO_ROOT = path.resolve(process.env.REPO_ROOT || path.join(__dirname, "../../.."));
+const WORKTREE = path.resolve(process.env.CORPUS_WORKTREE || REPO_ROOT);
+const CORPUS_OUT = path.resolve(process.env.CORPUS_OUT || path.join(REPO_ROOT, "local/regression-corpus/overnight"));
+const DATA = path.join(CORPUS_OUT, "july-corpus");
+process.chdir(WORKTREE);
+
 const sh = (cmd) => { try { return execSync(cmd, { maxBuffer: 1e9 }).toString(); } catch (e) { return e.stdout ? e.stdout.toString() : ""; } };
 
 const nameRe = /^\(deftest\s+(?:\^[^\s]+\s+)*([^\s()]+)/;
@@ -19,7 +27,7 @@ for (const line of sh(`grep -rhE "^\\(deftest" test enterprise/backend/test 2>/d
 console.error(`current deftests in tree: ${current.size}`);
 
 // 2. Conflicts
-const rows = fs.readFileSync("regression-corpus/revert-check.jsonl", "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
+const rows = fs.readFileSync(path.join(DATA, "revert-check.jsonl"), "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
 const conflicts = rows.filter((r) => r.status === "conflict" && r.commit);
 
 const out = [];
@@ -45,7 +53,7 @@ for (const r of conflicts) {
   out.push({ issue: r.issue, commit: r.commit, class: cls, added: uniq, live, gone, prod_be: prodBe });
 }
 
-fs.writeFileSync("regression-corpus/fix-presence.jsonl", out.map((o) => JSON.stringify(o)).join("\n") + "\n");
+fs.writeFileSync(path.join(DATA, "fix-presence.jsonl"), out.map((o) => JSON.stringify(o)).join("\n") + "\n");
 const by = {};
 for (const o of out) by[o.class] = (by[o.class] || 0) + 1;
 console.log(`BE-with-shipped-test conflict candidates: ${cand}`);

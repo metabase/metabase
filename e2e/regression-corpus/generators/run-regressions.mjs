@@ -17,9 +17,9 @@ import {
 } from "./run-mutants.mjs";
 import { createRequire } from "node:module";
 import { parse } from "./gen-ts.mjs";
+import { DATA_DIR, HERE } from "./paths.mjs";
 
-const HERE = path.dirname(new URL(import.meta.url).pathname);
-const OUT = path.join(HERE, "results-reg");
+const OUT = path.join(DATA_DIR, "results-reg");
 const JEST_TIMEOUT_MS = 40 * 60 * 1000;
 fs.mkdirSync(OUT, { recursive: true });
 setSpecCap(400);
@@ -405,7 +405,7 @@ function runCljLane(e) {
   return result;
 }
 
-const entries = JSON.parse(fs.readFileSync(path.join(HERE, "regressions.json"), "utf8"))
+const entries = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "regressions.json"), "utf8"))
   .filter((e) => !e.error && !skip.has(e.id))
   .filter((e) => !only || only.includes(e.id))
   .filter((e) => e.mutant_files.some(inLane))
