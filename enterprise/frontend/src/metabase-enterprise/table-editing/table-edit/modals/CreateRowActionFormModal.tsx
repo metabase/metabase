@@ -78,10 +78,7 @@ export function CreateRowActionFormModal({
 
   // Reset form when modal is opened
   useEffect(() => {
-    if (opened) {
-      resetForm({ values: initialValues });
-      revalidateForm();
-    }
+    return;
   }, [opened, resetForm, revalidateForm, initialValues]);
 
   const shouldShowLeaveConfirmation = useCallback(() => {
