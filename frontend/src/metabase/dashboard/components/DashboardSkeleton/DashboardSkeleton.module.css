@@ -1,0 +1,51 @@
+.header {
+  background-color: var(--mb-color-background_page-primary);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.body {
+  flex: 1 0 auto;
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+/* Header content, tabs, and cards share the same centered column so their
+ * left/right edges line up with the real dashboard content. */
+.inner {
+  width: 100%;
+  max-width: 1024px;
+  margin: 0 auto;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 0.75rem;
+}
+
+.actions {
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tabsRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 0.75rem;
+}
+
+.filtersRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.cards {
+  padding-top: 1rem;
+  padding-bottom: 2.5rem;
+}

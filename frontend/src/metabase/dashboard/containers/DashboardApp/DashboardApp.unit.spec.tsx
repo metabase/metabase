@@ -61,7 +61,7 @@ interface Options {
   slug?: string;
 }
 
-async function setup({ dashboard, slug }: Options = {}) {
+function renderDashboardApp({ dashboard, slug }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
@@ -116,14 +116,20 @@ async function setup({ dashboard, slug }: Options = {}) {
     },
   );
 
-  await waitForLoaderToBeRemoved();
-
   return {
     dashboardId,
     router: checkNotNull(router),
     store,
     mockEventListener,
   };
+}
+
+async function setup(options: Options = {}) {
+  const view = renderDashboardApp(options);
+
+  await waitForLoaderToBeRemoved();
+
+  return view;
 }
 
 describe("DashboardApp", () => {
@@ -283,6 +289,25 @@ describe("DashboardApp", () => {
 
     expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
     expect(store.getState().app.errorPage).toMatchObject({ status: 404 });
+  });
+
+  describe("loading state (DSN-749)", () => {
+    it("renders a skeleton card layout instead of a loading spinner while the definition loads", async () => {
+      renderDashboardApp();
+
+      // The dashboard skeleton (header chrome + card layout) renders
+      // immediately — a loading spinner is never shown when opening a dashboard.
+      expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-grid-skeleton")).toBeInTheDocument();
+      expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+
+      // Once the definition arrives, the real dashboard replaces the skeleton.
+      await waitForLoaderToBeRemoved();
+      expect(await screen.findByTestId("dashboard")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-skeleton"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("should not allow to enter a dashboard name longer than 254 characters", async () => {

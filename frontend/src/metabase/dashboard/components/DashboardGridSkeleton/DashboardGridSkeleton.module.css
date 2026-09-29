@@ -1,0 +1,86 @@
+.root {
+  width: 100%;
+  container-type: inline-size;
+}
+
+/*
+ * Mirrors react-grid-layout's geometry (see DashboardGrid): 24 columns, 6px
+ * margins, and a row height of width / 24 / GRID_ASPECT_RATIO (10 / 9) clamped
+ * to a 40px minimum. Expressed in container-query width units so the skeleton
+ * cards land at the same size and position the real cards will, at any width.
+ */
+.grid {
+  --skeleton-margin: 6px;
+  --skeleton-row-height: max(3.75cqw, 40px);
+  --skeleton-col-width: calc((100cqw - var(--skeleton-margin) * 23) / 24);
+
+  position: relative;
+  width: 100%;
+  height: calc(
+    (var(--skeleton-row-height) + var(--skeleton-margin)) *
+      var(--skeleton-rows) + var(--skeleton-extra, 0px)
+  );
+}
+
+.card {
+  position: absolute;
+  overflow: hidden;
+  background-color: var(--mb-color-bg-dashboard-card);
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+  left: calc(
+    (var(--skeleton-col-width) + var(--skeleton-margin)) * var(--skeleton-col)
+  );
+  top: calc(
+    (var(--skeleton-row-height) + var(--skeleton-margin)) * var(--skeleton-row)
+  );
+  width: calc(
+    var(--skeleton-col-width) * var(--skeleton-w) + (var(--skeleton-w) - 1) *
+      var(--skeleton-margin)
+  );
+  height: var(
+    --skeleton-card-height,
+    calc(
+      var(--skeleton-row-height) * var(--skeleton-h) + (var(--skeleton-h) - 1) *
+        var(--skeleton-margin)
+    )
+  );
+}
+
+/* Heading and text cards have no card chrome — just their text lines. */
+.transparent {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.textContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.textContentHeading {
+  font-size: 1.25rem;
+}
+
+@container (max-width: 752px) {
+  .grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--skeleton-margin);
+    height: auto;
+  }
+
+  .card {
+    position: static;
+    width: 100%;
+    height: var(
+      --skeleton-card-height,
+      calc(var(--skeleton-row-height) * var(--skeleton-h))
+    );
+  }
+}

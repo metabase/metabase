@@ -1,16 +1,19 @@
 import cx from "classnames";
 import { useMemo } from "react";
-import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { getIsHeaderVisible } from "metabase/dashboard/selectors";
+import {
+  getIsHeaderVisible,
+  getLastSeenDashboardParameterCount,
+  getLastSeenTabDashcards,
+} from "metabase/dashboard/selectors";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -22,6 +25,7 @@ import {
 } from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
+import { DashboardSkeleton } from "../DashboardSkeleton";
 import { DashboardTabs } from "../DashboardTabs";
 import { DashboardTitle } from "../DashboardTitle";
 import { FilterApplyToast } from "../FilterApplyToast";
@@ -32,12 +36,24 @@ import { Grid, ParametersList } from "./components";
 import { useDashboardChartPaste } from "./use-dashboard-chart-paste";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
-    useDashboardContext();
+  const {
+    dashboard,
+    dashboardId,
+    isEditing,
+    isFullscreen,
+    isSharing,
+    selectedTabId,
+  } = useDashboardContext();
 
   useDashboardChartPaste();
 
   const isHeaderVisible = useSelector(getIsHeaderVisible);
+  const lastSeenTabDashcards = useSelector((state) =>
+    getLastSeenTabDashcards(state, dashboardId),
+  );
+  const lastSeenFilterCount = useSelector((state) =>
+    getLastSeenDashboardParameterCount(state, dashboardId),
+  );
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -55,7 +71,12 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
   if (!dashboard) {
-    return <Loader size="lg" label={t`Loading…`} />;
+    return (
+      <DashboardSkeleton
+        cards={lastSeenTabDashcards}
+        filterCount={lastSeenFilterCount}
+      />
+    );
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);

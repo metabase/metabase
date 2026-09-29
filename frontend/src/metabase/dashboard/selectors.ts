@@ -26,6 +26,7 @@ import type {
   EditParameterSidebarState,
   State,
   StoreDashboard,
+  StoreDashcard,
 } from "metabase/redux/store";
 import { getSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
@@ -180,6 +181,52 @@ export const getDashboardById = (state: State, dashboardId: DashboardId) => {
   const dashboards = getDashboards(state);
   return dashboards[dashboardId];
 };
+
+const EMPTY_DASHCARDS: StoreDashcard[] = [];
+
+/**
+ * The dashcards of a dashboard's default tab, read from the persisted Redux
+ * cache by id. Unlike `getDashboardComplete`, this survives the reset of the
+ * active `dashboardId` pointer during a (re)fetch, so a previously-visited
+ * dashboard can render its real card layout as a skeleton instantly instead
+ * of a loading spinner. Empty on a first-ever cold load. Memoized so the
+ * result is referentially stable across the loading window's re-renders.
+ */
+export const getLastSeenTabDashcards = createSelector(
+  [
+    getDashboards,
+    getDashcards,
+    (_state: State, dashboardId: DashboardId | null) => dashboardId,
+  ],
+  (dashboards, dashcardMap, dashboardId): StoreDashcard[] => {
+    const dashboard = dashboardId == null ? null : dashboards[dashboardId];
+    if (!dashboard || dashboard.dashcards.length === 0) {
+      return EMPTY_DASHCARDS;
+    }
+
+    const dashcards = dashboard.dashcards
+      .map((id) => dashcardMap[id])
+      .filter((dc): dc is StoreDashcard => isNotNull(dc) && !dc.isRemoved);
+
+    const defaultTabId = dashboard.tabs?.[0]?.id ?? null;
+    return defaultTabId == null
+      ? dashcards
+      : dashcards.filter((dc) => dc.dashboard_tab_id === defaultTabId);
+  },
+);
+
+/**
+ * The number of filter widgets a previously-visited dashboard has, read from
+ * the persisted Redux cache by id so the skeleton can render filter
+ * placeholders instantly. Zero on a first-ever cold load.
+ */
+export const getLastSeenDashboardParameterCount = (
+  state: State,
+  dashboardId: DashboardId | null,
+): number =>
+  dashboardId == null
+    ? 0
+    : (getDashboardById(state, dashboardId)?.parameters?.length ?? 0);
 
 export const getLinkTargetEntities = (state: State) =>
   state.dashboard.linkTargets;

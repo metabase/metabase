@@ -1,12 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
 
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import { useDashboardContext } from "../../../context";
@@ -29,7 +27,6 @@ export const Grid = ({
     selectedTabId,
     isEditing,
     onRefreshPeriodChange,
-    isLoadingWithoutCards,
     onAddQuestion,
     isEditableDashboard,
   } = useDashboardContext();
@@ -70,10 +67,6 @@ export const Grid = ({
   }, [handleSetEditing, dashboard, onAddQuestion]);
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-
-  if (isLoadingWithoutCards) {
-    return <Loader size="lg" label={t`Loading…`} />;
-  }
 
   if (isEmpty) {
     if (!dashboardHasCards) {

@@ -14,6 +14,8 @@ import {
   getEditingParameterId,
   getIsEditingParameter,
   getIsSharing,
+  getLastSeenDashboardParameterCount,
+  getLastSeenTabDashcards,
   getParameters,
   getQuestionByCard,
   getSelectedTabId,
@@ -564,6 +566,67 @@ describe("getQuestionByCard", () => {
 
     first.forEach((question, index) => {
       expect(question).toBe(second[index]);
+    });
+  });
+
+  describe("getLastSeenTabDashcards", () => {
+    // The active pointer is null, mimicking the window during a (re)fetch when
+    // the layout can only be read from the persisted cache by id.
+    const CACHED_STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            dashcards: [10, 11, 12],
+            tabs: [
+              createMockDashboardTab({ id: 100 }),
+              createMockDashboardTab({ id: 200 }),
+            ],
+          }),
+        },
+        dashcards: {
+          10: createMockDashboardCard({ id: 10, dashboard_tab_id: 100 }),
+          11: createMockDashboardCard({ id: 11, dashboard_tab_id: 100 }),
+          12: createMockDashboardCard({ id: 12, dashboard_tab_id: 200 }),
+        },
+      }),
+    });
+
+    it("returns the cached default-tab dashcards even when the active dashboard id is reset", () => {
+      const cards = getLastSeenTabDashcards(CACHED_STATE, 5);
+      expect(cards.map((dc) => dc.id)).toEqual([10, 11]);
+    });
+
+    it("returns an empty array for an uncached dashboard (first cold visit)", () => {
+      expect(getLastSeenTabDashcards(CACHED_STATE, 999)).toEqual([]);
+      expect(getLastSeenTabDashcards(CACHED_STATE, null)).toEqual([]);
+    });
+  });
+
+  describe("getLastSeenDashboardParameterCount", () => {
+    const CACHED_STATE = createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: null,
+        dashboards: {
+          5: createMockStoreDashboard({
+            id: 5,
+            parameters: [
+              createMockParameter({ id: "a" }),
+              createMockParameter({ id: "b" }),
+            ],
+          }),
+        },
+      }),
+    });
+
+    it("returns the cached filter count for a previously-visited dashboard", () => {
+      expect(getLastSeenDashboardParameterCount(CACHED_STATE, 5)).toBe(2);
+    });
+
+    it("returns 0 for an uncached dashboard (first cold visit)", () => {
+      expect(getLastSeenDashboardParameterCount(CACHED_STATE, 999)).toBe(0);
+      expect(getLastSeenDashboardParameterCount(CACHED_STATE, null)).toBe(0);
     });
   });
 });
