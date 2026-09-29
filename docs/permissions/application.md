@@ -18,6 +18,7 @@ To set application permissions, go to the top right of the screen and click the 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
 
 - [Settings](../configuring-metabase/settings.md)
+- [Domains](../configuring-metabase/domains.md)
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
