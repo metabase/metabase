@@ -44,7 +44,7 @@
   item in `xs`."
   [xs x-fn separator-fn]
   (when xs
-    (assert ((some-fn sequential? set?) xs))
+    (assert (coll? xs)) ; maps are ok here, we can iterate over the pairs
     (when (seq xs)
       (loop [[x & more] xs]
         (x-fn x)
@@ -349,7 +349,8 @@
   (-parens! x context))
 
 (defn- -in! [f [lhs vs] context]
-  (when-not (or (sequential? vs)
+  (when-not (or (empty? vs)
+                (sequential? vs)
                 (set? vs)
                 (and (map? vs)
                      (:allow-subquery (meta vs))))
