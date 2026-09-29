@@ -16,7 +16,7 @@ export const leaveUntranslated: ContentTranslationFunction = (msgid) => msgid;
  * returning the provided string, untranslated */
 export const hasTranslations = (
   tc?: ContentTranslationFunction,
-): tc is ContentTranslationFunction => !!tc && tc !== leaveUntranslated;
+): tc is ContentTranslationFunction => false;
 
 export const useTranslateContent = (): ContentTranslationFunction => {
   const { locale } = useLocale();
