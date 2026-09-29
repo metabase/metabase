@@ -35,6 +35,23 @@
   [_]
   (alter-var-root #'timezones-test/broken-drivers conj :starburst))
 
+(deftest cloud-refuses-tls-off-and-host-identity-settings-test
+  ;; on Metabase Cloud the host is ours, not the admin's: no connection may skip TLS verification or authenticate as it
+  (let [details {:host "h" :port 8080 :catalog "c" :user "u"}
+        spec    #(sql-jdbc.conn/connection-details->spec :starburst (merge details %))]
+    (doseq [extra [{:SSLVerification "NONE"}
+                   {:additional-options "SSLVerification=CA"}]]
+      (testing (pr-str extra)
+        (mt/with-premium-features #{:hosting}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed on Metabase Cloud" (spec extra))))
+        (testing "self-hosted, where the host is the admin's to configure"
+          (mt/with-premium-features #{}
+            (is (map? (spec extra)))))))
+    (testing "ordinary settings are unaffected on Cloud"
+      (mt/with-premium-features #{:hosting}
+        (doseq [extra [{:SSLVerification "FULL"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
 (deftest have-select-privilege-mixed-tables-test
   (testing "have-select-privilege? correctly handles mixed Hive/Iceberg tables (Issue #63127)"
     (testing "Returns true when DESCRIBE succeeds (compatible table type)"

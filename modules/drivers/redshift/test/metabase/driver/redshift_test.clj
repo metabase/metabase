@@ -39,6 +39,27 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest cloud-refuses-tls-off-and-host-identity-settings-test
+  ;; on Metabase Cloud the host is ours, not the admin's: no connection may skip TLS verification or authenticate as it
+  (let [details {:host "h" :port 5439 :db "db" :user "u" :password "p"}
+        spec    #(sql-jdbc.conn/connection-details->spec :redshift (merge details %))]
+    (doseq [extra [{:additional-options "iamauth=true"}
+                   {:profile "default"}
+                   {:AuthProfile "p"}
+                   {:additional-options "ssl_insecure=true"}
+                   {:plugin_name "a.b.C"}
+                   {:credentials_provider "a.b.C"}]]
+      (testing (pr-str extra)
+        (mt/with-premium-features #{:hosting}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed on Metabase Cloud" (spec extra))))
+        (testing "self-hosted, where the host is the admin's to configure"
+          (mt/with-premium-features #{}
+            (is (map? (spec extra)))))))
+    (testing "ordinary settings are unaffected on Cloud"
+      (mt/with-premium-features #{:hosting}
+        (doseq [extra [{:additional-options "ssl=true"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
 (deftest default-schema-test
   (mt/test-driver :redshift
     (testing "default"

@@ -744,18 +744,31 @@
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: IAM
+  authentication that takes its AWS credentials from the host (its default chain or a local profile) or from a class
+  of the admin's choosing, and skipping TLS certificate verification."
+  (let [present? (complement str/blank?)]
+    {"iamauth"              sql-jdbc.common/truthy-value?
+     "profile"              present?
+     "authprofile"          present?
+     "credentials_provider" present?
+     "plugin_name"          present?
+     "ssl_insecure"         sql-jdbc.common/truthy-value?}))
+
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
   [_ {:keys [host port db dbname], :as opts}]
   (when (and db dbname)
     (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
-  (sql-jdbc.common/handle-additional-options
-   (merge
-    {:classname                     "com.amazon.redshift.jdbc42.Driver"
-     :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" (or db dbname))
-     :ssl                           true
-     :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db :dbname))))
+  (cond-> (sql-jdbc.common/handle-additional-options
+           (merge
+            {:classname                     "com.amazon.redshift.jdbc42.Driver"
+             :subprotocol                   "redshift"
+             :subname                       (str "//" host ":" port "/" (or db dbname))
+             :ssl                           true
+             :OpenSourceSubProtocolOverride false}
+            (dissoc opts :host :port :db :dbname)))
+    (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

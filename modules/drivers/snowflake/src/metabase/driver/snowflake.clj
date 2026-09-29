@@ -270,6 +270,13 @@
         (and (not use-password) password-details)
         (conj password-details)))))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: authenticating as
+  the host's own cloud identity, and skipping TLS certificate or revocation checks."
+  {"authenticator"     (sql-jdbc.common/one-of "workload_identity")
+   "insecuremode"      sql-jdbc.common/truthy-value?
+   "disableocspchecks" sql-jdbc.common/truthy-value?})
+
 (defn- normalize-additional-options [additional-options]
   (when-not (str/blank? additional-options)
     (not-empty
@@ -341,7 +348,8 @@
         ;; Role is not respected when used as connection property if connection string is present with private key
         ;; file. Hence it is moved to connection url. https://github.com/metabase/metabase/issues/43600
         (maybe-add-role-to-spec-url details)
-        (assoc :enablePutGet "false"))))
+        (assoc :enablePutGet "false")
+        (cond-> (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values)))))
 
 (mu/defn- database-type->base-type
   [database-type :- string?

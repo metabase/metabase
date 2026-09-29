@@ -37,6 +37,25 @@
   [{:column_name "id", :type_name "string"}
    {:column_name "ts", :type_name "STRING"}])
 
+(deftest cloud-refuses-tls-off-and-host-identity-settings-test
+  ;; on Metabase Cloud the host is ours, not the admin's: no connection may skip TLS verification or authenticate as it
+  (let [details {:region "us-east-1" :access_key "k" :secret_key "s" :s3_staging_dir "s3://b/p"}
+        spec    #(sql-jdbc.conn/connection-details->spec :athena (merge details %))]
+    (doseq [extra [{:additional-options "CredentialsProvider=DefaultChain"}
+                   {:CredentialsProvider "InstanceProfile"}
+                   {:AWSCredentialsProviderClass "a.b.C"}]]
+      (testing (pr-str extra)
+        (mt/with-premium-features #{:hosting}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed on Metabase Cloud" (spec extra))))
+        (testing "self-hosted, where the host is the admin's to configure"
+          (mt/with-premium-features #{}
+            (is (map? (spec extra)))))))
+    (testing "ordinary settings are unaffected on Cloud"
+      (mt/with-premium-features #{:hosting}
+        (doseq [extra [{}
+                       {:additional-options "CredentialsProvider=Static"}]]
+          (is (map? (spec extra)) (pr-str extra)))))))
+
 (deftest sync-test
   (testing "sync with nested fields"
     (mt/with-dynamic-fn-redefs [athena/run-query (constantly nested-schema)]

@@ -81,6 +81,13 @@
             hostname)}
    [:host]))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: any credentials
+  provider other than the access key the admin supplied would authenticate as the host's AWS identity (the default
+  chain, the instance profile, a local profile) or instantiate a class of the admin's choosing."
+  {"credentialsprovider"         #(not (or (str/blank? %) ((sql-jdbc.common/one-of "static") %)))
+   "awscredentialsproviderclass" (complement str/blank?)})
+
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
   (-> (merge
@@ -105,7 +112,8 @@
                ;; Remove 2.x jdbc driver version options from details.
                ;; They are mapped to appropriate 3.x keys on preceding lines
                :db :dbname :catalog :region :access_key :secret_key :s3_staging_dir :workgroup :hostname))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)
+      (cond-> (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values))))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
   [_driver {:keys [catalog], s3-results-bucket :s3_staging_dir}]

@@ -970,6 +970,11 @@
     (str v)
     v))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: `NONE` skips TLS
+  certificate verification and `CA` skips the hostname check."
+  {"sslverification" (sql-jdbc.common/one-of "none" "ca")})
+
 (defmethod sql-jdbc.conn/connection-details->spec :starburst
   [_ details-map]
   (let [props (-> details-map
@@ -1000,7 +1005,8 @@
                                  :extraCredentials :roles :sessionProperties :externalAuthentication :externalAuthenticationTokenCache :disableCompression
                                  :explicitPrepare :assumeLiteralNamesInMetadataCallsForNonConformingClients]
                                 (keys kerb-props->url-param-names))))]
-    (jdbc-spec props)))
+    (cond-> (jdbc-spec props)
+      (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Inline                                                     |

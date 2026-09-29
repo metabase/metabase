@@ -95,3 +95,31 @@
       "//:5439/db"
       "//:443/;ConnCatalog=c"
       "//a.example.com:5432,:5432/db")))
+
+(deftest ^:parallel spec-parameters-test
+  (testing "properties and connection-string parameters, with names lower-cased and trimmed"
+    (is (= #{["user" "u"] ["authenticator" "WORKLOAD_IDENTITY"] ["ssl" "true"] ["insecuremode" "true"]}
+           (set (sql-jdbc.common/spec-parameters {:classname   "a.Driver"
+                                                  :subprotocol "x"
+                                                  :subname     "//h:1/db?ssl=true& insecureMode =true"
+                                                  :user        "u"
+                                                  :Authenticator "WORKLOAD_IDENTITY"
+                                                  :password    nil})))))
+  (testing "a `:connection-uri` is read too"
+    (is (= [["sslverification" "NONE"]]
+           (sql-jdbc.common/spec-parameters {:connection-uri "jdbc:x://h:1/db;SSLVerification=NONE"})))))
+
+(deftest refuse-parameter-values!-test
+  (let [rules {"authenticator" (sql-jdbc.common/one-of "workload_identity")
+               "insecuremode"  sql-jdbc.common/truthy-value?}]
+    (testing "a matching value is refused, whether a property or a connection-string parameter, in any casing"
+      (doseq [spec [{:subname "//h/db" :AUTHENTICATOR "Workload_Identity"}
+                    {:subname "//h/db?insecureMode=TRUE"}
+                    {:subname "//h/db" :insecureMode 1}]]
+        (testing (pr-str spec)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not allowed on Metabase Cloud"
+                                (sql-jdbc.common/refuse-parameter-values! spec rules))))))
+    (testing "other values, and other parameters, are left alone and the spec is returned"
+      (doseq [spec [{:subname "//h/db" :authenticator "SNOWFLAKE_JWT" :insecureMode "false"}
+                    {:subname "//h/db?other=workload_identity"}]]
+        (is (= spec (sql-jdbc.common/refuse-parameter-values! spec rules)))))))

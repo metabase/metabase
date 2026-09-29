@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.performance :refer [not-empty]]))
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
@@ -169,3 +170,41 @@
           cat
           [(keep #(parameter-host declared? true %) (connection-string-parameters connection-string))
            (keep #(parameter-host declared? false %) (filter (comp string? val) extra-parameters))])))
+
+(defn spec-parameters
+  "Every connection parameter a JDBC `spec` hands its client, as `[name value]` pairs with the name trimmed and
+  lower-cased: the spec's own keys (other than the ones that build the URL, and `nil`s), and the parameters written
+  into its `:subname` or `:connection-uri`. Values are strings."
+  [spec]
+  (concat
+   (for [[k v] (dissoc spec :classname :subprotocol :subname :connection-uri)
+         :when (some? v)]
+     [(u/lower-case-en (str/trim (name k))) (str v)])
+   (for [conn-str [(:subname spec) (:connection-uri spec)]
+         :when    (string? conn-str)
+         [k v]    (connection-string-parameters conn-str)]
+     [(u/lower-case-en k) v])))
+
+(defn truthy-value?
+  "Whether a connection parameter's `value` switches its setting on, the way JDBC clients read booleans."
+  [value]
+  (contains? #{"true" "1" "yes" "on"} (u/lower-case-en (str/trim (str value)))))
+
+(defn one-of
+  "A predicate for [[refuse-parameter-values!]] matching any of `values`, case-insensitively."
+  [& values]
+  (let [values (into #{} (map u/lower-case-en) values)]
+    (fn [value] (contains? values (u/lower-case-en (str/trim (str value)))))))
+
+(defn refuse-parameter-values!
+  "Throw a 400 if any connection parameter of `spec` (see [[spec-parameters]]) has a value `rules` refuses; otherwise
+  return `spec`. `rules` maps a lower-cased parameter name to a predicate on its value. Checking the finished spec
+  rather than the details catches a value however it got there: a detail key the driver passes through, or
+  `:additional-options`. Drivers call this for settings that are not allowed on Metabase Cloud."
+  [spec rules]
+  (doseq [[k v] (spec-parameters spec)
+          :let  [refused? (get rules k)]
+          :when (and refused? (refused? v))]
+    (throw (ex-info (tru "The {0} connection setting is not allowed on Metabase Cloud." k)
+                    {:status-code 400, :parameter k})))
+  spec)

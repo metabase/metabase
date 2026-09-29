@@ -153,6 +153,11 @@
              (when (.next rset)
                (.getString rset 1))))))))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: setting an SNI
+  name makes the client accept any certificate hostname."
+  {"ssl_socket_sni" (complement str/blank?)})
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils
@@ -183,7 +188,8 @@
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))}
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+        (sql-jdbc.common/handle-additional-options details :separator-style :url)
+        (cond-> (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values)))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (boolean (-> db clickhouse-version/dbms-version :cloud)))

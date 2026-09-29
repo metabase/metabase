@@ -225,6 +225,16 @@
   [_driver base-type]
   (type->database-type base-type))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: authenticating as
+  the host's own identity (managed identity, the default Azure credential chain, Windows/Kerberos integrated
+  authentication) and skipping TLS certificate verification."
+  {"authentication"         (sql-jdbc.common/one-of "activedirectorymanagedidentity" "activedirectorymsi"
+                                                    "activedirectorydefault" "activedirectoryintegrated")
+   "integratedsecurity"     sql-jdbc.common/truthy-value?
+   "keystoreauthentication" (sql-jdbc.common/one-of "keyvaultmanagedidentity")
+   "trustservercertificate" sql-jdbc.common/truthy-value?})
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
@@ -256,7 +266,8 @@
       ;; that drop the connection whenever the property is present (#81270)
       (merge (when port {:port port})
              (when-not (str/blank? instance) {:instanceName instance}))
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
+      (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)
+      (cond-> (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values))))
 
 (def ^:private disallowed-additional-opts
   #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")

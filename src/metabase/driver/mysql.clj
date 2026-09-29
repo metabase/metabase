@@ -751,6 +751,14 @@
   [spec allowed?]
   (sql-jdbc.common/handle-additional-options spec {:additional-options (str "allowLocalInfile=" allowed?)}))
 
+(def ^:private cloud-disallowed-parameter-values
+  "Connection settings not allowed on Metabase Cloud, where the host is ours rather than the admin's: credentials taken
+  from the host (its AWS identity, its environment variables, or its system properties) and skipping TLS certificate or
+  hostname verification."
+  {"credentialtype"                 (sql-jdbc.common/one-of "aws-iam" "env" "property")
+   "trustservercertificate"         sql-jdbc.common/truthy-value?
+   "disablesslhostnameverification" sql-jdbc.common/truthy-value?})
+
 (defmethod sql-jdbc.conn/connection-details->spec :mysql
   [_ {ssl? :ssl, :keys [additional-options ssl-cert auth-provider], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
@@ -791,7 +799,8 @@
        (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details)
-           (set-local-infile false))))))
+           (set-local-infile false)
+           (cond-> (driver-api/is-hosted?) (sql-jdbc.common/refuse-parameter-values! cloud-disallowed-parameter-values)))))))
 
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
