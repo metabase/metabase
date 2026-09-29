@@ -19,8 +19,7 @@
                                                     [:= :is_group_manager true]]}]))
 
 (defn- data-analyst-visibility-clause
-  "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, plus that group
-  when it has at least one active member."
+  "Clause over a `permissions_group` query keeping every group except the data-analyst magic group, unless it has at least one active member."
   []
   [:or
    [:= nil :magic_group_type]
