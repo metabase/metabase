@@ -1377,7 +1377,7 @@
 
 (defn- endpoint-parts-for!
   "The AISDK parts [[metabase.metabot.self.google/google]] yields for `endpoint` streaming `events`, on the credentials
-  a connection saved by connecting to it resolves to, the probed model among them."
+  a connection saved by connecting to it resolves to, its endpoint ID and probed model among them."
   [endpoint events]
   (mt/with-dynamic-fn-redefs [debug/capture-stream (fn [r _] r)
                               http/request         (stub-endpoint (atom []) (endpoint-resource endpoint) events)]
@@ -1390,6 +1390,7 @@
                                  :project-id         "my-project"
                                  :location           "us-central1"
                                  :base-url           "https://aiplatform.googleapis.com"
+                                 :endpoint-id        endpoint
                                  :probed-model       (str "endpoints/" endpoint)}}))))
 
 (deftest google-endpoint-stream-test

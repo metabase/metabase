@@ -51,6 +51,8 @@
    ;; the fixed catalog, for types whose models cannot be listed from the provider; the connection form offers
    ;; these so the connect-time credential probe runs against the model the admin actually wants
    [:models [:sequential [:map [:id :string] [:display_name :string]]]]
+   ;; the config fields that name a connection's model once all are filled, in place of a pick from `models`
+   [:model_fields [:sequential :string]]
    ;; alternative credential groups: the connection is complete when one group is filled in full
    [:required_any [:sequential [:sequential :string]]]
    ;; paired credential groups: each must be filled in full or left empty in full
@@ -108,7 +110,7 @@
     show-when   (assoc :show_when {:field (name (:field show-when)) :value (:value show-when)})))
 
 (defn- provider-type-response
-  [{:keys [type label managed? singleton? default-model required-any requires fields]}]
+  [{:keys [type label managed? singleton? default-model model-fields required-any requires fields]}]
   {:type          type
    :label         (str label)
    :managed       (boolean managed?)
@@ -116,6 +118,7 @@
    :available     (llm.provider/type-available? type)
    :default_model default-model
    :models        (mapv #(select-keys % [:id :display_name]) (llm.provider/fixed-models type))
+   :model_fields  (into [] (comp (filter keyword?) (map name)) model-fields)
    :required_any  (mapv #(mapv name %) required-any)
    :requires      (into {} (map (fn [[k deps]] [(name k) (mapv name deps)])) requires)
    :fields        (mapv field-response fields)})
@@ -168,9 +171,9 @@
   serves — the `:probed-model` an earlier probe recorded, or the catalog's first entry — which a type is free to
   ignore.
 
-  A type that names its model in `:config` (Azure, whose deployments its listing endpoint does not return) makes
-  the call for the same reason, but the model it serves comes from the connection rather than from the empty list
-  that comes back.
+  A connection that names its model in `:config` (an Azure deployment or a Google Model Garden endpoint, which no
+  listing returns) makes the call for the same reason. That model is the one verified, whichever model the caller or
+  the Metabot selection names, and the only one listed, in place of the type's catalog.
 
   `probe?` asks a type that can check more than its credentials to do so — vLLM exercises the tool calling and
   structured output the agent loop depends on against the model it will run on. Only [[verify-credentials!]] sets
@@ -184,7 +187,7 @@
             configured-model (llm.provider/connection-model type config)
             ;; Our best guess at the model to try if caller did not specify a model.
             proposed-model   (or (:probed-model config) (:id (first fixed)))
-            model            (or model configured-model (selected-model conn-key))
+            model            (or configured-model model (selected-model conn-key))
             config-models    (cond
                                configured-model [{:id           configured-model
                                                   :display_name (last (str/split configured-model #"/"))}]

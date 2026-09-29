@@ -472,6 +472,12 @@
                                                       :base-url "https://my-resource.services.ai.azure.com/openai"})]
         (with-selected-model "azure/openai/my-gpt-deployment"
           (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Google connection that serves a Model Garden endpoint"
+      (with-connections [(connection "google" "google" {:oauth-access-token "ya29.test"
+                                                        :project-id         "my-project"
+                                                        :endpoint-id        "1234567890123456789"})]
+        (with-selected-model "google/endpoints/1234567890123456789"
+          (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"
