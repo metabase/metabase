@@ -1,0 +1,43 @@
+.root {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--mb-color-text-primary);
+  padding: var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+  background-color: var(--mb-color-background_page-primary);
+  outline: none;
+  text-align: inherit;
+
+  &:hover,
+  &:focus {
+    border-color: var(--mb-color-core-brand);
+    transition: border 300ms ease-in-out;
+  }
+
+  &:focus {
+    outline: 2px solid var(--mb-color-input-focus);
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  &:disabled {
+    pointer-events: none;
+    opacity: 0.4;
+  }
+}
+
+.readOnly {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.error {
+  border-color: var(--mb-color-feedback-negative);
+}
+
+.fullWidth {
+  width: 100%;
+}
