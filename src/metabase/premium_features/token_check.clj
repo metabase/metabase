@@ -202,9 +202,9 @@
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000})))     ;; in milliseconds
 
-(defn- authoritative
-  "Mark a decoded token status as an authoritative answer from the store — one we may cache and hold on
-  to, including a 4xx that definitively rejects the token (expired, does not exist). Anything transient
+(defn- canonical
+  "Mark a decoded token status as canonical: an authoritative answer from the store, one we may cache and hold
+  on to, including a 4xx that definitively rejects the token (expired, does not exist). Anything transient
   (network error, 5xx, missing or unparseable body) must throw instead so cached state is left alone."
   [decoded]
   (assoc decoded :canonical? true))
@@ -226,13 +226,13 @@
     (if (or (http/success? resp) (<= 400 status 499))
       (do (when (http/success? resp)
             (analytics/inc! :metabase-token-check/attempt {:status :success}))
-          (or (some-> (parse-status-body body) authoritative)
+          (or (some-> (parse-status-body body) canonical)
               ;; a bare (bodyless) 403/404 is the store rejecting the token — a verdict. An
               ;; undecodable body (a WAF's HTML page) is not: only the store sends bodyless rejections
               (when (and (#{403 404} status) (str/blank? body))
-                (authoritative {:valid         false
-                                :status        "Token is not valid."
-                                :error-details (format "Token check returned %d with no details." status)}))
+                (canonical {:valid         false
+                            :status        "Token is not valid."
+                            :error-details (format "Token check returned %d with no details." status)}))
               (throw (ex-info "Token validation provided no response." {:status status}))))
       ;; exceptions are not cached.
       (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
@@ -310,12 +310,12 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (authoritative (decode-airgap-token token)))
+          (canonical (decode-airgap-token token)))
 
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
-          (authoritative
+          (canonical
            {:valid         false
             :status        "invalid"
             :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")}))))
