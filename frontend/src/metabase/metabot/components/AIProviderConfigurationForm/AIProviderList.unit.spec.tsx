@@ -26,11 +26,18 @@ import { AIProviderList } from "./AIProviderList";
 const setup = ({
   usable = true,
   models = [],
-}: { usable?: boolean; models?: LlmConnectionModels[] } = {}) => {
+  embeddingProvider = "ai-service",
+}: {
+  usable?: boolean;
+  models?: LlmConnectionModels[];
+  embeddingProvider?: string;
+} = {}) => {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
 
-  const sessionProperties = createMockSettings();
+  const sessionProperties = createMockSettings({
+    "ee-embedding-provider": embeddingProvider,
+  });
   setupPropertiesEndpoints(sessionProperties);
   setupSettingsEndpoints([]);
   setupLlmProviderTypesEndpoint([createMockLlmProviderType()]);
@@ -127,8 +134,21 @@ describe("AIProviderList", () => {
     );
   });
 
-  it("does not warn about other features when removing a connection", async () => {
-    setup();
+  it("warns that semantic search runs on the connection ee-embedding-provider names", async () => {
+    setup({ embeddingProvider: "openai" });
+
+    const modal = await openRemoveDialog("openai");
+
+    expect(
+      within(modal).getByText(/Semantic search also runs on this connection/),
+    ).toBeInTheDocument();
+    expect(
+      within(modal).getByText(/saved credentials will be deleted/),
+    ).toBeInTheDocument();
+  });
+
+  it("does not warn about semantic search when it embeds through something else", async () => {
+    setup({ embeddingProvider: "ai-service" });
 
     const modal = await openRemoveDialog("openai");
 
