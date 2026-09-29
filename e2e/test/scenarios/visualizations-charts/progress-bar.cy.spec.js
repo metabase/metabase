@@ -114,7 +114,6 @@ describe("scenarios > visualizations > progress chart", () => {
 
     openGoalSourceMenu();
 
-    // The only numeric column is the value, so the goal can only come from another question
     H.popover().within(() => {
       cy.findByText("Value from this question").should("not.exist");
       cy.findByText("Value from another question").should("be.visible");
@@ -208,7 +207,6 @@ describe("scenarios > visualizations > progress chart", () => {
 
     openGoalSourceMenu();
 
-    // Count is the value, so Sum of Total is picked as the only other column
     H.popover().findByText("Value from this question").click();
 
     H.vizSettingsSidebar()
@@ -244,10 +242,8 @@ describe("scenarios > visualizations > progress chart", () => {
       cy.findByText("Display").click();
     });
 
-    // Configure goal to use the "goal" column
     openGoalSourceMenu();
 
-    // "value" is the value, so "goal" is picked as the only other column
     H.popover().findByText("Value from this question").click();
 
     // Verify the progress bar displays correctly with native query data
@@ -262,7 +258,6 @@ describe("scenarios > visualizations > progress chart", () => {
 
 function openGoalSourceMenu() {
   H.vizSettingsSidebar().within(() => {
-    // the trigger only shows while the goal input is hovered or focused
     cy.findByPlaceholderText("Enter goal value").realHover();
     cy.findByLabelText("Pick a dynamic value").click();
   });
