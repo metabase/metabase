@@ -109,17 +109,7 @@ export const translateColumnDisplayName = ({
 
   let anyTranslated = false;
   const translated = parts.map((part) => {
-    if (part.type === "translatable") {
-      const result = tc(part.value);
-
-      if (result !== part.value) {
-        anyTranslated = true;
-      }
-
-      return result;
-    }
-
-    return part.value;
+    return "";
   });
 
   // Fall back to translating the whole string if no part was individually
