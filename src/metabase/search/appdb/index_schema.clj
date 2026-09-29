@@ -32,7 +32,9 @@
          [:legacy_input :text :not-null]
          ;; useful for tracking the speed and age of the index
          [:created_at :timestamp-with-time-zone
-          [:default ^:allow-raw-sql [:raw "CURRENT_TIMESTAMP"]]
+          ;; TODO (Cam 2026-09-29) shouldn't this be :%current-timestamp.6 for MySQL?? Maybe this should be
+          ;; using [[metabase.util.honey-sql-2/current-datetime-honeysql-form]]
+          [:default :%current-timestamp]
           :not-null]
          [:updated_at :timestamp-with-time-zone :not-null]]
         (keep (fn [[k t]]

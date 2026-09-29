@@ -138,24 +138,24 @@
   (condp = (mdb/db-type)
     :mysql [:json_contains_path
             :dataset_query
-            ^:allow-raw-sql [:inline "one"]
-            ^:allow-raw-sql [:inline "$.native.\"template-tags\".*"]]
+            "one"
+            "$.native.\"template-tags\".*"]
     :postgres [:jsonb_path_exists
                [:cast :dataset_query :jsonb]
-               ^:allow-raw-sql [:inline "$.native.\"template-tags\" ? (exists(@.*))"]]))
+               "$.native.\"template-tags\" ? (exists(@.*))"]))
 
 (defn- contains-embedding-param
   [param]
   (condp = (mdb/db-type)
     :mysql [:!= [:json_search
                  :embedding_params
-                 ^:allow-raw-sql [:inline "one"]
+                 "one"
                  param]
             nil]
     :postgres [:jsonb_path_exists
                [:cast :embedding_params :jsonb]
-               ^:allow-raw-sql [:inline "$.* ? (@ == $val)"]
-               [:jsonb_build_object ^:allow-raw-sql [:inline "val"] param]]))
+               "$.* ? (@ == $val)"
+               [:jsonb_build_object "val" param]]))
 
 (def ^:private embedding-on [:= :enable_embedding [:inline true]])
 
