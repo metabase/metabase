@@ -347,9 +347,18 @@ describe("scenarios > question > custom column > aggregation", () => {
       .should("be.visible")
       .click();
     H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
-    H.CustomExpressionEditor.format();
 
+    cy.log("keep typing after picking the completion");
+    H.CustomExpressionEditor.type("+ 1");
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum] + 1");
     H.CustomExpressionEditor.nameInput().type("Derived");
+    H.popover().button("Done").should("be.enabled");
+
+    cy.log("reference the aggregation on its own");
+    H.CustomExpressionEditor.type("{backspace}".repeat(4));
+    H.CustomExpressionEditor.value().should("eq", "[Custom Sum]");
+    H.CustomExpressionEditor.format();
     H.popover().button("Done").click();
 
     H.visualize();

@@ -539,6 +539,17 @@ describe("scenarios > question > custom column", () => {
     cy.log("Leaving the editor does not format the expression");
     H.CustomExpressionEditor.value().should("equal", "1+1");
 
+    cy.log(
+      "Moving focus with Tab and Shift+Tab does not format the expression",
+    );
+    cy.realPress("Tab");
+    cy.realPress(["Shift", "Tab"]);
+    H.CustomExpressionEditor.value().should("equal", "1+1");
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1+12");
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
     // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
     H.CustomExpressionEditor.format();
     H.CustomExpressionEditor.value().should("equal", "1 + 1");

@@ -330,6 +330,13 @@ describe("scenarios > question > custom column > exiting the editor", () => {
   });
 
   it("should only be possible to close the custom expression editor by pressing Escape when it is empty", () => {
+    cy.log("untouched editor");
+    H.CustomExpressionEditor.get().should("be.visible");
+    cy.realPress("Escape");
+    H.expressionEditorWidget().should("not.exist");
+    H.getNotebookStep("data").button("Custom column").click();
+
+    cy.log("editor with text");
     H.CustomExpressionEditor.type("count(");
     cy.realPress("Escape");
     H.CustomExpressionEditor.get().should("be.visible");
@@ -340,7 +347,16 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.CustomExpressionEditor.get().should("not.exist");
   });
 
-  it("should be possible to exit the editor by clicking outside of it when there is no text, by clicking an interactive element", () => {
+  it("should be possible to exit the editor by clicking outside of it when there is no text", () => {
+    cy.log("clicking a non-interactive element");
+    H.CustomExpressionEditor.get().should("be.visible");
+    H.getNotebookStep("data").click();
+    H.modal().should("not.exist");
+    H.expressionEditorWidget().should("not.exist");
+    H.getNotebookStep("data").button("Custom column").click();
+
+    cy.log("clicking an interactive element");
+    H.CustomExpressionEditor.get().should("be.visible");
     H.getNotebookStep("data").button("Pick columns").click();
     H.modal().should("not.exist");
     H.expressionEditorWidget().should("not.exist");
