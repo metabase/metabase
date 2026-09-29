@@ -30,48 +30,7 @@ export function ExtractColumn({
   onCancel,
   onSubmit,
 }: Props) {
-  const [column, setColumn] = useState<Lib.ColumnMetadata | null>(null);
-
-  function handleSelect(column: Lib.ColumnMetadata) {
-    setColumn(column);
-  }
-
-  if (!column) {
-    return (
-      <ColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        availableColumns={availableColumns}
-        column={column}
-        onCancel={onCancel}
-        onSelect={handleSelect}
-      />
-    );
-  }
-
-  function handleSubmit(
-    info: Lib.ColumnExtractionInfo,
-    extraction: Lib.ColumnExtraction,
-  ) {
-    // @todo this is a hack until Lib supports building an expression from an extraction
-    const newQuery = Lib.extract(query, stageIndex, extraction);
-    const expressions = Lib.expressions(newQuery, stageIndex);
-    const name = getName(query, stageIndex, info);
-    const lastExpression = expressions.at(-1);
-    if (lastExpression) {
-      onSubmit(lastExpression, name, extraction);
-    }
-  }
-
-  return (
-    <ExtractionPicker
-      query={query}
-      stageIndex={stageIndex}
-      column={column}
-      onSelect={handleSubmit}
-      onCancel={() => setColumn(null)}
-    />
-  );
+  return null;
 }
 
 function ColumnPicker({
