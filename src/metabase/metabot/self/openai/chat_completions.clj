@@ -183,7 +183,8 @@
   would lose their arguments, since neither the start branch (needs `:name`) nor
   the argument-delta branch (needs no `:id`) would fire.
 
-  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
+  \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
 
   `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
   deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
@@ -223,6 +224,11 @@
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
+                error-text    (when (or (some? error)
+                                        (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason)))
+                                (or (:message error)
+                                    (some-> error pr-str)
+                                    (tru "The model provider failed to complete the response")))
                 tool-call     (first (:tool_calls delta))
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
@@ -315,7 +321,7 @@
                                                                     :toolCallId     (:toolCallId @payload)
                                                                     :inputTextDelta (:arguments (:function tool-call))})
               ;; Closing a tool call runs it, so drop one that an error cuts off
-              (and (some? error)
+              (and error-text
                    (= @current-type :function_call))           (u/prog1 (clear!))
               ;; Finish reason — close whatever is open
               (some? finish-reason)                            (-> (u/prog1
@@ -331,9 +337,8 @@
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
                                                                             :raw-finish-reason @stop-reason)))
               ;; An error in the stream, e.g. a failure partway through generation
-              (some? error)                                    (-> (cond-> @current-type (close!))
-                                                                   (rf {:type      :error
-                                                                        :errorText (or (:message error) (pr-str error))}))))))))))
+              error-text                                       (-> (cond-> @current-type (close!))
+                                                                   (rf {:type :error :errorText error-text}))))))))))
 
 ;;; Request body
 
