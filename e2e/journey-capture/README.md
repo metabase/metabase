@@ -306,6 +306,9 @@ Each shard runs `.github/actions/upload-journey-capture` as its `Scrub, encrypt 
 - runs of 64 or more hex digits
 - the value of a query parameter whose name contains `token`, `secret`, `password`, `passwd`, `session`, `jwt`, `api_key`, `auth`, `signature` or `credential`
 
+Every rule matches the string as the capture wrote it, and every character that any rule matches is replaced.
+So when a secret shares 20 characters with a JWT, such as its header, the whole JWT is replaced.
+
 JSON and JSONL files are scrubbed one string at a time, keys included, and written back with `JSON.stringify`, so they stay valid. The script then runs the verify step's search on the text it writes, because that text can hold a piece of a secret that no single string holds, across a JSON escape such as `\n` or the punctuation between two values. Each string, number or literal that a match touches becomes `"<scrubbed>"`. A match across JSONL lines replaces those lines, and a match that touches none of these replaces the whole file with `"<scrubbed>"`.
 
 No rule touches 16- or 40-character hex (body hashes, JaCoCo class ids, commit SHAs), UUIDs or entity ids. Binary files, such as `.exec`, are never edited.

@@ -1088,6 +1088,32 @@ describe("scrubString", () => {
     }
   });
 
+  it("should replace a whole JWT that shares a piece with a secret", () => {
+    const header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9";
+    const secretJwt = [
+      header,
+      "eyJpc3MiOiJmYWtlLWlzc3VlciJ9",
+      "ZmFrZS1zaWduYXR1cmUtb2YtdGhlLXNlY3JldA",
+    ].join(".");
+    const capturedJwt = [
+      header,
+      "eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfX0",
+      "b3RoZXItZmFrZS1zaWduYXR1cmU",
+    ].join(".");
+    const { secrets } = parseSecrets(
+      JSON.stringify({ SIGNED_TOKEN: secretJwt }),
+    );
+    const counts = newCounts();
+    expect(
+      scrubString(
+        `/api/embed/dashboard/${capturedJwt}`,
+        textMatcher(secrets),
+        counts,
+      ),
+    ).toBe(`/api/embed/dashboard/${PLACEHOLDER}`);
+    expect(counts).toEqual({ ...newCounts(), secret: 1, jwt: 1 });
+  });
+
   it("should replace a prefixed token at the start or after a space, quote, = or /", () => {
     const tokens = [
       "airgap_eyJhbGciOiJSU0EtT0FFUCJ9.a2V5.aXY.Y2lwaGVy.dGFn",

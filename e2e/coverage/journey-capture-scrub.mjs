@@ -236,14 +236,41 @@ export function scrubString(
     bySecret[name] = (bySecret[name] ?? 0) + 1;
   }
   counts.secret += ranges.length;
-  let result = replaceRanges(text, ranges, PLACEHOLDER);
+  const replaced = [...ranges];
+  // The token rules match the original text,
+  // because a secret piece replaced inside a JWT leaves the rest of it in a shape the JWT rule doesn't match.
   for (const { rule, pattern } of TOKEN_RULES) {
-    result = result.replace(pattern, () => {
-      counts[rule] += 1;
-      return PLACEHOLDER;
-    });
+    for (const match of text.matchAll(pattern)) {
+      const range = { start: match.index, end: match.index + match[0].length };
+      if (!isCovered(replaced, range)) {
+        counts[rule] += 1;
+      }
+      replaced.push(range);
+    }
   }
-  return result;
+  return replaced.length === 0
+    ? text
+    : replaceRanges(text, mergeRanges(replaced), PLACEHOLDER);
+}
+
+// `ranges` in order, with ranges that overlap or touch joined into one.
+function mergeRanges(ranges) {
+  const merged = [];
+  for (const { start, end } of [...ranges].sort((a, b) => a.start - b.start)) {
+    const last = merged[merged.length - 1];
+    if (last && start <= last.end) {
+      last.end = Math.max(last.end, end);
+    } else {
+      merged.push({ start, end });
+    }
+  }
+  return merged;
+}
+
+function isCovered(ranges, { start, end }) {
+  return mergeRanges(ranges).some(
+    (range) => range.start <= start && end <= range.end,
+  );
 }
 
 // Replaces in every string and key of a parsed JSON value, in place where it can.
