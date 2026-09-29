@@ -59,13 +59,13 @@ Pick how Metabase authenticates to Snowflake:
 
 - **RSA key pair** — key-based auth.
 - **Workload Identity Federation** — keyless auth using a token from an OIDC provider, AWS, Azure, or Google Cloud.
-- **Username & password** — Snowflake will soon block password authentication.
+- **Username & password** — Snowflake blocks password authentication for service users by October 2026.
 
 The fields that appear below depend on which method you pick.
 
 ### Password
 
-The password for the username that you use to connect to the database. Snowflake plans to end support for password authentication; new connections should use RSA key pair or Workload Identity Federation instead.
+The password for the username that you use to connect to the database. Snowflake blocks password authentication for service users by October 2026; use RSA key pair or Workload Identity Federation instead.
 
 ### RSA private key (PEM)
 
@@ -77,12 +77,12 @@ Only required if your private key is encrypted.
 
 ### Workload Identity Federation
 
-Metabase forwards a workload-identity token to Snowflake; Snowflake validates it against a service user you provision with `CREATE USER ... WORKLOAD_IDENTITY = (...)`. See Snowflake's [Workload identity federation docs](https://docs.snowflake.com/en/user-guide/workload-identity-federation) for the trust-policy syntax. Requires Snowflake JDBC driver 3.26.0 or newer (bundled with Metabase).
+Metabase forwards a workload-identity token to Snowflake; Snowflake validates it against a service user you provision with `CREATE USER ... WORKLOAD_IDENTITY = (...)`. See Snowflake's [Workload identity federation docs](https://docs.snowflake.com/en/user-guide/workload-identity-federation) for the trust-policy syntax.
 
 #### Workload identity provider
 
 - **OpenID Connect (JWT)** — you supply the token (see next two fields).
-- **AWS**, **Azure**, or **Google Cloud** — no additional credential fields in Metabase. The Snowflake JDBC driver runs the corresponding cloud SDK's credential chain — typically the standard cloud environment variables first, then the cloud's instance metadata service — and forwards whatever identity it finds.
+- **AWS**, **Azure**, or **Google Cloud** — no additional credential fields in Metabase. Attach an AWS IAM role, an Azure managed identity, or a GCP service account to the host running Metabase; the Snowflake driver picks it up.
 
 #### OIDC token
 

@@ -75,7 +75,7 @@ driver:
       - password
       - visible-if:
           auth-mode: password
-        description: Snowflake will soon block password authentication.
+        description: Snowflake blocks password authentication for service users by October 2026.
         required: true
     - name: warehouse
       display-name: Warehouse
