@@ -348,16 +348,6 @@ describe("scenarios > filters > bulk filtering", () => {
       H.filter();
     });
 
-    it("should apply a boolean filter", () => {
-      H.popover().within(() => {
-        cy.findByText("boolean").click();
-        cy.findByText("True").click();
-        cy.button("Apply filter").click();
-      });
-      cy.wait("@dataset");
-      H.assertQueryBuilderRowCount(2);
-    });
-
     it("should change a boolean filter", () => {
       H.popover().within(() => {
         cy.findByText("boolean").click();

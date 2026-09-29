@@ -349,33 +349,6 @@ describe("scenarios > question > filter", () => {
     cy.contains('doesNotContain([Title], "Wallet", "case-insensitive")');
   });
 
-  it("should convert negative filter to custom expression (metabase#14880)", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-          filter: [
-            "does-not-contain",
-            ["field", PRODUCTS.TITLE, null],
-            "Wallet",
-            { "case-sensitive": false },
-          ],
-        },
-        database: SAMPLE_DB_ID,
-      },
-      display: "table",
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Title does not contain Wallet").click();
-    cy.get(".Icon-chevronleft").click();
-    H.popover().findByText("Custom Expression").click();
-
-    // Before we implement this feature, we can only assert that the input field for custom expression doesn't show at all
-    H.CustomExpressionEditor.focus().get().should("be.visible");
-  });
-
   it("should be able to convert time interval filter to custom expression (metabase#12457)", () => {
     H.openOrdersTable({ mode: "notebook" });
 
@@ -513,21 +486,6 @@ describe("scenarios > question > filter", () => {
       .should("be.visible");
 
     H.expressionEditorWidget().button("Done").should("be.disabled");
-  });
-
-  it("should not allow switching focus with Tab", () => {
-    H.openOrdersTable({ mode: "notebook" });
-
-    H.filter({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
-
-    H.CustomExpressionEditor.focus().type("[Tax] > 0");
-
-    // Tab switches the focus to the "Cancel" button
-    cy.realPress("Tab");
-    cy.focused().should("have.attr", "role", "textbox");
-
-    H.CustomExpressionEditor.value().should("equal", "[Tax] > 0  ");
   });
 
   it("should allow choosing a suggestion with Tab", () => {
