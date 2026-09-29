@@ -85,6 +85,15 @@
       (is (thrown-with-msg? Exception #"Too many URIs"
                             (read-resource/read-resource {:uris uris}))))))
 
+(deftest read-resource-tool-errors-test
+  (testing "too many URIs go back to the agent as output"
+    (is (re-find #"^Too many URIs provided \(10\)"
+                 (:output (read-resource/read-resource-tool {:uris (vec (repeat 10 "metabase://table/123"))})))))
+  (testing "an unexpected error propagates to the agent loop"
+    (mt/with-dynamic-fn-redefs [read-resource/read-resource (fn [_] (throw (ex-info "boom" {})))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (read-resource/read-resource-tool {:uris ["metabase://databases"]}))))))
+
 ;; ===== Dispatch routing — every URI pattern routes to the expected handler =====
 
 (def ^:private dispatch-cases
