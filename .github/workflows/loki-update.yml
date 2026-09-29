@@ -8,6 +8,7 @@ jobs:
   check-label-and-update-snapshot:
     if: contains(github.event.pull_request.labels.*.name, 'loki-update')
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7

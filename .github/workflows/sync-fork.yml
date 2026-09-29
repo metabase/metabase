@@ -48,6 +48,7 @@ jobs:
     # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
     if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -105,6 +106,7 @@ jobs:
     # ONLY run on internal metabase org forks — NEVER on the public repo or external forks
     if: github.repository_owner == 'metabase' && github.repository != 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
     outputs:
       branches: ${{ steps.discover.outputs.branches }}
     steps:
@@ -141,6 +143,7 @@ jobs:
     needs: list-release-branches
     if: needs.list-release-branches.outputs.branches != '[]'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

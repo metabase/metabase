@@ -18,6 +18,7 @@ jobs:
   launch_perf_test:
     needs: [build]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
     name: Launch Perf Test
     permissions:
       id-token: write

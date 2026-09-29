@@ -8,6 +8,7 @@ on:
 jobs:
   optimize-images:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 30
     if: ${{ contains(github.event.pull_request.labels.*.name,'Type:Documentation') }}
     steps:
     - name: Checkout repository
