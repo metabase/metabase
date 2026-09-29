@@ -60,7 +60,7 @@ export function getAddMembersDisabledReason(
   hasAdvancedPermissions: boolean,
 ): string | null {
   return isDataAnalystGroup(group) && !hasAdvancedPermissions
-    ? t`Adding members to this group requires Advanced Permissions. Members can only be removed.`
+    ? t`Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed.`
     : null;
 }
 

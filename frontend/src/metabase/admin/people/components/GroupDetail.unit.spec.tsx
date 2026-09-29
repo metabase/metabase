@@ -87,7 +87,7 @@ describe("GroupDetail", () => {
 
       await userEvent.hover(getAddMembersButton());
       expect(await screen.findByRole("tooltip")).toHaveTextContent(
-        "Adding members to this group requires Advanced Permissions. Members can only be removed.",
+        "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed.",
       );
     });
 

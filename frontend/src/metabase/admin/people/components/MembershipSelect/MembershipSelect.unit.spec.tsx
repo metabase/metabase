@@ -29,7 +29,7 @@ const MARKETING = createMockGroup({
 const GROUPS: GroupInfo[] = [ALL_USERS, DATA_ANALYSTS, MARKETING];
 
 const ADD_DISABLED_MESSAGE =
-  "Adding members to this group requires Advanced Permissions. Members can only be removed.";
+  "Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed.";
 
 const setup = ({
   memberGroupIds = [ALL_USERS.id],
