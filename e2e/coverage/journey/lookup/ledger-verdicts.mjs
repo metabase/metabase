@@ -7,11 +7,12 @@ import fs from "node:fs";
 import { isDeepStrictEqual } from "node:util";
 
 import { parseArgs } from "./args.mjs";
-import { readCandidates } from "./ledger.mjs";
+import { TEST_STATES, readCandidates } from "./ledger.mjs";
 
 const TEST_LAYERS = ["jest", "deftest", "e2e"];
 const KEPT = ["keep", "provisional-keep"];
 const SYMPTOM_ONLY = "all symptom kills";
+const NO_CREDIT = ["unresolved", "reviewed equivalence", "scope decision"];
 const COARSE_STRATA = {
   logic: "logic",
   "intra-frontend-wiring": "wiring",
@@ -37,6 +38,100 @@ const REACH_FIELDS = {
 };
 
 const testIds = (groups) => TEST_LAYERS.flatMap((layer) => groups[layer] ?? []);
+
+/**
+ * What the remaining tests and checkers did on the mutant, as kills.py's remaining_side() gives it: a result, the scope and the result in words.
+ * The ledger counts every test's state by layer and keeps each e2e test's state, so leaving out the candidates, which are e2e tests, gives the rest.
+ */
+function remainingSide(m, position) {
+  const counts = Object.fromEntries(TEST_STATES.map((s) => [s, 0]));
+  for (const layerCounts of Object.values(m.test_states ?? {})) {
+    for (const [s, n] of Object.entries(layerCounts)) {
+      counts[s] += n;
+    }
+  }
+  for (const [id, s] of Object.entries(m.e2e_states ?? {})) {
+    if (position.has(id)) {
+      counts[s] -= 1;
+    }
+  }
+  const killed =
+    counts.killed + counts["symptom kill"] + (m.checker_kills ?? []).length;
+  const unconfirmed = counts.unconfirmed + counts["unconfirmed symptom kill"];
+  const excluded = (m.excluded ?? []).filter((x) => !position.has(x.test));
+  const scope = m.scope ?? "full";
+  let result;
+  if (killed) {
+    result = "killed";
+  } else if (counts.missed) {
+    result = "missed";
+  } else if (counts.errored || unconfirmed) {
+    result = "unresolved";
+  } else if (excluded.length) {
+    result = "statically excluded";
+  } else {
+    result = "unmeasured at the head";
+  }
+  const tail = [
+    [counts.errored, "errored"],
+    [unconfirmed, "unconfirmed"],
+    [counts["not run"], "selected but not run"],
+    [result === "statically excluded" ? 0 : excluded.length, "excluded"],
+  ]
+    .filter(([n]) => n)
+    .map(([n, what]) => `${n} ${what}`);
+  const selected = scope === "selected" ? "selected " : "";
+  const reasons = [
+    ...new Set(
+      excluded.map((x) =>
+        x.reason == null ? "no reason given" : String(x.reason),
+      ),
+    ),
+  ].sort();
+  const text = {
+    killed: `killed by ${killed} ${selected}remaining tests`,
+    missed: `missed by ${counts.missed} ${selected}remaining tests`,
+    unresolved: `no result from the ${selected}remaining tests`,
+    "statically excluded": `statically excluded: ${reasons.join("; ")}`,
+    "unmeasured at the head": "not run by any remaining test",
+  }[result];
+  return { result, scope, text: [text, ...tail].join(", ") };
+}
+
+/**
+ * The widest scope at which the remaining side missed any of the mutants, and the remaining side's result on each when it isn't full,
+ * as kills.py's reading_scope() gives them.
+ */
+function readingScope(mids, mutants) {
+  if (mids.length === 0) {
+    return [null, null];
+  }
+  const missed = new Set(
+    mids
+      .filter((mid) => mutants[mid].remaining.result === "missed")
+      .map((mid) => mutants[mid].remaining.scope),
+  );
+  const scope = missed.has("full")
+    ? "full"
+    : missed.size
+      ? "selected"
+      : "unmeasured";
+  if (scope === "full") {
+    return [scope, null];
+  }
+  const byText = new Map();
+  for (const mid of mids) {
+    const text = mutants[mid].remaining.text;
+    byText.set(text, [...(byText.get(text) ?? []), mid]);
+  }
+  const groups = [...byText.entries()].sort(([, a], [, b]) =>
+    a[0] < b[0] ? -1 : 1,
+  );
+  return [
+    scope,
+    groups.map(([text, ids]) => `${ids.join(", ")}: ${text}`).join("; "),
+  ];
+}
 
 /**
  * Per mutant, the candidates in each field, and whether any other test is in it.
@@ -87,6 +182,8 @@ function mutantView(m, position, reachedBy) {
     checker_kill: Boolean(
       m.killed_by.tsc?.length || m.killed_by.contract?.length,
     ),
+    remaining: remainingSide(m, position),
+    suspect: m.equivalence_state ?? null,
   };
 }
 
@@ -221,6 +318,7 @@ export function verdictsFromLedger(
     "killed_by",
     "ran",
     "errored",
+    "unconfirmed_by",
     "symptom_kills",
     "symptom_unconfirmed_by",
   ];
@@ -294,13 +392,18 @@ export function verdictsFromLedger(
     if (withChecker.length) {
       uniqueAlsoCheckerKilled[t.id] = withChecker;
     }
+    const suspects = [];
     const qualifying = [...by.ran[t.i]].filter((mid) => {
       const m = mutants[mid];
-      return (
+      const sampled =
         !by.errored[t.i].has(mid) &&
         (m.ran.size > 1 || m.ran_others) &&
-        (!m.located || m.reached_by.has(t.i))
-      );
+        (!m.located || m.reached_by.has(t.i));
+      if (sampled && NO_CREDIT.includes(m.suspect)) {
+        suspects.push(mid);
+        return false;
+      }
+      return sampled;
     });
     const qualifyingBasis = {};
     for (const mid of qualifying) {
@@ -342,7 +445,10 @@ export function verdictsFromLedger(
       ),
       kills: killsHere.length,
       misses: [...by.ran[t.i]].filter(
-        (mid) => !by.killed_by[t.i].has(mid) && !by.errored[t.i].has(mid),
+        (mid) =>
+          !by.killed_by[t.i].has(mid) &&
+          !by.errored[t.i].has(mid) &&
+          !by.unconfirmed_by[t.i].has(mid),
       ).length,
       errored: sorted(by.errored[t.i]),
       qualifying_mutants: strata,
@@ -352,6 +458,9 @@ export function verdictsFromLedger(
           basis,
           sorted(mids),
         ]),
+      ),
+      equivalent_suspects: Object.fromEntries(
+        sorted(suspects).map((mid) => [mid, mutants[mid].suspect]),
       ),
     };
     const coarse = new Set(qualifying.map((mid) => mutants[mid].coarse));
@@ -425,9 +534,14 @@ export function verdictsFromLedger(
     if (symptomOnly) {
       reason = `${reason}, ${SYMPTOM_ONLY}`;
     }
+    const [scope, scopeText] = readingScope(sorted(grounds), mutants);
+    if (scopeText) {
+      reason = `${reason}; ${scopeText}`;
+    }
     results[t.id] = {
       verdict,
       reason,
+      scope,
       ...detail,
       symptom_only: symptomOnly,
     };
@@ -455,6 +569,12 @@ export function verdictsFromLedger(
       ledger.mutants,
       sorted(afterDeletion),
     );
+    const lost = [...by.killed_by[t.i]].filter(
+      (mid) =>
+        !mutants[mid].killed_by_others &&
+        ![...mutants[mid].killed_by].some((i) => kept.has(i)),
+    );
+    results[t.id].scope = readingScope(sorted(lost), mutants)[0];
   }
 
   const candidatesReaching = Object.fromEntries(

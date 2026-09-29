@@ -3,7 +3,7 @@
 Two tools that read the runs of `.github/workflows/e2e-journey-capture.yml` through the capture reader, `e2e/coverage/journey-capture.mjs`. The capture and its format are described in `e2e/journey-capture/README.md`.
 
 - **Step-graph pipeline** (`pipeline/`): turns a whole run into a step graph and an overlap analysis. It lines tests up by the commands they run, in order, and says which pairs share a path, checks and code. Given a kills file, it also gives each test a keep, provisional-keep, delete or unmeasured verdict.
-- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict. `lookup/ledger.mjs` joins the index and a kills file into one row per code location.
+- **Reach lookup** (`lookup/`): given a code location, lists the tests that reach it, and the ones that reach it and then assert. Given a kills file and a list of candidates, `pipeline/kills.py` uses its index to give each candidate the same verdicts without a pipeline run, or gives them from a PR's kills file and a candidates file with no index. Given a location prior as well, it can also give an unmeasured candidate an accepted verdict. `lookup/ledger.mjs` joins the index and a kills file into one row per code location.
 
 Both need `bun install` to have run, for `typescript` and `micromatch`.
 
@@ -107,10 +107,14 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
     "stratum_coarse": "logic" | "wiring" | "state" | "baseline",
     "origin": "<regression id>" | "synthetic",
     "equivalent_suspect": true,
+    "equivalence": {"reviewed_by": "<person>", "date": "<date>", "reason": "<why it's equivalent>"},
+    "scope_decision": {"by": "<person>", "date": "<date>", "reason": "<why it's out of scope>"},
     "file": "<repo-relative path>"
   }
 }
 ```
+
+That is the flat format. [Format 2](#format-2-and-layer-roles) wraps the same entries with a `meta`.
 
 - `killed_by` holds confirmed kills only: a failure on a test that passes on clean code, reproduced on a rerun. The failure is an assertion, or the bug's own symptom, such as a `cy.wait` timeout for a request the mutant never sends or a click on a control the mutant leaves disabled.
 - `symptom_kills` lists the tests in `killed_by` whose failure was the bug's symptom. They count as kills everywhere, and the list only marks them, because a timeout or retry change can lose a symptom kill.
@@ -119,7 +123,7 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 - A missing `symptom_kills` or `symptom_unconfirmed_by` means none. An id in `symptom_kills` that isn't in `killed_by`, or in `symptom_unconfirmed_by` but not `unconfirmed_by`, is ignored, and the output counts it.
 - `errored` holds tests that failed for another reason, like a crash, a harness error, a setup failure, or a failure on clean code. They are never kills.
 - The type checker and the contract checker have no test id. One of them kills the mutant when `killed_at_layer` is its layer, `tsc` or `contract`, and `kill_confirmed` is true, or when `layer_results.tsc` or `layer_results.contract` has the result `killed`. `killed_at_layer` names only the cheapest layer, so a contract kill under a type checker kill shows only in `layer_results`. An unconfirmed checker kill doesn't count, and a mutant whose two records disagree is listed as a data warning.
-- A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
+- A miss is `ran` minus `killed_by`, `errored` and `unconfirmed_by`. A test missing from `ran` says nothing about that mutant, and an error, an unconfirmed kill or a static exclusion is never a miss.
 - A mutant's coarse stratum is its `stratum_coarse`. Without one, it's the coarse stratum of its `stratum` from this table, or else its `stratum` as written. `--require-strata` and the baseline check compare coarse strata, and a baseline mutant is one whose coarse stratum is `baseline`.
 
   | `stratum`                                                     | Coarse stratum |
@@ -128,9 +132,51 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
   | `intra-frontend-wiring`, `boundary-wiring`, `browser-measurement` | `wiring`   |
   | `store-state`, `server-state`, `cross-page-timing`            | `state`        |
 - `file` is optional. With it, a mutant counts towards a test's delete verdict only when the test ran a function of that file, or a class of that namespace for `.clj` and `.cljc`. Without it, being in `ran` counts as reaching the mutant.
-- `equivalent_suspect: true` marks a mutant the corpus suspects is equivalent: it behaves like the original code, so no test can kill it. Only the [location ledger](#location-ledger) reads it. A missing field means not suspected.
+- `equivalent_suspect: true` marks a mutant the corpus suspects is equivalent: it behaves like the original code, so no test can kill it. A missing field means not suspected. See [Suspected equivalent mutants](#suspected-equivalent-mutants) for what the verdicts do with it.
+- `equivalence` records a reviewed equivalence and `scope_decision` a decision that the mutant is out of scope. Either one resolves a suspected equivalent mutant, and each needs all three of its fields. A record missing a field is ignored, and the output lists it.
 - An entry that is a bare list of test ids is read as `killed_by`, with `ran` unknown.
 - Over the reach index instead of a run, a mutant can also carry a `location` or `locations`. See [Verdicts from a kills file](#verdicts-from-a-kills-file).
+
+#### Format 2 and layer roles
+
+Format 2 wraps the entries with a `meta`:
+
+```
+{
+  "meta": {"format": 2, "layer_roles": {"e2e_base": "removed", "e2e_head": "remaining", "jest_head": "remaining", "jest_base": "reference"}},
+  "mutants": {"<mutant id>": {..., "layer_results": {"<layer>": {<layer result>}}}}
+}
+```
+
+A layer result holds the same lists as an entry, `killed_by`, `unconfirmed_by`, `errored`, `ran` and the symptom fields, and these fields about what was run:
+
+| Field      | Meaning                                                                                                   |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| `scope`    | `full` when the layer ran every test it could, `selected` when it ran a selection. A missing scope means full |
+| `selected` | the tests chosen to run. One that isn't in `ran` is "not run", never a miss                              |
+| `excluded` | `[{"test": ..., "reason": ...}]`, the tests left out on a static reading, never a miss. `test` can be any string, such as `*` for every test |
+
+`meta.layer_roles` gives every layer other than `tsc` and `contract` a role, and `kills.py` refuses a file where a layer has none or an unknown one:
+
+- **`removed`:** the candidates' results count, as the removed side. Other tests' results here don't count.
+- **`remaining`:** every other test's results count, as the remaining side. Candidates' results here don't count.
+- **`reference`:** nothing counts. It's there for a reader.
+
+So a kept test that ran at the base and at the head counts only through its head result. The checkers' kills count as remaining, as always. Without `layer_roles`, the entry's own lists count, a candidate's results as removed and every other test's as remaining, as in the flat format. The ledger reads only files without layer roles.
+
+#### Execution states and the remaining side
+
+Each test's result on a mutant has one execution state: `killed`, `symptom kill`, `unconfirmed`, `unconfirmed symptom kill`, `errored`, `missed`, or `not run` for a selected test that isn't in `ran`. Only `missed` is a miss.
+
+The remaining side's result on a mutant is one of these:
+
+- **`killed`:** a remaining test or a checker has a confirmed kill.
+- **`missed`:** at least one remaining test missed it and none killed it. The tests that errored, were unconfirmed or weren't run are still listed.
+- **`unresolved`:** remaining tests ran it, but each one errored or was unconfirmed.
+- **`statically excluded`:** no remaining test ran it, and a remaining layer excluded tests.
+- **`unmeasured at the head`:** no remaining test ran it.
+
+Its scope is `selected` when any remaining layer with a result for the mutant has a selected scope, `full` otherwise, and none when no remaining layer has a result. A mutant's `states` are among four a report prints: `caught by a removed test`, `missed by the selected remaining tests`, `statically excluded` and `unmeasured at the head`.
 
 Only the run's e2e tests get a verdict. Every other id, including jest and Clojure tests, counts as a remaining test, and so do the type checker and the contract checker, which run on every PR. A test's kill of a mutant a checker also kills is never unique, and the cover never keeps a test for it:
 
@@ -140,7 +186,9 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 - **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
 - **accepted:** an unmeasured test deleted on a stated risk, never a measured delete. Only `kills.py` over the index gives it, and only with a location prior. See [Accepted verdicts](#accepted-verdicts).
 
-A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason ends in ", all symptom kills", as in "unique kills, all symptom kills".
+A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason gains ", all symptom kills", as in "unique kills, all symptom kills".
+
+Those mutants are the ones no remaining test kills, and that claim holds only at the scope that ran. A keep's `scope` is the widest scope at which the remaining side missed any of them: `full`, `selected`, or `unmeasured` when the remaining side missed none of them, because it errored, was unconfirmed, was excluded or never ran. When the scope isn't full, the reason ends in "; " and the remaining side's result on each of the mutants, as in "unique kills; reg-1: missed by 7 selected remaining tests, 42 excluded". A keep stays a keep at any scope, since keeping is the safe side. A delete, accepted or unmeasured test's `scope` is the same scope over its lost kills, the mutants in its `depends_on` that no kept test kills.
 
 When tests share a kill, the kills-first cover prefers one that kills with an assertion, because a timeout or retry change can lose a symptom kill. Among tests with the same number of new kills, it takes the one with the most new kills that aren't its symptom kills, confirmed or not, before it looks at code, checks or time. When it drops tests whose kills the other kept tests already have, it tries the most expensive first, and among equal costs, the ones with the most symptom kills.
 
@@ -232,7 +280,7 @@ python3 e2e/coverage/journey/pipeline/kills.py --index <index dir> --kills <file
 | --------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `--index <dir>`             | the index, or `JOURNEY_LOOKUP_INDEX`                                                                       |
 | `--kills <file>`            | a [kills file](#kills-file)                                                                                |
-| `--candidates <file or id>` | the tests proposed for deletion. A file holds one test id per line, a JSON list, or JSON lines with a `deleted_test` or `id` field. Anything else is read as one test id. Repeat it for more |
+| `--candidates <file or id>` | the tests proposed for deletion. A file holds one test id per line, a JSON list, or JSON lines with a `deleted_test` or `id` field. Anything else is read as one test id. Repeat it for more. A [candidates file](#a-pull-requests-kills-file) must be the only one |
 | `--min-mutants <k>`         | qualifying mutants a delete verdict needs, default 5                                                       |
 | `--require-strata`          | coarse strata a delete verdict needs among them, default `logic,wiring`                                    |
 | `--prior <file>`            | the location prior, which an accepted verdict needs. See [Accepted verdicts](#accepted-verdicts)           |
@@ -253,16 +301,48 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 - **Repeated titles:** a candidate id without a suffix stands for every index test with its spec and title. It reaches what any of them reached, and it passed in the capture when all of them passed. `ordinals` in the output lists the candidates that stand for more than one test, with their index ids.
 - **Cover:** the index has no durations or assertion text, so when the kills-first cover chooses between candidates that share kills, it breaks ties on the kills that aren't symptom kills, then on reached code, then on the order of `--candidates`.
 
+#### A pull request's kills file
+
+There's no index at a PR's head, so `kills.py` also takes a candidates file, a JSON object, in place of the index:
+
+```
+python3 e2e/coverage/journey/pipeline/kills.py --kills <file> --candidates <candidates file> [options] --out <json file>
+```
+
+```
+{"removed_at": "<commit>", "head": "<commit>", "tests": ["<test id>", ...]}
+```
+
+`removed_at` is the revision the tests were removed at and `head` the PR's head, which is optional. The tests are the candidates. `kills.py` then reads no index, even when `--index` or `JOURNEY_LOOKUP_INDEX` is set, and a candidate reaches every mutant it ran, with basis `ran`. There's no capture, so no candidate is unmeasured for not being in it or failing in it. The verdict rules are otherwise the same, including the minimum sample and the required strata before a delete. A PR's kills file is usually [format 2 with layer roles](#format-2-and-layer-roles).
+
 It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
 
 - `joint_check`: `ok`, or the mutants that fail it, below
-- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for), `symptom_kills` and `unconfirmed_symptom_kills` (its kills and unconfirmed kills that are symptom kills) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, the mutants it `errored` on, `symptom_only`, and `also_killed_by_checker`, its kills that a checker also makes, as `{"<stratum>": {"<mutant id>": ["type checker" | "contract checker", ...]}}`. A delete, accepted or unmeasured candidate also has `depends_on` and `symptom_only_after_deletion`, below, and an unmeasured or accepted candidate has an `acceptance`, below
+- `mode`: `index` or `candidates file`, with `index` or `candidates_file` saying which, and the other one null
+- `candidates`: for each candidate, the verdict and reason, its `scope`, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for), `symptom_kills` and `unconfirmed_symptom_kills` (its kills and unconfirmed kills that are symptom kills) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, the mutants it `errored` on, `symptom_only`, `equivalent_suspects`, the suspected equivalent mutants it would otherwise sample, with how each stands, and `also_killed_by_checker`, its kills that a checker also makes, as `{"<stratum>": {"<mutant id>": ["type checker" | "contract checker", ...]}}`. A delete, accepted or unmeasured candidate also has `depends_on` and `symptom_only_after_deletion`, below, and an unmeasured or accepted candidate has an `acceptance`, below
 - `accepted`: the accepted verdicts on their own, below
-- `summary`: verdicts, reasons, candidates per stratum, and under `symptom_kills` the candidates' kills, how many of them are symptom kills, their unconfirmed symptom kills, and how many keeps and provisional-keeps rest only on symptom kills
-- `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to with its number of `baseline_keys`, and how many candidates reach it
+- `summary`: verdicts, reasons, `scopes` (the candidates with each scope, by verdict), candidates per stratum, and under `symptom_kills` the candidates' kills, how many of them are symptom kills, their unconfirmed symptom kills, and how many keeps and provisional-keeps rest only on symptom kills
+- `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to with its number of `baseline_keys`, how many candidates reach it, and:
+  - `removed`: the removed side's `result`, `caught`, `missed`, `unresolved` or `not run`, and `tests`, each candidate with a result and its execution state
+  - `remaining`: the remaining side's `result` and `scope`, as [above](#execution-states-and-the-remaining-side), `text`, the result in words, `killed_by`, `missed` (a count), `missed_by` (the tests, when the scope is selected), `errored`, `unconfirmed_by`, `not_run`, `excluded`, and `layers`, each remaining layer's role, scope and number of tests in each execution state
+  - `states`: its states among the four
+  - `equivalent_suspect`, for a suspected equivalent mutant: its `state`, its `equivalence` or `scope_decision` record, `deletion_depends_on_dismissing` and `candidates`, below
+- `mutant_states`: how many mutants are in each of the four states, how many a removed test caught and no remaining test killed, and how many have each result on each side
 - `kills_cover`: the candidates the cover keeps
-- `kills`: counts by stratum and by reach, the kills file's e2e ids that aren't in the index, and under `symptom_kills` the file's kills and unconfirmed kills, how many of each are symptom kills, the mutants that rest only on symptom kills, and the ignored symptom ids, `checker_kills` with the number of mutants each checker kills, and `checker_disagreements` with the mutants whose `killed_at_layer` and `layer_results` disagree on a checker kill
-- `candidates_not_in_index`
+- `kills`: the kills file's `format` and `layer_roles`, counts by stratum and by reach, the kills file's e2e ids that aren't in the index, and under `symptom_kills` the file's kills and unconfirmed kills, how many of each are symptom kills, the mutants that rest only on symptom kills, and the ignored symptom ids, `checker_kills` with the number of mutants each checker kills, `checker_disagreements` with the mutants whose `killed_at_layer` and `layer_results` disagree on a checker kill, `results_on_the_other_side` with the results that don't count because of their layer's role, `equivalent_suspects` with the suspected equivalent mutants by how they stand, and `incomplete_equivalence_records`
+- `candidates_not_in_index` and `ordinals`, over the index only
+
+The report also counts the mutants in each state, and lists each mutant a removed test caught and no remaining test killed, with the remaining side's result in words and the candidates that caught it.
+
+#### Suspected equivalent mutants
+
+A mutant with `equivalent_suspect: true` and no confirmed kill earns no sample credit: it isn't a qualifying mutant, so it counts towards neither `--min-mutants` nor `--require-strata`, and it can leave a candidate under the minimum and unmeasured. Each candidate's `equivalent_suspects` lists the ones it would otherwise have sampled.
+
+Until the mutant records a reviewed equivalence, `equivalence`, or a scope decision, `scope_decision`, it's unresolved, and it counts as a survivor that blocks an accepted verdict. It doesn't stop a delete that the other mutants already justify, since a delete never needs every sampled mutant killed. With either record it's resolved: still no sample credit, and no longer a blocker.
+
+For each unresolved suspect in a sample, `deletion_depends_on_dismissing` says whether dismissing that one mutant, and only it, changes any candidate's verdict, and `candidates` lists them. When two suspects block the same candidate, dismissing either one alone changes nothing, so neither is flagged. That errs towards keeping the test, and it's kept that way on purpose.
+
+A suspected equivalent mutant with a confirmed kill shows the mark is wrong, and it counts as any killed mutant does.
 
 #### Depends on and the joint check
 
@@ -358,7 +438,7 @@ node e2e/coverage/journey/lookup/ledger.mjs --index <index dir> --kills <file> -
     [--locations <reach-counts.jsonl>] [--candidates <file or test id> ...] [--mutants-dir <dir>] [--allow-mixed] [--repo <path>]
 ```
 
-`ledger.mjs` joins the index and a [kills file](#kills-file) into one row per code location. A row is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`. Mutant locations and `--locations` resolve as in [Locations](#locations), and the ones that resolve to the same function or form share a row. Each row holds the tests that reach it and assert afterwards, the mutants planted there, their confirmed killers per layer, and each mutant's `cheapest_layer`: the first of `tsc`, `contract`, `jest`, `deftest` and `e2e` with a confirmed kill, or `none`. Reach counts only tests that passed in the capture.
+`ledger.mjs` joins the index and a [kills file](#kills-file) into one row per code location. A row is a frontend function with its own Istanbul counter, `{file, fn}`, or a backend top-level form, `{ns, var}`. Mutant locations and `--locations` resolve as in [Locations](#locations), and the ones that resolve to the same function or form share a row. Each row holds the tests that reach it and assert afterwards, the mutants planted there, their confirmed killers per layer, and each mutant's `cheapest_layer`: the first of `tsc`, `contract`, `jest`, `deftest` and `e2e` with a confirmed kill, or `none`. Reach counts only tests that passed in the capture. It reads the flat format and format 2 without layer roles, and exits with code 1 on a file with them, which is a PR's file for `kills.py --candidates`.
 
 Reach is split by [basis](#basis): the `_measured` fields and columns hold reach with basis `subtraction`, and the `_baseline` ones reach with basis `baseline`. A test that reaches a row both ways is in both. Each baseline pair has the test's [load](#basis) as a third element, and the counts and the CSV split the baseline reach by load. The demand list and the e2e floor come from the kills alone, so the basis never changes them.
 
@@ -380,15 +460,15 @@ Reach is split by [basis](#basis): the `_measured` fields and columns hold reach
 
 It writes three files to `--out`:
 
-- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs in `reach_and_assert_measured`, `reach_other_measured`, `reach_and_assert_baseline` and `reach_other_baseline`, their counts, the index keys each candidate reached, for the kills-first cover's tie-break, and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, its symptom kills by layer in `symptom_kills` and `symptom_unconfirmed_by`, `symptom_only`, `checker_kills` read as `kills.py` reads them and `checker_disagreement` when its two records disagree, `e2e_status`, `cheapest_layer_source` and `equivalent_suspect` when the kills file sets it, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list, the suspected equivalent mutants and the e2e floor.
-- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach_measured`, `e2e_reach_and_assert_measured`, `e2e_reach_baseline`, `e2e_reach_and_assert_baseline` and `e2e_reach_and_assert_baseline_by_load` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file. `symptom_kills_layers` and `symptom_unconfirmed_by_layers` count the mutant's symptom kills by layer, and `symptom_only` is `yes`, `no`, or empty for a mutant with no kill. `equivalent_suspect` is `yes` for a mutant the kills file marks, `no` for any other mutant, and empty on a row without mutants. `checker_kills` names the checkers that kill it.
+- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs in `reach_and_assert_measured`, `reach_other_measured`, `reach_and_assert_baseline` and `reach_other_baseline`, their counts, the index keys each candidate reached, for the kills-first cover's tie-break, and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, its symptom kills by layer in `symptom_kills` and `symptom_unconfirmed_by`, `symptom_only`, `checker_kills` read as `kills.py` reads them and `checker_disagreement` when its two records disagree, `e2e_status`, `cheapest_layer_source`, `equivalent_suspect` when the kills file sets it with `equivalence_state` and its records, the number of tests in each execution state by layer in `test_states`, each e2e test's state in `e2e_states`, and the `scope` and `excluded` tests of its layer results, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list, the suspected equivalent mutants and the e2e floor.
+- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach_measured`, `e2e_reach_and_assert_measured`, `e2e_reach_baseline`, `e2e_reach_and_assert_baseline` and `e2e_reach_and_assert_baseline_by_load` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file. `symptom_kills_layers` and `symptom_unconfirmed_by_layers` count the mutant's symptom kills by layer, and `symptom_only` is `yes`, `no`, or empty for a mutant with no kill. `equivalent_suspect` is `yes` for a mutant the kills file marks, `no` for any other mutant, and empty on a row without mutants. `checker_kills` names the checkers that kill it, and `equivalence_state` says how a suspected equivalent mutant stands.
 - `summary.md`, also printed: the counts, including the rows with baseline reach, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the checker kills and any disagreement between their two records, the symptom kills and any ignored symptom ids, the demand list, the suspected equivalent mutants when there are any, and the e2e floor.
 
 The **demand list** is the mutants with `cheapest_layer: none` that the kills file doesn't mark `equivalent_suspect`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. Both read the same `cheapest_layer`, so a mutant with `kill_confirmed` true is never on the demand list, even when its `killed_by` is empty. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
 
 A symptom kill is a kill here too, so a mutant whose only confirmed kill is a symptom kill is on the e2e floor and off the demand list. A mutant rests only on symptom kills when its confirmed kills at every layer, or its unconfirmed kills when it has none, are all symptom kills, and its `symptom_only` is then true. Each group of the demand list and the e2e floor in the JSON lists those mutants in `symptom_only`, the demand table has a column for them, and the summary gives their count under the demand list and under each e2e floor line. On the demand list they are the mutants whose only kill is an unconfirmed symptom kill, and on the floor they are the mutants whose only kills a timeout or retry change could lose.
 
-No test can kill an equivalent mutant, so a mutant with `equivalent_suspect: true` and no confirmed killer is left out of the demand list and its counts by row, stratum and route. A marked mutant that some test kills shows the mark is wrong, so it keeps its cheapest layer and can be on the e2e floor. The JSON groups the marked mutants by stratum under `equivalent_suspect`, or under `equivalent_suspect_killed` when they have a confirmed kill. The summary counts them in a section of their own and names each killed one with its layer. Neither `kills.py` nor `ledger-verdicts.mjs` reads the mark, so verdicts and the joint check are the same with or without it.
+No test can kill an equivalent mutant, so a mutant with `equivalent_suspect: true` and no confirmed killer is left out of the demand list and its counts by row, stratum and route. A marked mutant that some test kills shows the mark is wrong, so it keeps its cheapest layer and can be on the e2e floor. The JSON groups the marked mutants by stratum under `equivalent_suspect`, or under `equivalent_suspect_killed` when they have a confirmed kill. The summary counts them in a section of their own, names each killed one with its layer, and says how each unkilled one stands: unresolved, or resolved by a reviewed equivalence or a scope decision. The CSV's `equivalence_state` gives each one's. `kills.py` and `ledger-verdicts.mjs` read the mark as [Suspected equivalent mutants](#suspected-equivalent-mutants) says.
 
 `ledger-verdicts.mjs` checks the ledger against `kills.py`:
 
@@ -397,7 +477,7 @@ node e2e/coverage/journey/lookup/ledger-verdicts.mjs --ledger <ledger.json> --ve
     [--min-mutants <k>] [--require-strata <s,...>] [--strata coarse]
 ```
 
-It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check and the symptom markers, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `qualifying_basis`, `symptom_kills`, `symptom_only`, `symptom_only_after_deletion` and `also_killed_by_checker`, with each mutant's `checker_kills` counted as a kill by the remaining suite, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It also prints the keeps and provisional-keeps that rest only on symptom kills. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
+It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check, the symptom markers, the remaining side's scope and the sample credit of suspected equivalent mutants, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `scope`, `qualifying_basis`, `equivalent_suspects`, `symptom_kills`, `symptom_only`, `symptom_only_after_deletion` and `also_killed_by_checker`, with each mutant's `checker_kills` counted as a kill by the remaining suite, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It also prints the keeps and provisional-keeps that rest only on symptom kills. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
 
 ### Building an index
 

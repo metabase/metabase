@@ -13,6 +13,7 @@ import csv
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -146,7 +147,7 @@ EXPECTED = {
     UNIT: ("delete", "no unique kill"),
     ERRORED: ("unmeasured", "0 qualifying mutants, fewer than 2"),
     MISSING: ("unmeasured", "not in the capture run, so its reached code is unknown"),
-    PAIRED: ("keep", COVER_KEEPS),
+    PAIRED: ("keep", f"{COVER_KEEPS}; missing-pair: not run by any remaining test"),
     BARE: ("unmeasured", "ran unknown"),
     ABSENT: ("unmeasured", "not in the kill matrix"),
     BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2"),
@@ -1112,7 +1113,7 @@ class SymptomKills(unittest.TestCase):
     def test_a_bare_list_entry_has_no_symptom_kills(self):
         row = self.evaluate_entries({"bare": [UNIQUE]}, [UNIQUE], 1, [])["candidates"][UNIQUE]
         self.assertEqual((row["verdict"], row["reason"], row["symptom_kills"], row["symptom_only"]),
-                         ("keep", "unique kills", {}, False))
+                         ("keep", "unique kills; bare: not run by any remaining test", {}, False))
 
     def test_the_joint_check_counts_symptom_kills(self):
         first, middle, last = CHAIN
@@ -1346,17 +1347,24 @@ class EquivalentSuspects(unittest.TestCase):
                       "equivalent-killed (e2e).\n", self.marked.summary)
         self.assertEqual(self.csv_marks(self.marked)["equivalent-killed"], ("e2e", "yes"))
 
-    def test_verdicts_and_the_joint_check_ignore_the_mark(self):
+    def test_an_unresolved_suspect_gets_no_sample_credit_and_a_killed_one_counts_as_killed(self):
         self.assertEqual([mid for mid, m in self.marked.ledger["mutants"].items() if m.get("equivalent_suspect")],
                          list(SUSPECTS))
         for run in (self.marked, self.unmarked):
             self.assertEqual(run.check.returncode, 0, run.check.stdout)
             self.assertEqual(run.result["joint_check"], "ok")
-        self.assertIn("equivalent-sampled", self.marked.result["candidates"][UNIT]["qualifying_basis"]["subtraction"])
-        for key in ("candidates", "summary", "kills_cover", "mutants"):
-            with self.subTest(key):
-                self.assertEqual(self.marked.result[key], self.unmarked.result[key])
-        self.assertEqual(self.marked.check.stdout, self.unmarked.check.stdout)
+        marked, unmarked = self.marked.result["candidates"], self.unmarked.result["candidates"]
+        self.assertNotIn("equivalent-sampled", marked[UNIT]["qualifying_basis"]["subtraction"])
+        self.assertIn("equivalent-sampled", unmarked[UNIT]["qualifying_basis"]["subtraction"])
+        self.assertEqual((marked[UNIT]["equivalent_suspects"], unmarked[UNIT]["equivalent_suspects"]),
+                         ({"equivalent-sampled": "unresolved"}, {}))
+        self.assertEqual(marked[PAIRED]["unique_kills"], unmarked[PAIRED]["unique_kills"])
+        self.assertIn("equivalent-killed", marked[PAIRED]["unique_kills"]["logic"])
+        self.assertEqual({mid: self.marked.result["mutants"][mid]["equivalent_suspect"]["state"] for mid in SUSPECTS},
+                         {"equivalent-alone": "unresolved", "equivalent-sampled": "unresolved", "equivalent-killed": "killed"})
+        self.assertEqual({mid: m["equivalence_state"] for mid, m in self.marked.ledger["mutants"].items() if "equivalence_state" in m},
+                         {"equivalent-alone": "unresolved", "equivalent-sampled": "unresolved", "equivalent-killed": "killed"})
+        self.assertIn("Among the ones with no confirmed kill, 2 are unresolved (equivalent-alone, equivalent-sampled)", self.marked.summary)
 
     def test_an_older_kills_file_marks_no_mutant(self):
         ledger = self.unmarked.ledger
@@ -1545,6 +1553,392 @@ class RealData(unittest.TestCase):
                         self.assertEqual(kept, sorted(killers[mid] & stays))
                 survivors = (row.get("acceptance") or {}).get("survivors") or []
                 self.assertEqual([mid for mid in survivors if stays_killed(mid)], [])
+
+
+PR_BASE, PR_HEAD = "2f3fe9904e4addbcbe4d32403d6a7ab2fc471100", "7960eb8ff6cf91d143ccc97d3c992e5ba2a7d60f"
+PR_SPEC = "e2e/test/scenarios/documents/documents.cy.spec.ts::documents "
+D1, D2, D3, D4, D5, D6, D7 = (f"{PR_SPEC}removed test {n}" for n in range(1, 8))
+H1, H2, H3 = (f"{PR_SPEC}kept test {n}" for n in range(1, 4))
+J1, J2 = (f"frontend/src/metabase/documents/Document.unit.spec.tsx::Document {what}" for what in ("renders", "saves"))
+PR_FILE = "frontend/src/metabase/documents/components/DocumentPage.tsx"
+PR_ROLES = {"e2e_base": "removed", "e2e_head": "remaining", "jest_head": "remaining", "jest_base": "reference"}
+
+
+def layer_result(killed_by=(), ran=(), errored=(), unconfirmed_by=(), scope=None, selected=None, excluded=(), base=None):
+    result = {"killed_by": list(killed_by), "ran": list(ran), "errored": list(errored)}
+    if unconfirmed_by:
+        result["unconfirmed_by"] = list(unconfirmed_by)
+    if base:
+        result["base"] = base
+    if scope:
+        result["scope"] = scope
+    if selected is not None:
+        result["selected"] = list(selected)
+    if excluded:
+        result["excluded"] = [{"test": t, "reason": why} for t, why in excluded]
+    return result
+
+
+def head_result(*args, **kwargs):
+    return layer_result(*args, base=PR_HEAD, **kwargs)
+
+
+def pr_mutant(stratum, **layer_results):
+    return {"stratum": stratum, "origin": "synthetic", "file": PR_FILE, "layer_results": layer_results}
+
+
+def format_2(mutants, roles=PR_ROLES, **meta):
+    return {"meta": {"format": 2, "base": PR_BASE, **({"layer_roles": roles} if roles else {}), **meta}, "mutants": mutants}
+
+
+PR_KILLS = {
+    "selected-miss": pr_mutant(
+        "logic", e2e_base=layer_result([D1], [D1, D2]),
+        e2e_head=head_result(ran=[H1, H2, D1], scope="selected", selected=[H1, H2], excluded=[(H3, "reaches no document page")]),
+        jest_head=head_result(ran=[J1], scope="selected", selected=[J1])),
+    "error-only": pr_mutant("logic", e2e_base=layer_result([D2], [D2]),
+                            e2e_head=head_result(ran=[H1], errored=[H1], scope="selected", selected=[H1])),
+    "unconfirmed": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([D2], [D2]),
+                             e2e_head=head_result(ran=[H2], unconfirmed_by=[H2], scope="selected", selected=[H2])),
+    "unrun": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([D3], [D3]),
+                       e2e_head=head_result(scope="selected", selected=[H1, H2])),
+    "partial-run": pr_mutant("logic", e2e_base=layer_result([D3], [D3]),
+                             e2e_head=head_result(ran=[H1, H2], errored=[H2], scope="selected", selected=[H1, H2, H3])),
+    "excluded": pr_mutant("boundary-wiring", e2e_base=layer_result([D3], [D3]),
+                          e2e_head=head_result(scope="selected", selected=[],
+                                               excluded=[("*", "no e2e test at the head prints a document")])),
+    "head-unmeasured": pr_mutant("logic", e2e_base=layer_result([D1], [D1])),
+    "jest-kill": pr_mutant("logic", e2e_base=layer_result([D1], [D1]), jest_head=head_result([J1], [J1, J2]),
+                           jest_base=layer_result([], [J1])),
+    "reference-kill": pr_mutant("store-state", e2e_base=layer_result([D4], [D4]), jest_base=layer_result([J2], [J2])),
+    "kept-in-base": pr_mutant("logic", e2e_base=layer_result([H1], [D4, H1]), e2e_head=head_result(ran=[H1])),
+}
+PR_CANDIDATES = [D1, D2, D3, D4]
+PR_REMAINING = {
+    "selected-miss": ("missed", "selected", "missed by 3 selected remaining tests, 1 excluded",
+                      ["caught by a removed test", "missed by the selected remaining tests"]),
+    "error-only": ("unresolved", "selected", "no result from the selected remaining tests, 1 errored", ["caught by a removed test"]),
+    "unconfirmed": ("unresolved", "selected", "no result from the selected remaining tests, 1 unconfirmed", ["caught by a removed test"]),
+    "unrun": ("unmeasured at the head", "selected", "not run by any remaining test, 2 selected but not run",
+              ["caught by a removed test", "unmeasured at the head"]),
+    "partial-run": ("missed", "selected", "missed by 1 selected remaining tests, 1 errored, 1 selected but not run",
+                    ["caught by a removed test", "missed by the selected remaining tests"]),
+    "excluded": ("statically excluded", "selected", "statically excluded: no e2e test at the head prints a document",
+                 ["caught by a removed test", "statically excluded"]),
+    "head-unmeasured": ("unmeasured at the head", None, "not run by any remaining test", ["caught by a removed test", "unmeasured at the head"]),
+    "jest-kill": ("killed", "full", "killed by 1 remaining tests", ["caught by a removed test"]),
+    "reference-kill": ("unmeasured at the head", None, "not run by any remaining test", ["caught by a removed test", "unmeasured at the head"]),
+    "kept-in-base": ("missed", "full", "missed by 1 remaining tests", ["missed by the selected remaining tests"]),
+}
+
+
+def write_candidates_file(d, tests, removed_at=PR_BASE, head=PR_HEAD):
+    path = os.path.join(d, "candidates.json")
+    with open(path, "w") as f:
+        json.dump({"removed_at": removed_at, **({"head": head} if head else {}), "tests": tests}, f)
+    return path
+
+
+def evaluate_pr(entries, candidate_ids, min_mutants=kills.MIN_MUTANTS, strata=STRATA, **options):
+    """kills.py's result for a kills file of these entries and a candidates file of these tests, with no index."""
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "kills.json")
+        with open(path, "w") as f:
+            json.dump(entries, f)
+        candidates = kills.read_candidates_file(write_candidates_file(d, candidate_ids))
+        return kills.evaluate_candidates_file(path, candidates, min_mutants, list(strata), **options)
+
+
+class PullRequestKills(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.result = evaluate_pr(format_2(PR_KILLS), PR_CANDIDATES)
+        cls.rows = cls.result["candidates"]
+        cls.mutants = cls.result["mutants"]
+
+    def test_each_mutant_has_a_remaining_result_a_scope_and_its_states(self):
+        for mid, (result, scope, text, states) in PR_REMAINING.items():
+            with self.subTest(mid):
+                m = self.mutants[mid]
+                self.assertEqual((m["remaining"]["result"], m["remaining"]["scope"], m["remaining"]["text"], m["states"]),
+                                 (result, scope, text, states))
+
+    def test_errored_unconfirmed_unrun_and_excluded_results_are_never_misses(self):
+        for mid in ("error-only", "unconfirmed", "unrun", "excluded"):
+            with self.subTest(mid):
+                side = self.mutants[mid]["remaining"]
+                self.assertEqual((side["missed"], side["missed_by"]), (0, []))
+        self.assertEqual({k: self.mutants["error-only"]["remaining"][k] for k in ("errored", "unconfirmed_by", "not_run")},
+                         {"errored": [H1], "unconfirmed_by": [], "not_run": []})
+        self.assertEqual(self.mutants["unconfirmed"]["remaining"]["unconfirmed_by"], [H2])
+        self.assertEqual(self.mutants["unrun"]["remaining"]["not_run"], [H1, H2])
+        self.assertEqual(self.mutants["excluded"]["remaining"]["excluded"],
+                         [{"test": "*", "reason": "no e2e test at the head prints a document", "layer": "e2e_head"}])
+
+    def test_a_mixed_run_keeps_its_unresolved_tests(self):
+        side = self.mutants["partial-run"]["remaining"]
+        self.assertEqual({k: side[k] for k in ("missed", "missed_by", "errored", "not_run")},
+                         {"missed": 1, "missed_by": [H1], "errored": [H2], "not_run": [H3]})
+        self.assertEqual(side["layers"]["e2e_head"],
+                         {"role": "remaining", "scope": "selected", "selected": 3, "missed": 1, "errored": 1, "not run": 1, "excluded": 0})
+
+    def test_a_keep_names_the_scope_its_unique_kills_rest_on(self):
+        expected = {
+            D1: ("keep", "selected", "unique kills; head-unmeasured: not run by any remaining test; "
+                                     "selected-miss: missed by 3 selected remaining tests, 1 excluded"),
+            D2: ("keep", "unmeasured", "unique kills; error-only: no result from the selected remaining tests, 1 errored; "
+                                       "unconfirmed: no result from the selected remaining tests, 1 unconfirmed"),
+            D3: ("keep", "selected", "unique kills; excluded: statically excluded: no e2e test at the head prints a document; "
+                                     "partial-run: missed by 1 selected remaining tests, 1 errored, 1 selected but not run; "
+                                     "unrun: not run by any remaining test, 2 selected but not run"),
+            D4: ("keep", "unmeasured", "unique kills; reference-kill: not run by any remaining test"),
+        }
+        self.assertEqual({c: (r["verdict"], r["scope"], r["reason"]) for c, r in self.rows.items()}, expected)
+        self.assertEqual(self.rows[D1]["unique_kills"], {"logic": ["head-unmeasured", "selected-miss"]})
+        self.assertEqual(self.result["summary"]["scopes"], {"keep": {"selected": 2, "unmeasured": 2}})
+        self.assertEqual(self.result["summary"]["reasons"], {"keep: unique kills": 4})
+
+    def test_a_kept_test_counts_only_through_its_head_result_and_a_reference_layer_not_at_all(self):
+        self.assertEqual((self.mutants["kept-in-base"]["removed"], self.mutants["kept-in-base"]["remaining"]["killed_by"]),
+                         ({"result": "missed", "tests": {D4: "missed"}}, []))
+        self.assertEqual(self.rows[D4]["unique_kills"], {"store-state": ["reference-kill"]})
+        self.assertEqual(self.result["kills"]["results_on_the_other_side"],
+                         {"candidates in a remaining layer": 1, "other tests in a removed layer": 1})
+        self.assertEqual(self.mutants["selected-miss"]["removed"], {"result": "caught", "tests": {D1: "killed", D2: "missed"}})
+
+    def test_mutant_states_are_counted(self):
+        self.assertEqual(self.result["mutant_states"]["states"], {
+            "caught by a removed test": 9, "missed by the selected remaining tests": 3, "statically excluded": 1,
+            "unmeasured at the head": 3,
+        })
+        self.assertEqual(self.result["mutant_states"]["caught by a removed test and killed by no remaining test"], 8)
+
+    def test_the_command_reads_a_candidates_file_without_an_index(self):
+        with tempfile.TemporaryDirectory() as d:
+            path, out = os.path.join(d, "kills.json"), os.path.join(d, "verdicts.json")
+            with open(path, "w") as f:
+                json.dump(format_2(PR_KILLS), f)
+            candidates = write_candidates_file(d, PR_CANDIDATES)
+            env = {k: v for k, v in os.environ.items() if k != "JOURNEY_LOOKUP_INDEX"}
+            done = subprocess.run([sys.executable, kills.__file__, "--kills", path, "--candidates", candidates, "--out", out],
+                                  stdout=subprocess.PIPE, text=True, env=env, check=True)
+            with open(out) as f:
+                written = json.load(f)
+            both = subprocess.run([sys.executable, kills.__file__, "--kills", path, "--candidates", candidates, "--candidates", D1],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        self.assertEqual((written["mode"], written["index"]), ("candidates file", None))
+        self.assertEqual(written["candidates_file"], {"file": candidates, "removed_at": PR_BASE, "head": PR_HEAD})
+        self.assertEqual(written["candidates"], json.loads(json.dumps(self.rows)))
+        lines = done.stdout.splitlines()
+        self.assertIn(f"for the candidates in {candidates}, removed at {PR_BASE[:11]} and head {PR_HEAD[:11]}, "
+                      "with no index, so a candidate reaches every mutant it ran", lines[1])
+        self.assertEqual(lines[2], "Kills file format 2, layer roles: e2e_base removed, e2e_head remaining, jest_base reference, "
+                                   "jest_head remaining")
+        self.assertIn(f"\n  {D1}\n      unique kills: logic 2\n      scope selected: head-unmeasured: not run by any remaining test; ",
+                      done.stdout)
+        self.assertIn("\nCaught by a removed test and killed by no remaining test\n  logic error-only: no result from the selected "
+                      f"remaining tests, 1 errored\n      {D2}\n  boundary-wiring excluded: statically excluded: ", done.stdout)
+        self.assertIn("\n  10 with reach taken from `ran`, since a candidates file reads no index\n4 candidates\n", done.stdout)
+        self.assertNotEqual(both.returncode, 0)
+        self.assertIn("a candidates file with `removed_at` must be the only --candidates", both.stderr)
+
+    def test_layer_roles_must_name_every_tested_layer_with_a_known_role(self):
+        cases = {
+            "unnamed": (format_2(PR_KILLS, roles={k: v for k, v in PR_ROLES.items() if k != "jest_base"}),
+                        "meta.layer_roles gives no role to the layers jest_base"),
+            "unknown": (format_2(PR_KILLS, roles=PR_ROLES | {"jest_base": "baseline"}),
+                        "meta.layer_roles gives roles other than removed, remaining, reference: jest_base 'baseline'"),
+            "format": ({"meta": {"format": 3}, "mutants": {}}, "has a `meta` with format 3"),
+        }
+        for name, (entries, message) in cases.items():
+            with self.subTest(name):
+                with self.assertRaisesRegex(ValueError, re.escape(message)):
+                    evaluate_pr(entries, PR_CANDIDATES)
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "no-removed-at.json")
+            with open(path, "w") as f:
+                json.dump({"tests": [D1]}, f)
+            with self.assertRaisesRegex(ValueError, "has no `removed_at`"):
+                kills.read_candidates_file(path)
+
+
+def shared_kills(n, stratum="logic", candidate=D5, killer=J1, **extra):
+    """n mutants the candidate runs and a remaining jest test kills at the head."""
+    return {f"{stratum}-{i}": pr_mutant(stratum, e2e_base=layer_result([], [candidate]),
+                                        jest_head=head_result([killer], [killer]), **extra) for i in range(1, n + 1)}
+
+
+def killed_by_candidate_too(entries, mid, candidate=D5):
+    return entries | {mid: entries[mid] | {"layer_results": entries[mid]["layer_results"] | {
+        "e2e_base": layer_result([candidate], [candidate])}}}
+
+
+class DeleteGates(unittest.TestCase):
+    def verdict(self, entries, candidates=(D5,), **options):
+        row = evaluate_pr(format_2(entries), list(candidates), **options)["candidates"][candidates[0]]
+        return row["verdict"], row["reason"]
+
+    def test_insufficient_sampling_never_earns_a_delete(self):
+        enough = killed_by_candidate_too(shared_kills(3) | shared_kills(2, "intra-frontend-wiring"), "logic-1")
+        self.assertEqual(self.verdict(enough), ("delete", "no unique kill"))
+        cases = {
+            "four mutants": ((killed_by_candidate_too(shared_kills(3) | shared_kills(1, "intra-frontend-wiring"), "logic-1")),
+                             "4 qualifying mutants, fewer than 5"),
+            "no wiring mutant": (killed_by_candidate_too(shared_kills(5), "logic-1"), "no qualifying wiring mutant"),
+            "errored on two": (enough | {mid: pr_mutant("logic", e2e_base=layer_result([], [D5], errored=[D5]),
+                                                        jest_head=head_result([J1], [J1])) for mid in ("logic-2", "logic-3")},
+                               "3 qualifying mutants, fewer than 5"),
+            "no other test ran two": (enough | {mid: pr_mutant("logic", e2e_base=layer_result([], [D5])) for mid in ("logic-2", "logic-3")},
+                                      "3 qualifying mutants, fewer than 5"),
+            "a kill on none of them and no baseline run": (shared_kills(3) | shared_kills(2, "intra-frontend-wiring"),
+                                                           "needs a baseline check"),
+        }
+        for name, (entries, reason) in cases.items():
+            with self.subTest(name):
+                self.assertEqual(self.verdict(entries), ("unmeasured", reason))
+
+    def test_confirmed_killers_justify_a_keep_and_unconfirmed_ones_only_a_provisional_keep(self):
+        base = killed_by_candidate_too(shared_kills(3) | shared_kills(2, "intra-frontend-wiring"), "logic-1")
+        unique = base | {"own": pr_mutant("logic", e2e_base=layer_result([D5], [D5]), jest_head=head_result([], [J1]))}
+        unconfirmed = base | {"own": pr_mutant("logic", e2e_base=layer_result([], [D5], unconfirmed_by=[D5]),
+                                               jest_head=head_result([], [J1]))}
+        remaining_confirmed = base | {"own": pr_mutant("logic", e2e_base=layer_result([D5], [D5]), jest_head=head_result([J1], [J1]))}
+        remaining_unconfirmed = base | {"own": pr_mutant("logic", e2e_base=layer_result([D5], [D5]),
+                                                         jest_head=head_result([], [J1], unconfirmed_by=[J1]))}
+        self.assertEqual(self.verdict(unique), ("keep", "unique kills"))
+        self.assertEqual(self.verdict(unconfirmed), ("provisional-keep", "unconfirmed unique kills"))
+        self.assertEqual(self.verdict(remaining_confirmed), ("delete", "no unique kill"))
+        self.assertEqual(self.verdict(remaining_unconfirmed),
+                         ("keep", "unique kills; own: no result from the remaining tests, 1 unconfirmed"))
+
+
+SUSPECT_PRIOR = {"files": {PR_FILE: {"module": "fe:documents", "score": 0.1}}}
+
+
+def suspect_kills(**marks):
+    entries = killed_by_candidate_too(shared_kills(3) | shared_kills(1, "intra-frontend-wiring"), "logic-1")
+    return entries | {"suspect": pr_mutant("intra-frontend-wiring", e2e_base=layer_result([], [D5]),
+                                           jest_head=head_result([], [J1])) | {"equivalent_suspect": True} | marks}
+
+
+REVIEWED = {"equivalence": {"reviewed_by": "fraser", "date": "2026-09-29", "reason": "drops a cleanup after the promise settles"}}
+SCOPED = {"scope_decision": {"by": "fraser", "date": "2026-09-29", "reason": "print timing is out of this PR's scope"}}
+
+
+class EquivalenceSuspects(unittest.TestCase):
+    @staticmethod
+    def evaluate(entries, **options):
+        with tempfile.TemporaryDirectory() as d:
+            prior = os.path.join(d, "prior.json")
+            with open(prior, "w") as f:
+                json.dump(SUSPECT_PRIOR, f)
+            return evaluate_pr(format_2(entries), [D5], prior_path=prior, **options)
+
+    def test_an_unresolved_suspect_earns_no_credit_blocks_eligibility_and_is_flagged(self):
+        result = self.evaluate(suspect_kills())
+        row = result["candidates"][D5]
+        self.assertEqual((row["verdict"], row["reason"], row["equivalent_suspects"]),
+                         ("unmeasured", "4 qualifying mutants, fewer than 5", {"suspect": "unresolved"}))
+        self.assertEqual((row["acceptance"]["sampled"], row["acceptance"]["survivors"], row["acceptance"]["outcome"]),
+                         (4, ["suspect"], "unresolved suspected equivalent mutant in sample"))
+        self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
+                         {"state": "unresolved", "deletion_depends_on_dismissing": True, "candidates": [D5]})
+        self.assertEqual(result["kills"]["equivalent_suspects"],
+                         {"unresolved": 1, "reviewed equivalence": 0, "scope decision": 0, "killed": 0})
+        self.assertIn(f"  suspect: unresolved, no sample credit and a blocker, a deletion depends on dismissing it: {D5}",
+                      kills.report(result))
+
+    def test_a_suspect_among_mutants_that_already_justify_a_delete_does_not_veto_it(self):
+        entries = suspect_kills() | killed_by_candidate_too(shared_kills(1, "intra-frontend-wiring", killer=J2), "intra-frontend-wiring-1")
+        entries |= {"logic-4": shared_kills(1)["logic-1"]}
+        row = self.evaluate(entries)["candidates"][D5]
+        self.assertEqual((row["verdict"], row["equivalent_suspects"]), ("delete", {"suspect": "unresolved"}))
+
+    def test_two_suspects_blocking_one_candidate_are_neither_flagged(self):
+        entries = suspect_kills() | {"suspect-2": suspect_kills()["suspect"]}
+        result = self.evaluate(entries)
+        self.assertEqual({mid: result["mutants"][mid]["equivalent_suspect"]["deletion_depends_on_dismissing"]
+                          for mid in ("suspect", "suspect-2")}, {"suspect": False, "suspect-2": False})
+
+    def test_a_reviewed_equivalence_or_a_scope_decision_leaves_the_blocker_count(self):
+        for name, marks, state in (("reviewed", REVIEWED, "reviewed equivalence"), ("scoped", SCOPED, "scope decision")):
+            with self.subTest(name):
+                result = self.evaluate(suspect_kills(**marks))
+                row = result["candidates"][D5]
+                self.assertEqual((row["verdict"], row["equivalent_suspects"], row["acceptance"]["sampled"]),
+                                 ("accepted", {"suspect": state}, 4))
+                self.assertEqual(row["acceptance"]["survivors"], [])
+                self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
+                                 {"state": state, **marks, "deletion_depends_on_dismissing": False, "candidates": []})
+
+    def test_a_record_missing_a_field_leaves_the_suspect_unresolved(self):
+        incomplete = {"equivalence": {"reviewed_by": "fraser", "date": "2026-09-29"}}
+        result = self.evaluate(suspect_kills(**incomplete))
+        self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"]["state"], "unresolved")
+        self.assertEqual(result["kills"]["incomplete_equivalence_records"], {"suspect": ["`equivalence` has no reason"]})
+        self.assertIn("  suspect: `equivalence` has no reason, so the record is ignored", kills.report(result))
+
+    def test_a_suspect_a_test_kills_counts_as_killed(self):
+        entries = suspect_kills()
+        entries["suspect"]["layer_results"]["jest_head"] = head_result([J1], [J1])
+        result = self.evaluate(entries)
+        row = result["candidates"][D5]
+        self.assertEqual((row["verdict"], row["equivalent_suspects"], row["qualifying_mutants"]),
+                         ("delete", {}, {"logic": 3, "intra-frontend-wiring": 2}))
+        self.assertEqual(result["mutants"]["suspect"]["equivalent_suspect"],
+                         {"state": "killed", "deletion_depends_on_dismissing": False, "candidates": []})
+
+
+LEDGER_SCOPE_KILLS = format_2({
+    "errored-remaining": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, errored=[REMAINING]),
+    "unconfirmed-remaining": mutant("intra-frontend-wiring", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, unconfirmed_by=[REMAINING]),
+    "selected": mutant("logic", [PAIRED], [PAIRED, REMAINING], L_PAIRED) | {"layer_results": {"e2e": {
+        "scope": "selected", "selected": [PAIRED, REMAINING, BOOKMARK_MODEL],
+        "excluded": [{"test": BOOKMARK_COLLECTION, "reason": "reaches no collection page"}]}}},
+    "suspect-unresolved": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)),
+    "suspect-reviewed": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | REVIEWED,
+    "suspect-scoped": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | SCOPED,
+    "suspect-incomplete": suspect(mutant("logic", [], [UNIT, REMAINING], L_UNIT)) | {"scope_decision": {"by": "fraser"}},
+    "suspect-killed": suspect(mutant("logic", [JEST], [UNIT, JEST], L_UNIT)),
+}, roles=None)
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class LedgerScopeAndSuspects(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.joined = ledger_run(LEDGER_SCOPE_KILLS, [UNIQUE, PAIRED, UNIT], 1, [])
+
+    def test_the_ledger_gives_the_same_scopes_reasons_and_suspect_credit(self):
+        self.assertEqual(self.joined.check.returncode, 0, self.joined.check.stdout)
+        rows = self.joined.result["candidates"]
+        self.assertEqual({c: (rows[c]["verdict"], rows[c]["scope"], rows[c]["reason"]) for c in (UNIQUE, PAIRED)}, {
+            UNIQUE: ("keep", "unmeasured", "unique kills; errored-remaining: no result from the remaining tests, 1 errored; "
+                                           "unconfirmed-remaining: no result from the remaining tests, 1 unconfirmed"),
+            PAIRED: ("keep", "selected", "unique kills; selected: missed by 1 selected remaining tests, 1 selected but not run, "
+                                         "1 excluded"),
+        })
+        self.assertEqual(rows[UNIT]["equivalent_suspects"], {
+            "suspect-incomplete": "unresolved", "suspect-reviewed": "reviewed equivalence", "suspect-scoped": "scope decision",
+            "suspect-unresolved": "unresolved"})
+        self.assertEqual(rows[UNIT]["qualifying_basis"], {"subtraction": ["suspect-killed"]})
+
+    def test_the_ledger_shows_how_each_suspect_stands(self):
+        states = {mid: m.get("equivalence_state") for mid, m in self.joined.ledger["mutants"].items() if m.get("equivalent_suspect")}
+        self.assertEqual(states, {"suspect-unresolved": "unresolved", "suspect-reviewed": "reviewed equivalence",
+                                  "suspect-scoped": "scope decision", "suspect-incomplete": "unresolved", "suspect-killed": "killed"})
+        self.assertIn("Among the ones with no confirmed kill, 2 are unresolved (suspect-incomplete, suspect-unresolved): they get no "
+                      "sample credit in the verdicts, and they block eligibility until a reviewed equivalence or a scope decision is "
+                      "recorded on them. 1 by reviewed equivalence (suspect-reviewed), 1 by scope decision (suspect-scoped) are "
+                      "resolved, with no sample credit and no longer blockers. Records missing a field, so ignored: "
+                      "suspect-incomplete: `scope_decision` has no date, reason.", self.joined.summary)
+        self.assertEqual({r["mutant"]: r["equivalence_state"] for r in self.joined.csv if r["mutant"].startswith("suspect-")}, {
+            "suspect-unresolved": "unresolved", "suspect-reviewed": "reviewed equivalence", "suspect-scoped": "scope decision",
+            "suspect-incomplete": "unresolved", "suspect-killed": "killed"})
+
+    def test_misses_leave_out_unconfirmed_results(self):
+        self.assertEqual(self.joined.ledger["mutants"]["unconfirmed-remaining"]["misses"], 0)
+        self.assertEqual(self.joined.ledger["mutants"]["selected"]["misses"], 1)
 
 
 if __name__ == "__main__":

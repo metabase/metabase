@@ -199,6 +199,123 @@ function checkerKills(entry) {
   return { names, disagree };
 }
 
+/** A kills file's format, its `meta` and its entries by mutant id, from format 2 or the flat format, as kills.py reads them. */
+export function readKillsFile(file) {
+  const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+  const meta = raw?.meta;
+  if (
+    meta &&
+    typeof meta === "object" &&
+    !Array.isArray(meta) &&
+    raw.mutants &&
+    typeof raw.mutants === "object"
+  ) {
+    if (meta.format !== 2) {
+      throw new Error(
+        `${file} has a \`meta\` with format ${JSON.stringify(meta.format)}, and the ledger reads format 2 and the flat format`,
+      );
+    }
+    return { format: 2, meta, entries: raw.mutants };
+  }
+  return { format: "flat", meta: {}, entries: raw };
+}
+
+export const TEST_STATES = [
+  "killed",
+  "symptom kill",
+  "unconfirmed",
+  "unconfirmed symptom kill",
+  "errored",
+  "missed",
+  "not run",
+];
+
+/** Each test's execution state on one mutant, as kills.py's side_states() gives it. */
+export function testStates(lists) {
+  const states = new Map();
+  const ids = new Set(
+    ["killed_by", "unconfirmed_by", "errored", "ran", "selected"].flatMap(
+      (field) => [...lists[field]],
+    ),
+  );
+  for (const id of ids) {
+    if (lists.killed_by.has(id)) {
+      states.set(id, lists.symptom_kills.has(id) ? "symptom kill" : "killed");
+    } else if (lists.unconfirmed_by.has(id)) {
+      states.set(
+        id,
+        lists.symptom_unconfirmed_by.has(id)
+          ? "unconfirmed symptom kill"
+          : "unconfirmed",
+      );
+    } else if (lists.errored.has(id)) {
+      states.set(id, "errored");
+    } else if (lists.ran.has(id)) {
+      states.set(id, "missed");
+    } else {
+      states.set(id, "not run");
+    }
+  }
+  return states;
+}
+
+/**
+ * The layer results other than the checkers' as one scope, selection and list of exclusions,
+ * as kills.py reads a kills file without layer roles.
+ */
+function testedLayers(entry) {
+  const tested = Object.entries(entry.layer_results ?? {})
+    .filter(([name, r]) => !(name in CHECKERS) && r && typeof r === "object")
+    .sort(([a], [b]) => (a < b ? -1 : 1));
+  return {
+    scope: tested.some(([, r]) => r.scope === "selected") ? "selected" : "full",
+    selected: new Set(tested.flatMap(([, r]) => r.selected ?? [])),
+    excluded: tested.flatMap(([name, r]) =>
+      (r.excluded ?? [])
+        .filter((x) => x && typeof x === "object")
+        .map((x) => ({
+          test: x.test ?? null,
+          reason: x.reason ?? null,
+          layer: name,
+        })),
+    ),
+  };
+}
+
+const EQUIVALENCE_RECORDS = {
+  equivalence: ["reviewed_by", "date", "reason"],
+  scope_decision: ["by", "date", "reason"],
+};
+const EQUIVALENCE_RESOLVED = {
+  equivalence: "reviewed equivalence",
+  scope_decision: "scope decision",
+};
+
+/** How a suspected equivalent mutant stands, as kills.py's equivalence_state() gives it, with each record missing a field. */
+function equivalenceState(entry, killed) {
+  if (entry.equivalent_suspect !== true) {
+    return { state: null, incomplete: [] };
+  }
+  if (killed) {
+    return { state: "killed", incomplete: [] };
+  }
+  const incomplete = [];
+  for (const [field, keys] of Object.entries(EQUIVALENCE_RECORDS)) {
+    const record = entry[field];
+    if (record == null) {
+      continue;
+    }
+    const missing = keys.filter(
+      (k) => !(record && typeof record === "object" && record[k]),
+    );
+    if (missing.length === 0) {
+      return { state: EQUIVALENCE_RESOLVED[field], incomplete };
+    }
+    incomplete.push(`\`${field}\` has no ${missing.join(", ")}`);
+  }
+  return { state: "unresolved", incomplete };
+}
+
 export function mutantFacts(mid, raw, sidecar) {
   const entry = Array.isArray(raw) ? { killed_by: raw } : raw;
   const killed = byLayer(entry.killed_by);
@@ -206,6 +323,26 @@ export function mutantFacts(mid, raw, sidecar) {
   const errored = byLayer(entry.errored);
   const ran = byLayer(entry.ran);
   const symptom = symptomIds(entry);
+  const tested = testedLayers(entry);
+  const states = testStates({
+    killed_by: new Set(entry.killed_by ?? []),
+    unconfirmed_by: new Set(entry.unconfirmed_by ?? []),
+    errored: new Set(entry.errored ?? []),
+    ran: new Set(entry.ran ?? []),
+    selected: tested.selected,
+    symptom_kills: new Set(symptom.symptom_kills.ids),
+    symptom_unconfirmed_by: new Set(symptom.symptom_unconfirmed_by.ids),
+  });
+  const statesByLayer = {};
+  const e2eStates = {};
+  for (const [id, state] of states) {
+    const layer = layerOf(id);
+    statesByLayer[layer] ??= {};
+    statesByLayer[layer][state] = (statesByLayer[layer][state] ?? 0) + 1;
+    if (layer === "e2e") {
+      e2eStates[id] = state;
+    }
+  }
   const typecheck = entry.typecheck ?? sidecar?.typecheck ?? null;
   if (typecheck === "fails") {
     killed.tsc = ["tsc"];
@@ -222,6 +359,10 @@ export function mutantFacts(mid, raw, sidecar) {
       killed[layer] ??= [layer];
     }
   }
+  const equivalence = equivalenceState(
+    entry,
+    (entry.killed_by ?? []).length > 0 || checkers.names.length > 0,
+  );
   const recomputed = firstLayer(killed);
   const recorded = recordedLayer(mid, entry);
   const contractResult =
@@ -232,7 +373,11 @@ export function mutantFacts(mid, raw, sidecar) {
   if (testKillers.length > 0) {
     witnessOnly = testKillers.every((id) => witnesses.has(id));
   }
-  const failed = new Set([...testKillers, ...(entry.errored ?? [])]);
+  const failed = new Set([
+    ...testKillers,
+    ...(entry.errored ?? []),
+    ...(entry.unconfirmed_by ?? []),
+  ]);
   return {
     stratum: entry.stratum ?? null,
     ...(entry.stratum_coarse ? { stratum_coarse: entry.stratum_coarse } : {}),
@@ -240,6 +385,19 @@ export function mutantFacts(mid, raw, sidecar) {
     ...(entry.set ? { set: entry.set } : {}),
     ...(entry.alias_of ? { alias_of: entry.alias_of } : {}),
     ...(entry.equivalent_suspect === true ? { equivalent_suspect: true } : {}),
+    ...(equivalence.state
+      ? {
+          equivalence_state: equivalence.state,
+          ...Object.fromEntries(
+            Object.keys(EQUIVALENCE_RECORDS)
+              .filter((field) => field in entry)
+              .map((field) => [field, entry[field]]),
+          ),
+        }
+      : {}),
+    ...(equivalence.incomplete.length
+      ? { incomplete_equivalence_records: equivalence.incomplete }
+      : {}),
     ...(sidecar?.description ? { description: sidecar.description } : {}),
     locations: mutantLocations(entry),
     ...(entry.locations_note ? { locations_note: entry.locations_note } : {}),
@@ -264,6 +422,10 @@ export function mutantFacts(mid, raw, sidecar) {
     errored,
     ran: countBy(ran),
     ran_e2e: ran.e2e ?? [],
+    test_states: statesByLayer,
+    e2e_states: e2eStates,
+    scope: tested.scope,
+    ...(tested.excluded.length ? { excluded: tested.excluded } : {}),
     misses: [...new Set(entry.ran ?? [])].filter((id) => !failed.has(id))
       .length,
     e2e_status: e2eStatus(entry, killed, unconfirmed, ran, errored),
@@ -796,6 +958,7 @@ const CSV_COLUMNS = [
   "symptom_only",
   "equivalent_suspect",
   "checker_kills",
+  "equivalence_state",
 ];
 
 function csvCell(value) {
@@ -888,6 +1051,7 @@ export function toCsv(ledger) {
               m.symptom_only == null ? "" : m.symptom_only ? "yes" : "no",
             equivalent_suspect: m.equivalent_suspect ? "yes" : "no",
             checker_kills: (m.checker_kills ?? []).join(";"),
+            equivalence_state: m.equivalence_state,
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -917,6 +1081,38 @@ function symptomLine(groups) {
   return n
     ? `${n} of them rest only on symptom kills: ${parts.join(", ")}.`
     : "None of them rests only on symptom kills.";
+}
+
+/**
+ * The suspected equivalent mutants with no confirmed kill, by how each stands.
+ * An unresolved one gets no sample credit in the verdicts and blocks eligibility until a reviewed equivalence or a scope decision is recorded.
+ */
+function suspectStateLine(mutants) {
+  const byState = {};
+  for (const [mid, m] of Object.entries(mutants)) {
+    if (m.equivalence_state && m.equivalence_state !== "killed") {
+      (byState[m.equivalence_state] ??= []).push(mid);
+    }
+  }
+  Object.values(byState).forEach((mids) => mids.sort());
+  const unresolved = byState.unresolved ?? [];
+  const resolved = ["reviewed equivalence", "scope decision"]
+    .filter((s) => byState[s])
+    .map((s) => `${byState[s].length} by ${s} (${byState[s].join(", ")})`);
+  const incomplete = Object.entries(mutants)
+    .filter(([, m]) => m.incomplete_equivalence_records)
+    .map(
+      ([mid, m]) => `${mid}: ${m.incomplete_equivalence_records.join("; ")}`,
+    );
+  return [
+    `Among the ones with no confirmed kill, ${unresolved.length} are unresolved${unresolved.length ? ` (${unresolved.join(", ")})` : ""}: they get no sample credit in the verdicts, and they block eligibility until a reviewed equivalence or a scope decision is recorded on them.`,
+    resolved.length
+      ? `${resolved.join(", ")} are resolved, with no sample credit and no longer blockers.`
+      : "None is resolved.",
+    ...(incomplete.length
+      ? [`Records missing a field, so ignored: ${incomplete.join(", ")}.`]
+      : []),
+  ].join(" ");
 }
 
 function symptomCounts(mutants) {
@@ -1100,7 +1296,8 @@ export function summarize(ledger, derived, inputs) {
           suspectsKilled.length
             ? `${suspectsKilled.length} of them have a confirmed kill, so the mark is wrong for them, and they keep their cheapest layer: ${suspectsKilled.map((mid) => `${mid} (${mutants[mid].cheapest_layer})`).join(", ")}.`
             : "None of them has a confirmed kill.",
-          "`equivalent_suspect` is yes for them in the CSV, and the JSON lists them under `equivalent_suspect` and `equivalent_suspect_killed`.",
+          suspectStateLine(mutants),
+          "`equivalent_suspect` is yes for them in the CSV, `equivalence_state` says how each stands, and the JSON lists them under `equivalent_suspect` and `equivalent_suspect_killed`.",
           "",
         ]
       : []),
@@ -1168,7 +1365,15 @@ function main() {
     );
     process.exit(2);
   }
-  const kills = JSON.parse(fs.readFileSync(args.kills, "utf8"));
+  const killsFile = readKillsFile(args.kills);
+  if (killsFile.meta.layer_roles) {
+    console.error(
+      "The kills file gives layer roles, so it's a PR's kills file with a removed side and a remaining side. " +
+        "The ledger joins a kills file without them to an index: read this one with kills.py --candidates <candidates file>.",
+    );
+    process.exit(1);
+  }
+  const kills = killsFile.entries;
   const reachCounts = args.locations
     ? fs
         .readFileSync(args.locations, "utf8")

@@ -8,18 +8,42 @@ The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant
      "unconfirmed_by": [test id, ...],   e2e kills seen once and not reproduced on rerun
      "symptom_unconfirmed_by": [test id, ...],   the tests in unconfirmed_by that failed only through the bug's own symptom
      "errored":        [test id, ...],   failed for another reason (crash, timeout, setup), never a kill
-     "ran":            [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored
+     "ran":            [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored - unconfirmed_by
      "stratum":        "logic" | "intra-frontend-wiring" | "store-state" | "boundary-wiring" | "server-state"
                        | "cross-page-timing" | "browser-measurement", or a coarse stratum,
      "stratum_coarse": "logic" | "wiring" | "state" | "baseline",
      "origin":         "<regression id>" or "synthetic",
      "file":           "<repo-relative path>"   optional, see file_reach()
+     "equivalent_suspect": true,         optional, below
    }}
 
 A test id is "<spec path>::<Cypress full title>" for e2e,
 "<spec path>::<jest fullName>" for jest and "<namespace>/<var>" for deftest.
 An entry that is a bare list of test ids, {"<mutant id>": [killer test id, ...]}, is read as killed_by with `ran` unknown,
 and so is an entry without `ran`.
+
+That is the flat format. Format 2 wraps the same entries as {"meta": {"format": 2, "layer_roles": {...}, ...}, "mutants": {...}}.
+Each entry's `layer_results` has one result per layer, with the same lists, and optionally `scope` ("full" or "selected"),
+`selected` (the tests chosen to run) and `excluded` ([{"test", "reason"}], tests left out on a static reading).
+A missing scope means full.
+`meta.layer_roles` gives each layer other than the checkers' a role: removed, remaining or reference.
+With it, a candidate's results count only from removed layers and every other test's only from remaining layers,
+so a kept test that ran at the base and at the head counts only through its head result, and a reference layer never counts.
+Without it, the entry's own lists count, a candidate's results as removed and every other test's as remaining.
+
+Each test's execution state on a mutant is killed, symptom kill, unconfirmed, unconfirmed symptom kill, errored, missed,
+or not run (selected, and not in `ran`), and only missed is a miss.
+The remaining side's result on a mutant is killed, missed, unresolved (only errored, unconfirmed or not run),
+statically excluded (no remaining test ran it and a remaining layer excluded tests) or unmeasured at the head (no remaining test ran it).
+Its scope is selected when any remaining layer that has a result for the mutant has a selected scope.
+A mutant's states are among four: caught by a removed test, missed by the selected remaining tests, statically excluded,
+and unmeasured at the head.
+
+A mutant with `equivalent_suspect: true` and no confirmed kill earns no sample credit, so it isn't a qualifying mutant.
+It stays unresolved, and counts as a survivor that blocks acceptance,
+until it records a reviewed equivalence, `equivalence: {reviewed_by, date, reason}`, or a scope decision, `scope_decision: {by, date, reason}`.
+A record missing a field is ignored and listed.
+A suspect with a confirmed kill counts as any killed mutant does.
 
 The type checker and the contract checker kill a mutant when `killed_at_layer` names their layer, "tsc" or "contract",
 and `kill_confirmed` is true, or when their `layer_results` entry has the result "killed".
@@ -46,8 +70,8 @@ where a mutant's killers are the tests in its `killed_by`, or in its `unconfirme
   delete            no unique kill of either kind, at least `min_mutants` qualifying mutants, every required stratum among them,
                     and it passes the baseline check
   unmeasured        anything else, including no kill matrix, `ran` unknown, or a test that failed in the capture or isn't in it
-A qualifying mutant sits in the candidate's reached code,
-and both the candidate and at least one other test ran against it without erroring.
+A qualifying mutant sits in the candidate's reached code, the candidate ran against it without erroring,
+at least one other test ran against it, and it isn't a suspected equivalent mutant with no confirmed kill.
 A candidate passes the baseline check with a confirmed kill among its qualifying mutants or a run against a baseline mutant,
 because only a baseline mutant run shows whether a candidate that kills nothing it reaches still guards boot.
 
@@ -58,9 +82,13 @@ The joint check fails on any mutant a delete or accepted candidate killed that n
 
 A keep rests on its unique kills and the confirmed kills the cover keeps it for,
 and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for.
-When all of them are the candidate's symptom kills, its `symptom_only` is true and its reason ends in ", all symptom kills".
+When all of them are the candidate's symptom kills, its `symptom_only` is true and its reason gains ", all symptom kills".
+Its `scope` is the widest scope at which the remaining side missed any of them: full, selected,
+or unmeasured when the remaining side missed none of them.
+When that isn't full, the reason ends in "; " and the remaining side's result on each of them.
 A delete, accepted or unmeasured candidate's `symptom_only_after_deletion` lists each mutant it killed
-that remaining tests and kept candidates kill only through symptom kills.
+that remaining tests and kept candidates kill only through symptom kills,
+and its `scope` is the same scope over the mutants in its `depends_on` that no kept candidate kills.
 
 An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
 when it has all four of these fields:
@@ -70,8 +98,9 @@ when it has all four of these fields:
   bound    3/n, the rule of three: remaining tests killed all n, so their miss rate there is below 3/n at 95% confidence.
            It is missing while n is 3 or less, where 3/n bounds nothing
   module   the location prior's module for each of the files of its qualifying mutants' locations
-It also needs a confirmed kill by a remaining test or a kept candidate on every one of the n, the baseline check,
-and a prior of at most `max_prior`.
+It also needs a confirmed kill by a remaining test or a kept candidate on every one of the n, no unresolved suspected
+equivalent mutant among the ones it would sample, the baseline check, and a prior of at most `max_prior`.
+Each unresolved suspect in a sample records the candidates whose verdict changes when only that suspect is dismissed.
 Each module takes at most `cap` accepted candidates, lowest prior first, then lowest bound.
 A candidate over several modules counts against each of them.
 
@@ -102,6 +131,12 @@ As a command, it takes the candidates' reached code from a reach index instead o
                    [--min-mutants <k>] [--require-strata <s,...>] [--prior <file>] [--callers <file>] [--ci-history <file>]
                    [--accept-cap <k>] [--max-prior <x>] [--out <json file>] [--repo <path>] [--sha <commit>]
                    [--joint-check-report-only]
+
+or from a candidates file, with no index, when the only --candidates is a JSON object:
+
+  {"removed_at": "<commit>", "head": "<commit>", "tests": ["<test id>", ...]}
+
+`head` is optional. A candidate then reaches every mutant it ran, with basis ran, and has no capture state.
 
 The index keys the nth test of a spec with a repeated title `<spec>::<title> [n]`, and the kill matrix only knows `<spec>::<title>`,
 so a candidate id stands for every index test with its spec and title. Its reach is the union of theirs,
@@ -141,8 +176,26 @@ PRIOR_WITH_CALLERS = "reached files plus direct callers"
 IMPORTERS_ROLE = "information only"
 IMPORTERS_LISTED = 10
 SYMPTOM_FIELDS = {"symptom_kills": "killed_by", "symptom_unconfirmed_by": "unconfirmed_by"}
+TEST_FIELDS = ("killed_by", "unconfirmed_by", "errored", "ran")
+LIST_FIELDS = TEST_FIELDS + tuple(SYMPTOM_FIELDS) + ("selected",)
 CHECKERS = {"tsc": "type checker", "contract": "contract checker"}
 LAYERS = ("tsc", "contract", "jest", "deftest", "e2e")
+ROLES = ("removed", "remaining", "reference")
+ALL_LAYERS = "all"
+TEST_STATES = ("killed", "symptom kill", "unconfirmed", "unconfirmed symptom kill", "errored", "missed", "not run")
+MUTANT_STATES = {
+    "missed": "missed by the selected remaining tests",
+    "statically excluded": "statically excluded",
+    "unmeasured at the head": "unmeasured at the head",
+}
+SCOPES = ("full", "selected", "unmeasured")
+EQUIVALENCE_RECORDS = {"equivalence": ("reviewed_by", "date", "reason"), "scope_decision": ("by", "date", "reason")}
+EQUIVALENCE_RESOLVED = {"equivalence": "reviewed equivalence", "scope_decision": "scope decision"}
+EQUIVALENCE_STATES = ("unresolved", "reviewed equivalence", "scope decision", "killed")
+NO_CREDIT = ("unresolved", "reviewed equivalence", "scope decision")
+SUSPECT_IN_SAMPLE = "unresolved suspected equivalent mutant in sample"
+RAN_BASIS = "ran"
+RAN_REACH = "reach taken from `ran`, since a candidates file reads no index"
 SYMPTOM_ONLY = "all symptom kills"
 COARSE_STRATA = {
     "logic": "logic",
@@ -179,10 +232,114 @@ def checker_kills(entry):
     return names, disagree
 
 
-def load(path, run):
-    """The kill matrix mapped onto the run: per mutant and field, the ids of the run's tests and the ids of every other test."""
+def read_kills_file(path):
+    """The kills file's format, its `meta` and its entries by mutant id, from format 2 or the flat format."""
     with open(path) as f:
         raw = json.load(f)
+    if isinstance(raw, dict) and isinstance(raw.get("meta"), dict) and isinstance(raw.get("mutants"), dict):
+        meta = raw["meta"]
+        if meta.get("format") != 2:
+            raise ValueError(f"{path} has a `meta` with format {meta.get('format')!r}, and kills.py reads format 2 and the flat format")
+        return {"format": 2, "meta": meta, "entries": raw["mutants"]}
+    return {"format": "flat", "meta": {}, "entries": raw}
+
+
+def read_layer_roles(meta, entries):
+    """`meta.layer_roles`, or None when the kills file gives none, after checking that it names every tested layer's role."""
+    roles = meta.get("layer_roles")
+    if roles is None:
+        return None
+    unknown = sorted(f"{layer} {role!r}" for layer, role in roles.items() if role not in ROLES)
+    if unknown:
+        raise ValueError(f"meta.layer_roles gives roles other than {', '.join(ROLES)}: {', '.join(unknown)}")
+    unnamed = sorted({layer for entry in entries.values() if isinstance(entry, dict)
+                      for layer in entry.get("layer_results") or {} if layer not in roles and layer not in CHECKERS})
+    if unnamed:
+        raise ValueError(f"meta.layer_roles gives no role to the layers {', '.join(unnamed)}")
+    return dict(roles)
+
+
+def excluded_entries(result, layer):
+    return [{"test": x.get("test"), "reason": x.get("reason"), "layer": layer}
+            for x in (result or {}).get("excluded") or [] if isinstance(x, dict)]
+
+
+def mutant_layers(entry, roles):
+    """The layers whose results count for the mutant, each with its role, scope, selection, exclusions and test ids.
+
+    Without layer roles, one layer named `all` holds the entry's own lists,
+    and its scope is selected when any layer result's scope is.
+    The checkers' layers are read by checker_kills() instead.
+    """
+    tested = {name: r for name, r in (entry.get("layer_results") or {}).items() if name not in CHECKERS and isinstance(r, dict)}
+    if roles is None:
+        return [{
+            **{field: set(entry.get(field) or []) for field in LIST_FIELDS},
+            "name": ALL_LAYERS, "role": None, "ran_known": entry.get("ran") is not None,
+            "scope": "selected" if any(r.get("scope") == "selected" for r in tested.values()) else "full",
+            "selected": set().union(*(r.get("selected") or [] for r in tested.values())),
+            "excluded": [x for name, r in sorted(tested.items()) for x in excluded_entries(r, name)],
+        }]
+    return [{
+        **{field: set(r.get(field) or []) for field in LIST_FIELDS},
+        "name": name, "role": roles[name], "ran_known": r.get("ran") is not None,
+        "scope": r.get("scope") or "full", "selected": set(r.get("selected") or []), "excluded": excluded_entries(r, name),
+    } for name, r in sorted(tested.items()) if roles[name] != "reference"]
+
+
+def side_states(lists):
+    """Each test's execution state on one mutant, from one side's lists.
+
+    Killed and symptom kill are confirmed kills, and unconfirmed, errored and not run (selected, and not in `ran`) are never misses.
+    """
+    states = {}
+    for t in set().union(*(lists[field] for field in ("killed_by", "unconfirmed_by", "errored", "ran", "selected"))):
+        if t in lists["killed_by"]:
+            states[t] = "symptom kill" if t in lists["symptom_kills"] else "killed"
+        elif t in lists["unconfirmed_by"]:
+            states[t] = "unconfirmed symptom kill" if t in lists["symptom_unconfirmed_by"] else "unconfirmed"
+        elif t in lists["errored"]:
+            states[t] = "errored"
+        elif t in lists["ran"]:
+            states[t] = "missed"
+        else:
+            states[t] = "not run"
+    return states
+
+
+def by_state(states):
+    groups = collections.defaultdict(list)
+    for t, state in sorted(states.items()):
+        groups[state].append(t)
+    return groups
+
+
+def equivalence_state(entry, killed):
+    """How a mutant's equivalence suspicion stands, None for a mutant not suspected, and each record missing a field."""
+    if entry.get("equivalent_suspect") is not True:
+        return None, []
+    if killed:
+        return "killed", []
+    incomplete = []
+    for field, keys in EQUIVALENCE_RECORDS.items():
+        record = entry.get(field)
+        if record is None:
+            continue
+        missing = [k for k in keys if not (isinstance(record, dict) and record.get(k))]
+        if not missing:
+            return EQUIVALENCE_RESOLVED[field], incomplete
+        incomplete.append(f"`{field}` has no {', '.join(missing)}")
+    return "unresolved", incomplete
+
+
+def load(path, run):
+    """The kill matrix mapped onto the run: per mutant and field, the ids of the run's tests and the ids of every other test.
+
+    With layer roles, the run's tests count through the removed layers and every other test through the remaining layers.
+    """
+    kills_file = read_kills_file(path)
+    entries = kills_file["entries"]
+    roles = read_layer_roles(kills_file["meta"], entries)
     by_base_key = collections.defaultdict(list)
     for t in run.tests:
         by_base_key[t.base_key].append(t.id)
@@ -193,21 +350,32 @@ def load(path, run):
     symptom = collections.Counter()
     checkers = collections.Counter()
     disagreements = []
-    for mid, entry in raw.items():
+    off_side = collections.Counter()
+    incomplete_records = {}
+    for mid, entry in entries.items():
         if isinstance(entry, list):
             entry = {"killed_by": entry}
-        ran = entry.get("ran")
-        ran_known = ran_known and ran is not None
+        layers = mutant_layers(entry, roles)
+        listed = {field: set() for field in LIST_FIELDS}
+        for layer in layers:
+            for field in LIST_FIELDS:
+                for test_id in layer[field]:
+                    if layer["role"] is None or (layer["role"] == "removed") == (test_id in by_base_key):
+                        listed[field].add(test_id)
+            if layer["role"] is not None:
+                ran_there = set().union(*(layer[field] for field in TEST_FIELDS))
+                off_side[layer["role"]] += sum(1 for t in ran_there if (layer["role"] == "removed") != (t in by_base_key))
+            layer["excluded"] = [x for x in layer["excluded"] if (x["test"] in by_base_key) == (layer["role"] == "removed")]
+        mutant_ran_known = all(layer["ran_known"] for layer in layers)
+        ran_known = ran_known and mutant_ran_known
         m = {
             "stratum": entry.get("stratum"), "origin": entry.get("origin"), "file": entry.get("file"),
             "coarse": coarse_stratum(entry), "files": {entry["file"]} if entry.get("file") else set(),
-            "located": bool(entry.get("file")), "ran_known": ran is not None,
+            "located": bool(entry.get("file")), "ran_known": mutant_ran_known,
         }
-        listed = {field: set(entry.get(field) or []) for field in ("killed_by", "unconfirmed_by", "errored", "ran")}
         for field, within in SYMPTOM_FIELDS.items():
-            ids = set(entry.get(field) or [])
-            listed[field] = ids & listed[within]
-            symptom[f"{field}_ignored"] += len(ids - listed[within])
+            symptom[f"{field}_ignored"] += len(listed[field] - listed[within])
+            listed[field] &= listed[within]
         checked, disagree = checker_kills(entry)
         checkers.update(checked)
         if disagree:
@@ -220,6 +388,11 @@ def load(path, run):
         symptom["unconfirmed_kills"] += len(listed["unconfirmed_by"])
         symptom["unconfirmed_symptom_kills"] += len(listed["symptom_unconfirmed_by"])
         symptom["mutants_resting_only_on_symptom_kills"] += bool(killers) and killers <= marked
+        m["suspect"], incomplete = equivalence_state(entry, bool(confirmed))
+        if incomplete:
+            incomplete_records[str(mid)] = incomplete
+        if m["suspect"] is not None:
+            m["equivalence_records"] = {field: entry[field] for field in EQUIVALENCE_RECORDS if field in entry}
         for field, test_ids in listed.items():
             ids, others = set(), set()
             for test_id in test_ids:
@@ -237,9 +410,13 @@ def load(path, run):
         m["checker_kills"] = checked
         m["killed_by_others"] |= set(checked)
         m["ran_others"] |= set(checked)
+        m["remaining"] = remaining_side(m, [layer for layer in layers if layer["role"] != "removed"], by_base_key)
         mutants[str(mid)] = m
+    suspects = collections.Counter(m["suspect"] for m in mutants.values() if m["suspect"])
     return {
         "file": path,
+        "format": kills_file["format"],
+        "layer_roles": roles,
         "mutants": mutants,
         "ran_known": ran_known,
         "strata": dict(collections.Counter(m["stratum"] for m in mutants.values())),
@@ -254,7 +431,96 @@ def load(path, run):
         },
         "checker_kills": {name: checkers[name] for name in CHECKERS.values()},
         "checker_disagreements": disagreements,
+        "results_on_the_other_side": {
+            "candidates in a remaining layer": off_side["remaining"], "other tests in a removed layer": off_side["removed"],
+        },
+        "equivalent_suspects": {state: suspects[state] for state in EQUIVALENCE_STATES},
+        "incomplete_equivalence_records": incomplete_records,
     }
+
+
+def remaining_side(m, layers, candidates):
+    """What the remaining tests and checkers did on the mutant: a result, the scope it was measured at, and each test by its state.
+
+    The result is killed, missed, unresolved (only errored, unconfirmed or not run), statically excluded or unmeasured at the head.
+    """
+    lists = {field: m[f"{field}_others"] for field in LIST_FIELDS}
+    groups = by_state(side_states(lists))
+    killed = sorted(groups["killed"] + groups["symptom kill"])
+    unconfirmed = sorted(groups["unconfirmed"] + groups["unconfirmed symptom kill"])
+    excluded = [x for layer in layers for x in layer["excluded"]]
+    scope = "selected" if any(layer["scope"] == "selected" for layer in layers) else "full" if layers else None
+    if killed:
+        result = "killed"
+    elif groups["missed"]:
+        result = "missed"
+    elif groups["errored"] or unconfirmed:
+        result = "unresolved"
+    elif excluded:
+        result = "statically excluded"
+    else:
+        result = "unmeasured at the head"
+    side = {
+        "result": result, "scope": scope,
+        "killed_by": killed, "missed": len(groups["missed"]),
+        **({"missed_by": groups["missed"]} if scope == "selected" else {}),
+        "errored": groups["errored"], "unconfirmed_by": unconfirmed, "not_run": groups["not run"], "excluded": excluded,
+        "layers": {layer["name"]: layer_counts(layer, candidates) for layer in layers},
+    }
+    side["text"] = remaining_text(side)
+    return side
+
+
+def layer_counts(layer, candidates):
+    """One remaining layer's role, scope, and number of tests in each state, leaving out the candidates."""
+    lists = {field: {t for t in layer[field] if t not in candidates} for field in LIST_FIELDS}
+    counts = collections.Counter(side_states(lists).values())
+    return {"role": layer["role"], "scope": layer["scope"], "selected": len(lists["selected"]),
+            **{state: counts[state] for state in TEST_STATES if counts[state]}, "excluded": len(layer["excluded"])}
+
+
+def remaining_text(side):
+    """The remaining side's result in words, with the tests that gave no result and the tests excluded."""
+    tail = [f"{n} {what}" for n, what in (
+        (len(side["errored"]), "errored"), (len(side["unconfirmed_by"]), "unconfirmed"),
+        (len(side["not_run"]), "selected but not run"),
+        (len(side["excluded"]) if side["result"] != "statically excluded" else 0, "excluded")) if n]
+    selected = "selected " if side["scope"] == "selected" else ""
+    if side["result"] == "killed":
+        text = f"killed by {len(side['killed_by'])} {selected}remaining tests"
+    elif side["result"] == "missed":
+        text = f"missed by {side['missed']} {selected}remaining tests"
+    elif side["result"] == "unresolved":
+        text = f"no result from the {selected}remaining tests"
+    elif side["result"] == "statically excluded":
+        reasons = sorted({"no reason given" if x["reason"] is None else str(x["reason"]) for x in side["excluded"]})
+        text = f"statically excluded: {'; '.join(reasons)}"
+    else:
+        text = "not run by any remaining test"
+    return ", ".join([text, *tail])
+
+
+def removed_side(m, key_of):
+    """What the candidates did on the mutant: caught, missed, unresolved or not run, and each candidate by its state."""
+    states = side_states({field: {key_of[i] for i in m[field]} for field in LIST_FIELDS})
+    found = set(states.values())
+    if found & {"killed", "symptom kill"}:
+        result = "caught"
+    elif "missed" in found:
+        result = "missed"
+    elif found - {"not run"}:
+        result = "unresolved"
+    else:
+        result = "not run"
+    return {"result": result, "tests": dict(sorted(states.items()))}
+
+
+def mutant_states(removed, remaining):
+    """The mutant's states among the four a report prints: caught by a removed test, and the remaining side's result."""
+    states = ["caught by a removed test"] if removed["result"] == "caught" else []
+    if remaining["result"] in MUTANT_STATES:
+        states.append(MUTANT_STATES[remaining["result"]])
+    return states
 
 
 def clj_namespace(path):
@@ -333,6 +599,11 @@ def cover_killers(m):
     return {i for i in m["unconfirmed_by"] if not m["ran_known"] or i in m["ran"]}
 
 
+def passed(t):
+    """Whether the candidate passed in the capture. A candidate from a candidates file has no capture, and counts as passed."""
+    return t.state == "passed" or not getattr(t, "captured", True)
+
+
 def cover_kills(tests, mutants, secondary, costs):
     """Keeps every mutant that cover_killers() gives a passing candidate for, preferring a candidate whose kill isn't a symptom kill."""
     primary = [set() for _ in tests]
@@ -340,7 +611,7 @@ def cover_kills(tests, mutants, secondary, costs):
     for mid, m in mutants.items():
         marked = m["symptom_kills"] if m["killed_by"] else m["symptom_unconfirmed_by"]
         for i in cover_killers(m):
-            if tests[i].state == "passed":
+            if passed(tests[i]):
                 primary[i].add(mid)
                 if i in marked:
                     symptom[i].add(mid)
@@ -367,6 +638,7 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
     killed_by_test = collections.defaultdict(set)
     ran_by_test = collections.defaultdict(set)
     errored_by_test = collections.defaultdict(set)
+    unconfirmed_by_test = collections.defaultdict(set)
     cover_by_test = collections.defaultdict(set)
     symptom_by_test = collections.defaultdict(set)
     unconfirmed_symptom_by_test = collections.defaultdict(set)
@@ -379,6 +651,8 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             ran_by_test[i].add(mid)
         for i in m["errored"]:
             errored_by_test[i].add(mid)
+        for i in m["unconfirmed_by"]:
+            unconfirmed_by_test[i].add(mid)
         for i in m["symptom_kills"]:
             symptom_by_test[i].add(mid)
         for i in m["symptom_unconfirmed_by"]:
@@ -411,16 +685,19 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         # which holds when the producer runs each test against the mutants its coverage reaches.
         qualifying = []
         qualifying_basis = collections.defaultdict(list)
+        suspects = []
         for mid in ran_by_test[t.id]:
             m = mutants[mid]
             if mid in errored_by_test[t.id] or not ((m["ran"] - {t.id}) or m["ran_others"]):
                 continue
-            if m["located"]:
-                bases = reach_bases(reached(m))
-                if not bases:
-                    continue
-                for basis in bases:
-                    qualifying_basis[basis].append(mid)
+            bases = reach_bases(reached(m)) if m["located"] else []
+            if m["located"] and not bases:
+                continue
+            if m["suspect"] in NO_CREDIT:
+                suspects.append(mid)
+                continue
+            for basis in bases:
+                qualifying_basis[basis].append(mid)
             qualifying.append(mid)
         strata = collections.Counter(mutants[mid]["stratum"] for mid in qualifying)
         unconfirmed_symptom = sorted(
@@ -433,12 +710,13 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             "unconfirmed_symptom_kills": by_stratum_ids(unconfirmed_symptom),
             "also_killed_by_checker": checker_ids(sorted(mid for mid in kills_here if mutants[mid]["checker_kills"])),
             "kills": len(kills_here),
-            "misses": len(ran_by_test[t.id] - killed_by_test[t.id] - errored_by_test[t.id]),
+            "misses": len(ran_by_test[t.id] - killed_by_test[t.id] - errored_by_test[t.id] - unconfirmed_by_test[t.id]),
             "errored": errored,
             "qualifying_mutants": dict(strata),
             "qualifying_without_location": dict(collections.Counter(
                 mutants[mid]["stratum"] for mid in qualifying if not mutants[mid]["located"])),
             "qualifying_basis": {basis: sorted(mids) for basis, mids in sorted(qualifying_basis.items())},
+            "equivalent_suspects": {mid: mutants[mid]["suspect"] for mid in sorted(suspects)},
         }
         ran_known = all(mutants[mid]["ran_known"] for mid in mine)
         located = [mid for mid in qualifying if mutants[mid]["located"]]
@@ -447,11 +725,13 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             "files": set().union(*(mutants[mid]["files"] for mid in located)),
             "fileless": sum(1 for mid in located if not mutants[mid]["files"]),
             "qualifying": qualifying,
+            "unresolved_suspects": sorted(mid for mid in suspects if mutants[mid]["suspect"] == "unresolved"),
             "killed": any(mid in killed_by_test[t.id] for mid in qualifying),
             "ran_baseline": any(mutants[mid]["coarse"] == "baseline" for mid in ran_by_test[t.id] - errored_by_test[t.id]),
         }
         coarse = {mutants[mid]["coarse"] for mid in qualifying}
         missing = [s for s in required_strata if s not in coarse]
+        captured = getattr(t, "captured", True)
         if unique:
             verdict, reason = "keep", "unique kills"
         elif any(mutants[mid]["killed_by"] for mid in cover_kept_for):
@@ -460,9 +740,9 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             verdict, reason = "provisional-keep", "unconfirmed unique kills"
         elif cover_kept_for:
             verdict, reason = "provisional-keep", "the kills-first cover keeps it for unconfirmed kills it shares only with other candidates"
-        elif t.state is None:
+        elif captured and t.state is None:
             verdict, reason = "unmeasured", "not in the capture run, so its reached code is unknown"
-        elif t.state != "passed":
+        elif captured and t.state != "passed":
             verdict, reason = "unmeasured", f"{t.state} in the capture run, so its reached code is incomplete"
         elif not ran_known:
             verdict, reason = "unmeasured", "ran unknown"
@@ -477,12 +757,19 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         symptom_only = rests_only_on_symptom_kills(t.id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
         if symptom_only:
             reason = f"{reason}, {SYMPTOM_ONLY}"
-        out[t.key] = {"verdict": verdict, "reason": reason, **detail, "symptom_only": symptom_only}
+        grounds = reading_grounds(verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
+        scope, scope_text = reading_scope(grounds, mutants)
+        if scope_text:
+            reason = f"{reason}; {scope_text}"
+        out[t.key] = {"verdict": verdict, "reason": reason, "scope": scope, **detail, "symptom_only": symptom_only}
     kept = {t.id for t in tests if out[t.key]["verdict"] in KEPT}
     for ev in evidence.values():
-        ev["survivors"] = sorted(mid for mid in ev["qualifying"] if not stays_killed(mutants[mid], kept))
+        ev["survivors"] = sorted({mid for mid in ev["qualifying"] if not stays_killed(mutants[mid], kept)}
+                                 | set(ev["unresolved_suspects"]))
     if accept is not None:
-        accept_unmeasured(tests, out, evidence, accept)
+        outcomes = acceptance_outcomes(tests, out, evidence, accept)
+        apply_acceptance(out, outcomes)
+        dismissal_dependencies(tests, out, evidence, accept, outcomes, mutants)
     key_of = {t.id: t.key for t in tests}
     for t in tests:
         if out[t.key]["verdict"] in KEPT:
@@ -497,7 +784,37 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
                 after_deletion[m["stratum"]].append(mid)
         out[t.key]["depends_on"] = dict(depends_on)
         out[t.key]["symptom_only_after_deletion"] = dict(after_deletion)
+        lost = [mid for mids in depends_on.values() for mid, stay in mids.items() if not stay]
+        out[t.key]["scope"] = reading_scope(lost, mutants)[0]
     return out
+
+
+def reading_grounds(verdict, unique, unconfirmed_unique, cover_kept_for, mutants):
+    """The mutants a keep or provisional-keep rests on: nothing remaining kills them."""
+    if verdict == "keep":
+        return sorted(set(unique) | {mid for mid in cover_kept_for if mutants[mid]["killed_by"]})
+    if verdict == "provisional-keep":
+        return sorted(set(unconfirmed_unique) | set(cover_kept_for))
+    return []
+
+
+def reading_scope(mids, mutants):
+    """The widest scope at which the remaining side missed any of the mutants, and the remaining side's result on each when it isn't full.
+
+    None for no mutants, full when the remaining tests of a full run missed one, selected when only a selection did,
+    and unmeasured when no remaining test missed any of them.
+    """
+    if not mids:
+        return None, None
+    sides = {mid: mutants[mid]["remaining"] for mid in mids}
+    missed = {side["scope"] for side in sides.values() if side["result"] == "missed"}
+    scope = "full" if "full" in missed else "selected" if missed else "unmeasured"
+    if scope == "full":
+        return scope, None
+    by_text = collections.defaultdict(list)
+    for mid, side in sides.items():
+        by_text[side["text"]].append(mid)
+    return scope, "; ".join(f"{', '.join(ids)}: {text}" for text, ids in sorted(by_text.items(), key=lambda x: x[1]))
 
 
 def rests_only_on_symptom_kills(test_id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants):
@@ -626,21 +943,24 @@ def acceptance_fields(test_id, evidence, reason, accept):
     return record
 
 
-def accept_unmeasured(tests, out, evidence, accept):
-    """Accepts the unmeasured candidates whose fields allow it, lowest prior then lowest bound first, while their modules have room."""
+def acceptance_outcomes(tests, out, evidence, accept):
+    """Each unmeasured candidate's acceptance fields and outcome, accepting those whose fields allow it,
+    lowest prior then lowest bound first, while their modules have room.
+    """
+    records = {}
     ready = []
     for t in tests:
         row = out[t.key]
         if row["verdict"] != "unmeasured":
             continue
         ev = evidence.get(t.key)
-        row["acceptance"] = a = acceptance_fields(t.key, ev, row["reason"], accept)
-        if t.state != "passed":
+        records[t.key] = a = acceptance_fields(t.key, ev, row["reason"], accept)
+        if not passed(t):
             a["outcome"] = "never: did not pass in the capture"
         elif a["missing"]:
             a["outcome"] = "missing fields"
         elif a["survivors"]:
-            a["outcome"] = "survivor in sample"
+            a["outcome"] = SUSPECT_IN_SAMPLE if set(a["survivors"]) <= set(ev["unresolved_suspects"]) else "survivor in sample"
         elif not passes_baseline_check(ev):
             a["outcome"] = "needs a baseline check"
         elif a["prior"]["score"] > accept.max_prior:
@@ -648,14 +968,34 @@ def accept_unmeasured(tests, out, evidence, accept):
         else:
             ready.append(t)
     taken = collections.Counter()
-    for t in sorted(ready, key=lambda t: (out[t.key]["acceptance"]["prior"]["score"], out[t.key]["acceptance"]["bound"], t.id)):
-        a = out[t.key]["acceptance"]
+    for t in sorted(ready, key=lambda t: (records[t.key]["prior"]["score"], records[t.key]["bound"], t.id)):
+        a = records[t.key]
         if any(taken[m] >= accept.cap for m in a["modules"]):
             a["outcome"] = "over the module cap"
             continue
         taken.update(a["modules"])
         a["outcome"] = "accepted"
-        out[t.key]["verdict"] = "accepted"
+    return records
+
+
+def apply_acceptance(out, records):
+    for key, a in records.items():
+        out[key]["acceptance"] = a
+        if a["outcome"] == "accepted":
+            out[key]["verdict"] = "accepted"
+
+
+def dismissal_dependencies(tests, out, evidence, accept, records, mutants):
+    """Records on each unresolved suspected equivalent mutant in a sample the candidates whose verdict changes if it is dismissed."""
+    before = {key: row["verdict"] for key, row in out.items()}
+    unaccepted = {key: dict(row, verdict="unmeasured") if key in records else row for key, row in out.items()}
+    for mid in sorted({mid for ev in evidence.values() for mid in ev["unresolved_suspects"]}):
+        dismissed = {key: dict(ev, survivors=[s for s in ev["survivors"] if s != mid],
+                               unresolved_suspects=[s for s in ev["unresolved_suspects"] if s != mid])
+                     for key, ev in evidence.items()}
+        after = acceptance_outcomes(tests, unaccepted, dismissed, accept)
+        mutants[mid]["dismissal_changes"] = sorted(
+            key for key, a in after.items() if ("accepted" if a["outcome"] == "accepted" else "unmeasured") != before[key])
 
 
 def read_acceptance(prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None):
@@ -715,7 +1055,11 @@ def summarize(results, keys=None):
     rows = [results[k] for k in keys] if keys is not None else list(results.values())
     by_verdict = collections.Counter(r["verdict"] for r in rows)
     reasons = collections.Counter(
-        f'{r["verdict"]}: {r["reason"].split(",")[0]}' + (f", {SYMPTOM_ONLY}" if r.get("symptom_only") else "") for r in rows)
+        f'{r["verdict"]}: {re.split("[,;]", r["reason"])[0]}' + (f", {SYMPTOM_ONLY}" if r.get("symptom_only") else "") for r in rows)
+    scopes = collections.defaultdict(collections.Counter)
+    for r in rows:
+        if r.get("scope"):
+            scopes[r["verdict"]][r["scope"]] += 1
 
     def count(field):
         return sum(len(mids) for r in rows for mids in (r.get(field) or {}).values())
@@ -732,6 +1076,7 @@ def summarize(results, keys=None):
         "candidates": len(rows),
         "verdicts": {v: by_verdict.get(v, 0) for v in VERDICTS},
         "reasons": dict(reasons.most_common()),
+        "scopes": {v: {s: scopes[v][s] for s in SCOPES if scopes[v][s]} for v in VERDICTS if scopes[v]},
         "strata": {
             "keep, tests with a unique kill in the stratum": dict(strata["keep"]),
             "provisional-keep, tests with an unconfirmed unique kill in the stratum": dict(strata["provisional-keep"]),
@@ -822,13 +1167,33 @@ def merge_ordinals(tests, members):
     return merged
 
 
+def read_candidates_file(path):
+    """The removed-at revision, the head revision when it names one, and the test ids of a candidates file, or None for any other file.
+
+    A candidates file is a JSON object: {"removed_at": "<commit>", "head": "<commit>", "tests": ["<test id>", ...]}.
+    """
+    if not os.path.isfile(path):
+        return None
+    with open(path) as f:
+        text = f.read()
+    try:
+        data = json.loads(text) if text.lstrip().startswith("{") else None
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or "tests" not in data:
+        return None
+    if not data.get("removed_at"):
+        raise ValueError(f"{path} has no `removed_at`, the revision its tests were removed at")
+    return {"file": path, "removed_at": data["removed_at"], "head": data.get("head"),
+            "tests": list(dict.fromkeys(i for i in data["tests"] if i))}
+
+
 def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
              repo=None, sha=None, prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR,
              callers_path=None):
     accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
     candidate_ids = list(dict.fromkeys(candidate_ids))
-    with open(kills_path) as f:
-        raw = json.load(f)
+    entries = read_kills_file(kills_path)["entries"]
     with open(os.path.join(index_dir, "tests.json")) as f:
         index_tests = json.load(f)
     members = ordinal_members(index_tests, candidate_ids)
@@ -836,7 +1201,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
     for cid, ids in members.items():
         for i in ids:
             owners[i].append(cid)
-    locations = {str(mid): mutant_locations(entry) for mid, entry in raw.items()}
+    locations = {str(mid): mutant_locations(entry) for mid, entry in entries.items()}
     reach = index_reach(index_dir, list(owners), {mid: locs for mid, locs in locations.items() if locs}, repo, sha)
     in_index = merge_ordinals(reach["tests"], members)
     # A candidate missing from the index has state None.
@@ -874,37 +1239,96 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
 
     # The index has no durations or assertion text, so the cover breaks ties on reached code, then on candidate order.
     secondary = [set(in_index[c.key]["keys"]) if c.key in in_index else set() for c in candidates]
-    kept, universe = cover_kills(candidates, kills["mutants"], secondary, [1] * len(candidates))
-    results = verdicts(run, kills, set(kept), min_mutants, required_strata,
-                       reach=lambda t: lambda m: m["reach_bases"].get(t.id), accept=accept)
-
     index_ids = {t["id"] for t in index_tests}
+    return {
+        **judge(candidates, kills, mutants, secondary, lambda t: lambda m: m["reach_bases"].get(t.id), accept,
+                min_mutants, required_strata, lambda i: i not in index_ids),
+        "mode": "index",
+        "index": {"dir": index_dir, "sha": reach["sha"], "runs": reach["runs"]},
+        "candidates_file": None,
+        "candidates_not_in_index": [c.key for c in candidates if c.state is None],
+        "ordinals": {cid: ids for cid, ids in members.items() if len(ids) > 1},
+    }
+
+
+def evaluate_candidates_file(kills_path, candidates_file, min_mutants=MIN_MUTANTS, required_strata=REQUIRED_STRATA.split(","),
+                             prior_path=None, ci_history_path=None, cap=ACCEPT_CAP, max_prior=MAX_PRIOR, callers_path=None):
+    """Verdicts for the tests of a candidates file, with no index: every mutant counts as reached by the candidates that ran it."""
+    accept = read_acceptance(prior_path, ci_history_path, cap, max_prior, callers_path)
+    candidates = [types.SimpleNamespace(id=i, key=cid, base_key=cid, state=None, captured=False)
+                  for i, cid in enumerate(candidates_file["tests"])]
+    kills = load(kills_path, types.SimpleNamespace(tests=candidates))
+    entries = read_kills_file(kills_path)["entries"]
+    mutants = {}
+    for mid, m in kills["mutants"].items():
+        entry = entries[mid] if isinstance(entries[mid], dict) else {}
+        m["files"] = {loc["file"] for loc in mutant_locations(entry) if isinstance(loc, dict) and loc.get("file")}
+        m["located"] = bool(m["files"])
+        mutants[mid] = {"stratum": m["stratum"], "origin": m["origin"], "reach": RAN_REACH,
+                        "candidates_reaching": len(m["ran"] | m["killed_by"] | m["errored"])}
+    return {
+        **judge(candidates, kills, mutants, [set() for _ in candidates], lambda t: lambda m: [RAN_BASIS], accept,
+                min_mutants, required_strata, None),
+        "mode": "candidates file",
+        "index": None,
+        "candidates_file": {k: candidates_file[k] for k in ("file", "removed_at", "head")},
+    }
+
+
+def judge(candidates, kills, mutants, secondary, reach, accept, min_mutants, required_strata, not_in_index):
+    """The verdicts and the result keys both kinds of evaluation share, with each mutant's two sides and states added to `mutants`."""
+    run = types.SimpleNamespace(tests=candidates)
+    kept, universe = cover_kills(candidates, kills["mutants"], secondary, [1] * len(candidates))
+    results = verdicts(run, kills, set(kept), min_mutants, required_strata, reach=reach, accept=accept)
+    key_of = {c.id: c.key for c in candidates}
+    for mid, m in kills["mutants"].items():
+        removed = removed_side(m, key_of)
+        mutants[mid].update(removed=removed, remaining=m["remaining"], states=mutant_states(removed, m["remaining"]))
+        if m["suspect"]:
+            changes = m.get("dismissal_changes") or []
+            mutants[mid]["equivalent_suspect"] = {"state": m["suspect"], **m["equivalence_records"],
+                                                  "deletion_depends_on_dismissing": bool(changes), "candidates": changes}
     by_reach = collections.Counter(m["reach"] for m in mutants.values())
     return {
         "joint_check": joint_check(candidates, kills["mutants"], results),
-        "index": {"dir": index_dir, "sha": reach["sha"], "runs": reach["runs"]},
         "kills": {
-            "file": kills_path,
+            "file": kills["file"],
+            "format": kills["format"],
+            "layer_roles": kills["layer_roles"],
             "mutants": len(mutants),
             "strata": kills["strata"],
             "reach": dict(by_reach),
             "ran_known": kills["ran_known"],
             "kills_by_a_test_not_in_ran": kills["kills_by_a_test_not_in_ran"],
             "kills_by_a_test_that_errored": kills["kills_by_a_test_that_errored"],
-            "e2e_ids_not_in_index": sorted(i for i in kills["e2e_ids_not_in_run"] if i not in index_ids),
+            "e2e_ids_not_in_index": sorted(i for i in kills["e2e_ids_not_in_run"] if not_in_index(i)) if not_in_index else None,
             "symptom_kills": kills["symptom_kills"],
             "checker_kills": kills["checker_kills"],
             "checker_disagreements": kills["checker_disagreements"],
+            "results_on_the_other_side": kills["results_on_the_other_side"],
+            "equivalent_suspects": kills["equivalent_suspects"],
+            "incomplete_equivalence_records": kills["incomplete_equivalence_records"],
         },
         "min_mutants": min_mutants,
         "required_strata": required_strata,
-        "candidates_not_in_index": [c.key for c in candidates if c.state is None],
-        "ordinals": {cid: ids for cid, ids in members.items() if len(ids) > 1},
         "summary": summarize(results),
+        "mutant_states": state_counts(mutants),
         "accepted": accepted_section(results, accept),
         "kills_cover": {"mutants": universe, "kept": [candidates[i].key for i in sorted(kept)]},
         "candidates": {c.key: {"state": c.state, **results[c.key]} for c in candidates},
         "mutants": mutants,
+    }
+
+
+def state_counts(mutants):
+    """How many mutants are in each of the four states, and how many have each result on each side."""
+    return {
+        "states": {state: sum(1 for m in mutants.values() if state in m["states"])
+                   for state in ("caught by a removed test", *MUTANT_STATES.values())},
+        "caught by a removed test and killed by no remaining test": sum(
+            1 for m in mutants.values() if m["removed"]["result"] == "caught" and m["remaining"]["result"] != "killed"),
+        "removed": dict(collections.Counter(m["removed"]["result"] for m in mutants.values()).most_common()),
+        "remaining": dict(collections.Counter(m["remaining"]["result"] for m in mutants.values()).most_common()),
     }
 
 
@@ -1001,16 +1425,81 @@ def depends_on_lines(depends_on):
     return lines
 
 
+def source_line(result):
+    k = result["kills"]
+    if result["mode"] == "candidates file":
+        cf = result["candidates_file"]
+        head = f" and head {cf['head'][:11]}" if cf["head"] else ""
+        return (f"Verdicts from {k['file']} for the candidates in {cf['file']}, removed at {cf['removed_at'][:11]}{head}, "
+                "with no index, so a candidate reaches every mutant it ran")
+    return f"Verdicts from {k['file']} over the reach index at {result['index']['sha'][:11]} (runs {', '.join(result['index']['runs'])})"
+
+
+def roles_line(k):
+    if k["layer_roles"] is None:
+        return f"Kills file format {k['format']}, with no layer roles: a candidate's results count as removed and every other test's as remaining"
+    return f"Kills file format {k['format']}, layer roles: {', '.join(f'{layer} {role}' for layer, role in sorted(k['layer_roles'].items()))}"
+
+
+def scope_suffix(row):
+    """The part of a reason that names the scope of the remaining side, or None."""
+    parts = row["reason"].split("; ", 1)
+    return parts[1] if len(parts) > 1 else None
+
+
+def states_report(result):
+    counts = result["mutant_states"]
+    mutants = result["mutants"]
+    lines = [
+        "",
+        "Mutants by state",
+        *(f"  {n:>4}  {state}" for state, n in counts["states"].items()),
+        f"  Removed side: {', '.join(f'{r} {n}' for r, n in counts['removed'].items())}",
+        f"  Remaining side: {', '.join(f'{r} {n}' for r, n in counts['remaining'].items())}",
+    ]
+    lost = sorted(mid for mid, m in mutants.items() if m["removed"]["result"] == "caught" and m["remaining"]["result"] != "killed")
+    if lost:
+        lines += ["", "Caught by a removed test and killed by no remaining test"]
+    for mid in lost:
+        m = mutants[mid]
+        caught = sorted(t for t, state in m["removed"]["tests"].items() if state in ("killed", "symptom kill"))
+        lines += [f"  {m['stratum'] or 'no stratum'} {mid}: {m['remaining']['text']}", *(f"      {t}" for t in caught)]
+    return lines
+
+
+def suspects_report(result):
+    suspects = {mid: m["equivalent_suspect"] for mid, m in result["mutants"].items() if "equivalent_suspect" in m}
+    if not suspects:
+        return []
+    lines = ["", "Suspected equivalent mutants"]
+    for mid, s in sorted(suspects.items()):
+        if s["state"] == "unresolved":
+            depends = (f"a deletion depends on dismissing it: {', '.join(s['candidates'])}" if s["deletion_depends_on_dismissing"]
+                       else "no deletion depends on dismissing it")
+            lines.append(f"  {mid}: unresolved, no sample credit and a blocker, {depends}")
+        elif s["state"] == "killed":
+            lines.append(f"  {mid}: killed, so not equivalent, and it counts as any killed mutant does")
+        else:
+            record = s.get("equivalence") or s.get("scope_decision")
+            by = record.get("reviewed_by") or record.get("by")
+            lines.append(f"  {mid}: {s['state']} by {by} on {record['date']}, no sample credit and not a blocker")
+    for mid, problems in sorted(result["kills"]["incomplete_equivalence_records"].items()):
+        lines.append(f"  {mid}: {'; '.join(problems)}, so the record is ignored")
+    return lines
+
+
 def report(result):
     k, s = result["kills"], result["summary"]
+    in_index = (f", {len(result['candidates_not_in_index'])} of them not in the index" if result["mode"] == "index" else "")
     lines = [
         *joint_check_report(result["joint_check"]),
-        f"Verdicts from {k['file']} over the reach index at {result['index']['sha'][:11]} (runs {', '.join(result['index']['runs'])})",
+        source_line(result),
+        roles_line(k),
         f"{k['mutants']} mutants: {by_stratum(k['strata'])}",
         *([f"  {', '.join(f'{n} killed by the {name}' for name, n in k['checker_kills'].items())}, which count as remaining tests"]
           if any(k["checker_kills"].values()) else []),
         *(f"  {n} with {how}" for how, n in sorted(k["reach"].items())),
-        f"{s['candidates']} candidates, {len(result['candidates_not_in_index'])} of them not in the index",
+        f"{s['candidates']} candidates{in_index}",
         *([f"{len(result['ordinals'])} candidates each stand for several index tests that share their title"]
           if result.get("ordinals") else []),
         f"A delete needs {result['min_mutants']} qualifying mutants, among them {', '.join(result['required_strata']) or 'any stratum'}",
@@ -1020,6 +1509,9 @@ def report(result):
         "",
         "Reasons",
         *(f"  {n:>4}  {reason}" for reason, n in s["reasons"].items()),
+        *(["", "Scope of the remaining side under each keep or lost kill",
+           *(f"  {v}: {', '.join(f'{scope} {n}' for scope, n in counts.items())}" for v, counts in s["scopes"].items())]
+          if s["scopes"] else []),
         "",
         "Candidates by stratum",
         *(f"  {what}: {by_stratum(counts) or 'none'}" for what, counts in s["strata"].items()),
@@ -1038,10 +1530,12 @@ def report(result):
                 counts = by_stratum({st: len(mids) for st, mids in r["unconfirmed_unique_kills"].items()})
                 why = f"unconfirmed unique kills{marker}: {counts}"
             elif verdict != "delete":
-                why = r["reason"]
+                why = r["reason"].split("; ", 1)[0]
             else:
                 why = f"no unique kill, qualifying mutants: {by_stratum(r['qualifying_mutants'])}"
             lines += [f"  {cid}", f"      {why}"]
+            if scope_suffix(r):
+                lines.append(f"      scope {r['scope']}: {scope_suffix(r)}")
             if r["cover_kept_for"]:
                 lines.append(f"      kept by the cover for {ids_by_stratum(r['cover_kept_for'])}")
             lines += symptom_lines(r)
@@ -1050,6 +1544,10 @@ def report(result):
         lines += ["", "Kills that no remaining test has"]
     for cid in dependent:
         lines += [f"  {cid}", *(f"      {rows[cid]['verdict']}, {line}" for line in depends_on_lines(rows[cid]["depends_on"]))]
+        if rows[cid]["scope"] not in (None, "full"):
+            lost = sorted(mid for mids in rows[cid]["depends_on"].values() for mid, stay in mids.items() if not stay)
+            texts = "; ".join(f"{mid}: {result['mutants'][mid]['remaining']['text']}" for mid in lost)
+            lines.append(f"      scope {rows[cid]['scope']}: {texts}")
     checked = sorted(cid for cid, r in rows.items() if r.get("also_killed_by_checker"))
     if checked:
         lines += ["", "Kills a checker also makes"]
@@ -1061,6 +1559,8 @@ def report(result):
     for cid in on_symptoms:
         mids = ids_by_stratum(rows[cid]["symptom_only_after_deletion"])
         lines += [f"  {cid}", f"      {rows[cid]['verdict']}, the tests that stay kill {mids} only through symptom kills"]
+    lines += states_report(result)
+    lines += suspects_report(result)
     lines += accepted_report(result["accepted"])
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
@@ -1078,6 +1578,10 @@ def report(result):
     for field, within in SYMPTOM_FIELDS.items():
         if k["symptom_kills"]["ignored"][field]:
             lines += ["", f"{k['symptom_kills']['ignored'][field]} ids in `{field}` aren't in their mutant's `{within}`, and are ignored"]
+    other_side = {what: n for what, n in k["results_on_the_other_side"].items() if n}
+    if other_side:
+        lines += ["", f"Results that don't count because their layer's role is the other side: "
+                      f"{', '.join(f'{n} of {what}' for what, n in other_side.items())}"]
     if k["e2e_ids_not_in_index"]:
         lines += ["", f"{len(k['e2e_ids_not_in_index'])} e2e ids of the kills file are not in the index, and count as remaining tests"]
         lines += [f"  {i}" for i in k["e2e_ids_not_in_index"][:10]]
@@ -1090,7 +1594,7 @@ def main():
     parser.add_argument("--index", default=os.environ.get("JOURNEY_LOOKUP_INDEX"), help="the reach index, or JOURNEY_LOOKUP_INDEX")
     parser.add_argument("--kills", required=True, help="the kills file")
     parser.add_argument("--candidates", action="append", required=True,
-                        help="a file of test ids or a single test id, repeatable")
+                        help="a file of test ids or a single test id, repeatable, or one candidates file, which reads no index")
     parser.add_argument("--min-mutants", type=int, default=MIN_MUTANTS, help="qualifying mutants a delete verdict needs")
     parser.add_argument("--require-strata", default=REQUIRED_STRATA, help="strata a delete verdict needs among them")
     parser.add_argument("--prior", help="the location prior, which an accepted verdict needs, with its graph file beside it if it has one")
@@ -1104,11 +1608,18 @@ def main():
     parser.add_argument("--joint-check-report-only", action="store_true",
                         help="report a failed joint check without exiting with code 1")
     args = parser.parse_args()
-    if not args.index:
-        parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
     required = [x for x in args.require_strata.split(",") if x]
-    result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha,
-                      args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
+    candidates_files = [c for c in map(read_candidates_file, args.candidates) if c]
+    if candidates_files:
+        if len(args.candidates) > 1:
+            parser.error("a candidates file with `removed_at` must be the only --candidates")
+        result = evaluate_candidates_file(args.kills, candidates_files[0], args.min_mutants, required,
+                                          args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
+    else:
+        if not args.index:
+            parser.error("pass the index directory with --index <dir> or JOURNEY_LOOKUP_INDEX")
+        result = evaluate(args.index, args.kills, read_candidates(args.candidates), args.min_mutants, required, args.repo, args.sha,
+                          args.prior, args.ci_history, args.accept_cap, args.max_prior, args.callers)
     if args.out:
         with open(args.out, "w") as f:
             json.dump(result, f, indent=1)
