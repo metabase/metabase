@@ -128,12 +128,48 @@ function recordedLayer(mid, entry) {
   return entry.killed_at_layer;
 }
 
-function mutantFacts(mid, raw, sidecar) {
+export const SYMPTOM_FIELDS = {
+  symptom_kills: "killed_by",
+  symptom_unconfirmed_by: "unconfirmed_by",
+};
+
+/** Per symptom field, its ids that are in the field it marks, and how many of its ids aren't. */
+function symptomIds(entry) {
+  const out = {};
+  for (const [field, within] of Object.entries(SYMPTOM_FIELDS)) {
+    const marked = new Set(entry[within] ?? []);
+    const ids = [...new Set(entry[field] ?? [])];
+    out[field] = {
+      ids: ids.filter((id) => marked.has(id)),
+      ignored: ids.filter((id) => !marked.has(id)).length,
+    };
+  }
+  return out;
+}
+
+/**
+ * Whether the kills a mutant rests on, its confirmed kills at any layer or its unconfirmed ones when it has none, are all symptom kills.
+ * Null when it has neither.
+ */
+function restsOnlyOnSymptomKills(killed, unconfirmed, symptom) {
+  const confirmed = Object.values(killed).flat();
+  const [killers, marked] = confirmed.length
+    ? [confirmed, symptom.symptom_kills.ids]
+    : [Object.values(unconfirmed).flat(), symptom.symptom_unconfirmed_by.ids];
+  if (killers.length === 0) {
+    return null;
+  }
+  const flagged = new Set(marked);
+  return killers.every((id) => flagged.has(id));
+}
+
+export function mutantFacts(mid, raw, sidecar) {
   const entry = Array.isArray(raw) ? { killed_by: raw } : raw;
   const killed = byLayer(entry.killed_by);
   const unconfirmed = byLayer(entry.unconfirmed_by);
   const errored = byLayer(entry.errored);
   const ran = byLayer(entry.ran);
+  const symptom = symptomIds(entry);
   const typecheck = entry.typecheck ?? sidecar?.typecheck ?? null;
   if (typecheck === "fails") {
     killed.tsc = ["tsc"];
@@ -170,6 +206,16 @@ function mutantFacts(mid, raw, sidecar) {
     unit_result: entry.unit_result ?? null,
     killed_by: killed,
     unconfirmed_by: unconfirmed,
+    symptom_kills: byLayer(symptom.symptom_kills.ids),
+    symptom_unconfirmed_by: byLayer(symptom.symptom_unconfirmed_by.ids),
+    symptom_only: restsOnlyOnSymptomKills(killed, unconfirmed, symptom),
+    ...(symptom.symptom_kills.ignored || symptom.symptom_unconfirmed_by.ignored
+      ? {
+          symptom_ids_ignored: Object.fromEntries(
+            Object.keys(SYMPTOM_FIELDS).map((f) => [f, symptom[f].ignored]),
+          ),
+        }
+      : {}),
     errored,
     ran: countBy(ran),
     ran_e2e: ran.e2e ?? [],
@@ -529,6 +575,13 @@ export function buildLedger({
         ...(Object.keys(m.unconfirmed_by).length
           ? { unconfirmed_by: m.unconfirmed_by }
           : {}),
+        ...(Object.keys(m.symptom_kills).length
+          ? { symptom_kills: m.symptom_kills }
+          : {}),
+        ...(Object.keys(m.symptom_unconfirmed_by).length
+          ? { symptom_unconfirmed_by: m.symptom_unconfirmed_by }
+          : {}),
+        ...(m.symptom_only ? { symptom_only: true } : {}),
         cheapest_layer: m.cheapest_layer,
       };
     });
@@ -584,7 +637,10 @@ export function buildLedger({
   };
 }
 
-/** The demand list and the e2e floor, per mutant and per row, grouped by stratum. */
+/**
+ * The demand list and the e2e floor, per mutant and per row, grouped by stratum.
+ * Each group's `symptom_only` lists the mutants in it that rest only on symptom kills.
+ */
 export function derive(ledger) {
   const { mutants, rows } = ledger;
   const group = (pick) => {
@@ -596,8 +652,12 @@ export function derive(ledger) {
       const g = (byStratum[m.stratum ?? "no stratum"] ??= {
         mutants: [],
         rows: new Set(),
+        symptomOnly: [],
       });
       g.mutants.push(mid);
+      if (m.symptom_only) {
+        g.symptomOnly.push(mid);
+      }
       m.rows.forEach((id) => g.rows.add(id));
     }
     return Object.fromEntries(
@@ -605,7 +665,11 @@ export function derive(ledger) {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([s, g]) => [
           s,
-          { mutants: g.mutants.sort(), rows: [...g.rows].sort() },
+          {
+            mutants: g.mutants.sort(),
+            rows: [...g.rows].sort(),
+            symptom_only: g.symptomOnly.sort(),
+          },
         ]),
     );
   };
@@ -674,6 +738,9 @@ const CSV_COLUMNS = [
   "e2e_reach_and_assert_baseline_by_load_total",
   "contract",
   "cheapest_layer_source",
+  "symptom_kills_layers",
+  "symptom_unconfirmed_by_layers",
+  "symptom_only",
 ];
 
 function csvCell(value) {
@@ -758,6 +825,12 @@ export function toCsv(ledger) {
             routed_to: m.routed_to,
             contract: m.contract,
             cheapest_layer_source: m.cheapest_layer_source,
+            symptom_kills_layers: layerCounts(countBy(m.symptom_kills ?? {})),
+            symptom_unconfirmed_by_layers: layerCounts(
+              countBy(m.symptom_unconfirmed_by ?? {}),
+            ),
+            symptom_only:
+              m.symptom_only == null ? "" : m.symptom_only ? "yes" : "no",
           };
         })
       : [{ cheapest_killing_layer: "no mutant" }];
@@ -774,6 +847,38 @@ function strataLine(groups) {
     ([s, g]) => `${s} ${g.mutants.length} mutants in ${g.rows.length} rows`,
   );
   return parts.length ? parts.join(", ") : "none";
+}
+
+function symptomLine(groups) {
+  const parts = Object.entries(groups)
+    .filter(([, g]) => g.symptom_only.length)
+    .map(([s, g]) => `${s} ${g.symptom_only.length}`);
+  const n = Object.values(groups).reduce(
+    (sum, g) => sum + g.symptom_only.length,
+    0,
+  );
+  return n
+    ? `${n} of them rest only on symptom kills: ${parts.join(", ")}.`
+    : "None of them rests only on symptom kills.";
+}
+
+function symptomCounts(mutants) {
+  const all = Object.values(mutants);
+  const ids = (m, field) => Object.values(m[field] ?? {}).flat().length;
+  const sum = (f) => all.reduce((n, m) => n + f(m), 0);
+  return {
+    kills: sum((m) => ids(m, "symptom_kills")),
+    killed: sum((m) => (ids(m, "symptom_kills") ? 1 : 0)),
+    unconfirmed: sum((m) => ids(m, "symptom_unconfirmed_by")),
+    unconfirmedMutants: sum((m) => (ids(m, "symptom_unconfirmed_by") ? 1 : 0)),
+    restingOnly: sum((m) => (m.symptom_only ? 1 : 0)),
+    ignored: Object.fromEntries(
+      Object.keys(SYMPTOM_FIELDS).map((f) => [
+        f,
+        sum((m) => m.symptom_ids_ignored?.[f] ?? 0),
+      ]),
+    ),
+  };
 }
 
 export function summarize(ledger, derived, inputs) {
@@ -813,6 +918,12 @@ export function summarize(ledger, derived, inputs) {
       (m.ran.unknown ?? 0),
     0,
   );
+  const symptom = symptomCounts(mutants);
+  const hasSymptoms =
+    symptom.kills +
+      symptom.unconfirmed +
+      Object.values(symptom.ignored).reduce((a, b) => a + b, 0) >
+    0;
   const lines = [
     "# Location ledger",
     "",
@@ -854,6 +965,16 @@ export function summarize(ledger, derived, inputs) {
       .map((l) => `${l} ${cheapest[l]}`)
       .join(", ")}.`,
     `- Unconfirmed killers: ${count(Object.values(mutants), (m) => Object.keys(m.unconfirmed_by).length)} mutants, kept out of the cheapest layer.`,
+    ...(hasSymptoms
+      ? [
+          `- Symptom kills count as kills: ${symptom.kills} confirmed, on ${symptom.killed} mutants, and ${symptom.unconfirmed} unconfirmed, on ${symptom.unconfirmedMutants} mutants. ${symptom.restingOnly} mutants rest only on symptom kills: their confirmed kills, or their unconfirmed kills when they have none, are all symptom kills. \`symptom_only\` marks them in the CSV, and in each group of the demand list and the e2e floor in the JSON.`,
+        ]
+      : []),
+    ...(symptom.ignored.symptom_kills || symptom.ignored.symptom_unconfirmed_by
+      ? [
+          `- ${symptom.ignored.symptom_kills} ids in \`symptom_kills\` aren't in their mutant's \`killed_by\`, and ${symptom.ignored.symptom_unconfirmed_by} in \`symptom_unconfirmed_by\` aren't in its \`unconfirmed_by\`. They're ignored.`,
+        ]
+      : []),
     ...(unknownIds ? [`- ${unknownIds} test ids have no known layer.`] : []),
     `- The kills file records its own cheapest layer for ${recorded.compared} mutants, and it differs from the one derived here on ${recorded.differ.length}${recorded.differ.length ? `: ${recorded.differ.map((d) => d.mutant).join(", ")}` : ""}.`,
     `- The kills file's \`kill_confirmed\` and \`killed_at_layer\` give the cheapest layer for ${atLayer.compared} mutants. The other ${Object.keys(mutants).length - atLayer.compared} have no \`kill_confirmed\`, so their cheapest layer is recomputed from \`killed_by\`, \`typecheck\` and any failed contract checks.`,
@@ -862,13 +983,14 @@ export function summarize(ledger, derived, inputs) {
     "## Demand list",
     "",
     `Mutants with no confirmed killer at any layer: ${strataLine(derived.demand)}.`,
+    ...(hasSymptoms ? [symptomLine(derived.demand)] : []),
     `${derived.demand_rows_with_an_unkilled_mutant} rows hold at least one of them, and ${derived.demand_rows_without_any_killer} rows have no killed mutant at all.`,
     `Routed by the kills file, as a judgement: ${Object.entries(routed)
       .map(([r, n]) => `${r} ${n}`)
       .join(", ")}.`,
     "",
-    "| stratum | mutants | rows | rows with no killed mutant | unconfirmed e2e kill | routed to |",
-    "|---|---|---|---|---|---|",
+    "| stratum | mutants | rows | rows with no killed mutant | unconfirmed e2e kill | only symptom kills | routed to |",
+    "|---|---|---|---|---|---|---|",
     ...Object.entries(derived.demand).map(([s, g]) => {
       const routes = {};
       g.mutants.forEach((mid) => {
@@ -884,7 +1006,7 @@ export function summarize(ledger, derived, inputs) {
       const routeText = Object.entries(routes)
         .map(([r, n]) => `${r} ${n}`)
         .join(", ");
-      return `| ${s} | ${g.mutants.length} | ${g.rows.length} | ${bare} | ${unconfirmed} | ${routeText} |`;
+      return `| ${s} | ${g.mutants.length} | ${g.rows.length} | ${bare} | ${unconfirmed} | ${g.symptom_only.length} | ${routeText} |`;
     }),
     "",
     "Each mutant, with its rows, e2e status and route, is in the CSV under `cheapest_killing_layer` none, and in the JSON under `demand`.",
@@ -892,7 +1014,9 @@ export function summarize(ledger, derived, inputs) {
     "## e2e floor",
     "",
     `Mutants whose cheapest confirmed layer is e2e: ${strataLine(derived.e2e_floor)}, in ${derived.e2e_floor_rows} rows.`,
+    ...(hasSymptoms ? [symptomLine(derived.e2e_floor)] : []),
     `With unconfirmed e2e kills counted: ${strataLine(derived.e2e_floor_unconfirmed)}, in ${derived.e2e_floor_unconfirmed_rows} rows.`,
+    ...(hasSymptoms ? [symptomLine(derived.e2e_floor_unconfirmed)] : []),
     `Routed to e2e by the kills file, a judgement and not a kill: ${strataLine(derived.e2e_floor_routed)}.`,
     "",
   ];

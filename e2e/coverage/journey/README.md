@@ -98,7 +98,9 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 {
   "<mutant id>": {
     "killed_by": ["<test id>", ...],
+    "symptom_kills": ["<test id>", ...],
     "unconfirmed_by": ["<test id>", ...],
+    "symptom_unconfirmed_by": ["<test id>", ...],
     "errored": ["<test id>", ...],
     "ran": ["<test id>", ...],
     "stratum": "logic" | "intra-frontend-wiring" | "store-state" | "boundary-wiring" | "server-state" | "cross-page-timing" | "browser-measurement",
@@ -109,9 +111,12 @@ $JOURNEY_ANALYSIS_DIR/.venv/bin/python e2e/coverage/journey/pipeline/show_pair.p
 }
 ```
 
-- `killed_by` holds confirmed kills only: an assertion failure on a test that passes on clean code, reproduced on a rerun.
+- `killed_by` holds confirmed kills only: a failure on a test that passes on clean code, reproduced on a rerun. The failure is an assertion, or the bug's own symptom, such as a `cy.wait` timeout for a request the mutant never sends or a click on a control the mutant leaves disabled.
+- `symptom_kills` lists the tests in `killed_by` whose failure was the bug's symptom. They count as kills everywhere, and the list only marks them, because a timeout or retry change can lose a symptom kill.
 - `unconfirmed_by` holds e2e kills seen once but not reproduced on a rerun. They never count towards a keep or a delete.
-- `errored` holds tests that failed for another reason, like a crash, a timeout or a setup failure. They are never kills.
+- `symptom_unconfirmed_by` lists the tests in `unconfirmed_by` whose failure was the bug's symptom.
+- A missing `symptom_kills` or `symptom_unconfirmed_by` means none. An id in `symptom_kills` that isn't in `killed_by`, or in `symptom_unconfirmed_by` but not `unconfirmed_by`, is ignored, and the output counts it.
+- `errored` holds tests that failed for another reason, like a crash, a harness error, a setup failure, or a failure on clean code. They are never kills.
 - A miss is `ran` minus `killed_by` minus `errored`. A test missing from `ran` says nothing about that mutant.
 - A mutant's coarse stratum is its `stratum_coarse`. Without one, it's the coarse stratum of its `stratum` from this table, or else its `stratum` as written. `--require-strata` and the baseline check compare coarse strata, and a baseline mutant is one whose coarse stratum is `baseline`.
 
@@ -131,6 +136,8 @@ Only the run's e2e tests get a verdict. Every other id, including jest and Cloju
 - **delete:** no unique kill, at least `--min-mutants` qualifying mutants, every `--require-strata` stratum among them, and the baseline check passed. A qualifying mutant sits in the test's reached code, the test ran against it without erroring, and at least one other test ran against it too. The baseline check passes with a confirmed kill among the qualifying mutants, or a run against a baseline mutant without erroring, because only a baseline mutant run shows whether a test that kills nothing it reaches still guards boot. A test that fails it is unmeasured, with the reason "needs a baseline check".
 - **unmeasured:** anything else, including a test missing from the kills file, a mutant whose `ran` is unknown, and a test that failed in the capture.
 - **accepted:** an unmeasured test deleted on a stated risk, never a measured delete. Only `kills.py` over the index gives it, and only with a location prior. See [Accepted verdicts](#accepted-verdicts).
+
+A keep rests on its unique kills and the confirmed kills the cover keeps it for, and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for. When all of them are the test's symptom kills, its `symptom_only` is true and its reason ends in ", all symptom kills", as in "unique kills, all symptom kills".
 
 A kept test is one with a keep or provisional-keep verdict. Every delete, accepted or unmeasured test also gets `depends_on`: each mutant it killed that no remaining test kills, grouped by stratum, with the kept tests that kill it. The cover keeps one of them for each such mutant, so the test is safe to delete only while they stay. See [Depends on and the joint check](#depends-on-and-the-joint-check).
 
@@ -244,12 +251,12 @@ The verdict rules are the pipeline's, and run through the same code. What differ
 It prints a short report, with the joint check on its first line and the accepted verdicts in a section of their own. With `--out`, it also writes JSON with these keys:
 
 - `joint_check`: `ok`, or the mutants that fail it, below
-- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, and the mutants it `errored` on. A delete, accepted or unmeasured candidate also has `depends_on`, below, and an unmeasured or accepted candidate has an `acceptance`, below
+- `candidates`: for each candidate, the verdict and reason, `unique_kills`, `unconfirmed_unique_kills`, `cover_kept_for` (the mutants the kills-first cover keeps it for), `symptom_kills` and `unconfirmed_symptom_kills` (its kills and unconfirmed kills that are symptom kills) and `qualifying_mutants` by stratum, `qualifying_without_location`, `qualifying_basis`, the number of `kills` and `misses`, the mutants it `errored` on, and `symptom_only`. A delete, accepted or unmeasured candidate also has `depends_on` and `symptom_only_after_deletion`, below, and an unmeasured or accepted candidate has an `acceptance`, below
 - `accepted`: the accepted verdicts on their own, below
-- `summary`: verdicts, reasons, and candidates per stratum
+- `summary`: verdicts, reasons, candidates per stratum, and under `symptom_kills` the candidates' kills, how many of them are symptom kills, their unconfirmed symptom kills, and how many keeps and provisional-keeps rest only on symptom kills
 - `mutants`: for each mutant, its stratum, how its reach was decided, what each location resolved to with its number of `baseline_keys`, and how many candidates reach it
 - `kills_cover`: the candidates the cover keeps
-- `kills`: counts by stratum and by reach, and the kills file's e2e ids that aren't in the index
+- `kills`: counts by stratum and by reach, the kills file's e2e ids that aren't in the index, and under `symptom_kills` the file's kills and unconfirmed kills, how many of each are symptom kills, the mutants that rest only on symptom kills, and the ignored symptom ids
 - `candidates_not_in_index`
 
 #### Depends on and the joint check
@@ -263,6 +270,10 @@ A delete, accepted or unmeasured candidate's `depends_on` lists each mutant it k
 ```
 
 The kills-first cover keeps a candidate for each of those mutants, so the list is empty only when none of their killers passed in the capture. The report has a section, `Kills that no remaining test has`, with a line for each candidate whose `depends_on` isn't empty: "safe only while <kept candidates> stay", with the mutants by stratum, and a second line for any mutant that no kept candidate kills.
+
+`symptom_only_after_deletion` lists, by stratum, each mutant the candidate killed that the remaining tests and kept candidates kill only through symptom kills. Symptom kills count, so they don't block a delete, but each one rests on a timeout or a refused click. The report lists them in a section, `Kills that stay only as symptom kills`.
+
+The report also has a `Symptom kills` section when the kills file has any, with the counts from `kills` and `summary`. Each keep, provisional-keep and delete it lists has a line for its symptom kills and one for its unconfirmed symptom kills, and the reasons of the candidates that rest only on symptom kills end in ", all symptom kills".
 
 The joint check takes the delete and accepted candidates together, and fails when one of them killed a mutant that no remaining test and no kept candidate kills. The verdict rules never allow that, so a failure is a bug in them. `joint_check` is then, by stratum, each such mutant with the delete and accepted candidates that kill it, in the same shape as `depends_on`. The report lists them at the top, and the command exits with code 1 after writing its output, unless `--joint-check-report-only` is given.
 
@@ -364,11 +375,13 @@ Reach is split by [basis](#basis): the `_measured` fields and columns hold reach
 
 It writes three files to `--out`:
 
-- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs in `reach_and_assert_measured`, `reach_other_measured`, `reach_and_assert_baseline` and `reach_other_baseline`, their counts, the index keys each candidate reached, for the kills-first cover's tie-break, and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, `e2e_status` and `cheapest_layer_source`, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
-- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach_measured`, `e2e_reach_and_assert_measured`, `e2e_reach_baseline`, `e2e_reach_and_assert_baseline` and `e2e_reach_and_assert_baseline_by_load` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file.
-- `summary.md`, also printed: the counts, including the rows with baseline reach, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
+- `ledger.json`: every row, with its reaching tests as `[test index, assertsAfter]` pairs in `reach_and_assert_measured`, `reach_other_measured`, `reach_and_assert_baseline` and `reach_other_baseline`, their counts, the index keys each candidate reached, for the kills-first cover's tie-break, and a status (`no mutants`, `all killed`, `some killed` or `none killed`), every mutant with its killers, its symptom kills by layer in `symptom_kills` and `symptom_unconfirmed_by`, `symptom_only`, `e2e_status` and `cheapest_layer_source`, the base check, the inputs, the mutants where `killed_at_layer` disagrees with the recomputed layer, the demand list and the e2e floor.
+- `ledger.csv`: one line per row and mutant, or one line for a row without mutants. `e2e_reach_measured`, `e2e_reach_and_assert_measured`, `e2e_reach_baseline`, `e2e_reach_and_assert_baseline` and `e2e_reach_and_assert_baseline_by_load` leave out the candidates, and the `_total` columns keep them. `contract` is the contract checker's result from `layer_results`, `not run` when `layers_run` leaves it out, and empty in an older kills file. `symptom_kills_layers` and `symptom_unconfirmed_by_layers` count the mutant's symptom kills by layer, and `symptom_only` is `yes`, `no`, or empty for a mutant with no kill.
+- `summary.md`, also printed: the counts, including the rows with baseline reach, where the kills file's own `cheapest_layer` differs from the derived one, where `killed_at_layer` disagrees with the recomputed layer, the symptom kills and any ignored symptom ids, the demand list and the e2e floor.
 
 The **demand list** is the mutants with `cheapest_layer: none`, grouped by stratum with their rows. The **e2e floor** is the mutants whose cheapest confirmed layer is e2e. Both read the same `cheapest_layer`, so a mutant with `kill_confirmed` true is never on the demand list, even when its `killed_by` is empty. The JSON also has the floor with unconfirmed e2e kills counted, and the mutants the kills file routes to e2e, which is a judgement and not a kill.
+
+A symptom kill is a kill here too, so a mutant whose only confirmed kill is a symptom kill is on the e2e floor and off the demand list. A mutant rests only on symptom kills when its confirmed kills at every layer, or its unconfirmed kills when it has none, are all symptom kills, and its `symptom_only` is then true. Each group of the demand list and the e2e floor in the JSON lists those mutants in `symptom_only`, the demand table has a column for them, and the summary gives their count under the demand list and under each e2e floor line. On the demand list they are the mutants whose only kill is an unconfirmed symptom kill, and on the floor they are the mutants whose only kills a timeout or retry change could lose.
 
 `ledger-verdicts.mjs` checks the ledger against `kills.py`:
 
@@ -377,7 +390,7 @@ node e2e/coverage/journey/lookup/ledger-verdicts.mjs --ledger <ledger.json> --ve
     [--min-mutants <k>] [--require-strata <s,...>] [--strata coarse]
 ```
 
-It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `qualifying_basis`, the candidates the kills-first cover keeps, and how many candidates reach each mutant. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
+It recomputes each candidate's verdict from `ledger.json` by `kills.py`'s rules, including the baseline check and the symptom markers, and compares it with what `kills.py --out` wrote for the same kills file, index and candidates: each candidate's state and every field of its result, including `qualifying_basis`, `symptom_kills`, `symptom_only` and `symptom_only_after_deletion`, the candidates the kills-first cover keeps, and how many candidates reach each mutant. It also prints the keeps and provisional-keeps that rest only on symptom kills. Reach of both bases counts, as in `kills.py`, and an older ledger's `reach_and_assert` and `reach_other` count as measured reach. The kills-first cover breaks ties on the index keys each candidate reached, as `kills.py` does, which the ledger records for its own `--candidates`, so give both commands the same ones. It prints the differences and exits with code 1 if there are any. It leaves out each candidate's `acceptance`, which depends on the location prior that the ledger doesn't take, so an accepted verdict from `kills.py --prior` shows as a difference. It also leaves out `depends_on`, which comes from the other candidates' verdicts, and those are compared on their own rows. `--min-mutants` and `--require-strata` default to the verdicts file's own. `--strata coarse` compares each mutant's `stratum_coarse` instead, for verdicts made before the finer strata. The candidates must be e2e tests, because the ledger keeps only the e2e ids that ran each mutant.
 
 ### Building an index
 

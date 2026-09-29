@@ -10,6 +10,8 @@ import { parseArgs } from "./args.mjs";
 import { readCandidates } from "./ledger.mjs";
 
 const TEST_LAYERS = ["jest", "deftest", "e2e"];
+const KEPT = ["keep", "provisional-keep"];
+const SYMPTOM_ONLY = "all symptom kills";
 const COARSE_STRATA = {
   logic: "logic",
   "intra-frontend-wiring": "wiring",
@@ -57,6 +59,7 @@ function mutantView(m, position, reachedBy) {
   const unconfirmed = split(testIds(m.unconfirmed_by));
   const errored = split(testIds(m.errored));
   const ran = split(m.ran_e2e);
+  const symptomIds = new Set(testIds(m.symptom_kills ?? {}));
   const ranTotal = TEST_LAYERS.reduce((n, layer) => n + (m.ran[layer] ?? 0), 0);
   return {
     stratum: m.stratum,
@@ -71,6 +74,11 @@ function mutantView(m, position, reachedBy) {
     errored: errored.mine,
     ran: ran.mine,
     ran_others: ranTotal > ran.mine.size,
+    symptom_kills: split(symptomIds).mine,
+    symptom_unconfirmed_by: split(testIds(m.symptom_unconfirmed_by ?? {})).mine,
+    others_kill_only_by_symptom: testIds(m.killed_by)
+      .filter((id) => !position.has(id))
+      .every((id) => symptomIds.has(id)),
     checker_kill: Boolean(
       m.killed_by.tsc?.length || m.killed_by.contract?.length,
     ),
@@ -186,7 +194,13 @@ export function verdictsFromLedger(
     mutants[mid] = mutantView(m, position, reachedBy);
   }
 
-  const fields = ["killed_by", "ran", "errored"];
+  const fields = [
+    "killed_by",
+    "ran",
+    "errored",
+    "symptom_kills",
+    "symptom_unconfirmed_by",
+  ];
   const by = Object.fromEntries(
     [...fields, "cover"].map((f) => [f, candidates.map(() => new Set())]),
   );
@@ -265,6 +279,7 @@ export function verdictsFromLedger(
         (qualifyingBasis[basis] ??= []).push(mid);
       }
     }
+    const ranHere = (mid) => !mutants[mid].ran_known || by.ran[t.i].has(mid);
     const strata = {};
     qualifying.forEach((mid) => {
       const s = mutants[mid].stratum;
@@ -281,6 +296,14 @@ export function verdictsFromLedger(
       unique_kills: byStratumIds(ledger.mutants, unique),
       unconfirmed_unique_kills: byStratumIds(ledger.mutants, unconfirmedUnique),
       cover_kept_for: byStratumIds(ledger.mutants, coverKeptFor),
+      symptom_kills: byStratumIds(
+        ledger.mutants,
+        sorted(killsHere.filter((mid) => by.symptom_kills[t.i].has(mid))),
+      ),
+      unconfirmed_symptom_kills: byStratumIds(
+        ledger.mutants,
+        sorted([...by.symptom_unconfirmed_by[t.i]].filter(ranHere)),
+      ),
       kills: killsHere.length,
       misses: [...by.ran[t.i]].filter(
         (mid) => !by.killed_by[t.i].has(mid) && !by.errored[t.i].has(mid),
@@ -345,7 +368,56 @@ export function verdictsFromLedger(
     } else {
       [verdict, reason] = ["delete", "no unique kill"];
     }
-    results[t.id] = { verdict, reason, ...detail };
+    let grounds = [];
+    if (verdict === "keep") {
+      grounds = [
+        ...new Set([
+          ...unique,
+          ...coverKeptFor.filter((mid) => mutants[mid].killed_by.size),
+        ]),
+      ];
+    } else if (verdict === "provisional-keep") {
+      grounds = [...new Set([...unconfirmedUnique, ...coverKeptFor])];
+    }
+    const symptomKill = (mid) =>
+      (mutants[mid].killed_by.size
+        ? mutants[mid].symptom_kills
+        : mutants[mid].symptom_unconfirmed_by
+      ).has(t.i);
+    const symptomOnly = grounds.length > 0 && grounds.every(symptomKill);
+    if (symptomOnly) {
+      reason = `${reason}, ${SYMPTOM_ONLY}`;
+    }
+    results[t.id] = {
+      verdict,
+      reason,
+      ...detail,
+      symptom_only: symptomOnly,
+    };
+  }
+
+  const kept = new Set(
+    candidates
+      .filter((t) => KEPT.includes(results[t.id].verdict))
+      .map((t) => t.i),
+  );
+  for (const t of candidates) {
+    if (kept.has(t.i)) {
+      continue;
+    }
+    const afterDeletion = [...by.killed_by[t.i]].filter((mid) => {
+      const m = mutants[mid];
+      const staying = [...m.killed_by].filter((i) => kept.has(i));
+      return (
+        (m.killed_by_others || staying.length > 0) &&
+        m.others_kill_only_by_symptom &&
+        staying.every((i) => m.symptom_kills.has(i))
+      );
+    });
+    results[t.id].symptom_only_after_deletion = byStratumIds(
+      ledger.mutants,
+      sorted(afterDeletion),
+    );
   }
 
   const candidatesReaching = Object.fromEntries(
@@ -481,6 +553,18 @@ function main() {
   );
   console.log(
     `Unconfirmed unique kills from the ledger: ${uniqueSets(got.results, "unconfirmed_unique_kills").join("; ") || "none"}`,
+  );
+  const symptomOnly = Object.entries(got.results)
+    .filter(([, r]) => r.symptom_only)
+    .map(([id, r]) => `${id} (${r.verdict})`);
+  console.log(
+    `Keeps and provisional-keeps that rest only on symptom kills, from the ledger: ${symptomOnly.join("; ") || "none"}`,
+  );
+  console.log(
+    `Symptom kills from the ledger: ${uniqueSets(got.results, "symptom_kills").join("; ") || "none"}`,
+  );
+  console.log(
+    `Unconfirmed symptom kills from the ledger: ${uniqueSets(got.results, "unconfirmed_symptom_kills").join("; ") || "none"}`,
   );
   console.log(
     `Candidates reaching each mutant: ${Object.keys(expected.mutants).length - reachDiffs} of ${Object.keys(expected.mutants).length} mutants agree`,

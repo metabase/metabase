@@ -4,7 +4,9 @@ The kill matrix is JSON, one entry per planted mutant, keyed by an opaque mutant
 
   {"<mutant id>": {
      "killed_by":      [test id, ...],   confirmed kills only
+     "symptom_kills":  [test id, ...],   the tests in killed_by that failed only through the bug's own symptom
      "unconfirmed_by": [test id, ...],   e2e kills seen once and not reproduced on rerun
+     "symptom_unconfirmed_by": [test id, ...],   the tests in unconfirmed_by that failed only through the bug's own symptom
      "errored":        [test id, ...],   failed for another reason (crash, timeout, setup), never a kill
      "ran":            [test id, ...],   every test run against the mutant. A miss is ran - killed_by - errored
      "stratum":        "logic" | "intra-frontend-wiring" | "store-state" | "boundary-wiring" | "server-state"
@@ -18,6 +20,9 @@ A test id is "<spec path>::<Cypress full title>" for e2e,
 "<spec path>::<jest fullName>" for jest and "<namespace>/<var>" for deftest.
 An entry that is a bare list of test ids, {"<mutant id>": [killer test id, ...]}, is read as killed_by with `ran` unknown,
 and so is an entry without `ran`.
+
+A symptom kill counts as a kill everywhere, and its two fields only mark it.
+A missing symptom field means no symptom kills, and an id in one that isn't in its killed_by or unconfirmed_by is ignored and counted.
 
 A mutant's coarse stratum is its `stratum_coarse`, else the coarse stratum COARSE_STRATA gives its `stratum`, else its `stratum`.
 Required strata name coarse strata, and a baseline mutant is one whose coarse stratum is baseline.
@@ -44,6 +49,12 @@ A kept candidate is one whose verdict is keep or provisional-keep, and it stays 
 A delete, accepted or unmeasured candidate's `depends_on` lists each mutant it killed that no remaining test kills,
 with the kept candidates that kill it, which include the one the cover keeps for it.
 The joint check fails on any mutant a delete or accepted candidate killed that no remaining test or kept candidate kills.
+
+A keep rests on its unique kills and the confirmed kills the cover keeps it for,
+and a provisional-keep on its unconfirmed unique kills and the unconfirmed kills the cover keeps it for.
+When all of them are the candidate's symptom kills, its `symptom_only` is true and its reason ends in ", all symptom kills".
+A delete, accepted or unmeasured candidate's `symptom_only_after_deletion` lists each mutant it killed
+that remaining tests and kept candidates kill only through symptom kills.
 
 An unmeasured candidate that passed in the capture becomes accepted, a deletion on a stated risk and never a measured delete,
 when it has all four of these fields:
@@ -123,6 +134,8 @@ PRIOR_REACHED = "reached files"
 PRIOR_WITH_CALLERS = "reached files plus direct callers"
 IMPORTERS_ROLE = "information only"
 IMPORTERS_LISTED = 10
+SYMPTOM_FIELDS = {"symptom_kills": "killed_by", "symptom_unconfirmed_by": "unconfirmed_by"}
+SYMPTOM_ONLY = "all symptom kills"
 COARSE_STRATA = {
     "logic": "logic",
     "intra-frontend-wiring": "wiring",
@@ -150,6 +163,7 @@ def load(path, run):
     ambiguous = set()
     mutants = {}
     ran_known = True
+    symptom = collections.Counter()
     for mid, entry in raw.items():
         if isinstance(entry, list):
             entry = {"killed_by": entry}
@@ -160,9 +174,21 @@ def load(path, run):
             "coarse": coarse_stratum(entry), "files": {entry["file"]} if entry.get("file") else set(),
             "located": bool(entry.get("file")), "ran_known": ran is not None,
         }
-        for field in ("killed_by", "unconfirmed_by", "errored", "ran"):
+        listed = {field: set(entry.get(field) or []) for field in ("killed_by", "unconfirmed_by", "errored", "ran")}
+        for field, within in SYMPTOM_FIELDS.items():
+            ids = set(entry.get(field) or [])
+            listed[field] = ids & listed[within]
+            symptom[f"{field}_ignored"] += len(ids - listed[within])
+        killers = listed["killed_by"] or listed["unconfirmed_by"]
+        symptom["kills"] += len(listed["killed_by"])
+        symptom["symptom_kills"] += len(listed["symptom_kills"])
+        symptom["unconfirmed_kills"] += len(listed["unconfirmed_by"])
+        symptom["unconfirmed_symptom_kills"] += len(listed["symptom_unconfirmed_by"])
+        symptom["mutants_resting_only_on_symptom_kills"] += bool(killers) and killers <= (
+            listed["symptom_kills"] if listed["killed_by"] else listed["symptom_unconfirmed_by"])
+        for field, test_ids in listed.items():
             ids, others = set(), set()
-            for test_id in entry.get(field) or []:
+            for test_id in test_ids:
                 hits = by_base_key.get(test_id)
                 if hits:
                     ids.update(hits)
@@ -184,6 +210,11 @@ def load(path, run):
         "kills_by_a_test_that_errored": sum(1 for m in mutants.values() if m["killed_by"] & m["errored"]),
         "e2e_ids_not_in_run": sorted(unknown_e2e),
         "ids_matching_several_tests": sorted(ambiguous),
+        "symptom_kills": {
+            **{k: symptom[k] for k in ("kills", "symptom_kills", "unconfirmed_kills", "unconfirmed_symptom_kills",
+                                       "mutants_resting_only_on_symptom_kills")},
+            "ignored": {field: symptom[f"{field}_ignored"] for field in SYMPTOM_FIELDS},
+        },
     }
 
 
@@ -290,6 +321,8 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
     ran_by_test = collections.defaultdict(set)
     errored_by_test = collections.defaultdict(set)
     cover_by_test = collections.defaultdict(set)
+    symptom_by_test = collections.defaultdict(set)
+    unconfirmed_symptom_by_test = collections.defaultdict(set)
     for mid, m in mutants.items():
         for i in m["killed_by"]:
             killed_by_test[i].add(mid)
@@ -299,6 +332,10 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             ran_by_test[i].add(mid)
         for i in m["errored"]:
             errored_by_test[i].add(mid)
+        for i in m["symptom_kills"]:
+            symptom_by_test[i].add(mid)
+        for i in m["symptom_unconfirmed_by"]:
+            unconfirmed_symptom_by_test[i].add(mid)
 
     def by_stratum_ids(mids):
         return {s: [mid for mid in mids if mutants[mid]["stratum"] == s] for s in {mutants[mid]["stratum"] for mid in mids}}
@@ -336,10 +373,14 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
                     qualifying_basis[basis].append(mid)
             qualifying.append(mid)
         strata = collections.Counter(mutants[mid]["stratum"] for mid in qualifying)
+        unconfirmed_symptom = sorted(
+            mid for mid in unconfirmed_symptom_by_test[t.id] if not mutants[mid]["ran_known"] or mid in ran_by_test[t.id])
         detail = {
             "unique_kills": by_stratum_ids(unique),
             "unconfirmed_unique_kills": by_stratum_ids(unconfirmed_unique),
             "cover_kept_for": by_stratum_ids(cover_kept_for),
+            "symptom_kills": by_stratum_ids(sorted(kills_here & symptom_by_test[t.id])),
+            "unconfirmed_symptom_kills": by_stratum_ids(unconfirmed_symptom),
             "kills": len(kills_here),
             "misses": len(ran_by_test[t.id] - killed_by_test[t.id] - errored_by_test[t.id]),
             "errored": errored,
@@ -382,7 +423,10 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
             verdict, reason = "unmeasured", "needs a baseline check"
         else:
             verdict, reason = "delete", "no unique kill"
-        out[t.key] = {"verdict": verdict, "reason": reason, **detail}
+        symptom_only = rests_only_on_symptom_kills(t.id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants)
+        if symptom_only:
+            reason = f"{reason}, {SYMPTOM_ONLY}"
+        out[t.key] = {"verdict": verdict, "reason": reason, **detail, "symptom_only": symptom_only}
     kept = {t.id for t in tests if out[t.key]["verdict"] in KEPT}
     for ev in evidence.values():
         ev["survivors"] = sorted(mid for mid in ev["qualifying"] if not stays_killed(mutants[mid], kept))
@@ -393,17 +437,41 @@ def verdicts(run, kills, cover_keeps, min_mutants, required_strata, reach=None, 
         if out[t.key]["verdict"] in KEPT:
             continue
         depends_on = collections.defaultdict(dict)
+        after_deletion = collections.defaultdict(list)
         for mid in sorted(killed_by_test[t.id]):
             m = mutants[mid]
             if not m["killed_by_others"]:
                 depends_on[m["stratum"]][mid] = sorted(key_of[i] for i in m["killed_by"] & kept)
+            if stays_killed(m, kept) and stays_killed_only_by_symptom_kills(m, kept):
+                after_deletion[m["stratum"]].append(mid)
         out[t.key]["depends_on"] = dict(depends_on)
+        out[t.key]["symptom_only_after_deletion"] = dict(after_deletion)
     return out
+
+
+def rests_only_on_symptom_kills(test_id, verdict, unique, unconfirmed_unique, cover_kept_for, mutants):
+    """Whether every kill a keep or provisional-keep rests on is a symptom kill of the test."""
+    if verdict == "keep":
+        grounds = set(unique) | {mid for mid in cover_kept_for if mutants[mid]["killed_by"]}
+    elif verdict == "provisional-keep":
+        grounds = set(unconfirmed_unique) | set(cover_kept_for)
+    else:
+        return False
+
+    def symptom_kill(m):
+        return test_id in (m["symptom_kills"] if m["killed_by"] else m["symptom_unconfirmed_by"])
+
+    return bool(grounds) and all(symptom_kill(mutants[mid]) for mid in grounds)
 
 
 def stays_killed(m, kept):
     """Whether a remaining test or one of the `kept` candidates has a confirmed kill of the mutant."""
     return bool(m["killed_by_others"] or m["killed_by"] & kept)
+
+
+def stays_killed_only_by_symptom_kills(m, kept):
+    """Whether every confirmed kill of the mutant by a remaining test or one of the `kept` candidates is a symptom kill."""
+    return m["killed_by_others"] <= m["symptom_kills_others"] and (m["killed_by"] & kept) <= m["symptom_kills"]
 
 
 def joint_check(tests, mutants, rows):
@@ -595,7 +663,12 @@ def accepted_section(rows, accept):
 def summarize(results, keys=None):
     rows = [results[k] for k in keys] if keys is not None else list(results.values())
     by_verdict = collections.Counter(r["verdict"] for r in rows)
-    reasons = collections.Counter(f'{r["verdict"]}: {r["reason"].split(",")[0]}' for r in rows)
+    reasons = collections.Counter(
+        f'{r["verdict"]}: {r["reason"].split(",")[0]}' + (f", {SYMPTOM_ONLY}" if r.get("symptom_only") else "") for r in rows)
+
+    def count(field):
+        return sum(len(mids) for r in rows for mids in (r.get(field) or {}).values())
+
     strata = {v: collections.Counter() for v in VERDICTS}
     for r in rows:
         if r["verdict"] == "keep":
@@ -614,6 +687,12 @@ def summarize(results, keys=None):
             "delete, tests with a qualifying mutant in the stratum": dict(strata["delete"]),
             "unmeasured, tests with a qualifying mutant in the stratum": dict(strata["unmeasured"]),
             "accepted, tests with a qualifying mutant in the stratum": dict(strata["accepted"]),
+        },
+        "symptom_kills": {
+            "kills": sum(r.get("kills", 0) for r in rows),
+            "symptom_kills": count("symptom_kills"),
+            "unconfirmed_symptom_kills": count("unconfirmed_symptom_kills"),
+            "resting_only_on_symptom_kills": {v: sum(1 for r in rows if r["verdict"] == v and r.get("symptom_only")) for v in KEPT},
         },
     }
 
@@ -762,6 +841,7 @@ def evaluate(index_dir, kills_path, candidate_ids, min_mutants=MIN_MUTANTS, requ
             "kills_by_a_test_not_in_ran": kills["kills_by_a_test_not_in_ran"],
             "kills_by_a_test_that_errored": kills["kills_by_a_test_that_errored"],
             "e2e_ids_not_in_index": sorted(i for i in kills["e2e_ids_not_in_run"] if i not in index_ids),
+            "symptom_kills": kills["symptom_kills"],
         },
         "min_mutants": min_mutants,
         "required_strata": required_strata,
@@ -824,6 +904,29 @@ def joint_check_report(joint):
     return lines
 
 
+def symptom_report(in_file, in_candidates):
+    if not (in_file["symptom_kills"] or in_file["unconfirmed_symptom_kills"]):
+        return []
+    resting = in_candidates["resting_only_on_symptom_kills"]
+    return [
+        "",
+        "Symptom kills",
+        f"  {in_file['symptom_kills']} of the kills file's {in_file['kills']} kills are symptom kills, "
+        f"and {in_file['unconfirmed_symptom_kills']} of its {in_file['unconfirmed_kills']} unconfirmed kills",
+        f"  {in_file['mutants_resting_only_on_symptom_kills']} mutants rest only on symptom kills: "
+        "their kills, or their unconfirmed kills when they have none, are all symptom kills",
+        f"  {in_candidates['symptom_kills']} of the candidates' {in_candidates['kills']} kills are symptom kills, "
+        f"and they have {in_candidates['unconfirmed_symptom_kills']} unconfirmed symptom kills",
+        f"  {resting['keep']} keeps and {resting['provisional-keep']} provisional-keeps rest only on symptom kills",
+    ]
+
+
+def symptom_lines(r):
+    return [f"      {what}: {ids_by_stratum(r[field])}"
+            for field, what in (("symptom_kills", "symptom kills"), ("unconfirmed_symptom_kills", "unconfirmed symptom kills"))
+            if r.get(field)]
+
+
 def depends_on_lines(depends_on):
     kept_kills = {s: [mid for mid, cids in mids.items() if cids] for s, mids in depends_on.items()}
     lost_kills = {s: [mid for mid, cids in mids.items() if not cids] for s, mids in depends_on.items()}
@@ -849,6 +952,7 @@ def report(result):
         f"A delete needs {result['min_mutants']} qualifying mutants, among them {', '.join(result['required_strata']) or 'any stratum'}",
         "",
         *(f"{v:<16} {n}" for v, n in s["verdicts"].items()),
+        *symptom_report(k["symptom_kills"], s["symptom_kills"]),
         "",
         "Reasons",
         *(f"  {n:>4}  {reason}" for reason, n in s["reasons"].items()),
@@ -863,10 +967,12 @@ def report(result):
             lines += ["", verdict.capitalize()]
         for cid in chosen:
             r = rows[cid]
+            marker = f", {SYMPTOM_ONLY}" if r["symptom_only"] else ""
             if r["unique_kills"]:
-                why = f"unique kills: {by_stratum({st: len(mids) for st, mids in r['unique_kills'].items()})}"
+                why = f"unique kills{marker}: {by_stratum({st: len(mids) for st, mids in r['unique_kills'].items()})}"
             elif verdict == "provisional-keep" and r["unconfirmed_unique_kills"]:
-                why = f"unconfirmed unique kills: {by_stratum({st: len(mids) for st, mids in r['unconfirmed_unique_kills'].items()})}"
+                counts = by_stratum({st: len(mids) for st, mids in r["unconfirmed_unique_kills"].items()})
+                why = f"unconfirmed unique kills{marker}: {counts}"
             elif verdict != "delete":
                 why = r["reason"]
             else:
@@ -874,11 +980,18 @@ def report(result):
             lines += [f"  {cid}", f"      {why}"]
             if r["cover_kept_for"]:
                 lines.append(f"      kept by the cover for {ids_by_stratum(r['cover_kept_for'])}")
+            lines += symptom_lines(r)
     dependent = sorted(cid for cid, r in rows.items() if r.get("depends_on"))
     if dependent:
         lines += ["", "Kills that no remaining test has"]
     for cid in dependent:
         lines += [f"  {cid}", *(f"      {rows[cid]['verdict']}, {line}" for line in depends_on_lines(rows[cid]["depends_on"]))]
+    on_symptoms = sorted(cid for cid, r in rows.items() if r.get("symptom_only_after_deletion"))
+    if on_symptoms:
+        lines += ["", "Kills that stay only as symptom kills"]
+    for cid in on_symptoms:
+        mids = ids_by_stratum(rows[cid]["symptom_only_after_deletion"])
+        lines += [f"  {cid}", f"      {rows[cid]['verdict']}, the tests that stay kill {mids} only through symptom kills"]
     lines += accepted_report(result["accepted"])
     unresolved = sorted(mid for mid, m in result["mutants"].items() if m["reach"] == "a location that resolves to no code")
     if unresolved:
@@ -890,6 +1003,9 @@ def report(result):
                         ("kills_by_a_test_that_errored", "a killer that also errored")):
         if k[field]:
             lines += ["", f"{k[field]} mutants have {what}"]
+    for field, within in SYMPTOM_FIELDS.items():
+        if k["symptom_kills"]["ignored"][field]:
+            lines += ["", f"{k['symptom_kills']['ignored'][field]} ids in `{field}` aren't in their mutant's `{within}`, and are ignored"]
     if k["e2e_ids_not_in_index"]:
         lines += ["", f"{len(k['e2e_ids_not_in_index'])} e2e ids of the kills file are not in the index, and count as remaining tests"]
         lines += [f"  {i}" for i in k["e2e_ids_not_in_index"][:10]]

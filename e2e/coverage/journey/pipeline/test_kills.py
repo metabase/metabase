@@ -101,10 +101,13 @@ L_35009 = fn_location("frontend/src/metabase/nav/components/search/SearchBar/Sea
                       "SearchBar > useEffect callback@147", 147, 12)
 
 
-def mutant(stratum, killed_by, ran, location=None, errored=(), file=None, unconfirmed_by=()):
+def mutant(stratum, killed_by, ran, location=None, errored=(), file=None, unconfirmed_by=(), symptom_kills=(),
+           symptom_unconfirmed_by=()):
     entry = {"killed_by": killed_by, "errored": list(errored), "ran": ran, "stratum": stratum, "origin": "synthetic"}
-    if unconfirmed_by:
-        entry["unconfirmed_by"] = list(unconfirmed_by)
+    for field, ids in (("unconfirmed_by", unconfirmed_by), ("symptom_kills", symptom_kills),
+                       ("symptom_unconfirmed_by", symptom_unconfirmed_by)):
+        if ids:
+            entry[field] = list(ids)
     if location:
         # kills.py over a pipeline run reads `file`, and over the index reads `locations`.
         entry |= {"file": location["file"], "locations": [location]}
@@ -149,7 +152,8 @@ EXPECTED = {
     BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2"),
 }
 COMPARED = ("verdict", "reason", "unique_kills", "unconfirmed_unique_kills", "cover_kept_for", "kills", "misses", "errored",
-            "qualifying_mutants", "qualifying_without_location", "qualifying_basis", "depends_on")
+            "qualifying_mutants", "qualifying_without_location", "qualifying_basis", "depends_on",
+            "symptom_kills", "unconfirmed_symptom_kills", "symptom_only", "symptom_only_after_deletion")
 SHARED_KILLS_HEADING = "\nKills that no remaining test has\n"
 
 UNCONFIRMED_KILLS = {
@@ -658,6 +662,16 @@ class Accepted(unittest.TestCase):
         self.assertEqual((rows[UNIQUE]["verdict"], a["outcome"], a["survivors"], a["sampled"]), ("accepted", "accepted", [], 6))
         self.assertEqual((rows[UNIQUE]["depends_on"], result["joint_check"]), ({}, "ok"))
 
+    def test_a_sampled_mutant_only_a_remaining_symptom_kill_catches_is_no_survivor(self):
+        cases = {
+            "symptom kill": (mutant("logic", [REMAINING], [UNIQUE, REMAINING], L_UNIQUE, symptom_kills=[REMAINING]), ("accepted", [])),
+            "errored": (mutant("logic", [], [UNIQUE, REMAINING], L_UNIQUE, errored=[REMAINING]), ("unmeasured", ["sampled"])),
+        }
+        for name, (sampled, (verdict, survivors)) in cases.items():
+            with self.subTest(name):
+                row = self.evaluate_entries(ACCEPT_KILLS | {"sampled": sampled})["candidates"][UNIQUE]
+                self.assertEqual((row["verdict"], row["acceptance"]["survivors"]), (verdict, survivors))
+
     def test_static_importers_are_recorded_and_never_gate(self):
         caller, barrel, app, unscored = (
             f"frontend/src/metabase/{name}" for name in ("caller.tsx", "public/index.ts", "App.tsx", "unscored.tsx"))
@@ -940,6 +954,157 @@ class JointDeletion(unittest.TestCase):
         self.assertTrue(text.startswith("Joint check: failed, 2 mutants"))
 
 
+SYMPTOM_KILLS = {
+    "unique-symptom": mutant("logic", [UNIQUE], [UNIQUE, REMAINING], L_UNIQUE, symptom_kills=[UNIQUE]),
+    "paired-assertion": mutant("wiring", [PAIRED], [PAIRED, REMAINING], L_PAIRED),
+    "paired-symptom": mutant("logic", [PAIRED], [PAIRED, REMAINING], L_PAIRED, symptom_kills=[PAIRED]),
+    "unit-symptom": mutant("wiring", [UNIT, REMAINING], [UNIT, REMAINING], L_UNIT, symptom_kills=[REMAINING]),
+    "unit-logic": mutant("logic", [JEST], [UNIT, JEST], L_UNIT),
+    "69160-symptom": mutant("logic", [], [REPRO_69160, REMAINING], L_69160, unconfirmed_by=[REPRO_69160],
+                            symptom_unconfirmed_by=[REPRO_69160]),
+    "stray": mutant("logic", [REMAINING], [BACKEND, REMAINING], file=L_PARAMS["file"], symptom_kills=[REMAINING, BACKEND],
+                    symptom_unconfirmed_by=[BACKEND]),
+}
+SYMPTOM_CANDIDATES = [UNIQUE, PAIRED, UNIT, REPRO_69160, BACKEND]
+SYMPTOM_EXPECTED = {
+    UNIQUE: ("keep", "unique kills, all symptom kills", True),
+    PAIRED: ("keep", "unique kills", False),
+    UNIT: ("delete", "no unique kill", False),
+    REPRO_69160: ("provisional-keep", "unconfirmed unique kills, all symptom kills", True),
+    BACKEND: ("unmeasured", "1 qualifying mutants, fewer than 2", False),
+}
+SYMPTOM_FIELDS = ("symptom_kills", "symptom_unconfirmed_by")
+
+
+def without_symptoms(entries):
+    return {mid: {k: v for k, v in m.items() if k not in SYMPTOM_FIELDS} for mid, m in entries.items()}
+
+
+@unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
+class SymptomKills(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.kills_file = write_json(SYMPTOM_KILLS)
+        cls.result = kills.evaluate(INDEX, cls.kills_file, SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
+        cls.rows = cls.result["candidates"]
+        cls.text = kills.report(cls.result)
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.kills_file)
+
+    @staticmethod
+    def evaluate_entries(entries, candidate_ids, min_mutants=MIN_MUTANTS, strata=STRATA):
+        path = write_json(entries)
+        try:
+            return kills.evaluate(INDEX, path, candidate_ids, min_mutants, strata)
+        finally:
+            os.unlink(path)
+
+    def test_verdicts(self):
+        for cid, (verdict, reason, symptom_only) in SYMPTOM_EXPECTED.items():
+            with self.subTest(cid):
+                row = self.rows[cid]
+                self.assertEqual((row["verdict"], row["reason"], row["symptom_only"]), (verdict, reason, symptom_only))
+        self.assertEqual(self.result["joint_check"], "ok")
+
+    def test_a_keep_whose_only_unique_kill_is_a_symptom_kill_is_marked(self):
+        row = self.rows[UNIQUE]
+        self.assertEqual((row["unique_kills"], row["symptom_kills"]), ({"logic": ["unique-symptom"]}, {"logic": ["unique-symptom"]}))
+        self.assertIn(f"  {UNIQUE}\n      unique kills, all symptom kills: logic 1\n      kept by the cover for logic unique-symptom\n"
+                      "      symptom kills: logic unique-symptom\n", self.text)
+        self.assertIn("\n     1  keep: unique kills, all symptom kills\n", self.text)
+
+    def test_a_keep_with_an_assertion_kill_and_a_symptom_kill_is_not_marked(self):
+        row = self.rows[PAIRED]
+        self.assertEqual({k: row[k] for k in ("unique_kills", "symptom_kills")},
+                         {"unique_kills": {"logic": ["paired-symptom"], "wiring": ["paired-assertion"]},
+                          "symptom_kills": {"logic": ["paired-symptom"]}})
+        self.assertIn(f"  {PAIRED}\n      unique kills: logic 1, wiring 1\n", self.text)
+        self.assertIn("\n     1  keep: unique kills\n", self.text)
+
+    def test_a_remaining_tests_symptom_kill_is_the_kill_a_delete_rests_on(self):
+        row = self.rows[UNIT]
+        self.assertEqual((row["depends_on"], row["symptom_only_after_deletion"], row["symptom_kills"]),
+                         ({}, {"wiring": ["unit-symptom"]}, {}))
+        self.assertIn(f"\nKills that stay only as symptom kills\n  {UNIT}\n"
+                      "      delete, the tests that stay kill wiring unit-symptom only through symptom kills\n", self.text)
+        as_errored = SYMPTOM_KILLS | {"unit-symptom": mutant("wiring", [UNIT], [UNIT, REMAINING], L_UNIT, errored=[REMAINING])}
+        row = self.evaluate_entries(as_errored, [UNIT])["candidates"][UNIT]
+        self.assertEqual((row["verdict"], row["unique_kills"], row.get("symptom_only_after_deletion")),
+                         ("keep", {"wiring": ["unit-symptom"]}, None))
+
+    def test_a_provisional_keep_on_an_unconfirmed_symptom_kill_is_marked(self):
+        row = self.rows[REPRO_69160]
+        self.assertEqual((row["unconfirmed_unique_kills"], row["unconfirmed_symptom_kills"], row["symptom_kills"]),
+                         ({"logic": ["69160-symptom"]}, {"logic": ["69160-symptom"]}, {}))
+        self.assertIn(f"  {REPRO_69160}\n      unconfirmed unique kills, all symptom kills: logic 1\n"
+                      "      kept by the cover for logic 69160-symptom\n      unconfirmed symptom kills: logic 69160-symptom\n", self.text)
+
+    def test_the_summary_counts_symptom_kills(self):
+        self.assertEqual(self.result["summary"]["symptom_kills"], {
+            "kills": 4, "symptom_kills": 2, "unconfirmed_symptom_kills": 1,
+            "resting_only_on_symptom_kills": {"keep": 1, "provisional-keep": 1},
+        })
+        self.assertEqual(self.result["kills"]["symptom_kills"], {
+            "kills": 7, "symptom_kills": 4, "unconfirmed_kills": 1, "unconfirmed_symptom_kills": 1,
+            "mutants_resting_only_on_symptom_kills": 4, "ignored": {"symptom_kills": 1, "symptom_unconfirmed_by": 1},
+        })
+        self.assertIn("\nSymptom kills\n  4 of the kills file's 7 kills are symptom kills, and 1 of its 1 unconfirmed kills\n", self.text)
+        self.assertIn("  2 of the candidates' 4 kills are symptom kills, and they have 1 unconfirmed symptom kills\n"
+                      "  1 keeps and 1 provisional-keeps rest only on symptom kills\n", self.text)
+        self.assertIn("\n1 ids in `symptom_kills` aren't in their mutant's `killed_by`, and are ignored\n", self.text)
+        self.assertTrue(self.text.endswith("\n1 ids in `symptom_unconfirmed_by` aren't in their mutant's `unconfirmed_by`, and are ignored"))
+
+    def test_a_kills_file_without_symptom_fields_has_no_symptom_kills(self):
+        result = self.evaluate_entries(without_symptoms(SYMPTOM_KILLS), SYMPTOM_CANDIDATES)
+        rows = result["candidates"]
+        self.assertEqual({c: (r["verdict"], r["reason"]) for c, r in rows.items()},
+                         {c: (v, reason.replace(", all symptom kills", "")) for c, (v, reason, _) in SYMPTOM_EXPECTED.items()})
+        for cid, row in rows.items():
+            with self.subTest(cid):
+                self.assertEqual({k: row.get(k) for k in ("symptom_kills", "unconfirmed_symptom_kills", "symptom_only")},
+                                 {"symptom_kills": {}, "unconfirmed_symptom_kills": {}, "symptom_only": False})
+                self.assertEqual(row.get("symptom_only_after_deletion", {}), {})
+        self.assertEqual(result["kills"]["symptom_kills"]["mutants_resting_only_on_symptom_kills"], 0)
+        self.assertEqual(result["summary"]["symptom_kills"]["resting_only_on_symptom_kills"], {"keep": 0, "provisional-keep": 0})
+        self.assertNotIn("\nSymptom kills\n", kills.report(result))
+
+    def test_a_bare_list_entry_has_no_symptom_kills(self):
+        row = self.evaluate_entries({"bare": [UNIQUE]}, [UNIQUE], 1, [])["candidates"][UNIQUE]
+        self.assertEqual((row["verdict"], row["reason"], row["symptom_kills"], row["symptom_only"]),
+                         ("keep", "unique kills", {}, False))
+
+    def test_the_joint_check_counts_symptom_kills(self):
+        first, middle, last = CHAIN
+        chain = {mid: m | {"symptom_kills": [middle]} for mid, m in CHAIN_KILLS.items()}
+        result = self.evaluate_entries(chain, CHAIN, 1, [])
+        self.assertEqual({c: (r["verdict"], r["reason"], r.get("depends_on"), r.get("symptom_only_after_deletion"))
+                          for c, r in result["candidates"].items()}, {
+            first: ("delete", "no unique kill", {"logic": {"first-pair": [middle]}}, {"logic": ["first-pair"]}),
+            middle: ("keep", f"{COVER_KEEPS}, all symptom kills", None, None),
+            last: ("delete", "no unique kill", {"wiring": {"second-pair": [middle]}}, {"wiring": ["second-pair"]}),
+        })
+        self.assertEqual(result["joint_check"], "ok")
+        with JointDeletion.middle_verdict("delete"):
+            deleted = self.evaluate_entries(chain, CHAIN, 1, [])
+        self.assertEqual(deleted["joint_check"],
+                         {"logic": {"first-pair": sorted([first, middle])}, "wiring": {"second-pair": sorted([middle, last])}})
+        one = CHAIN_KILLS | {"first-pair": CHAIN_KILLS["first-pair"] | {"symptom_kills": [middle]}}
+        rows = self.evaluate_entries(one, CHAIN, 1, [])["candidates"]
+        self.assertEqual({c: (r["reason"], r.get("symptom_only_after_deletion")) for c, r in rows.items()}, {
+            first: ("no unique kill", {"logic": ["first-pair"]}),
+            middle: (COVER_KEEPS, None),
+            last: ("no unique kill", {}),
+        })
+
+    def test_pipeline_gives_the_same_verdicts(self):
+        pipeline = pipeline_verdicts(self.kills_file, SYMPTOM_CANDIDATES)
+        for cid in SYMPTOM_CANDIDATES:
+            with self.subTest(cid):
+                self.assertEqual({f: pipeline[cid].get(f) for f in COMPARED}, {f: self.rows[cid].get(f) for f in COMPARED})
+
+
 def ledger_run(entries, candidate_ids, min_mutants, strata):
     """The ledger of a kills file of these entries, and ledger-verdicts.mjs's check of it against kills.py's verdicts."""
     lookup = os.path.join(HERE, "..", "lookup")
@@ -977,10 +1142,52 @@ def ledger_run(entries, candidate_ids, min_mutants, strata):
 
 @unittest.skipUnless(INDEX, "needs JOURNEY_LOOKUP_INDEX")
 class Ledger(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.joined = ledger_run(SYMPTOM_KILLS, SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
+
+    def test_the_ledger_gives_kills_py_verdicts_with_their_symptom_markers(self):
+        self.assertEqual(self.joined.check.returncode, 0, self.joined.check.stdout)
+        self.assertIn(f"Keeps and provisional-keeps that rest only on symptom kills, from the ledger: {UNIQUE} (keep); "
+                      f"{REPRO_69160} (provisional-keep)\n", self.joined.check.stdout)
+
+    def test_each_mutant_says_whether_it_rests_only_on_symptom_kills(self):
+        mutants = self.joined.ledger["mutants"]
+        self.assertEqual({mid: m["symptom_only"] for mid, m in mutants.items()}, {
+            "unique-symptom": True, "paired-assertion": False, "paired-symptom": True, "unit-symptom": False,
+            "unit-logic": False, "69160-symptom": True, "stray": True,
+        })
+        self.assertEqual((mutants["unit-symptom"]["symptom_kills"], mutants["69160-symptom"]["symptom_unconfirmed_by"]),
+                         ({"e2e": [REMAINING]}, {"e2e": [REPRO_69160]}))
+        self.assertEqual(mutants["stray"]["symptom_ids_ignored"], {"symptom_kills": 1, "symptom_unconfirmed_by": 1})
+        self.assertEqual({r["mutant"]: r["symptom_only"] for r in self.joined.csv if r["mutant"] in ("unit-symptom", "stray")},
+                         {"unit-symptom": "no", "stray": "yes"})
+
+    def test_symptom_kills_count_on_the_e2e_floor_and_off_the_demand_list(self):
+        ledger = self.joined.ledger
+        self.assertEqual({s: (g["mutants"], g["symptom_only"]) for s, g in ledger["e2e_floor"].items()}, {
+            "logic": (["paired-symptom", "stray", "unique-symptom"], ["paired-symptom", "stray", "unique-symptom"]),
+            "wiring": (["paired-assertion", "unit-symptom"], []),
+        })
+        self.assertEqual({s: (g["mutants"], g["symptom_only"]) for s, g in ledger["demand"].items()},
+                         {"logic": (["69160-symptom"], ["69160-symptom"])})
+        self.assertIn("Symptom kills count as kills: 4 confirmed, on 4 mutants, and 1 unconfirmed, on 1 mutants. "
+                      "4 mutants rest only on symptom kills", self.joined.summary)
+        self.assertIn("\n1 of them rest only on symptom kills: logic 1.\n", self.joined.summary)
+        self.assertIn("\n3 of them rest only on symptom kills: logic 3.\n", self.joined.summary)
+        self.assertIn("| logic | 1 | 1 | 1 | 1 | 1 | not routed 1 |", self.joined.summary)
+
     def test_the_ledger_needs_a_baseline_check_where_kills_py_does(self):
         run = ledger_run(UNIT_MISSES, [UNIT], 4, [])
         self.assertEqual(run.check.returncode, 0, run.check.stdout)
         self.assertIn('Verdicts from the ledger: {"unmeasured":1}', run.check.stdout)
+
+    def test_an_older_kills_file_gives_the_same_verdicts_without_markers(self):
+        run = ledger_run(without_symptoms(SYMPTOM_KILLS), SYMPTOM_CANDIDATES, MIN_MUTANTS, STRATA)
+        self.assertEqual(run.check.returncode, 0, run.check.stdout)
+        self.assertEqual({m["symptom_only"] for m in run.ledger["mutants"].values()}, {False})
+        self.assertNotIn("Symptom kills count as kills", run.summary)
+        self.assertNotIn("rest only on symptom kills", run.summary)
 
 
 class Ordinals(unittest.TestCase):
