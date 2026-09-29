@@ -1,10 +1,8 @@
-import {
-  StepLabel,
-  StepLabelIcon,
-  StepLabelText,
-  StepRoot,
-  StepTitle,
-} from "./InactiveStep.styled";
+import cx from "classnames";
+
+import { Box, Center, Icon } from "metabase/ui";
+
+import S from "./InactiveStep.module.css";
 
 interface InactiveStepProps {
   title: string;
@@ -18,20 +16,35 @@ export const InactiveStep = ({
   isStepCompleted,
 }: InactiveStepProps): JSX.Element => {
   return (
-    <StepRoot
+    <Box
+      component="section"
+      className={S.root}
+      pos="relative"
+      py="lg"
+      px="xxl"
+      mb="xl"
+      bg="background_page-primary"
       role="listitem"
-      isCompleted={isStepCompleted}
       aria-label={title}
       data-testid="setup-step"
     >
-      <StepTitle isCompleted={isStepCompleted}>{title}</StepTitle>
-      <StepLabel isCompleted={isStepCompleted}>
+      <Box
+        c={isStepCompleted ? "feedback-positive" : "core-brand"}
+        fz="lg"
+        fw={700}
+        my="sm"
+      >
+        {title}
+      </Box>
+      <Center className={cx(S.label, { [S.labelCompleted]: isStepCompleted })}>
         {isStepCompleted ? (
-          <StepLabelIcon name="check" />
+          <Icon name="check" size="1rem" c="text-primary-inverse" />
         ) : (
-          <StepLabelText>{label}</StepLabelText>
+          <Box component="span" c="core-brand" fw={700} lh={1}>
+            {label}
+          </Box>
         )}
-      </StepLabel>
-    </StepRoot>
+      </Center>
+    </Box>
   );
 };

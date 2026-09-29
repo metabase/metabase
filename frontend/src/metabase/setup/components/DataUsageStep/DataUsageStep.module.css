@@ -1,0 +1,8 @@
+.toggle {
+  border: 2px solid var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+}
+
+.infoList {
+  list-style: disc inside;
+}
