@@ -395,7 +395,7 @@
              {:choices [] :usage {:prompt_tokens 127 :completion_tokens 288}}])))))
 
 (deftest ^:parallel chunks-xf-streamed-error-becomes-an-error-chunk-test
-  (testing "an error sent partway through a stream closes the open text block and becomes an error chunk"
+  (testing "an error sent partway through a stream becomes an error chunk"
     (doseq [[shape error-chunk message]
             [["vLLM's error envelope"
               {:error {:message "Internal server error" :type "InternalServerError" :param nil :code 500}}
@@ -410,16 +410,31 @@
                :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}
               "Provider disconnected unexpectedly"]]]
       (testing shape
-        (is (=? [{:type :start :messageId "chatcmpl-5"}
-                 {:type :text-start}
-                 {:type :text-delta :delta "Hel"}
-                 {:type :text-end}
-                 {:type :error :errorText message}]
-                (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
-                      [{:id      "chatcmpl-5"
-                        :model   "kimi-k2.6"
-                        :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
-                       error-chunk])))))))
+        (testing "after closing the open text block"
+          (is (=? [{:type :start :messageId "chatcmpl-5"}
+                   {:type :text-start}
+                   {:type :text-delta :delta "Hel"}
+                   {:type :text-end}
+                   {:type :error :errorText message}]
+                  (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                        [{:id      "chatcmpl-5"
+                          :model   "kimi-k2.6"
+                          :choices [{:index 0 :delta {:role "assistant" :content "Hel"} :finish_reason nil}]}
+                         error-chunk]))))
+        (testing "without making a half-streamed tool call available to run"
+          (is (= [{:type :start :messageId "chatcmpl-5"}
+                  {:type :tool-input-start :toolCallId "call-1" :toolName "search"}
+                  {:type :tool-input-delta :toolCallId "call-1" :inputTextDelta "{\"query\": \"rev"}
+                  {:type :error :errorText message}]
+                 (into [] (chat-completions/chat-completions->aisdk-chunks-xf)
+                       [{:id      "chatcmpl-5"
+                         :model   "kimi-k2.6"
+                         :choices [{:index 0
+                                    :delta {:tool_calls [{:index    0
+                                                          :id       "call-1"
+                                                          :type     "function"
+                                                          :function {:name "search" :arguments "{\"query\": \"rev"}}]}}]}
+                        error-chunk]))))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; models-catalog tests

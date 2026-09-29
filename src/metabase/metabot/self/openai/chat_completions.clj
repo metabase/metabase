@@ -202,15 +202,17 @@
            model-name   (volatile! nil)
            payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
            stop-reason  (volatile! nil)
+           clear!       (fn []
+                          (vreset! current-type nil)
+                          (vreset! current-id nil)
+                          (vreset! payload {}))
            close!       (fn [result]
                           (u/prog1 (rf result (merge {:type (case @current-type
                                                               :text          :text-end
                                                               :reasoning     :reasoning-end
                                                               :function_call :tool-input-available)}
                                                      @payload))
-                            (vreset! current-type nil)
-                            (vreset! current-id nil)
-                            (vreset! payload {})))]
+                            (clear!)))]
        (fn
          ([result]
           (cond-> result
@@ -312,6 +314,9 @@
                    (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
                                                                     :toolCallId     (:toolCallId @payload)
                                                                     :inputTextDelta (:arguments (:function tool-call))})
+              ;; Closing a tool call runs it, so drop one that an error cuts off
+              (and (some? error)
+                   (= @current-type :function_call))           (u/prog1 (clear!))
               ;; Finish reason — close whatever is open
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
