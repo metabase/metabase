@@ -147,6 +147,19 @@
   `native_finish_reason`), and adds `error` for a mid-generation upstream failure."
   (assoc chat-completions/stop-reasons "error" "error"))
 
+(defn- usage-cost
+  "The call's charge in USD from OpenRouter's `usage` block, or nil when the block doesn't give one.
+  A block without `cost` gives none, and so does a BYOK call's block without the upstream charge
+  (https://openrouter.ai/docs/use-cases/usage-accounting)."
+  [{:keys [cost is_byok cost_details]}]
+  (let [upstream (:upstream_inference_cost cost_details)]
+    (cond
+      (not (number? cost)) nil
+      (not is_byok)        cost
+      ;; On a BYOK call `cost` is only OpenRouter's fee, and the provider behind the key bills the inference
+      (number? upstream)   (+ cost upstream)
+      :else                nil)))
+
 (defn openrouter->aisdk-chunks-xf
   "Translates Chat Completions streaming chunks into AI SDK v5 protocol chunks.
 
@@ -161,7 +174,8 @@
   xf and the dialect-level replay; see the \"Preserving Reasoning\" section of
   https://openrouter.ai/docs/use-cases/reasoning-tokens."
   []
-  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? true}))
+  (chat-completions/chat-completions->aisdk-chunks-xf stop-reasons {:forward-reasoning? true
+                                                                    :usage-cost         usage-cost}))
 
 ;;; HTTP request
 

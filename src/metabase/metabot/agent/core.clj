@@ -750,7 +750,8 @@
                             ;; stopped, and the final agent state (link registry / generated entities).
                             (when (ait/capture-active?)
                               (ait/record! {:ai/finish-reason finish-reason
-                                            :ai/usage         @usage-atom
+                                            ;; Keep Metabot's eval cost on list rates: evals price any captured costUsd
+                                            :ai/usage         (update-vals @usage-atom #(dissoc % :costUsd))
                                             :ai/final-state   (some-> (:memory-atom agent) deref :state)}))
                             ;; A :reduced stop (client disconnect / cancellation) has already terminated
                             ;; the reducing fn — stepping it again would violate the transducer contract.

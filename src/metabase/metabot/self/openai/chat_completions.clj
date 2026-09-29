@@ -28,13 +28,17 @@
       cache_write_tokens — input tokens written to the provider cache;
                            undocumented but reported by both OpenRouter
                            (Anthropic models) and newer OpenAI models.
-                           Providers without it (e.g. Z.AI) omit it."
-  [u]
-  (let [details (:prompt_tokens_details u)]
-    {:promptTokens        (:prompt_tokens u 0)
-     :completionTokens    (:completion_tokens u 0)
-     :cacheCreationTokens (or (:cache_write_tokens details) 0)
-     :cacheReadTokens     (or (:cached_tokens details) 0)}))
+                           Providers without it (e.g. Z.AI) omit it.
+
+  When `usage-cost` finds a charge in the block, it is carried as `:costUsd`."
+  [u usage-cost]
+  (let [details (:prompt_tokens_details u)
+        cost    (when usage-cost (usage-cost u))]
+    (cond-> {:promptTokens        (:prompt_tokens u 0)
+             :completionTokens    (:completion_tokens u 0)
+             :cacheCreationTokens (or (:cache_write_tokens details) 0)
+             :cacheReadTokens     (or (:cached_tokens details) 0)}
+      cost (assoc :costUsd cost))))
 
 ;;; AISDK parts → Chat Completions messages
 
@@ -189,12 +193,16 @@
   deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
   :reasoning-end. Opt-in, because whether a provider's reasoning renders at all is
   a separate question (see `metabot.settings/llm-metabot-supports-reasoning?`) and
-  chunks nothing consumes only add stream volume."
+  chunks nothing consumes only add stream volume.
+
+  `opts` may also carry `:usage-cost`, a fn that takes the `usage` block and returns the call's charge in
+  USD, or nil when the block has none. The generic dialect has no charge, so only a provider that reports
+  one passes it."
   ([]
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
   ([stop-reasons]
    (chat-completions->aisdk-chunks-xf stop-reasons nil))
-  ([stop-reasons {:keys [forward-reasoning?]}]
+  ([stop-reasons {:keys [forward-reasoning? usage-cost]}]
    (fn [rf]
      (let [current-type (volatile! nil) ;; :text | :reasoning | :function_call | nil
            current-id   (volatile! nil) ;; active chunk id (text-id, reasoning-id, or tool call_id)
@@ -319,7 +327,7 @@
                                                                     @current-type (close!)))
               ;; Usage (often on a separate final chunk with empty choices)
               (some? usage)                                    (rf (cond-> {:type  :usage
-                                                                            :usage (usage->aisdk-usage usage)
+                                                                            :usage (usage->aisdk-usage usage usage-cost)
                                                                             :id    @message-id
                                                                             :model @model-name}
                                                                      @stop-reason

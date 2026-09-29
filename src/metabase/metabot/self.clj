@@ -253,6 +253,7 @@
                  :cache-read-tokens     cache-read
                  :total-tokens          (+ prompt completion)
                  :estimated-costs-usd   0.0
+                 :reported-cost-usd     (:costUsd usage)
                  :duration-ms           (long (u/since-ms start-ms))
                  :user-id               api/*current-user-id*
                  :request-id            (some-> request-id analytics.core/uuid->ai-service-hex-uuid)

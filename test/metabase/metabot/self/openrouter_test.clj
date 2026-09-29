@@ -377,7 +377,7 @@
                 :function  "get-time"
                 :arguments {:tz string?}}
                {:type  :usage :model string?
-                :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
+                :usage {:promptTokens pos-int? :completionTokens pos-int? :costUsd 0.001199}}]
               (into [] (comp (openrouter/openrouter->aisdk-chunks-xf)
                              (self.core/aisdk-xf))
                     raw-chunks))))))
@@ -395,7 +395,7 @@
                 :function  "get-time"
                 :arguments {:tz string?}}
                {:type  :usage :model string?
-                :usage {:promptTokens pos-int? :completionTokens pos-int?}}]
+                :usage {:promptTokens pos-int? :completionTokens pos-int? :costUsd 0.001199}}]
               (remove #(= (:type %) :text) res)))
       (is (< 10 (count (filter #(= (:type %) :text) res)))))))
 
@@ -443,6 +443,27 @@
               :cacheCreationTokens 0
               :cacheReadTokens     0}
              (:usage usage))))))
+
+(defn- usage-cost-usd
+  [usage]
+  (->> (into [] (openrouter/openrouter->aisdk-chunks-xf)
+             [{:id      "gen-3"
+               :model   "anthropic/claude-haiku-4.5"
+               :choices [{:delta {:role "assistant" :content "Hi"}}]}
+              {:choices [] :usage (merge {:prompt_tokens 10 :completion_tokens 3} usage)}])
+       (some #(when (= :usage (:type %)) %))
+       :usage
+       :costUsd))
+
+(deftest ^:parallel openrouter-usage-cost-test
+  (testing "OpenRouter's charge is carried as :costUsd, and a free model's is 0"
+    (is (= 0.0012 (usage-cost-usd {:cost 0.0012 :is_byok false :cost_details {:upstream_inference_cost 0.0012}})))
+    (is (= 0 (usage-cost-usd {:cost 0 :is_byok false}))))
+  (testing "a BYOK call adds the upstream provider's charge to OpenRouter's fee"
+    (is (= 5.25 (usage-cost-usd {:cost 0.25 :is_byok true :cost_details {:upstream_inference_cost 5}}))))
+  (testing "no charge is carried when a BYOK call reports only the fee, or there is no cost at all"
+    (is (nil? (usage-cost-usd {:cost 0.25 :is_byok true :cost_details {:upstream_inference_cost nil}})))
+    (is (nil? (usage-cost-usd {})))))
 
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}

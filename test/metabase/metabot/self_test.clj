@@ -1666,6 +1666,7 @@
                                     "cache_creation_tokens"  50
                                     "cache_read_tokens"      800
                                     "estimated_costs_usd"    0.0
+                                    "reported_cost_usd"      nil
                                     "duration_ms"            nat-int?
                                     "source"                 "metabot_agent"
                                     "tag"                    "test-tag"
@@ -1696,7 +1697,8 @@
                                                  [{:type :start :id "msg-1"}
                                                   {:type :tool-input :id "call-1" :function "json"
                                                    :arguments {:answer "42"}}
-                                                  {:type :usage :usage {:promptTokens 50 :completionTokens 10}
+                                                  {:type :usage :usage {:promptTokens 50 :completionTokens 10
+                                                                        :costUsd      0.0042}
                                                    :model "test-model" :id "msg-1"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
@@ -1716,11 +1718,35 @@
                                     "prompt_tokens"        50
                                     "completion_tokens"    10
                                     "estimated_costs_usd"  0.0
+                                    "reported_cost_usd"    0.0042
                                     "duration_ms"          nat-int?
                                     "source"               "metabot_agent"
                                     "tag"                  "test-tag"
                                     "session_id"           "00000000-0000-0000-0000-000000000002"}}]
                         token-events))))))))))
+
+(deftest call-llm-openrouter-cost-snowplow-test
+  (testing "the charge OpenRouter reports reaches the token_usage event"
+    (llm.tu/with-default-connections
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter-raw
+                                  (constantly [{:id      "gen-1"
+                                                :model   "anthropic/claude-haiku-4.5"
+                                                :choices [{:index 0 :delta {:role "assistant" :content "Hi"}}]}
+                                               {:id "gen-1" :choices [{:index 0 :delta {} :finish_reason "stop"}]}
+                                               {:id      "gen-1"
+                                                :choices []
+                                                :usage   {:prompt_tokens     10
+                                                          :completion_tokens 3
+                                                          :cost              0.0001
+                                                          :is_byok           true
+                                                          :cost_details      {:upstream_inference_cost 0.0012}}}])]
+        (snowplow-test/with-fake-snowplow-collector
+          (run! identity (self/call-llm "openrouter/anthropic/claude-haiku-4.5" nil [] {} snowplow-tracking-opts))
+          (is (=? [{:data {"provider"          "openrouter"
+                           "model_name"        "anthropic/claude-haiku-4.5"
+                           "reported_cost_usd" 0.0013}}]
+                  (filter #(contains? (:data %) "total_tokens")
+                          (snowplow-test/pop-event-data-and-user-id!)))))))))
 
 ;;; ===================== Usage Log Tests =====================
 
