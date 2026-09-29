@@ -1,0 +1,25 @@
+{:columns [id
+           user_id
+           provider
+           credentials
+           metadata
+           provider_id
+           last_used_at
+           expires_at
+           created_at
+           updated_at
+           confirmed_at]
+ :relationships {:sessions {:table :core_session
+                            :cardinality :0-N
+                            :join-on [:= id auth_identity_id]}
+                 :mfa_sessions {:table :core_session
+                                :cardinality :0-N
+                                :join-on [:= id mfa_auth_identity_id]}
+                 :user    {:table :core_user
+                           :cardinality :0-1
+                           :join-on [:= user_id id]}}
+ :permissions {:user {:select {:condition [:= id *current-user-id*]
+                               :columns  [id
+                                          first_name
+                                          last_name]}}}
+ :model :model/AuthIdentity}

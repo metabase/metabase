@@ -1,0 +1,36 @@
+{:columns [id
+           email
+           first_name
+           last_name
+           password
+           password_salt
+           date_joined
+           last_login
+           is_superuser
+           is_active
+           reset_token
+           reset_triggered
+           is_qbnewb
+           login_attributes
+           updated_at
+           sso_source
+           locale
+           is_datasetnewb
+           settings
+           type
+           entity_id
+           deactivated_at
+           tenant_id
+           jwt_attributes
+           deactivated_with_tenant
+           is_data_analyst]
+ :relationships {:auth_identities {:table :auth_identity
+                                   :cardinality :0-N
+                                   :join-on [:= id user_id]}}
+ :permissions {:user {:select {:condition [:= id *current-user-id*]
+                               :columns  [first_name
+                                          last_name]}
+                      :update {:condition [:= id *current-user-id*]
+                               :columns [email
+                                         first_name
+                                         last_name]}}}}
