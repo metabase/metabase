@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -31,6 +32,7 @@
      (when-let [unit (lib/raw-temporal-bucket col)]
        {:unit unit}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *type-info*
   "This is the type info for the LHS in something like
 
@@ -386,7 +388,7 @@
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
                             :name \"description\"}]]]"
-  [mbql :- [:cat :keyword [:* :any]]]
+  [mbql :- ::lib.schema.mbql-clause/clause]
   (-> mbql
       lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]

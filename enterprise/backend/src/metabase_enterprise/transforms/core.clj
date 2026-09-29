@@ -7,10 +7,10 @@
   But we need a 'real' module, because all tests must belong to a module."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.transforms.db :as transforms.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (defenterprise persist-table-dependencies!
   "Best-effort write-back of `:uncached` deps from `transform-ordering` into the
@@ -19,7 +19,7 @@
   [id->raw-deps]
   (doseq [[id raw-deps] id->raw-deps]
     (try
-      (t2/update! (t2/table-name :model/Transform) id {:table_dependencies (json/encode (vec raw-deps))})
+      (transforms.db/cache-table-dependencies! id (json/encode (vec raw-deps)))
       (catch Throwable e
         (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
 
@@ -56,12 +56,7 @@
         yesterday-utc (t/minus today-utc (t/days 1))
         counts-for    (fn [date]
                         (into {} (map (juxt :metered_as :cnt))
-                              (t2/query {:select   [:r.metered_as [[:count :r.id] :cnt]]
-                                         :from     [[:transform_run :r]]
-                                         :where    [:and
-                                                    [:= :r.status "succeeded"]
-                                                    [:= [:cast :r.end_time :date] [:cast date :date]]]
-                                         :group-by [:r.metered_as]})))
+                              (transforms.db/succeeded-run-counts-by-meter date)))
         yesterday     (counts-for yesterday-utc)
         today         (counts-for today-utc)]
     {:transform-basic-runs            (get yesterday "transform-basic" 0)

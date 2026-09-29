@@ -6,6 +6,7 @@ import {
   setupSearchEndpoints,
   setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
+import { createMockDashboardState } from "__support__/state";
 import {
   fireEvent,
   getIcon,
@@ -14,7 +15,6 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockDashboardState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type {

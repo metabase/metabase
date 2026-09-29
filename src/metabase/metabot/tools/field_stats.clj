@@ -3,12 +3,12 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
-   [metabase.sync.core :as sync]
-   [toucan2.core :as t2]))
+   [metabase.sync.core :as sync]))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
@@ -16,14 +16,16 @@
      {:statistics (-> (or (:global fp) {})
                       (set/rename-keys {:nil% :percent-null})
                       (into (vals (:type fp))))})
-   (when-let [fvs (-> fvs :values not-empty)]
-     {:field_values (into [] (if limit (take limit) identity) fvs)})))
+   (when-let [values (-> fvs :values not-empty)]
+     {:field_values       (into [] (if limit (take limit) identity) values)
+      :field_values_total (count values)
+      :has_more_values    (:has_more_values fvs)})))
 
 (defn- get-or-create-fingerprint! [{:keys [id fingerprint] :as field}]
   (or fingerprint
       ;; Run with admin perms to match behavior during normal sync.
       (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
-           (t2/select-one-fn :fingerprint :model/Field :id id))))
+           (metabot.db/field-fingerprint id))))
 
 (defn- field-statistics
   "Fingerprint statistics are global (computed across every row of the table), so they're withheld
@@ -34,7 +36,7 @@
   caller's column metadata, since saved Card result metadata can be stale or user-edited."
   [{:keys [id fingerprint]} limit]
   (if id
-    (let [field (t2/select-one :model/Field :id id)
+    (let [field (metabot.db/field id)
           table-id (:table_id field)
           fvs (params.field-values/get-or-create-field-values! field)
           restricted? (or (not (int? table-id))

@@ -1,7 +1,10 @@
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import {
+  NULL_DIMENSION_KEY,
+  getNullDisplayValue,
+} from "metabase/utils/constants";
 import { checkNotNull, checkNumber, isNumber } from "metabase/utils/types";
 import {
   type DatasetColumn,
@@ -16,6 +19,7 @@ import { SLICE_THRESHOLD } from "../../echarts/pie/constants";
 import { getPieColumns } from "../../echarts/pie/model";
 import type { ShowWarning } from "../../echarts/types";
 import { getHexColor } from "../../lib/color";
+import { getChartColor } from "../../lib/color-name";
 import { getNumberOr } from "../../lib/settings/row-values";
 import { getDefaultDimensionsAndMetrics } from "../../lib/utils";
 import { unaggregatedDataWarningPie } from "../../lib/warnings";
@@ -58,7 +62,7 @@ export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
 export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
-    return NULL_DISPLAY_VALUE;
+    return NULL_DIMENSION_KEY;
   } else if (typeof dimensionValue === "object") {
     return JSON.stringify(dimensionValue);
   }
@@ -66,7 +70,7 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
 }
 
 export function getValueFromDimensionKey(key: string) {
-  return key === NULL_DISPLAY_VALUE ? null : key;
+  return key === NULL_DIMENSION_KEY ? null : key;
 }
 
 export function getAggregatedRows(
@@ -173,8 +177,8 @@ export function getColors(
     existingColorMapping = Object.fromEntries(
       Object.entries(currentSettings["pie.colors"]).map(([key, value]) => [
         // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
-        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
-        key === "null" || key === "undefined" ? NULL_DISPLAY_VALUE : key,
+        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DIMENSION_KEY
+        key === "null" || key === "undefined" ? NULL_DIMENSION_KEY : key,
         getHexColor(value),
       ]),
     );
@@ -184,20 +188,22 @@ export function getColors(
   if (currentSettings["pie.rows"]) {
     for (const row of currentSettings["pie.rows"]) {
       if (!row.defaultColor && row.color) {
-        existingColorMapping[row.key] = getHexColor(row.color);
+        existingColorMapping[row.key] = getHexColor(
+          getChartColor(row.color, row.color_name),
+        );
       }
     }
   }
 
-  // historically we used "null" rather than NULL_DISPLAY_VALUE in `getColorsForValues`
-  // to avoid changing existing charts, we'll convert NULL_DISPLAY_VALUE to "null"
+  // historically we used "null" rather than NULL_DIMENSION_KEY in `getColorsForValues`
+  // to avoid changing existing charts, we'll convert NULL_DIMENSION_KEY to "null"
   const colors = getColorsForValues(
     dimensionValues.map((value) =>
-      value === NULL_DISPLAY_VALUE ? "null" : value,
+      value === NULL_DIMENSION_KEY ? "null" : value,
     ),
     Object.fromEntries(
       Object.entries(existingColorMapping).map(([key, value]) => [
-        key === NULL_DISPLAY_VALUE ? "null" : key,
+        key === NULL_DIMENSION_KEY ? "null" : key,
         value,
       ]),
     ),
@@ -205,7 +211,7 @@ export function getColors(
   // then flip it back
   return Object.fromEntries(
     Object.entries(colors).map(([key, value]) => [
-      key === "null" ? NULL_DISPLAY_VALUE : key,
+      key === "null" ? NULL_DIMENSION_KEY : key,
       getHexColor(value),
     ]),
   );
@@ -241,10 +247,10 @@ export function getPieRows(
 
   const formatDimensionValue = (value: RowValue) => {
     if (value == null) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
-    return formatter(value, dimensionColSettings) ?? NULL_DISPLAY_VALUE;
+    return formatter(value, dimensionColSettings) ?? getNullDisplayValue();
   };
 
   const colors = getColors(rawSeries, settings);

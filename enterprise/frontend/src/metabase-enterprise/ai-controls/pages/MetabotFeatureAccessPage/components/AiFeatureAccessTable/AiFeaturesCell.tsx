@@ -18,7 +18,6 @@ export function AiFeaturesCell(props: AiToolCellProps) {
     <Flex align="center" gap="sm">
       <Switch
         aria-label={t`Allow ${group.name} user group to access AI features.`}
-        size="xs"
         checked={isEnabled || isAdminGroup}
         // Admin group is always enabled and can't be changed
         disabled={isAdminGroup}

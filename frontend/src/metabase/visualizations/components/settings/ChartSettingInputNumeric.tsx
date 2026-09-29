@@ -40,7 +40,6 @@ interface ChartSettingInputProps extends Omit<
   };
   id?: string;
   placeholder?: string;
-  getDefault?: () => string;
   className?: string;
 }
 
@@ -50,12 +49,10 @@ export const ChartSettingInputNumeric = ({
   placeholder,
   options,
   id,
-  getDefault,
   className,
 }: ChartSettingInputProps) => {
   const [inputValue, setInputValue] = useState<string>(value?.toString() ?? "");
   const isFocusedRef = useRef(false);
-  const defaultValueProps = getDefault ? { defaultValue: getDefault() } : {};
 
   const processValueRef = useLatest((rawValue: string) => {
     const rawNum = rawValue !== "" ? Number(rawValue) : Number.NaN;
@@ -110,7 +107,6 @@ export const ChartSettingInputNumeric = ({
   return (
     <TextInput
       id={id}
-      {...defaultValueProps}
       placeholder={placeholder}
       type="text"
       error={inputValue && isNaN(Number(inputValue))}

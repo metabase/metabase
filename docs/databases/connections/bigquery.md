@@ -10,13 +10,13 @@ To add a database connection, click the **grid** icon in the top right, and navi
 
 ## Prerequisites
 
-You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account with a [project](https://cloud.google.com/storage/docs/projects) you would like to use in Metabase. Consult the Google Cloud Platform documentation for how to [create and manage a project](https://cloud.google.com/resource-manager/docs/creating-managing-projects). This project should have a BigQuery dataset for Metabase to connect to.
+You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account with a [project](https://docs.cloud.google.com/storage/docs/projects) you would like to use in Metabase. Consult the Google Cloud Platform documentation for how to [create and manage a project](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects). This project should have a BigQuery dataset for Metabase to connect to.
 
 ## Google Cloud Platform: creating a service account and JSON file
 
-You'll first need a [service account](https://cloud.google.com/iam/docs/service-account-overview) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
+You'll first need a [service account](https://docs.cloud.google.com/iam/docs/service-account-overview) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
 
-To create the service account JSON file, follow Google's documentation on [setting up a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your BigQuery dataset. Here's the basic flow:
+To create the service account JSON file, follow Google's documentation on [setting up a service account](https://docs.cloud.google.com/iam/docs/service-accounts-create) for your BigQuery dataset. Here's the basic flow:
 
 1. **Create service account**. From your Google Cloud Platform project console, open the main sidebar menu on the left, go to the **IAM & Admin** section, and select **Service account**. The console will list existing service accounts, if any. At the top of the screen, click on **+ CREATE SERVICE ACCOUNT**.
 
@@ -28,7 +28,7 @@ To create the service account JSON file, follow Google's documentation on [setti
    - BigQuery Metadata Viewer
    - BigQuery Job User (distinct from BigQuery User)
 
-For more information on **roles** in BigQuery, see [Google Cloud Platform's documentation](https://cloud.google.com/bigquery/docs/access-control).
+For more information on **roles** in BigQuery, see [Google Cloud Platform's documentation](https://docs.cloud.google.com/bigquery/docs/access-control).
 
 4. **Create key**. Once you have assigned roles to the service account, click on the **Create Key** button, and select **JSON** for the **key type**. The JSON file will download to your computer.
 
@@ -54,7 +54,7 @@ The display name for the database in the Metabase interface.
 
 ### Project ID
 
-Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#getting_dataset_information).
+Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#get_information_about_datasets).
 
 > When entering the **Project ID**, omit the Project ID prefix. For example, if your ID is `project_name:project_id`, only enter `project_id`.
 
@@ -103,7 +103,7 @@ If you want to use a different hostname to connect to BigQuery. Format: `https:/
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -131,15 +131,15 @@ To connect to a data source stored in Google Drive (like a Google Sheet), first 
 
 While viewing your Drive file, (e.g., a Google Sheet with an uploaded CSV file), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
 
-That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with the your service account and project names filled in accordingly.
+That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with your service account and project names filled in accordingly.
 
 Choose **Viewer** from the dropdown, uncheck the **Notify people** option, and click **Share**.
 
 ### Create an external table in BigQuery that points to your Google Drive source
 
-If you don't already have a BigQuery dataset, [create one](https://cloud.google.com/bigquery/docs/datasets).
+If you don't already have a BigQuery dataset, [create one](https://docs.cloud.google.com/bigquery/docs/datasets).
 
-Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/external-data-drive?hl=en#creating_and_querying_a_permanent_external_table) within your BigQuery dataset that points to your Google Sheet.
+Next, using the Google Cloud Console, [create an external table](https://cloud.google.com/bigquery/docs/external-data-drive#create_external_tables) within your BigQuery dataset that points to your Google Sheet.
 
 Be sure to specify the correct **Drive URI** and file format.
 
@@ -149,7 +149,7 @@ Once you've completed these steps, you'll be able to ask questions and create da
 
 ## Using Legacy SQL
 
-As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL (GoogleSQL)](https://cloud.google.com/bigquery/docs/introduction-sql). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
+As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL (GoogleSQL)](https://docs.cloud.google.com/bigquery/docs/introduction-sql). If you prefer using [Legacy SQL](https://docs.cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
 
 ```sql
 #legacySQL
@@ -184,6 +184,6 @@ See [Danger zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

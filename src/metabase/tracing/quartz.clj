@@ -136,7 +136,7 @@
            (invoke-or-unwrap method conn args)))))))
 
 (defn- connection-interceptor
-  "Connection wrapping function installed into bootstrap's ConnectionProvider.
+  "Connection wrapping function installed into the app-db's Quartz ConnectionProvider.
    Checks `:quartz` group at call time — wraps only when enabled."
   [^Connection conn]
   (if (tracing/group-enabled? :quartz)

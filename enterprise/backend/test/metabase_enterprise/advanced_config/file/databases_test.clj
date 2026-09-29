@@ -122,7 +122,7 @@
     (mt/with-temporary-setting-values [config-from-file-sync-databases true]
       (try
         (let [submit-calls (atom 0)]
-          (with-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
+          (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [_] (swap! submit-calls inc))]
             (testing "config entry with :is_stub true and empty :details is accepted"
               (is (= :ok
                      (advanced-config.file/initialize!
@@ -241,7 +241,8 @@
                                                                                      :engine  "h2"
                                                                                      :details (:details (mt/db))})]
           (is (future? sync-future))
-          (deref sync-future 5000 :timeout)
+          ;; wait for the sync to finish or crash out after 30 seconds
+          (u/deref-with-timeout sync-future (u/seconds->ms 30))
           (is (= 1 (t2/count :model/Database :name test-db-name))))
         (finally
           (t2/delete! :model/Database :name test-db-name))))))
@@ -255,8 +256,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-tables crufted-table-setting}})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
@@ -279,8 +280,8 @@
                           :engine  "h2"
                           :details (:details (mt/db))})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               _hide_tables-> (t2/update! :model/Table :db_id (u/the-id db) {:visibility_type :hidden})
@@ -304,8 +305,8 @@
                           :details (:details (mt/db))
                           :settings {:auto-cruft-columns crufted-field-setting}})]
         (is (future? sync-future))
-        ;; wait for the sync to finish or crash out after 5 seconds
-        (deref sync-future 5000 :timeout)
+        ;; wait for the sync to finish or crash out after 30 seconds
+        (u/deref-with-timeout sync-future (u/seconds->ms 30))
         (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)

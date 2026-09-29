@@ -289,7 +289,7 @@ const INVALID_CASES = [
   },
   {
     name: "cache seeding in a product file named api.ts",
-    filename: "/repo/frontend/src/metabase/redux/store/mocks/api.ts",
+    filename: "/repo/frontend/src/metabase/redux/store/api.ts",
     options,
     code: `
       import { Api } from "metabase/api";

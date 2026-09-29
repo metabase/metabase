@@ -12,6 +12,7 @@ import type {
   SingleSeries,
   TransformedSeries,
   VisualizationSettings,
+  WidgetMount,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
 
@@ -24,6 +25,7 @@ import type {
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderProps,
   ChartSettingTableColumnsProps,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   SmartScalarComparisonWidgetProps,
   TreemapGroupsPickerProps,
@@ -68,7 +70,10 @@ export type VisualizationSettingDefinition<
   group?: string;
   index?: number;
   showColumnSetting?: boolean;
-  widget?: string | ComponentType<TProps & { id: string }>;
+  widget?:
+    | string
+    | ComponentType<TProps & { id: string }>
+    | WidgetMount<CustomVizSettingWidgetProps>;
   isValid?: (
     object: T,
     settings: T extends DatasetColumn
@@ -98,6 +103,13 @@ export type VisualizationSettingDefinition<
     extra?: SettingsExtra,
   ) => TValue;
   getSection?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string | undefined;
+  getTitle?: (
     object: T,
     settings: T extends DatasetColumn
       ? ColumnSettings
@@ -141,7 +153,7 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle" | "getHidden" | "getSection"
+  "getProps" | "getWrapperStyle" | "getHidden" | "getSection" | "getTitle"
 > & {
   id: string;
   style?: CSSProperties;
@@ -266,6 +278,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.y_axis.max"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.min"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.right.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.scale"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.split_number"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
@@ -368,7 +381,10 @@ export type Widget = {
   hidden?: boolean;
   props?: Record<string, unknown>;
   title?: string;
-  widget?: string | ComponentType<any>;
+  widget?:
+    | string
+    | ComponentType<any>
+    | WidgetMount<CustomVizSettingWidgetProps>;
 };
 
 export type VisualizationGridSize = {

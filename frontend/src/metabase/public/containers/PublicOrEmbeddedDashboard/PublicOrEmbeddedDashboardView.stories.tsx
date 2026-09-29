@@ -6,6 +6,11 @@ import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
@@ -15,11 +20,6 @@ import {
   type MockDashboardContextProps,
 } from "metabase/dashboard/context/mock-context";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { ObjectDetail } from "metabase/visualizations/visualizations/ObjectDetail";
@@ -220,6 +220,15 @@ export const NarrowWithManyTabs = {
     }),
   },
   decorators: [NarrowDecorator],
+};
+
+export const NarrowWithManyTabsDarkTheme = {
+  render: Template,
+  args: {
+    ...NarrowWithManyTabs.args,
+    theme: "night",
+  },
+  decorators: [NarrowDecorator, DarkBackgroundDecorator],
 };
 
 export const LightThemeDefault = {

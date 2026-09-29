@@ -1,12 +1,8 @@
-import { SkeletonImage } from "./SankeySkeleton.styled";
+import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const SankeySkeleton = (): JSX.Element => {
   return (
-    <SkeletonImage
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 320 200"
-      preserveAspectRatio="none"
-    >
+    <ChartSkeletonImage m="lg" viewBox="0 0 320 200" preserveAspectRatio="none">
       <path
         fill="currentColor"
         d="M158 160v40H83v-44l75 4ZM160 86c10.542 0 21.687 3.951 29.89 10.861l.508.437c.036.03.071.062.107.094l-.021-.018c2.489 2.179 4.69 4.637 6.496 7.347l1.93 2.894A45.778 45.778 0 0 0 237 128v72a45.778 45.778 0 0 1-38.09-20.385l-1.93-2.894C189.183 165.025 174.057 158 160 158V86ZM320 158h-81V40h81v118Z"
@@ -25,7 +21,7 @@ const SankeySkeleton = (): JSX.Element => {
         fill="currentColor"
         d="m199.856 108.978-.133-.184-.057-.081.19.265Z"
       />
-    </SkeletonImage>
+    </ChartSkeletonImage>
   );
 };
 

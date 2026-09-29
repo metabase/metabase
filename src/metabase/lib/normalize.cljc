@@ -52,6 +52,7 @@
               (pr-str (me/humanize (:explain error))))
   (:value error))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *error-fn*
   default-error-fn)
 
@@ -106,7 +107,7 @@
   "Take a sequence of legacy or Lib metadata maps, convert to Lib-style if needed, then normalize them.
 
   Note that this returns a map with `:columns` rather than a sequence of columns like the input."
-  [cols :- [:sequential :map]]
+  [cols :- [:sequential ::lib.schema.metadata/lib-or-legacy-column]]
   (->> cols
        lib.util/->stage-metadata
        (normalize ::lib.schema.metadata/stage)))

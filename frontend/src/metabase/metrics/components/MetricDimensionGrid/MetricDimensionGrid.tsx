@@ -7,6 +7,7 @@ import {
   DEFAULT_DISPLAY_TYPE_BY_DIMENSION,
   type DefaultDimensionDisplayType,
 } from "metabase/common/metrics/utils/dimension-types";
+import { exploreMetricDimensionUrl } from "metabase/common/metrics-viewer";
 import { trackMetricPageShowMoreClicked } from "metabase/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import { useNavigate } from "metabase/router";
@@ -19,7 +20,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import type { MetricDefinition } from "metabase-lib/metric";
@@ -158,7 +158,7 @@ function MetricDimensionCard({
 
   const handleClick = useCallback(() => {
     navigate(
-      Urls.exploreMetricDimension({
+      exploreMetricDimensionUrl({
         metricId,
         dimensionId: dimension.dimensionId,
         dimensionType: dimension.dimensionType,

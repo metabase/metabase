@@ -41,6 +41,12 @@ const elements = [
   }),
   createElement({
     type: "lib",
+    name: "redux-core",
+    pattern: "frontend/src/metabase/redux/context.tsx",
+    mode: "full",
+  }),
+  createElement({
+    type: "lib",
     name: "types",
     pattern: "frontend/src/metabase-types/*/**",
   }),
@@ -75,7 +81,7 @@ const elements = [
   // shared
   createElement({ type: "feature", name: "account" }),
   createElement({ type: "shared", name: "actions" }),
-  createElement({ type: "shared", name: "api", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
@@ -103,7 +109,6 @@ const elements = [
     type: "shared",
     name: "upsells",
     pattern: "frontend/src/metabase/common/components/upsells/**",
-    enforceSharedTiers: false,
   }),
   ...[
     "frontend/src/metabase/common/search/**",
@@ -209,9 +214,8 @@ const elements = [
     pattern: "frontend/src/embedding-sdk-shared/**",
   }),
   createElement({ type: "shared", name: "forms" }),
-  createElement({ type: "shared", name: "hoc" }),
   createElement({ type: "feature", name: "home" }),
-  createElement({ type: "shared", name: "hooks", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "hooks" }),
   createElement({ type: "shared", name: "content-translation" }),
   createElement({ type: "shared", name: "metabot", enforceSharedTiers: false }),
   // The app-wide mirror of table and field metadata. Separate from
@@ -229,27 +233,29 @@ const elements = [
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
-  createElement({ type: "shared", name: "plugins", enforceSharedTiers: false }),
+  createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
-  createElement({
-    type: "shared",
-    name: "querying",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "questions" }),
   createElement({ type: "shared", name: "redux", enforceSharedTiers: false }),
   createElement({ type: "shared", name: "rich_text_editing" }),
   createElement({ type: "shared", name: "route-guards" }),
+  createElement({ type: "shared", name: "segments", enforcePublicApi: true }),
   createElement({ type: "shared", name: "selectors" }),
   createElement({ type: "shared", name: "settings", enforcePublicApi: true }),
+  // Settings-page rendering primitives, needed by admin, enterprise and
+  // embedding alike. Not in shared/settings: that module is data only -- api,
+  // selectors and hooks behind a private-by-default barrel -- and reading a
+  // setting value should not drag React components in with it.
+  createElement({
+    type: "shared",
+    name: "settings-components",
+    enforcePublicApi: true,
+  }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "static-viz" }),
   createElement({ type: "shared", name: "status" }),
-  createElement({
-    type: "shared",
-    name: "styled-components",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
   createElement({ type: "shared", name: "transforms" }),
   createElement({
@@ -257,12 +263,8 @@ const elements = [
     name: "types",
     pattern: "frontend/src/types/**",
   }),
-  createElement({ type: "shared", name: "urls", enforceSharedTiers: false }),
-  createElement({
-    type: "shared",
-    name: "visualizations",
-    enforceSharedTiers: false,
-  }),
+  createElement({ type: "shared", name: "urls" }),
+  createElement({ type: "shared", name: "visualizations" }),
   createElement({ type: "shared", name: "visualizer" }),
 
   // feature
@@ -386,7 +388,10 @@ const elements = [
     // Entry point for the static-viz bundle (server-side chart rendering in
     // GraalJS) - like app.tsx, it composes OSS + EE code for a build artifact.
     // Full-mode entries match before folder patterns, whatever the order.
+    "frontend/src/metabase/ScrollToTop.tsx",
+    "frontend/src/metabase/ScrollToTop.unit.spec.tsx",
     "frontend/src/metabase/static-viz/index.tsx",
+    "frontend/src/metabase/static-viz/index.unit.spec.tsx",
   ].map((path) =>
     createElement({
       type: "app",
@@ -413,12 +418,6 @@ const elements = [
         mode: "full",
       }),
   ),
-  createElement({
-    type: "shared",
-    name: "error-boundary",
-    pattern: "frontend/src/metabase/ErrorBoundary.tsx",
-    mode: "full",
-  }),
   createElement({
     type: "app",
     name: "routes-stable-id-aware",

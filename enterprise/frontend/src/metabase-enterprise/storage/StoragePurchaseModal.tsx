@@ -71,7 +71,7 @@ export const StoragePurchaseModal = ({
         </Text>
 
         <Group justify="flex-end" mt="sm">
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button variant="filled" onClick={handleConfirm}>

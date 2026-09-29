@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
@@ -40,6 +41,7 @@
     Types)
    (java.time
     Instant
+    LocalDate
     LocalDateTime
     OffsetDateTime
     ZonedDateTime)
@@ -111,7 +113,8 @@
    [:ssl-truststore-value          {:optional true} [:maybe string?]]
    [:ssl-truststore-path           {:optional true} [:maybe string?]]
    [:ssl-truststore-options        {:optional true} [:maybe string?]]
-   [:ssl-truststore-password-value {:optional true} [:maybe string?]]])
+   [:ssl-truststore-password-value {:optional true} [:maybe string?]]
+   [::mc/default                   :metabase.lib.schema.common/database-details]])
 
 ;;; Everything after the `@` in `jdbc:oracle:thin:@...` is a *connect descriptor*, which the driver reads as
 ;;; instructions and not merely as an address: a scheme there sends it to fetch a URL, read a file, or ask an LDAP
@@ -235,9 +238,24 @@
   [_ column-type]
   (database-type->base-type column-type))
 
+(mr/def ::spec
+  [:map {:closed true}
+   [:classname                          :string]
+   [:subprotocol                        :string]
+   ["v$session.program"                 :string]
+   [:user                               {:optional true} [:maybe :string]]
+   [:password                           {:optional true} [:maybe :string]]
+   [:javax.net.ssl.keyStore             {:optional true} [:maybe (driver-api/instance-of-class java.io.File)]]
+   [:javax.net.ssl.keyStorePassword     {:optional true} [:maybe :string]]
+   [:javax.net.ssl.keyStoreType         {:optional true} [:maybe :string]]
+   [:javax.net.ssl.trustStore           {:optional true} [:maybe (driver-api/instance-of-class java.io.File)]]
+   [:javax.net.ssl.trustStorePassword   {:optional true} [:maybe :string]]
+   [:javax.net.ssl.trustStoreType       {:optional true} [:maybe :string]]
+   [:oracle.net.authentication_services {:optional true} :string]])
+
 ;;; both take the values [[validated-details]] returned, which is what makes it safe to concatenate them
 (mu/defn- non-ssl-spec :- :map
-  [spec         :- :map
+  [spec         :- ::spec
    host         :- :string
    port         :- :int
    sid          :- [:maybe :string]
@@ -250,7 +268,7 @@
                               (str "/" service-name)))))
 
 (mu/defn- ssl-spec :- :map
-  [spec         :- :map
+  [spec         :- ::spec
    host         :- :string
    port         :- :int
    sid          :- [:maybe :string]
@@ -424,8 +442,14 @@
   [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
         has-timezone? (or (sql.qp.u/field-with-tz? arg)
-                          (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))]
-    (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+                          (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))
+        _             (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
+        ;; `FROM_TZ` only accepts a `TIMESTAMP`; Oracle refuses to implicitly promote a `DATE` (ORA-00932), so cast
+        ;; dates to a plain `TIMESTAMP` first (#27186).
+        expr          (cond-> expr
+                        (or (instance? LocalDate expr)
+                            (h2x/is-of-type? expr "date"))
+                        h2x/->timestamp)]
     (-> (if has-timezone?
           expr
           [:from_tz expr (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])

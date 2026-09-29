@@ -52,16 +52,12 @@
 (defmethod tx/dbdef->connection-details :databricks
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
   (let [catalog (tx/db-test-env-var-or-throw :databricks :catalog)
-        multi-level? (tx/db-test-env-var :databricks :multi-level-schema)
         ;; Databricks' namespace model: catalog, schema, table. With current implementation user can add all schemas
         ;; in catalog or all catalogs on one Metabase database connection. Following expression generates schema
         ;; filters so only one schema is treated as a Metabase database, for compatibility with existing tests.
-        schema-filters (when (or (string? (not-empty database-name))
-                                 multi-level?)
+        schema-filters (when (string? (not-empty database-name))
                          {:schema-filters-type "inclusion"
-                          :schema-filters-patterns (str
-                                                    (when multi-level? (str catalog "."))
-                                                    (if database-name database-name "*"))})]
+                          :schema-filters-patterns (if database-name database-name "*")})]
     (merge
      {:host (tx/db-test-env-var-or-throw :databricks :host)
       :token (tx/db-test-env-var-or-throw :databricks :token)
@@ -72,8 +68,7 @@
       ;; keep going for 120 seconds (basically 120 retries since each takes one
       ;; second) essentially DOSing the database.
       ;; https://github.com/databricks/databricks-jdbc/blob/v3.4.2/src/main/java/com/databricks/jdbc/dbclient/impl/http/DatabricksHttpRetryHandler.java#L187
-      :rate-limit-retry 0
-      :multi-level-schema multi-level?}
+      :rate-limit-retry 0}
      schema-filters)))
 
 (defn- existing-databases
@@ -104,6 +99,7 @@
 ;; Dataset can be destroyed using `tx/destroy-db` to remove the data from Databricks instance.
 ;; [[*allow-database-deletion*]] must be bound to true. Then `t2/delete!` can be used to remove the reference from
 ;; application database.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-database-creation*
   "Same approach is used in Databricks driver as in Athena. Dataset creation is disabled by default. Datasets are
   preloaded in Databricks instance that tests run against. If you need to create new database on the instance,
@@ -127,6 +123,7 @@
         (log/infof "Creating Databricks database %s" (pr-str schema))
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-database-deletion*
   "This is used to control `tx/destroy-db!`. Disabling database deletion is useful in CI. Specifically, if initial sync
   of some test dataset our test code destroys the database. In Databricks we want to avoid this, because datasets are

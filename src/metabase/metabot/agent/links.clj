@@ -9,11 +9,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema]
+   [metabase.metabot.db :as metabot.db]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -146,7 +146,7 @@
          (do
            (log/warn "Invalid table id for link resolution" {:table-id table-id})
            nil)
-         (if-let [db-id (t2/select-one-fn :db_id :model/Table :id parsed-id)]
+         (if-let [db-id (metabot.db/table-database-id parsed-id)]
            (let [mp    (lib-be/application-database-metadata-provider db-id)
                  table (lib.metadata/table mp parsed-id)
                  query (lib/query mp table)]

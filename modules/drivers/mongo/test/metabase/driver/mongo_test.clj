@@ -224,6 +224,40 @@
                  :collection "venues"}
                 (mt/user-http-request :crowberto :post 200 "dataset/native" query)))))))
 
+(deftest convert-to-native-omits-default-limit-test
+  (mt/test-driver :mongo
+    (testing "POST /api/dataset/native compiles without the default `$limit` stage"
+      (let [mp    (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+        (is (not (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))
+                                "$limit")))
+        (testing "an explicit limit is kept"
+          (is (str/includes? (:query (mt/user-http-request :crowberto :post 200 "dataset/native" (lib/limit query 3)))
+                             "$limit")))))))
+
+(deftest convert-to-native-nested-on-converted-card-test
+  (mt/test-driver :mongo
+    (testing "A question based on a converted-to-native Mongo card can be run and converted to native again"
+      (let [mp     (mt/metadata-provider)
+            native (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                         (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (-> (lib/native-query mp (:query native))
+                                                                     (lib/with-native-extras {:collection (:collection native)}))}]
+          (let [mp    (mt/metadata-provider)
+                query (lib/query mp (lib.metadata/card mp card-id))]
+            (is (=? {:status    "completed"
+                     :row_count 100}
+                    (mt/user-http-request :crowberto :post 202 "dataset" query)))
+            (let [nested (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+              (is (=? {:collection "venues"} nested))
+              (is (not (str/includes? (:query nested) "$limit")))
+              (is (not (str/includes? (:query nested) "Bson")))
+              (is (=? {:status    "completed"
+                       :row_count 100}
+                      (mt/user-http-request :crowberto :post 202 "dataset"
+                                            (-> (lib/native-query mp (:query nested))
+                                                (lib/with-native-extras {:collection (:collection nested)}))))))))))))
+
 ;; ## Tests for individual syncing functions
 
 (deftest ^:parallel describe-database-test
@@ -1050,7 +1084,7 @@
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one-fn :name :model/Table :id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))

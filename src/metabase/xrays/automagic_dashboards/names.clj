@@ -52,7 +52,7 @@
 
 (mu/defn- join-enumeration :- ::ads/string-or-18n-string
   "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""
-  [xs :- [:sequential :any]]
+  [xs :- [:sequential ::ads/string-or-18n-string]]
   (if (next xs)
     (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
     (str (first xs))))
@@ -83,8 +83,7 @@
 (mu/defn question-description
   "Generate a description for the question."
   [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]]
+   question :- ::ads/card-or-question]
   (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
         field-ids    (into

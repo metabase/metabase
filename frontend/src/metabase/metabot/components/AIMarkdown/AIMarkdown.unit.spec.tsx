@@ -5,9 +5,9 @@ import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockState } from "metabase/redux/store/mocks";
 import { createMockCard } from "metabase-types/api/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks/query";
 
@@ -76,6 +76,18 @@ describe("AIMarkdown", () => {
 
     // Verify it's rendered as a smart link by checking for the icon
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should render a metric mention as a smart link to the metric", async () => {
+    fetchMock.get(
+      "path:/api/card/456",
+      createMockCard({ id: 456, name: "Revenue", type: "metric" }),
+    );
+    setup({ children: "[Revenue](metabase://metric/456)" });
+
+    expect(
+      await screen.findByRole("link", { name: /Revenue/ }),
+    ).toHaveAttribute("href", "/metric/456");
   });
 
   it("should render a generated-chart mention as a smart link chip", async () => {

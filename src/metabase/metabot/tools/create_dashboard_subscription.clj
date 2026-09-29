@@ -3,12 +3,12 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -23,7 +23,7 @@
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
   [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
+  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
                           api/read-check
                           (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)
@@ -94,10 +94,10 @@
                                        [:dashboard_id :int]
                                        [:schedule tools.create-alert/schedule-schema]]]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-    (when-not slack-channel-id
-      (throw (ex-info "This tool can only be used from a Slack channel"
-                      {:agent-error? true})))
     (try
+      (when-not slack-channel-id
+        (throw (ex-info "This tool can only be used from a Slack channel"
+                        {:agent-error? true})))
       (let [result (create-dashboard-subscription
                     {:dashboard-id  dashboard_id
                      :schedule      schedule
@@ -106,5 +106,4 @@
           {:output (:error result)}
           {:output (or (:output result) "Dashboard subscription created successfully.")}))
       (catch Exception e
-        (log/errorf "Failed to create dashboard subscription: %s" (ex-message e))
-        {:output (str "Failed to create dashboard subscription: " (or (ex-message e) "Unknown error"))}))))
+        (metabot.tools.u/handle-agent-or-api-error e)))))

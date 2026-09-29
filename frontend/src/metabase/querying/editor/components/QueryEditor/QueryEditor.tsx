@@ -1,5 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,7 +9,11 @@ import type * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
-import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
+import type {
+  QueryEditorUiOptions,
+  QueryEditorUiState,
+  TemplateTagsSidebarProps,
+} from "../../types";
 
 import {
   NativeQueryPreviewSidebar,
@@ -23,38 +27,35 @@ export type QueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
-  proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
-  onAcceptProposed?: () => void;
-  onRejectProposed?: () => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onBlur?: () => void;
   topBarInnerContent?: ReactNode;
   height?: string | number;
   extraEditorButton?: ReactNode;
   parametersAreUserVisible?: boolean;
+  parametersList: ReactNode;
+  templateTagsSidebar: ComponentType<TemplateTagsSidebarProps>;
 };
 
 export function QueryEditor({
   query,
   uiState,
   uiOptions,
-  proposedQuery,
   onChangeQuery,
   onChangeUiState,
-  onAcceptProposed,
-  onRejectProposed,
   onRunQueryStart,
   onBlur,
   topBarInnerContent,
   height = "100%",
   extraEditorButton,
   parametersAreUserVisible = true,
+  parametersList,
+  templateTagsSidebar,
 }: QueryEditorProps) {
   const {
     question,
-    proposedQuestion,
     error,
     result,
     rawSeries,
@@ -84,7 +85,6 @@ export function QueryEditor({
     query,
     uiState,
     uiOptions,
-    proposedQuery,
     onChangeQuery,
     onChangeUiState,
     onRunQueryStart,
@@ -106,8 +106,8 @@ export function QueryEditor({
         <Flex flex="2 1 0" miw={0} direction="column" pos="relative">
           <QueryEditorBody
             availableHeight={availableHeight}
+            parametersList={parametersList}
             question={question}
-            proposedQuestion={proposedQuestion}
             modalSnippet={uiState.modalSnippet}
             nativeEditorSelectedText={selectedText}
             readOnly={uiOptions?.readOnly}
@@ -136,8 +136,6 @@ export function QueryEditor({
             onChangeModalSnippet={setModalSnippet}
             onInsertSnippet={insertSnippet}
             onChangeNativeEditorSelection={setSelectionRange}
-            onAcceptProposed={onAcceptProposed}
-            onRejectProposed={onRejectProposed}
             editorHeight={uiOptions?.editorHeight}
             hideRunButton={uiOptions?.hideRunButton}
             onBlur={onBlur}
@@ -187,6 +185,7 @@ export function QueryEditor({
             onChangeQuery={onChangeQuery}
             parametersAreUserVisible={parametersAreUserVisible}
             canUseSampleDatabase={uiOptions?.canUseSampleDatabase}
+            templateTagsSidebar={templateTagsSidebar}
           />
         )}
         {!isNative && uiState.sidebarType === "native-query" && (

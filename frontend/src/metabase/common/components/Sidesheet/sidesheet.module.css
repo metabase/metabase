@@ -32,12 +32,17 @@
   }
 }
 
-/* For divs that are not tabs but which sit next to the tabs */
+/* For divs that are not tabs but which sit next to the tabs. Reuses the
+ * `--tab-*` variables set on the `Tabs` root so it stays the same height,
+ * padding and type as the real tabs beside it. */
 .TabSibling {
-  padding: 0.6875rem 0.5rem;
+  align-items: center;
+  height: var(--tab-height);
+  padding: 0 var(--tab-padding-inline);
   color: var(--mb-color-text-primary);
-  font-weight: bold;
-  line-height: 1rem;
+  font-size: var(--tab-font-size);
+  font-weight: var(--tab-font-weight);
+  line-height: var(--mantine-line-height-md);
 
   &:hover {
     color: var(--mb-color-core-brand);

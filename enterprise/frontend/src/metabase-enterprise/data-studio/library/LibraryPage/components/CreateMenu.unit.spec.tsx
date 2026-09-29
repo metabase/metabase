@@ -2,8 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import type { EnterpriseSettings } from "metabase-types/api";
 import {
   createMockTokenFeatures,

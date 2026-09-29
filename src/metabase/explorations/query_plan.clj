@@ -14,6 +14,7 @@
   instance, and teaching `pick-planner!` to dispatch to it."
   (:require
    [clojure.set :as set]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
@@ -94,17 +95,12 @@
   MySQL can't uniquely index): two planners in here at once would both miss and both insert. Safe
   only because [[lock-thread-for-planning!]] keeps them out — see there."
   [[block-id card-id dim-id query-type] position]
-  (or (t2/select-one-pk :model/ExplorationPage
-                        :exploration_block_id block-id
-                        :card_id              card-id
-                        :dimension_id         dim-id
-                        :query_type           query-type)
-      (t2/insert-returning-pk! :model/ExplorationPage
-                               {:exploration_block_id block-id
-                                :card_id              card-id
-                                :dimension_id         dim-id
-                                :query_type           query-type
-                                :position             position})))
+  (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
+      (explorations.db/insert-page! {:exploration_block_id block-id
+                                     :card_id              card-id
+                                     :dimension_id         dim-id
+                                     :query_type           query-type
+                                     :position             position})))
 
 (defn- reconcile-pages!
   "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
@@ -124,10 +120,7 @@
   [page-ids]
   (if (seq page-ids)
     (let [by-str (into {} (map (juxt str identity)) page-ids)]
-      (->> (t2/select-fn-set :child_target_id :model/Comment
-                             :target_type     "exploration"
-                             :child_target_id [:in (keys by-str)]
-                             :deleted_at      nil)
+      (->> (explorations.db/live-comment-targets (keys by-str))
            (into #{} (keep by-str))))
     #{}))
 
@@ -137,7 +130,7 @@
   [page-ids]
   (if (seq page-ids)
     ;; `(set ...)` since t2 set selectors return nil, not #{}, when nothing matches
-    (set (t2/select-pks-set :model/ExplorationPage :id [:in page-ids] :starred true))
+    (set (explorations.db/starred-page-ids page-ids))
     #{}))
 
 (defn- pages-with-queries
@@ -147,7 +140,7 @@
   wiped first."
   [page-ids]
   (if (seq page-ids)
-    (set (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
+    (set (explorations.db/page-ids-with-queries page-ids))
     #{}))
 
 (defn- gc-orphan-pages!
@@ -157,16 +150,16 @@
   selection but still user-valued), or when a query still points at it (deleting would
   cascade to the query)."
   [thread-id used-page-ids]
-  (let [block-ids (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id)
+  (let [block-ids (explorations.db/block-ids-for-thread thread-id)
         orphans   (when (seq block-ids)
-                    (->> (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids])
+                    (->> (explorations.db/page-ids-for-blocks block-ids)
                          (remove (set used-page-ids))))
         retained  (set/union (pages-with-comments orphans)
                              (starred-pages orphans)
                              (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
-      (t2/delete! :model/ExplorationPage :id [:in deletable]))))
+      (explorations.db/delete-pages! deletable))))
 
 (defn- lock-thread-for-planning!
   "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
@@ -180,10 +173,7 @@
   has no unique index to fall back on, so two planners would each create the thread's pages — and a
   page's id is its identity, so the duplicate strands every comment and star anchored to the loser."
   [thread-id]
-  (t2/query {:select [:id]
-             :from   [:exploration_thread]
-             :where  [:= :id thread-id]
-             :for    [:update]}))
+  (explorations.db/lock-thread thread-id))
 
 (defn- insert-plan-rows!
   "Materialize each plan item into row recipes, reconcile each to its persisted
@@ -225,7 +215,7 @@
       :no-rows
       (t2/with-transaction [_conn]
         (lock-thread-for-planning! thread-id)
-        (if (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+        (if (explorations.db/thread-has-queries? thread-id)
           (do
             (log/infof "Thread %d was planned by a concurrent delivery; discarding this planner's %d row(s)"
                        thread-id (count rows))
@@ -237,8 +227,7 @@
                                      (assoc :page_id (key->page (page-key %)))
                                      (dissoc :block_id))
                                 rows)]
-            (t2/insert! :model/ExplorationQuery
-                        (map-indexed (fn [i r] (assoc r :position i)) rows*))
+            (explorations.db/insert-queries! (map-indexed (fn [i r] (assoc r :position i)) rows*))
             (gc-orphan-pages! thread-id (vals key->page))
             (count rows*)))))))
 
@@ -252,9 +241,8 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (t2/update! :model/ExplorationThread thread-id
-                {:analysis_started_at now
-                 :completed_at        now})))
+    (explorations.db/update-thread! thread-id {:analysis_started_at now
+                                               :completed_at        now})))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -263,8 +251,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (t2/update! :model/ExplorationThread thread-id
-                {:query_plan_transcript transcript})
+    (explorations.db/update-thread! thread-id {:query_plan_transcript transcript})
     (catch Throwable e
       (log/warnf e "Failed to save query-plan transcript for thread %d" thread-id))))
 
@@ -286,22 +273,17 @@
 
 (defn- thread-prompt-for
   [thread-id]
-  (t2/select-one-fn :prompt :model/ExplorationThread :id thread-id))
+  (explorations.db/thread-prompt thread-id))
 
 (defn- creator-id-for-thread
   [thread-id]
-  (t2/select-one-fn :creator_id :model/Exploration
-                    {:join  [:exploration_thread
-                             [:= :exploration_thread.exploration_id :exploration.id]]
-                     :where [:= :exploration_thread.id thread-id]}))
+  (explorations.db/exploration-creator-id-for-thread thread-id))
 
 (defn- build-planner-ctx
   "Build the planner-contract ctx the chosen planner consumes. Pure compute
   modulo the t2 selects for thread / metrics / dims."
   [thread-id]
-  (let [thread-blocks  (t2/select :model/ExplorationBlock
-                                  :exploration_thread_id thread-id
-                                  {:order-by [[:position :asc] [:id :asc]]})
+  (let [thread-blocks  (explorations.db/blocks-for-thread thread-id)
         metric-dim-ctx (qp.context/metric-and-dim-context thread-blocks)
         ;; [block-id metric-id] -> metric-context, so materialization resolves a plan
         ;; item against the same block the planner emitted it under (a metric can live
@@ -410,7 +392,7 @@
   the same terminal state [[generate-query-plan!]] writes when the planner itself fails:
   transcript and the terminal stamp that stops the client polling."
   [thread-id message]
-  (when-not (t2/exists? :model/ExplorationQuery :exploration_thread_id thread-id)
+  (when-not (explorations.db/thread-has-queries? thread-id)
     (let [message (or message "planning gave up after exhausting retries")]
       (record-outcome! thread-id (preamble thread-id :unknown) :error :error message)
       (mark-thread-terminally-failed! thread-id))))
@@ -422,4 +404,4 @@
 (defn debug-transcript
   "Return the persisted query-plan transcript for `thread-id`."
   [thread-id]
-  (t2/select-one-fn :query_plan_transcript :model/ExplorationThread :id thread-id))
+  (explorations.db/thread-transcript thread-id))

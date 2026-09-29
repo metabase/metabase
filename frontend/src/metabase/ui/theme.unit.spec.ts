@@ -124,12 +124,12 @@ describe("theme scales", () => {
       ["light", LIGHT_SHADOWS],
       ["dark", DARK_SHADOWS],
     ] as const)("maps every elevation in %s mode", (colorScheme, expected) => {
-      expect(getThemeOverrides(colorScheme).shadows).toEqual(expected);
+      expect(getThemeOverrides({ colorScheme }).shadows).toEqual(expected);
     });
 
     it("uses a stronger shadow set in dark mode", () => {
-      const light = getThemeOverrides("light").shadows ?? {};
-      const dark = getThemeOverrides("dark").shadows ?? {};
+      const light = getThemeOverrides({ colorScheme: "light" }).shadows ?? {};
+      const dark = getThemeOverrides({ colorScheme: "dark" }).shadows ?? {};
 
       for (const key of SHADOW_SCALE_KEYS) {
         expect(dark[key]).not.toEqual(light[key]);
@@ -150,7 +150,8 @@ describe("theme scales", () => {
 
   describe("component defaults", () => {
     it("resolves every scale-based component default to a defined key", () => {
-      const components = getThemeOverrides("dark").components ?? {};
+      const components =
+        getThemeOverrides({ colorScheme: "dark" }).components ?? {};
       const violations: string[] = [];
 
       for (const [componentName, component] of Object.entries(components)) {
@@ -204,24 +205,10 @@ describe("theme scales", () => {
 
       const expectedCssElevations = [
         {
-          componentName: "ActionIcon",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/buttons/ActionIcon/ActionIcon.module.css",
-          selector: '.root[data-variant="filled"]',
-          shadow: "xs",
-        },
-        {
-          componentName: "Button",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/buttons/Button/Button.module.css",
-          selector: '.root[data-variant="filled"]',
-          shadow: "xs",
-        },
-        {
           componentName: "Alert",
           slot: "root",
           file: "frontend/src/metabase/ui/components/feedback/Alert/Alert.module.css",
-          selector: ".root",
+          selector: '.root[data-variant="default"][data-color="default"]',
           shadow: "xs",
         },
         {
@@ -258,13 +245,6 @@ describe("theme scales", () => {
           file: "frontend/src/metabase/ui/components/inputs/Radio/Radio.module.css",
           selector: ".card",
           shadow: "xs",
-        },
-        {
-          componentName: "SegmentedControl",
-          slot: "root",
-          file: "frontend/src/metabase/ui/components/inputs/SegmentedControl/SegmentedControl.module.css",
-          selector: ".SegmentedControl",
-          shadow: "xs_outline",
         },
         {
           componentName: "Switch",

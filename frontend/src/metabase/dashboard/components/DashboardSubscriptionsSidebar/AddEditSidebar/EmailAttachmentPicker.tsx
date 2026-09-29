@@ -441,23 +441,10 @@ export function EmailAttachmentPicker({
         <Box>
           <Switch
             label={
-              <Group gap={0}>
-                <Text
-                  fw="bold"
-                  c={disabledReason ? "text-secondary" : "text-primary"}
-                >{t`Attach CSV/XLSX with results`}</Text>
-                <Icon
-                  name="info"
-                  c="text-secondary"
-                  ml="0.5rem"
-                  size={12}
-                  tooltip={
-                    !disabledReason
-                      ? t`Attachments can contain up to 2,000 rows of data.`
-                      : undefined
-                  }
-                />
-              </Group>
+              <Text
+                fw="bold"
+                c={disabledReason ? "text-secondary" : "text-primary"}
+              >{t`Attach CSV/XLSX with results`}</Text>
             }
             aria-label={t`Attach results`}
             checked={isEnabled && canAttachFiles}

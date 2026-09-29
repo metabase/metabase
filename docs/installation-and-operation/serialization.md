@@ -306,7 +306,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [table metadata](../data-studio/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-modeling/metadata/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 
@@ -334,7 +334,7 @@ Sets the name of the directory that holds the exported YAML files.
 
 > Just like the CLI serialization commands, these endpoints are only available for [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
-You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud/) deployments.
+You can import and export serialized Metabase data via Metabase's API, which makes serialization possible for [Metabase Cloud](https://www.metabase.com/cloud) deployments.
 
 There are two endpoints:
 
@@ -517,7 +517,7 @@ If you're instead looking to do a one-time migration from the default H2 databas
 
 Currently, serialization only works if source and target Metabase have the same major version. If you're using the CLI serialization commands, the version of the .jar file that you are using to run the serialization commands should match both the source and target Metabase versions as well.
 
-Metabase will log a warning if the versions doesn't match, but it won't block the import.
+Metabase will log a warning if the versions don't match, but it won't block the import.
 
 ### If you're using H2 as your application database, you'll need to stop Metabase before importing or exporting
 
@@ -576,7 +576,7 @@ This process assumes that your duplicated questions will all use the same data s
 
 If you want to create multiple copies of a collection at once, then instead of repeating this process for every copy, you could create your own target Entity IDs (they can be any string that uses the [NanoID format](https://github.com/ai/nanoid)), duplicate all the template YAML files, and replace template Entity IDs and any references to them with your created Entity IDs.
 
-If your collections contains dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
+If your collections contain dashboards, models, and other items that can add dependencies, this process can become even more complicated -- you need to handle every dependency. We strongly recommend that you first test your serialization on a non-production Metabase, and reach out to [help@metabase.com](mailto:help@metabase.com) if you need any help.
 
 ### Using serialization to swap the data source for questions within one instance
 
@@ -614,7 +614,7 @@ This process assumes that your new data source has exactly the same schema. If t
 If you're upgrading from Metabase version 46.X or older, here's what you need to know:
 
 - The `export` command replaces the `dump` command.
-- The `import` command replace the `load` command.
+- The `import` command replaces the `load` command.
 
 Starting with Metabase 60, the export format changed:
 

@@ -6,13 +6,13 @@
    [malli.util :as mut]
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lm.schema]
+   [metabase.metrics.db :as metrics.db]
    [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 ;;; ------------------------------------------------- API Shape -------------------------------------------------
 ;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects, and back.
@@ -55,7 +55,7 @@
   "Encode-time defaulting policy for a dimension: `:display-name` falls back to `:name`, the five
    always-on-the-wire keys are present even when nil, nil-valued optional keys are dropped."
   [dim]
-  (-> (merge {:id nil :name nil :effective-type nil :semantic-type nil} dim)
+  (-> (merge {:id nil :name nil :effective-type nil :semantic-type nil} (dissoc dim :lib/source))
       (as-> dim (update dim :display-name #(or % (:name dim))))
       (drop-nil-keys [:has-field-values :status :status-message :dimension-interestingness :group
                       :sources :default-temporal-unit])))
@@ -87,6 +87,7 @@
          ks     (into #{} (map first) (mc/entries schema))]
      (mut/update-properties
       schema assoc
+      :closed     false
       :encode/api {:enter (fn [m] (if (map? m) (enter (select-keys m ks)) m))
                    :leave snake-case-keys}
       :decode/api {:enter kebab-case-keys}))))
@@ -95,7 +96,7 @@
   "A dimension source annotated with its wire-encoding rules. Quirks preserved from the previous
    hand-rolled shape: entries keep their kebab-case `:field-id` key on the wire (no key renaming),
    `:field-id` is always present (nil when missing), and other keys (e.g. `:binning`) are dropped."
-  [:map {:encode/api {:enter #(merge {:field-id nil} (select-keys % [:type :field-id]))}}
+  [:map {:closed false, :encode/api {:enter #(merge {:field-id nil} (select-keys % [:type :field-id]))}}
    [:type ::lm.schema/dimension-source.type]
    [:field-id {:optional true} [:maybe :int]]])
 
@@ -120,16 +121,15 @@
    encode-dimension-map))
 
 (mr/def ::dimension-mapping
-  "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules.
-   `:target` is re-typed as `:any` so the transformer never walks into the MBQL ref and renames
-   its option-map keys — it passes through untouched in both directions. `:type` is optional on
+  "The internal (kebab-case) dimension-mapping shape annotated with its wire-conversion rules. `:type` is optional on
    the wire (FE payloads may omit it); `:dimension-id` keeps the strict uuid schema."
-  (wire-map
-   ::lm.schema/dimension-mapping
-   [:map
-    [:type {:optional true} ::lm.schema/dimension-mapping.type]
-    [:target :any]]
-   encode-mapping-map))
+  (mut/update-properties
+   (wire-map
+    ::lm.schema/dimension-mapping
+    [:map
+     [:type {:optional true} ::lm.schema/dimension-mapping.type]]
+    encode-mapping-map)
+   assoc :closed true))
 
 (def ^:private api-transformer
   "The `:api`-named step of the transformers `defendpoint` applies, on its own.
@@ -210,7 +210,7 @@
    Returns the metrics seq with `:dimensions` updated in place. `metrics` is the
    last arg so this composes cleanly with `->>` pipelines."
   [field-cols :- [:sequential :keyword]
-   metrics    :- [:sequential :map]]
+   metrics    :- [:sequential :metabase.queries.schema/card]]
   ;; Resolve each (metric, dimension) pair exactly once and carry the field id alongside its
   ;; dimension, so the merge pass below reads it instead of resolving all over again.
   (let [dims+fids  (mapv (fn [metric]
@@ -219,9 +219,9 @@
                          metrics)
         field-ids  (into #{} (comp cat (keep second)) dims+fids)
         field->row (when (seq field-ids)
-                     (t2/select-pk->fn #(update-keys (select-keys % field-cols) u/->kebab-case-en)
-                                       (into [:model/Field :id] field-cols)
-                                       :id [:in field-ids]))
+                     (into {}
+                           (map (juxt :id #(update-keys (select-keys % field-cols) u/->kebab-case-en)))
+                           (metrics.db/fields-with-columns field-cols field-ids)))
         nil-cols   (zipmap (map u/->kebab-case-en field-cols) (repeat nil))]
     (mapv (fn [metric pairs]
             (cond-> metric
@@ -235,17 +235,17 @@
 (mu/defn dimension-values :- ms/FieldValuesResult
   "Fetch values for a dimension given its UUID.
    Uses the same logic as the field values API."
-  [dimensions         :- [:maybe [:sequential :map]]
-   dimension-mappings :- [:maybe [:sequential :map]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
+   dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field    (t2/select-one :model/Field :id field-id)]
+        field    (metrics.db/field field-id)]
     (parameters/field->values field)))
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
   "Search for values of a dimension that contain the query string."
-  [dimensions         :- [:maybe [:sequential :map]]
-   dimension-mappings :- [:maybe [:sequential :map]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
+   dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string
    query-string       :- ms/NonBlankString]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)]
@@ -254,16 +254,16 @@
 (mu/defn dimension-remapped-value :- [:or [:tuple :any] [:tuple :any :string]]
   "Get the remapped value for a specific dimension value.
    Returns a pair like [value display-name] if remapping exists, or just [value] otherwise."
-  [dimensions         :- [:maybe [:sequential :map]]
-   dimension-mappings :- [:maybe [:sequential :map]]
+  [dimensions         :- [:maybe [:sequential ::lm.schema/dimension]]
+   dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string
    value              :- :string]
   (let [field-id        (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field           (t2/select-one :model/Field :id field-id)
+        field           (metrics.db/field field-id)
         parsed-value    (parameters/parse-query-param-value-for-field field value)
         remapped-fid    (parameters/remapped-field-id field-id)]
     (if remapped-fid
-      (let [remapped-field (t2/select-one :model/Field :id remapped-fid)]
+      (let [remapped-field (metrics.db/field remapped-fid)]
         (parameters/remapped-value field remapped-field parsed-value))
       ;; No remapping - return the value as-is
       [parsed-value])))

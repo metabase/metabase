@@ -11,13 +11,15 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search.core]
-   [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -70,14 +72,14 @@
   ([instance]
    (transform-readable? instance))
   ([_model pk]
-   (when-let [transform (t2/select-one :model/Transform :id pk)]
+   (when-let [transform (transforms.db/transform pk)]
      (mi/can-read? transform))))
 
 (defmethod mi/can-write? :model/Transform
   ([instance]
    (transform-writable? instance))
   ([_model pk]
-   (when-let [transform (t2/select-one :model/Transform :id pk)]
+   (when-let [transform (transforms.db/transform pk)]
      (mi/can-write? transform))))
 
 ;; Users who can read the transform can also query it. This is a duplicate, but keeps things explicit.
@@ -153,7 +155,7 @@
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (let [target-db-id (transforms-base.i/target-db-id transform)
-        valid-db-id? (and target-db-id (t2/exists? :model/Database :id target-db-id))]
+        valid-db-id? (and target-db-id (transforms.db/database-exists? target-db-id))]
     ;; Don't warn when target-db-id is nil — that's an orphan source (e.g. a
     ;; serdes-imported transform whose source database is missing), not a
     ;; misconfiguration. Only warn when an id is supplied but invalid.
@@ -176,7 +178,7 @@
     (if (and (transforms-base.u/merge-target? {:target target})
              table-id
              (some #(nil? (:field-id %)) unique-key))
-      (let [name->id (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true)]
+      (let [name->id (transforms.db/active-field-ids-by-name table-id)]
         (assoc transform :target
                (assoc-in target [:target-incremental-strategy :unique-key]
                          (mapv (fn [e] (cond-> e (:name e) (assoc :field-id (name->id (:name e)))))
@@ -264,7 +266,7 @@
     runs
     (let [transform-ids (into #{} (keep :transform_id) runs)
           id->transform (when (seq transform-ids)
-                          (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))]
+                          (transforms.db/transform-summaries-by-id transform-ids))]
       (for [run runs]
         (assoc run :transform
                (if-let [transform-id (:transform_id run)]
@@ -289,7 +291,7 @@
               (assoc transform :last_checkpoint_value checkpoint_hi_value)
               ;; latest transform value wins, could be reset
               (assoc transform :last_checkpoint_value
-                     (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id)))
+                     (transforms.db/transform-last-checkpoint-value transform-id)))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -298,11 +300,7 @@
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          tag-associations (t2/select
-                            [:model/TransformTransformTag :transform_id :tag_id :position]
-                            :transform_id
-                            [:in transform-ids]
-                            {:order-by [[:position :asc]]})
+          tag-associations (transforms.db/transform-tag-links transform-ids)
           transform-id->tag-ids (reduce
                                  (fn [acc {:keys [transform_id tag_id]}]
                                    (update acc transform_id (fnil conj []) tag_id))
@@ -316,8 +314,7 @@
   (if-not (seq transforms)
     transforms
     (let [creator-ids (into #{} (map :creator_id) transforms)
-          id->creator (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in creator-ids])]
+          id->creator (transforms.db/user-summaries-by-id creator-ids)]
       (for [transform transforms]
         (assoc transform :creator (get id->creator (:creator_id transform)))))))
 
@@ -329,8 +326,7 @@
     transforms
     (let [owner-user-ids (into #{} (keep :owner_user_id) transforms)
           id->owner (when (seq owner-user-ids)
-                      (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name]
-                                        :id [:in owner-user-ids]))]
+                      (transforms.db/user-summaries-by-id owner-user-ids))]
       (for [transform transforms]
         (assoc transform :owner
                (cond
@@ -350,9 +346,20 @@
     (events/publish-event! :event/update-transform {:object transform}))
   transform)
 
+(defenterprise delete-transform-tests!
+  "Hook called from the `:model/Transform` before-delete: delete the tests of the transform `transform-id` through
+  Toucan, so that each one's own delete hook runs. The database would take them with the transform either way -- the
+  `transform_test.transform_id` FK is `ON DELETE CASCADE` -- but a cascade runs no hook, and remote sync learns a
+  test is gone only from the event that hook publishes, so it would go on serving a test whose transform no longer
+  exists. OSS is a no-op (no transform-testing module)."
+  metabase-enterprise.transform-testing.models
+  [_transform-id]
+  nil)
+
 (t2/define-before-delete :model/Transform [transform]
   (when-not mi/*deserializing?*
     (events/publish-event! :event/delete-transform {:id (:id transform)}))
+  (delete-transform-tests! (:id transform))
   (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
@@ -365,14 +372,11 @@
       (let [;; Deduplicate while preserving order of first occurrence
             deduped-tag-ids      (vec (distinct tag-ids))
             ;; Get current associations
-            current-associations (t2/select [:model/TransformTransformTag :tag_id :position]
-                                            :transform_id transform-id
-                                            {:order-by [[:position :asc]]})
+            current-associations (transforms.db/transform-tag-links [transform-id])
             current-tag-ids      (mapv :tag_id current-associations)
             ;; Validate that new tag IDs exist
             valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (t2/select-fn-set :id :model/TransformTag
-                                                               :id [:in deduped-tag-ids])))
+                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
             ;; Filter to only valid tags, preserving order
             new-tag-ids          (if valid-tag-ids
                                    (filterv valid-tag-ids deduped-tag-ids)
@@ -386,22 +390,17 @@
             new-positions        (zipmap new-tag-ids (range))]
         ;; Delete removed associations
         (when (seq to-delete)
-          (t2/delete! :model/TransformTransformTag
-                      :transform_id transform-id
-                      :tag_id [:in to-delete]))
+          (transforms.db/delete-transform-tag-links! transform-id to-delete))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (t2/update! :model/TransformTransformTag
-                        {:transform_id transform-id :tag_id tag-id}
-                        {:position new-pos})))
+            (transforms.db/set-transform-tag-position! transform-id tag-id new-pos)))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (t2/insert! :model/TransformTransformTag
-                      (for [tag-id to-insert]
-                        {:transform_id transform-id
-                         :tag_id       tag-id
-                         :position     (get new-positions tag-id)})))))))
+          (transforms.db/insert-transform-tag-links! (for [tag-id to-insert]
+                                                       {:transform_id transform-id
+                                                        :tag_id       tag-id
+                                                        :position     (get new-positions tag-id)})))))))
 
 ;;; ------------------------------------------------- Serialization ------------------------------------------------
 
@@ -412,9 +411,7 @@
   (when (seq transforms)
     (let [transform-ids (into #{} (map u/the-id) transforms)
           tag-mappings  (group-by :transform_id
-                                  (t2/select :model/TransformTransformTag
-                                             :transform_id [:in transform-ids]
-                                             {:order-by [[:position :asc]]}))]
+                                  (transforms.db/transform-tag-links transform-ids))]
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
@@ -426,9 +423,7 @@
     (let [transform-ids (into #{} (map u/the-id) transforms)
           idx-mappings  (group-by :transform_id
                                   (filter table-index/applicable?
-                                          (t2/select :model/TableIndex
-                                                     :transform_id [:in transform-ids]
-                                                     {:order-by [[:index_name :asc]]})))]
+                                          (transforms.db/table-indexes-for-transforms transform-ids)))]
       (for [transform transforms]
         (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
 
@@ -438,7 +433,7 @@
   [transforms]
   (let [table-ids (into #{} (keep :target_table_id) transforms)
         id->table (when (seq table-ids)
-                    (m/index-by :id (-> (t2/select :model/Table :id [:in table-ids])
+                    (m/index-by :id (-> (transforms.db/tables table-ids)
                                         (t2/hydrate :db :fields))))]
     (for [transform transforms]
       (assoc transform :table
@@ -463,7 +458,7 @@
   "Portable ref for the checkpoint field. A dangling id (field since deleted) is exported as-is:
   the importer passes numbers through, so one stale config can't fail the whole import."
   [field-id]
-  (if (t2/exists? :model/Field :id field-id)
+  (if (transforms.db/field-exists? field-id)
     (serdes/*export-field-fk* field-id)
     field-id))
 
@@ -501,7 +496,7 @@
                                         ;; the importer skips ref resolution.
                                         (-> source
                                             (assoc :serdes/unresolved true)
-                                            (m/update-existing :query assoc :database nil)
+                                            (m/update-existing :query #(-> % (dissoc :lib/metadata) (assoc :database nil)))
                                             (m/update-existing :source-database (constantly nil))
                                             (m/update-existing :source-tables
                                                                #(mapv (fn [e] (assoc e :table_id nil :database_id nil)) %))
@@ -509,17 +504,20 @@
                                     :import
                                     (fn [source]
                                       (if (:serdes/unresolved source)
-                                        (dissoc source :serdes/unresolved)
+                                        (-> source
+                                            (dissoc :serdes/unresolved)
+                                            (m/update-existing :query dissoc :lib/metadata))
                                         (-> source
                                             (m/update-existing :query serdes/import-mbql)
                                             (m/update-existing :source-database import-maybe-int-database-fk)
                                             (m/update-existing :source-tables
                                                                (fn [entries]
-                                                                 (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
-                                                                      (mapv (fn [entry]
-                                                                              (-> entry
-                                                                                  (m/update-existing :table_id import-maybe-int-table-fk)
-                                                                                  (m/update-existing :database_id import-maybe-int-database-fk)))))))
+                                                                 (let [entries (cond-> entries (map? entries) (update-keys name))]
+                                                                   (->> (cond-> entries (map? entries) transforms-base.u/source-tables-map->vec)
+                                                                        (mapv (fn [entry]
+                                                                                (-> entry
+                                                                                    (m/update-existing :table_id import-maybe-int-table-fk)
+                                                                                    (m/update-existing :database_id import-maybe-int-database-fk))))))))
                                             (update-checkpoint-field import-maybe-int-field-fk))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
@@ -546,7 +544,7 @@
 
 (defmethod serdes/required "Transform"
   [_model id]
-  (when-let [collection-id (t2/select-one-fn :collection_id :model/Transform :id id)]
+  (when-let [collection-id (transforms.db/transform-collection-id id)]
     {["Collection" collection-id] {"Transform" id}}))
 
 (defn- maybe-extract-transform-query-text
@@ -560,16 +558,15 @@
                      :python (:body source-data)
                      nil)]
     (when query-text
-      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
+      (subs query-text 0 (min (count query-text) search.core/max-searchable-value-length)))))
 
 (defn transforms-with-tags
   "Returns all transforms associated with the given tag IDs.
   Return empty list if no tag IDs are provided or no transforms are associated with the tags."
   [tag-ids]
   (or (when (seq tag-ids)
-        (when-let [transform-ids (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
-                                                   :tag_id [:in tag-ids])]
-          (t2/select :model/Transform :id [:in transform-ids])))
+        (when-let [transform-ids (transforms.db/transform-ids-with-tags tag-ids)]
+          (transforms.db/transforms transform-ids)))
       []))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------

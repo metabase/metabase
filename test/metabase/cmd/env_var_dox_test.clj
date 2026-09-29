@@ -115,3 +115,15 @@
                                   :visibility :public}]
       (is (string? (#'sut/format-env-var-entry env-var-with-false-doc)))
       (is (str/includes? (#'sut/format-env-var-entry env-var-with-false-doc) "MB_TEST_SETTING")))))
+
+(deftest ^:parallel env-var-docs-exclude-settings-that-ignore-env-vars-test
+  (let [setting {:name :metabot-chat-system-prompt
+                 :munged-name "metabot-chat-system-prompt"
+                 :type :string
+                 :default ""
+                 :description (constantly "Custom instructions appended to Metabot's system prompt.")
+                 :visibility :admin}]
+    (testing "A setting that ignores its environment variable gets no entry in the env var docs"
+      (is (empty? (sut/format-env-var-docs [(assoc setting :can-read-from-env? false)]))))
+    (testing "and a setting that reads its environment variable gets one"
+      (is (= 1 (count (sut/format-env-var-docs [setting])))))))

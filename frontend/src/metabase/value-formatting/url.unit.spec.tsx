@@ -1,3 +1,5 @@
+import { createMockColumn } from "metabase-types/api/mocks";
+
 import { formatUrl } from "./url";
 
 // Pure engine behaviour only. The jsx + rich rendering paths (link components,
@@ -29,5 +31,27 @@ describe("formatUrl", () => {
     });
 
     expect(formatted).toEqual("http://metabase.com");
+  });
+});
+
+describe("formatUrl with a non-string value", () => {
+  const column = createMockColumn({
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: "type/URL",
+  });
+
+  it("should pass strings and numbers through untouched", () => {
+    expect(formatUrl("not a url", { column })).toBe("not a url");
+    expect(formatUrl(42, { column })).toBe(42);
+  });
+
+  it("should render a boolean rather than returning it raw", () => {
+    expect(formatUrl(true, { column })).toBe("true");
+    expect(formatUrl(false, { column })).toBe("false");
+  });
+
+  it("should render an object rather than returning it raw", () => {
+    expect(formatUrl({ nested: 1 }, { column })).toBe("[object Object]");
   });
 });

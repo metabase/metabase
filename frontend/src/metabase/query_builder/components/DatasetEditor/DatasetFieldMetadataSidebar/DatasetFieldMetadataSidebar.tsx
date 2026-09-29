@@ -85,12 +85,13 @@ function getVisibilityTypeName(visibilityType: VisibilityType) {
   return visibilityType.name;
 }
 
-const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
-  (type) => type.id !== "sensitive",
-).map((type) => ({
-  name: getVisibilityTypeName(type),
-  value: type.id,
-}));
+const getVisibilityTypeOptions = () =>
+  FIELD_VISIBILITY_TYPES.filter((type) => type.id !== "sensitive").map(
+    (type) => ({
+      name: getVisibilityTypeName(type),
+      value: type.id,
+    }),
+  );
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -380,7 +381,7 @@ function DatasetFieldMetadataSidebarInner({
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
-                      {visibilityTypeOptions.map((option) => (
+                      {getVisibilityTypeOptions().map((option) => (
                         <Radio
                           key={`visibility-type-${option.value}`}
                           value={option.value}
@@ -416,7 +417,6 @@ function DatasetFieldMetadataSidebarInner({
                   name="should_index"
                   label={t`Surface individual records in search by matching against this column`}
                   mx="1.5rem"
-                  size="sm"
                   fw="bold"
                   maw="300px"
                   onChange={handleShouldIndexChange}

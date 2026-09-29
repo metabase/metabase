@@ -3,7 +3,11 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.agent.prompts :as prompts]))
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.prompts :as prompts]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.skills :as skills]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -120,22 +124,6 @@
       (is (string? content))
       (is (> (count content) 1000)))))
 
-(deftest ^:parallel build-system-message-content-test-5
-  (testing "renders transform codegen template with literal model syntax"
-    (let [profile {:prompt-template "transform-codegen.selmer"}
-          context {:current_time "2024-01-15 14:30:00"
-                   :sql-dialect "postgresql"}
-          tools {}
-          content (prompts/build-system-message-content profile context tools [])]
-      (is (some? content))
-      (is (string? content))
-      (is (str/includes? content "{{#model_id}}"))
-      (is (str/includes? content "{{#5-user-details}}"))
-      (is (str/includes? content "{{snippet: Snippet Name}}"))
-      (is (str/includes? content "{{snippet: recent orders}}"))
-      (is (not (str/includes? content "{%raw%}")))
-      (is (not (str/includes? content "{% safe %}"))))))
-
 (deftest ^:parallel build-system-message-content-test-6
   (testing "current user info is not in system message (moved to message injection)"
     (let [profile {:prompt-template "internal.selmer"}
@@ -192,6 +180,16 @@
       (is (string? content))
       (is (not (str/includes? content "{% include"))
           "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))
+
+(deftest ^:parallel build-system-message-content-document-skills-test
+  (testing "the document prompt lists the notebook query skills its model chart tool needs"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (let [profile (profiles/get-profile :document-generate-content)
+            content (prompts/build-system-message-content profile {} (profiles/profile->tools profile []) [])]
+        (doseq [skill-id [:construct-notebook-query-core
+                          :construct-notebook-query-advanced
+                          :construct-notebook-query-operators]]
+          (is (str/includes? content (:description (skills/get-skill skill-id)))))))))
 
 (deftest ^:parallel build-system-message-content-test-9
   (testing "renders sql querying template with literal model syntax"

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.action-v2.models.undo
   (:require
    [clojure.walk :as walk]
+   [metabase-enterprise.action-v2.db :as action-v2.db]
    [metabase.actions.core :as actions]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -40,64 +41,39 @@
   ;; For now, we assume all the changes are to the same table.
   ;; In the future, we might want to skip multi-table changes when using cmd-Z.
   ;; We may also want to filter based on the type of interaction that caused the change (e.g., grid, workflow, etc)
-  (t2/select :model/Undo
-             :batch_num [:in
-                         ^:allow-subquery
-                         {:select [[[(if undo? :max :min) :batch_num]]]
-                          :from   [(t2/table-name :model/Undo)]
-                          :where  [:and
-                                   [:= :user_id user-id]
-                                   [:= :scope (serialize-scope scope)]
-                                   (if undo?
-                                     [:not :undone]
-                                     :undone)]}]))
+  (action-v2.db/next-undo-batch undo? user-id (serialize-scope scope)))
 
 (defn- batch-to-prune-from
   "Return the largest batch_num that we should no longer retain, if we only want to keep a certain number of batches
-  matching the given where clause. Returns 0 if we do not need to prune anything."
-  [batches-to-keep & [where]]
-  (-> {:select   [:batch_num]
-       :from     [(t2/table-name :model/Undo)]
-       :where    (or where true)
-       :group-by :batch_num
-       :order-by [[:batch_num :desc]]
-       :limit    1
-       :offset   batches-to-keep}
-      t2/query
+  in the optional `scope` or belonging to the optional `user-id`. Returns 0 if we do not need to prune anything."
+  [batches-to-keep & {:keys [scope user-id]}]
+  (-> (action-v2.db/batch-to-prune-from batches-to-keep scope user-id)
       first
       :batch_num
       (or 0)))
 
 (defn- batch-to-prune-from-for-rows
   "This is like [[batch-to-prune-from], except that we're enforcing a max on the row count."
-  [rows-to-keep & [where]]
-  (-> {:select   [:batch_num]
-       :from     [(t2/table-name :model/Undo)]
-       :where    (or where true)
-       :order-by [[:id :desc]]
-       :limit    1
-       :offset   rows-to-keep}
-      t2/query
+  [rows-to-keep]
+  (-> (action-v2.db/batch-to-prune-from-for-rows rows-to-keep)
       first
       :batch_num
       (or 0)))
 
-(defn- prune-from-batch! [batch-num & [where]]
-  (t2/delete! :model/Undo
-              :batch_num [:<= batch-num]
-              {:where (or where true)}))
+(defn- prune-from-batch! [batch-num & {:keys [scope user-id]}]
+  (action-v2.db/delete-undo-batches-up-to! batch-num scope user-id))
 
-(defn- prune-batches! [batches-to-keep & [where]]
-  (prune-from-batch! (batch-to-prune-from batches-to-keep where) where))
+(defn- prune-batches! [batches-to-keep & {:keys [scope user-id] :as narrowing}]
+  (prune-from-batch! (batch-to-prune-from batches-to-keep :scope scope :user-id user-id) narrowing))
 
 (defn- next-sequence!
   [seq-name]
-  (if-let [batch-num (t2/select-one-fn :next_val [:sequences :next_val] :name seq-name {:for :update})]
+  (if-let [batch-num (action-v2.db/lock-sequence-next-val seq-name)]
     (do
-      (t2/update! :sequences {:name seq-name} {:next_val (inc batch-num)})
+      (action-v2.db/set-sequence-next-val! seq-name (inc batch-num))
       batch-num)
     (do
-      (t2/insert! :sequences {:name seq-name :next_val 2})
+      (action-v2.db/insert-sequence! seq-name 2)
       1)))
 
 (defn track-change!
@@ -106,8 +82,7 @@
   (let [scope (serialize-scope scope)]
     (t2/with-transaction [_conn]
       (let [next-batch-num (next-sequence! "undo_batch_num")]
-        (t2/insert!
-         :model/Undo
+        (action-v2.db/insert-undos!
          (for [[table-id table-updates] table-id->row-pk->values
                [row-pk values] table-updates]
            (merge {:batch_num  next-batch-num
@@ -120,15 +95,12 @@
                   values)))))
     ;; Delete snapshots that have been undone, as we keep a linear history and will no longer be able to "redo" them.
     (when-let [{:keys [batch_num]} (first (next-batch false user-id scope))]
-      (t2/delete! :model/Undo
-                  :batch_num [:>= batch_num]
-                  :scope scope
-                  :undone true))
+      (action-v2.db/delete-undone-batches-from! batch_num scope))
     ;; Pruning. Fairly naive implementation. Doesn't assume we were fully pruned before this update.
     (prune-from-batch! (max (batch-to-prune-from-for-rows retention-total-rows)
                             (batch-to-prune-from retention-total-batches)))
-    (prune-batches! retention-batches-per-scope [:= :scope scope])
-    (prune-batches! retention-batches-per-user [:= :user_id user-id])))
+    (prune-batches! retention-batches-per-scope :scope scope)
+    (prune-batches! retention-batches-per-user :user-id user-id)))
 
 ;; This will be used to fix conflict false positives
 #_{:clj-kondo/ignore [:unused-private-var]}
@@ -150,11 +122,7 @@
     ;; Can store a precalculated [[diff-keys]] on each :model/Undo row, or even normalize into its own table and do
     ;; conflict detection completely in SQL.
     ;; This normal form may make maintenance of the history a bit too expensive however.
-    (t2/exists? :model/Undo
-                :table_id [:in table-ids]
-                :row_pk [:in row-pks]
-                :batch_num [(if undo? :> :<) batch_num]
-                :undone (not undo?))))
+    (action-v2.db/superseding-change-exists? undo? table-ids row-pks batch_num)))
 
 (defn- categorize [{:keys [raw_before raw_after]}]
   (cond
@@ -225,9 +193,7 @@
                                                :scope   scope}))
       :else
       (do (update-table-data! undo-or-redo context batch)
-          (t2/update! :model/Undo
-                      {:batch_num (:batch_num (first batch))}
-                      {:undone undo?})
+          (action-v2.db/mark-batch-undone! (:batch_num (first batch)) undo?)
           (for [[table-id sub-batch] (u/group-by :table_id batch)
                 :let [rows (batch->rows undo? sub-batch)]
                 [delta row] (map vector sub-batch rows)

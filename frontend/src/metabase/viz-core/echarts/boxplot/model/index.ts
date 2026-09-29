@@ -1,4 +1,4 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import {
@@ -235,7 +235,7 @@ const createXAxisFormatter = (
 
   return (value: RowValue) => {
     if (value == null || value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
-      return NULL_DISPLAY_VALUE;
+      return getNullDisplayValue();
     }
 
     return String(
@@ -308,6 +308,7 @@ const createBoxPlotYAxisModel = (
   columnByDataKey: Record<string, DatasetColumn>,
   seriesExtents: SeriesExtents,
   yAxisScaleTransforms: ReturnType<typeof getAxisTransforms>,
+  isSplitRightAxis = false,
 ): YAxisModel | null => {
   if (dataKeys.length === 0) {
     return null;
@@ -319,6 +320,7 @@ const createBoxPlotYAxisModel = (
     dataset,
     settings,
     columnByDataKey,
+    { isSplitRightAxis },
   );
 
   if (yAxisModel) {
@@ -382,6 +384,7 @@ const getBoxPlotYAxesModels = (
       columnByDataKey,
       seriesExtents,
       yAxisScaleTransforms,
+      leftAxisSeriesKeys.size > 0,
     ),
     leftAxisSeriesKeys,
     rightAxisSeriesKeys,

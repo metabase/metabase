@@ -1,108 +1,128 @@
-import userEvent from "@testing-library/user-event";
-
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
-  setupParameterValuesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
-import { createMockState } from "metabase/redux/store/mocks";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
   createMockDatabase,
   createMockNativeDatasetQuery,
-  createMockTemplateTag,
 } from "metabase-types/api/mocks";
+
+import type { TemplateTagsSidebarProps } from "../../../types";
 
 import { NativeQuerySidebar } from "./NativeQuerySidebar";
 
-const SAMPLE_DB_ID = 1;
-const WRITABLE_DB_ID = 2;
+const TemplateTagsSidebarStub = jest.fn((_props: TemplateTagsSidebarProps) => (
+  <div data-testid="template-tags-sidebar" />
+));
 
-interface SetupOpts {
-  canUseSampleDatabase?: boolean;
-}
+type SetupOpts = {
+  isDataReferenceOpen?: boolean;
+  isTemplateTagsSidebarOpen?: boolean;
+};
 
-const setup = ({ canUseSampleDatabase }: SetupOpts = {}) => {
-  const sampleDatabase = createMockDatabase({
-    id: SAMPLE_DB_ID,
-    name: "Sample Database",
-    is_sample: true,
-  });
-  const writableDatabase = createMockDatabase({
-    id: WRITABLE_DB_ID,
-    name: "Writable Postgres",
-    engine: "postgres",
-  });
-  const card = createMockCard({
-    dataset_query: createMockNativeDatasetQuery({
-      database: WRITABLE_DB_ID,
-      native: {
-        query: "SELECT {{x}}",
-        "template-tags": {
-          x: createMockTemplateTag({
-            name: "x",
-            "display-name": "X",
-            type: "text",
-          }),
-        },
-      },
+function setup({
+  isDataReferenceOpen = false,
+  isTemplateTagsSidebarOpen = false,
+}: SetupOpts = {}) {
+  const database = createMockDatabase();
+  const metadata = createMockMetadata({ databases: [database] });
+  const question = new Question(
+    createMockCard({
+      dataset_query: createMockNativeDatasetQuery({ database: database.id }),
     }),
-  });
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [sampleDatabase, writableDatabase],
-    }),
-  });
-  const metadata = getMetadata(state);
-  const question = new Question(card, metadata);
+    metadata,
+  );
+  const query = question.query();
+  const parameterValues = { tag: "value" };
+  const onChangeQuery = jest.fn();
+  const setParameterValues = jest.fn();
+  const onToggleTemplateTagsSidebar = jest.fn();
 
-  setupDatabasesEndpoints([sampleDatabase, writableDatabase]);
+  setupDatabasesEndpoints([database]);
   setupSearchEndpoints([]);
-  setupParameterValuesEndpoints({ values: [], has_more_values: false });
 
   renderWithProviders(
     <NativeQuerySidebar
       question={question}
-      query={question.query()}
+      query={query}
       isNative
-      isTemplateTagsSidebarOpen
-      onChangeQuery={jest.fn()}
+      isDataReferenceOpen={isDataReferenceOpen}
+      isTemplateTagsSidebarOpen={isTemplateTagsSidebarOpen}
+      parameterValues={parameterValues}
+      setParameterValues={setParameterValues}
+      parametersAreUserVisible={false}
+      canUseSampleDatabase={false}
+      onChangeQuery={onChangeQuery}
       onInsertSnippet={jest.fn()}
       onToggleDataReference={jest.fn()}
       onToggleSnippetSidebar={jest.fn()}
-      onToggleTemplateTagsSidebar={jest.fn()}
+      onToggleTemplateTagsSidebar={onToggleTemplateTagsSidebar}
       onChangeModalSnippet={jest.fn()}
       onOpenSnippetModalWithSelectedText={jest.fn()}
-      parameterValues={{}}
-      setParameterValues={jest.fn()}
-      canUseSampleDatabase={canUseSampleDatabase}
+      templateTagsSidebar={TemplateTagsSidebarStub}
     />,
-    { storeInitialState: state },
   );
-};
 
-describe("NativeQuerySidebar template-tag help", () => {
-  it("hides the 'Try it' examples when the sample database can't be used, e.g. in transforms (metabase#78037)", async () => {
-    setup({ canUseSampleDatabase: false });
+  return {
+    database,
+    question,
+    query,
+    parameterValues,
+    onChangeQuery,
+    setParameterValues,
+    onToggleTemplateTagsSidebar,
+  };
+}
 
-    await userEvent.click(screen.getByRole("tab", { name: "Help" }));
-
-    expect(
-      screen.queryByRole("button", { name: "Try it" }),
-    ).not.toBeInTheDocument();
+describe("NativeQuerySidebar", () => {
+  beforeEach(() => {
+    TemplateTagsSidebarStub.mockClear();
   });
 
-  it("shows the 'Try it' examples when the sample database is available", async () => {
-    setup({});
+  it("should render nothing when no sidebar is open", () => {
+    setup();
 
-    await userEvent.click(screen.getByRole("tab", { name: "Help" }));
+    expect(screen.queryByTestId("editor-sidebar")).not.toBeInTheDocument();
+  });
 
-    expect(
-      screen.getAllByRole("button", { name: "Try it" }).length,
-    ).toBeGreaterThan(0);
+  it("should render the injected template tags sidebar when the variables sidebar is open", () => {
+    const {
+      question,
+      query,
+      parameterValues,
+      onChangeQuery,
+      setParameterValues,
+      onToggleTemplateTagsSidebar,
+    } = setup({ isTemplateTagsSidebarOpen: true });
+
+    expect(screen.getByTestId("template-tags-sidebar")).toBeInTheDocument();
+    const [props] = TemplateTagsSidebarStub.mock.calls[0];
+    expect(props).toEqual({
+      question,
+      query,
+      parameterValues,
+      parametersAreUserVisible: false,
+      canUseSampleDatabase: false,
+      onChangeQuery,
+      setParameterValues,
+      onClose: onToggleTemplateTagsSidebar,
+    });
+  });
+
+  it("should render the data reference for the question's database when that sidebar is open", async () => {
+    const { database } = setup({ isDataReferenceOpen: true });
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByText(database.name)).toBeInTheDocument();
+    expect(TemplateTagsSidebarStub).not.toHaveBeenCalled();
   });
 });

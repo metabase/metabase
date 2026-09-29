@@ -43,6 +43,11 @@
                                           (and status-code (:errors other-info))
                                           other-info
 
+                                          ;; a machine-readable error code means the throw site authored this as an
+                                          ;; API response; return it as-is, without a stacktrace
+                                          (and status-code (not= status-code 500) (:error-code other-info))
+                                          (merge {:message (ex-message e)} other-info)
+
                                           ;; allow administrators to configure their instances to suppress stacktraces
                                           ;; returns 500 with a generic message
                                           (server.settings/hide-stacktraces)

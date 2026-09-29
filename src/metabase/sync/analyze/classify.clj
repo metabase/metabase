@@ -24,14 +24,13 @@
    [metabase.models.interface :as mi]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -65,22 +64,29 @@
         (throw (Exception. (format "Classifiers are not allowed to set the value of %s." k)))))
     ;; cool, now we should be ok to update the model
     (when values-to-set
-      (t2/update! (mi/model original-model) (u/the-id original-model)
-                  values-to-set)
+      (case (mi/model original-model)
+        :model/Field (sync.db/update-field! (u/the-id original-model) values-to-set)
+        :model/Table (sync.db/update-table! (u/the-id original-model) values-to-set))
       true)))
+
+(def ^:private ClassifyOpts
+  [:map {:closed true}
+   [:fields-failed :int]
+   [:exists-name :boolean]])
 
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
    Returns updated `field`"
-  ([field :- i/FieldInstance opts]
+  ([field :- i/FieldInstance
+    opts  :- ClassifyOpts]
    (classify! field opts
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (t2/select-one-fn :fingerprint :model/Field :id (u/the-id field)))))
+                  (sync.db/field-fingerprint (u/the-id field)))))
 
   ([field       :- i/FieldInstance
-    {:keys [exists-name]}
+    {:keys [exists-name]} :- ClassifyOpts
     fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [classified (analyze/run-classifiers field fingerprint)
@@ -101,11 +107,7 @@
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (apply t2/select :model/Field
-              :table_id (u/the-id table)
-              :active true
-              :visibility_type [:not-in ["sensitive" "retired"]]
-              (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
+  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
@@ -114,11 +116,7 @@
   (tracing/with-span :sync "sync.classify.fields" {:sync/table (:name table)}
     (let [table-id (:id table)]
       (when-let [fields (fields-to-classify table)]
-        (let [existing-name-field (t2/count :model/Field
-                                            :table_id table-id
-                                            :active true
-                                            :visibility_type [:not-in ["sensitive" "retired"]]
-                                            :semantic_type :type/Name)
+        (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
               (reduce (fn [state field]
                         (let [result (classify! field state)]
@@ -143,10 +141,13 @@
       table
       (save-model-updates! table updated-table))))
 
+(def ^:private LogProgressFn
+  [:=> [:cat :string [:schema i/TableInstance]] :nil])
+
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [database :- i/DatabaseInstance
-   log-progress-fn]
+  [database        :- i/DatabaseInstance
+   log-progress-fn :- LogProgressFn]
   (let [tables (sync-util/reducible-sync-tables database)]
     (reduce (fn [acc table]
               (let [result (classify-table! table)]
@@ -159,8 +160,8 @@
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [database :- i/DatabaseInstance
-   log-progress-fn]
+  [database        :- i/DatabaseInstance
+   log-progress-fn :- LogProgressFn]
   (let [tables (sync-util/reducible-sync-tables database)]
     (transduce (map (fn [table]
                       (let [result (classify-fields! table)]

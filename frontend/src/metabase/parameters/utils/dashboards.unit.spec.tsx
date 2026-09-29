@@ -13,7 +13,7 @@ import Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { Parameter } from "metabase-types/api";
+import type { Parameter, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -29,6 +29,8 @@ import {
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
+
+const buildQuestion = (card: UnsavedCard) => new Question(card, metadata);
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
@@ -583,7 +585,7 @@ describe("metabase/parameters/utils/dashboards", () => {
         getUnsavedDashboardUiParameters(
           dashboard.dashcards,
           dashboard.parameters,
-          metadata,
+          buildQuestion,
           questions,
         ),
       ).toEqual([

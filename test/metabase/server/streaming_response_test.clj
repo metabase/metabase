@@ -235,6 +235,7 @@
         (finally
           (.stop server))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-bindings-test
@@ -575,7 +576,8 @@
              os
              finished-chan
              canceled-chan
-             (AtomicBoolean. false))
+             (AtomicBoolean. false)
+             nil)
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
@@ -639,7 +641,8 @@
            os
            finished-chan
            canceled-chan
-           completed?)
+           completed?
+           nil)
           (is (true? (.await task-started 5 TimeUnit/SECONDS))
               "Worker thread should start")
           (.set completed? true)
@@ -649,3 +652,31 @@
                                             (a/timeout 5000) ([_] ::timed-out)))))))
           (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
               "Worker thread should not call .complete when timeout already completed the context"))))))
+
+(deftest do-f-async-custom-executor-test
+  (testing "the :executor option runs `f` on that executor instead of the shared streaming pool"
+    (let [executor      (java.util.concurrent.Executors/newSingleThreadExecutor
+                         (reify java.util.concurrent.ThreadFactory
+                           (newThread [_ r]
+                             (doto (Thread. ^Runnable r) (.setName "custom-streaming-executor")))))
+          ran-on        (promise)
+          finished-chan (a/promise-chan)
+          canceled-chan (a/promise-chan)]
+      (try
+        (with-open [os (java.io.ByteArrayOutputStream.)]
+          (#'streaming-response/do-f-async
+           (reify AsyncContext
+             (complete [_] nil))
+           nil
+           nil
+           (fn [_os _canceled-chan]
+             (deliver ran-on (.getName (Thread/currentThread))))
+           os
+           finished-chan
+           canceled-chan
+           (AtomicBoolean. false)
+           executor)
+          (is (= "custom-streaming-executor" (deref ran-on 5000 ::timed-out)))
+          (is (= :completed (a/<!! finished-chan))))
+        (finally
+          (.shutdownNow executor))))))

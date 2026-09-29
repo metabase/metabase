@@ -51,7 +51,7 @@ On self-hosted Metabases, this option determines whether or not you allow [anony
 
 {% include plans-blockquote.html feature="Collecting user data" %}
 
-You can switch on logging of IP addresses, user agents, embed path, query parameters, and Metabot conversation metadata for people using your Metabase, both for people directly by logging into Metabase, or for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
+You can switch on logging of IP addresses, user agents, embed path, query parameters, the values people submit when they run an action, and Metabot conversation metadata for people using your Metabase, both for people logging in directly to Metabase, and for people who view an embedded Metabase component in your app. If enabled, you can find this information in your [usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
 By default, collection of user data is turned **off**.
 
@@ -61,44 +61,8 @@ By default, Metabase attempts to make field and table names more readable by cha
 
 If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
 
-To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models.md).
+To manually label field or table names in Metabase, check out the [Table Metadata](../data-modeling/metadata/metadata-editing.md) section in your admin panel. Metadata in the Table Metadata can be further curated in [models](../data-modeling/models/models.md).
 
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.
-
-## Allowed domains for iframes in dashboards
-
-Make sure you trust the sources that you allow people to embed in dashboards.
-
-You can include multiple domains separated by a comma. Including a subdomain is more restrictive than including the domain.
-
-- For **Domains**, (e.g., `example.com`), Metabase will allow any iframe from the domain (`example.com`) _and_ its subdomains (e.g., `data.example.com`, `docs.example.com`, etc.).
-- For **Subdomains** (e.g., `data.example.com`) Metabase will restrict iframes to those subdomains. In this case, iframes _must_ be from `data.example.com` (or any of the other allowed domains). Metabase will block iframes from all other subdomains, including `example.com`.
-
-So if you included the following:
-
-```
-data.example.com,
-docs.example.com
-```
-
-Metabase would only allow iframes from `data.example.com` and `docs.example.com`. Metabase would block iframes from all other domains, including iframes from `example.com` and its other subdomains.
-
-See [iframes in dashboards](../dashboards/introduction.md#iframe-cards).
-
-## Restrict image domains
-
-When on, Metabase restricts the browser's Content Security Policy so images can only load from this Metabase instance, the map tile server used by map visualizations, or the domains listed in [Allowed domains for images](#allowed-domains-for-images).
-
-By default, images from any domain are allowed.
-
-You must turn on this setting to enable [Custom visualizations](../questions/visualizations/custom.md). While custom visualizations are enabled, you can't turn it back off.
-
-## Allowed domains for images
-
-When the [Restrict image domains](#restrict-image-domains) setting is on, Metabase will only allow images served from this Metabase instance, the map tile server used by map visualizations, and any domains listed on this page.
-
-Leave this input empty to allow images hosted by your Metabase instance and the map tile server. The map tile server is always allowed so map visualizations keep working, you don't need to manually add it here.
-
-Add multiple domains separated by a comma. Domains follow the same matching rules as [Allowed domains for iframes in dashboards](#allowed-domains-for-iframes-in-dashboards): listing a domain like `example.com` also allows its subdomains, while listing a subdomain like `images.example.com` allows only that subdomain.

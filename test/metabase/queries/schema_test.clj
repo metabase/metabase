@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [malli.error :as me]
+   [metabase.lib.core :as lib]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]))
@@ -13,11 +14,11 @@
 
 (deftest ^:parallel set-invalid-metadata-to-nil-test
   (is (= {:result_metadata nil}
-         (queries.schema/normalize-card {:result_metadata [{}]}))))
+         (lib/normalize ::queries.schema/card {:result_metadata [{}]}))))
 
 (deftest ^:parallel nil-result-metadata-should-not-warn-test
   (log.capture/with-log-messages-for-level [messages [metabase.queries.schema :warn]]
     (is (= {:result_metadata nil}
-           (queries.schema/normalize-card {:result_metadata nil})))
+           (lib/normalize ::queries.schema/card {:result_metadata nil})))
     (is (empty? (messages))
         "nil result_metadata should not produce a warning")))

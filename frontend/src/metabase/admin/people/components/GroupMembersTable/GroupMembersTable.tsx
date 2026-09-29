@@ -6,7 +6,11 @@ import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
 import { Link } from "metabase/common/components/Link";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
+import {
+  isAdminGroup,
+  isApiKeyGroupMember,
+  isDefaultGroup,
+} from "metabase/common/utils/groups";
 import { getUser } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -15,9 +19,6 @@ import { getFullName } from "metabase/utils/user";
 import type { Group, Member, Membership } from "metabase-types/api";
 
 import { AddMemberRow } from "../AddMemberRow";
-
-const isApiKeyGroupMember = (member: Member) =>
-  member.email.endsWith("@api-key.invalid");
 
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&

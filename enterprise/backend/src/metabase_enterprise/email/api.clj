@@ -33,7 +33,7 @@
   Calling this automatically sets `cloud-smtp-enabled` to true if the settings are valid."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:email-smtp-host-override {:optional true} [:or string? nil?]]
                 [:email-smtp-password-override {:optional true} [:or string? nil?]]
                 [:email-smtp-port-override {:optional true} [:or int? nil?]]

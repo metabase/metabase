@@ -9,8 +9,10 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
@@ -18,12 +20,11 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
-   [potemkin :as p]
-   ;; pool invalidation re-fetches Database details from the app db; runs outside any query context
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.warehouses.schema :as warehouses.schema]
+   [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 DataSources)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources)
+   (java.sql Connection)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
 
@@ -132,6 +133,22 @@
             :catalog)
    details))
 
+(def ^:private pool-type->name-suffix
+  "Suffix appended to the pool name for each non-default [[driver.conn/connection-pool-type]]."
+  {:write-data "-write"
+   :admin      "-admin"
+   :transform  "-transform"})
+
+(defn- pool-data-source-name
+  "The c3p0 `dataSourceName` for `database`'s pool of the current connection type: `db-<id>-<driver>-<name>`, with
+  `-write` (or the other suffixes in [[pool-type->name-suffix]]) appended for a non-default pool type."
+  [driver database]
+  (str (format "db-%d-%s-%s"
+               (u/the-id database)
+               (name driver)
+               (data-source-name driver (driver.conn/effective-details database)))
+       (pool-type->name-suffix (driver.conn/connection-pool-type database))))
+
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -223,12 +240,10 @@
                                                         "com.mchange namespace. You must raise the log level for"
                                                         "com.mchange to INFO via a custom Log4j config in order to"
                                                         "see stacktraces in the logs.")))
-   ;; Set the data source name so that the c3p0 JMX bean has a useful identifier, which incorporates the DB ID, driver,
-   ;; and name from the details
-   "dataSourceName"                       (format "db-%d-%s-%s"
-                                                  (u/the-id database)
-                                                  (name driver)
-                                                  (data-source-name driver (driver.conn/effective-details database)))})
+   ;; Set the data source name so that the pool has a useful identifier, which incorporates the DB ID, driver, and name
+   ;; from the details. It is the `database` label on the exported c3p0_* pool metrics, so a non-default pool type gets
+   ;; a suffix: otherwise the default and write pools of one warehouse would share a label and overwrite each other.
+   "dataSourceName"                       (pool-data-source-name driver database)})
 
 (defn- connection-pool-spec
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
@@ -310,7 +325,7 @@
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated.
   Uses [[driver.conn/effective-details]] to select the appropriate details for the current connection context."
-  [{driver :engine, :as database} :- [:maybe :map]]
+  [{driver :engine, :as database} :- [:maybe ::warehouses.schema/database-or-metadata]]
   (when (some? database)
     (hash (connection-details->spec driver (driver.conn/effective-details database)))))
 
@@ -414,7 +429,7 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id)
+      (not= curr-hash (-> (driver.db/database-connection-details database-id)
                           jdbc-spec-hash)))))
 
 (defn- get-canonical-pool
@@ -477,7 +492,7 @@
          ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
          ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
          ;; and make sure only one thread will be creating a pool at a given instant.
-         (locking pool-cache-key->connection-pool
+         (locking pool-lock/monitor
            (or
             ;; check if another thread created the pool while we were waiting to acquire the lock
             (get-canonical-pool cache-key details-hash false)
@@ -546,3 +561,36 @@
 
 (defmethod driver/connection-spec :sql-jdbc [_driver db]
   (db->pooled-connection-spec  db))
+
+(def ^:private raw-connection-close-method
+  ;; c3p0 exposes the pooled physical Connection only through `rawConnectionOperation`, which names the operation as a
+  ;; `java.lang.reflect.Method`. `unwrap` is not an alternative: c3p0 delegates it to the driver, and Hive's throws.
+  (.getMethod Connection "close" (make-array Class 0)))
+
+(defn discard-pooled-connection!
+  "Destroy the physical Connection behind a c3p0 proxy, so the pool acquires a fresh one rather than handing this one
+  to the next query. Use for a Connection left in a state the pool cannot reset, such as after canceling a Statement
+  on a driver where that leaves unread protocol state on the wire.
+
+  Only the caller that owns `conn` may call this: the pool has no way to tell the difference between a Connection
+  whose borrower is finished with it and one that is still in use.
+
+  A Connection with no pool behind it has no next query to poison, so it is left alone."
+  [^Connection conn]
+  (when (instance? C3P0ProxyConnection conn)
+    (try
+      (.rawConnectionOperation ^C3P0ProxyConnection conn
+                               raw-connection-close-method
+                               C3P0ProxyConnection/RAW_CONNECTION
+                               (make-array Object 0))
+      (catch Throwable e
+        (log/debugf "Closing the raw connection to discard it failed: %s" (ex-message e))))
+    ;; Closing the raw Connection is invisible to c3p0: `rawConnectionOperation` reports nothing back to the pool, and
+    ;; the check-in reset only reads properties that a driver may answer from memory once closed — Hive's
+    ;; `getAutoCommit` is a bare `return true` — so on those drivers the pool would hand the dead Connection to the
+    ;; next query. Any *proxied* call routes its exception into c3p0, which then tests the physical Connection and
+    ;; destroys it when the test fails. `createStatement` is that call: JDBC requires it to throw on a closed
+    ;; Connection.
+    (try
+      (.close (.createStatement conn))
+      (catch Throwable _))))

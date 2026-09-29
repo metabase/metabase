@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { createMockState } from "__support__/state";
 import {
   fireEvent,
   renderWithProviders,
@@ -9,7 +10,6 @@ import {
   within,
 } from "__support__/ui";
 import { getHighlightedComment } from "metabase/explorations/selectors";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import type { Comment, CommentContext, Timeline } from "metabase-types/api";
 import { createMockTimeline, createMockUser } from "metabase-types/api/mocks";

@@ -10,12 +10,10 @@ import { getErrorMessage } from "metabase/api/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";
 import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
-import { getMetadataUnfiltered } from "metabase/metadata-store";
-import { useSelector } from "metabase/redux";
+import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DatasetColumn,
@@ -107,12 +105,10 @@ const ObjectDetailPreviewBase = ({
 };
 
 function getDataSampleQuery(
-  metadata: Metadata,
-  databaseId: DatabaseId,
+  metadataProvider: Lib.MetadataProvider,
   tableId: TableId,
   fieldId: FieldId,
 ) {
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
   const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
   const field = Lib.fieldMetadata(metadataProvider, fieldId);
   if (table == null || field == null) {
@@ -133,11 +129,13 @@ function getDataSampleQuery(
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   // do not generate a new query when metadata changes
-  const metadata = useSelector(getMetadataUnfiltered);
-  const metadataRef = useRef(metadata);
-  metadataRef.current = metadata;
+  const metadataProvider = useMetadataProviderUnfiltered(databaseId);
+  const metadataProviderRef = useRef(metadataProvider);
+  metadataProviderRef.current = metadataProvider;
   const query = useMemo(
-    () => getDataSampleQuery(metadataRef.current, databaseId, tableId, fieldId),
+    () => getDataSampleQuery(metadataProviderRef.current, tableId, fieldId),
+    // databaseId is not read above, but it selects the provider held in the ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [databaseId, tableId, fieldId],
   );
 

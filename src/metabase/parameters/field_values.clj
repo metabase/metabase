@@ -2,9 +2,9 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.classloader.core :as classloader]
    [metabase.models.interface :as mi]
+   [metabase.parameters.db :as parameters.db]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -40,7 +40,7 @@
   "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
   [field-ids]
   (when (seq field-ids)
-    (let [field-ids (->> (t2/select :model/Field :id [:in (set field-ids)])
+    (let [field-ids (->> (parameters.db/fields (set field-ids))
                          field/readable-fields-only
                          (map :id))]
       (when (seq field-ids)
@@ -82,7 +82,7 @@
   Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
   [field-ids]
   (let [fields                 (when (seq field-ids)
-                                 (t2/hydrate (t2/select :model/Field :id [:in (set field-ids)]) :table))
+                                 (t2/hydrate (parameters.db/fields (set field-ids)) :table))
         {normal-fields   false
          advanced-fields true} (group-by requires-advanced-field-value? fields)]
     (merge
@@ -145,14 +145,20 @@
          advanced-field-value? (not= hash-input {:field-id (u/the-id field)})]
      (if advanced-field-value?
        (let [hash-key (str (hash hash-input))
-             select-kvs {:field_id (:id field) :type :advanced :hash_key hash-key}
-             fv (app-db/select-or-insert! :model/FieldValues select-kvs
-                                          #(prepare-advanced-field-values field hash-key constraints))]
+             ;; look first on this thread: a hit is one SELECT, and handing that to a background
+             ;; thread costs more than it saves. Only a miss is worth detaching, because only a
+             ;; miss scans the warehouse.
+             fv (or (parameters.db/advanced-field-values (:id field) hash-key)
+                    (field-values/detached-fetch!
+                     [:advanced (:id field) hash-key]
+                     (fn []
+                       (parameters.db/find-or-insert-advanced-field-values!
+                        (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints)))))]
          ;; If it's expired, delete then try to re-create it
          (if (some-> fv field-values/advanced-field-values-expired?)
            (do
              ;; It's possible another process has already recalculated this, but spurious recalculations are OK.
-             (t2/delete! :model/FieldValues :id (:id fv))
+             (parameters.db/delete-field-values! (:id fv))
              (recur field constraints))
            fv))
        (field-values/get-or-create-full-field-values! field)))))

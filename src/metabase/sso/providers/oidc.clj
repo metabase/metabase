@@ -15,8 +15,8 @@
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
 ;; Register the OIDC provider in the hierarchy
-(derive :provider/oidc :metabase.auth-identity.provider/provider)
-(derive :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/oidc :metabase.auth-identity.provider/create-user-if-not-exists)
 
 ;;; -------------------------------------------------- Configuration Handling --------------------------------------------------
 

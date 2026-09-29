@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common :as driver.common]
@@ -28,11 +29,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
-   ;; sync fix-ups read and write Database/Table/Field rows directly; the metadata provider is read-only
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.performance :as perf])
   (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
@@ -46,10 +45,12 @@
     BigQueryException
     BigQueryOptions
     Clustering
+    ConnectionProperty
     Dataset
     DatasetId
     Field
     Field$Mode
+    FieldList
     FieldValue
     FieldValueList
     Job
@@ -108,7 +109,7 @@
    [:api-host :token-host]))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- :map]
+  ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
@@ -132,11 +133,15 @@
       (.setUniverseDomain bq-bldr universe-domain))
     (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
+    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
+      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
+      (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
   (constantly nil))
@@ -245,7 +250,9 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [database dataset-id table-id]
+  (^Table [database   :- :metabase.warehouses.schema/database-or-metadata
+           dataset-id :- driver-api/schema.common.non-blank-string
+           table-id   :- driver-api/schema.common.non-blank-string]
    (let [details    (driver.conn/effective-details database)
          project-id (:project-id details)]
      (get-table (database-details->client details) project-id dataset-id table-id)))
@@ -393,9 +400,11 @@
     [database-type (database-type->base-type database-type)]))
 
 (mu/defn- fields->metabase-field-info
-  ([fields]
+  ([fields :- (driver-api/instance-of-class FieldList)]
    (fields->metabase-field-info nil nil fields))
-  ([database-position nfc-path fields]
+  ([database-position :- [:maybe :int]
+    nfc-path          :- [:maybe [:sequential :string]]
+    fields            :- (driver-api/instance-of-class FieldList)]
    (into
     []
     (map
@@ -645,6 +654,7 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-byte-budget*
   "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
   `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
@@ -652,6 +662,7 @@
  stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *query-page-byte-budget*
   "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
   because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
@@ -763,7 +774,7 @@
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
-  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+  (bigquery.db/active-partitioned-field-exists? table-id partitioned-time-field-name))
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
@@ -811,6 +822,7 @@
 ;;; 1. The initial query done by `execute-bigquery` where the `.query` call can be shortcircuited by `cancel-chan`.
 ;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (falls back to [[initial-page-rows]] for the first
   page, then adaptive sizing) by default, but override for testing."
@@ -992,7 +1004,8 @@
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
                   (-> column
                       (set/rename-keys {:base-type :base_type})
-                      (dissoc :database-type :database-position)))
+                      ;; `:nested-fields` describes a RECORD's sub-fields for sync, not a result column
+                      (dissoc :database-type :database-position :nested-fields)))
         cols {:cols columns}
         results (eduction (map (fn [^FieldValueList row]
                                  (perf/mapv parse-field-value row parsers)))
@@ -1050,12 +1063,13 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
-  [respond  :- fn?
-   database :- [:map [:details :map]]
-   sql
-   parameters
-   cancel-chan]
+  [respond     :- fn?
+   database    :- :metabase.warehouses.schema/database-or-metadata
+   sql         :- :string
+   parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+   cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
@@ -1126,7 +1140,8 @@
                               ;; statements by using a different driver-native API for affected-row counts.
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
-                              :transforms/table                 true}]
+                              :transforms/table                 true
+                              :transforms/testing               false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1176,13 +1191,7 @@
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                (pr-str db-id))
     (try
-      (t2/query-one {:update (t2/table-name :model/Table)
-                     :set    {:schema dataset-id}
-                     :where  [:and
-                              [:= :db_id db-id]
-                              [:or
-                               [:= :schema nil]
-                               [:not= :schema dataset-id]]]})
+      (bigquery.db/set-table-schemas! db-id dataset-id)
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
@@ -1191,7 +1200,7 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (t2/update! :model/Database db-id {:details updated-details})
+      (bigquery.db/update-database-details! db-id updated-details)
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
@@ -1301,19 +1310,91 @@
   (let [table-str (get-table-str table)]
     [(str "DROP TABLE IF EXISTS " table-str)]))
 
+(defn- session-query-config
+  "The configuration of a job running the `[sql params]` query in the session `session-id`, or creating a new session
+  when `session-id` is nil."
+  ^QueryJobConfiguration [^String session-id [^String sql params]]
+  (let [builder (doto (QueryJobConfiguration/newBuilder sql)
+                  (bigquery.params/set-parameters! params)
+                  (.setUseLegacySql false))]
+    (if session-id
+      (.setConnectionProperties builder [(-> (ConnectionProperty/newBuilder)
+                                             (.setKey "session_id")
+                                             (.setValue session-id)
+                                             (.build))])
+      (.setCreateSession builder true))
+    (.build builder)))
+
+(defn- run-session-job!
+  "Runs the `[sql params]` query in the session `session-id`, or in a new session when `session-id` is nil, and returns
+  its finished job."
+  ^Job [^BigQuery client session-id query]
+  (let [job (.create client (JobInfo/of (session-query-config session-id query)) (u/varargs BigQuery$JobOption))]
+    (.getQueryResults job (u/varargs BigQuery$QueryResultsOption))
+    job))
+
+(defmethod driver/do-with-test-connection :bigquery-cloud-sdk
+  [driver database f]
+  (let [details    (driver/connection-spec driver database)
+        client     (database-details->client details)
+        _          (driver.conn/track-connection-acquisition! details)
+        job        (.reload (run-session-job! client nil ["SELECT 1" nil]) (u/varargs BigQuery$JobOption))
+        session-id (.getSessionId (.getSessionInfo (.getStatistics job)))]
+    (try
+      (f {:client client, :session-id session-id})
+      (finally
+        (try
+          (run-session-job! client session-id ["CALL BQ.ABORT_SESSION()" nil])
+          (catch Exception e
+            (log/warnf "Failed to abort BigQuery transform test session: %s" (ex-message e))))))))
+
+(defmethod driver/execute-on-connection! :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query]
+  (run-session-job! client session-id query)
+  {:rows-affected 0})
+
+(defmethod driver/query-on-connection :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query {:keys [max-rows]}]
+  ;; Every scalar arrives as a String, and a NULL as an Object (TBD-1592), so the values go through the same per-field
+  ;; parsers the query processor reads results with rather than straight off the cell.
+  (let [^TableResult result (.getQueryResults (run-session-job! client session-id query)
+                                              (u/varargs BigQuery$QueryResultsOption))
+        ^Schema schema      (.getSchema result)
+        parsers             (get-field-parsers schema)]
+    {:columns (perf/mapv (fn [^Field field]
+                           {:name          (.getName field)
+                            :database_type (.. field getType name)})
+                         (.getFields schema))
+     :rows    (into []
+                    (comp (map (fn [^FieldValueList row]
+                                 (perf/mapv parse-field-value row parsers)))
+                          (if max-rows (take max-rows) identity))
+                    (.iterateAll result))}))
+
+(defmethod driver/compile-create-temp-table :bigquery-cloud-sdk
+  [_driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(format "CREATE TEMP TABLE %s AS %s" (get-table-str (keyword table)) sql-query)
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :bigquery-cloud-sdk
+  [_driver table]
+  [(str "DROP TABLE IF EXISTS " (get-table-str (keyword table)))
+   []])
+
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key indexes]}]
   (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
         cluster   (clustering-clause indexes)
         sql       (if cluster (str base " " cluster) base)
-        database  (t2/select-one :model/Database database-id)
+        database  (bigquery.db/database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql       (driver/compile-drop-table driver table-name)
-        database  (t2/select-one :model/Database database-id)
+        database  (bigquery.db/database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
@@ -1368,7 +1449,7 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (t2/select-one :model/Database db-id)
+  (let [database   (bigquery.db/database db-id)
         col-kws    (perf/mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request
@@ -1423,7 +1504,7 @@
   (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
-  [_]
+  [_driver _database]
   nil)
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk

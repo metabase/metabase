@@ -8,10 +8,10 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.jobs :as transforms.jobs]
    [metabase.transforms.settings :as transforms.settings]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util TimeZone)
    (org.quartz CronTrigger TriggerKey CronExpression)))
@@ -137,5 +137,5 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
-  (->> (t2/select :model/TransformJob :active true)
+  (->> (transforms.db/active-jobs)
        (run! initialize-job!)))

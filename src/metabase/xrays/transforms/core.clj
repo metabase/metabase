@@ -11,6 +11,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.xrays.db :as xrays.db]
    [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
    [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
@@ -35,7 +36,7 @@
     field-name
 
     [:field (id :guard integer?) _]
-    (t2/select-one-fn :name :model/Field :id id)))
+    (xrays.db/field-name id)))
 
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
@@ -141,8 +142,10 @@
   [:sequential
    [:and
     (ms/InstanceOf :model/Table)
-    [:map
-     [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
+    [:merge
+     :metabase.warehouse-schema.schema/table
+     [:map {:closed true}
+      [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset
@@ -189,7 +192,7 @@
 (mu/defn- tableset :- Tableset
   [db-id  :- ::lib.schema.id/database
    schema :- [:maybe :string]]
-  (-> (t2/select :model/Table :db_id db-id :schema schema)
+  (-> (xrays.db/tables-in-schema db-id schema)
       de/with-domain-entity
       (t2/hydrate :fields)))
 

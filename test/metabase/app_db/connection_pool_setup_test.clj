@@ -8,12 +8,15 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer DataSources PoolBackedDataSource WrapperConnectionPoolDataSource)
+   (java.lang.management ManagementFactory)
+   (javax.management ObjectName)
    (metabase.app_db.connection_pool_setup MetabaseConnectionCustomizer)))
 
 (set! *warn-on-reflection* true)
@@ -48,6 +51,28 @@
   []
   (dotimes [_ 5]
     (t2/count :model/Database)))
+
+(deftest no-c3p0-mbeans-test
+  (testing "c3p0 registers no JMX MBeans for its pools (resources/c3p0.properties turns its management off)"
+    ;; see the comment in resources/c3p0.properties for why
+    (let [c3p0-beans #(.queryNames (ManagementFactory/getPlatformMBeanServer) (ObjectName. "com.mchange.v2.c3p0:*") nil)
+          app-pool   (mdb.connection-pool-setup/connection-pool-data-source
+                      :h2
+                      (mdb.data-source/raw-connection-string->DataSource
+                       (format "jdbc:h2:mem:%s" (mt/random-name))))]
+      (try
+        (testing "after building the application pool"
+          (is (empty? (c3p0-beans))))
+        (testing "after building a warehouse pool"
+          ;; a fresh database, so this builds a pool rather than finding a cached one
+          (mt/with-temp [:model/Database db {:engine :h2, :details {:db (str "mem:" (mt/random-name))}}]
+            (try
+              (sql-jdbc.conn/db->pooled-connection-spec db)
+              (is (empty? (c3p0-beans)))
+              (finally
+                (sql-jdbc.conn/invalidate-pool-for-db! db)))))
+        (finally
+          (connection-pool/destroy-connection-pool! app-pool))))))
 
 (deftest MetabaseConnectionCustomizer-test
   (testing "connection customizer is registered"
@@ -101,26 +126,27 @@
             "recent-window-duration has elapsed but still recent")))))
 
 (defn- with-config-overrides
-  "Returns a fn replacement for `config/config-int` (or `config/config-bool`) that returns
-  `overrides`' value for matching keys and the original config fn's value otherwise."
-  [orig-fn overrides]
-  (fn [k]
-    (if (contains? overrides k)
-      (get overrides k)
-      (orig-fn k))))
+  "Returns a fn replacement for the config fn var `config-var` (`#'config/config-int` or
+  `#'config/config-bool`) that returns `overrides`' value for matching keys and the original's otherwise."
+  [config-var overrides]
+  (let [orig-fn (mt/original-fn config-var)]
+    (fn [k]
+      (if (contains? overrides k)
+        (get overrides k)
+        (orig-fn k)))))
 
 (deftest application-db-connection-pool-props-defaults-test
   (testing "default values are preserved when no overrides are set"
-    (with-redefs [config/config-int  (with-config-overrides config/config-int
-                                       {:mb-application-db-max-connection-pool-size                  nil
-                                        :mb-application-db-unreturned-connection-timeout            nil
-                                        :mb-application-db-unreturned-connection-timeout-seconds    nil
-                                        :mb-application-db-max-connection-age-seconds               nil
-                                        :mb-application-db-idle-connection-test-period-seconds      nil
-                                        :mb-application-db-max-idle-time-excess-connections-seconds nil
-                                        :mb-application-db-checkout-timeout-ms                       nil})
-                  config/config-bool (with-config-overrides config/config-bool
-                                       {:mb-application-db-test-connection-on-checkout nil})]
+    (mt/with-dynamic-fn-redefs [config/config-int  (with-config-overrides #'config/config-int
+                                                     {:mb-application-db-max-connection-pool-size                  nil
+                                                      :mb-application-db-unreturned-connection-timeout            nil
+                                                      :mb-application-db-unreturned-connection-timeout-seconds    nil
+                                                      :mb-application-db-max-connection-age-seconds               nil
+                                                      :mb-application-db-idle-connection-test-period-seconds      nil
+                                                      :mb-application-db-max-idle-time-excess-connections-seconds nil
+                                                      :mb-application-db-checkout-timeout-ms                       nil})
+                                config/config-bool (with-config-overrides #'config/config-bool
+                                                     {:mb-application-db-test-connection-on-checkout nil})]
       (let [props (#'mdb.connection-pool-setup/application-db-connection-pool-props)]
         (is (= 60   (get props "idleConnectionTestPeriod")))
         (is (= 600  (get props "maxIdleTimeExcessConnections")))
@@ -133,56 +159,81 @@
 
 (deftest application-db-connection-pool-props-overrides-test
   (testing "MB_APPLICATION_DB_MAX_CONNECTION_AGE_SECONDS overrides maxConnectionAge"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-max-connection-age-seconds 0})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-max-connection-age-seconds 0})]
       (is (= 0 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                     "maxConnectionAge"))
           "setting maxConnectionAge to 0 must be honored (use case: RDS IAM auth via the AWS JDBC wrapper)")))
   (testing "MB_APPLICATION_DB_IDLE_CONNECTION_TEST_PERIOD_SECONDS overrides idleConnectionTestPeriod"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-idle-connection-test-period-seconds 30})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-idle-connection-test-period-seconds 30})]
       (is (= 30 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                      "idleConnectionTestPeriod")))))
   (testing "MB_APPLICATION_DB_MAX_IDLE_TIME_EXCESS_CONNECTIONS_SECONDS overrides maxIdleTimeExcessConnections"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-max-idle-time-excess-connections-seconds 120})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-max-idle-time-excess-connections-seconds 120})]
       (is (= 120 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                       "maxIdleTimeExcessConnections")))))
   (testing "MB_APPLICATION_DB_TEST_CONNECTION_ON_CHECKOUT overrides testConnectionOnCheckout"
-    (with-redefs [config/config-bool (with-config-overrides config/config-bool
-                                       {:mb-application-db-test-connection-on-checkout true})]
+    (mt/with-dynamic-fn-redefs [config/config-bool (with-config-overrides #'config/config-bool
+                                                     {:mb-application-db-test-connection-on-checkout true})]
       (is (true? (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                       "testConnectionOnCheckout")))))
   (testing "MB_APPLICATION_DB_CHECKOUT_TIMEOUT_MS overrides checkoutTimeout"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-checkout-timeout-ms 5000})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-checkout-timeout-ms 5000})]
       (is (= 5000 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                        "checkoutTimeout")))))
   (testing "checkoutTimeout of 0 (block forever) can be explicitly restored"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-checkout-timeout-ms 0})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-checkout-timeout-ms 0})]
       (is (= 0 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                     "checkoutTimeout"))
           "an operator must be able to opt back into the legacy wait-forever behavior"))))
 
 (deftest application-db-unreturned-connection-timeout-aliasing-test
   (testing "the _SECONDS-suffixed name takes precedence over the legacy unsuffixed name"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-unreturned-connection-timeout-seconds 42
-                                       :mb-application-db-unreturned-connection-timeout         99})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-unreturned-connection-timeout-seconds 42
+                                                     :mb-application-db-unreturned-connection-timeout         99})]
       (is (= 42 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                      "unreturnedConnectionTimeout")))))
   (testing "the legacy unsuffixed name still works when the _SECONDS-suffixed name is not set"
-    (with-redefs [config/config-int (with-config-overrides config/config-int
-                                      {:mb-application-db-unreturned-connection-timeout-seconds nil
-                                       :mb-application-db-unreturned-connection-timeout         99})]
+    (mt/with-dynamic-fn-redefs [config/config-int (with-config-overrides #'config/config-int
+                                                    {:mb-application-db-unreturned-connection-timeout-seconds nil
+                                                     :mb-application-db-unreturned-connection-timeout         99})]
       (is (= 99 (get (#'mdb.connection-pool-setup/application-db-connection-pool-props)
                      "unreturnedConnectionTimeout"))))))
+
+(defn- mock-data-source
+  "A `javax.sql.DataSource` whose `.getConnection` calls `f` and expects it to return a `java.sql.Connection`
+  (typically a no-op `reify` in these tests)."
+  ^javax.sql.DataSource [f]
+  (reify javax.sql.DataSource
+    (getConnection [_] (f))))
+
+(deftest prime-pool!-test
+  (testing "returns true when the data source hands out a connection within the timeout"
+    (let [ds (mock-data-source #(reify java.sql.Connection (close [_])))]
+      (is (true? (#'mdb.connection-pool-setup/prime-pool! ds 5000)))))
+  (testing "returns false when getConnection blocks past the timeout, and does not wait for it"
+    ;; Regression guard for #81440: without a wall-clock bound on the priming acquire, a wedged pool would hang
+    ;; startup for the full checkoutTimeout (30s by default).
+    (let [ds     (mock-data-source (fn []
+                                     (Thread/sleep 60000)
+                                     (throw (RuntimeException. "should have been interrupted"))))
+          timer  (u/start-timer)
+          result (#'mdb.connection-pool-setup/prime-pool! ds 100)]
+      (is (false? result))
+      (is (< (u/since-ms timer) 1000)
+          "prime-pool! must return within a small multiple of the timeout, not wait for getConnection"))))
 
 (deftest reset-read-only-test
   (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
     (when (= (app-db/db-type) :postgres)
       (let [connection* (promise)]
+        ;; c3p0 calls the ConnectionCustomizer on a pool thread, which doesn't inherit *local-redefs*
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [mdb.connection-pool-setup/on-check-in
                       (let [orig @#'mdb.connection-pool-setup/on-check-in]
                         (fn [^java.sql.Connection connection]

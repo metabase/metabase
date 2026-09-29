@@ -14,7 +14,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io FileNotFoundException)
-   (java.net URL)
+   (java.net URI URL)
    (java.nio.file CopyOption Files FileSystem FileSystemAlreadyExistsException
                   FileSystems LinkOption OpenOption Path Paths StandardCopyOption)
    (java.nio.file.attribute FileAttribute)
@@ -208,6 +208,13 @@
                (getResource ".keep-me")
                getProtocol)))
 
+(defn code-location->path
+  "Convert a code-source location URI into a native filesystem path string."
+  ^String [^URI uri]
+  ;; Paths/get decodes %-escapes AND yields the platform-native form. URI.getPath only decodes: on Windows it returns
+  ;; `/C:/...`, which java.nio.file.Path rejects (#81733).
+  (str (Paths/get uri)))
+
 (defn get-jar-path
   "Returns the path to the currently running jar file.
 
@@ -218,8 +225,8 @@
       (.getProtectionDomain)
       (.getCodeSource)
       (.getLocation)
-      (.toURI) ;; avoid problems with special characters in path.
-      (.getPath)))
+      (.toURI)
+      (code-location->path)))
 
 (defn find-in-current-jar
   "Find matching files in the current jar. See

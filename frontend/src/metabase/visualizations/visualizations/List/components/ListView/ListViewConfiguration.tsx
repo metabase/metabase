@@ -291,7 +291,6 @@ export const ListViewConfiguration = ({
                 <Box p="lg">
                   <Switch
                     label={t`Show image`}
-                    size="sm"
                     labelPosition="left"
                     w="100%"
                     styles={{
@@ -383,7 +382,9 @@ export const ListViewConfiguration = ({
                         className={cx(S.iconColorButton, {
                           [S.selected]: color === iconConfig.selectedIconColor,
                         })}
-                        variant="subtle"
+                        variant="transparent"
+                        size="compact-md"
+                        p={0}
                         bg={color}
                         onClick={() => {
                           handleConfigurationChange({

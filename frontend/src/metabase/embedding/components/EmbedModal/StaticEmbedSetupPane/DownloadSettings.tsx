@@ -26,7 +26,6 @@ export const DashboardDownloadSettings = ({
         <Switch
           label={t`Export to PDF`}
           labelPosition="left"
-          size="sm"
           variant="stretch"
           checked={pdf}
           onChange={(e) => {
@@ -40,7 +39,6 @@ export const DashboardDownloadSettings = ({
         <Switch
           label={t`Results (csv, xlsx, json, png)`}
           labelPosition="left"
-          size="sm"
           variant="stretch"
           checked={results}
           onChange={(e) => {
@@ -67,7 +65,6 @@ export const QuestionDownloadSettings = ({
     <Switch
       label={t`Download (csv, xlsx, json, png)`}
       labelPosition="left"
-      size="sm"
       variant="stretch"
       checked={displayOptions.downloads.results}
       onChange={(e) => {

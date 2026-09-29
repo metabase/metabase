@@ -5,14 +5,13 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
    [metabase.util.cron :as u.cron]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +26,7 @@
   "Private helper for create-alert (call that instead)."
   [{:keys [card-id slack-channel schedule send-condition send-once]
     :or   {send-once false}}]
-  (let [card         (some-> (t2/select-one :model/Card card-id) api/read-check)
+  (let [card         (some-> (metabot.db/card card-id) api/read-check)
         channel-name (some->> slack-channel
                               channel.settings/find-cached-slack-channel-or-username
                               :display-name)]
@@ -134,10 +133,10 @@
   `send_once` is optional (default false); when true the alert is deleted after it fires once."
   [{:keys [card_id send_condition schedule send_once]} :- alert-schema]
   (let [slack-channel-id (:slack_channel_id (shared/current-context))]
-    (when-not slack-channel-id
-      (throw (ex-info "This tool can only be used from a Slack channel"
-                      {:agent-error? true})))
     (try
+      (when-not slack-channel-id
+        (throw (ex-info "This tool can only be used from a Slack channel"
+                        {:agent-error? true})))
       (let [result (create-alert {:card-id        card_id
                                   :send-condition (keyword send_condition)
                                   :schedule       schedule
@@ -147,5 +146,4 @@
           {:output (:error result)}
           {:output (or (:output result) "Alert created successfully.")}))
       (catch Exception e
-        (log/errorf "Failed to create alert: %s" (ex-message e))
-        {:output (str "Failed to create alert: " (or (ex-message e) "Unknown error"))}))))
+        (metabot.tools.u/handle-agent-or-api-error e)))))

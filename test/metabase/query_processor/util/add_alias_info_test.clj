@@ -20,9 +20,12 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.match :as match]))
 
 (comment h2/keep-me)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."
@@ -1389,10 +1392,10 @@
                           (lib/aggregate $q (lib/count)))
           ;; Inject stale :inherited-temporal-unit into the breakout field ref, simulating a card
           ;; saved when the source column had :minute granularity.
-          ;; Legacy field refs are [:field name-or-id opts-map].
+          ;; MBQL 5 field refs are [:field opts-map id], so the options live at index 1.
           model-2-query (lib/update-query-stage
                          model-2-query -1
-                         assoc-in [:breakouts 0 1 :inherited-temporal-unit] :minute)
+                         assoc-in [:breakout 0 1 :inherited-temporal-unit] :minute)
           mp (lib.tu/mock-metadata-provider
               mp
               {:cards [{:id            2
