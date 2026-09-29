@@ -92,7 +92,7 @@ function ColumnPicker({
   const extractableColumns = useMemo(
     () =>
       availableColumns.filter(
-        (column) => Lib.columnExtractions(query, column).length > 0,
+        (column) => false,
       ),
     [query, availableColumns],
   );
