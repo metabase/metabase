@@ -224,6 +224,26 @@ export function requestBodyFields(body) {
   };
 }
 
+/**
+ * requestBodyFields under the names `<prefix>`, `<prefix>Hash`, `<prefix>Bytes` and `<prefix>Type`.
+ */
+export function payloadFields(value, prefix) {
+  return Object.fromEntries(
+    Object.entries(requestBodyFields(value)).map(([key, field]) => [
+      prefix + key.slice("body".length),
+      field,
+    ]),
+  );
+}
+
+// Picks the reply out of cy.intercept's arguments: (matcher), (method, url), (matcher, reply), (method, url, reply) or (url, matcher, reply).
+export function interceptReplyArg(args, isMethod) {
+  if (args.length >= 3) {
+    return args[2];
+  }
+  return args.length === 2 && !isMethod(args[0]) ? args[1] : undefined;
+}
+
 // Picks the body out of cy.request's arguments the way Cypress does: (url), (url, body), (method, url), (method, url, body) or (options).
 export function requestBodyArg(args, isMethod) {
   const [first, second, third] = args;

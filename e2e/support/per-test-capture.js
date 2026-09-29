@@ -46,6 +46,8 @@
 import { createCoverageCounters } from "./coverage-counters";
 import {
   flattenBranchHits,
+  interceptReplyArg,
+  payloadFields,
   proxyBodyFields,
   requestBodyArg,
   requestBodyFields,
@@ -77,6 +79,18 @@ const stepLevel = journeyCapture
 const stepDumpUrl =
   stepLevel > 0 && backendCoverage ? Cypress.expose("stepDumpUrl") : null;
 const JOURNEY_CAPTURE_PATH = "/__journey-capture/";
+
+// The tasks of the capture itself, of @cypress/code-coverage and of cypress-terminal-report, which every test runs.
+const HARNESS_TASKS = new Set([
+  "recordTestCapture",
+  "resetBackendCoverage",
+  "resetTestCapture",
+  "resetCoverage",
+  "combineCoverage",
+  "coverageReport",
+  "ctrLogMessages",
+  "ctrLogFiles",
+]);
 
 const HTTP_METHODS = new Set([
   "GET",
@@ -383,7 +397,29 @@ function commandText(name, args) {
   if (name === "request") {
     return requestText(args);
   }
+  // A task's argument can hold secrets like a signing key, so it is recorded masked in the event's own fields.
+  if (name === "task") {
+    return `task(${summarizeArg(args?.[0])})`;
+  }
   return `${name}(${(args || []).map(summarizeArg).join(", ")})`;
+}
+
+// A task's argument and a stub's static reply, as the fields of their command event.
+function setupFields(name, args) {
+  if (name !== "task" && name !== "intercept") {
+    return {};
+  }
+  if (hidesArgs(args)) {
+    return name === "task" ? { argType: "hidden" } : { replyType: "hidden" };
+  }
+  if (name === "task") {
+    return bodyFields(() => payloadFields(args[1], "arg"));
+  }
+  const reply = interceptReplyArg(args, isHttpMethod);
+  if (typeof reply === "function") {
+    return { replyType: "handler" };
+  }
+  return bodyFields(() => payloadFields(reply, "reply"));
 }
 
 // The commands of one `cy.a().b().should()` chain share a chainerId.
@@ -491,9 +527,10 @@ function isHttpMethod(value) {
 
 function isCaptureCommand(command) {
   const name = command.get("name");
+  const first = command.get("args")?.[0];
   return (
-    name === "task" ||
-    (name === "intercept" && command.get("args")?.[0] === captureRoute)
+    (name === "task" && HARNESS_TASKS.has(first)) ||
+    (name === "intercept" && first === captureRoute)
   );
 }
 
@@ -764,6 +801,7 @@ if (isInstrumented) {
             chainerId,
             chain: chainOf(command),
             helpers: helpersOf(command),
+            ...setupFields(name, command.get("args") || []),
           }),
         );
       }),

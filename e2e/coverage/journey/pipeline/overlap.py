@@ -765,7 +765,8 @@ def main():
             "Those assertions are keyed by their source line when static_align.py tied them to one, and by their message otherwise. Verdicts and covers use checks.",
             "request_bodies": "In schema 2 captures, a cy.request token carries its body: at the exact level a hash of the body "
             "with run-varying values masked, or the capture's own hash marked ~raw when the body was clipped, "
-            "and at the normalized level the body with ids masked as in command arguments.",
+            "and at the normalized level the body with ids masked as in command arguments. "
+            "In schema 3 captures, a spec's cy.task token carries its argument and a cy.intercept token its static reply the same way.",
             "branches": "Branch arms come from schema 2 captures and are baseline-subtracted like functions. They are recorded per test only, "
             "so a describe's before hooks add theirs to the test that ran them and to no other test of the describe.",
             "backend_dumps": "In schema 2 captures, a cut whose backend dump was skipped or failed has its code in the next dump taken, "

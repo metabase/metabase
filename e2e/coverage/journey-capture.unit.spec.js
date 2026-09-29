@@ -7,6 +7,8 @@ import {
   flattenBranchHits,
   hashText,
   indexBranchHits,
+  interceptReplyArg,
+  payloadFields,
   proxyBodyFields,
   requestBodyArg,
   requestBodyFields,
@@ -455,6 +457,43 @@ describe("requestBodyArg", () => {
       requestBodyArg([{ url: "/api/card", body: { a: 3 } }], isMethod),
     ).toEqual({ a: 3 });
     expect(requestBodyArg([{ url: "/api/card" }], isMethod)).toBeUndefined();
+  });
+});
+
+describe("interceptReplyArg", () => {
+  const isMethod = (value) => ["GET", "POST"].includes(value);
+  const reply = { statusCode: 404 };
+
+  it("should find the reply the way cy.intercept reads its arguments", () => {
+    expect(interceptReplyArg(["/api/card"], isMethod)).toBeUndefined();
+    expect(interceptReplyArg(["GET", "/api/card"], isMethod)).toBeUndefined();
+    expect(interceptReplyArg(["/api/card", reply], isMethod)).toBe(reply);
+    expect(interceptReplyArg([{ url: "/api/card" }, reply], isMethod)).toBe(
+      reply,
+    );
+    expect(interceptReplyArg(["GET", "/api/card", reply], isMethod)).toBe(
+      reply,
+    );
+    expect(
+      interceptReplyArg(["/api/card", { method: "GET" }, reply], isMethod),
+    ).toBe(reply);
+  });
+});
+
+describe("payloadFields", () => {
+  it("should give requestBodyFields its own names", () => {
+    const { body, bodyHash, bodyBytes } = requestBodyFields({
+      fixture: "users.json",
+    });
+    expect(payloadFields({ fixture: "users.json" }, "reply")).toEqual({
+      reply: body,
+      replyHash: bodyHash,
+      replyBytes: bodyBytes,
+    });
+    expect(payloadFields(new FormData(), "arg")).toEqual({
+      argType: "FormData",
+    });
+    expect(payloadFields(undefined, "arg")).toEqual({});
   });
 });
 

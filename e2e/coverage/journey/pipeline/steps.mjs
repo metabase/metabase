@@ -137,22 +137,25 @@ function urlText(value, level) {
   return level === "exact" ? masked : normalizeUrl(masked);
 }
 
-// At the exact level a cy.request body is a hash of its canonical JSON with run-varying values masked,
+// A cy.request's `body`, a task's `arg` or a stub's `reply`.
+// At the exact level it is a hash of its canonical JSON with run-varying values masked,
 // as in a command's arguments, and at the normalized level it is that JSON with ids masked too.
-// A clipped body keeps the capture's hash of its whole text instead, marked "~raw" because run-varying values change it.
-function bodyText(event, level) {
-  if (event.bodyHash === undefined) {
-    return event.bodyType !== undefined ? ` body<${event.bodyType}>` : "";
+// A clipped one keeps the capture's hash of its whole text instead, marked "~raw" because run-varying values change it.
+function payloadText(event, level, field) {
+  const text = event[field];
+  const hash = event[`${field}Hash`];
+  if (hash === undefined) {
+    const type = event[`${field}Type`];
+    return type !== undefined ? ` ${field}<${type}>` : "";
   }
-  if (level === "normalized" && event.body !== undefined) {
-    return ` body ${commandText(event.body, level)}`;
+  if (level === "normalized" && text !== undefined) {
+    return ` ${field} ${commandText(text, level)}`;
   }
   const whole =
-    event.body !== undefined &&
-    Buffer.byteLength(event.body) === event.bodyBytes;
+    text !== undefined && Buffer.byteLength(text) === event[`${field}Bytes`];
   return whole
-    ? ` body#${createHash("sha1").update(commandText(event.body, level)).digest("hex").slice(0, 16)}`
-    : ` body#${event.bodyHash}~raw`;
+    ? ` ${field}#${createHash("sha1").update(commandText(text, level)).digest("hex").slice(0, 16)}`
+    : ` ${field}#${hash}~raw`;
 }
 
 // Codemirror's "ͼ1a" classes and per-render ids like "mantine-6qkjzmq08" change between runs,
@@ -211,10 +214,10 @@ export function assertionAnchor(event, level) {
   return null;
 }
 
-// Plumbing and the recording's own commands: coverage hooks, logging, aliases and callbacks.
+// Plumbing: logging, aliases and callbacks.
+// The capture leaves out its own tasks and the coverage plugin's, and before schema 3 it left out every task.
 const DROPPED_COMMANDS = new Set([
   "log",
-  "task",
   "within-restore",
   "end-logGroup",
   "then",
@@ -230,8 +233,7 @@ export function isDroppedCommand(event) {
   return (
     DROPPED_COMMANDS.has(event.name) ||
     chain.startsWith('window({"log":false})') ||
-    chain.startsWith("window(<hidden>)") ||
-    chain.startsWith("task(")
+    chain.startsWith("window(<hidden>)")
   );
 }
 
@@ -239,9 +241,14 @@ function tokenText(event, level) {
   const prefix =
     event.phase && event.phase !== "test" ? `${event.phase}: ` : "";
   if (event.kind === "request") {
-    return `${prefix}request ${event.method} ${urlText(event.path ?? "", level)}${bodyText(event, level)}`;
+    return `${prefix}request ${event.method} ${urlText(event.path ?? "", level)}${payloadText(event, level, "body")}`;
   }
-  return prefix + commandText(event.chain ?? event.name ?? "", level);
+  return (
+    prefix +
+    commandText(event.chain ?? event.name ?? "", level) +
+    payloadText(event, level, "arg") +
+    payloadText(event, level, "reply")
+  );
 }
 
 const shortHelper = (name) =>

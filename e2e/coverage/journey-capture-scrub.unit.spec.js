@@ -6,6 +6,8 @@ import vm from "node:vm";
 
 import { buildSync } from "esbuild";
 
+import { requestBodyFields } from "../support/journey-capture-encoding";
+
 import {
   FRAGMENT_LENGTH,
   PLACEHOLDER,
@@ -109,6 +111,7 @@ function loadCapture() {
       return chain("task");
     },
     intercept: (matcher, handler) => {
+      state.interceptMatcher = matcher;
       state.interceptHandler = handler;
       return chain("intercept");
     },
@@ -552,6 +555,148 @@ describe("journey capture of secrets", () => {
     expect(payload.pages).toEqual(["/embed/question/1", "/setup"]);
     expect(survivingPieces(JSON.stringify(payload), TOKEN)).toEqual([]);
     expect(JSON.stringify(payload)).not.toContain("?");
+  });
+});
+
+// Runs the harness tasks and the capture's own intercept, and a spec's tasks and stubs, one of which replies with the token.
+function recordSetup({ run, open, capture }) {
+  open("http://localhost:4000/");
+  run(
+    fakeCommand(
+      "task",
+      ["recordTestCapture", { title: "x" }, { log: false }],
+      "ch-own-task",
+    ),
+  );
+  run(
+    fakeCommand(
+      "task",
+      ["resetCoverage", { isInteractive: true }],
+      "ch-plugin-task",
+    ),
+  );
+  run(
+    fakeCommand(
+      "intercept",
+      [capture.state.interceptMatcher, () => {}],
+      "ch-own-intercept",
+    ),
+  );
+  run(
+    fakeCommand(
+      "task",
+      ["signJwt", { payload: { user: 1 }, secret: TOKEN }],
+      "ch-sign",
+    ),
+  );
+  run(
+    fakeCommand(
+      "task",
+      ["resetTable", { table: "many_data_types" }, { log: false }],
+      "ch-hidden-task",
+    ),
+  );
+  run(
+    fakeCommand(
+      "intercept",
+      ["GET", "/api/user/current", { id: 1, sso_source: "ldap" }],
+      "ch-stub",
+    ),
+  );
+  run(
+    fakeCommand(
+      "intercept",
+      ["/api/card/1", { fixture: "card.json" }],
+      "ch-fixture",
+    ),
+  );
+  run(
+    fakeCommand(
+      "intercept",
+      [{ method: "POST", url: "/api/dataset" }, () => {}],
+      "ch-handler",
+    ),
+  );
+  run(fakeCommand("intercept", ["POST", "/api/dataset"], "ch-spy"));
+  run(
+    fakeCommand(
+      "intercept",
+      [
+        "GET",
+        "/api/session/properties",
+        { body: { "premium-embedding-token": TOKEN, value: TOKEN } },
+      ],
+      "ch-token-stub",
+    ),
+  );
+}
+
+describe("journey capture of spec setup", () => {
+  const eventOf = (events, chainerId) =>
+    events.find((event) => event.chainerId === chainerId);
+
+  it("should record a spec's tasks by name with the argument in its own fields, and leave out the harness tasks", () => {
+    const { events } = recordAttempt(recordSetup);
+    const argument = requestBodyFields({ payload: { user: 1 }, secret: TOKEN });
+
+    for (const own of ["ch-own-task", "ch-plugin-task", "ch-own-intercept"]) {
+      expect(eventOf(events, own)).toBeUndefined();
+    }
+    expect(eventOf(events, "ch-sign")).toMatchObject({
+      kind: "command",
+      name: "task",
+      chain: 'task("signJwt")',
+      arg: '{"payload":{"user":1},"secret":"<masked>"}',
+      argHash: argument.bodyHash,
+      argBytes: argument.bodyBytes,
+    });
+    expect(eventOf(events, "ch-hidden-task")).toMatchObject({
+      chain: "task(<hidden>, <hidden>, <hidden>)",
+      argType: "hidden",
+    });
+    expect(eventOf(events, "ch-hidden-task").arg).toBeUndefined();
+  });
+
+  it("should record a stub's static reply, a fixture's name and only the kind of a handler", () => {
+    const { events } = recordAttempt(recordSetup);
+
+    expect(eventOf(events, "ch-stub")).toMatchObject({
+      name: "intercept",
+      reply: '{"id":1,"sso_source":"ldap"}',
+      replyHash: requestBodyFields({ id: 1, sso_source: "ldap" }).bodyHash,
+    });
+    expect(eventOf(events, "ch-fixture").reply).toBe('{"fixture":"card.json"}');
+    expect(eventOf(events, "ch-handler")).toMatchObject({
+      replyType: "handler",
+    });
+    expect(eventOf(events, "ch-handler").reply).toBeUndefined();
+    const spy = eventOf(events, "ch-spy");
+    expect([spy.reply, spy.replyHash, spy.replyType]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("should mask reply keys named like secrets and leave the other token values to the scrub", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "journey-scrub-"));
+    try {
+      const payload = recordAttempt(recordSetup);
+      expect(eventOf(payload.events, "ch-token-stub").reply).toBe(
+        `{"body":{"premium-embedding-token":"<masked>","value":"${TOKEN}"}}`,
+      );
+      writeShard(dir, payload);
+
+      scrubDir(dir, SECRETS);
+
+      expect(verifyDir(dir, SECRETS)).toMatchObject({
+        ok: true,
+        leftovers: [],
+      });
+      expect(survivingPieces(readAll(dir), TOKEN)).toEqual([]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

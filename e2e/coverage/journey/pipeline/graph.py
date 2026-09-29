@@ -205,7 +205,8 @@ def main():
             "path": "Each test is a path of action tokens: Cypress commands and cy.request calls, in the order they started. "
             "Logging, aliases, callbacks and the recording's own commands are left out. "
             "A describe's before hooks run once, in its first test, and every test of the describe starts with their commands. "
-            "In schema 2 captures, a cy.request token carries a hash of its body at the exact level and the body itself at the normalized level.",
+            "In schema 2 captures, a cy.request token carries a hash of its body at the exact level and the body itself at the normalized level. "
+            "In schema 3 captures, a spec's cy.task token carries its argument and a cy.intercept token its static reply the same way.",
             "levels": "exact keeps literal arguments and masks only values that change between runs (uuids, tokens, dates, generated ids). "
             "normalized also masks entity ids: URL path segments and query values, alias numbers, values of id keys such as "
             "table_id or card_ids, and the ids in MBQL field references. Every other number, such as a viewport size, stays.",
