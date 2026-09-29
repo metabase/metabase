@@ -4,11 +4,5 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { CollectionContent } from "../CollectionContent";
 
 export const TrashCollectionLanding = () => {
-  const { data, isLoading, error } = useGetCollectionQuery({ id: "trash" });
-
-  return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      {data && <CollectionContent collectionId={data.id} />}
-    </LoadingAndErrorWrapper>
-  );
+  return null;
 };
