@@ -34,7 +34,7 @@ export const DashboardLeaveConfirmationModal = () => {
         title: t`Discard your changes?`,
         message: t`Your changes haven’t been saved, so you’ll lose them if you navigate away.`,
         actionBtn: {
-          color: "feedback-negative" as const,
+          color: "negative" as const,
           message: t`Discard changes`,
         },
       };

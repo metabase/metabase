@@ -101,8 +101,18 @@
             ;; set when querying for field values of dashboard filters, which only require
             ;; collection perms for the dashboard and not ad-hoc query perms
             *param-values-query*
-            (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-              (throw (query-perms/perms-exception required-perms)))
+            (do
+              ;; `source-card-ids` holds the Card the values query is built on as well as every Card its query nests,
+              ;; and the user must be able to read all of them, just like when running the Card normally. Otherwise a
+              ;; readable wrapper Card launders the values of a Card the user cannot read. Don't narrow this to the
+              ;; nested Cards: filter values from field-ref-only dashcard mappings have no caller-side read check on
+              ;; the mapped Card, so this is the only check. The result_metadata check covers tables a Card's saved
+              ;; columns name but its query footprint does not.
+              (doseq [card-id source-card-ids]
+                (query-perms/check-card-read-perms database-id card-id)
+                (query-perms/check-card-result-metadata-data-perms database-id card-id))
+              (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+                (throw (query-perms/perms-exception required-perms))))
 
             ;; Ad-hoc query (not a saved question)
             :else

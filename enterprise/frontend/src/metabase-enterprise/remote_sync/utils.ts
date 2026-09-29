@@ -7,6 +7,7 @@ import type {
   IconName,
   RemoteSyncEntityStatus,
   RemoteSyncRequiredSync,
+  RemoteSyncTaskType,
   SettingDefinition,
 } from "metabase-types/api";
 
@@ -55,6 +56,33 @@ export const getEnvSettingProps = <T>(
     };
   }
   return {};
+};
+
+// Thresholds follow the backend checkpoints: import reports 0.05 after the conflict scan, 0.70 after the
+// load and 0.90 after the ledger commit; export reports 0.33 after planning and 0.66 after serializing.
+export const getProgressPhaseLabel = (
+  progress: number,
+  taskType: RemoteSyncTaskType,
+): string => {
+  if (taskType === "export") {
+    if (progress < 0.33) {
+      return t`preparing`;
+    }
+    if (progress < 0.66) {
+      return t`exporting content`;
+    }
+    return t`pushing`;
+  }
+  if (progress < 0.05) {
+    return t`preparing`;
+  }
+  if (progress < 0.7) {
+    return t`importing content`;
+  }
+  if (progress < 0.9) {
+    return t`recording sync state`;
+  }
+  return t`finishing`;
 };
 
 export const getSyncStatusIcon = (status: RemoteSyncEntityStatus): IconName => {

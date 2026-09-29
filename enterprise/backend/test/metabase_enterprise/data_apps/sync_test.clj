@@ -27,14 +27,15 @@
 (defn- app-files
   "The repo files for one app in `data_apps/<dir>`. `dir` is the app's slug — the
    config declares no slug, it is the directory's name."
-  [dir {:keys [name path bundle description]}]
+  [dir {:keys [name path bundle description version]}]
   {(format "data_apps/%s/data_app.yaml" dir)
    (str (format "name: %s\npath: %s\n" name path)
-        (when description (format "description: %s\n" description)))
+        (when description (format "description: %s\n" description))
+        (when version (format "version: %s\n" version)))
    (format "data_apps/%s/%s" dir path) bundle})
 
 (deftest sync-from-snapshot-is-gated-by-the-data-apps-feature-test
-  (testing "the remote-sync entry point does nothing without the :data-apps-preview feature —
+  (testing "the remote-sync entry point does nothing without the :data-apps feature —
             an instance then behaves exactly as if data apps did not exist"
     (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
       (mt/with-premium-features #{}
@@ -43,8 +44,8 @@
               "returns nil rather than a sync result")
           (is (not (t2/exists? :model/DataApp :name "a"))
               "materializes no data app")))
-      (mt/with-premium-features #{:data-apps-preview}
-        (mt/with-model-cleanup [:model/DataApp]
+      (mt/with-premium-features #{:data-apps}
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
           (is (=? {:synced 1 :changed 1}
                   (data-app.sync/sync-from-snapshot! (snapshot files)))
               "with the feature it materializes the app as usual")
@@ -152,6 +153,27 @@
       (testing "dropping it from the config clears the column"
         (is (=? {:changed 1} (sync-app)))
         (is (nil? (t2/select-one-fn :description :model/DataApp :name "a")))))))
+
+(deftest version-is-optional-and-tracked-like-other-metadata-test
+  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (let [sync-app (fn [& {:as app}]
+                     (data-app.sync/import-from-snapshot!
+                      (snapshot (app-files "a" (merge {:name "A" :path "index.js" :bundle "V1"} app)))))]
+      (testing "an app that declares no version syncs as version 1"
+        (sync-app)
+        (is (= 1 (t2/select-one-fn :version :model/DataApp :name "a"))))
+      (testing "declaring one counts as a change and is materialized"
+        (is (=? {:changed 1} (sync-app :version 2)))
+        (is (= 2 (t2/select-one-fn :version :model/DataApp :name "a"))))
+      (testing "re-syncing the same version is not a change"
+        (is (=? {:changed 0} (sync-app :version 2))))
+      (testing "dropping it from the config falls back to version 1"
+        (is (=? {:changed 1} (sync-app)))
+        (is (= 1 (t2/select-one-fn :version :model/DataApp :name "a"))))
+      (testing "an invalid version is a config error that keeps the app's last good state"
+        (is (re-find #"\"version\" must be a positive whole number"
+                     (first (:config-errors (sync-app :version "1.0.0")))))
+        (is (= 1 (t2/select-one-fn :version :model/DataApp :name "a")))))))
 
 (deftest metadata-edits-count-while-an-app-keeps-failing-test
   (testing "an app whose bundle is missing still stores metadata edits, so they count as changes"
@@ -344,7 +366,7 @@
         (is (= "NEW" (String. ^bytes (t2/select-one-fn :bundle :model/DataApp :name "working") "UTF-8")))))))
 
 (deftest pruning-failure-does-not-roll-back-synced-apps-test
-  (mt/with-premium-features #{:data-apps-preview}
+  (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [working-files (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"})
             files (merge working-files (app-files "removed" {:name "Removed" :path "index.js" :bundle "OLD"}))

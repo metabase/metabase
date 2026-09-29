@@ -10,13 +10,13 @@ import { t } from "ttag";
 import { useSetting } from "metabase/settings";
 import {
   Button,
+  type ButtonColor,
   type ButtonProps,
   Icon,
   Loader,
   Menu,
   Tooltip,
 } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import type {
   TransformId,
   TransformJobId,
@@ -101,9 +101,8 @@ export const RunButton = forwardRef(function RunButton(
               px="sm"
               aria-label={t`More run options`}
               data-testid="run-options-button"
-            >
-              <Icon name="chevrondown" aria-hidden />
-            </Button>
+              leftSection={<Icon name="chevrondown" aria-hidden />}
+            />
           </Menu.Target>
           <Menu.Dropdown>{menuItems}</Menu.Dropdown>
         </Menu>
@@ -135,7 +134,7 @@ type RunButtonOpts = {
 
 type RunButtonInfo = {
   label: string;
-  color?: ColorName;
+  color?: ButtonColor;
   leftSection?: ReactNode;
   isDisabled?: boolean;
 };
@@ -158,7 +157,6 @@ function getRunButtonInfo({
     return {
       label: t`Canceling…`,
       leftSection: <Loader size="sm" />,
-      color: "text-secondary",
       isDisabled: true,
     };
   }
@@ -182,7 +180,7 @@ function getRunButtonInfo({
   if (run.status === "succeeded") {
     return {
       label: t`Ran successfully`,
-      color: "feedback-positive",
+      color: "positive",
       leftSection: <Icon name="check" aria-hidden />,
       isDisabled,
     };
@@ -191,15 +189,15 @@ function getRunButtonInfo({
   if (run.status === "canceled") {
     return {
       label: t`Canceled`,
-      color: "feedback-warning",
-      leftSection: <Icon name="close" c="core-white" aria-hidden />,
+      color: "warning",
+      leftSection: <Icon name="close" aria-hidden />,
       isDisabled,
     };
   }
 
   return {
     label: t`Run failed`,
-    color: "feedback-negative",
+    color: "negative",
     leftSection: <Icon name="warning" aria-hidden />,
     isDisabled,
   };

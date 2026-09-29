@@ -4,9 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.llm.settings :as llm.settings]
+   [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.self.azure :as azure]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]))
 
@@ -85,6 +87,17 @@
            (azure/list-models {:credentials {:api-key  "bogus"
                                              :base-url "https://my-resource.services.ai.azure.com/anthropic"}
                                :model       "anthropic/claude-sonnet-4-5"}))))))
+
+(deftest list-models-leaves-the-candidate-model-to-its-caller-test
+  (testing "with no model there is no family to pick a surface for, so nothing is probed"
+    ;; `metabase.llm.api.provider` resolves the model — from the connection's own `:model-fields`, then
+    ;; from what the setting names for *that* connection — so this namespace must not fall back to the
+    ;; setting itself, which would be both a duplicate and broader than that.
+    (llm.tu/with-connections [(llm.tu/connection "azure" {:api-key "saved-key" :base-url test-base-url})]
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+        (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+          (is (= {:models []}
+                 (azure/list-models {:credentials {:api-key "saved-key" :base-url test-base-url}}))))))))
 
 (deftest list-models-skips-validation-without-any-model-test
   (testing "without a candidate model there is no surface to probe"
@@ -251,7 +264,13 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"AI proxy is not supported for Azure"
-           (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true}))))))
+           (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true})))))
+  (testing "ai-proxy? throws even with no model, where there is no request to refuse it"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"AI proxy is not supported for Azure"
+           (azure/list-models {:ai-proxy? true}))))))
 
 (deftest azure-raw-forwards-credentials-test
   (testing "credentials passed to azure-raw reach the request, without requiring saved settings"

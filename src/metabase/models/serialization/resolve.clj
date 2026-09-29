@@ -222,14 +222,19 @@
              (#{:field :dimension :metric :segment :measure} (keyword (first form))))
     (keyword (first form))))
 
+(mr/def ::field-ref
+  "MBQL 5 or legacy `:field` clause. Registered under a keyword so [[lib/normalize]] reuses one cached coercer; an
+  inline literal with a fresh dispatch fn misses the registry cache on every call."
+  [:multi
+   {:dispatch #(and (vector? %)
+                    (map? (second %)))}
+   [true  :mbql.clause/field]
+   [false ::mbql.s/field]])
+
 (defn- normalize [mbql]
   (let [tag    (mbql-clause-tag mbql)
         schema (case tag
-                 :field     [:multi
-                             {:dispatch #(and (vector? %)
-                                              (map? (second %)))}
-                             [true  :mbql.clause/field]
-                             [false ::mbql.s/field]] ; legacy MBQL clause
+                 :field     ::field-ref
                  :dimension ::lib.schema.parameter/dimension
                  :metric    :mbql.clause/metric
                  :segment   :mbql.clause/segment

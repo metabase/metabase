@@ -135,12 +135,13 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
 
   return (
     <Group ref={ref} hiddenFrom="md" gap="0.5rem" align="center">
+      {/* TODO: replace with ActionIcon (GDGT-2457) */}
       <Button
         onClick={() => setMobileNavOpen((prev) => !prev)}
-        variant="subtle"
-        p="0.25rem"
+        variant="transparent"
+        size="compact-md"
         leftSection={
-          <Icon name="burger" size={32} color="text-primary-inverse" />
+          <Icon name="burger" size={24} color="text-primary-inverse" />
         }
       />
 

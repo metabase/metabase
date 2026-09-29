@@ -1,6 +1,4 @@
 (ns metabase.driver-api.core
-  ;; missing docstring warnings are false positives because of Potemkin
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
