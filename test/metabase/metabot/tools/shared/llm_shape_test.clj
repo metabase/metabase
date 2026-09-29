@@ -750,7 +750,13 @@
       (is (str/includes? xml "This field hasn't been sampled yet"))))
   (testing "a pipe in a sample value is escaped so it can't break the table"
     (let [xml (llm-shape/field-values-metadata->xml {:field_values ["a|b"]})]
-      (is (str/includes? xml "a\\|b")))))
+      (is (str/includes? xml "a\\|b"))))
+  (testing "a partial list says how many values the field has, and a complete one doesn't"
+    (are [value-metadata note] (= note (re-find #"This list shows [^.]+\."
+                                                (llm-shape/field-values-metadata->xml value-metadata)))
+      {:field_values ["Paris"] :field_values_total 37}                         "This list shows 1 of the field's 37 values."
+      {:field_values ["Paris"] :field_values_total 1000 :has_more_values true} "This list shows 1 of the field's 1000+ values."
+      {:field_values ["Paris"] :field_values_total 1}                          nil)))
 
 (deftest ^:parallel field-metadata->xml-test
   (testing "formats field metadata"
