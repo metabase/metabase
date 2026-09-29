@@ -95,9 +95,7 @@ const SWC_LOADER = {
 
     sourceMaps: true,
     minify: false, // produces same bundle size, but cuts 1s locally
-    env: {
-      targets: ["defaults"],
-    },
+    env: {},
   },
 };
 
