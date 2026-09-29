@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import { EolUpdateNotice } from "metabase/admin/settings/components/widgets/EolUpdateNotice";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
@@ -177,6 +178,7 @@ export function SecurityCenterPage() {
               {t`Current version`}: {currentVersion}
             </Text>
             {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+            {!targetVersion && <EolUpdateNotice showAfterEolOnly />}
           </Stack>
           <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar
