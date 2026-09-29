@@ -1541,8 +1541,7 @@ class RealData(unittest.TestCase):
             )
             with open(out) as f:
                 written = json.load(f)
-        with open(REAL_KILLS) as f:
-            killers = {mid: set(entry.get("killed_by") or []) for mid, entry in json.load(f).items()}
+        killers = {mid: set(entry.get("killed_by") or []) for mid, entry in kills.read_kills_file(REAL_KILLS)["entries"].items()}
         rows = written["candidates"]
         stays = {cid for cid, r in rows.items() if r["verdict"] in kills.KEPT}
 
