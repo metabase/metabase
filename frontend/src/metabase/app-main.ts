@@ -67,10 +67,12 @@ init(mainReducers, getRoutes, (store) => {
     }
   });
 
-  // Only the core app, and only for someone who is signed in. The public and
-  // embed entries run inside a customer's page, where background downloads are
-  // not ours to spend.
-  prefetchRegisteredPages({
-    shouldStart: () => getUser(store.getState()) != null,
-  });
+  // This entry serves full-app embedding too, and inside a customer's page
+  // background downloads are not ours to spend. The public and embed entries
+  // never get here at all.
+  if (IFRAMED_IN_SELF || !isWithinIframe()) {
+    prefetchRegisteredPages({
+      shouldStart: () => getUser(store.getState()) != null,
+    });
+  }
 });
