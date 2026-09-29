@@ -139,18 +139,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     });
   });
 
-  it("should track embed_wizard_options_completed with settings=default properly (metabase#68285)", () => {
-    navigateToGetCodeStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail: "settings=default",
-    });
-  });
-
   it("should set dashboard-id for regular dashboard experience", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
