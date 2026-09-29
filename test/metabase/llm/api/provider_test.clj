@@ -454,19 +454,23 @@
           (is (= "azure/openai/gpt-4.1-mini" (metabot.settings/llm-metabot-provider))))))))
 
 (deftest create-google-connection-with-an-endpoint-verifies-and-selects-the-endpoint-test
-  (let [opts (atom nil)]
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
-                                                           (reset! opts o)
-                                                           {:models [] :connection-info {:probed-model model}})]
-      (mt/with-temporary-setting-values [llm-providers []]
-        (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
-          (mt/user-http-request :crowberto :post 200 "llm/providers"
-                                {:type   "google"
-                                 :config {:oauth-access-token "ya29.token"
-                                          :project-id         "my-project"
-                                          :endpoint-id        "1234567890123456789"}})
-          (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
-          (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))
+  (doseq [[sent model] [["no model" nil]
+                        ["a catalog model beside it" "google/gemini-3.5-flash"]]]
+    (testing (str "with " sent)
+      (let [opts (atom nil)]
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model] :as o}]
+                                                               (reset! opts o)
+                                                               {:models [] :connection-info {:probed-model model}})]
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temporary-raw-setting-values [llm-metabot-provider nil]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    (cond-> {:type   "google"
+                                             :config {:oauth-access-token "ya29.token"
+                                                      :project-id         "my-project"
+                                                      :endpoint-id        "1234567890123456789"}}
+                                      model (assoc :model model)))
+              (is (=? {:model "endpoints/1234567890123456789" :probe? true} @opts))
+              (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider))))))))))
 
 (deftest writes-keep-a-stored-connection-the-environment-shadows-test
   (testing (str "The environment wins on read, but it must not take the stored credentials with it: they are what "
@@ -850,16 +854,21 @@
   (testing (str "Azure's model reference bakes in the deployment name, so renaming the deployment of the connection "
                 "Metabot is pointed at has to move the selection with it — otherwise the next request resolves a "
                 "deployment that no longer exists.")
-    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
-      (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
-                                                                    {:api-key         "azure-key"
-                                                                     :base-url        "https://r.services.ai.azure.com/openai"
-                                                                     :model-family    "openai"
-                                                                     :deployment-name "gpt-4.1-mini"})]]
-        (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
-          (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
-                                {:config {:deployment-name "gpt-4.1"}})
-          (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider))))))))
+    (let [checked (atom nil)]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [model]}]
+                                                             (reset! checked model)
+                                                             {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "azure" "azure"
+                                                                      {:api-key         "azure-key"
+                                                                       :base-url        "https://r.services.ai.azure.com/openai"
+                                                                       :model-family    "openai"
+                                                                       :deployment-name "gpt-4.1-mini"})]]
+          (mt/with-temporary-raw-setting-values [llm-metabot-provider "azure/openai/gpt-4.1-mini"]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/azure"
+                                  {:config {:deployment-name "gpt-4.1"}})
+            (is (= "azure/openai/gpt-4.1" (metabot.settings/llm-metabot-provider)))
+            (testing "and the edit checks the deployment the connection now names, not the one Metabot was on"
+              (is (= "openai/gpt-4.1" @checked)))))))))
 
 (deftest update-follows-the-model-picked-for-a-fixed-catalog-connection-test
   (testing (str "Google's edit form carries a model pick rather than a probe input, so saving with a different "

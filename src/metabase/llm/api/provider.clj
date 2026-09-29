@@ -293,14 +293,19 @@
   (when listed
     (swap! models-cache cache/miss (models-cache-key conn) (select-keys listed [:models]))))
 
+(defn- composed-model-ref
+  "The `connection-key/model` reference to the model `conn`'s own config names, like Azure's deployment or a Google
+  connection's Model Garden endpoint, or nil when the config names none."
+  [{conn-key :key :keys [type config]}]
+  (some->> (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
+           (str conn-key "/")))
+
 (defn- connection-model-ref
   "The `connection-key/model` reference that points Metabot at `conn`: the model the connection's own config names
-  (Azure's deployment) when it has one, and the type's default model otherwise. Nil when the type neither names nor
-  defaults to a model."
-  [{conn-key :key :keys [type config]}]
-  (when-let [model (or (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (llm.provider/default-model type))]
-    (str conn-key "/" model)))
+  when it has one, and the type's default model otherwise. Nil when the type neither names nor defaults to a model."
+  [{conn-key :key :keys [type] :as conn}]
+  (or (composed-model-ref conn)
+      (some->> (llm.provider/default-model type) (str conn-key "/"))))
 
 (defn- fallback-model-ref
   "A model reference to fall back to once the connection Metabot was pointed at is gone: the first remaining
@@ -340,11 +345,13 @@
 (defn- select-model-for-new-connection!
   "Point Metabot at a freshly created connection when it had nothing usable to run on, so connecting the first
   provider leaves the instance working rather than connected-but-with-no-model-selected. An existing selection that
-  still resolves is left alone — adding a second provider must not silently switch Metabot over to it."
+  still resolves is left alone: adding a second provider must not silently switch Metabot over to it.
+
+  A model the connection's own config names wins over `requested-model`."
   [{conn-key :key :as conn} requested-model]
-  (when-let [model-ref (if (not-empty requested-model)
-                         (str conn-key "/" requested-model)
-                         (connection-model-ref conn))]
+  (when-let [model-ref (or (composed-model-ref conn)
+                           (some->> (not-empty requested-model) (str conn-key "/"))
+                           (connection-model-ref conn))]
     (repoint-metabot! model-ref)))
 
 (defn- follow-edited-connection-model!
@@ -359,9 +366,8 @@
   An explicitly pinned mini model moves with a composed model the same way — its reference goes just as stale —
   but not with a pick, which changes what the admin prefers rather than what the connection can serve. A derived
   mini model needs no help, since it follows the Metabot selection on its own."
-  [{conn-key :key :keys [type config] :as conn} requested-model]
-  (let [composed-ref (when (llm.provider/connection-model type (llm.provider/with-field-defaults type config))
-                       (connection-model-ref conn))
+  [{conn-key :key :keys [type] :as conn} requested-model]
+  (let [composed-ref (composed-model-ref conn)
         picked-ref   (when (and (not-empty requested-model) (seq (llm.provider/fixed-models type)))
                        (str conn-key "/" requested-model))
         metabot-ref  (metabot.settings/llm-metabot-provider)
