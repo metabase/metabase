@@ -360,7 +360,7 @@ def token_kind(text):
         return "page"
     if body.startswith("intercept(") or body.startswith("wait(") or body.startswith("clock(") or body.startswith("tick("):
         return "sync"
-    if body.startswith(("signIn", "setCookie", "clearCookie", "exec(", "viewport(", "restore", "signOut")):
+    if body.startswith(("signIn", "setCookie", "clearCookie", "exec(", "task(", "viewport(", "restore", "signOut")):
         return "setup"
     if ACTION_VERBS.search(body):
         return "action"
