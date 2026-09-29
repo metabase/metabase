@@ -283,7 +283,12 @@
 
 (deftest ^:parallel h2x-identifier-test
   (is (= ["WHERE \"a\".\"b\" = 1"]
-         (funnysql/format {:where [:= (h2x/identifier :field "a" "b") 1]} :postgres))))
+         (funnysql/format {:where [:= (h2x/identifier :field "a" "b") 1]} :postgres)))
+  (testing "should strictly validate identifier parts; the app DB doesn't use crazy column names"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid identifier"
+         (funnysql/format {:where [:= (h2x/identifier :field "a" "b\" UNION ALL another_table; --") 1]} :postgres)))))
 
 (deftest ^:parallel h2x-literal-test
   (are [s expected] (= [expected]
