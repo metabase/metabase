@@ -185,6 +185,18 @@
    [:col            {:optional true} [:maybe :string]]
    [:unit           {:optional true} [:maybe :keyword]]])
 
+(mr/def ::ReferencedEntityResult
+  "One entity's result under a QP result's `[:data :referenced_entities type-string id-string]`, as built by
+  `metabase.query-processor.referenced-entities` for dynamic goals."
+  [:map {:closed true}
+   [:status [:enum "completed" "failed"]]
+   [:error  {:optional true} [:maybe :string]]
+   [:data   {:optional true} [:maybe [:map {:closed true}
+                                      [:cols {:optional true}
+                                       [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+                                      [:rows {:optional true}
+                                       [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
+
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."
   [:merge
@@ -204,6 +216,7 @@
     [:rows-file-size   {:optional true} [:maybe :int]]
     [:model            {:optional true} [:maybe :boolean]]
     [:dataset          {:optional true} [:maybe :boolean]]
+    [:referenced_entities {:optional true} [:maybe [:map-of :string [:map-of :string ::ReferencedEntityResult]]]]
     [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                      [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                      [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]

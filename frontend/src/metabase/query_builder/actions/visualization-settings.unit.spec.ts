@@ -1,6 +1,4 @@
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -230,13 +228,9 @@ function createQuestion(
     visualization_settings: settings,
   });
 
-  const metadata = getMetadata(
-    createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-      }),
-    }),
-  );
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
 
   return new Question(card, metadata);
 }
