@@ -460,6 +460,7 @@
 ;;;; |  Create upload
 ;;;; +------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *auxiliary-sync-steps*
   "For testing purposes, we'd like to control whether the analyze and field values steps of sync are run synchronously, or not at all.
    In production this should always be asynchronous, so users can use the table earlier."

@@ -14,6 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *header-adjustment* 0)
 
 (defn- translation-key
