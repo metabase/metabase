@@ -2396,6 +2396,13 @@
     [:qp/compiled-inline {:optional true} :metabase.lib.schema/compiled-native-query]
     [:async?                               {:optional true} :boolean]
     [:was-pivot                            {:optional true} [:maybe :boolean]]
+    [:referenced-entities
+     {:optional true}
+     [:maybe [:sequential [:map {:closed true}
+                           [:type     :string]
+                           [:id       :int]
+                           [:columns  {:optional true} [:maybe [:sequential :string]]]
+                           [:max_rows {:optional true} [:maybe :int]]]]]]
     [:pivot-rows                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-cols                           {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:pivot-measures                       {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
