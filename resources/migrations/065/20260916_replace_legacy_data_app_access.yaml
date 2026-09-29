@@ -1,4 +1,6 @@
 databaseChangeLog:
+  - logicalFilePath: migrations/065/20260916_data_app_groups.yaml
+
   - changeSet:
       id: v65.2026-09-16T00:00:00
       author: poom
@@ -6,7 +8,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: data_app_group
-            remarks: Instance-local permission group assignments for data apps
+            remarks: Permission group assignments for data apps
             columns:
               - column:
                   name: id
@@ -80,19 +82,19 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-16T00:00:05
       author: poom
-      comment: Remove generated groups and individual assignments from the data apps preview
+      comment: Remove generated groups and individual assignments from older data apps implementation
       changes:
         - delete:
             tableName: permissions_group
             where: is_data_app_group = true
-      rollback: # Preview assignments are intentionally discarded.
+      rollback: # Deleted groups and assignments are not restored.
         - sql:
             sql: SELECT 1;
 
   - changeSet:
       id: v65.2026-09-16T00:00:06
       author: poom
-      comment: Remove the generated data app group foreign key
+      comment: Remove the generated data app group foreign key from older implementation
       changes:
         - dropForeignKeyConstraint:
             baseTableName: data_app
@@ -109,7 +111,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-16T00:00:07
       author: poom
-      comment: Remove the generated data app group reference
+      comment: Remove the generated data app group reference from older implementation
       changes:
         - dropColumn:
             tableName: data_app
@@ -127,7 +129,7 @@ databaseChangeLog:
   - changeSet:
       id: v65.2026-09-16T00:00:08
       author: poom
-      comment: Remove the generated data app group marker
+      comment: Remove the generated data app group marker from older implementation
       changes:
         - dropColumn:
             tableName: permissions_group
