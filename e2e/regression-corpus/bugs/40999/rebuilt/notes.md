@@ -10,8 +10,8 @@ conflicts.
 
 ## Mutant
 Delete the `widget: "select",` line from `map.pin_type`. This is the pre-fix state
-minus July's "Don't expose this in the UI for now" comment, because the brief bans
-comments in mutants. `getSettingsWidgets` in `metabase/viz-core/lib/widgets.ts` ends
+minus July's "Don't expose this in the UI for now" comment, because the rebuilt mutants
+carry no comments. `getSettingsWidgets` in `metabase/viz-core/lib/widgets.ts` ends
 with `.filter((widget) => widget.widget)`, so a setting without a widget never reaches
 the chart settings sidebar. The user can't see Pin type or switch a large pin map
 (which defaults to tiles) to markers, which is `bug.statement`. `PinMap.unit.spec.tsx`

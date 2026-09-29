@@ -24,4 +24,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/expressions/suggestions/aggregations.unit.spec.ts::suggestAggregations expressionMode = aggregation should suggest aggregations"
   expected_failure: "expect(results).toEqual(RESULTS); received options lack the non-aggregation completions (concat, contains, coalesce, hour, month, ...)"
-notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the three jest tests assert expected-completion lists the fix extended; the function table moved from querying/expressions/config.ts to metabase-lib/query/clauses/clauses.ts after the fix (see reconstruction-report.md §1); fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the three jest tests assert expected-completion lists the fix extended; the function table moved from querying/expressions/config.ts to metabase-lib/query/clauses/clauses.ts after the fix; fe_be_boundary inferred"

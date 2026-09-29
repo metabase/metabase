@@ -44,4 +44,4 @@ Mutant:
 ## Gotchas
 - The worktree `target` is a symlink to `/private/tmp/metabase-corpus-fresh/target`. No cljs was touched, so no rebuild was needed.
 - The spec runs in the `sdk` jest project. `--runTestsByPath` picks that up automatically.
-- The brief's restore command (`git clean -fd -- frontend`) also deletes the untracked witness spec. Between variants I only ran `git checkout -- .` and did the full clean at the end.
+- Restoring with `git clean -fd -- frontend` also deletes the untracked witness spec. Between variants I only ran `git checkout -- .` and did the full clean at the end.

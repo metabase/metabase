@@ -53,6 +53,6 @@ assertion fails, and that flag is exactly what the removed spread resets.
 
 ## Gotchas
 - `witness.patch` adds a new file (made with `git diff --no-index`). Apply it with
-  `git apply`, and the brief's `git clean` removes it.
+  `git apply`. Restoring the tree with `git clean` removes it.
 - The mutant is plain `.ts`, so no cljs rebuild was needed. `target` is still a symlink
   to the shared fresh checkout.

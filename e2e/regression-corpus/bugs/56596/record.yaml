@@ -27,4 +27,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/querying/expressions/string.unit.spec.ts::unquoteString should handle double-quoted strings"
   expected_failure: "expect(unquoteString(`\"\\\\[\\\\]\"`)).toEqual(`\\\\[\\\\]`); Expected: \"\\\\[\\\\]\", Received: \"[]\""
-notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix rewrote string.unit.spec.ts, which moved with the expression code to querying/expressions (see reconstruction-report.md §2); the round-trip id is an it.each template that runs for three quote styles; string-function-escape-literals-test is a backend test with a testing block naming this issue; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the fix rewrote string.unit.spec.ts, which moved with the expression code to querying/expressions; the round-trip id is an it.each template that runs for three quote styles; string-function-escape-literals-test is a backend test with a testing block naming this issue; fe_be_boundary inferred"

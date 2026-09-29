@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState.unit.spec.tsx::DashboardEmptyState renders %s empty state in editing mode without create questions permission"
   expected_failure: "getByRole(\"heading\", { name: \"Browse your collections to find and add existing questions.\" }) not found; heading reads \"Create a new question or browse...\""
-notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the jest id is parameterized (it.each over dashboard and dashboard tab), kept as the template title list-tests.js prints; fe_be_boundary inferred"
+notes: "base_commit is 8317274709c, where the patch applies (checked 2026-09-25); July's base commit was not recorded; the jest id is parameterized (it.each over dashboard and dashboard tab), kept as the template title the source writes; fe_be_boundary inferred"

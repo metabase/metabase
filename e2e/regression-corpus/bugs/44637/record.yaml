@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/question-reproductions/reproductions-3.cy.spec.js::issue 44637 should not crash when rendering a line/bar chart with empty results (metabase#44637)"
   expected_failure: "H.queryBuilderMain().findByText(\"No results\").should(\"exist\") fails; \"Something's gone wrong\" shows instead"
-notes: "fix_commit: July recorded none; GitHub closes the issue with #44769 (e0381e9bc91), which the report names too; no mutant patch: no jest spec reaches getTimeseriesXDomain's empty-xValues guard, so July applied no revert, see reconstruction-report.md; the fix's other edits were optional-chaining hardening that no test discriminates; expected_failure inferred from the e2e's assertions; fe_be_boundary inferred"
+notes: "fix_commit: July recorded none; GitHub closes the issue with #44769 (e0381e9bc91), which July's reconstruction names too; no mutant patch: no jest spec reaches getTimeseriesXDomain's empty-xValues guard, so July applied no revert; the fix's other edits were optional-chaining hardening that no test discriminates; expected_failure inferred from the e2e's assertions; fe_be_boundary inferred"

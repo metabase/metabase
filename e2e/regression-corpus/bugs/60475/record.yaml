@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/viz-core/echarts/cartesian/option/ticks.unit.spec.ts::getTicksOptions should give every month of a 12-month series a tick label (metabase#60475)"
   expected_failure: "expect(minInterval).toBeUndefined(); Received: 2678400000 (ticks.unit.spec.ts:99)"
-notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 33fc66e6202 (run 29133473688); e2eonly.yaml mutation_files has a truncated path (\"rontend/...\"); fe_be_boundary inferred"
+notes: "mutant rebuilt at 8317274709c as rebuilt/mutant.patch, explained in rebuilt/notes.md; mentions of base_commit, the patch and the hint below refer to July's mutation.patch at 544a0c2ba81856fa77b92843e274c2cd23b23377; base_commit is the parent of July's CI mutant 33fc66e6202 (run 29133473688); fe_be_boundary inferred"

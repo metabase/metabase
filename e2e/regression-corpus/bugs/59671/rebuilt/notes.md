@@ -17,14 +17,13 @@ Input: line and bar cards with `graph.dimensions ["CREATED_AT"]`, `graph.metrics
 - Only the #61180 filter removed: dims `[]`, still the placeholder, because c3715127e2c's `columnsAreValid` check in `canReusePrevious` also blocks it.
 - `getDefaultDimensions` restored to its pre-#61180 body: dims stay `["CREATED_AT"]` and the chart shows "Cannot read properties of undefined (reading 'column')". It still throws at `series.ts:340` with the 59671 guard in place. The user-visible crash comes back, but it's the #60892/#61180 bug, not this one.
 
-To get the June 2025 crash at the guard with the guard doing real work, you would have to revert #61180 (and #68903's check) and also #66786. That means bringing back other fixed bugs, so per the brief this is reported as failed rather than forced.
+To get the June 2025 crash at the guard with the guard doing real work, you would have to revert #61180 (and #68903's check) and also #66786. That means bringing back other fixed bugs, so this is reported as failed rather than forced.
 
 ## Adversarial check
 July's witness only kills the guard-removal mutant because it mocks `getCartesianChartModel` to set `dimensionModel.column = undefined`, a state the real model can't produce at HEAD. It also fails only by crashing (a TypeError thrown from `renderHook`), not on an assertion. I didn't adopt it: it would have made the mutant look live when nothing a user can reach changes.
 
 ## Files
 - `mutant.patch`: the exact inverse of the fix at HEAD, kept as the attempted mutant. It applies cleanly and is equivalent at HEAD. Don't register it as live.
-- `result.json`: `status: failed`, with the probe outcomes under `probe`.
 
 ## Traps
 - `getComputedSettingsForSeries` now comes from `metabase/viz-core`; the old `metabase/visualizations/lib/settings/visualization` path is gone.

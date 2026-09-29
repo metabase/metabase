@@ -23,4 +23,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/native/native-reproductions.cy.spec.ts::issue 53299 should be possible to switch to mongodb when editing an sql question (metabase#53299)"
   expected_failure: "H.nativeEditorDataSource().should(\"contain\", \"QA Mongo\") fails; switching throws \"Missing extra, required keys for native query: #{:collection}\""
-notes: "no mutant patch: re-adding (with-native-extras nil) to with-different-database in lib/native.cljc reintroduces the bug (REPL-verified), but the fix deleted the throw assertion from with-different-database-test instead of adding a positive one, so no deftest flips and July saved nothing, see reconstruction-report.md §1 and §4-5; expected_failure combines the e2e's assertion with the error the report observed"
+notes: "no mutant patch: re-adding (with-native-extras nil) to with-different-database in lib/native.cljc reintroduces the bug (REPL-verified), but the fix deleted the throw assertion from with-different-database-test instead of adding a positive one, so no deftest flips and July saved nothing; expected_failure combines the e2e's assertion with the error July's REPL check of the revert threw"

@@ -37,5 +37,5 @@ Mutant:
 
 ## Gotchas for the next person
 - The test simulates the ticks ECharts would emit. It doesn't run ECharts. If a future ECharts stops emitting mid-year ticks, the mutant becomes invisible in the browser but still fails here. The test pins the `canRender` contract, not ECharts' behaviour.
-- `hint.test` and `fix_tests` in `record.yaml` point to July's test names and the old path. The oracle id is now the one in `result.json`.
+- `fix_tests` in `record.yaml` keeps July's test names at the old `visualizations/echarts` path. The oracle for this mutant is `getTicksOptions should label a single-year x-axis only once (metabase#63671)` in `viz-core/echarts/cartesian/option/ticks.unit.spec.ts`, which is what `hint.test` names.
 - There's no `.cljc` involved, so no CLJS rebuild was needed. The `target` symlink was left as is.

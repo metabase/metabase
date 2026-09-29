@@ -5,9 +5,10 @@
 # Appends to coverage-results.jsonl; full logs in logs/<issue>-{fe,be}.log.
 # Usage: coverage-leg.sh [issue ...]   (default: all bugs/ dirs except done/excluded)
 #
-# Mutation direction (matches HANDOFF): `git apply -R` mutates (reintroduce bug),
-# forward `git apply` restores the fix. An EXIT trap force-restores the in-flight
-# patch so a crash/kill never leaves the shared tree mutated.
+# Mutation direction: `git apply -R` mutates (reintroduces the bug),
+# and a forward `git apply` restores the fix.
+# An EXIT trap force-restores the in-flight patch,
+# so a crash or kill never leaves the shared tree mutated.
 set -u
 REPO_ROOT=${REPO_ROOT:-$(cd "$(dirname "$0")/../../.." && pwd)}
 CORPUS_OUT=${CORPUS_OUT:-$REPO_ROOT/local/regression-corpus/overnight}

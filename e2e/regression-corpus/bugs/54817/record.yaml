@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/question-reproductions/reproductions.cy.spec.ts::issue 54817 should allow to navigate to the search input in the filter picker via keyboard (metabase#54817)"
   expected_failure: null
-notes: "no mutant patch: dead target, because FilterModal and FilterSearchInput, where the fix removed aria-hidden and added an initial focus target, were deleted by #55052 along with the shipped jest test, see reconstruction-report.md §2 and §4; 54817 is the fix's own PR number and GitHub lists no separate issue; the surviving e2e now exercises the replacement filter picker; July recorded no failure message; fe_be_boundary inferred"
+notes: "no mutant patch: dead target, because FilterModal and FilterSearchInput, where the fix removed aria-hidden and added an initial focus target, were deleted by #55052 along with the shipped jest test; 54817 is the fix's own PR number and GitHub lists no separate issue; the surviving e2e now exercises the replacement filter picker; July recorded no failure message; fe_be_boundary inferred"

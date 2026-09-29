@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/embedding/embedding-reproductions.cy.spec.js::issue 51934 (EMB-189) should set the starting join step based on the query source"
   expected_failure: "cy.findByRole(\"menuitem\", { name: COLLECTION_NAME }).should(\"have.css\", \"background-color\", \"rgb(80, 158, 226)\") fails in the join popover"
-notes: "no mutant patch: July's revert of the join-step branch in DataSelector hydrateActiveStep left both jest specs green and wasn't saved, see reconstruction-report.md; the fix's jest edits only deleted two tests and added a required prop, and no jest test passes a model or question querySourceType; expected_failure inferred from the e2e's assertion"
+notes: "no mutant patch: July's revert of the join-step branch in DataSelector hydrateActiveStep left both jest specs green and wasn't saved; the fix's jest edits only deleted two tests and added a required prop, and no jest test passes a model or question querySourceType; expected_failure inferred from the e2e's assertion"

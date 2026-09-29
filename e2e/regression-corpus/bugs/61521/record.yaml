@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/visualizer/visualizations/cartesian.unit.spec.ts::cartesian combineWithCartesianChart should remap the incoming card's column_settings onto the new column refs (metabase#61521)"
   expected_failure: "expect(nextState.settings.column_settings).toEqual({\"[\\\"name\\\",\\\"COLUMN_3\\\"]\": {number_style: \"percent\"}}); Received: undefined"
-notes: "no mutant patch: the bug reconstructs by deleting the column_settings remap block in combineWithCartesianChart, but the fix's jest edits were an arity change with no assertion, so July found no oracle and saved no patch, see reconstruction-report.md §1-5; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on that deletion, see hole-closer-report.md (3)"
+notes: "no mutant patch: the bug reconstructs by deleting the column_settings remap block in combineWithCartesianChart, but the fix's jest edits were an arity change with no assertion, so July found no oracle and saved no patch; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on that deletion, with column_settings undefined instead of remapped onto COLUMN_3"

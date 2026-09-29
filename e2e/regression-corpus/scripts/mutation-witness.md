@@ -32,4 +32,4 @@ not unit-observable), and the mutant is discarded rather than scored.
 
 **Validated on the pilot's 3 "misses"** (25614, 31662, 39993): each e2e passed on the mutant, but
 its unit witness failed (`1 / 34 / 9` tests red) — confirming the mutation was live and the e2e is
-genuinely insensitive to that regression. Evidence: `regression-corpus/evidence/e2e-oracle-pilot.jsonl`.
+genuinely insensitive to that regression. The pilot's evidence (`evidence/e2e-oracle-pilot.jsonl`) is outside git with the rest of July's results.

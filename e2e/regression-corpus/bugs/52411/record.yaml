@@ -21,4 +21,4 @@ mutant:
 hint:
   test: "e2e/test/scenarios/admin/datamodel/reproductions.cy.spec.ts::issue 52411 should be able to select a table in a database with multiple schemas on segments list page when there are multiple databases and there is a saved question (metabase#52411)"
   expected_failure: null
-notes: "no mutant patch: dead target, because the entity framework whose fetchList cache key the fix completed was deleted (#74896), see reconstruction-report.md §2-5; 52411 is the fix's own PR number and GitHub lists no separate issue; the shipped jest test (entities.unit.spec.js fetchList should not call the API when the results are cached) was deleted with the framework and is left out; July recorded no failure message; fe_be_boundary inferred"
+notes: "no mutant patch: dead target, because the entity framework whose fetchList cache key the fix completed was deleted (#74896); 52411 is the fix's own PR number and GitHub lists no separate issue; the shipped jest test (entities.unit.spec.js fetchList should not call the API when the results are cached) was deleted with the framework and is left out; July recorded no failure message; fe_be_boundary inferred"

@@ -46,5 +46,5 @@ expected document not to contain element, found <div data-testid="native-query-p
 
 ## Gotchas
 - The record notes that July's CI run of the e2e passed on this mutant, which makes the e2e a vacuous oracle. The jest witness is the real one.
-- The witness patch is a new untracked file. The brief's restore step (`git clean -fd`) deletes it, so re-apply `witness.patch` before each run.
+- The witness patch is a new untracked file. Restoring the tree with `git clean -fd` deletes it, so re-apply `witness.patch` before each run.
 - No `.cljc` was touched, so there was no cljs rebuild. `target` is still the symlink to the fresh worktree.

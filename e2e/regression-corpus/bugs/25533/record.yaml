@@ -22,4 +22,4 @@ mutant:
 hint:
   test: "frontend/src/metabase/dashboard/actions/parameters.unit.spec.ts::setParameterValue should normalize an emptied value to null (metabase#25533)"
   expected_failure: "expect(state.dashboard.parameterValues[\"123\"]).toBe(null); Expected: null, Received: []"
-notes: "no mutant patch: July verified an over-revert (drop the empty-to-null normalization in setParameterValue) but didn't save it, see reconstruction-report.md §1; the fix's only jest edit was an import rename (report §4); the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the reverted fix; fe_be_boundary inferred"
+notes: "no mutant patch: July's over-revert (drop the empty-to-null normalization in setParameterValue) tripped none of the 15 tests in parameters.unit.spec.ts and wasn't saved; the fix's only jest edit was a default-to-named import rename in FilterPopover.unit.spec.tsx; the hole-closer test (hole-closer-test.patch, landed on this branch) fails on the reverted fix; fe_be_boundary inferred"
