@@ -723,7 +723,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
 
-    it("should be possible to use nested aggregations in breakout of a follow up stage", () => {
+    it("should be possible to summarize nested aggregations in a follow up stage", () => {
       H.getNotebookStep("summarize").within(() => {
         H.summarize({ mode: "notebook" });
       });

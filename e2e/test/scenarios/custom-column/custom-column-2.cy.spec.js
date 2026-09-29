@@ -203,9 +203,7 @@ describe("scenarios > question > custom column > help text", () => {
       .should("be.visible")
       .should("contain", "round([Temperature])");
 
-    cy.log(
-      "Pressing `escape` key should also remove the expression helper popover",
-    );
+    cy.log("Blurring again should remove the expression helper popover again");
     H.CustomExpressionEditor.blur();
     H.CustomExpressionEditor.helpText().should("not.exist");
   });
@@ -278,7 +276,7 @@ describe("scenarios > question > custom column > help text", () => {
       H.CustomExpressionEditor.helpTextHeader().click();
       assertSuggestionsAreVisible();
 
-      cy.log("help text should remain shown after finishing typing");
+      cy.log("neither should be shown after finishing typing");
       H.CustomExpressionEditor.type("ing], ", { focus: false });
       assertNeitherAreVisible();
     });

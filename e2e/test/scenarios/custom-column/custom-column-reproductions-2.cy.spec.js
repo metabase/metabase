@@ -37,7 +37,7 @@ describe("issue #31964", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  it("should focus the editor when opening it (metabase#54722)", () => {
+  it("should apply a completion on a new line inside case (metabase#31964)", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type('case([Product -> Category] = "Widget", 1,');
     cy.realPress("Enter");
@@ -326,11 +326,11 @@ describe("issue 55300", () => {
 
       H.CustomExpressionEditor.type("Sum(case(Count, Count(), 0))");
 
-      cy.log("Move cursor over now()");
+      cy.log("Move cursor over Count()");
       H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
 
-      cy.log("Move cursor over now");
+      cy.log("Move cursor over Count");
       H.CustomExpressionEditor.type("{leftarrow}".repeat(18));
       H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
 
@@ -706,7 +706,7 @@ describe("Issue 38498", { tags: "@external" }, () => {
     });
   });
 
-  it("should not be possible to use convertTimezone with an invalid timezone (metabse#38498)", () => {
+  it("should not be possible to use convertTimezone with an invalid timezone (metabase#38498)", () => {
     H.addCustomColumn();
     H.CustomExpressionEditor.type(
       'convertTimezone([Created At], "Asia/Ho_Chi_Mihn", "UTC")',
