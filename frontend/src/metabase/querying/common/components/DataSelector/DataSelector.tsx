@@ -1159,7 +1159,7 @@ export class UnconnectedDataSelector extends Component<
     return null;
   }
 
-  isSavedEntitySelected = () => isVirtualCardId(this.props.selectedTableId);
+  isSavedEntitySelected = () => false;
 
   handleSavedEntitySelect = async (tableOrCardId: string) => {
     await this.props.fetchFields(tableOrCardId);
