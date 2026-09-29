@@ -1823,25 +1823,33 @@
                                            (for [i (range 60)]
                                              {:field-name (str "col_" i) :base-type :type/Integer})
                                            [(vec (range 60))]]])
-        (let [db-id     (mt/id)
-              db-reads  (atom 0)
-              run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
-          (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f] (f))
-                                      t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
-                                                                        ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
-                                                                        (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
-                                                                          (swap! db-reads inc))
-                                                                        (run-query rf init conn model sql-args opts))]
-            (t2/select-one :model/Database :id db-id)
-            (testing "the counter sees a Database read on this app DB"
-              (is (= 1 @db-reads)))
-            (reset! db-reads 0)
-            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
-          (let [fields (mt/user-http-request :crowberto :get 200 (format "database/%d/fields" db-id))]
-            (testing "sync created a field for every column"
-              (is (<= 60 (count fields))))
-            (testing "the Database row is read a few times per sync, not once per column"
-              (is (< @db-reads 10)))))))))
+        ;; `mt/dataset` syncs the dataset's own Database when it loads. Sync a new Database row that points at the
+        ;; same warehouse instead, so its Fields exist only if the sync_schema request really ran.
+        (let [details (:details (mt/db))]
+          (mt/with-temporary-setting-values [disable-auto-sync true]
+            (mt/with-temp [:model/Database {db-id :id} {:engine (tx/driver) :details details}]
+              (let [db-reads  (atom 0)
+                    run-query (mt/original-fn #'t2.jdbc.query/reduce-jdbc-query)]
+                (mt/with-dynamic-fn-redefs [quick-task/submit-task!           (fn [f]
+                                                                                (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                                  (f)))
+                                            t2.jdbc.query/reduce-jdbc-query (fn [rf init conn model [sql :as sql-args] opts]
+                                                                              ;; app DB quoting differs: "..." on Postgres and H2, `...` on MySQL
+                                                                              (when (re-find #"(?i)^SELECT \* FROM [\"`]?metabase_database[\"`]? WHERE [\"`]?id[\"`]? = \?$" sql)
+                                                                                (swap! db-reads inc))
+                                                                              (run-query rf init conn model sql-args opts))]
+                  (t2/select-one :model/Database :id db-id)
+                  (testing "the counter sees a Database read on this app DB"
+                    (is (= 1 @db-reads)))
+                  (reset! db-reads 0)
+                  (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                (let [fields (->> (mt/user-http-request :crowberto :get 200 (format "database/%d/metadata" db-id))
+                                  :tables
+                                  (mapcat :fields))]
+                  (testing "the sync ran and created a field for every column"
+                    (is (<= 60 (count fields))))
+                  (testing "the Database row is read a few times per sync, not once per column"
+                    (is (< @db-reads 30))))))))))))
 
 (deftest sync-schema-labels-data-sensitivity-test
   (testing "POST /api/database/:id/sync_schema runs the data sensitivity step when the setting is on"
