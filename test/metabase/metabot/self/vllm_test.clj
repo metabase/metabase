@@ -1067,15 +1067,19 @@
   (testing "the first verdict returns immediately and its sibling is cancelled — an abandoned future would
            keep generating against the operator's server after the admin already has a 400"
     (let [interrupted (promise)
+          started     (CountDownLatch. 1)
           never       (CountDownLatch. 1)]
       (mt/with-dynamic-fn-redefs [http/request (fn [{:keys [url body]}]
                                                  (if (re-find #"/models$" (str url))
                                                    {:status 200 :body {:data [{:id "vllm-test" :max_model_len 32768}]}}
                                                    (case (:tool_choice (json/decode+kw (str body)))
-                                                     "auto"     {:status 200
-                                                                 :body   {:choices [{:message {:content    "I'll record orders."
-                                                                                               :tool_calls []}}]}}
+                                                     "auto"     (do
+                                                                  (.await started 10 TimeUnit/SECONDS)
+                                                                  {:status 200
+                                                                   :body   {:choices [{:message {:content    "I'll record orders."
+                                                                                                 :tool_calls []}}]}})
                                                      "required" (try
+                                                                  (.countDown started)
                                                                   (.await never 10 TimeUnit/SECONDS)
                                                                   (deliver interrupted false)
                                                                   {:status 200 :body {:choices [{:message tool-calling-message}]}}
