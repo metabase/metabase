@@ -2,8 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.system.core :as system]
+   [metabase.system.paths :as paths]
    [metabase.test :as mt]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu])
+  (:import
+   (com.google.common.jimfs Configuration Jimfs)))
 
 (set! *warn-on-reflection* true)
 
@@ -60,3 +63,20 @@
              (is (true? (allowed? "sub/file.pem")))
              (is (false? (allowed? "../outside.pem")))
              (is (false? (allowed? "sub/../../outside.pem"))))))))))
+
+(deftest windows-paths-test
+  (with-open [fs (Jimfs/newFileSystem (Configuration/windows))]
+    (let [allowed? (fn [allowlist path] (#'paths/allowed-path? fs allowlist path))]
+      (testing "/ allows any path, not only the current drive"
+        (doseq [path ["C:\\certs\\key.pem" "D:\\certs\\key.pem"]]
+          (is (true? (allowed? ["/"] path)) path)))
+      (testing "drive-letter allowlist entries"
+        (is (true? (allowed? ["C:\\certs"] "C:\\certs\\key.pem")))
+        (testing "either separator, any case"
+          (is (true? (allowed? ["C:/certs"] "c:\\CERTS\\key.pem"))))
+        (testing "another drive is not under it"
+          (is (false? (allowed? ["C:\\certs"] "D:\\certs\\key.pem")))
+          ;; which is why `/` cannot just be compared as a path: on Windows it is only the current drive's root
+          (is (false? (allowed? ["C:\\"] "D:\\certs\\key.pem"))))
+        (testing "traversal is normalized before comparing"
+          (is (false? (allowed? ["C:\\certs"] "C:\\certs\\..\\secrets\\key.pem"))))))))

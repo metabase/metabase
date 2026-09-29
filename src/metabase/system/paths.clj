@@ -3,22 +3,27 @@
   [[metabase.system.settings/writable-paths]] allowlists."
   (:require
    [metabase.system.settings :as system.settings]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]])
   (:import
-   (java.nio.file Path)))
+   (java.nio.file FileSystem FileSystems Path)))
 
 (set! *warn-on-reflection* true)
 
-(defn- ->normalized-path ^Path [^String path]
+(defn- ->normalized-path ^Path [^FileSystem fs ^String path]
   ;; absolute first: normalizing a relative path cannot collapse a leading `..`
-  (-> (Path/of path (into-array String [])) .toAbsolutePath .normalize))
+  (-> (.getPath fs path (u/varargs String)) .toAbsolutePath .normalize))
 
 (defn- allowed-path?
   "Whether `path` is one of the `allowlist` directories or under one. Compares normalized paths, so `..` cannot
-  escape an allowed directory, and whole path segments, so `/abc` does not allow `/abcd`."
-  [allowlist path]
-  (let [path (->normalized-path path)]
-    (boolean (some #(.startsWith path (->normalized-path %)) allowlist))))
+  escape an allowed directory, and whole path segments, so `/abc` does not allow `/abcd`. A `/` entry allows any
+  path; on Windows it would otherwise mean only the root of the current drive."
+  ([allowlist path]
+   (allowed-path? (FileSystems/getDefault) allowlist path))
+  ([^FileSystem fs allowlist path]
+   (or (boolean (some #{"/"} allowlist))
+       (let [path (->normalized-path fs path)]
+         (boolean (some #(.startsWith path (->normalized-path fs %)) allowlist))))))
 
 (defn readable-path?
   "Whether Metabase may read the local file at `path`."

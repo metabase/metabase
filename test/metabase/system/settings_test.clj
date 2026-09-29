@@ -141,9 +141,9 @@
          (testing "self-hosted, with nothing configured, every path is allowed"
            (mt/with-premium-features #{}
              (is (= ["/"] (getter)))))
-         (testing "hosted, with nothing configured, no path is allowed"
+         (testing "hosted, with nothing configured, only /tmp is allowed"
            (mt/with-premium-features #{:hosting}
-             (is (= [] (getter))))))))))
+             (is (= ["/tmp"] (getter))))))))))
 
 (deftest allowed-paths-from-env-test
   (doseq [[setting-name getter env-var] allowlist-settings
@@ -164,8 +164,8 @@
                                     mb-writable-paths nil]
         (mt/with-temporary-raw-setting-values [readable-paths "/"
                                                writable-paths "/"]
-          (is (= [] (system.settings/readable-paths)))
-          (is (= [] (system.settings/writable-paths)))))))
+          (is (= ["/tmp"] (system.settings/readable-paths)))
+          (is (= ["/tmp"] (system.settings/writable-paths)))))))
   (testing "nothing can write them: they are read-only Settings"
     (is (thrown-with-msg? UnsupportedOperationException #"read-only setting"
                           (setting/set! :readable-paths "/")))
