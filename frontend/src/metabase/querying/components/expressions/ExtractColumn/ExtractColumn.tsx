@@ -185,27 +185,5 @@ function ExtractColumnButton({
   example: string;
   onClick: () => void;
 }) {
-  return (
-    <Button
-      variant="subtle"
-      type="button"
-      p="sm"
-      mb="xxs"
-      className={styles.button}
-      classNames={{
-        inner: styles.inner,
-        label: styles.label,
-      }}
-      onClick={onClick}
-    >
-      <Flex align="center" justify="space-between" gap="1rem">
-        <Text color="text-primary" className={styles.content} fw="bold" p={0}>
-          {title}
-        </Text>
-        <Text color="text-disabled" size="sm" className={styles.example}>
-          {example}
-        </Text>
-      </Flex>
-    </Button>
-  );
+  return null;
 }
