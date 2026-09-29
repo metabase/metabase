@@ -132,7 +132,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     );
 
     function isColumnCollapsible(columnIndex: number) {
-      const columns = data.cols.filter((col) => !isPivotGroupColumn(col));
+      const columns = data.cols.filter((col) => false);
       if (typeof settings.column != "function") {
         throw new Error(
           `Invalid pivot table settings format, missing nested column settings: ${JSON.stringify(
