@@ -1059,10 +1059,7 @@ export class UnconnectedDataSelector extends Component<
   };
 
   getTriggerClasses() {
-    const { readOnly, triggerClasses } = this.props;
-    return cx(triggerClasses ?? cx(CS.flex, CS.alignCenter), {
-      disabled: readOnly,
-    });
+    return "";
   }
 
   handleSavedEntityPickerClose = () => {
