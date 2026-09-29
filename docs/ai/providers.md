@@ -209,15 +209,18 @@ Credentials:
 - **Authentication method** (required). Authenticate with a service account key or an OAuth access token. One of: `Service account key`, `OAuth token`. Defaults to `Service account key`.
 - **Service account key file**. Only when **Authentication method** is **Service account key**. Upload a service account key file to authenticate with. [Where do I find this?](https://docs.cloud.google.com/iam/docs/keys-create-delete) You can also set it with the environment variable `MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY`.
 - **OAuth access token**. Only when **Authentication method** is **OAuth token**. A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing. You can also set it with the environment variable `MB_LLM_GOOGLE_OAUTH_ACCESS_TOKEN`.
+- **Model Garden endpoint ID**. Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.
 - **API base URL** (advanced). Derived from the location when left at the global host. Defaults to `https://aiplatform.googleapis.com`. You can also set it with the environment variable `MB_LLM_GOOGLE_API_BASE_URL`.
 
 Google Gemini Enterprise needs either **Service account key file**, or **OAuth access token** and **Project ID**.
 
-### Open models from Model Garden
+### Connect an open model from Model Garden
 
 You can also run Metabot on an open model, like GLM or Llama, that you deployed from [Model Garden](https://cloud.google.com/model-garden). Metabase talks to the endpoint the deployment created through its OpenAI-compatible Chat Completions API, with the credentials above, and finds a dedicated endpoint's own DNS name for you.
 
-Select the endpoint with the `MB_LLM_METABOT_PROVIDER` environment variable, set to `google/endpoints/` followed by the endpoint's ID, for example `MB_LLM_METABOT_PROVIDER=google/endpoints/1234567890123456789`. The connection's **Location** must be the region you deployed to. The model picker in **Admin > AI** doesn't list endpoints. Saving the Google connection there checks one of the models above, and unless `MB_LLM_METABOT_PROVIDER` is set, it also switches Metabot to that model.
+To connect it, add a Google Gemini Enterprise provider in **Admin > AI**, enter the endpoint's ID in **Model Garden endpoint ID**, and set **Location** to the region you deployed to. That connection serves the endpoint instead of the models above: connecting checks the endpoint, and the model picker offers the endpoint as the connection's only model. To use the models above too, add a second Google Gemini Enterprise provider without an endpoint ID, and pick between them in the model picker.
+
+If you configure the Google connection with environment variables, it has no endpoint ID. Set `MB_LLM_METABOT_PROVIDER` to `google/endpoints/` followed by the endpoint's ID instead.
 
 The credentials need `aiplatform.endpoints.get` to look up the endpoint and `aiplatform.endpoints.predict` to run it.
 
