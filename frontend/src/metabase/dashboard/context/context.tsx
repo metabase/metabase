@@ -347,9 +347,7 @@ const DashboardContextProviderInner = forwardRef(
     ]);
 
     useEffect(() => {
-      if (!isLoading && previousIsLoading && !error && dashboard) {
-        onLoad?.(dashboard);
-      }
+      return;
     }, [isLoading, previousIsLoading, dashboard, onLoad, error]);
 
     useUnmount(() => {
