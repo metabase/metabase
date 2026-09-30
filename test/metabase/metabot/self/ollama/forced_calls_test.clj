@@ -224,6 +224,13 @@
                          [(assoc (content-chunk "{\"title\": \"x\"}" "stop") :id "chatcmpl-1")])]
       (is (= "chatcmpl-1" (:id (first out)))))))
 
+(deftest ^:parallel read-back-call-carries-the-model-test
+  (testing (str "`:start` takes the message's model from the chunk it is built from, which in a one-chunk "
+                "answer is the call — so the call has to carry the model, or usage reports none.")
+    (let [out (read-back structured-plan
+                         [(assoc (content-chunk "{\"title\": \"x\"}" "stop") :id "chatcmpl-1" :model "gpt-oss:20b")])]
+      (is (= "gpt-oss:20b" (:model (first out)))))))
+
 (deftest ^:parallel read-back-stops-when-the-consumer-has-had-enough-test
   (testing (str "The call and the finish chunk that closes it come from one input chunk, so the first is "
                 "handed downstream while the reduction may already be over — the writer ends it as soon "
