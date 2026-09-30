@@ -314,7 +314,7 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
-(define-premium-feature ^{:added "0.64.0"} enable-data-sensitivity?
+(define-premium-feature ^{:added "0.65.0"} enable-data-sensitivity?
   "Should we allow admins to classify fields by data sensitivity?"
   :data-sensitivity)
 

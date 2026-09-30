@@ -9,7 +9,7 @@
 ## enterprise/backend/src/metabase_enterprise/metabot/usage.clj.
 databaseChangeLog:
   - changeSet:
-      id: v64.2026-09-04T00:00:00
+      id: v65.2026-09-30T00:00:00
       author: tplude
       runOnChange: true
       comment: Reinstall v_ai_usage_log (v6) with the data_sensitivity_classification source in source_name CASE
@@ -41,7 +41,7 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v64.2026-09-04T00:00:01
+      id: v65.2026-09-30T00:00:01
       author: tplude
       runOnChange: true
       comment: Reinstall v_metabot_conversations (v8) with the data_sensitivity_classification source CASE branch

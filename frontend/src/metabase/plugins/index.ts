@@ -73,7 +73,6 @@ export {
   PLUGIN_TABLE_EDITING,
 } from "./oss/database";
 export { PLUGIN_DATA_APPS } from "./oss/data-apps";
-export { PLUGIN_DATA_SENSITIVITY } from "./oss/data-sensitivity";
 export { PLUGIN_EMBEDDING, type SimpleDataPickerProps } from "./oss/embedding";
 export { PLUGIN_EMBEDDING_IFRAME_SDK } from "./oss/embedding-iframe-sdk";
 export { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "./oss/embedding-iframe-sdk-setup";

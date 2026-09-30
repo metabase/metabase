@@ -374,7 +374,6 @@ export const tokenFeatures = [
   "remote_sync",
   "data-apps",
   "dependencies",
-  "data_sensitivity",
   "schema-viewer",
   "semantic_search",
   "transforms-python",

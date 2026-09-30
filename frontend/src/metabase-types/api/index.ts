@@ -16,7 +16,6 @@ export * from "./comments";
 export * from "./content-translation";
 export * from "./custom-viz-plugin";
 export * from "./dashboard";
-export * from "./data-sensitivity";
 export * from "./data-app";
 export * from "./database";
 export * from "./dataset";

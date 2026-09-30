@@ -7,7 +7,6 @@ export * from "./card";
 export * from "./collection";
 export * from "./custom-viz";
 export * from "./dashboard";
-export * from "./data-sensitivity";
 export * from "./data-app";
 export * from "./database";
 export * from "./dataset";

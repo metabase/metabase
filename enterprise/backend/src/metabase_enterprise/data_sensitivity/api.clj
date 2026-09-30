@@ -15,10 +15,9 @@
 
 (defn- unavailable-message [reason]
   (case reason
-    :metabot-disabled  (tru "Metabot is disabled. Enable Metabot to classify data sensitivity.")
-    :no-llm            (tru "No AI provider is configured for Metabot.")
-    :usage-limit       (tru "The AI usage limit has been reached.")
-    :permission-denied (tru "You do not have permission to use Metabot.")))
+    :metabot-disabled (tru "Metabot is disabled. Enable Metabot to classify data sensitivity.")
+    :no-llm           (tru "No AI provider is configured for Metabot.")
+    :usage-limit      (tru "The AI usage limit has been reached.")))
 
 (defn- unavailable-ex [reason]
   (ex-info (unavailable-message reason) {:status-code 400 :reason reason :error-code reason}))
