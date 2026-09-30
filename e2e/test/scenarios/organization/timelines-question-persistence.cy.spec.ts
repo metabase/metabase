@@ -387,9 +387,9 @@ describe("scenarios > organization > timelines > question persistence", () => {
     cy.reload();
     expectEvents(EVENT_NAMES);
 
-    cy.log("the dashboard only shows events saved on the question");
+    cy.log("the dashboard falls back to the same collection defaults");
     H.visitDashboard("@dashboardId");
-    expectEvents([], EVENT_NAMES);
+    expectEvents(EVENT_NAMES);
   });
 });
 

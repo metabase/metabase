@@ -76,7 +76,7 @@ describe("scenarios > organization > timelines > dashboard", () => {
       events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
     });
 
-    visitDashboardWithTimeSeries();
+    visitDashboardWithTimeSeries({ "timeline.selected_timeline_ids": [] });
     openEventsSidebar();
 
     eventsSidebar().within(() => {
@@ -515,6 +515,30 @@ describe("scenarios > organization > timelines > dashboard", () => {
     eventChip(0, "RC1").should("be.visible");
     eventChip(1, "RC1").should("be.visible").click();
     eventsSidebar().findByText("RC1").should("be.visible");
+  });
+
+  it("should show the collection's events when adding a question saved without a timeline selection", () => {
+    createReleaseTimeline();
+    H.createTimelineWithEvents({
+      timeline: {
+        name: "Personal milestones",
+        collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+      },
+      events: [{ name: "Offsite", timestamp: "2027-06-01T00:00:00Z" }],
+    });
+    H.createQuestion(questionDetails);
+    H.createDashboard().then(({ body: { id } }) => H.visitDashboard(id));
+
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.sidebar().findByText(questionDetails.name).click();
+    H.saveDashboard();
+
+    eventChip(0, "RC1").should("be.visible");
+    eventChip(0, "Offsite").should("not.exist");
+
+    cy.reload();
+    eventChip(0, "RC1").should("be.visible");
   });
 
   it("should deep duplicate a dashboard whose question selects an inaccessible timeline", () => {

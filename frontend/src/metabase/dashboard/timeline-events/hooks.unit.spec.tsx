@@ -576,19 +576,50 @@ describe("dashboard timeline events", () => {
     return fetchMock.callHistory.calls("path:/api/timeline");
   };
 
-  it("loads the timelines when a chart selects one", async () => {
-    expect(await setupPrefetch(EVENTS_RECORDED)).toHaveLength(1);
-  });
-
   it.each([
-    ["recorded no selection", {}],
-    ["recorded an empty selection", { "timeline.selected_timeline_ids": [] }],
+    ["selects one", EVENTS_RECORDED],
+    ["was saved without a selection", {}],
   ])(
-    "does not load the timelines when every chart %s",
+    "loads the timelines when a chart %s",
     async (_description, savedVisibility) => {
-      expect(await setupPrefetch(savedVisibility)).toHaveLength(0);
+      expect(await setupPrefetch(savedVisibility)).toHaveLength(1);
     },
   );
+
+  it("does not load the timelines when every chart recorded an empty selection", async () => {
+    expect(
+      await setupPrefetch({ "timeline.selected_timeline_ids": [] }),
+    ).toHaveLength(0);
+  });
+
+  it("shows the collection's timelines on a question saved without a selection", async () => {
+    const { store } = setup({
+      dashcards: [
+        createMockDashboardCard({
+          id: DASHCARD_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: createMockCard({
+            display: "line",
+            collection_id: TIMELINE.collection_id,
+          }),
+        }),
+      ],
+      timelines: [
+        TIMELINE,
+        createMockTimeline({
+          id: UNRELATED_EVENT.timeline_id,
+          collection_id: 2,
+          events: [UNRELATED_EVENT],
+        }),
+      ],
+    });
+
+    await waitFor(() =>
+      expect(
+        getDashCardVisibleTimelineEventIds(store.getState(), DASHCARD_ID),
+      ).toEqual([EVENT.id]),
+    );
+  });
 
   describe.each([
     ["public dashboards", "isPublicEmbedding"],

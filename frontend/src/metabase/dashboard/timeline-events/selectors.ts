@@ -18,6 +18,7 @@ import type {
 import { getTransformedTimelines } from "metabase/timelines/panel/selectors";
 import {
   aggregateVisibleEventIds,
+  getCollectionTimelinesVisibility,
   getRecordedTimelineEventsVisibility,
   resolveVisibleTimelineEvents,
 } from "metabase/visualizations/lib/timeline-events-visibility";
@@ -26,6 +27,7 @@ import type {
   DashCardDataMap,
   DashCardId,
   DashboardCard,
+  Timeline,
   TimelineEventId,
   TimelineEventsVisibility,
 } from "metabase-types/api";
@@ -52,7 +54,7 @@ export const getIsDashCardTimelineEventsEnabled = (
   dashcardId: DashCardId,
 ): boolean => getTimelineEventsEnabledByDashCard(state)[dashcardId] !== false;
 
-const resolveDashCardVisibility = (
+const getStoredDashCardVisibility = (
   overrides: DashboardTimelineEventsState["overrides"],
   dashcards: DashboardState["dashcards"],
   dashcardId: DashCardId,
@@ -62,15 +64,31 @@ const resolveDashCardVisibility = (
     dashcards[dashcardId]?.card?.visualization_settings,
   );
 
-export const getDashCardTimelineEventsVisibility = (
-  state: State,
+// cards saved before the selection was recorded show their collection's timelines, like the query builder
+const resolveDashCardVisibility = (
+  overrides: DashboardTimelineEventsState["overrides"],
+  dashcards: DashboardState["dashcards"],
+  timelines: Timeline[],
   dashcardId: DashCardId,
-): TimelineEventsVisibility | undefined =>
-  resolveDashCardVisibility(
-    getTimelineEventsOverrides(state),
-    getDashcards(state),
-    dashcardId,
+): TimelineEventsVisibility | undefined => {
+  const card = dashcards[dashcardId]?.card;
+  return (
+    getStoredDashCardVisibility(overrides, dashcards, dashcardId) ??
+    (card
+      ? getCollectionTimelinesVisibility(timelines, card.collection_id)
+      : undefined)
   );
+};
+
+export const getDashCardTimelineEventsVisibility = createSelector(
+  [
+    getTimelineEventsOverrides,
+    getDashcards,
+    getTransformedTimelines,
+    (_state: State, dashcardId: DashCardId) => dashcardId,
+  ],
+  resolveDashCardVisibility,
+);
 
 // keyed weakly on the dashcard and its data, independent of the rest of the state
 const computeCachedDashCardTimeseriesXAxis = createSelector(
@@ -162,15 +180,21 @@ export const getTimelineEventsDashCardXAxes = createSelector(
   shallowEqualResult,
 );
 
-export const getHasSelectedTimelineEvents = createSelector(
+// without a stored selection a dashcard falls back to its collection's timelines, which have to be loaded first
+export const getMayShowTimelineEvents = createSelector(
   [getTimelineEventsDashCardIds, getTimelineEventsOverrides, getDashcards],
   (dashcardIds, overrides, dashcards) =>
-    dashcardIds.some(
-      (dashcardId) =>
-        (resolveDashCardVisibility(overrides, dashcards, dashcardId)?.[
-          "timeline.selected_timeline_ids"
-        ]?.length ?? 0) > 0,
-    ),
+    dashcardIds.some((dashcardId) => {
+      const visibility = getStoredDashCardVisibility(
+        overrides,
+        dashcards,
+        dashcardId,
+      );
+      return (
+        visibility == null ||
+        (visibility["timeline.selected_timeline_ids"]?.length ?? 0) > 0
+      );
+    }),
 );
 
 export const getDashboardTimelineEventsAggregate = createSelector(
@@ -188,6 +212,7 @@ export const getDashboardTimelineEventsAggregate = createSelector(
           visibility: resolveDashCardVisibility(
             overrides,
             dashcards,
+            timelines,
             dashcardId,
           ),
         }).map((event) => event.id),
