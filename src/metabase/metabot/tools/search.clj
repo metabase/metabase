@@ -629,7 +629,7 @@
    meaningful tokens with `or` so the engine compiles them with `|` semantics.
 
    Returns nil (no fallback) when broadening doesn't apply:
-     - the query is empty or a single token
+     - the query is empty or has a single distinct token
      - the agent already used `or` (so OR-broadening would be redundant)
      - the agent used a quoted phrase (treat as a deliberate exact-match intent)"
   [q]
@@ -645,7 +645,10 @@
                       (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
                       (remove str/blank?)
                       (remove #(query-broadening-stopwords (u/lower-case-en %))))]
-      (when (> (count tokens) 1)
+      ;; Decide on distinct words: repeats of one word OR to the query that just came back empty. Keep the
+      ;; repeats in the output, though: `to-tsquery-expr` reads a repeated final word as typed in full rather
+      ;; than as a prefix, and dropping the repeat would hand that prefix to a different word.
+      (when (> (count (distinct (map u/lower-case-en tokens))) 1)
         (str/join " or " tokens)))))
 
 ;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
