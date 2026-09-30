@@ -35,7 +35,7 @@ const GOAL_ERROR = "Couldn't load the value this chart's goal depends on.";
 
 describe("ROW_CHART_DEFINITION", () => {
   describe("graph.goal_value widget", () => {
-    it("is dynamic and reads the raw series", () => {
+    it("reads the raw series", () => {
       const series = createSeries();
       const setting = ROW_CHART_DEFINITION.settings?.["graph.goal_value"];
 
@@ -46,7 +46,6 @@ describe("ROW_CHART_DEFINITION", () => {
       ).toEqual({
         data: series[0].data,
         datasetQuery: series[0].card.dataset_query,
-        isDynamic: true,
         showSelfColumns: false,
       });
     });
