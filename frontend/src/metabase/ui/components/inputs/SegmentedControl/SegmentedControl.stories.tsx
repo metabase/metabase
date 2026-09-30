@@ -8,12 +8,12 @@ import {
   SegmentedControl,
   type SegmentedControlItem,
   type SegmentedControlProps,
-  Text,
 } from "metabase/ui";
 import {
+  StoryBoard,
   StoryJsx,
+  StoryLabel,
   StorySection,
-  StoryShowcase,
 } from "metabase/ui/stories/showcase";
 
 import S from "./SegmentedControl.module.css";
@@ -126,30 +126,26 @@ const labelSelectorFor = (id: string) =>
 
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: `14rem repeat(${CONTENT_KINDS.length}, max-content)`,
-  columnGap: "2rem",
+  gridTemplateColumns: `9rem repeat(${CONTENT_KINDS.length}, max-content)`,
+  columnGap: "1rem",
   rowGap: "1rem",
   alignItems: "center",
 } as const;
 
 const OverviewTemplate: StoryFn = () => (
-  <StoryShowcase title="SegmentedControl">
+  <StoryBoard title="SegmentedControl" padding="2rem">
     <StorySection title="States">
       <Box style={gridStyle}>
         <div />
         {CONTENT_KINDS.map(({ id, label }) => (
-          <Text key={id} size="sm" c="text-secondary">
-            {label}
-          </Text>
+          <StoryLabel key={id}>{label}</StoryLabel>
         ))}
         {OVERVIEW_STATES.map((state) => (
           <Fragment key={state.id}>
             {state.jsx ? (
               <StoryJsx>{state.jsx}</StoryJsx>
             ) : (
-              <Text size="sm" c="text-secondary">
-                {state.label}
-              </Text>
+              <StoryLabel>{state.label}</StoryLabel>
             )}
             {CONTENT_KINDS.map((kind) => (
               <Box key={kind.id}>
@@ -181,7 +177,7 @@ const OverviewTemplate: StoryFn = () => (
         />
       </Box>
     </StorySection>
-  </StoryShowcase>
+  </StoryBoard>
 );
 
 export const Overview = {
@@ -191,6 +187,6 @@ export const Overview = {
       hover: [labelSelectorFor("hover")],
       active: [labelSelectorFor("pressed")],
     },
-    controls: { include: ["theme"] },
+    controls: { disable: true },
   },
 };
