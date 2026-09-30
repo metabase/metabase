@@ -37,6 +37,9 @@
    - :parent-model   - For :parent-table and :parent eligibility: the parent model key to check eligibility against
                        (e.g., :model/Table for Field, Segment, Measure; :model/Card for Action)
    - :parent-fk      - For child models: the FK column pointing to the parent (e.g., :table_id)
+   - :parent-rso-key - Optional, for child models whose RemoteSyncObject rows record their parent's id: the
+                       RemoteSyncObject column that holds it (e.g., :model_table_id for Field). A cascade from the
+                       parent then finds the child rows by this column instead of through :parent-fk.
    - :cascade-filter  - Optional map of additional filter conditions for cascade queries.
                        Only needed when the filter differs from {archived-key false}.
                        E.g., Field needs {:active true} since it has no :archived-key.
@@ -242,6 +245,7 @@
     :path-keys      [:database :schema :table :field]
     :parent-model   :model/Table
     :parent-fk      :table_id
+    :parent-rso-key :model_table_id
     :cascade-filter {:active true}
     :events         {:prefix :event/field
                      :types  [:create :update :delete]}

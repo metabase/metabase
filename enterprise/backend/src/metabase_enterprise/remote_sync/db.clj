@@ -537,12 +537,14 @@
   (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
 
 (mu/defn active-child-rsos
-  "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
-  [model-type :- :string
-   table-id   :- ::lib.schema.id/table]
+  "The RemoteSyncObjects of `model-type` whose `parent-rso-key` column is `parent-id`, and that are not pending removal
+  or deletion."
+  [model-type     :- :string
+   parent-rso-key :- :keyword
+   parent-id      :- ms/PositiveInt]
   (t2/select :model/RemoteSyncObject
              :model_type model-type
-             :model_table_id table-id
+             parent-rso-key parent-id
              :status [:not-in ["removed" "delete"]]))
 
 (mu/defn untracked-actions-in-collections

@@ -230,7 +230,7 @@
 (defn- cascade-to-children!
   "When a parent model becomes eligible/ineligible, cascade to its children.
    For eligible: query child entities using :parent-fk and derived filter, check eligibility, create RSOs.
-   For ineligible: query existing RSOs by model_table_id and mark as removed."
+   For ineligible: find the children's active RSOs and mark them as removed."
   [model-spec model-id status eligible?]
   (doseq [child-spec (spec/children-specs (:model-key model-spec))]
     (let [fk     (:parent-fk child-spec)
@@ -240,10 +240,9 @@
         (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
-        ;; Ineligible branch: mark existing child RSOs as removed. Only a Table's children record their parent on
-        ;; the RSO row (model_table_id); others are found through their own FK column.
-        (doseq [child-rso (if (= :model/Table (:model-key model-spec))
-                            (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)
+        ;; Ineligible branch: mark existing child RSOs as removed
+        (doseq [child-rso (if-let [rso-key (:parent-rso-key child-spec)]
+                            (remote-sync.db/active-child-rsos (:model-type child-spec) rso-key model-id)
                             (remote-sync.db/active-rsos-of-children (:model-key child-spec) (:model-type child-spec)
                                                                     fk model-id))]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
