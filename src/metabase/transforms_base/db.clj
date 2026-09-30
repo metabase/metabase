@@ -59,7 +59,9 @@
    schema      :- [:maybe :string]
    table-name  :- :string
    & conditions :- [:* [:or :keyword :string :int :boolean]]]
-  (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
+  (apply t2/select-one :model/Table
+         :db_id (long database-id) :schema [:auto/param schema] :name [:auto/param table-name]
+         conditions))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
