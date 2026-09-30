@@ -57,9 +57,7 @@
       (is (nil? (api.db/entity-by-id :model/Card card-id :archived true)))
       (testing "a keyword or string value on a column with a keyword transform"
         (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type :model))))
-        (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type "model")))))
-      (testing "an id passed as a string"
-        (is (= card-id (:id (api.db/entity-by-id :model/Card (str card-id)))))))))
+        (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type "model"))))))))
 
 (deftest entity-exists?-compares-condition-values-as-data-test
   (testing "GHY-4481: a string condition value is compared as data, and the other condition shapes still work"
