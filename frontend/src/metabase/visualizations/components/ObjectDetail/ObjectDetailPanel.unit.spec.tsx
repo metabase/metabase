@@ -8,7 +8,13 @@ import {
   setupPrefetchActionValuesEndpoint,
 } from "__support__/server-mocks";
 import { testDataset } from "__support__/testDataset";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/utils/types";
 import type { WritebackAction } from "metabase-types/api";
@@ -273,8 +279,9 @@ function setup(
 }
 
 describe("ObjectDetailPanel", () => {
-  it("renders an object detail component", () => {
+  it("renders an object detail component", async () => {
     setup({ question: mockQuestion });
+    await settlePendingUpdates();
 
     expect(screen.getByText(/Product/i)).toBeInTheDocument();
     expect(
@@ -344,10 +351,13 @@ describe("ObjectDetailPanel", () => {
   });
 
   describe("renders actions menu", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
       setup({ question: mockDataset });
+      // The action modal prefetches its initial values, which resolves after
+      // these tests have finished asserting.
+      await settlePendingUpdates();
     });
 
     it("should not show implicit create action", async () => {
