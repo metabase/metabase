@@ -51,9 +51,10 @@
 (defn- query-transform-details!
   "`get_transform_details` output for a transform whose source is `query`, read as rasta with query
   access to the whole database - so `transforms/get-transform` passes and whatever happens to the
-  source is the export gate's doing."
+  source is the export gate's doing. A data analyst's transforms access keys off
+  `advanced-permissions`, so that is enabled too."
   [query]
-  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting :advanced-permissions}
     (mt/with-temp [:model/Transform {transform-id :id}
                    {:name "Orders Rollup" :source {:type "query" :query query}}]
       (mt/with-data-analyst-role! (mt/user->id :rasta)
@@ -129,7 +130,8 @@
 (deftest get-transform-details-source-permission-test
   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
            with query access to another table in its database, so the tool never reaches the source"
-    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+    ;; a data analyst's transforms access keys off `advanced-permissions`, which no OSS build can have
+    (mt/with-premium-features #{:transforms-basic :transforms-python :hosting :advanced-permissions}
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Orders Rollup"
                       :source {:type  "query"
@@ -163,7 +165,9 @@
           (is (str/includes? output (str "<database>" (mt/id) "</database>"))))))))
 
 (deftest get-transform-details-source-card-permission-test
-  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
+  ;; `advanced-permissions` is on so the refusal below is about the private source card, not the
+  ;; data analyst's missing entitlement
+  (mt/with-premium-features #{:transforms-basic :transforms-python :hosting :advanced-permissions}
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-full-data-perms-for-all-users!
         (mt/with-data-analyst-role! (mt/user->id :rasta)

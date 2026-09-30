@@ -510,7 +510,8 @@
 (deftest read-transform-resource-source-permission-test
   (testing "transforms/get-transform refuses a transform whose stored query the user cannot run, even
            with query access to another table in its database, so the resource never reaches the source"
-    (mt/with-premium-features #{:transforms-basic :hosting}
+    ;; a data analyst's transforms access keys off `advanced-permissions`, which no OSS build can have
+    (mt/with-premium-features #{:transforms-basic :hosting :advanced-permissions}
       (mt/with-temp [:model/Transform {transform-id :id}
                      {:name   "Orders Rollup"
                       :source {:type  "query"
