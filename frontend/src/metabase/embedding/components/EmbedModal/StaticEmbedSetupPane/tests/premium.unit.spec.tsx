@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within } from "__support__/ui";
+import { screen, settlePendingUpdates, within } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { FONTS_MOCK_VALUES, getMockResource, setup } from "./setup";
@@ -24,6 +24,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
           enterprisePlugins: ["whitelabel"],
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
+        await settlePendingUpdates();
 
         expect(screen.getByText("Setting up a static embed")).toBeVisible();
 

@@ -2,7 +2,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+} from "__support__/ui";
 import type { ExportFormat } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -134,8 +138,9 @@ describe("PublicLinkPopover", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render `Remove public link` for non-admins", () => {
+    it("should not render `Remove public link` for non-admins", async () => {
       setup({ isAdmin: false });
+      await settlePendingUpdates();
 
       expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
     });
@@ -154,7 +159,7 @@ describe("PublicLinkPopover", () => {
   });
 
   describe("when creating public links", () => {
-    it("should call createPublicLink when uuid is null and isOpen is true", () => {
+    it("should call createPublicLink when uuid is null and isOpen is true", async () => {
       const { createPublicLink } = setup({ hasUUID: false });
 
       expect(createPublicLink).toHaveBeenCalledTimes(1);
@@ -208,6 +213,7 @@ describe("PublicLinkPopover", () => {
   describe("when copying the link", () => {
     it("should allow admins to copy the link to the clipboard", async () => {
       setup({ hasUUID: true, isOpen: true });
+      await settlePendingUpdates();
 
       expect(
         await screen.findByDisplayValue("sample-public-link"),

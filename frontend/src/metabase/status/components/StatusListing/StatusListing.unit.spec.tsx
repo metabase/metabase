@@ -8,7 +8,11 @@ import {
   createMockState,
   createMockUpload,
 } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+} from "__support__/ui";
 import type { DownloadsState } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import type { Database } from "metabase-types/api";
@@ -87,11 +91,12 @@ describe("StatusListing", () => {
     expect(screen.queryByText("Syncing…")).not.toBeInTheDocument();
   });
 
-  it("should give an alert if a user navigates away from the page during an upload", () => {
+  it("should give an alert if a user navigates away from the page during an upload", async () => {
     const mockEventListener = jest.spyOn(window, "addEventListener");
 
     const mockUpload = createMockUpload();
     setup({ isAdmin: true, upload: { [mockUpload.id]: mockUpload } });
+    await settlePendingUpdates();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toEqual(
@@ -100,10 +105,11 @@ describe("StatusListing", () => {
     expect(mockEvent.preventDefault).toHaveBeenCalled();
   });
 
-  it("should not give an alert if a user navigates away from the page while no uploads are in progress", () => {
+  it("should not give an alert if a user navigates away from the page while no uploads are in progress", async () => {
     const mockEventListener = jest.spyOn(window, "addEventListener");
 
     setup({ isAdmin: true });
+    await settlePendingUpdates();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.returnValue).toBeUndefined();

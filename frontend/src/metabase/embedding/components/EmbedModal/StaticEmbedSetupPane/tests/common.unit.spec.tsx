@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   getBrokenUpTextMatcher,
   screen,
+  settlePendingUpdates,
   waitFor,
   within,
 } from "__support__/ui";
@@ -83,6 +84,7 @@ describe("Static Embed Setup phase", () => {
           },
           activeTab: "Overview",
         });
+        await settlePendingUpdates();
 
         expect(screen.getByText("Setting up a static embed")).toBeVisible();
 
@@ -122,6 +124,7 @@ describe("Static Embed Setup phase", () => {
             },
             activeTab: "Overview",
           });
+          await settlePendingUpdates();
 
           expect(
             screen.getByText(
