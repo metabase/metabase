@@ -349,7 +349,7 @@
                  (with-out-str (kondo-ratchet/fix! {:seed "whatever"})))))
         (is (= "{:disabled true}\n" (slurp budgets)))))))
 
-(defn- empty-test-ratchets-file!
+(defn- ^java.io.File empty-test-ratchets-file!
   "A temp `.clj-kondo/ratchets-test.edn` stand-in, already clean (no budgets) -- so a [[kondo-ratchet/fix!]]
   run with no test-path occurrences writes nothing and reports nothing for it."
   [dir]
