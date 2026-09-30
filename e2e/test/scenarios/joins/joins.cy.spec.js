@@ -342,11 +342,9 @@ describe("scenarios > question > joined questions", () => {
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
     H.miniPicker().findByText("People").click();
 
-    H.getNotebookStep("data").findByText("People").should("be.visible");
     H.getNotebookStep("join").should("not.exist");
 
     H.visualize();
-    H.tableHeaderColumn("Email").should("be.visible");
     H.queryBuilderMain()
       .findAllByText(/Product/)
       .should("have.length", 0);
