@@ -25,7 +25,6 @@ export function getNumericColumnOptions(
   }));
 }
 
-// visualizationSettings belong to the card the value's column comes from
 export function formatGoalValue(
   { value, column }: GoalValueResult,
   visualizationSettings: VisualizationSettings | undefined,
