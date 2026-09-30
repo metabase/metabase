@@ -249,10 +249,10 @@ describe("issue 21979", () => {
 
     H.visualize();
 
-    // Make sure the query is correct
-    // (a product called "Enormous Marble Wallet" is created on Monday)
+    // "Practical Bronze Computer" is created on a Monday
+    H.assertQueryBuilderRowCount(170);
     H.queryBuilderMain()
-      .findByText("Enormous Marble Wallet")
+      .findByText("Practical Bronze Computer")
       .should("not.exist");
 
     cy.findByTestId("qb-filters-panel")
@@ -266,8 +266,9 @@ describe("issue 21979", () => {
     });
     cy.wait("@dataset");
 
+    H.assertQueryBuilderRowCount(180);
     H.queryBuilderMain()
-      .findByText("Enormous Marble Wallet")
+      .findByText("Practical Bronze Computer")
       .should("be.visible");
 
     cy.findByTestId("qb-filters-panel")
@@ -306,11 +307,13 @@ describe("issue 22730", () => {
       cy.findByDisplayValue("00:00").clear().type("14:03");
       cy.button("Add filter").click();
     });
+    cy.wait("@dataset");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("before-row");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("after-row").should("not.exist");
+    H.assertQueryBuilderRowCount(1);
+    H.tableInteractiveBody().within(() => {
+      cy.findByText("before-row").should("be.visible");
+      cy.findByText("after-row").should("not.exist");
+    });
   });
 });
 
@@ -552,6 +555,20 @@ describe("issue 31340 + 32985", () => {
       );
       cy.wait("@search");
     });
+
+    H.popover()
+      .should("have.length", 2)
+      .then(([filterPopover, dropdown]) => {
+        H.assertDescendantNotOverflowsContainer(dropdown, filterPopover);
+      });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .findByText(`No matching ${LONG_COLUMN_NAME} found.`)
+      .should("be.visible")
+      .and(([message]) => {
+        expect(message.scrollWidth).to.be.lte(message.clientWidth);
+      });
   });
 });
 
@@ -862,6 +879,7 @@ describe("issue 49642", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
+      cy.findByText("Aaron Hand").should("be.visible");
       cy.findByText("Zackery Bailey").should("not.exist");
       cy.findByPlaceholderText("Search the list").type("Zackery");
       cy.findByText("Zackery Bailey").should("be.visible");
