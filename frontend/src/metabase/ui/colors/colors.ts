@@ -7,10 +7,9 @@ import { deriveFullMetabaseTheme } from "./derive-theme";
 import type { MetabaseColorKey } from "./types/color-keys";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);
-const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
-const shouldWhitelabel = !!tokenFeatures["whitelabel"];
-const whitelabelColors =
-  (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
+// ALL Tecnologias: sem licença, o backend devolve o padrão de `application-colors`
+// definido no fork (src/metabase/appearance/settings.clj), então usamos sempre.
+const whitelabelColors = win.MetabaseBootstrap?.["application-colors"] || {};
 
 const baseColors = getBaseColorsForThemeDefinitionOnly();
 

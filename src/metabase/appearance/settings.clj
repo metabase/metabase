@@ -18,13 +18,14 @@
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "Metabase")
+  ;; ALL Tecnologias: nome padrão do fork
+  :default    "ALL Tecnologias")
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
                 (setting/application-name-for-setting-descriptions application-name))
   :encryption :no
-  :default    "Metabase"
+  :default    "ALL Tecnologias"
   :audit      :getter
   :visibility :settings-manager
   :export?    true)
@@ -103,7 +104,10 @@
   :export?    true
   :type       :json
   :feature    :whitelabel
-  :default    {}
+  ;; ALL Tecnologias: paleta padrão do fork (edite aqui as cores da marca)
+  :default    {:brand     "#1E4FD8"
+               :filter    "#7B61FF"
+               :summarize "#16A34A"}
   :audit      :getter
   :doc "To change the user interface colors:
 
@@ -175,7 +179,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
-  (or (:brand (application-colors)) "#509EE3"))
+  (or (:brand (application-colors)) "#1E4FD8"))
 
 (defn secondary-chart-color
   "The first 'Additional chart color'"
@@ -190,7 +194,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :string
   :audit      :getter
   :feature    :whitelabel
-  :default    "app/assets/img/logo.svg"
+  ;; ALL Tecnologias: logo do fork
+  :default    "app/assets/img/all-logo.svg"
   :doc "Inline styling and inline scripts are not supported.")
 
 (defsetting application-favicon-url

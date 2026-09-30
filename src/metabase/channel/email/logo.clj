@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.channel.render.core :as channel.render]
+   [metabase.system.core :as system]
    [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
@@ -28,6 +29,12 @@
 
     (= logo-url "app/assets/img/logo.svg")
     {:image-src  "http://static.metabase.com/email_logo.png"
+     :attachment nil}
+
+    ;; ALL Tecnologias: logo padrão do fork. E-mail não renderiza SVG de forma confiável,
+    ;; então usamos o PNG servido pela própria instância (exige Site URL configurada).
+    (= logo-url "app/assets/img/all-logo.svg")
+    {:image-src  (str (system/site-url) "/app/assets/img/email_logo.png")
      :attachment nil}
 
     (str/starts-with? logo-url "data:")

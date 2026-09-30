@@ -109,8 +109,10 @@
    For data URIs, returns the raw data URI - the email channel will convert it to an attachment."
   []
   (let [url (appearance/application-logo-url)]
-    (if (= url "app/assets/img/logo.svg")
-      "http://static.metabase.com/email_logo.png"
+    (case url
+      "app/assets/img/logo.svg"     "http://static.metabase.com/email_logo.png"
+      ;; ALL Tecnologias: logo padrão do fork em PNG (compatível com e-mail)
+      "app/assets/img/all-logo.svg" (str (system/site-url) "/app/assets/img/email_logo.png")
       url)))
 
 (defn- button-style

@@ -1,8 +1,8 @@
 import type { Middleware } from "@reduxjs/toolkit";
 import type { ComponentType, ReactNode } from "react";
-import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
+import { BRAND } from "metabase/branding/config";
 import type {
   AdminPathKey,
   DraftDashboardSubscription,
@@ -45,7 +45,7 @@ const defaultLoginPageIllustration = {
 };
 
 const getLoadingMessage = (isSlow: boolean | undefined = false) =>
-  isSlow ? t`Waiting for results...` : t`Doing science...`;
+  isSlow ? BRAND.slowLoadingMessage : BRAND.loadingMessage;
 
 const getDefaultAppInitFunctions = (): (() => void)[] => [];
 
@@ -94,9 +94,8 @@ const getDefaultSelectors = () => ({
   canWhitelabel: (_state: State) => false,
   getLoadingMessageFactory: (_state: State) => getLoadingMessage,
   getIsWhiteLabeling: (_state: State) => false,
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
-  getApplicationName: (_state: State) => "Metabase",
-  getShowMetabaseLinks: (_state: State) => true,
+  getApplicationName: (_state: State) => BRAND.name,
+  getShowMetabaseLinks: (_state: State) => BRAND.showMetabaseLinks,
   getLoginPageIllustration: (_state: State): IllustrationValue => {
     return defaultLoginPageIllustration;
   },

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- ALL Tecnologias: logo PROVISÓRIO. Substitua este arquivo pelo logo oficial (SVG, de preferência quadrado). -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1E4FD8"/>
+  <text x="32" y="41" text-anchor="middle" font-family="Lato, Helvetica, Arial, sans-serif"
+        font-size="22" font-weight="900" fill="#FFFFFF" letter-spacing="1">ALL</text>
+</svg>

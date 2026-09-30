@@ -14,6 +14,8 @@ const createElement = ({
 const elements = [
   // lib
   createElement({ type: "lib", name: "analytics" }),
+  // ALL Tecnologias: configuração de marca do fork
+  createElement({ type: "lib", name: "branding" }),
   createElement({ type: "lib", name: "css" }),
   createElement({
     type: "lib",
