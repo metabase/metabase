@@ -19,7 +19,7 @@
                 "integer",
                 "null"
             ],
-            "description": "The ID of the user who sent the request, or null when there is none, as for embeddings.",
+            "description": "The ID of the user who sent the request to Metabot. Embeddings always send null, including those made for a user's search.",
             "minimum": 0,
             "maximum": 2147483647
         },
