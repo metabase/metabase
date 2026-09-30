@@ -11,7 +11,7 @@
     flex: 1;
     flex-direction: column;
 
-    &[data-offset="16"] {
+    &[data-offset] {
       height: calc(
         100dvh - var(--mantine-spacing-lg) - var(--mantine-spacing-lg)
       );

@@ -26,8 +26,7 @@ const argTypes = {
     control: { type: "boolean" },
   },
   offset: {
-    options: [undefined, 16],
-    control: { type: "inline-radio" },
+    control: { type: "boolean" },
   },
 };
 
@@ -99,7 +98,7 @@ export const Default = {
 export const Offset = {
   render: DefaultTemplate,
   args: {
-    offset: 16,
+    offset: true,
   },
 };
 

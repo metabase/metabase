@@ -69,15 +69,25 @@ describe("Sidesheet", () => {
 
   it("should apply the offset variant when requested", () => {
     render(
-      <Sidesheet isOpen offset={16} onClose={jest.fn()}>
+      <Sidesheet isOpen offset onClose={jest.fn()}>
         hello world
       </Sidesheet>,
     );
 
     expect(screen.getByTestId("sidesheet")).toHaveAttribute(
       "data-offset",
-      "16",
+      "true",
     );
+  });
+
+  it("should keep the flush layout when offset is false", () => {
+    render(
+      <Sidesheet isOpen offset={false} onClose={jest.fn()}>
+        hello world
+      </Sidesheet>,
+    );
+
+    expect(screen.getByTestId("sidesheet")).not.toHaveAttribute("data-offset");
   });
 
   it("should fire onClose when close button is clicked", async () => {

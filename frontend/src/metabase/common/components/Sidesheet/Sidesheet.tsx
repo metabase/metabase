@@ -22,7 +22,7 @@ interface SidesheetProps {
   withOverlay?: boolean;
   overlayProps?: ModalOverlayProps;
   closeOnEscape?: boolean;
-  offset?: 16;
+  offset?: boolean;
 }
 
 const sizes: Record<SidesheetSize, string> = {
@@ -65,7 +65,7 @@ export function Sidesheet({
         w={sizes[size]}
         bg="background_surface-primary"
         data-testid="sidesheet"
-        data-offset={offset}
+        data-offset={offset || undefined}
         classNames={{
           content: cx(Styles.SidesheetContent, Animation.slideLeft),
         }}
