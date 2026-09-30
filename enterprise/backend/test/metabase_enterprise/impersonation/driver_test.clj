@@ -710,7 +710,7 @@
         (try
           ;; User with connection impersonation should not be able to query a table they don't have access to
           ;; (`LIMITED.ROLE` in CI Snowflake has no data access)
-          (is (= "class net.snowflake.client.jdbc.SnowflakeSQLException"
+          (is (= "class net.snowflake.client.api.exception.SnowflakeSQLException"
                  (try
                    (mt/run-mbql-query venues {:aggregation [[:count]]})
                    (catch Exception e
