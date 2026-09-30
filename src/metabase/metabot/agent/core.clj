@@ -47,6 +47,7 @@
 ;; Or via the API with `"debug": true` in the request body, which emits the
 ;; debug log as a "debug_log" data part in the SSE stream.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *debug-log*
   "When bound to an atom, collects full LLM request/response data per iteration.
   Each entry is a map with :iteration, :request, and :response keys.
@@ -435,11 +436,10 @@
    (:user_is_viewing context)))
 
 (defn- client-content-ids
-  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the
-  agent's own tools wrote. A refusal to present one of these is a real access attempt and gets
-  the audited treatment; see [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh map
-  keeps this to what the client sent this turn; [[metabase.metabot.agent.memory/add-client-ids]]
-  adds it to what earlier turns recorded."
+  "Ids of the queries and charts this request's viewing context seeds, as opposed to ones the agent's own tools wrote.
+  A refusal to present one of these is a real access attempt and gets the audited treatment; see
+  [[metabase.metabot.tools.shared.content-store]]. Seeding a fresh map keeps this to what the client
+  sent this turn."
   [context]
   (let [seeded (-> {} (seed-state context) (seed-charts context))]
     (into (set (keys (:queries seeded)))

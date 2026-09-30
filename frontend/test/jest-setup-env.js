@@ -6,14 +6,19 @@ import fetchMock from "fetch-mock";
 // costing getComputedStyle calls and an extra re-render per position update.
 jest.mock("@floating-ui/dom", () => ({
   ...jest.requireActual("@floating-ui/dom"),
-  computePosition: (_reference, _floating, options = {}) =>
-    Promise.resolve({
-      x: 0,
-      y: 0,
-      placement: options.placement ?? "bottom",
-      strategy: options.strategy ?? "absolute",
-      middlewareData: {},
-    }),
+  // Resolving synchronously keeps the position update inside the act() scope of
+  // the render that asked for it. A resolved promise defers it by a microtask,
+  // which can land after the test ends and makes React log an act() warning.
+  computePosition: (_reference, _floating, options = {}) => ({
+    then: (onFulfilled) =>
+      onFulfilled({
+        x: 0,
+        y: 0,
+        placement: options.placement ?? "bottom",
+        strategy: options.strategy ?? "absolute",
+        middlewareData: {},
+      }),
+  }),
   autoUpdate: (_reference, _floating, update) => {
     update();
     return () => {};

@@ -173,6 +173,7 @@
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
    [:base-url            {:optional true} [:maybe :string]]
+   [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
    [:probed-model        {:optional true} [:maybe :string]]])
 
@@ -994,7 +995,7 @@
                              (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
 
                              :else
-                             (log/warn "Tool execution failed" {:tool-name safe-name :error (ex-message e)}))
+                             (log/error e "Tool execution failed" {:tool-name safe-name}))
                            [{:type         :tool-output-available
                              :toolCallId   tool-call-id
                              :toolName     tool-name
@@ -1295,7 +1296,7 @@
   never block the caller forever. The timeouts default to the operator-tunable
   [[metabase.llm.settings/llm-connection-timeout-ms]] and
   [[metabase.llm.settings/llm-request-timeout-ms]] settings (read
-  at call time), the same knobs `metabase.llm.anthropic` uses. Callers can
+  at call time). Callers can
   override either timeout per request by passing `:connection-timeout` /
   `:socket-timeout` in `req`.
 
