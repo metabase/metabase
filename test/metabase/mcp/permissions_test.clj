@@ -3,6 +3,7 @@
   policy is stubbed here; how it is collected from group rows is `metabase-enterprise.mcp.permissions-test`."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.mcp.permissions :as mcp.perms]
@@ -105,6 +106,11 @@
           (is (= (str "Tool \"test_echo\" is not enabled for your groups. "
                       "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")
                  (message/render (:message error))))))
+      (testing "a token without the tool's scope still gets the group refusal, not a step-up challenge"
+        (let [{:keys [error]} (registry/call-tool #{"agent:metadata:read"} nil "test_echo" {})]
+          (is (nil? (:insufficient-scope error)))
+          (is (str/starts-with? (message/render (:message error))
+                                "Tool \"test_echo\" is not enabled for your groups."))))
       (testing "tools/call refuses the tool denied by default"
         (is (= common/error-code-invalid-request
                (get-in (registry/call-tool nil nil "test_off_by_default" {}) [:error :code])))))))

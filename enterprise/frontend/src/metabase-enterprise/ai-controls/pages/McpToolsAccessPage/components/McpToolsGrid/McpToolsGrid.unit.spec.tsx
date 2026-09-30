@@ -223,12 +223,7 @@ describe("McpToolsGrid", () => {
       expect(onPermissionChange).toHaveBeenCalledWith({
         group_id: marketingGroup.id,
         mcp_enabled: true,
-        tool_access: {
-          search: "yes",
-          run_sql: "yes",
-          question_write: "yes",
-          transform_write: "yes",
-        },
+        tool_access: { run_sql: "yes" },
       });
     });
 
@@ -241,12 +236,7 @@ describe("McpToolsGrid", () => {
       expect(onPermissionChange).toHaveBeenCalledWith({
         group_id: marketingGroup.id,
         mcp_enabled: false,
-        tool_access: {
-          search: "no",
-          run_sql: "no",
-          question_write: "no",
-          transform_write: "no",
-        },
+        tool_access: {},
       });
     });
 

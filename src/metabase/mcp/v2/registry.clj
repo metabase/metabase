@@ -374,15 +374,16 @@
       {:error {:code    common/error-code-invalid-params
                :message (message/msg ["Invalid arguments: expected a JSON object."])}}
 
+      ;; Before the scope check, so a user their groups deny isn't sent to re-authorize for nothing.
+      (not (tool-allowed? (mcp.perms/policy-for-current-user) tool))
+      {:error {:code    common/error-code-invalid-request
+               :message (group-policy-denial-message tool-name)}}
+
       (not (mcp.scope/matches? token-scopes (:scope tool)))
       {:error {:code               common/error-code-invalid-request
                :message            (insufficient-scope-message (message/msg ["call tool: %s"] tool-name)
                                                                (:scope tool) token-scopes)
                :insufficient-scope (insufficient-scope-detail tool-name (:scope tool))}}
-
-      (not (tool-allowed? (mcp.perms/policy-for-current-user) tool))
-      {:error {:code    common/error-code-invalid-request
-               :message (group-policy-denial-message tool-name)}}
 
       ;; A UI tool the client can't render is a caller error, not a hidden tool: unlike the
       ;; scope case it stays listed for capable clients, so name what's missing.

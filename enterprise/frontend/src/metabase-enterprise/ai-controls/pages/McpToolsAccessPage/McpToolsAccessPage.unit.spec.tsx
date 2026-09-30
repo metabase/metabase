@@ -376,13 +376,7 @@ describe("McpToolsAccessPage", () => {
       {
         group_id: allUsersGroup.id,
         mcp_enabled: false,
-        tool_access: {
-          search: "no",
-          run_query: "no",
-          run_sql: "no",
-          question_write: "no",
-          transform_write: "no",
-        },
+        tool_access: {},
       },
     ]);
   });
@@ -434,7 +428,6 @@ describe("McpToolsAccessPage", () => {
         group_id: allUsersGroup.id,
         mcp_enabled: true,
         tool_access: {
-          search: "yes",
           run_query: "no",
           run_sql: "no",
           question_write: "no",
@@ -456,15 +449,21 @@ describe("McpToolsAccessPage", () => {
       {
         group_id: allUsersGroup.id,
         mcp_enabled: true,
-        tool_access: {
-          search: "yes",
-          run_query: "yes",
-          run_sql: "yes",
-          question_write: "yes",
-          transform_write: "yes",
-        },
+        tool_access: {},
       },
     ]);
+  });
+
+  it("unchecking and re-checking a tool leaves nothing to save", async () => {
+    setup();
+    await findGrid();
+
+    await userEvent.click(getToolCheckbox("All Users", "search"));
+    await userEvent.click(getToolCheckbox("All Users", "search"));
+
+    expect(
+      screen.queryByText("You've made changes to MCP tool access."),
+    ).not.toBeInTheDocument();
   });
 
   it("Cancel restores the saved permissions and hides the bar", async () => {
