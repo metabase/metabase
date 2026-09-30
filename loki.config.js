@@ -11,6 +11,7 @@ module.exports = {
     "^Components/Overlays/Menu Hover state",
     "^Components/Overlays/Popover (Opened|Overview)",
     "^Components/Overlays/Modal Opened",
+    "^Components/Sidesheet (Default|Offset)$",
     "^Components/Overlays/HoverCard Opened",
     "^Components/Utils/Paper Shadow matrix",
     "^Components/Data display/Card Shadow matrix",

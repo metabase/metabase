@@ -32,6 +32,9 @@ const argTypes = {
 
 type SidesheetProps = ComponentProps<typeof Sidesheet>;
 
+// Sidesheet portals outside the Storybook root; capture the full viewport and overlay.
+const sidesheetLokiParameters = { loki: { chromeSelector: "body" } };
+
 const DefaultTemplate = (args: SidesheetProps) => (
   <Sidesheet {...args}>Call me Ishmael ...</Sidesheet>
 );
@@ -93,6 +96,7 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  parameters: sidesheetLokiParameters,
 };
 
 export const Offset = {
@@ -100,6 +104,7 @@ export const Offset = {
   args: {
     offset: true,
   },
+  parameters: sidesheetLokiParameters,
 };
 
 export const WithCards = {
