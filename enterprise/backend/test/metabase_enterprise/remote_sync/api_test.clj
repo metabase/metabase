@@ -13,6 +13,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.driver.settings :as driver.settings]
    [metabase.settings.core :as setting]
@@ -1163,6 +1164,44 @@
           (testing "revoke"
             (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
             (is (contains? (dirty-ids "card") (:id card)))))))))
+
+(defn- fail-first-tracking-write!
+  "Calls `thunk` with the remote sync event handler rigged to throw on its first call only."
+  [thunk]
+  (let [original (mt/original-fn #'spec/determine-status)
+        failed?  (atom false)]
+    (mt/with-dynamic-fn-redefs [spec/determine-status (fn [& args]
+                                                        (if (compare-and-set! failed? false true)
+                                                          (throw (ex-info "simulated tracking failure" {}))
+                                                          (apply original args)))]
+      (thunk))))
+
+(deftest public-link-change-survives-handler-failure-test
+  (testing "GHY-4650: when tracking fails, the link change rolls back, so a retry changes the link and marks the item dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (doseq [[model endpoint] [["dashboard" "dashboard/%d/public_link"]
+                                  ["card"      "card/%d/public_link"]]]
+          (testing model
+            (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                           (if (= model "dashboard") :model/Dashboard :model/Card) entity {:name "Shared" :collection_id (:id coll)}]
+              (let [model-type (if (= model "dashboard") "Dashboard" "Card")
+                    url        (format endpoint (:id entity))]
+                (testing "create"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :post 500 url)
+                     (mt/user-http-request :crowberto :post 200 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))
+                (testing "revoke"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :delete 500 url)
+                     (mt/user-http-request :crowberto :delete 204 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))))))))))
 
 (deftest public-link-on-read-only-instance-is-not-dirty-test
   (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
