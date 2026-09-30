@@ -10,8 +10,6 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.signInAsAdmin();
 
     H.openProductsTable({ mode: "notebook" });
-    // The notebook renders only after the table metadata loads.
-    cy.wait("@queryMetadata");
   });
 
   it("should not suggest arithmetic operators", () => {
