@@ -59,4 +59,39 @@ describe("getTicksOptions", () => {
     expect(model.toEChartsAxisValue(first)).toBe("2025-03-30T00:00:00Z");
     expect(model.toEChartsAxisValue(last)).toBe("2025-04-01T00:00:00Z");
   });
+
+  it("should label a single-year x-axis only once (metabase#63671)", () => {
+    const dateColumn = createMockDatetimeColumn({ unit: "year" });
+    const dimensionModel: DimensionModel = {
+      column: dateColumn,
+      columnIndex: 0,
+      columnByCardId: { 1: dateColumn },
+      columns: [dateColumn],
+    };
+    const dataset = [{ [X_AXIS_DATA_KEY]: "2025-01-01T00:00:00Z", "0": 10 }];
+    const rawSeries = [createMockSingleSeries({ display: "bar" })];
+    const settings = createMockVisualizationSettings({
+      "graph.x_axis.scale": "timeseries",
+    });
+
+    const model = getXAxisModel(dimensionModel, rawSeries, dataset, settings);
+    if (!isTimeSeriesAxis(model)) {
+      throw new Error("Expected a time-series x-axis model");
+    }
+
+    const { canRender, formatter } = getTicksOptions(
+      model,
+      createMockChartLayout(),
+    );
+    const echartsTicks = [
+      dayjs.utc("2025-01-01T00:00:00Z").valueOf(),
+      dayjs.utc("2025-07-01T00:00:00Z").valueOf(),
+    ];
+    const labels = echartsTicks
+      .map((rawValue) => model.fromEChartsAxisValue(rawValue))
+      .filter((value) => canRender(value))
+      .map((value) => formatter(value.format("YYYY-MM-DDTHH:mm:ss[Z]")));
+
+    expect(labels).toEqual(["2025"]);
+  });
 });
