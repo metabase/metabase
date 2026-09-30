@@ -1,4 +1,10 @@
-export const SEARCH_TOOL_NAME = "search";
+// One search tool per matcher, plus `search`, the single tool they replaced, which older conversations still show.
+export const SEARCH_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "search",
+  "semantic_search",
+  "fulltext_search",
+  "substring_search",
+]);
 export const SAVE_ENTITY_TOOL_NAME = "save_entity";
 export const RESOURCE_TOOL_NAME = "read_resource";
 

@@ -214,27 +214,30 @@ describe("MetabotChainOfThought", () => {
     expect(screen.getAllByText("Thought briefly")).toHaveLength(1);
   });
 
-  it("wraps the streamed search object in the verb + tense", async () => {
-    setup(
-      chain({
-        steps: [
-          {
-            kind: "tool",
-            id: "t1",
-            name: "search",
-            // backend streams just the object (the query); the FE owns the verb
-            title: "sales data",
-            status: "ended",
-          },
-        ],
-        startedAtMs: 1000,
-        endedAtMs: 2000,
-      }),
-      false,
-    );
-    await userEvent.click(screen.getByRole("button"));
-    expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
-  });
+  it.each(["search", "semantic_search", "fulltext_search", "substring_search"])(
+    "wraps the streamed %s object in the verb + tense",
+    async (name) => {
+      setup(
+        chain({
+          steps: [
+            {
+              kind: "tool",
+              id: "t1",
+              name,
+              // backend streams just the object (the query); the FE owns the verb
+              title: "sales data",
+              status: "ended",
+            },
+          ],
+          startedAtMs: 1000,
+          endedAtMs: 2000,
+        }),
+        false,
+      );
+      await userEvent.click(screen.getByRole("button"));
+      expect(screen.getByText("Searched for sales data")).toBeInTheDocument();
+    },
+  );
 
   it("renders a metabase:// link title as a clickable entity link with an icon", async () => {
     setup(
