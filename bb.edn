@@ -466,21 +466,27 @@
                 [:string {:name "after" :description "Ratchets file after shrinking"}]
                 [:string {:name "modules-before" :description "Module ratchets before shrinking"}]
                 [:string {:name "modules-after" :description "Module ratchets after shrinking"}]
+                [:string {:name "test-before" :description "Test ratchets file before shrinking"}]
+                [:string {:name "test-after" :description "Test ratchets file after shrinking"}]
                 [:string {:name "workflow-url" :description "URL of the workflow run"}]]
    :requires [[dev.kondo-ratchet]]
    :task (task!
-          (let [[before-path after-path modules-before-path modules-after-path workflow-url] (:arguments parsed)
+          (let [[before-path after-path modules-before-path modules-after-path
+                 test-before-path test-after-path workflow-url] (:arguments parsed)
                 read-ratchets (fn [path]
                                 (binding [dev.kondo-ratchet/*ratchets-file* path]
                                   (dev.kondo-ratchet/read-ratchets)))
                 read-modules  (fn [path]
                                 (binding [dev.kondo-ratchet/*module-ratchets-file* path]
                                   (dev.kondo-ratchet/read-module-ratchets)))]
-            (print (dev.kondo-ratchet/shrink-pr-body (assoc (read-ratchets before-path)
-                                                            :module-counts (read-modules modules-before-path))
-                                                     (assoc (read-ratchets after-path)
-                                                            :module-counts (read-modules modules-after-path))
-                                                     workflow-url))))}
+            (print (dev.kondo-ratchet/shrink-pr-body
+                    (assoc (read-ratchets before-path)
+                           :module-counts (read-modules modules-before-path)
+                           :test-ignore-counts (:ignore-counts (read-ratchets test-before-path)))
+                    (assoc (read-ratchets after-path)
+                           :module-counts (read-modules modules-after-path)
+                           :test-ignore-counts (:ignore-counts (read-ratchets test-after-path)))
+                    workflow-url))))}
 
   -driver-decisions
   {:doc "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."

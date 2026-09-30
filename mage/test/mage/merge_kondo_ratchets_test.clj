@@ -18,6 +18,9 @@
 (def ^:private ratchets-file
   ".clj-kondo/ratchets.edn")
 
+(def ^:private test-ratchets-file
+  ".clj-kondo/ratchets-test.edn")
+
 (def ^:private module-ratchets-file
   ".clj-kondo/config/modules/ratchets.edn")
 
@@ -141,6 +144,21 @@
     (is (= #{"M  .clj-kondo/ratchets.edn" "UU app.txt"}
            (status dir)))))
 
+(deftest resolves-test-ratchets-test
+  (with-conflict [dir {:base   {test-ratchets-file base-ratchets}
+                       :ours   {test-ratchets-file (ratchets {:a 5, :b 3} {:c 1} #{})}
+                       :theirs {test-ratchets-file (ratchets {:a 4, :b :unlimited, :ours-drop 1} {:c 2} #{:b})}}]
+    (let [{:keys [exit out]} (run dir script)]
+      (is (= 0 exit))
+      (is (str/includes? out (str "staged merged " test-ratchets-file))
+          "the test ratchets file merges as a plain ratchets-shaped map, the same as the prod file"))
+    (is (= {:ignore-counts  {:a 4, :b 3}
+            :config-counts  {:c 1}
+            :comment-exempt #{}}
+           (edn/read-string (slurp (str (fs/path dir test-ratchets-file))))))
+    (is (= #{(str "M  " test-ratchets-file) "UU app.txt"}
+           (status dir)))))
+
 (deftest resolves-module-ratchets-test
   (with-conflict [dir {:base   {module-ratchets-file "{:api-any 3, :friend-edges 5}\n"}
                        :ours   {module-ratchets-file "{:api-any 2, :friend-edges 5}\n"}
@@ -229,4 +247,4 @@
   (with-conflict [dir {:base {ratchets-file base-ratchets}}]
     (let [{:keys [exit err]} (run dir script)]
       (is (= 1 exit))
-      (is (str/includes? err "neither ratchet file is conflicted")))))
+      (is (str/includes? err "no ratchet file is conflicted")))))
