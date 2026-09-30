@@ -439,10 +439,11 @@
                      :type   type
                      :name   (or (not-empty name) (str (:label provider-type)))
                      :config (llm.provider/config-to-store type submitted)}
+          env-config (llm.provider/env-overlay-config conn-key type)
           ;; what this connection will run on the moment it exists, which a variable already naming one of
           ;; its fields has a say in
-          effective (llm.provider/effective-config
-                     conn (llm.provider/env-overlay-config conn-key type))]
+          effective (llm.provider/effective-config conn env-config)]
+      (llm.provider/assert-credentials-not-captured! conn submitted env-config)
       (llm.provider/validate-config! type effective)
       (let [{:keys [connection-info] :as listed} (verify-credentials! conn effective model)
             conn              (update conn :config merge connection-info)
@@ -500,6 +501,9 @@
     ;; re-supplied through this API at all.
     (llm.provider/assert-destination-change-authorized! conn-type (:config live) effective client-cfg
                                                         (:env-fields live))
+    ;; and before the completeness check, which would otherwise report a credential the environment has moved this
+    ;; connection away from as one the admin never entered
+    (llm.provider/assert-credentials-not-captured! merged client-cfg env-config)
     (llm.provider/validate-config! conn-type effective)
     (let [{:keys [connection-info] :as listed}
           (verify-credentials! merged effective (or model (selected-model conn-key)))

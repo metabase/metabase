@@ -748,6 +748,45 @@
                      (get-in (first (llm.provider/stored-connections)) [:config :api-key]))
                   "while the stored key stays, so dropping the variable brings it back"))))))))
 
+(deftest write-names-the-variable-a-captured-key-has-to-come-from-test
+  (testing (str "A credential entered for a connection the environment points elsewhere is dropped from what the "
+                "connection runs on, so without this the admin would be told the key is missing a moment after "
+                "entering it. The variables it has to come from, and the one that moved the connection, are named.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _]
+                                                           (is false "a captured key must not leave")
+                                                           {:models []})]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+        (let [refused {:message    (str "MB_LLM_OLLAMA_HOSTING points this connection at another server, so its "
+                                        "credentials have to come from the environment as well. Set "
+                                        "MB_LLM_OLLAMA_API_KEY to keep using it.")
+                       :error-code "llm-credentials-must-come-from-env"
+                       :field      "api-key"}]
+          (testing "editing a stored connection"
+            (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                          {:hosting  "self-hosted"
+                                                                           :base-url "http://ollama.internal:11434/v1"})]]
+              (is (=? refused (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                                    {:config {:api-key "sk-new"}})))
+              (is (nil? (:api-key (stored-config "ollama")))
+                  "and nothing was stored for the key the admin cannot use here")))
+          (testing "and creating one, where the same credential would be dropped the moment it existed"
+            (mt/with-temporary-setting-values [llm-providers []]
+              (is (=? refused (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                                    {:type   "ollama"
+                                                     :config {:hosting  "self-hosted"
+                                                              :base-url "http://ollama.internal:11434/v1"
+                                                              :api-key  "sk-new"}})))))))))
+  (testing "while a mask is the form echoing back a stored key rather than an admin entering one"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "vllm" "vllm"
+                                                                    {:base-url "https://vllm.internal/v1"
+                                                                     :api-key  "sk-vllm"})]]
+        (mt/with-temp-env-var-value! [mb-llm-vllm-api-base-url "https://vllm.example.com/v1"]
+          (is (=? {:name "renamed"}
+                  (mt/user-http-request :crowberto :put 200 "llm/providers/vllm"
+                                        {:name   "renamed"
+                                         :config {:api-key (setting/obfuscate-value "sk-vllm")}}))))))))
+
 (deftest generic-setting-api-cannot-write-provider-connections-test
   (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
     (mt/with-temporary-setting-values [llm-providers []]
@@ -1573,12 +1612,16 @@
                                     {:models [{:id "m" :display_name "m"}]})]
         (mt/with-temporary-setting-values [llm-providers []]
           (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
-            (is (= "Ollama Cloud needs an API key."
-                   (mt/user-http-request :crowberto :post 400 "llm/providers"
-                                         {:type   "ollama"
-                                          :config {:hosting  "self-hosted"
-                                                   :base-url "http://ollama.internal:11434/v1"
-                                                   :api-key  "sk-own-proxy"}}))
+            (is (=? {:error-code "llm-credentials-must-come-from-env"
+                     :field      "api-key"
+                     :message    (str "MB_LLM_OLLAMA_HOSTING points this connection at another server, so its "
+                                      "credentials have to come from the environment as well. Set "
+                                      "MB_LLM_OLLAMA_API_KEY to keep using it.")}
+                    (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                          {:type   "ollama"
+                                           :config {:hosting  "self-hosted"
+                                                    :base-url "http://ollama.internal:11434/v1"
+                                                    :api-key  "sk-own-proxy"}}))
                 "the deployment the variable imposes is what the connection is judged on")
             (is (empty? @probed)
                 "and nothing was asked of the server the connection was not going to use")

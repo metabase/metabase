@@ -980,6 +980,35 @@
                     (get vars moved "the environment")
                     (get vars field "the matching environment variable")))))))
 
+(defn assert-credentials-not-captured!
+  "Reject a credential the caller has just typed for a connection the environment points at another server.
+
+  The refusal side of [[drop-captured-secrets]]: that rule keeps the credential out of what the connection runs
+  on, which on its own leaves the admin reading a completeness error about the key they entered a moment ago.
+  Both variables are named, since between them they are what the operator has to act on — the one that moved the
+  connection, and the one the credential has to come from instead.
+
+  `submitted` is the caller's own input: a blank clears a field and a mask is the client echoing back what is
+  already stored, so neither is anyone asking for a credential to be sent anywhere. `conn` carries the config the
+  credential would land in, which is what decides whether the connection moved."
+  [{type-name :type :keys [config]} submitted env-config]
+  (when-let [moved (moved-destination-field type-name config env-config)]
+    (when-let [field (first (filter (fn [field-key]
+                                      (let [value (u/trimmed-string (get submitted field-key))]
+                                        (and value
+                                             (not (setting/obfuscated-value? value))
+                                             (not (contains? env-config field-key)))))
+                                    ;; sorted so a type with several secrets always names the same one
+                                    (sort (secret-field-keys type-name))))]
+      (let [vars (connection-env-vars type-name)]
+        (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
+                             (get vars moved "The environment")
+                             (get vars field "the matching environment variable"))
+                        {:status-code 400
+                         :api-error   true
+                         :error-code  :llm-credentials-must-come-from-env
+                         :field       field}))))))
+
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
   supplies nothing for it.
