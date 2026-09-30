@@ -35,12 +35,27 @@ describe("scenarios > admin > people", () => {
   });
 
   describe("user management", () => {
-    it("should be possible to switch beteween 'People' and 'Groups' tabs and to add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
+    it("should be possible to search people, switch between 'People' and 'Groups' tabs and add/remove users to groups (metabase-enterprise#210, metabase#12693, metabase#21521)", () => {
       cy.visit("/admin/people");
 
       assertTableRowsCount(TOTAL_USERS);
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${TOTAL_USERS} people found`);
+
+      cy.log("should allow to search people");
+      cy.findByPlaceholderText("Find someone").type("no");
+      cy.findByTestId("people-list-footer").findByText("6 people found");
+      assertTableRowsCount(6);
+
+      cy.findByPlaceholderText("Find someone").type("ne");
+      cy.findByTestId("people-list-footer").findByText("1 person found");
+      assertTableRowsCount(1);
+
+      cy.findByPlaceholderText("Find someone").clear();
+      cy.findByTestId("people-list-footer").findByText(
+        `${TOTAL_USERS} people found`,
+      );
+      assertTableRowsCount(TOTAL_USERS);
 
       // A small sidebar selector
       cy.findByTestId("admin-layout-sidebar").within(() => {
@@ -168,11 +183,17 @@ describe("scenarios > admin > people", () => {
       cy.findByText(email);
     });
 
-    it("should disallow admin to create new users with case mutation of existing user", () => {
+    it("should disallow admin to create new users with case mutation of existing user, with the 'Invite someone' button usable on smaller screen sizes (metabase#16350)", () => {
+      cy.log(
+        "'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)",
+      );
+      cy.viewport(1000, 600);
+
       const { first_name, last_name, email } = normal;
       cy.visit("/admin/people");
       clickButton("Invite someone");
 
+      // Modal should appear with the following input field
       cy.findByLabelText("First name").type(first_name + "New");
       cy.findByLabelText("Last name").type(last_name + "New");
       cy.findByLabelText(/Email/).type(email.toUpperCase());
@@ -215,26 +236,7 @@ describe("scenarios > admin > people", () => {
       });
     });
 
-    it("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
-      cy.viewport(1000, 600);
-
-      cy.visit("/admin/people");
-      cy.button("Invite someone").click();
-      // Modal should appear with the following input field
-      cy.findByLabelText("First name");
-    });
-
-    it("should disallow admin to deactivate themselves", () => {
-      cy.visit("/admin/people");
-      showUserOptions(adminUserName);
-      H.popover().within(() => {
-        cy.findByText("Edit user");
-        cy.findByText("Reset password");
-        cy.findByText("Deactivate user").should("not.exist");
-      });
-    });
-
-    it("should allow admin to deactivate and reactivate other admins/users", () => {
+    it("should disallow admin to deactivate themselves, and allow admin to deactivate and reactivate other admins/users", () => {
       // Turn a random existing user into an admin
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
         is_superuser: true,
@@ -242,6 +244,20 @@ describe("scenarios > admin > people", () => {
         const FULL_NAME = H.getFullName(user);
 
         cy.visit("/admin/people");
+
+        cy.log("should disallow admin to deactivate themselves");
+        showUserOptions(adminUserName);
+        H.popover().within(() => {
+          cy.findByText("Edit user");
+          cy.findByText("Reset password");
+          cy.findByText("Deactivate user").should("not.exist");
+        });
+        cy.realPress("Escape");
+        H.menu().should("not.exist");
+
+        cy.log(
+          "should allow admin to deactivate and reactivate other admins/users",
+        );
         showUserOptions(FULL_NAME);
 
         cy.findByText("Deactivate user").click();
@@ -289,8 +305,39 @@ describe("scenarios > admin > people", () => {
       );
     });
 
-    it("should reset user password without SMTP set up", () => {
+    it("should generate a password reset link and reset user password without SMTP set up", () => {
+      cy.intercept("POST", "/api/user/*/password-reset-url").as("getResetUrl");
+
       cy.visit("/admin/people");
+
+      cy.log("should generate a password reset link without SMTP set up");
+      showUserOptions(normalUserName);
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Reset password").click();
+
+      H.modal().within(() => {
+        cy.findByText(`Reset ${normalUserName}'s password?`);
+        cy.button("Get reset link").click();
+      });
+
+      cy.wait("@getResetUrl");
+
+      H.modal().within(() => {
+        cy.findByText(`Password reset link for ${normalUserName}`);
+        cy.findByText(
+          "Share this link with the user. It will expire in 48 hours.",
+        );
+        cy.findByRole("textbox")
+          .invoke("val")
+          .should("contain", "reset_password");
+        cy.button("Done").click();
+      });
+
+      cy.location().should((loc) =>
+        expect(loc.pathname).to.eq("/admin/people"),
+      );
+
+      cy.log("should reset user password without SMTP set up");
       showUserOptions(normalUserName);
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reset password").click();
@@ -326,53 +373,6 @@ describe("scenarios > admin > people", () => {
       cy.location().should((loc) =>
         expect(loc.pathname).to.eq("/admin/people"),
       );
-    });
-
-    it("should generate a password reset link without SMTP set up", () => {
-      cy.intercept("POST", "/api/user/*/password-reset-url").as("getResetUrl");
-
-      cy.visit("/admin/people");
-      showUserOptions(normalUserName);
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Reset password").click();
-
-      H.modal().within(() => {
-        cy.findByText(`Reset ${normalUserName}'s password?`);
-        cy.button("Get reset link").click();
-      });
-
-      cy.wait("@getResetUrl");
-
-      H.modal().within(() => {
-        cy.findByText(`Password reset link for ${normalUserName}`);
-        cy.findByText(
-          "Share this link with the user. It will expire in 48 hours.",
-        );
-        cy.findByRole("textbox")
-          .invoke("val")
-          .should("contain", "reset_password");
-        cy.button("Done").click();
-      });
-
-      cy.location().should((loc) =>
-        expect(loc.pathname).to.eq("/admin/people"),
-      );
-    });
-
-    it("should not offer to reset passwords when password login is disabled", () => {
-      H.activateToken("pro-self-hosted");
-      cy.request("PUT", "/api/google/settings", {
-        "google-auth-auto-create-accounts-domain": null,
-        "google-auth-client-id": "example1.apps.googleusercontent.com",
-        "google-auth-enabled": true,
-      });
-
-      cy.request("PUT", "/api/setting", {
-        "enable-password-login": false,
-      });
-      cy.visit("/admin/people");
-      showUserOptions(normalUserName);
-      H.popover().findByText("Reset password").should("not.exist");
     });
 
     it(
@@ -412,30 +412,13 @@ describe("scenarios > admin > people", () => {
       },
     );
 
-    it("should allow to search people", () => {
-      cy.visit("/admin/people");
-
-      cy.findByPlaceholderText("Find someone").type("no");
-      cy.findByTestId("people-list-footer").findByText("6 people found");
-      assertTableRowsCount(6);
-
-      cy.findByPlaceholderText("Find someone").type("ne");
-      cy.findByTestId("people-list-footer").findByText("1 person found");
-      assertTableRowsCount(1);
-
-      cy.findByPlaceholderText("Find someone").clear();
-      cy.findByTestId("people-list-footer").findByText(
-        `${TOTAL_USERS} people found`,
-      );
-      assertTableRowsCount(TOTAL_USERS);
-    });
-
-    it("should allow group creation and deletion", () => {
+    it("should allow group creation and deletion, and display api keys included in a group with a warning when deleting the group", () => {
       const longGroupName =
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       cy.intercept("POST", "/api/permissions/group").as("createGroup");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
 
+      H.createApiKey("MyApiKey", COLLECTION_GROUP_ID);
       cy.visit("/admin/people/groups");
       cy.wait(["@getGroups", "@listApiKeys"]);
 
@@ -484,13 +467,10 @@ describe("scenarios > admin > people", () => {
       cy.findByTestId("admin-panel")
         .findByText("My New Group")
         .should("not.exist");
-    });
 
-    it("should display api keys included in a group and display a warning when deleting the group", () => {
-      H.createApiKey("MyApiKey", COLLECTION_GROUP_ID);
-      cy.visit("/admin/people/groups");
-      cy.wait(["@getGroups", "@listApiKeys"]);
-
+      cy.log(
+        "should display api keys included in a group and display a warning when deleting the group",
+      );
       cy.findByTestId("admin-panel")
         .findByText("collection")
         .closest("tr")
@@ -528,7 +508,7 @@ describe("scenarios > admin > people", () => {
         setupGoogleAuth();
       });
 
-      it("invite member when SSO is not configured", () => {
+      it("invite member when Google SSO is configured but password login is still enabled", () => {
         const { first_name, last_name, email } = TEST_USER;
         const FULL_NAME = `${first_name} ${last_name}`;
         cy.visit("/admin/people");
@@ -567,7 +547,7 @@ describe("scenarios > admin > people", () => {
         cy.intercept("GET", "/api/permissions/membership").as("memberships");
       });
 
-      it("should allow paginating people forward and backward", () => {
+      it("should allow paginating people and group members forward and backward", () => {
         const PAGE_SIZE = 25;
 
         const footer = () =>
@@ -607,25 +587,24 @@ describe("scenarios > admin > people", () => {
 
         assertTableRowsCount(PAGE_SIZE);
         footer().should("contain", `1 - ${PAGE_SIZE}`);
-      });
 
-      it("should allow paginating group members forward and backward", () => {
-        const PAGE_SIZE = 25;
-        cy.visit(`admin/people/groups/${ALL_USERS_GROUP}`);
+        cy.log("should allow paginating group members forward and backward");
+        cy.visit(`/admin/people/groups/${ALL_USERS_GROUP}`);
 
         // Total
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`${NEW_TOTAL_USERS} members`);
+        cy.findByTestId("admin-layout-content").findByText(
+          `${NEW_TOTAL_USERS} members`,
+        );
 
         // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
+        cy.findByTestId("admin-layout-content").findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
         cy.findByLabelText("Previous page").should("be.disabled");
 
         cy.findByLabelText("Next page").click();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Loading...").should("not.exist");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Loading...")
+          .should("not.exist");
 
         // Page 2
         cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
@@ -633,12 +612,12 @@ describe("scenarios > admin > people", () => {
         cy.findByLabelText("Next page").should("be.disabled");
 
         cy.findByLabelText("Previous page").click();
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("Loading...").should("not.exist");
+        cy.findByTestId("admin-layout-content")
+          .findByText("Loading...")
+          .should("not.exist");
 
         // Page 1
-        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(`1 - ${PAGE_SIZE}`);
+        cy.findByTestId("admin-layout-content").findByText(`1 - ${PAGE_SIZE}`);
         assertTableRowsCount(PAGE_SIZE);
       });
     });
@@ -689,7 +668,7 @@ describe("scenarios > admin > people", () => {
     cy.findByText("Dashboard").should("not.exist");
   });
 
-  it("invite member when SSO is configured metabase#23630", () => {
+  it("invite member when SSO is configured and not offer to reset passwords when password login is disabled (metabase#23630)", () => {
     H.setupSMTP();
     setupGoogleAuth();
     cy.request("PUT", "/api/setting", { "enable-password-login": false });
@@ -724,6 +703,12 @@ describe("scenarios > admin > people", () => {
     });
 
     cy.findByTestId("admin-people-list-table").should("contain", FULL_NAME);
+
+    cy.log(
+      "should not offer to reset passwords when password login is disabled",
+    );
+    showUserOptions(normalUserName);
+    H.popover().findByText("Reset password").should("not.exist");
   });
 });
 

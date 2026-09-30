@@ -36,7 +36,6 @@ export const useInvalidateTarget = (
             icon: "warning",
             message: e.data.message,
             toastColor: "feedback-negative",
-            dismissIconColor: "text-primary-inverse",
           }),
         );
       }

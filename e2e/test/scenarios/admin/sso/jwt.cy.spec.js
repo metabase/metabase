@@ -6,7 +6,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
   });
 
@@ -28,7 +28,7 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable and enable jwt", () => {
+  it("should allow to disable and enable jwt, reset its settings, and regenerate its key", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication");
 
@@ -41,36 +41,18 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getJwtCard().findByText("Active").should("exist");
-  });
 
-  it("should allow the user to enable/disable user provisioning", () => {
-    enableJwtAuth();
-    cy.visit("/admin/settings/authentication/jwt");
-
-    cy.findByRole("switch", { name: "User provisioning" })
-      .should("be.checked")
-      .click({ force: true });
-    cy.wait("@updateSetting");
-
-    H.undoToast().findByText("Changes saved").should("be.visible");
-    cy.findByRole("switch", { name: "User provisioning" }).should(
-      "not.be.checked",
-    );
-  });
-
-  it("should allow to reset jwt settings", () => {
-    enableJwtAuth();
-    cy.visit("/admin/settings/authentication");
-
+    cy.log("Deactivating resets the jwt settings");
     getJwtCard().icon("ellipsis").click();
     H.popover().findByText("Deactivate").click();
     H.modal().button("Deactivate").click();
     cy.wait("@updateSettings");
 
     getJwtCard().findByText("Set up").should("exist");
-  });
 
-  it("should allow to regenerate the jwt key and save the settings", () => {
+    cy.log("Regenerating the existing jwt key and saving the settings");
+    // Kept last: after saving, the form still counts as dirty, so leaving the
+    // page opens a "Discard your changes?" modal.
     enableJwtAuth();
     cy.visit("/admin/settings/authentication/jwt");
 
@@ -95,6 +77,21 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       .should("exist");
   });
 
+  it("should allow the user to enable/disable user provisioning", () => {
+    enableJwtAuth();
+    cy.visit("/admin/settings/authentication/jwt");
+
+    cy.findByRole("switch", { name: "User provisioning" })
+      .should("be.checked")
+      .click({ force: true });
+    cy.wait("@updateSetting");
+
+    H.undoToast().findByText("Changes saved").should("be.visible");
+    cy.findByRole("switch", { name: "User provisioning" }).should(
+      "not.be.checked",
+    );
+  });
+
   describe("Group mapping", () => {
     beforeEach(() => {
       enableJwtAuth();
@@ -105,62 +102,15 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       cy.visit("/admin/settings/authentication/jwt");
     });
 
-    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
+    it("should delete or clear mapped groups with their mappings, keep the remaining mappings consistent, and clear all mappings when switching to automatic", () => {
       cy.log("Every mapping is saved as soon as it is added");
       selectGroupMappingMode("Manual");
       addMapping("cn=People1", ["Administrators", "data", "nosql"]);
-      addMapping("cn=People2", ["collection", "readonly"]);
-
-      deleteMapping(
-        "cn=People1",
-        /delete the groups/i,
-        "Remove mapping and delete groups",
-      );
-      cy.wait(["@deleteGroup", "@deleteGroup"]);
-
-      cy.log("Deleted groups are no longer offered for new mappings");
-      newMappingButton().click();
-      groupsPicker().click();
-      cy.findByRole("listbox")
-        .should("contain", "collection")
-        .and("not.contain", "data")
-        .and("not.contain", "nosql");
-      cy.button("Cancel").click();
-
-      cy.log(
-        "Deleting the last mapping clears its groups and turns group mapping off",
-      );
-      deleteMapping(
-        "cn=People2",
-        /remove all members/i,
-        "Remove mapping and members",
-      );
-      cy.wait(["@clearGroup", "@clearGroup"]);
-      groupMappingSection()
-        .findByRole("radio", { name: "Off" })
-        .should("be.checked");
-
-      cy.log("Deleted groups are gone and cleared groups have no members");
-      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
-        const names = groups.map((group) => group.name);
-        expect(names).to.include.members(["collection", "readonly"]);
-        expect(names).not.to.include("data");
-        expect(names).not.to.include("nosql");
-        const memberCount = (name) =>
-          groups.find((group) => group.name === name).member_count;
-        expect(memberCount("collection")).to.equal(0);
-        expect(memberCount("readonly")).to.equal(0);
-      });
-    });
-
-    it("should drop deleted groups from the remaining mappings and clear all mappings when switching to automatic", () => {
-      selectGroupMappingMode("Manual");
-      addMapping("cn=People1", ["Administrators", "data", "nosql"]);
-      addMapping("cn=People2", ["data", "collection"]);
+      addMapping("cn=People2", ["Administrators", "data", "collection"]);
       addMapping("cn=People3", ["collection", "readonly"]);
 
       cy.log(
-        "Deleting a mapping's groups removes them from the other mappings too",
+        "Deleting a mapping's groups removes them from the other mappings too, but never deletes Administrators",
       );
       deleteMapping(
         "cn=People2",
@@ -172,6 +122,15 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
       mappingRow("cn=People3")
         .should("contain", "readonly")
         .and("not.contain", "collection");
+
+      cy.log("Deleted groups are no longer offered for new mappings");
+      newMappingButton().click();
+      groupsPicker().click();
+      cy.findByRole("listbox")
+        .should("contain", "readonly")
+        .and("not.contain", "data")
+        .and("not.contain", "collection");
+      cy.button("Cancel").click();
 
       cy.log("The same mappings come back after a reload");
       // the row assertions retry until the reloaded page has rendered, so there is nothing to wait on
@@ -182,8 +141,41 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
         .and("not.contain", "collection");
 
       cy.log(
+        "Clearing the last mappings empties their groups, skips Administrators and turns group mapping off",
+      );
+      deleteMapping(
+        "cn=People3",
+        /remove all members/i,
+        "Remove mapping and members",
+      );
+      cy.wait("@clearGroup");
+      deleteMapping(
+        "cn=People1",
+        /remove all members/i,
+        "Remove mapping and members",
+      );
+      cy.wait("@clearGroup");
+      groupMappingSection()
+        .findByRole("radio", { name: "Off" })
+        .should("be.checked");
+
+      cy.log("Deleted groups are gone and cleared groups have no members");
+      cy.request("GET", "/api/permissions/group").then(({ body: groups }) => {
+        const names = groups.map((group) => group.name);
+        expect(names).to.include.members(["nosql", "readonly"]);
+        expect(names).not.to.include("data");
+        expect(names).not.to.include("collection");
+        const memberCount = (name) =>
+          groups.find((group) => group.name === name).member_count;
+        expect(memberCount("nosql")).to.equal(0);
+        expect(memberCount("readonly")).to.equal(0);
+      });
+
+      cy.log(
         "Switching to automatic asks for confirmation and deletes the mappings",
       );
+      selectGroupMappingMode("Manual");
+      addMapping("cn=People4", ["readonly"]);
       selectGroupMappingMode("Automatic");
       H.modal().within(() => {
         cy.findByText("Switch to automatic group mapping?").should(

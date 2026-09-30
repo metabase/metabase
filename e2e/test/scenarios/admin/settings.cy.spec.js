@@ -38,40 +38,16 @@ describe("scenarios > admin > settings", () => {
     },
   );
 
-  it("should surface an error when validation for any field fails (metabase#4506)", () => {
+  it("should save a setting, surface a validation error (metabase#4506), and check for working https before enabling a redirect", () => {
     const BASE_URL = Cypress.config().baseUrl;
     const DOMAIN_AND_PORT = BASE_URL.replace("http://", "");
 
+    cy.intercept("PUT", "**/admin-email").as("saveSettings");
     cy.intercept("PUT", "/api/setting/site-url").as("url");
 
     cy.visit("/admin/settings/general");
 
-    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
-    cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
-      .click()
-      .type("foo", { delay: 100 })
-      .blur();
-
-    cy.wait("@url").should(({ response }) => {
-      expect(response.statusCode).to.eq(500);
-      // Switching to regex match for assertions - the test was flaky because of the "typing" issue
-      // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
-      // We only care that the `cause` is starting with "Invalid site URL"
-      expect(response.body.cause).to.match(/^Invalid site URL/);
-    });
-
-    // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
-    //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
-    cy.log("Making sure we display an error message in UI");
-    // Same reasoning for regex as above
-    H.undoToast().contains(/^Invalid site URL/);
-  });
-
-  it("should save a setting", () => {
-    cy.intercept("PUT", "**/admin-email").as("saveSettings");
-
-    cy.visit("/admin/settings/general");
-
+    cy.log("should save a setting");
     // aliases don't last past refreshes, so create a function to grab the input
     // rather than aliasing it with .as()
     const emailInput = () =>
@@ -94,14 +70,39 @@ describe("scenarios > admin > settings", () => {
       .blur();
     cy.wait("@saveSettings");
 
+    // The visit also clears the "Changes saved" toast, so the error toast below is the only one
     cy.visit("/admin/settings/general");
     // after we refreshed, the field should still be "other.email"
     emailInput().should("have.value", "other.email@metabase.test");
-  });
 
-  it("should check for working https before enabling a redirect", () => {
-    cy.visit("/admin/settings/general");
+    cy.log(
+      "should surface an error when validation for any field fails (metabase#4506)",
+    );
+    // Needed to strip down the protocol from URL to accomodate our UI (<select> PORT | <input> DOMAIN_AND_PORT)
+    cy.findByDisplayValue(DOMAIN_AND_PORT) // findByDisplayValue comes from @testing-library/cypress
+      .click()
+      .type("foo", { delay: 100 })
+      .blur();
 
+    cy.wait("@url").should(({ response }) => {
+      expect(response.statusCode).to.eq(500);
+      // Switching to regex match for assertions - the test was flaky because of the "typing" issue
+      // i.e. it sometimes doesn't type the whole string "foo", but only "oo".
+      // We only care that the `cause` is starting with "Invalid site URL"
+      expect(response.body.cause).to.match(/^Invalid site URL/);
+    });
+
+    // NOTE: This test is not concerned with HOW we style the error message - only that there is one.
+    //       If we update UI in the future (for example: we show an error within a popup/modal), the test in current form could fail.
+    cy.log("Making sure we display an error message in UI");
+    // Same reasoning for regex as above
+    H.undoToast().contains(/^Invalid site URL/);
+
+    // The site URL input keeps the rejected text after a failed save, so reload
+    // before switching the protocol; otherwise the invalid URL would be sent again
+    cy.reload();
+
+    cy.log("should check for working https before enabling a redirect");
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     cy.findByTestId("admin-layout-content").within(() => {
@@ -124,55 +125,6 @@ describe("scenarios > admin > settings", () => {
       .contains("Disabled");
 
     H.restore(); // avoid leaving https site url
-  });
-
-  it("should correctly apply the globalized date formats (metabase#11394) and update the formatting", () => {
-    cy.intercept("PUT", "**/custom-formatting").as("saveFormatting");
-
-    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
-      semantic_type: null,
-    });
-
-    cy.visit("/admin/settings/localization");
-
-    cy.findByTestId("date_style-formatting-setting")
-      .findByDisplayValue("January 31, 2018")
-      .click({ force: true });
-
-    H.popover().findByText("2018/1/31").click({ force: true });
-    cy.wait("@saveFormatting");
-
-    cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
-      "2018/1/31",
-    );
-
-    cy.findByTestId("custom-formatting-setting")
-      .findByText("17:24 (24-hour clock)")
-      .click();
-    cy.wait("@saveFormatting");
-    cy.findByDisplayValue("HH:mm").should("be.checked");
-
-    H.openOrdersTable({ limit: 2 });
-
-    cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]")
-      .should("contain", "Created At")
-      .and("contain", "2028/2/11, 21:40");
-
-    // Go back to the settings and reset the time formatting
-    cy.visit("/admin/settings/localization");
-
-    cy.findByTestId("custom-formatting-setting")
-      .findByText("5:24 PM (12-hour clock)")
-      .click();
-
-    cy.wait("@saveFormatting");
-    cy.findByDisplayValue("h:mm A").should("be.checked");
-
-    H.openOrdersTable({ limit: 2 });
-
-    cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
@@ -204,18 +156,6 @@ describe("scenarios > admin > settings", () => {
       cy.findByText("$39.72");
       cy.findByText("$117.03");
     });
-  });
-
-  it("should search for and select a new timezone", () => {
-    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
-    cy.visit("/admin/settings/localization");
-    cy.findByRole("textbox", { name: /timezone/i })
-      .as("timezoneSelect")
-      .clear()
-      .type("Centr");
-    H.selectDropdown().findByText("US/Central").click();
-    cy.wait("@reportTimezone");
-    cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
@@ -286,7 +226,7 @@ describe("scenarios > admin > settings (EE)", () => {
   it("should hide the store link when running Metabase EE", () => {
     cy.visit("/admin/settings/license");
 
-    cy.findByTestId("admin-layout-content")
+    cy.findByLabelText("Navigation bar")
       .findByLabelText("store icon")
       .should("not.exist");
   });
@@ -430,35 +370,38 @@ describe("scenarios > admin > settings > email settings", () => {
       H.expectNoBadSnowplowEvents();
     });
 
-    it("should show an error if test email fails", () => {
-      // Reuse Email setup without relying on the previous test
-      cy.request("PUT", "/api/setting", {
-        "email-from-address": "admin@metabase.test",
-        "email-from-name": "Metabase Admin",
-        "email-reply-to": ["reply-to@metabase.test"],
-        "email-smtp-host": "localhost",
-        "email-smtp-password": null,
-        "email-smtp-port": "1234",
-        "email-smtp-security": "none",
-        "email-smtp-username": null,
-      });
-      cy.visit("/admin/settings/email");
-
-      cy.findByTestId("admin-layout-content").within(() => {
-        cy.button("Send test email").click();
-        cy.findByText(
-          "Couldn't connect to host, port: localhost, 1234; timeout -1",
-        );
-      });
-    });
-
     it(
-      "should send a test email for a valid SMTP configuration",
+      "should show an error if test email fails and send a test email for a valid SMTP configuration",
       { tags: "@external" },
       () => {
-        H.setupSMTP();
+        cy.log("should show an error if test email fails");
+        // Reuse Email setup without relying on the previous test
+        cy.request("PUT", "/api/setting", {
+          "email-from-address": "admin@metabase.test",
+          "email-from-name": "Metabase Admin",
+          "email-reply-to": ["reply-to@metabase.test"],
+          "email-smtp-host": "localhost",
+          "email-smtp-password": null,
+          "email-smtp-port": "1234",
+          "email-smtp-security": "none",
+          "email-smtp-username": null,
+        });
         cy.visit("/admin/settings/email");
-        cy.button("Send test email").click();
+
+        cy.findByTestId("admin-layout-content").within(() => {
+          cy.button("Send test email").click();
+          cy.findByText(
+            "Couldn't connect to host, port: localhost, 1234; timeout -1",
+          );
+        });
+
+        cy.log("should send a test email for a valid SMTP configuration");
+        H.setupSMTP();
+        // The visit also clears the error toast above, so "Email sent!" is the only toast
+        cy.visit("/admin/settings/email");
+        cy.findByTestId("admin-layout-content")
+          .button("Send test email")
+          .click();
         H.undoToast().findByText("Email sent!").should("be.visible");
         cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
           ({ body }) => {
@@ -737,7 +680,8 @@ describe("scenarios > admin > localization", () => {
     });
   });
 
-  it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
+  it("should use currency settings for number columns with style set to currency (metabase#10787) and search for and select a new timezone", () => {
+    cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -747,6 +691,19 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("Euro").click();
     H.undoToast().findByText("Changes saved").should("be.visible");
 
+    // Runs after the currency toast assertion because saving the timezone shows another toast
+    cy.log("should search for and select a new timezone");
+    cy.findByRole("textbox", { name: /timezone/i })
+      .as("timezoneSelect")
+      .clear()
+      .type("Centr");
+    H.selectDropdown().findByText("US/Central").click();
+    cy.wait("@reportTimezone");
+    cy.get("@timezoneSelect").should("have.value", "US/Central");
+
+    cy.log(
+      "should use currency settings for number columns with style set to currency (metabase#10787)",
+    );
     H.visitQuestionAdhoc({
       display: "scalar",
       dataset_query: {
@@ -770,11 +727,15 @@ describe("scenarios > admin > localization", () => {
     cy.findByText("€10.00");
   });
 
-  it("should use fix up clj unit testsdate and time styling settings in the date filter widget (metabase#9151, metabase#12472)", () => {
+  it("should apply date and time style settings to table cells and the date filter widget (metabase#11394, metabase#9151, metabase#12472)", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("PUT", "/api/setting/custom-formatting").as(
       "updateFormatting",
     );
+
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
 
     cy.visit("/admin/settings/localization");
 
@@ -796,6 +757,19 @@ describe("scenarios > admin > localization", () => {
       cy.findByDisplayValue("HH:mm").should("be.checked");
     });
 
+    cy.log(
+      "Globalized date formats are applied to table cells (metabase#11394)",
+    );
+    H.openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.findAllByTestId("cell-data")
+      .should("contain", "Created At")
+      .and("contain", "2028/2/11, 21:40");
+
+    cy.log(
+      "Date and time styles are applied in the date filter widget (metabase#9151, metabase#12472)",
+    );
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     // create a date filter and set it to the 'On' view to see a specific date
@@ -830,6 +804,20 @@ describe("scenarios > admin > localization", () => {
       cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
+
+    cy.log("Switching back to the 12-hour clock updates the formatting");
+    cy.visit("/admin/settings/localization");
+
+    cy.findByTestId("custom-formatting-setting").within(() => {
+      cy.findByText("5:24 PM (12-hour clock)").click();
+      cy.wait("@updateFormatting");
+      cy.findByDisplayValue("h:mm A").should("be.checked");
+    });
+
+    H.openOrdersTable({ limit: 2 });
+
+    cy.findByTextEnsureVisible("Created At");
+    cy.findAllByTestId("cell-data").should("contain", "2028/2/11, 9:40 PM");
   });
 });
 
@@ -840,19 +828,23 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to load and save a custom map", () => {
+  it("should be able to load a custom map before a name is added, then save it (#14635)", () => {
     cy.visit("/admin/settings/maps");
     cy.button("Add a map").click();
-    cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
-      "Test Map",
-    );
     cy.findByPlaceholderText(
       "Like https://my-mb-server.com/maps/my-map.json",
     ).type(
       "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
     );
+    cy.log("Loading works before a map name is entered (#14635)");
     cy.button("Load").click();
-    cy.wait("@getGeoJson");
+    cy.wait("@getGeoJson").then((interception) => {
+      expect(interception.response.statusCode).to.eq(200);
+    });
+
+    cy.findByPlaceholderText("e.g. United Kingdom, Brazil, Mars").type(
+      "Test Map",
+    );
     cy.findByTestId("map-region-key-select").click();
     H.selectDropdown().contains("NAME").click();
     cy.findByTestId("map-region-name-select").click();
@@ -861,23 +853,6 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByTestId("admin-layout-content").within(() => {
       cy.contains("NAME").should("not.exist");
       cy.contains("Test Map");
-    });
-  });
-
-  it("should be able to load a custom map even if a name has not been added yet (#14635)", () => {
-    cy.intercept("GET", "/api/geojson*").as("load");
-    cy.visit("/admin/settings/maps");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add a map").click();
-    cy.findByPlaceholderText(
-      "Like https://my-mb-server.com/maps/my-map.json",
-    ).type(
-      "https://raw.githubusercontent.com/metabase/metabase/master/resources/frontend_client/app/assets/geojson/world.json",
-    );
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Load").click();
-    cy.wait("@load").then((interception) => {
-      expect(interception.response.statusCode).to.eq(200);
     });
   });
 });

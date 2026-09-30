@@ -13,22 +13,17 @@ describe(
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
-    it("should setup ldap (metabase#16173)", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      enterLdapSettings();
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Success").should("exist");
-    });
-
-    it("should update ldap settings", () => {
+    it("should update ldap settings and not show the user provisioning UI to OSS users", () => {
       H.setupLdap();
       cy.visit("/admin/settings/authentication/ldap");
 
       enterLdapPort("389");
+
+      cy.log("User provisioning is not offered to OSS users");
+      cy.findByTestId("admin-layout-content")
+        .findByText(/User Provisioning/i)
+        .should("not.exist");
+
       cy.button("Save changes").click();
       cy.wait("@updateLdapSettings");
 
@@ -37,7 +32,7 @@ describe(
       getLdapCard().findByText("Active").should("exist");
     });
 
-    it("should allow to disable and enable ldap", () => {
+    it("should allow to disable and enable ldap, then reset its settings", () => {
       H.setupLdap();
       cy.visit("/admin/settings/authentication");
 
@@ -50,21 +45,8 @@ describe(
       H.popover().findByText("Resume").click();
       cy.wait("@updateSetting");
       getLdapCard().findByText("Active").should("exist");
-    });
 
-    it("should not show the user provision UI to OSS users", () => {
-      H.setupLdap();
-      cy.visit("/admin/settings/authentication/ldap");
-
-      cy.findByTestId("admin-layout-content")
-        .findByText(/User Provisioning/i)
-        .should("not.exist");
-    });
-
-    it("should allow to reset ldap settings", () => {
-      H.setupLdap();
-      cy.visit("/admin/settings/authentication");
-
+      cy.log("Deactivating resets the ldap settings");
       getLdapCard().icon("ellipsis").click();
       H.popover().findByText("Deactivate").click();
       H.modal().button("Deactivate").click();
@@ -73,31 +55,7 @@ describe(
       getLdapCard().findByText("Set up").should("exist");
     });
 
-    it("should not reset previously populated fields when schema validation fails for just one of them", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      enterLdapSettings();
-      enterLdapPort("0");
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
-
-      cy.findAllByText("nullable integer greater than 0").should("exist");
-      cy.findByDisplayValue("localhost").should("exist");
-    });
-
-    it("should not reset previously populated fields when validation fails for just one of them (metabase#16226)", () => {
-      cy.visit("/admin/settings/authentication/ldap");
-
-      enterLdapSettings();
-      enterLdapPort("1");
-      cy.button("Save and enable").click();
-      cy.wait("@updateLdapSettings");
-
-      cy.findAllByText("Wrong host or port").should("exist");
-      cy.findByDisplayValue("localhost").should("exist");
-    });
-
-    it("shouldn't be possible to save a non-integer port (#13313)", () => {
+    it("should validate the port, not reset previously populated fields when schema or connection validation fails, and setup ldap once the port is valid (metabase#13313, metabase#16173, metabase#16226)", () => {
       cy.visit("/admin/settings/authentication/ldap");
 
       cy.findByLabelText(/LDAP Port/i)
@@ -106,6 +64,8 @@ describe(
         .as("portSection");
 
       enterLdapSettings();
+
+      cy.log("A non-integer port is not accepted (metabase#13313)");
       enterLdapPort("asd");
       cy.get("@portSection").findByDisplayValue("asd").should("not.exist");
 
@@ -114,15 +74,37 @@ describe(
         .findByText("ldap-port must be an integer")
         .should("be.visible");
 
+      cy.log("Schema validation error (metabase#16226)");
+      enterLdapPort("0");
+      cy.button("Save and enable").click();
+      cy.wait("@updateLdapSettings");
+
+      cy.findAllByText("nullable integer greater than 0").should("exist");
+      cy.findByDisplayValue("localhost").should("exist");
+
+      cy.log("Connection validation error (metabase#16226)");
+      enterLdapPort("1");
+      // the submit button reads "Failed" for 5s after a rejected save
+      cy.button(/Save and enable|Failed/).click();
+      cy.wait("@updateLdapSettings");
+
+      cy.findAllByText("Wrong host or port").should("exist");
+      cy.findByDisplayValue("localhost").should("exist");
+
+      cy.log(
+        "A valid port, even with a trailing space, sets up ldap (metabase#13313, metabase#16173)",
+      );
       enterLdapPort("389 ");
       cy.get("@portSection")
         .findByText("That's not a valid port number")
         .should("not.exist");
 
-      cy.button("Save and enable").click();
+      // the submit button can still read "Failed" from the rejected save above
+      cy.button(/Save and enable|Failed/).click();
       cy.wait("@updateLdapSettings");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Success").should("exist");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Success")
+        .should("exist");
     });
 
     it("should allow user login on OSS when LDAP is enabled", () => {
