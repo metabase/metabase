@@ -174,7 +174,7 @@ export const MetabotChat = ({
                         onClick={() => metabot.submitInput(prompt)}
                         className={Styles.promptSuggestionButton}
                         bg="background_surface-brand-subtle"
-                        bdrs="lg"
+                        bdrs="sm"
                         lh="xl"
                       >
                         <Flex gap="sm">
@@ -182,6 +182,7 @@ export const MetabotChat = ({
                             name="bolt"
                             size={16}
                             c="icon-brand"
+                            flex="0 0 auto"
                             style={{ transform: "translateY(1px)" }}
                           />
                           <Box>{prompt}</Box>

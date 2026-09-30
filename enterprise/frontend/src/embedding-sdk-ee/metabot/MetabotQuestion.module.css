@@ -91,7 +91,7 @@
   line-height: 1.4;
   padding: 0.5rem 0.75rem;
   width: fit-content;
-  border-radius: 1rem;
+  border-radius: var(--mantine-radius-sm);
   background-color: var(--mb-color-background_surface-brand-subtle);
   color: var(--mb-color-icon-primary);
   font-size: 0.875rem;

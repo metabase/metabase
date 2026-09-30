@@ -1,6 +1,6 @@
 .button {
   background: var(--mb-color-core-brand);
-  border-radius: 0.625rem;
+  border-radius: var(--mantine-radius-xs);
   width: 2rem;
   height: 2rem;
   display: flex;

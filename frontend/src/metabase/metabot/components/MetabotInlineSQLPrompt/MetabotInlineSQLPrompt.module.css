@@ -13,7 +13,7 @@
   margin-bottom: 0.125rem;
   background: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-border-neutral);
-  border-radius: 1rem;
+  border-radius: var(--mantine-radius-sm);
   box-shadow: 0 2px 8px transparent;
   transition: box-shadow 150ms ease;
 
