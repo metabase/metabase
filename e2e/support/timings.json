@@ -205,10 +205,6 @@
       "duration": 33378
     },
     {
-      "spec": "../test/scenarios/collections/tenant-collection-trash.cy.spec.ts",
-      "duration": 3179
-    },
-    {
       "spec": "../test/scenarios/collections/tenant-collections-list.cy.spec.ts",
       "duration": 4000
     },
