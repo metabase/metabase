@@ -2394,6 +2394,13 @@
   (and (not (map-entry? v))
        (match/matches? v (:and ["field" (_ :guard map?) (_ :guard non-blank-string?)]))))
 
+(defn- unstamped-cross-stage-ref?
+  "True if `node` is a `[\"field\" {} \"<name>\"]` cross-stage/source-card ref still lacking
+  `base-type` (an LLM-authored `base-type` is left for the resolver / schema to judge)."
+  [node]
+  (and (string-cross-stage-field-clause? node)
+       (not (contains? (nth node 1) "base-type"))))
+
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
   metadata map, in the string-keyed form that matches the rest of the repair pipeline.
@@ -2619,10 +2626,15 @@
              q query]
         (if (>= i n)
           q
+          ;; Resolving a card or a join is the expensive part, so each happens only when an
+          ;; untyped ref needs it.
           (let [stage     (get-in q ["stages" i])
-                cols      (when (and (map? stage) (get stage "source-card"))
+                untyped   (when (map? stage)
+                            (filterv unstamped-cross-stage-ref? (stage-refs stage)))
+                joined?   #(contains? (nth % 1) "join-alias")
+                cols      (when (and (get stage "source-card") (some (complement joined?) untyped))
                             (mini-resolved-columns-for-source-card mp q i content-store))
-                join-cols (when (map? stage)
+                join-cols (when (some joined? untyped)
                             (join-columns-by-alias mp q stage content-store))
                 q'        (if (or cols (seq join-cols))
                             (update-in q ["stages" i] infer-cross-stage-field-types-in-stage cols join-cols)
@@ -2663,13 +2675,6 @@
 ;;; retryable `:agent-error?` the LLM already recovers from for dangling `[:expression …]`
 ;;; refs, naming the offending column and listing the valid ones.
 ;;; ============================================================
-
-(defn- unstamped-cross-stage-ref?
-  "True if `node` is a `[\"field\" {} \"<name>\"]` cross-stage/source-card ref still lacking
-  `base-type` (an LLM-authored `base-type` is left for the resolver / schema to judge)."
-  [node]
-  (and (string-cross-stage-field-clause? node)
-       (not (contains? (nth node 1) "base-type"))))
 
 (defn- stage-has-unstamped-cross-stage-ref?
   "Cheap structural pre-scan: does `stage` contain any [[unstamped-cross-stage-ref?]]? Lets the
