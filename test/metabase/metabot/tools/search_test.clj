@@ -838,7 +838,8 @@
       "Orders OR Revenue"         nil                                    ; `or` match is case-insensitive too
       "\"monthly revenue\""       nil                                    ; quoted = deliberate exact match
       "sales, revenue"            "sales or revenue"                     ; clinging edge punctuation is stripped
-      "sales -refunds"            "sales or refunds"                     ; leading `-` stripped: the fallback deliberately ignores negation intent
+      "sales -refunds"            nil                                    ; an exclusion would be lost across OR branches
+      "sales - refunds"           "sales or refunds"                     ; a lone `-` is not an exclusion
       "the of for"                nil                                    ; collapses to <2 tokens after stopwords
       "revenue Revenue, revenue"  nil                                    ; repeats would OR to the same query
       "sales revenue sales"       "sales or revenue or sales"            ; repeats kept, so the final word stays a repeat (no prefix)

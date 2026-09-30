@@ -631,17 +631,18 @@
    Returns nil (no fallback) when broadening doesn't apply:
      - the query is empty or has a single distinct token
      - the agent already used `or` (so OR-broadening would be redundant)
-     - the agent used a quoted phrase (treat as a deliberate exact-match intent)"
+     - the agent used a quoted phrase (treat as a deliberate exact-match intent)
+     - the agent excluded a word (OR-joined branches would drop the exclusion and surface exactly what was
+       ruled out)"
   [q]
   (when (and q
              (not (str/includes? q "\""))
-             (not (re-find #"(?i)\bor\b" q)))
+             (not (re-find #"(?i)\bor\b" q))
+             ;; the same test `search.util/to-tsquery-expr` uses to read a word as negated
+             (not (re-find #"(?:^|\s)-\w" q)))
     (let [tokens (->> (str/split q #"\s+")
                       ;; Strip clinging edge punctuation so "sales, revenue" broadens to
-                      ;; "sales or revenue", not "sales, or revenue". This also drops a leading
-                      ;; `-` (negation): the OR-broadening fallback deliberately ignores exclusion
-                      ;; intent — keyword negation is already documented as unreliable, and on a
-                      ;; zero-hit last resort surfacing "-refunds" as "refunds" beats nothing.
+                      ;; "sales or revenue", not "sales, or revenue".
                       (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
                       (remove str/blank?)
                       (remove #(query-broadening-stopwords (u/lower-case-en %))))]
