@@ -192,6 +192,8 @@
                     {:id "anthropic/claude-sonnet-5"           :display_name "Claude Sonnet 5"}
                     {:id "anthropic/claude-sonnet-4-6"         :display_name "Claude Sonnet 4.6"}
                     {:id "anthropic/claude-haiku-4-5@20251001" :display_name "Claude Haiku 4.5"}]
+    ;; A connection with an endpoint ID serves that Model Garden endpoint instead of the catalog.
+    :model-fields  ["endpoints" :endpoint-id]
     ;; A service account key authenticates on its own (it can carry the project); an OAuth token needs the project
     ;; named beside it.
     :required-any  [[:service-account-key] [:oauth-access-token :project-id]]
@@ -236,6 +238,11 @@
                      :show-when   {:field :auth-method :value "oauth-token"}
                      :placeholder "ya29..."
                      :help        (deferred-tru "A short-lived token, e.g. the output of gcloud auth print-access-token. Useful for testing.")}
+                    {:key         :endpoint-id
+                     :label       (deferred-tru "Model Garden endpoint ID")
+                     :type        :text
+                     :placeholder "1234567890123456789"
+                     :help        (deferred-tru "Optional. Use an open model you deployed from Model Garden instead of one Google hosts. Set the location to the region you deployed it to.")}
                     {:key       :base-url
                      :normalize strip-trailing-slashes
                      :validate  llm.provider.settings/llm-url-problem
@@ -422,8 +429,9 @@
   (:models (provider-type type-name)))
 
 (defn model-fields
-  "The `:config` keys whose values compose the model a connection of `type-name` serves, for types whose models
-  cannot be listed from the provider. Returns nil for types whose catalog is fetched or fixed."
+  "The parts that compose the model a connection names in its own `:config`, for models the provider cannot list.
+  Each part is a `:config` key, or a string that stands for itself like the `endpoints` in Google's `endpoints/{id}`.
+  Returns nil for types whose connections only serve a fetched or fixed catalog."
   [type-name]
   (:model-fields (provider-type type-name)))
 
@@ -444,12 +452,12 @@
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (defn connection-model
-  "The model `config` names, composed from its type's [[model-fields]] — Azure's `{family}/{deployment}` comes from
-  two inputs so the admin picks the family rather than typing it as a prefix. Returns nil for types that list their
-  models, and for a connection that has not filled every part in yet."
+  "The model `config` names, composed from its type's [[model-fields]], or nil when it names none.
+  Azure's `{family}/{deployment}` comes from two inputs so the admin picks the family rather than typing it as a
+  prefix. A connection that leaves a part blank names no model, which for Google means it serves the catalog."
   [type-name config]
   (when-let [field-keys (seq (model-fields type-name))]
-    (let [parts (map #(u/trimmed-string (get config %)) field-keys)]
+    (let [parts (map #(if (string? %) % (u/trimmed-string (get config %))) field-keys)]
       (when (every? some? parts)
         (str/join "/" parts)))))
 
