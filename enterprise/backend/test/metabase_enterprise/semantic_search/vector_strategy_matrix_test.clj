@@ -411,6 +411,21 @@
                                      :verified true
                                      :vector-search-max-scan-tuples 64)))))))))))
 
+(deftest max-semantic-distance-test
+  (do-with-matrix-fixture!
+   (fn [{:keys [id->distance] :as ds}]
+     (semantic.tu/with-only-semantic-weights
+       (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+         (testing "the context's cutoff replaces the default, so only docs within it come back, nearest first"
+           ;; 0.11 keeps the restricted band and the nearest core docs: fewer than the 20-row pool
+           (let [within (->> (:docs ds)
+                             (map :id)
+                             (filter #(<= (id->distance %) 0.11))
+                             (sort-by id->distance)
+                             vec)]
+             (is (< 0 (count within) 20))
+             (is (= within (query-ids! :brute-force :max-semantic-distance 0.11))))))))))
+
 ;;;; layer 2: final top results vs an exhaustive run of the same scoring pipeline
 
 (deftest full-pipeline-recall-matrix-test

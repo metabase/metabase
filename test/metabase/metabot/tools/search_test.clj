@@ -1351,3 +1351,14 @@
         (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx] (reset! captured ctx) {:data []})]
           (search/search-by-query {:query "how much did we make" :vector-only? true}))
         (is (true? (:vector-only? @captured)))))))
+
+(deftest semantic-search-tool-widens-the-distance-cutoff-test
+  (mt/with-test-user :rasta
+    (with-redefs [perms/impersonated-user? (fn [] false)
+                  perms/sandboxed-user? (fn [] false)]
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [ctx] (reset! captured ctx) {:data []})]
+          (metabot.tools/semantic-search-tool {:query "how much did we make"}))
+        (is (=? {:vector-only?          true
+                 :max-semantic-distance 0.8}
+                @captured))))))

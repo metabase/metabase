@@ -302,6 +302,8 @@
    [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    ;; semantic engine: match by meaning alone, with no keyword branch and no fallback to a keyword engine
    [:vector-only?                        {:optional true} [:maybe boolean?]]
+   ;; semantic engine: the widest cosine distance a vector match may have; the engine's own cutoff when unset
+   [:max-semantic-distance               {:optional true} [:maybe [:and number? [:> 0] [:<= 2]]]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    ;; a structured keyword query; engines that compile it use it in place of `:search-string` for matching
    [:search-expr                         {:optional true} [:maybe (query-expr/schema query-expr/all-ops)]]
@@ -347,6 +349,7 @@
            vector-search-explain?
            vector-search-force-index?
            vector-only?
+           max-semantic-distance
            search-native-query
            search-expr
            search-string
@@ -396,6 +399,7 @@
                  (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
                  (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  vector-only?                                (assoc :vector-only? true)
+                 (some? max-semantic-distance)               (assoc :max-semantic-distance max-semantic-distance)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? search-expr)                         (assoc :search-expr search-expr)
                  (some? verified)                            (assoc :verified verified)

@@ -628,9 +628,9 @@
   `engine` is the engine to run, by default the keyword engine. `query` is a plain string, such as a natural-language
   description for the semantic engine. `search-expr` is a structured keyword query (see `metabase.search.query-expr`):
   engines that compile it match on it, and the others match its leaves as a plain string. `vector-only?` asks the
-  semantic engine for meaning alone."
-  [{:keys [query search-expr engine vector-only? database-id collection-id created-at last-edited-at
-           entity-types limit metabot-id profile-id search-native-query weights]}]
+  semantic engine for meaning alone, and `max-semantic-distance` overrides its distance cutoff."
+  [{:keys [query search-expr engine vector-only? max-semantic-distance database-id collection-id created-at
+           last-edited-at entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:database-id         database-id
               :entity-types        entity-types
@@ -679,7 +679,8 @@
                                    use-verified?       (assoc :curated true)
                                    collection-id       (assoc :collection collection-id)
                                    search-expr         (assoc :search-expr search-expr)
-                                   vector-only?        (assoc :vector-only? true)))]
+                                   vector-only?        (assoc :vector-only? true)
+                                   max-semantic-distance (assoc :max-semantic-distance max-semantic-distance)))]
                             (:data (search/search search-context))))
         results         (run-engine (if search-expr (search/query-expr-search-string search-expr) query))]
     (log/info "[METABOT-SEARCH] Search finished" {:engine       picked-engine
@@ -944,9 +945,16 @@
    (str "Text to find in names and descriptions: one term, or an `and` of terms that must all appear. A term "
         "matches anywhere inside a word, so `cust` finds `customers`.")))
 
+;; Metabot reads a short ranked list and pairs it with keyword search, so it casts a wider net than the semantic
+;; engine's default cutoff and leaves precision to ranking.
+(def ^:private metabot-max-semantic-distance 0.8)
+
 (def ^:private matchers
   "How each matcher runs: the engine it pins, and whether its `query` is a structured query."
-  {:semantic      {:engine (constantly :search.engine/semantic) :expr? false :vector-only? true}
+  {:semantic      {:engine                (constantly :search.engine/semantic)
+                  :expr?                 false
+                  :vector-only?          true
+                  :max-semantic-distance metabot-max-semantic-distance}
    :fulltext      {:engine search.engine/keyword-engine :expr? true :validate-tsquery? true}
    :substring-or  {:engine search.engine/keyword-engine :expr? true}
    :substring-and {:engine search.engine/keyword-engine :expr? true}})
@@ -1008,7 +1016,7 @@
 (defn- run-search-tool
   [profile matcher {:keys [query entity_types] :as args}]
   (let [{:keys [label allowed default-types opts]} (profiles profile)
-        {:keys [engine expr? vector-only?]}        (matchers matcher)
+        {:keys [engine expr? vector-only? max-semantic-distance]} (matchers matcher)
         args                                       (cond-> args
                                                      (and default-types (not (seq entity_types)))
                                                      (assoc :entity_types default-types))]
@@ -1019,6 +1027,7 @@
                  (merge opts
                         {:engine (engine)}
                         (when vector-only? {:vector-only? true})
+                        (when max-semantic-distance {:max-semantic-distance max-semantic-distance})
                         (when expr? {:search-expr query})
                         (when (= :sql profile) {:database-id (:database_id args)}))
                  args)
