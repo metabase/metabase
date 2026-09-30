@@ -2172,3 +2172,59 @@ describe("issue #66670", () => {
     );
   });
 });
+
+describe("issue 49642", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const QUESTION = {
+    name: "Issue 49642",
+    query: {
+      "source-table": PEOPLE_ID, // people has >1000 rows
+    },
+  };
+
+  it("should allow searching for more values when the filter contains more than 1000 values (metabase#49642)", () => {
+    H.createDashboard().then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+    H.editDashboard();
+
+    H.createQuestion(QUESTION);
+    addQuestion(QUESTION.name);
+
+    H.setFilter("Text or Category", "Is");
+    mapFilterToQuestion("Name");
+    H.sidebar().findByText("A single value").click();
+
+    H.saveDashboard();
+
+    H.filterWidget().click();
+    H.dashboardParametersPopover().within(() => {
+      cy.findByText("Aaron Hand").should("be.visible");
+      cy.findByText("Zackery Bailey").should("not.exist");
+      cy.findByPlaceholderText("Search the list").type("Zackery");
+      cy.findByText("Zackery Bailey").should("be.visible");
+      cy.findByText("Zackery Kuhn").should("be.visible").click();
+
+      cy.findByPlaceholderText("Search the list").should(
+        "have.value",
+        "Zackery Kuhn",
+      );
+
+      cy.findByText("Zackery Bailey").should("not.exist");
+    });
+  });
+
+  function addQuestion(name) {
+    H.openQuestionsSidebar();
+    cy.findByTestId("add-card-sidebar").findByText(name).click();
+  }
+
+  const mapFilterToQuestion = (column = "Category") => {
+    cy.findByText("Select…").click();
+    H.popover().within(() => cy.findByText(column).click());
+  };
+});

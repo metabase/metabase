@@ -5,7 +5,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
 import * as SQLFilter from "./helpers/e2e-sql-filter-helpers";
 
-const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { INVOICES, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 const { COLLECTION_GROUP } = USER_GROUPS;
 
@@ -863,5 +863,115 @@ describe("issue 70311", () => {
 
     cy.findByTestId("query-visualization-root").should("be.visible");
     cy.icon("play").should("not.exist");
+  });
+});
+
+// This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
+describe("issue 45877", () => {
+  beforeEach(() => {
+    H.restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("should not render selected boolean option twice in a filter dropdown (metabase#45877)", () => {
+    const questionDetails = {
+      name: "45877",
+      native: {
+        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+        "template-tags": {
+          expected_invoice: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
+            name: "expected_invoice",
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
+        },
+      },
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.filterWidget().should("contain", "Expected Invoice").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("exist");
+
+      cy.findAllByLabelText("true")
+        .should("have.length", 1)
+        .and("not.be.checked");
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .and("not.be.checked")
+        .click();
+
+      cy.button("Add filter").click();
+    });
+
+    // We don't even have to run the query to reproduce this issue
+    // so let's not waste time and resources doing so.
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+    H.filterWidget().should("contain", "false").click();
+    H.popover().within(() => {
+      cy.findAllByLabelText("true").should("have.length", 1);
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .should("be.checked");
+    });
+  });
+});
+
+describe("issue 44665", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the correct widget for the default value picker (metabase#44665)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("select * from {{param");
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Search box").click();
+        cy.findByText("Edit").click();
+      });
+
+    H.modal().within(() => {
+      cy.findByText("Custom list").click();
+      cy.findByRole("textbox").type("foo\nbar\nbaz\nfoobar");
+      cy.button("Done").click();
+    });
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.sidebar().last().findByText("Enter a default value…").click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…")
+        .should("be.visible")
+        .type("foo");
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("foobar").should("be.visible");
+
+      cy.findByText("bar").should("not.exist");
+      cy.findByText("baz").should("not.exist");
+    });
+
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
+    H.sidebar()
+      .last()
+      .within(() => {
+        cy.findByText("Enter a default value…").click();
+        cy.findByText("Dropdown list").click();
+        cy.findByText("Enter a default value…").click();
+      });
+
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a default value…").should("be.visible");
+
+      cy.findByText("foo").should("be.visible");
+      cy.findByText("bar").should("be.visible");
+      cy.findByText("baz").should("be.visible");
+      cy.findByText("foobar").should("be.visible");
+    });
   });
 });
