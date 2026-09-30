@@ -2,10 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.events.audit-log]
    [metabase.events.core :as events]
+   [metabase.search.appdb.core]
    [metabase.search.engine :as search.engine]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
+
+(comment metabase.audit-app.events.audit-log/keep-me)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest locale-change-reindexes-after-commit-test
   (when (= :postgres (mdb/db-type))
