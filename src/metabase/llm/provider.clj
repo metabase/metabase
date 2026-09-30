@@ -801,6 +801,13 @@
    {:config {} :vars {}}
    settings))
 
+(defn- applicable-overlay
+  "`overlay` when it describes a connection of `type-name`, and nil otherwise: the variables describe one
+  provider type's fields, so they mean nothing to a connection of another that happens to share the key."
+  [overlay type-name]
+  (when (= type-name (:type overlay))
+    overlay))
+
 (defn- env-overlays
   "The environment's contribution to each connection key, resolved on every read so editing a variable takes effect
   on the next restart without anything having to be migrated or re-saved."
@@ -973,6 +980,15 @@
                     (get vars moved "the environment")
                     (get vars field "the matching environment variable")))))))
 
+(defn env-overlay-config
+  "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
+  supplies nothing for it.
+
+  For a writer deciding about a connection that does not exist yet, which cannot read the overlay off a
+  stored one — see [[applicable-overlay]] for which overlay reaches it."
+  [conn-key type-name]
+  (:config (applicable-overlay (get (env-overlays) conn-key) type-name)))
+
 (defn effective-config
   "What the stored connection `conn` will run on once `env-config` is layered over it.
 
@@ -1007,17 +1023,16 @@
   []
   (let [overlays   (env-overlays)
         overlaid   (mapv (fn [{conn-key :key :keys [type] :as conn}]
-                           (let [{env-config :config vars :vars :as overlay} (get overlays conn-key)]
-                             ;; only a same-typed overlay applies: the fields describe this provider type's config
-                             (if (and overlay (= type (:type overlay)))
-                               (-> conn
-                                   ;; first: it reads the stored destination, which the next one removes
-                                   (drop-captured-secrets env-config)
-                                   (drop-captured-destination env-config)
-                                   (update :config merge env-config)
-                                   (update :env-vars (fnil into (sorted-set)) (vals vars))
-                                   (assoc :env-fields (set (keys env-config))))
-                               conn)))
+                           (if-let [{env-config :config vars :vars}
+                                    (applicable-overlay (get overlays conn-key) type)]
+                             (-> conn
+                                 ;; first: it reads the stored destination, which the next one removes
+                                 (drop-captured-secrets env-config)
+                                 (drop-captured-destination env-config)
+                                 (update :config merge env-config)
+                                 (update :env-vars (fnil into (sorted-set)) (vals vars))
+                                 (assoc :env-fields (set (keys env-config))))
+                             conn))
                          (annotated-stored-connections))
         taken      (into #{} (map :key) overlaid)
         standalone (into []

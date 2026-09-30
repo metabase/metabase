@@ -435,13 +435,16 @@
                                        (pr-str llm.provider/managed-connection-key)))
           submitted (without-blank-values (update-keys config keyword))
           _         (llm.provider/assert-config-applies! type submitted submitted)
-          config    (llm.provider/config-to-store type submitted)
           conn      {:key    conn-key
                      :type   type
                      :name   (or (not-empty name) (str (:label provider-type)))
-                     :config config}]
-      (llm.provider/validate-config! type config)
-      (let [{:keys [connection-info] :as listed} (verify-credentials! conn config model)
+                     :config (llm.provider/config-to-store type submitted)}
+          ;; what this connection will run on the moment it exists, which a variable already naming one of
+          ;; its fields has a say in
+          effective (llm.provider/effective-config
+                     conn (llm.provider/env-overlay-config conn-key type))]
+      (llm.provider/validate-config! type effective)
+      (let [{:keys [connection-info] :as listed} (verify-credentials! conn effective model)
             conn              (update conn :config merge connection-info)
             had-usable-model? (metabot-has-a-usable-model?)]
         (llm.provider/set-connections! (conj (llm.provider/stored-connections) conn))
@@ -450,7 +453,9 @@
           ;; the probe exercised, so connecting one leaves the instance working rather than model-less
           (select-model-for-new-connection! conn (or model (:probed-model connection-info))))
         (seed-models-cache! conn listed)
-        (connection-response (assoc conn :source :db))))))
+        ;; read back rather than answer from what was submitted: the environment has a say in this
+        ;; connection, and the admin should not have to reload the page to find out what it was
+        (connection-response (llm.provider/connection conn-key))))))
 
 (api.macros/defendpoint :put "/providers/:key"
   :- connection-response-schema
@@ -475,8 +480,8 @@
         ;; echoes back for them is the mask of the env value, which must not end up stored. Only what the
         ;; environment literally supplies is stripped: the rest of a destination group it pins is a value the
         ;; client really chose, so that is refused below rather than silently dropped
-        env-config (select-keys (:config live) (:env-fields live))
         conn-type  (:type existing)
+        env-config (llm.provider/env-overlay-config conn-key conn-type)
         client-cfg (apply dissoc config (:env-fields live))
         submitted  (cond-> existing
                      (some? config)     (assoc :config (without-blank-values

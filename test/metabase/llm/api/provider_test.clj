@@ -1562,6 +1562,49 @@
                                                   :api-key  "sk-cloud"
                                                   :base-url "http://ollama.internal:11434/v1"}}))))))))
 
+(deftest create-judges-the-connection-the-environment-will-leave-behind-test
+  (testing (str "A variable already naming one of a new connection's fields is not something a successful "
+                "create may leave the admin to discover. Checking what was submitted verifies a connection "
+                "nobody is going to have, and hands back a success for one that cannot work.")
+    (let [probed (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models
+                                  (fn [_provider {:keys [credentials]}]
+                                    (swap! probed conj credentials)
+                                    {:models [{:id "m" :display_name "m"}]})]
+        (mt/with-temporary-setting-values [llm-providers []]
+          (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+            (is (= "Ollama Cloud needs an API key."
+                   (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                         {:type   "ollama"
+                                          :config {:hosting  "self-hosted"
+                                                   :base-url "http://ollama.internal:11434/v1"
+                                                   :api-key  "sk-own-proxy"}}))
+                "the deployment the variable imposes is what the connection is judged on")
+            (is (empty? @probed)
+                "and nothing was asked of the server the connection was not going to use")
+            (is (empty? (llm.provider/stored-connections)))))
+        (testing "a create that agrees with the variable goes through, and answers for what it left behind"
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+              (let [created (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                                  {:type   "ollama"
+                                                   :config {:hosting "cloud" :api-key "sk-cloud"}})]
+                (is (true? (llm.provider/connection-usable? "ollama")))
+                (is (= (select-keys (first (mt/user-http-request :crowberto :get 200 "llm/providers"))
+                                    [:config :env_fields :env_vars])
+                       (select-keys created [:config :env_fields :env_vars]))
+                    "the admin does not have to reload the page to learn what the environment did")))))
+        (testing "and a connection the variables do not name is judged on its own config"
+          (mt/with-temporary-setting-values [llm-providers []]
+            (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+              (mt/user-http-request :crowberto :post 200 "llm/providers"
+                                    {:type   "ollama"
+                                     :key    "second"
+                                     :config {:hosting  "self-hosted"
+                                              :base-url "http://second.internal:11434/v1"}})
+              (is (= "http://second.internal:11434/v1" (:base-url (last @probed)))
+                  "a key no per-provider variable names is nobody's but the admin's"))))))))
+
 (deftest create-answers-for-the-connection-the-admin-will-have-test
   (testing "creating runs the same way: what is validated and answered with is what the app DB keeps"
     (mt/with-temporary-setting-values [llm-providers []]
