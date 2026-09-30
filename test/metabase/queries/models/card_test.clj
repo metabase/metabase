@@ -758,6 +758,21 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
+(deftest ^:parallel descendants-model-actions-test
+  (testing "GHY-4722: a model's actions are its descendants, though the model doesn't reference them"
+    (mt/with-temp [:model/Card   {model-id :id}    {:type          :model
+                                                    :dataset_query {:database (mt/id)
+                                                                    :type     :query
+                                                                    :query    {:source-table (mt/id :venues)}}}
+                   :model/Action {action-id :id}   {:type :implicit :name "Live" :model_id model-id}
+                   :model/Action {archived-id :id} {:type :implicit :name "Archived" :model_id model-id :archived true}]
+      (is (= {["Action" action-id]   {"Card" model-id}
+              ["Action" archived-id] {"Card" model-id}}
+             (serdes/descendants "Card" model-id {})))
+      (testing "with :skip-archived, archived actions are left out"
+        (is (= {["Action" action-id] {"Card" model-id}}
+               (serdes/descendants "Card" model-id {:skip-archived true})))))))
+
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"
     (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))

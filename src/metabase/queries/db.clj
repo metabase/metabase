@@ -339,6 +339,14 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
+(mu/defn action-ids-for-model
+  "The IDs of the Actions of the model Card with `model-id`, leaving out archived Actions when `skip-archived`."
+  [model-id      :- ms/PositiveInt
+   skip-archived :- [:maybe :boolean]]
+  (if skip-archived
+    (t2/select-pks-set :model/Action :model_id model-id :archived false)
+    (t2/select-pks-set :model/Action :model_id model-id)))
+
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]

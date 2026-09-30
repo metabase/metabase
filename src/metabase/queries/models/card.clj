@@ -1432,7 +1432,7 @@
 (defmethod serdes/deserialization-dependencies "Card" [card]
   (card-deps false card))
 
-(defmethod serdes/descendants "Card" [_model-name id _opts]
+(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
   (let [card               (queries.db/card id)
         query              (not-empty (:dataset_query card))
         source-cards       (some-> query lib/all-source-card-ids)
@@ -1448,7 +1448,11 @@
               (for [card-id parameters-card-id]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
-                {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
+                {["NativeQuerySnippet" snippet-id] {"Card" id}})
+              ;; An Action points at its model, but the model doesn't reference its actions, so list them here.
+              (when (= :model (:type card))
+                (for [action-id (queries.db/action-ids-for-model id skip-archived)]
+                  {["Action" action-id] {"Card" id}}))))))
 
 (defmethod serdes/extract-query "Card"
   [model-name {:keys [collection-set filter-column filter-ids] :as opts}]

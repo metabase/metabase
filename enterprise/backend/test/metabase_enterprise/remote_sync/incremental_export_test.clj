@@ -575,6 +575,24 @@
             (is (entity-exported? mock y-eid)
                 "the external dependency referenced by the new card is exported alongside it")))))))
 
+(deftest create-dashboard-with-action-button-exports-action-test
+  (testing "GHY-4722: a new dashboard with a button for an action exports the action incrementally, as a full export does"
+    (with-cross-scope-setup!
+      (fn [{:keys [mock c-id ext-id]}]
+        (mt/with-temp [:model/Card          {model-id :id}  {:name "Outside Model" :type :model :collection_id ext-id
+                                                             :database_id (mt/id) :dataset_query (venues-query)}
+                       :model/Action        {action-id :id} {:type :implicit :name "Button Action" :model_id model-id}
+                       :model/Dashboard     {d-id :id}      {:name "Buttons" :collection_id c-id}
+                       :model/DashboardCard _               {:dashboard_id d-id :action_id action-id}]
+          (seed-create-row! "Dashboard" d-id)
+          (let [task       (new-task!)
+                action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+            (impl/export! (source.p/snapshot mock) task "add dashboard")
+            (is (= "apply-changes-version" (written-version task))
+                "the create stays incremental")
+            (is (entity-exported? mock action-eid)
+                "the button's action is exported alongside the dashboard")))))))
+
 (deftest update-referencing-synced-card-stays-incremental-test
   (testing "an in-place edit of a card that references a card in another SYNCED collection stays incremental"
     (mt/with-temporary-setting-values [remote-sync-type :read-write

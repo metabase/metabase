@@ -865,7 +865,10 @@
   (into #{}
         (filter (fn [{:keys [model_type model_id]}]
                   (and (not (and (= model_type model-type) (= model_id model-id)))
-                       (spec/spec-for-model-type model_type)
+                       ;; Actions have no spec and never get a RemoteSyncObject row; they travel with the model
+                       ;; or dashboard that pulls them in.
+                       (or (spec/spec-for-model-type model_type)
+                           (= "Action" model_type))
                        (not (remote-sync.db/rso-exists? model_type model_id)))))
         (export-closure model-type model-id)))
 
