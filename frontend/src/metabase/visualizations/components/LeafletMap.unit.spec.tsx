@@ -86,6 +86,42 @@ describe("LeafletMap", () => {
       expect(setViewSpy).not.toHaveBeenCalled();
     });
 
+    it("should keep the user's zoom when the map is resized (metabase#11211)", () => {
+      const savedSettings = {
+        "map.latitude_column": "lat",
+        "map.longitude_column": "lng",
+        "map.center_latitude": 40,
+        "map.center_longitude": -100,
+        "map.zoom": 4,
+      };
+      const USER_ZOOM = 10;
+
+      const initialProps = createProps({
+        settings: savedSettings,
+        zoom: USER_ZOOM,
+        width: 800,
+        height: 600,
+      });
+      const ref = createRef<LeafletMap>();
+      const { rerender } = render(<LeafletMap ref={ref} {...initialProps} />);
+      const mapInstance = ref.current?.map;
+
+      expect(mapInstance).toBeDefined();
+      const setViewSpy = jest.spyOn(mapInstance!, "setView");
+
+      const resizedProps = createProps({
+        settings: savedSettings,
+        zoom: USER_ZOOM,
+        points: initialProps.points,
+        width: 801,
+        height: 600,
+      });
+      rerender(<LeafletMap ref={ref} {...resizedProps} />);
+
+      expect(setViewSpy).toHaveBeenCalledWith(expect.anything(), USER_ZOOM);
+      expect(setViewSpy).not.toHaveBeenCalledWith(expect.anything(), 4);
+    });
+
     it("should recalculate zoom when points do change", () => {
       const initialProps = createProps();
       const ref = createRef<LeafletMap>();
