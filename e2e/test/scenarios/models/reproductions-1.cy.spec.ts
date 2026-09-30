@@ -595,8 +595,18 @@ describe("issue 33844", () => {
     cy.log(
       "preserve model metadata when re-running the query (metabase#45924)",
     );
-    H.visitModel(ORDERS_QUESTION_ID);
-    cy.wait("@dataset");
+    cy.intercept("POST", "/api/dataset").as("modelDataset");
+    cy.intercept("PUT", "/api/card/*").as("updateCleanModel");
+    H.createQuestion(
+      {
+        name: "Orders Model 45924",
+        type: "model",
+        query: { "source-table": ORDERS_ID },
+      },
+      { wrapId: true, idAlias: "cleanModelId" },
+    );
+    cy.get<CardId>("@cleanModelId").then((modelId) => H.visitModel(modelId));
+    cy.wait("@modelDataset");
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
@@ -606,13 +616,13 @@ describe("issue 33844", () => {
     cy.findByTestId("action-buttons").button("Sort").click();
     H.popover().findByText("ID").click();
     cy.findByTestId("run-button").click();
-    cy.wait("@dataset");
+    cy.wait("@modelDataset");
     cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.wait("@dataset");
+    cy.wait("@updateCleanModel");
+    cy.wait("@modelDataset");
     H.tableInteractive().findByText("ID1").should("be.visible");
   });
 });

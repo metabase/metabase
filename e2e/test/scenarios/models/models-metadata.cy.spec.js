@@ -267,6 +267,13 @@ describe("scenarios > models metadata", () => {
     H.tableInteractiveScrollContainer().should(($container) => {
       expect($container[0].scrollLeft).to.be.greaterThan(0);
     });
+    cy.findAllByTestId("header-cell").should(($cells) => {
+      const names = $cells.toArray().map((cell) => cell.textContent);
+      expect(names.indexOf("Products → Vendor")).to.be.greaterThan(-1);
+      expect(names.indexOf("Products → Vendor")).to.be.lessThan(
+        names.indexOf("Products → Price"),
+      );
+    });
 
     cy.log("move Products → Price before Products → Vendor");
 
@@ -275,7 +282,15 @@ describe("scenarios > models metadata", () => {
       .closest("[data-testid='header-cell']")
       .as("dragHeader");
 
-    H.moveDnDKitElementByAlias("@dragHeader", { horizontal: -150 });
+    H.moveDnDKitElementByAlias("@dragHeader", { horizontal: -250 });
+
+    cy.findAllByTestId("header-cell").should(($cells) => {
+      const names = $cells.toArray().map((cell) => cell.textContent);
+      expect(names.indexOf("Products → Price")).to.be.greaterThan(-1);
+      expect(names.indexOf("Products → Price")).to.be.lessThan(
+        names.indexOf("Products → Vendor"),
+      );
+    });
 
     cy.log("the table should keep its scroll position");
     H.tableInteractiveScrollContainer().should(($container) => {

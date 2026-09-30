@@ -399,13 +399,17 @@ describe("scenarios > models", () => {
         cy.findByText("Products").should("exist");
         cy.findByText("Reviews").should("exist");
 
-        H.entityPickerModalItem(0, "Our analytics").click();
-        H.entityPickerModalLevel(1)
-          .findByText("First collection")
-          .should("be.visible");
-        H.entityPickerModalLevel(1)
-          .findByText("Orders Model")
-          .should("not.exist");
+        cy.findByPlaceholderText("Search…").type("Ord");
+        cy.wait("@search");
+        cy.findByText("Everywhere").click();
+        cy.wait("@search");
+        cy.get("[data-testid=result-item][data-model-type=table]").should(
+          "contain.text",
+          "Orders",
+        );
+        cy.get("[data-testid=result-item][data-model-type=dataset]").should(
+          "not.exist",
+        );
       });
     });
   });

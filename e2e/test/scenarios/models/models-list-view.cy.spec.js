@@ -19,7 +19,7 @@ describe("scenarios > models list view", () => {
             query: "SELECT * FROM ORDERS LIMIT 5",
           },
         },
-        { visitQuestion: true },
+        { visitQuestion: true, wrapId: true },
       );
     });
 
@@ -69,11 +69,17 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("list-view").should("be.visible");
 
       cy.log("Change list view to table when saved as question");
+      cy.get("@questionId").then((id) => H.visitModel(id));
+      cy.findByTestId("qb-header")
+        .findByText("Native Model")
+        .should("be.visible");
+      cy.findByTestId("list-view").should("be.visible");
       H.openQuestionActions();
       H.popover()
         .findByTextEnsureVisible("Turn back to saved question")
         .click();
       H.undoToast().should("contain.text", "This is a question now");
+      H.tableInteractive().should("be.visible");
       cy.findByTestId("list-view").should("not.exist");
     });
 
