@@ -63,6 +63,10 @@ export function Sidesheet({
         transitionProps={{ duration: 0 }}
         px={0}
         w={sizes[size]}
+        pos="fixed"
+        bd={0}
+        display="flex"
+        flex={1}
         bg="background_surface-primary"
         data-testid="sidesheet"
         data-offset={offset || undefined}
@@ -73,12 +77,15 @@ export function Sidesheet({
       >
         <Modal.Header bg="background_surface-primary" px="xl" pt="xl" pb="lg">
           {title && (
-            <Modal.Title pr="sm" id={titleId} className={Styles.SidesheetTitle}>
+            <Modal.Title pr="sm" id={titleId} fz="h4" lh="h4">
               {title}
             </Modal.Title>
           )}
           <Modal.CloseButton
             aria-label={t`Close`}
+            w="2rem"
+            h="2rem"
+            bdrs="xs"
             className={Styles.SidesheetCloseButton}
           />
         </Modal.Header>

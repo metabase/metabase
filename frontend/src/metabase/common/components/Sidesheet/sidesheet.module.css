@@ -1,15 +1,13 @@
 .SidesheetContent {
+  inset-block: 0;
+  inset-inline-end: 0;
+  flex-direction: column;
+
+  /* Mantine's content height rules must lose regardless of stylesheet order. */
   &:not([data-css-specificity-hack="🤷‍♀️"]) {
-    position: fixed;
     height: 100dvh;
     max-height: 100dvh;
-    inset-block: 0;
-    inset-inline-end: 0;
-    border: 0;
     border-radius: 0;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
 
     &[data-offset] {
       height: calc(
@@ -25,15 +23,7 @@
   }
 }
 
-.SidesheetTitle {
-  font-size: var(--mantine-h4-font-size);
-  line-height: var(--mantine-h4-line-height);
-}
-
 .SidesheetCloseButton {
-  width: rem(32px);
-  height: rem(32px);
-  border-radius: var(--mantine-radius-xs);
   color: var(--mb-color-text-primary) !important;
 
   &:hover {
