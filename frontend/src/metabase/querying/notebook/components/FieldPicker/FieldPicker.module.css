@@ -26,6 +26,11 @@
 
   .Options {
     padding: 0;
+
+    /* The highlighted option already shows where keyboard focus is. */
+    &:focus-visible {
+      outline: none;
+    }
   }
 
   .Option {
@@ -63,18 +68,16 @@
 
 .ToggleRow {
   composes: Row;
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-  margin-bottom: 0.5em;
-  border-radius: 6px;
-  cursor: pointer;
-
-  &:hover {
-    background: var(--mb-color-background_page-tertiary);
-  }
 
   .ItemTitle {
     margin-left: 1em;
   }
+}
+
+.ColumnGroup {
+  margin-top: 0.25em;
+  padding-top: 0.25em;
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 .ItemTitle {

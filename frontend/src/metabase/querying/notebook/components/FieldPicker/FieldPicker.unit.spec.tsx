@@ -71,17 +71,22 @@ function getSearchInput() {
   return screen.getByLabelText("Search columns");
 }
 
-function getOptions() {
-  return within(screen.getByRole("listbox")).getAllByRole("option");
+function getListbox() {
+  return screen.getByRole("listbox", { name: "Columns" });
+}
+
+function getColumnOptions() {
+  const columnGroup = within(getListbox()).getByRole("group");
+  return within(columnGroup).getAllByRole("option");
 }
 
 function getOptionNames() {
-  return getOptions().map((option) => option.getAttribute("aria-label"));
+  return getColumnOptions().map((option) => option.getAttribute("aria-label"));
 }
 
 function getHighlightedOptionName() {
-  return screen
-    .queryByRole("option", { selected: true })
+  return getListbox()
+    .querySelector("[data-combobox-selected]")
     ?.getAttribute("aria-label");
 }
 
@@ -109,8 +114,8 @@ describe("FieldPicker", () => {
       "aria-multiselectable",
       "true",
     );
-    expect(getOptions()).toHaveLength(columns.length);
-    expect(screen.getByLabelText("Select all")).toBeChecked();
+    expect(getColumnOptions()).toHaveLength(columns.length);
+    expect(screen.getByRole("option", { name: "Select all" })).toBeChecked();
   });
 
   it("should not show a search box when there are few columns", () => {
@@ -118,6 +123,7 @@ describe("FieldPicker", () => {
 
     expect(columns.length).toBeLessThan(MIN_SEARCHABLE_COLUMN_COUNT);
     expect(screen.queryByLabelText("Search columns")).not.toBeInTheDocument();
+    expect(getListbox()).toHaveAttribute("data-autofocus");
   });
 
   it("should reflect selection and disabled state on the options", () => {
@@ -165,11 +171,11 @@ describe("FieldPicker", () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it("should navigate the list with the arrow keys and toggle with Enter", async () => {
+  it("should navigate the list from the listbox when there is no search box", async () => {
     const { onToggle, query, columns } = setup();
     const [, secondColumnName] = getColumnNames(query, STAGE_INDEX, columns);
 
-    screen.getByLabelText("Select all").focus();
+    getListbox().focus();
     await userEvent.keyboard("{ArrowDown}{Enter}");
 
     expect(getToggledColumnName(onToggle, query)).toEqual([
@@ -177,6 +183,35 @@ describe("FieldPicker", () => {
       false,
     ]);
     expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  it("should toggle the highlighted column with Space", async () => {
+    const { onToggle, query, columns } = setup();
+    const [firstColumnName] = getColumnNames(query, STAGE_INDEX, columns);
+
+    getListbox().focus();
+    await userEvent.keyboard(" ");
+
+    expect(getToggledColumnName(onToggle, query)).toEqual([
+      firstColumnName,
+      false,
+    ]);
+  });
+
+  it("should reach 'Select all' with the arrow keys", async () => {
+    const { onToggle, onToggleColumns, query, columns } = setup();
+
+    getListbox().focus();
+    await userEvent.keyboard("{ArrowUp}");
+    expect(getHighlightedOptionName()).toBe("Select all");
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
+      getColumnNames(query, STAGE_INDEX, columns),
+      false,
+    ]);
   });
 
   it("should select the remaining columns and skip disabled ones", async () => {
@@ -213,6 +248,7 @@ describe("FieldPicker", () => {
         MIN_SEARCHABLE_COLUMN_COUNT,
       );
       expect(getSearchInput()).toHaveAttribute("data-autofocus");
+      expect(getListbox()).not.toHaveAttribute("data-autofocus");
     });
 
     it("should filter columns case-insensitively", async () => {
@@ -299,8 +335,10 @@ describe("FieldPicker", () => {
       await userEvent.click(screen.getByLabelText("Clear search"));
 
       expect(getSearchInput()).toHaveValue("");
-      expect(screen.getByLabelText("Select all")).toBeInTheDocument();
-      expect(getOptions()).toHaveLength(columns.length);
+      expect(
+        screen.getByRole("option", { name: "Select all" }),
+      ).toBeInTheDocument();
+      expect(getColumnOptions()).toHaveLength(columns.length);
     });
 
     it("should return focus to the search box when the search is cleared", async () => {
@@ -321,7 +359,7 @@ describe("FieldPicker", () => {
         await userEvent.clear(getSearchInput());
 
         expect(getOptionNames()).toEqual(allNames);
-        expect(getOptions()).toHaveLength(columns.length);
+        expect(getColumnOptions()).toHaveLength(columns.length);
         expect(screen.getAllByText("ID")).toHaveLength(1);
       }
     });
@@ -332,9 +370,11 @@ describe("FieldPicker", () => {
 
         await userEvent.type(getSearchInput(), "tude");
 
-        const checkbox = screen.getByLabelText("Select all of these");
-        expect(checkbox).toBeChecked();
-        expect(checkbox).toHaveAccessibleDescription("2 columns found");
+        const option = screen.getByRole("option", {
+          name: "Select all of these",
+        });
+        expect(option).toBeChecked();
+        expect(option).toHaveAccessibleDescription("2 columns found");
         expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
       });
 
@@ -344,9 +384,14 @@ describe("FieldPicker", () => {
         });
 
         await userEvent.type(getSearchInput(), "tude");
-        const checkbox = screen.getByLabelText("Select all of these");
-        expect(checkbox).not.toBeChecked();
-        await userEvent.click(checkbox);
+        const option = screen.getByRole("option", {
+          name: "Select all of these",
+        });
+        // toBeChecked() throws on aria-checked="mixed", and toBePartiallyChecked()
+        // only supports checkboxes, not options.
+        // eslint-disable-next-line jest-dom/prefer-checked
+        expect(option).toHaveAttribute("aria-checked", "mixed");
+        await userEvent.click(option);
 
         expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
           ["LATITUDE"],
@@ -372,7 +417,9 @@ describe("FieldPicker", () => {
         await userEvent.type(getSearchInput(), "id");
 
         expect(getOptionNames()).toEqual(["ID"]);
-        expect(screen.getByLabelText("Select all of these")).toBeDisabled();
+        expect(
+          screen.getByRole("option", { name: "Select all of these" }),
+        ).toHaveAttribute("aria-disabled", "true");
       });
     });
 
