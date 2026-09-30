@@ -66,7 +66,9 @@ describe("scenarios > question > offset", () => {
       H.enterCustomColumnDetails({ formula: filterPrefix, blur: false });
 
       cy.log("does not suggest offset() in filter expressions");
-      H.CustomExpressionEditor.completions().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .should("exist")
+        .and("not.contain", "Offset");
 
       H.enterCustomColumnDetails({ formula: filterExpression });
       cy.realPress("Tab");
@@ -79,8 +81,9 @@ describe("scenarios > question > offset", () => {
       });
 
       H.expressionEditorWidget().button("Cancel").click();
+      H.popover().findByText("Custom Expression").should("be.visible");
       cy.realPress("Escape");
-      H.popover().should("not.exist");
+      H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
       cy.button("Custom column").click();
       H.enterCustomColumnDetails({
@@ -89,7 +92,9 @@ describe("scenarios > question > offset", () => {
       });
 
       cy.log("does not suggest offset() in custom columns");
-      H.CustomExpressionEditor.completions().should("not.exist");
+      H.CustomExpressionEditor.completions()
+        .should("exist")
+        .and("not.contain", "Offset");
 
       H.enterCustomColumnDetails({ formula: customColumnExpression });
       cy.realPress("Tab");

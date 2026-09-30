@@ -201,10 +201,7 @@ describe("scenarios > question > new", () => {
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Quantity is equal to 2",
-    );
+    cy.findByTestId("filter-pill").should("have.text", "Quantity is 2");
     cy.findByTestId("object-detail").should("not.exist");
     H.tableInteractiveBody()
       .find(".test-TableInteractive-cellWrapper--firstColumn")

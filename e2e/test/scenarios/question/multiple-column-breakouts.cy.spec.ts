@@ -287,7 +287,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name,
           bucket2Name,
           columns,
-          isChart,
         }: {
           tableName: string;
           columnName: string;
@@ -295,7 +294,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name: string;
           bucket2Name: string;
           columns: string[];
-          isChart: boolean;
         }) {
           H.startNewQuestion();
           H.miniPicker().within(() => {
@@ -328,9 +326,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
-          if (isChart) {
-            H.queryBuilderFooter().findByLabelText("Switch to data").click();
-          }
+          H.queryBuilderFooter().findByLabelText("Switch to data").click();
           H.assertTableData({ columns });
         }
 
@@ -342,7 +338,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name: "Year",
           bucket2Name: "Month",
           columns: ["Created At: Year", "Created At: Month", "Count"],
-          isChart: true,
         });
         H.assertQueryBuilderRowCount(49);
 
@@ -354,7 +349,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name: "10 bins",
           bucket2Name: "50 bins",
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
-          isChart: false,
         });
         H.assertQueryBuilderRowCount(32);
 
@@ -366,7 +360,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucket1Name: "Bin every 10 degrees",
           bucket2Name: "Bin every 20 degrees",
           columns: ["Latitude: 10°", "Latitude: 20°", "Count"],
-          isChart: true,
         });
         H.assertQueryBuilderRowCount(6);
       });

@@ -461,7 +461,7 @@ describe("scenarios > question > settings", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
-      cy.location("pathname").should("eq", "/question");
+      cy.location("pathname").should("eq", `/table/${ORDERS_ID}-orders`);
       H.tableInteractive().should("be.visible");
       H.entityPickerModal().should("not.exist");
       H.modal().should("not.exist");

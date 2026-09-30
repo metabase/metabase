@@ -321,7 +321,14 @@ describe("issue 39795", () => {
       },
     });
     H.openVizSettingsSidebar();
-    H.moveColumnDown(H.getDraggableElements().first(), 2);
+    H.getDraggableElements()
+      .eq(0)
+      .should("have.attr", "data-testid", "draggable-item-ID");
+    H.moveDnDKitListElement("draggable-item", {
+      startIndex: 0,
+      dropIndex: 2,
+      useMouseEvents: true,
+    });
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
     // This causes the isValid() check to fire, and you are always forced into the default value for table.columns

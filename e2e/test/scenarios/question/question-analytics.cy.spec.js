@@ -3,6 +3,7 @@ const { H } = cy;
 describe("scenarios > question > snowplow", () => {
   describe("chart_generated", () => {
     const generateNonTableVisualization = () => {
+      cy.visit("/");
       H.openOrdersTable();
       H.summarize();
 

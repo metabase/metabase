@@ -160,6 +160,7 @@ describe("scenarios > notebook > data source", () => {
         H.popover().findByText("Name").click();
         H.popover().findByText("Name").click();
         H.getNotebookStep("join", { stage: 0, index: 2 })
+          .findByLabelText("Right table")
           .findByText("Birds")
           .should("be.visible");
       },

@@ -128,8 +128,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
     });
     H.expressionEditorWidget().button("Cancel").click();
+    H.popover().findByPlaceholderText("Find...").should("be.visible");
     cy.realPress("Escape");
-    H.popover().should("not.exist");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")
@@ -245,7 +246,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // Move the mouse off the info icon so the hovercard can't cover the next click
     cy.findByTestId("step-data-0-0").realHover();
-    H.hovercard().should("not.exist");
+    cy.get("body").should("not.contain", "The id of the user");
 
     H.popover().contains("Custom Expression").click();
 
@@ -410,9 +411,15 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
 
     H.getNotebookStep("join").within(() => {
-      cy.findByText("Products model").should("be.visible");
-      cy.findByText("Product ID").should("be.visible");
-      cy.findByText("ID").should("be.visible");
+      cy.findByLabelText("Right table")
+        .findByText("Products model")
+        .should("be.visible");
+      cy.findByLabelText("Left column")
+        .findByText("Product ID")
+        .should("be.visible");
+      cy.findByLabelText("Right column")
+        .findByText(/→ ID$/)
+        .should("be.visible");
     });
 
     H.visualize();

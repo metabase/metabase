@@ -74,7 +74,9 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signIn("nosql");
     H.openReviewsTable({ mode: "notebook" });
     cy.findByTestId("data-step-cell").should("contain", "Reviews");
-    H.notebookButton().should("be.visible");
+    cy.findByTestId("qb-header-action-panel")
+      .findByTestId("qb-save-button")
+      .should("be.visible");
     cy.findByTestId("qb-header-action-panel")
       .findByLabelText(/View SQL/i)
       .should("not.exist");
