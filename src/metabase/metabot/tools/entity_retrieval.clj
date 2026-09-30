@@ -17,6 +17,8 @@
   (:require
    [clojure.string :as str]
    [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -61,8 +63,8 @@
   (str "Each match element is a library entity (already hydrated with the ids, names and portable "
        "references you need), the matched_on text that triggered it, and any usage_instructions for that "
        "entity. similarity is the raw cosine match strength; a match flagged confidence=\"weak\" (or a "
-       "leading note element) means nothing in the library clearly matches — don't build on it blindly; "
-       "prefer asking the user to clarify or narrow the request."))
+       "leading note element) means nothing in the library clearly matches — don't build on it; search for "
+       "the data with the search tools instead."))
 
 (defn- similarity
   "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
@@ -147,7 +149,7 @@
     "<search_results>No matching library entities.</search_results>"
     (str (when (:weak? (first matches))
            (str "<note>No strong library match for this request — treat the results below as weak "
-                "guesses; consider asking the user to clarify or narrow the request.</note>\n"))
+                "guesses, and search for the data with the search tools instead.</note>\n"))
          "<search_results>\n"
          (str/join "\n" (map match->xml matches))
          "\n</search_results>\n"
@@ -167,12 +169,43 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
-;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
-;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
-;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
-;; disagree about index availability.
-(mu/defn ^{:tool-name "retrieve_library_entities"
-           :scope     scope/agent-search}
+;; TODO (Chris 2026-09-30) -- Library retrieval can't filter by the collection an embedded or NLQ metabot is confined
+;; to, by curated-only content, or by database, so it is withheld wherever those limits apply (see
+;; [[limited-discovery?]]; the SQL profile doesn't list it). Add those filters to offer it there too.
+(defn- limited-discovery?
+  "Whether this request limits discovery in a way library retrieval can't honour yet: a metabot that only shows
+  curated content, or one confined to a collection (the embedded metabot, or the NLQ profile, with a configured
+  collection)."
+  [{:keys [metabot-id profile-id]}]
+  (when metabot-id
+    (let [metabot (metabot.db/metabot-by-entity-id
+                   (get-in metabot.config/metabot-config [metabot-id :entity-id] metabot-id))]
+      (boolean
+       (or (:use_verified_content metabot)
+           (and (:collection_id metabot)
+                (or (= metabot-id metabot.config/embedded-metabot-id)
+                    (= "nlq" (some-> profile-id name)))))))))
+
+(defn- library-available?
+  [ctx]
+  (and (entity-retrieval/entity-retrieval-available?)
+       (not (limited-discovery? ctx))))
+
+(defn- library-unavailable-note
+  "What the prompt says about library retrieval when it isn't offered. Nothing here is sensitive."
+  [ctx]
+  {:purpose    "finds curated data published to the library, by what it means"
+   :missing    "curator usage instructions, and a signal for how well the library covers a request"
+   ;; inferred from the cheap metabot lookup rather than a second probe of the index
+   :reason     (if (limited-discovery? ctx)
+                 "library search can't yet be limited to what this metabot may show"
+                 "library search isn't set up on this instance")
+   :workaround "search with the search tools, and prefer results marked as library members"})
+
+(mu/defn ^{:tool-name        "retrieve_library_entities"
+           :scope            scope/agent-search
+           :available?       library-available?
+           :unavailable-note library-unavailable-note}
   retrieve-library-entities-tool
   "Find the best data to answer the user's request from the library — the set of entities published to it
   (published tables, library metrics/models, and their measures/segments). Phrase
@@ -184,7 +217,7 @@
   record (name, type, database, `portable_entity_id`, fully-qualified name). Use it to pick the right
   entity, then `read_resource` that entity to confirm its fields and sample values before building. If the
   top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
-  clearly matches — prefer asking the user to clarify or narrow the request."
+  clearly matches — search for the data with the search tools instead."
   [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
   (let [n       (min max-limit (or limit default-limit))
         matches (build-matches user_search_prompt n)]

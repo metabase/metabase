@@ -19,13 +19,13 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - "What cards does this dashboard have?" → `metabase://dashboard/{id}/items`
 - "What schemas does this database have?" → `metabase://database/{id}/schemas`
 
-**Use `search` when you don't know what or where** something lives — open-ended discovery by topic.
+**Search when you don't know what or where** something lives — open-ended discovery by topic.
 
-> **If you have no `search` tool**, substitute whichever discovery tool you do have (e.g. `retrieve_library_entities`) everywhere this skill says `search` — the loop is the same, only the entry point differs. Its results carry the same URIs, so everything below about drilling in with `read_resource` still applies.
+> **If you have no search tool**, substitute whichever discovery tool you do have (e.g. `retrieve_library_entities`) everywhere this skill says search — the loop is the same, only the entry point differs. Its results carry the same URIs, so everything below about drilling in with `read_resource` still applies.
 
 **The exploration loop**:
-1. `search` for a topic → every result carries a `uri` attribute.
-2. If a top hit is a container — its element name is `<dashboard>` or `<document>` — `read_resource` on its URI to enumerate members instead of re-searching. (`search` never returns collections; reach those by navigating, e.g. `metabase://collection/{id}/items`.)
+1. Search for a topic → every result carries a `uri` attribute.
+2. If a top hit is a container (a dashboard, document, or collection, marked `is_container="true"`), `read_resource` on its URI to enumerate members instead of re-searching. For a collection, read its `/items`.
 3. Drill into specific items via `read_resource` for fields, sources, or details.
 4. Walk lineage when needed: `metabase://table/{id}/derived`, `metabase://model/{id}/sources`, `metabase://transform/{id}/sources` or `/target`.
 
@@ -60,7 +60,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 **Best Practices:**
 - For a high-cardinality database, prefer schema → tables drill-down over fetching every table at once.
-- In the SQL editor, `search` already scopes to the current database via its own `database_id` argument — no need to filter further. Elsewhere, `search` has no per-database filter; narrow with `entity_types` and topic terms instead.
+- In the SQL editor, the search tools already scope to the current database through their `database_id` argument, so there is no need to filter further.
 
 ## Collection resources
 
@@ -73,7 +73,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 - Need to navigate a deep tree without enumerating every leaf? → `metabase://collection/{id}/subcollections`
 
 **Best Practices:**
-- Collections are never `search` results — the only way to reach one is by navigating (`metabase://collections`, `metabase://collections?tree=true`, or a parent's `/subcollections`). To see what a collection holds, `read_resource` its `/items` rather than searching for the collection's name.
+- To browse collections, navigate (`metabase://collections`, `metabase://collections?tree=true`, or a parent's `/subcollections`); a search can also return a collection by name. To see what a collection holds, `read_resource` its `/items` rather than searching for the collection's name.
 
 ## Table resources
 
@@ -158,7 +158,7 @@ You can request multiple resources in one call by providing a list of URIs (max 
 
 # General Best Practices
 
-- **Drill, don't re-search.** If a `search` result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
+- **Drill, don't re-search.** If a search result is a container or you need more detail on a specific item, feed its `uri` back into `read_resource` — don't issue another search for the same concept.
 - **Batch read URIs** (up to 5 at a time) when you need parallel context, e.g. fetching `/sources` for several candidate models at once.
-- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by fetching the URI given in the `<truncation-note>` (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your `search` query (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list, and remember `truncated="false"` on a later page doesn't mean you've seen the earlier ones too.
+- **Honor truncation.** If a list response carries `truncated="true"`, the most-relevant items are not guaranteed to be in the first 25. You have two ways forward: page through the remainder by fetching the URI given in the `<truncation-note>` (the `pages` attribute tells you how many there are), or narrow the request — scope it (`metabase://database/{id}/...`) or refine your search (narrower `entity_types` or topic terms). Narrow when you are hunting for one specific item; page when you genuinely need the whole list, and remember `truncated="false"` on a later page doesn't mean you've seen the earlier ones too.
 - **Curation matters.** Search results carry `is_verified`, `is_official`, and `is_curated` flags (plus `data_authority` where configured) — when you have a choice, drill into the curated item rather than the raw one.

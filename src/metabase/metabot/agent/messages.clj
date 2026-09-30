@@ -198,7 +198,8 @@
                           (ctx-fn context))
         content         (prompts/build-system-message-content
                          profile
-                         (merge {:sql_dialect (user-context/extract-sql-dialect context)}
+                         (merge {:sql_dialect       (user-context/extract-sql-dialect context)
+                                 :unavailable_tools (not-empty (:unavailable-tools profile))}
                                 profile-context)
                          tools
                          (:capabilities context))]

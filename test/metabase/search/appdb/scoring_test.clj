@@ -142,6 +142,32 @@
               ["card" 2 "Sales Revenue Report"]]
              (search-results :exact "sales revenue"))))))
 
+(defn- expr-results
+  [expr & {:as raw-ctx}]
+  (mapv (juxt :model :id :name)
+        (search-results** (search/query-expr-search-string expr) (assoc raw-ctx :search-expr expr))))
+
+(deftest ^:parallel search-expr-matching-test
+  (when (= :postgres (mdb/db-type))
+    (with-index-contents
+      [{:model "card" :id 1 :name "revenue forecast"}
+       {:model "card" :id 2 :name "income statement"}
+       {:model "card" :id 3 :name "gross margin by region"}]
+      (testing "a structured query matches the way its tree says, not as a string"
+        (is (= #{1 2} (set (map second (expr-results {:op "or" :args ["revenue" "income"]})))))
+        (is (= [] (expr-results {:op "and" :args ["region" {:op "not" :args [{:op "phrase" :text "gross margin"}]}]})))
+        (is (= [3] (map second (expr-results {:op "and" :args ["region" {:op "phrase" :text "gross margin"}]}))))))))
+
+(deftest ^:parallel search-expr-exact-test
+  (when (= :postgres (mdb/db-type))
+    (with-index-contents
+      [{:model "card" :id 1 :name "revenue income"}
+       {:model "card" :id 2 :name "income"}]
+      (testing "a flat `or` boosts an exact match on one alternative, not a name made of every alternative"
+        (is (= [["card" 2 "income"]
+                ["card" 1 "revenue income"]]
+               (search-results :exact "revenue income" :search-expr {:op "or" :args ["revenue" "income"]})))))))
+
 (deftest ^:parallel prefix-test
   (with-index-contents
     [{:model "card" :id 1 :name "this is a prefix of something longer"}

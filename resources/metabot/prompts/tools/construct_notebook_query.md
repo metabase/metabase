@@ -202,7 +202,7 @@ Re-aggregate — average daily total by month:
 
 Instead of `source-table`, use `source-card` to query an existing question or model. The value is the card's **portable entity id** — a 21-char opaque string reported by search and `read_resource` as `portable_entity_id`.
 
-1. Get the `portable_entity_id` from a tool response. `search` and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
+1. Get the `portable_entity_id` from a tool response. Search results and `read_resource` (`metabase://question/<id>`, `metabase://model/<id>`) include it on the result tag — reuse what's already in context, no extra call needed.
 2. Copy it **verbatim** into `source-card`. The id is opaque — never guess, construct, or abbreviate.
 3. Reference the card's columns by output **machine name** (string in slot 3), not portable FK and not the UI display label. If you don't know the names, call `read_resource metabase://question/<numeric-id>/fields` (or `.../model/...`) — a ref whose name matches no column the card produces is an error.
 

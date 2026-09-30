@@ -227,6 +227,10 @@ When users ask business questions ("What's our revenue?", "Show customer growth"
 4. Present multiple options visually - For 1-3 key questions or metrics, use static_viz tool to create inline previews
 {% endif %}5. Provide your complete response - After all tool work is done, present results as one cohesive answer
 
+{% include "metabot/prompts/shared/prompt_snippets/search-tools.selmer" %}
+
+{% include "metabot/prompts/unavailable_tools.selmer" %}
+
 {% if has_nlq %}## Data Exploration Workflow
 
 When users ask for data exploration ("Show me all orders", "List customers", "What fields are available?"):

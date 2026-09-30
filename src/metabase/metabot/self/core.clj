@@ -83,7 +83,9 @@
    [:title-fn {:optional true} [:maybe [:fn fn?]]]
    [:system-instructions {:optional true} [:maybe :string]]
    [:capabilities {:optional true} [:maybe [:set :keyword]]]
-   [:scope {:optional true} [:maybe :string]]])
+   [:scope {:optional true} [:maybe :string]]
+   ;; tool names this tool took over; a call to one of them is redirected here rather than rejected as unknown
+   [:replaces {:optional true} [:maybe [:set :string]]]])
 
 (def ^:private DataPart
   "One entry of a tool's `:data-parts`: `metabase.metabot.agent.streaming`'s `{:type :data, ...}`
@@ -926,6 +928,15 @@
   [tool]
   (:fn tool))
 
+(defn- unknown-tool-message
+  "The error for a call to `tool-name`, which isn't in `tools`. When advertised tools declare that they replaced
+  it, name them, so the model rewrites the call for one of them rather than guessing from a list of every tool."
+  [tool-name tools]
+  (if-let [replacements (seq (sort (keep (fn [[k tool]] (when (contains? (:replaces tool) tool-name) k)) tools)))]
+    (str "Tool `" tool-name "` has been replaced by " (str/join " and " (map #(str "`" % "`") replacements))
+         ". They match differently: read each description, then write the call for the one you use.")
+    (str "Tool `" tool-name "` does not exist. Available tools: " (str/join ", " (sort (keys tools))) ".")))
+
 (defn- run-tool
   "Execute a tool and return output chunks. Handles errors gracefully.
 
@@ -937,8 +948,8 @@
   environment — `mu/defn` only instruments dev and test namespaces — and a
   mismatch is returned to the model as a repair-oriented error.
 
-  A call to a tool outside `tools` gets an error listing the ones it can call. Its name is model output,
-  so logs and span data record it as \"unknown\".
+  A call to a tool outside `tools` gets an error listing the ones it can call, or naming the tools that replaced
+  it (see [[unknown-tool-message]]). Its name is model output, so logs and span data record it as \"unknown\".
 
   Chunks have a ::duration-ms key added for internal use which is not part of the aisdk spec."
   [tool-call-id tool-name tools chunks]
@@ -956,9 +967,7 @@
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
               results  (try
                          (when-not tool
-                           (throw (ex-info (str "Tool `" tool-name "` does not exist. Available tools: "
-                                                (str/join ", " (sort (keys tools))) ".")
-                                           {:agent-error? true})))
+                           (throw (ex-info (unknown-tool-message tool-name tools) {:agent-error? true})))
                          (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
                                arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                                arguments (coerce-stringified-scalars tool arguments)

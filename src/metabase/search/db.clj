@@ -93,6 +93,16 @@
    layer-count   :- [:maybe nat-int?]]
   (t2/query-one (appdb.query/probe-query index-table search-ctx search-string model id layer-count)))
 
+(mu/defn tsquery-shape-row
+  "One row describing tsquery expressions without searching anything: `:leaf_<i>` is `numnode` of the i-th of
+  `leaf-queries` (0 when it normalized to nothing), and `:querytree` is `querytree` of `whole` (`T` or empty when
+  it can't restrict the index)."
+  [leaf-queries :- [:sequential vector?]
+   whole        :- vector?]
+  (t2/query-one {:select (into [[[:querytree whole] :querytree]]
+                               (map-indexed (fn [i q] [[:numnode q] (keyword (str "leaf_" i))]))
+                               leaf-queries)}))
+
 (defn- index-search-query
   "The Honey SQL query selecting `select-items` from the search index `table-name`, matching `search-term` (or every
   row, when blank/nil), honoring `search-native-query?` (see `metabase.search.appdb.specialization.postgres/base-query`

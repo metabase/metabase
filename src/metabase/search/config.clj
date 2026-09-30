@@ -4,6 +4,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
+   [metabase.search.query-expr :as query-expr]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -484,7 +485,15 @@
    ;; true to `SET LOCAL enable_seqscan = off` to force the planner onto the HNSW index (experiment knob;
    ;; deliberately not exposed over HTTP)
    [:vector-search-force-index?    {:optional true} [:maybe :boolean]]
+   ;; true to match by meaning alone: no keyword branch, and no supplementing or falling back to a keyword engine,
+   ;; which would reread the natural-language query under a different grammar
+   [:vector-only?                  {:optional true} [:maybe :boolean]]
+   ;; the widest cosine distance a semantic match may have; the semantic engine's own cutoff when unset
+   [:max-semantic-distance         {:optional true} [:maybe [:and number? [:> 0] [:<= 2]]]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   ;; a structured keyword query (see `metabase.search.query-expr`); engines that compile it match on it rather
+   ;; than `:search-string`, which then only feeds the text scorers and string-matching engines
+   [:search-expr        {:optional true} (query-expr/schema query-expr/all-ops)]
    [:weights            {:optional true} [:maybe ::weights]]
    ;;
    ;; optional

@@ -63,7 +63,7 @@
     (map (fn [row]
            (let [msgs (get messages-by-conv (:id row) [])]
              (assoc row
-                    :search_count (analytics.queries/count-tool-invocations msgs "search")
+                    :search_count (analytics.queries/count-tool-invocations msgs metabot.tools/search-tool-names)
                     :query_count  (analytics.queries/count-tool-invocations
                                    msgs metabot.tools/query-generation-tool-names))))
          rows)))
@@ -136,7 +136,7 @@
        :messages                    (metabot-persistence/messages->threaded-client-messages
                                      all-messages {:include-rewound-errors? true})
        :queries                     (analytics.queries/messages->generated-queries all-messages)
-       :search_count                (analytics.queries/count-tool-invocations all-messages "search")
+       :search_count                (analytics.queries/count-tool-invocations all-messages metabot.tools/search-tool-names)
        :query_count                 (analytics.queries/count-tool-invocations
                                      all-messages metabot.tools/query-generation-tool-names)
        :ip_address                  (:ip_address conversation)

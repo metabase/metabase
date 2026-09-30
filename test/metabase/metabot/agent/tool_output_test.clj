@@ -12,6 +12,7 @@
    [metabase.metabot.tools.resources :as resource-tools]
    [metabase.metabot.tools.search :as search-tools]
    [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -189,12 +190,20 @@
             (doseq [pattern edn-patterns]
               (is (not (re-find pattern output)) (str "error output contains EDN pattern " pattern)))))))))
 
+(defn- keyword-search-tool
+  "The keyword search tool this instance advertises."
+  []
+  (case (search.engine/keyword-flavour)
+    :fulltext      search-tools/fulltext-search-tool
+    :substring-or  search-tools/substring-or-search-tool
+    :substring-and search-tools/substring-and-search-tool))
+
 (deftest search-tool-structured-output-formats-correctly-test
   (testing "search tool :structured-output formats to clean XML via format-structured-result"
     (mt/test-driver :h2
       (search/init-index! {:force-reset? false :re-populate? true})
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [result (search-tools/search-tool
+        (let [result ((keyword-search-tool)
                       {:query        "orders"
                        :entity_types ["table"]})]
           (assert-formatted-structured result "search: tables" #"<results\b"))))))
@@ -213,8 +222,8 @@
                                                       :name          "Searchable Test Model"
                                                       :type          :model}]
             (search/init-index! {:force-reset? false :re-populate? true})
-            (let [result (search-tools/search-tool
-                          {:query        "Searchable Test Model"
+            (let [result ((keyword-search-tool)
+                          {:query        "Searchable"
                            :entity_types ["model"]})]
               (assert-formatted-structured
                result "search: model" #"<results\b"))))))))

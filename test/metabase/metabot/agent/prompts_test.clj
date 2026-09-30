@@ -10,7 +10,10 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.skills :as skills]
-   [metabase.metabot.tools.construct :as construct]))
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.construct :as construct]
+   [metabase.search.engine :as search.engine]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel load-system-prompt-template-test
   (testing "loads internal.selmer template"
@@ -161,6 +164,27 @@
       (is (some? content))
       (is (not (str/includes? content "dashboard 42")))
       (is (not (str/includes? content "recently viewed"))))))
+
+(deftest search-tools-guidance-test
+  (testing "the prompt describes exactly the search tools on offer, and lists the ones that are missing"
+    (let [render (fn [tools context]
+                   (prompts/build-system-message-content {:prompt-template "internal.selmer"} context tools []))]
+      (mt/with-dynamic-fn-redefs [search.engine/keyword-flavour (constantly :substring-or)]
+        (let [content (render {"substring_search" #'metabot.tools/substring-or-search-tool}
+                              {:unavailable_tools [{:name       "semantic_search"
+                                                    :purpose    "finds data by what it means"
+                                                    :reason     "semantic search isn't set up on this instance"
+                                                    :workaround "search for the likely words"}]})]
+          (is (str/includes? content "`substring_search`** finds text anywhere inside names"))
+          (is (not (str/includes? content "`fulltext_search`** matches whole words")))
+          (is (not (str/includes? content "`semantic_search`** matches meaning")))
+          (is (str/includes? content "## Unavailable tools"))
+          (is (str/includes? content (str "- **`semantic_search`** finds data by what it means. "
+                                          "Why: semantic search isn't set up on this instance. "
+                                          "Instead: search for the likely words.")))))
+      (testing "with nothing missing there is no unavailable section"
+        (is (not (str/includes? (render {"fulltext_search" #'metabot.tools/fulltext-search-tool} {})
+                                "## Unavailable tools")))))))
 
 (deftest ^:parallel inject-context-test
   (testing "prepends the rendered context block to the message"

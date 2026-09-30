@@ -9,6 +9,7 @@
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.search.engine :as search.engine]
    [metabase.test :as mt]))
 
 (deftest all-tools-test
@@ -24,26 +25,31 @@
 (deftest wrap-tools-with-state-carries-title-fn-test
   (testing "a tool var's :title-fn metadata reaches the tool-def map"
     (let [wrapped (agent-tools/wrap-tools-with-state
-                   {"search" #'agent-tools/search-tool}
+                   {"fulltext_search" #'agent-tools/fulltext-search-tool}
                    (atom {}) nil nil)]
-      (is (fn? (get-in wrapped ["search" :title-fn]))))))
+      (is (fn? (get-in wrapped ["fulltext_search" :title-fn]))))))
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/read-resource-tool]]
+    (let [tool-vars [#'agent-tools/fulltext-search-tool #'agent-tools/read-resource-tool]]
       (is (= tool-vars
              (#'profiles/filter-by-capabilities tool-vars #{})))))
   (testing "filters out tools that require missing capabilities"
-    (let [tool-vars [#'agent-tools/search-tool
+    (let [tool-vars [#'agent-tools/fulltext-search-tool
                      #'agent-tools/create-sql-query-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
+      (is (= ["fulltext_search"] (mapv #(:tool-name (meta %)) result)))))
   (testing "includes tools when capabilities are provided"
-    (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
+    (let [tool-vars [#'agent-tools/fulltext-search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
           capabilities #{:permission-write-sql-queries}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
       (is (= tool-vars result)))))
+
+(defn- keyword-search-tool-name
+  "The keyword search tool this instance advertises: full-text on a Postgres app DB, else substring."
+  []
+  (if (= :fulltext (search.engine/keyword-flavour)) "fulltext_search" "substring_search"))
 
 (defn- tools-for-profile
   "Get tools for a profile with unrestricted scope."
@@ -55,7 +61,7 @@
   (let [tools (tools-for-profile :internal)]
     (is (map? tools))
     (is (>= (count tools) 5))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "edit_chart"))
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
@@ -63,27 +69,25 @@
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
     (is (map? tools))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "read_resource"))
     (is (contains? tools "ask_for_sql_clarification"))))
 
 (deftest get-tools-for-nlq-profile-test
-  (testing "nlq discovers data through the curated library tool when it can serve queries, else general search"
-    ;; Entity retrieval unavailable (no pgvector / OSS): the general `search` fallback is the discovery tool,
-    ;; so the agent is never left with zero ways to find data. The library tool is filtered out.
+  (testing "nlq offers library retrieval beside the search tools when it can serve, and the search tools always"
+    ;; Entity retrieval unavailable (no pgvector / OSS): the search tools alone. The library tool is filtered out.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
       (let [tools (tools-for-profile :nlq)]
         (is (map? tools))
-        (is (contains? tools "search"))
+        (is (contains? tools (keyword-search-tool-name)))
         (is (contains? tools "construct_notebook_query"))
         (is (contains? tools "create_chart"))
         (is (not (contains? tools "retrieve_library_entities")))))
-    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): the curated library tool
-    ;; replaces general search. Exactly one discovery tool survives capability filtering.
+    ;; Entity retrieval available (pgvector configured + library-retrieval licensed): library retrieval joins them.
     (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
       (let [tools (tools-for-profile :nlq)]
         (is (contains? tools "retrieve_library_entities"))
-        (is (not (contains? tools "search")))))))
+        (is (contains? tools (keyword-search-tool-name)))))))
 
 (deftest ^:parallel get-tools-for-document-generate-content-profile-test
   (let [tools     (tools-for-profile :document-generate-content)
@@ -107,7 +111,7 @@
 (deftest ^:parallel get-tools-for-slackbot-profile-test
   (let [tools (tools-for-profile :slackbot)]
     (is (map? tools))
-    (is (contains? tools "search"))
+    (is (contains? tools (keyword-search-tool-name)))
     (is (contains? tools "construct_notebook_query"))
     (is (contains? tools "list_available_fields"))
     (is (contains? tools "get_field_values"))
@@ -128,10 +132,15 @@
       (is (some? (:schema (meta tool-var)))))))
 
 (deftest search-tool-test
-  (testing "search-tool var has valid metadata"
-    (let [m (meta #'agent-tools/search-tool)]
-      (is (= "search" (:tool-name m)))
-      (is (some? (:schema m))))))
+  (testing "the search tools carry their tool names, schemas, and the name they replaced"
+    (doseq [[tool-var tool-name] [[#'agent-tools/semantic-search-tool "semantic_search"]
+                                  [#'agent-tools/fulltext-search-tool "fulltext_search"]
+                                  [#'agent-tools/substring-or-search-tool "substring_search"]
+                                  [#'agent-tools/substring-and-search-tool "substring_search"]]]
+      (let [m (meta tool-var)]
+        (is (= tool-name (:tool-name m)))
+        (is (= #{"search"} (:replaces m)))
+        (is (some? (:schema m)))))))
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
@@ -219,7 +228,7 @@
     (let [memory-atom (atom {:state {:queries {"q1" {:database 1}}
                                      :charts {"c1" {:query-id "q1"}}}})
           base-tools {"create_sql_query" #'agent-tools/create-sql-query-tool
-                      "search" #'agent-tools/search-tool}
+                      "fulltext_search" #'agent-tools/fulltext-search-tool}
           wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
       ;; State-dependent tool should be wrapped into a tool-def map
       (is (map? (get wrapped-tools "create_sql_query")))
@@ -227,7 +236,7 @@
       (is (contains? (get wrapped-tools "create_sql_query") :doc))
       (is (contains? (get wrapped-tools "create_sql_query") :schema))
       ;; Non-state-dependent tool should also be a tool-def map
-      (is (map? (get wrapped-tools "search")))))
+      (is (map? (get wrapped-tools "fulltext_search")))))
   (testing "wrapped tools preserve original metadata"
     (let [memory-atom (atom {:state {:queries {} :charts {}}})
           base-tools {"create_chart" #'agent-tools/create-chart-tool}
@@ -244,12 +253,12 @@
       (is (fn? wrapped-fn))))
   (testing "non-state-dependent tools are also wrapped into tool-def maps"
     (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
-          base-tools {"search" #'agent-tools/search-tool
+          base-tools {"fulltext_search" #'agent-tools/fulltext-search-tool
                       "construct_notebook_query" #'agent-tools/construct-notebook-query-tool}
           wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
       ;; All tools are converted to tool-def maps
-      (is (map? (get wrapped-tools "search")))
-      (is (fn? (:fn (get wrapped-tools "search"))))
+      (is (map? (get wrapped-tools "fulltext_search")))
+      (is (fn? (:fn (get wrapped-tools "fulltext_search"))))
       (is (map? (get wrapped-tools "construct_notebook_query")))
       (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
 

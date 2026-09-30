@@ -715,11 +715,16 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
-(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+(def ^:private ^:const max-cosine-distance "Default cut-off used to filter semantic search results" 0.7)
+
+(defn- distance-cutoff
+  "The cut-off for `search-context`: its `:max-semantic-distance`, or [[max-cosine-distance]]."
+  [search-context]
+  (or (:max-semantic-distance search-context) max-cosine-distance))
 
 (defn- hnsw-search-query
   "Build the semantic vector subquery using the HNSW index, applying `filters` after candidate selection."
-  [index embedding-literal filters]
+  [index embedding-literal filters cutoff]
   ;; The inner `vector_candidates` CTE is a pure vector search (ORDER BY distance LIMIT) so the planner uses
   ;; the HNSW index. HNSW is an approximate-nearest-neighbour index, so its results are approximate regardless
   ;; of filtering -- that's the trade-off we accept for its speed. Running the filters only in the outer query
@@ -739,7 +744,7 @@
                                   [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                                    [:distance :semantic_distance]])
                     :from [:vector_candidates]
-                    :where [:<= :distance max-cosine-distance]
+                    :where [:<= :distance cutoff]
                     :order-by [[:semantic_rank :asc]]}]
     (if filters
       (update base-query :where #(into [:and] [% filters]))
@@ -747,7 +752,7 @@
 
 (defn- brute-force-search-query
   "Build the semantic vector subquery as an exact, filter-first search over the rows matching `filters`."
-  [index embedding-literal filters]
+  [index embedding-literal filters cutoff]
   ;; The filtered rows and their cosine distance are computed once, inside a MATERIALIZED CTE: that fences
   ;; the planner off the HNSW index (so the scan is exact) and stores the `distance` column, so the outer
   ;; query reads it rather than recomputing it. The cutoff and ranking run in the outer query.
@@ -764,13 +769,13 @@
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_distance]])
      :from     [:vector_candidates]
-     :where    [:<= :distance max-cosine-distance]
+     :where    [:<= :distance cutoff]
      :order-by [[:semantic_rank :asc]]
      :limit    (semantic-settings/semantic-search-results-limit)}))
 
 (defn- hnsw-iterative-search-query
   "Build the semantic vector subquery as an index-backed iterative scan with `filters` applied inline."
-  [index embedding-literal filters]
+  [index embedding-literal filters cutoff]
   ;; The filters live inside the ordered/limited candidate scan (unlike `hnsw-search-query`, which
   ;; post-filters), so the planner can pick the HNSW index and pgvector's iterative scan keeps pulling
   ;; neighbours until the limit is met or `hnsw.max_scan_tuples` is hit.
@@ -789,7 +794,7 @@
                      [[[:raw "row_number() OVER (ORDER BY distance ASC)"] :semantic_rank]
                       [:distance :semantic_distance]])
      :from     [:vector_candidates]
-     :where    [:<= :distance max-cosine-distance]
+     :where    [:<= :distance cutoff]
      :order-by [[:semantic_rank :asc]]}))
 
 (defn- vector-search-strategy
@@ -811,13 +816,14 @@
   [index embedding search-context]
   (let [filters           (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        strategy          (vector-search-strategy search-context)]
+        strategy          (vector-search-strategy search-context)
+        cutoff            (distance-cutoff search-context)]
     (cond
-      (= :brute-force strategy)          (brute-force-search-query index embedding-literal filters)
-      (iterative-strategy->guc strategy) (hnsw-iterative-search-query index embedding-literal filters)
-      (= :hnsw strategy)                 (hnsw-search-query index embedding-literal filters)
+      (= :brute-force strategy)          (brute-force-search-query index embedding-literal filters cutoff)
+      (iterative-strategy->guc strategy) (hnsw-iterative-search-query index embedding-literal filters cutoff)
+      (= :hnsw strategy)                 (hnsw-search-query index embedding-literal filters cutoff)
       :else (do (log/warnf "Unknown vector-search strategy %s; falling back to :brute-force" (pr-str strategy))
-                (brute-force-search-query index embedding-literal filters)))))
+                (brute-force-search-query index embedding-literal filters cutoff)))))
 
 (defn- explain?
   "Whether to run the gated EXPLAIN (ANALYZE) instrumentation for `search-context`, falling back to the
@@ -905,7 +911,10 @@
   "Build a hybrid search query using vector + keyword based searches and reranking with RRF"
   [index embedding search-context]
   (let [semantic-results (semantic-search-query index embedding search-context)
-        keyword-results (keyword-search-query index search-context)
+        ;; A vector-only search keeps the keyword branch's shape so the join and scorers are unchanged, but matches
+        ;; nothing with it: the caller wants meaning alone, and runs keyword matching as a separate search.
+        keyword-results  (cond-> (keyword-search-query index search-context)
+                           (:vector-only? search-context) (assoc :where [:= [:inline 1] [:inline 0]]))
         full-query {:with [[:vector_results semantic-results]
                            [:text_results keyword-results]]
                     :select (into
@@ -1351,11 +1360,12 @@
                                                           :from   [table]
                                                           :where  [:and [:= :model model] [:= :model_id (str id)]]})
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                                  :distance)]
+                                  :distance)
+                    cutoff    (distance-cutoff search-context)]
                 ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it
                 ;; via RRF, so treat it as a candidate within the cutoff and only call it not-matching past it.
-                (if (and distance (> distance max-cosine-distance))
-                  {:type :not-matching :details {:max-cosine-distance max-cosine-distance :distance distance}}
+                (if (and distance (> distance cutoff))
+                  {:type :not-matching :details {:max-cosine-distance cutoff :distance distance}}
                   {:type :candidate :details {:distance distance}})))))))))
 
 (comment

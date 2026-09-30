@@ -247,3 +247,24 @@
                                                        :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))
+
+(deftest semantic-search-tool-is-vector-only-test
+  (mt/with-premium-features #{:semantic-search}
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)]
+        (testing "semantic_search asks the semantic engine for meaning alone"
+          (let [captured (atom nil)]
+            (mt/with-dynamic-fn-redefs [search/search-by-query (fn [args] (reset! captured args) [])]
+              (search/semantic-search-tool {:query "how much did we make"}))
+            (is (=? {:engine       :search.engine/semantic
+                     :query        "how much did we make"
+                     :vector-only? true}
+                    @captured))))
+        (testing "a semantic search failure points the model at the keyword search tool"
+          (mt/with-dynamic-fn-redefs [search-core/search (fn [_]
+                                                           (throw (ex-info "Error executing semantic search"
+                                                                           {:type :semantic-search-error})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"Semantic search isn't working right now\. Use `(fulltext|substring)_search` instead"
+                                  (search/semantic-search-tool {:query "revenue"})))))))))

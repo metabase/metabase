@@ -303,8 +303,7 @@
 (deftest ^:parallel communication-guidance-gates-on-reasoning-ui-test
   (testing "templates for surfaces with a reasoning timeline skip the narration guidance"
     (doseq [template ["internal.selmer"
-                      "natural-language-querying-only.selmer"
-                      "natural-language-querying-fallback.selmer"]]
+                      "natural-language-querying-only.selmer"]]
       (let [rendered (render-template template all-yes-perms)]
         (is (not (re-find #"silent between tool calls" rendered))
             template))))

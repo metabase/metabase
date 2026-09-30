@@ -95,6 +95,8 @@
   when semantic search returns too few results and some results were filtered out (e.g. due to permission checks)."
   :feature :semantic-search
   [search-ctx]
+  ;; A vector-only search asked for meaning alone. Supplementing it, or falling back, would rerun its natural-language
+  ;; string through a keyword engine that reads it differently, so it returns what the vector search found, or fails.
   (tracing/with-span :search "search.semantic.execute" {:search/query-length (count (:search-string search-ctx))}
     (try
       (let [{:keys [results raw-count]}
@@ -103,7 +105,8 @@
                                          search-ctx)
             final-count (count results)
             threshold (semantic.settings/semantic-search-min-results-threshold)]
-        (if (or (>= final-count threshold)
+        (if (or (:vector-only? search-ctx)
+                (>= final-count threshold)
                 (and (zero? raw-count)
                      ;; :search-string is nil when using search to populate the list of tables for a given database in
                      ;; the native query editor. Semantic search doesn't support this, so fallback in this case.
@@ -138,7 +141,7 @@
         (log/errorf "Error executing semantic search, falling back to appdb: %s" (ex-message e))
         (let [fallback (fallback-engine)]
           (analytics/inc! :metabase-search/semantic-error-fallback {:fallback-engine fallback})
-          (if fallback
+          (if (and fallback (not (:vector-only? search-ctx)))
             (search.engine/results (assoc search-ctx :search-engine fallback))
             (throw (ex-info "Error executing semantic search" {:type :semantic-search-error} e))))))))
 
