@@ -4,7 +4,12 @@ import {
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
-import { fireEvent, screen, waitFor } from "__support__/ui";
+import {
+  fireEvent,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import {
@@ -18,16 +23,18 @@ import {
 import { setup } from "./test-setup";
 
 describe("Embed flow > initial setup", () => {
-  it("shows the embed experience step as the first step", () => {
+  it("shows the embed experience step as the first step", async () => {
     setup();
+    await settlePendingUpdates();
 
     expect(
       screen.getByText("Select your embed experience"),
     ).toBeInTheDocument();
   });
 
-  it("selects the dashboard experience by default", () => {
+  it("selects the dashboard experience by default", async () => {
     setup();
+    await settlePendingUpdates();
 
     const dashboardRadio = screen.getByRole("radio", { name: /Dashboard/ });
     expect(dashboardRadio).toBeChecked();
@@ -387,8 +394,9 @@ describe("Embed flow > forward and backward navigation", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the SSO radio above the Guest radio in the authentication card", () => {
+  it("renders the SSO radio above the Guest radio in the authentication card", async () => {
     setup({ modularEmbeddingEnabled: true });
+    await settlePendingUpdates();
 
     const radios = screen.getAllByRole("radio");
     const ssoIndex = radios.findIndex((r) => r.getAttribute("value") === "sso");
@@ -401,12 +409,13 @@ describe("Embed flow > forward and backward navigation", () => {
     expect(ssoIndex).toBeLessThan(guestIndex);
   });
 
-  it("selects Guest when initialState.isGuest is true, even with SSO configured", () => {
+  it("selects Guest when initialState.isGuest is true, even with SSO configured", async () => {
     setup({
       modularEmbeddingEnabled: true,
       jwtReady: true,
       initialState: { isGuest: true, useExistingUserSession: true },
     });
+    await settlePendingUpdates();
 
     expect(screen.getByDisplayValue("guest-embed")).toBeChecked();
     expect(screen.getByDisplayValue("sso")).not.toBeChecked();
@@ -416,8 +425,9 @@ describe("Embed flow > forward and backward navigation", () => {
     const warningText =
       /This embed will only work for local testing\. To get production ready code, configure/;
 
-    it("shows a warning on the authentication card when SSO is selected but not configured", () => {
+    it("shows a warning on the authentication card when SSO is selected but not configured", async () => {
       setup({ modularEmbeddingEnabled: true, jwtReady: false });
+      await settlePendingUpdates();
 
       expect(screen.getByDisplayValue("sso")).toBeChecked();
       expect(screen.getByText("Authentication")).toBeInTheDocument();
@@ -432,8 +442,9 @@ describe("Embed flow > forward and backward navigation", () => {
       expect(screen.queryByText(warningText)).not.toBeInTheDocument();
     });
 
-    it("hides the warning when SSO is configured", () => {
+    it("hides the warning when SSO is configured", async () => {
       setup({ modularEmbeddingEnabled: true, jwtReady: true });
+      await settlePendingUpdates();
 
       expect(screen.queryByText(warningText)).not.toBeInTheDocument();
     });
@@ -462,8 +473,9 @@ describe("Embed flow > forward and backward navigation", () => {
     });
   });
 
-  it("disables next and back buttons when simple embedding is disabled", () => {
+  it("disables next and back buttons when simple embedding is disabled", async () => {
     setup({ modularEmbeddingEnabled: false });
+    await settlePendingUpdates();
 
     expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
     expect(
@@ -490,6 +502,7 @@ describe("Embed flow > forward and backward navigation", () => {
         resourceId: 456,
       },
     });
+    await settlePendingUpdates();
 
     // Starts at the "select embed options" step.
     expect(screen.getByText("Behavior")).toBeInTheDocument();
@@ -502,7 +515,7 @@ describe("Embed flow > forward and backward navigation", () => {
 });
 
 describe("Embed flow > Pro feature upsell indicators", () => {
-  it("disables Pro checkboxes for OSS users (question)", () => {
+  it("disables Pro checkboxes for OSS users (question)", async () => {
     const mockDatabase = createMockDatabase();
     const mockCard = createMockCard({ id: 456 });
 
@@ -521,6 +534,7 @@ describe("Embed flow > Pro feature upsell indicators", () => {
         resourceId: 456,
       },
     });
+    await settlePendingUpdates();
 
     // All Pro-gated checkboxes should be disabled
     expect(
