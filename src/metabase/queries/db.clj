@@ -111,10 +111,9 @@
   (t2/select (queries.card-schema/selection include) :id [:in card-ids]))
 
 (mu/defn mbql-model-cards
-  "The IDs, types, queries, and result metadata of the unarchived MBQL models that query the Database with
-  `database-id`."
+  "The unarchived MBQL models that query the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :type :dataset_query :result_metadata :card_schema]
+  (t2/select (queries.card-schema/selection)
              :database_id database-id
              :type        :model
              :query_type  :query
