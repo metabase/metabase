@@ -646,7 +646,7 @@
 
 (deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
   (testing "a 2xx whose body carries no model list throws, naming the base URL"
-    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} "<html>404</html>"]]
+    (doseq [body [{:status "ok" :service "some-other-thing"} {:object "list"} 404]]
       (testing (str "body " (pr-str body))
         (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
           (is (thrown-with-msg?
@@ -660,6 +660,21 @@
            clojure.lang.ExceptionInfo
            #"reachable but is not serving any models"
            (vllm/list-models {:credentials credentials :probe? true}))))))
+
+(deftest list-models-fails-closed-on-a-2xx-that-is-not-json-test
+  (testing "a 2xx whose body is not JSON — a proxy's HTML, or a base URL missing /v1 — is a server
+           that answered, so it reads as a bad address rather than an unreachable one. The stub throws
+           what `:as :json` throws: clj-http parses a 2xx whatever its content type."
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (=? {:error-code  :malformed-model-catalog
+               :status-code 400}
+              (try
+                (vllm/list-models {:credentials credentials})
+                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"vLLM returned an unexpected model list response.*http://vllm\.internal:8000/v1"
+           (vllm/list-models {:credentials credentials}))))))
 
 (deftest list-models-fails-closed-before-probing-test
   (testing "a malformed catalog throws without issuing a probe request"

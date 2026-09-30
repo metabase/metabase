@@ -317,13 +317,28 @@
 (deftest list-models-fails-closed-on-a-body-that-is-not-a-catalog-test
   (testing "a 2xx whose body carries no model list throws, naming the base URL — the likeliest cause
            being a base URL that omits /v1"
-    (doseq [body [{:status "ok"} {:object "list"} "<html>404</html>"]]
+    (doseq [body [{:status "ok"} {:object "list"} 404]]
       (testing (str "body " (pr-str body))
         (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body body})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Ollama returned an unexpected model list response.*http://ollama\.internal:11434/v1"
                (ollama/list-models {:credentials credentials}))))))))
+
+(deftest list-models-fails-closed-on-a-2xx-that-is-not-json-test
+  (testing "a 2xx whose body is not JSON — a proxy's HTML, or a base URL missing /v1 — is a server
+           that answered, so it reads as a bad address rather than an unreachable one. The stub throws
+           what `:as :json` throws: clj-http parses a 2xx whatever its content type."
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] (json/decode "<html>404 Not Found</html>"))]
+      (is (=? {:error-code  :malformed-model-catalog
+               :status-code 400}
+              (try
+                (ollama/list-models {:credentials credentials})
+                (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Ollama returned an unexpected model list response.*http://ollama\.internal:11434/v1"
+           (ollama/list-models {:credentials credentials}))))))
 
 (deftest unreachable-server-names-the-address-it-tried-test
   (testing "a transport failure names the address actually called, so a Cloud connection — which

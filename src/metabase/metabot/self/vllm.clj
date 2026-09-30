@@ -17,6 +17,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
+   (com.fasterxml.jackson.core JsonProcessingException)
    (java.io IOException)
    (java.net SocketTimeoutException)
    (java.util.concurrent ExecutionException)))
@@ -128,22 +129,24 @@
   No timeouts are passed: this is not a generation, so it rides [[core/request]]'s shared default
   budget rather than vLLM's longer [[inference-timeouts]] one."
   [{{:keys [base-url]} :credentials :as req}]
-  (try
-    (let [res (adapter/request! provider (assoc req
-                                                :method :get
-                                                :path   "/models"
-                                                :as     :json))]
-      ;; The URL off the request credentials, not the setting: a connect verifies them before they are saved.
-      (chat-completions/models-catalog
-       "vLLM" res
-       {:detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
-                     (str base-url))}))
-    ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
-    ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
-    (catch IOException e
-      (throw (list-models-io-ex e base-url)))
-    (catch Exception e
-      (adapter/rethrow! provider e))))
+  ;; The URL off the request credentials, not the setting: a connect verifies them before they are saved.
+  (let [detail (tru "Check that {0} is a vLLM server''s OpenAI-compatible API — the base URL should end in /v1."
+                    (str base-url))]
+    (try
+      (let [res (adapter/request! provider (assoc req
+                                                  :method :get
+                                                  :path   "/models"
+                                                  :as     :json))]
+        (chat-completions/models-catalog "vLLM" res {:detail detail}))
+      ;; Ordered ahead of the `IOException` catch, which Jackson's parse error is one of: a 2xx whose
+      ;; body is not JSON means the server answered, so the address is wrong rather than unreachable.
+      (catch JsonProcessingException _
+        (throw (chat-completions/malformed-catalog-ex "vLLM" detail)))
+      ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
+      (catch IOException e
+        (throw (list-models-io-ex e base-url)))
+      (catch Exception e
+        (adapter/rethrow! provider e)))))
 
 ;;; -------------------------------------------------- Preflight -------------------------------------------------
 

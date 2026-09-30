@@ -21,6 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
+   (com.fasterxml.jackson.core JsonProcessingException)
    (java.io IOException)
    (java.net SocketTimeoutException)))
 
@@ -96,18 +97,20 @@
   Not [[adapter/fetch-catalog]]: that renders a 2xx-but-not-a-catalog failure with the shared message,
   and the address is the one thing an Ollama admin types, so naming it is the whole diagnosis."
   [{:keys [credentials] :as req}]
-  (let [url (conn/base-url credentials)]
+  ;; the URL off the request credentials, not the setting: a connect verifies them before they are saved
+  (let [url    (conn/base-url credentials)
+        detail (tru "Check that {0} is an Ollama server''s OpenAI-compatible API — the base URL should end in /v1."
+                    (str url))]
     (try
       (let [res (adapter/request! provider
                                   (assoc req :method :get :path "/models" :as :json)
                                   (control-timeouts))]
-        ;; the URL off the request credentials, not the setting: a connect verifies them before they are saved
-        (chat-completions/models-catalog
-         "Ollama" res
-         {:detail (tru "Check that {0} is an Ollama server''s OpenAI-compatible API — the base URL should end in /v1."
-                       (str url))}))
+        (chat-completions/models-catalog "Ollama" res {:detail detail}))
+      ;; Ordered ahead of the `IOException` catch, which Jackson's parse error is one of: a 2xx whose
+      ;; body is not JSON means the server answered, so the address is wrong rather than unreachable.
+      (catch JsonProcessingException _
+        (throw (chat-completions/malformed-catalog-ex "Ollama" detail)))
       ;; Ordered ahead of the generic catch, which a non-2xx still reaches as an `ExceptionInfo`.
-      ;; `:as :json` also lands a 2xx whose body is not JSON here, via Jackson's `JsonParseException`.
       (catch IOException e
         (throw (list-models-io-ex e url)))
       (catch Exception e
