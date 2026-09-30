@@ -1219,6 +1219,23 @@
                                :fields     [joined-category]}]}
                   (get-in result [:structured-output :query :stages 0]))))))))
 
+(deftest source-card-join-fields-without-join-alias-test
+  (testing (str "A join's own `fields` can only name that join's columns, so a ref there without\n"
+                "`join-alias` gets the join's alias and is typed from the joined card - not matched\n"
+                "against the stage's source card, where CATEGORY doesn't exist.")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "joins"       [(assoc (products-join ["field" {} "PRODUCT_ID"])
+                                                           "fields" [["field" {} "CATEGORY"]])]}]}))]
+          (is (=? {:joins [{:fields [[:field {:join-alias "P" :base-type :type/Text} "CATEGORY"]]}]}
+                  (get-in result [:structured-output :query :stages 0]))))))))
+
 (deftest later-stage-join-to-card-by-column-name-test
   (testing (str "A join onto a card in a stage after the first types its `join-alias` refs from the\n"
                 "joined card and the condition's parent side from the previous stage.")
