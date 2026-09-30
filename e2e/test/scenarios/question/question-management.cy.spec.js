@@ -40,9 +40,9 @@ describe(
                   .type("1")
                   .blur();
                 assertRequestNot403("updateQuestion");
-                assertNoPermissionsError();
                 // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("Orders1");
+                assertNoPermissionsError();
 
                 H.questionInfoButton().click();
 
@@ -51,10 +51,9 @@ describe(
                   .blur();
 
                 assertRequestNot403("updateQuestion");
-                assertNoPermissionsError();
-
                 // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("foo");
+                assertNoPermissionsError();
               });
 
               describe("move", () => {
@@ -346,23 +345,33 @@ describe(
               });
 
               it("should not offer to update, clone, or add the question to a dashboard it can't write to", () => {
-                cy.findByTestId("edit-details-button").should("not.exist");
-                cy.findByRole("button", { name: "Add a description" }).should(
-                  "not.exist",
+                cy.intercept(
+                  "GET",
+                  "/api/activity/most_recently_viewed_dashboard",
+                ).as("mostRecentlyViewedDashboard");
+
+                cy.findByTestId("saved-question-header-title").should(
+                  "be.disabled",
                 );
+                H.questionInfoButton().click();
+                H.sidesheet()
+                  .findByPlaceholderText("No description")
+                  .should("be.disabled");
+                H.sidesheet().findByLabelText("Close").click();
 
                 H.openQuestionActions();
 
                 H.popover().within(() => {
+                  cy.findByTestId("add-to-dashboard-button").should(
+                    "be.visible",
+                  );
                   cy.findByTestId("move-button").should("not.exist");
                   cy.findByTestId("clone-button").should("not.exist");
                   cy.findByTestId("archive-button").should("not.exist");
                 });
 
-                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                cy.findByText("Revert").should("not.exist");
-
                 cy.findByTestId("add-to-dashboard-button").click();
+                cy.wait("@mostRecentlyViewedDashboard");
 
                 H.entityPickerModal()
                   .findByText(/Orders in a dashboard/)
@@ -385,11 +394,26 @@ describe(
 
                 H.openQuestionActions();
                 cy.findByTestId("add-to-dashboard-button").click();
+                cy.wait("@mostRecentlyViewedDashboard");
 
                 H.entityPickerModal()
                   .findByText(/Orders in a dashboard/)
                   .closest("a")
                   .should("have.attr", "data-disabled", "true");
+
+                cy.log("the history is visible but can't be reverted");
+                cy.signInAsAdmin();
+                cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+                  description: "foo",
+                });
+                cy.signIn(user);
+                H.visitQuestion(ORDERS_QUESTION_ID);
+                H.questionInfoButton().click();
+                H.sidesheet().within(() => {
+                  cy.findByRole("tab", { name: "History" }).click();
+                  cy.findByText(/added a description/i).should("be.visible");
+                  cy.findByTestId("question-revert-button").should("not.exist");
+                });
               });
             });
           });

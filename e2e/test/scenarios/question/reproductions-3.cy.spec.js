@@ -325,7 +325,12 @@ describe("issue 39795", () => {
 
     // We are not able to re-order because the dataset will also contain values a column for Product ID
     // This causes the isValid() check to fire, and you are always forced into the default value for table.columns
-    H.getDraggableElements().eq(2).should("contain.text", "ID");
+    H.getDraggableElements()
+      .eq(0)
+      .should("have.attr", "data-testid", "draggable-item-User ID");
+    H.getDraggableElements()
+      .eq(2)
+      .should("have.attr", "data-testid", "draggable-item-ID");
   });
 });
 
@@ -868,6 +873,7 @@ describe("issue 43294", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should not overwrite viz settings with click actions in raw data mode (metabase#43294)", () => {
@@ -887,11 +893,13 @@ describe("issue 43294", () => {
       cy.findByText("Created At: Month").click();
       cy.findByText("Year").click();
     });
+    cy.wait("@dataset");
 
     cy.log("combine action");
     cy.button("Add column").click();
     H.popover().findByText("Combine columns").click();
     H.popover().button("Done").click();
+    cy.wait("@dataset");
 
     cy.log("check visualization");
     H.queryBuilderFooter().findByLabelText("Switch to visualization").click();

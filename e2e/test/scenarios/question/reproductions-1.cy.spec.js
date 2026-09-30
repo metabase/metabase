@@ -54,8 +54,8 @@ describe("issue 6239", () => {
 
     // Sort descending this time
     cy.icon("arrow_up").click();
+    cy.icon("arrow_down").should("be.visible");
     cy.icon("arrow_up").should("not.exist");
-    cy.icon("arrow_down");
 
     H.visualize();
 
@@ -107,6 +107,7 @@ function goToSavedQuestionPickerAndAssertQuestion(questionName, exists = true) {
   H.miniPickerBrowseAll().click();
   H.entityPickerModal().within(() => {
     H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalItem(1, "Orders").should("exist");
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");
     cy.button("Close").click();
   });
@@ -426,6 +427,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     );
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Move").should("be.visible");
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
@@ -435,6 +437,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
     H.commandPaletteSearch("Repro", false);
     H.commandPalette().findByText("Repro").click();
     cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Move").should("be.visible");
     H.popover().findByText("Duplicate").should("not.exist");
 
     cy.log(
@@ -546,35 +549,44 @@ describe("issue 19341", () => {
       cy.findByText("Sample Database").click();
       cy.findByText("Orders").should("exist");
 
-      // Ensure the search doesn't list saved questions
-      cy.findByPlaceholderText("Search…").type("Ord");
-      cy.findByTestId("loading-indicator").should("not.exist");
-
-      cy.findAllByTestId("result-item").then(($result) => {
-        const searchResults = $result.toArray();
-        const modelTypes = new Set(
-          searchResults.map((k) => k.getAttribute("data-model-type")),
-        );
-
-        expect(modelTypes).not.to.include("card");
-        expect(modelTypes).to.include("table");
-      });
+      assertSearchListsOnlyTables();
 
       cy.findByText("Orders").click();
     });
 
     cy.icon("join_left_outer").click();
     H.miniPickerBrowseAll().click();
-    H.entityPickerModal().findAllByRole("tab").should("not.exist");
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, "Databases").should("be.visible");
+      assertSearchListsOnlyTables();
+    });
 
     // Test "Explore results" button is hidden for native questions
     cy.visit("/collection/root");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TEST_NATIVE_QUESTION_NAME).click();
     cy.wait("@cardQuery");
+    cy.findByTestId("saved-question-header-title").should(
+      "have.text",
+      TEST_NATIVE_QUESTION_NAME,
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").should("not.exist");
   });
+
+  function assertSearchListsOnlyTables() {
+    cy.findByPlaceholderText("Search…").type("Ord");
+    cy.findByTestId("loading-indicator").should("not.exist");
+
+    cy.findAllByTestId("result-item").then(($result) => {
+      const modelTypes = new Set(
+        $result.toArray().map((k) => k.getAttribute("data-model-type")),
+      );
+
+      expect(modelTypes).not.to.include("card");
+      expect(modelTypes).to.include("table");
+    });
+  }
 });
 
 describe("issue 19742", () => {
@@ -617,10 +629,10 @@ describe("issue 19742", () => {
       H.entityPickerModalItem(0, "Databases").click();
       H.entityPickerModalItem(1, "Sample Database").click();
 
-      cy.findByText("Orders").should("not.exist");
       cy.findByText("Products").should("exist");
       cy.findByText("Reviews").should("exist");
       cy.findByText("People").should("exist");
+      cy.findByText("Orders").should("not.exist");
     });
   });
 });

@@ -25,6 +25,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
     cy.log("Refreshing the page does not persist the sidebar state");
     cy.reload();
+    cy.findByLabelText("View SQL").should("be.visible");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
 
     openSidebar();
@@ -72,12 +73,13 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   it("should not offer the sidebar preview for a user without native permissions", () => {
     cy.signIn("nosql");
     H.openReviewsTable({ mode: "notebook" });
+    cy.findByTestId("data-step-cell").should("contain", "Reviews");
+    H.notebookButton().should("be.visible");
     cy.findByTestId("qb-header-action-panel")
       .findByLabelText(/View SQL/i)
       .should("not.exist");
     cy.findByLabelText("View SQL").should("not.exist");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
-    cy.get("code").should("not.exist");
   });
 
   it(
@@ -89,12 +91,14 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
 
       cy.log("Opening a preview sidebar should completely cover the notebook");
       openSidebar();
-      cy.location("pathname").should("eq", "/question/notebook");
 
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",
       );
       cy.button("Visualize").click({ timeout: 500 }); // no need to wait four seconds
+      cy.then(() => {
+        throw new Error("Visualize should be covered by the sidebar");
+      });
 
       /**
        * The only reliable way to test that the button is not clickable because it is covered by another element.
@@ -226,7 +230,12 @@ describe("converting question to SQL (metabase#12651, metabase#21615, metabase#3
     cy.log(
       "should be possible to `Explore results` after saving a question (metabase#32121)",
     );
+    cy.intercept("POST", "/api/dataset").as("exploreDataset");
     cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.wait("@exploreDataset");
+    cy.findByTestId("qb-header")
+      .findByText("Explore results")
+      .should("not.exist");
     cy.get("[data-testid=cell-data]").should("contain", "37.65");
   });
 

@@ -286,12 +286,16 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel,
           bucket1Name,
           bucket2Name,
+          columns,
+          isChart,
         }: {
           tableName: string;
           columnName: string;
           bucketLabel: string;
           bucket1Name: string;
           bucket2Name: string;
+          columns: string[];
+          isChart: boolean;
         }) {
           H.startNewQuestion();
           H.miniPicker().within(() => {
@@ -324,6 +328,10 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover().last().findByText(bucket2Name).click();
           H.visualize();
           cy.wait("@dataset");
+          if (isChart) {
+            H.queryBuilderFooter().findByLabelText("Switch to data").click();
+          }
+          H.assertTableData({ columns });
         }
 
         cy.log("temporal breakouts");
@@ -333,6 +341,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Temporal bucket",
           bucket1Name: "Year",
           bucket2Name: "Month",
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          isChart: true,
         });
         H.assertQueryBuilderRowCount(49);
 
@@ -343,6 +353,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Binning strategy",
           bucket1Name: "10 bins",
           bucket2Name: "50 bins",
+          columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
+          isChart: false,
         });
         H.assertQueryBuilderRowCount(32);
 
@@ -353,6 +365,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           bucketLabel: "Binning strategy",
           bucket1Name: "Bin every 10 degrees",
           bucket2Name: "Bin every 20 degrees",
+          columns: ["Latitude: 10°", "Latitude: 20°", "Count"],
+          isChart: true,
         });
         H.assertQueryBuilderRowCount(6);
       });
@@ -631,23 +645,36 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.openVizSettingsSidebar();
 
           if (testMeasureMoves) {
+            const assertBreakoutsBeforeMeasure = () => {
+              H.getDraggableElements().should(($items) => {
+                expect($items).to.have.length(6);
+                $items.slice(0, 5).each((_index, item) => {
+                  expect(item.getAttribute("data-testid")).to.match(
+                    /^draggable-item-Created At: /,
+                  );
+                });
+                expect($items.eq(5)).to.have.attr(
+                  "data-testid",
+                  "draggable-item-Count",
+                );
+              });
+            };
+
+            assertBreakoutsBeforeMeasure();
+
             cy.log("move an item from columns to measures");
             H.moveDnDKitListElement("drag-handle", {
               startIndex: 2,
               dropIndex: 5,
             });
-            cy.findByTestId("pivot-table")
-              .findAllByText(columnNamePattern)
-              .should("have.length", 3);
+            assertBreakoutsBeforeMeasure();
 
             cy.log("move an item from measures to columns");
             H.moveDnDKitListElement("drag-handle", {
               startIndex: 5,
               dropIndex: 2,
             });
-            cy.findByTestId("pivot-table")
-              .findAllByText(columnNamePattern)
-              .should("have.length", 3);
+            assertBreakoutsBeforeMeasure();
           }
 
           cy.log("move a column from rows to columns");
@@ -825,7 +852,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         testDatePostAggregationExpression({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
           expression1: "[Total: 10 bins] + 100",
-          expression2: "[Total: 10 bins] + 200",
+          expression2: "[Total: 50 bins] + 200",
         });
 
         H.assertTableData({
@@ -836,7 +863,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "150"]],
         });
 
         cy.log("'bin-width' breakouts");

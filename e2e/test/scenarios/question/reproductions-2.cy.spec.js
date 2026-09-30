@@ -127,8 +127,7 @@ describe("issue 27462", () => {
 
     cy.button("Visualize").click();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("200").should("be.visible");
+    H.queryBuilderMain().findByText("200").should("be.visible");
   });
 });
 
@@ -219,7 +218,7 @@ describe("issue 28599", () => {
 
     cy.wait("@updateCard");
 
-    cy.findByTestId("time-series-mode-bar").should("not.exist");
+    cy.findByTestId("timeseries-chrome").should("not.exist");
   });
 });
 

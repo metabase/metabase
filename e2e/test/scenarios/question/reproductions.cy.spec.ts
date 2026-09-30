@@ -544,20 +544,37 @@ describe("issue 55631", () => {
     cy.findByTestId("qb-header").button("Save").click();
 
     H.modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders");
       cy.findByLabelText("Name").clear().type("Custom");
       cy.findByLabelText("Where do you want to save this?").click();
     });
 
     H.pickEntity({ path: ["Our analytics", "First collection"], select: true });
 
-    H.modal().within(() => {
-      cy.button("Save").click();
-      cy.wait("@cardCreate");
-
-      // It is important to have extremely short timeout in order to catch the issue
-      // before the dialog closes.
-      cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
+    // The flash happens between the save response and the modal closing,
+    // so record the Name value on every frame until the modal is gone.
+    cy.window().then((win) => {
+      const nameValues: string[] = [];
+      const sample = () => {
+        const input = win.document.querySelector<HTMLInputElement>(
+          '[data-testid="save-question-modal"] input[name="name"]',
+        );
+        if (input) {
+          nameValues.push(input.value);
+          win.requestAnimationFrame(sample);
+        }
+      };
+      sample();
+      cy.wrap(nameValues).as("nameValues");
     });
+
+    H.modal().button("Save").click();
+    cy.wait("@cardCreate");
+    cy.findByTestId("save-question-modal").should("not.exist");
+
+    cy.get<string[]>("@nameValues")
+      .should("include", "Custom")
+      .and("not.include", "Orders");
   });
 });
 describe("issue 42723", () => {
@@ -697,6 +714,7 @@ describe("issue 66210", () => {
     H.join();
     H.miniPickerBrowseAll().click();
     H.entityPickerModalItem(0, "Our analytics").click();
+    H.entityPickerModalItem(1, "Orders").should("be.visible");
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
   });
 });

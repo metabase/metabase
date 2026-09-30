@@ -110,12 +110,12 @@ describe("scenarios > question > summarize sidebar", () => {
   it("should only have one scrollbar for the summarize sidebar and not show the run button overlay when an error occurs (metabase#45452, metabase#12586)", () => {
     cy.findByTestId("summarize-aggregation-item-list").then(($el) => {
       const element = $el[0];
-      expectNoScrollbarContainer(element);
+      expectNoScrollbar(element);
     });
 
     cy.findByTestId("summarize-breakout-column-list").then(($el) => {
       const element = $el[0];
-      expectNoScrollbarContainer(element);
+      expectNoScrollbar(element);
     });
 
     // the sidebar is the only element with a scrollbar
@@ -207,6 +207,10 @@ describe("scenarios > question > summarize", () => {
         cy.button("More…").click();
         cy.findByText("Hour of day").click();
       });
+
+    H.getNotebookStep("summarize")
+      .findByText("Distinct values of Created At: Hour of day")
+      .should("be.visible");
   });
 
   it("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {
@@ -299,10 +303,13 @@ function removeMetricFromSidebar(metricName) {
   });
 }
 
-function expectNoScrollbarContainer(element) {
-  const hasScrollbarContainer =
-    element.scrollHeight <= element.clientHeight &&
-    element.offsetWidth > element.clientWidth;
+function expectNoScrollbar(element) {
+  const { borderLeftWidth, borderRightWidth } = getComputedStyle(element);
+  const scrollbarWidth =
+    element.offsetWidth -
+    element.clientWidth -
+    parseFloat(borderLeftWidth) -
+    parseFloat(borderRightWidth);
 
-  expect(hasScrollbarContainer).to.be.false;
+  expect(scrollbarWidth).to.equal(0);
 }

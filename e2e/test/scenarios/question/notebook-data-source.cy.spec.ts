@@ -26,7 +26,7 @@ describe("scenarios > notebook > data source", () => {
 
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        // databases is selected already
+        assertDataPickerEntitySelected(0, "Databases");
         H.entityPickerModalLevel(1).findByText("Sample Database").click();
         assertDataPickerEntityNotSelected(2, "Accounts");
         assertDataPickerEntityNotSelected(2, "Analytic Events");
@@ -142,10 +142,26 @@ describe("scenarios > notebook > data source", () => {
         H.miniPicker().within(() => {
           cy.findByText(dbName).click();
           cy.findByText("Domestic").click();
+          cy.findByText("Animals").should("be.visible");
+          cy.findByText("Birds").should("not.exist");
           cy.findByText("Animals").click();
         });
         H.popover().findByText("Name").click();
         H.popover().findByText("Name").click();
+
+        cy.log("select a table that only exists in the first schema");
+        H.join();
+        H.miniPicker().within(() => {
+          cy.findByText(dbName).click();
+          cy.findByText(schemaName).click();
+          cy.findByText("Animals").should("be.visible");
+          cy.findByText("Birds").click();
+        });
+        H.popover().findByText("Name").click();
+        H.popover().findByText("Name").click();
+        H.getNotebookStep("join", { stage: 0, index: 2 })
+          .findByText("Birds")
+          .should("be.visible");
       },
     );
   });
@@ -364,10 +380,10 @@ describe("issue 34350", { tags: "@external" }, () => {
 
     H.visualize();
 
+    cy.findAllByTestId("cell-data").should("contain", "37.65");
     H.queryBuilderMain()
       .findByText("There was a problem with your question")
       .should("not.exist");
-    cy.findAllByTestId("cell-data").should("contain", "37.65");
   });
 });
 
@@ -469,6 +485,8 @@ describe("issue 32252", () => {
     H.newButton("Question").click();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      cy.findByTestId("mini-picker-list-loader").should("not.exist");
       cy.findByText("My collection").should("not.exist");
       cy.findByText("My question").should("not.exist");
     });
@@ -499,6 +517,8 @@ describe("issue 32252", () => {
     H.newButton("Question").click();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
+      H.miniPickerHeader().should("contain", "Our analytics");
+      cy.findByTestId("mini-picker-list-loader").should("not.exist");
       cy.findByText("My collection").should("not.exist");
       cy.findByText("My question").should("not.exist");
     });

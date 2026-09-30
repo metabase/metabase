@@ -96,6 +96,7 @@ describe("scenarios > question > native query drill", () => {
 
       H.tableInteractive().findByText("October 7, 2026, 1:34 AM").click();
       H.popover().within(() => {
+        cy.button("Save").should("be.visible");
         cy.findByText("Filter by this date and time").should("not.exist");
         cy.button("Save").click();
       });
@@ -307,12 +308,15 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(4);
     });
 
-    it("unsupported legend item drill", () => {
+    it("legend item click has no drills", () => {
       H.createNativeQuestion(timeseriesWithCategoryLineQuestionDetails, {
         visitQuestion: true,
       });
-      cy.findByTestId("visualization-root").findByText("Gadget").click();
-      cy.findByRole("tooltip").should("not.exist");
+      cy.findByTestId("visualization-root")
+        .findByText("Gadget")
+        .should("be.visible")
+        .click();
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
     });
   });
 

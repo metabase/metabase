@@ -64,12 +64,16 @@ describe("scenarios > question > new", () => {
 
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
-        cy.get("[role='tab']:contains('Search')").should("not.exist");
+        H.entityPickerModalLevel(0)
+          .findByText(/Search results for /)
+          .should("not.exist");
 
         cy.findByText("Orders, Count").click();
       });
 
       cy.log("toggle notebook button should be hidden for brand new questions");
+      cy.findByTestId("data-step-cell").should("contain", "Orders, Count");
+      cy.findByTestId("qb-header-action-panel").should("exist");
       H.notebookButton().should("not.exist");
 
       H.visualize();
@@ -172,6 +176,7 @@ describe("scenarios > question > new", () => {
         cy.findByText("Personal question").click();
       });
       H.visualize();
+      H.tableInteractiveBody().findByText("39.72").should("be.visible");
     });
   });
 
@@ -190,17 +195,20 @@ describe("scenarios > question > new", () => {
     cy.get(".test-TableInteractive-cellWrapper--lastColumn").eq(0).click();
     cy.wait("@dataset");
 
-    H.tableInteractiveBody()
-      .get(".test-TableInteractive-cellWrapper--firstColumn")
-      .should("have.length.gt", 1);
-
     cy.log(
       "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
     );
     cy.log(
       "**It should display the table with all orders with the selected quantity.**",
     );
-    H.tableInteractive();
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Quantity is equal to 2",
+    );
+    cy.findByTestId("object-detail").should("not.exist");
+    H.tableInteractiveBody()
+      .find(".test-TableInteractive-cellWrapper--firstColumn")
+      .should("have.length.gt", 1);
 
     cy.get(".test-TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
       .eq(0) // first table body cell
@@ -210,7 +218,7 @@ describe("scenarios > question > new", () => {
 
     cy.log("only one row should appear after filtering by ID");
     H.tableInteractiveBody()
-      .get(".test-TableInteractive-cellWrapper--firstColumn")
+      .find(".test-TableInteractive-cellWrapper--firstColumn")
       .should("have.length", 1);
   });
 

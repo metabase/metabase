@@ -186,6 +186,11 @@ describe("scenarios > question > saved", () => {
     H.openQuestionActions();
     H.popover().findByText("Duplicate").click();
 
+    H.modal()
+      .findByLabelText("Name")
+      .should(($input) => {
+        expect($input.val()).to.match(/ - Duplicate$/);
+      });
     H.modal().should(($el) => {
       const $modal = $el[0];
       expect($modal.clientWidth).to.be.equal($modal.scrollWidth);
@@ -205,6 +210,7 @@ describe("scenarios > question > saved", () => {
         .blur();
 
       cy.wait("@updateQuestion");
+      cy.findByText("This is a question").should("be.visible");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
@@ -220,7 +226,11 @@ describe("scenarios > question > saved", () => {
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
-      cy.findByText(/This is a question/i).should("not.exist");
+
+      cy.findByRole("tab", { name: "Overview" }).click();
+      cy.findByPlaceholderText("Add description").should("have.value", "");
+
+      cy.findByRole("tab", { name: "History" }).click();
 
       // Simulate a backend failure on revert and confirm we surface
       // the error message as a toast (UXW-310).
@@ -241,6 +251,7 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Our analytics").click());
 
+    cy.location("pathname").should("eq", "/collection/root");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
 
@@ -252,6 +263,10 @@ describe("scenarios > question > saved", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.appBar().within(() => cy.findByText("Second collection").click());
 
+    cy.location("pathname").should(
+      "match",
+      new RegExp(`^/collection/${SECOND_COLLECTION_ID}(-|$)`),
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
@@ -276,6 +291,10 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
+    cy.location("pathname").should(
+      "match",
+      new RegExp(`^/dashboard/${ORDERS_DASHBOARD_ID}(-|$)`),
+    );
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").should("be.visible");
   });
@@ -363,13 +382,31 @@ describe("scenarios > question > saved", () => {
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
 
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.button("Save").click();
-      cy.wait("@cardCreate");
-      // It is important to have extremely short timeout in order to catch the issue
-      cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
-        "not.exist",
-      );
+    cy.findByTestId("save-question-modal")
+      .findByLabelText("Name")
+      .should("have.value", "Products");
+
+    // The suffix flashes for a frame between the save response and the modal
+    // closing, so record the name on every frame until the modal is gone.
+    const names = [];
+    cy.window().then((win) => {
+      const sample = () => {
+        const input = win.document.querySelector(
+          "[data-testid='save-question-modal'] input[name='name']",
+        );
+        if (input) {
+          names.push(input.value);
+          win.requestAnimationFrame(sample);
+        }
+      };
+      sample();
+    });
+
+    cy.findByTestId("save-question-modal").button("Save").click();
+    cy.wait("@cardCreate");
+    cy.findByTestId("save-question-modal").should("not.exist");
+    cy.wrap(names).should((values) => {
+      expect(values.filter((name) => /- Modified$/.test(name))).to.be.empty;
     });
   });
 
@@ -407,7 +444,7 @@ describe("scenarios > question > saved", () => {
               joins: [
                 {
                   "source-table": PRODUCTS_ID,
-                  alias: "Orders",
+                  alias: "Products",
                   condition: [
                     "=",
                     ["field", ORDERS.PRODUCT_ID, null],
@@ -466,12 +503,12 @@ describe("scenarios > question > saved", () => {
             joins: [
               {
                 "source-table": PRODUCTS_ID,
-                alias: "Orders Question",
+                alias: "Products",
                 fields: "all",
                 condition: [
                   "=",
-                  ["field", PRODUCTS.PRODUCT_ID, null],
-                  ["field", ORDERS.ID, { "join-alias": "Orders" }],
+                  ["field", ORDERS.PRODUCT_ID, null],
+                  ["field", PRODUCTS.ID, { "join-alias": "Products" }],
                 ],
               },
             ],
@@ -483,6 +520,14 @@ describe("scenarios > question > saved", () => {
         },
       );
 
+      cy.signInAsNormalUser();
+      cy.get("@questionId").then(H.visitQuestion);
+      H.queryBuilderHeader()
+        .findByDisplayValue("Products Question + Orders")
+        .should("be.visible");
+      H.queryBuilderHeader().findByText("View-only").should("not.exist");
+
+      cy.signInAsAdmin();
       H.visitQuestion(ORDERS_QUESTION_ID);
       moveQuestionTo(/Personal Collection/);
 

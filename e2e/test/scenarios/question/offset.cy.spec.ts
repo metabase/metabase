@@ -63,7 +63,7 @@ describe("scenarios > question > offset", () => {
 
       cy.button("Filter").click();
       H.popover().findByText("Custom Expression").click();
-      H.enterCustomColumnDetails({ formula: filterPrefix });
+      H.enterCustomColumnDetails({ formula: filterPrefix, blur: false });
 
       cy.log("does not suggest offset() in filter expressions");
       H.CustomExpressionEditor.completions().should("not.exist");
@@ -83,7 +83,10 @@ describe("scenarios > question > offset", () => {
       H.popover().should("not.exist");
 
       cy.button("Custom column").click();
-      H.enterCustomColumnDetails({ formula: customColumnPrefix });
+      H.enterCustomColumnDetails({
+        formula: customColumnPrefix,
+        blur: false,
+      });
 
       cy.log("does not suggest offset() in custom columns");
       H.CustomExpressionEditor.completions().should("not.exist");
@@ -137,11 +140,11 @@ describe("scenarios > question > offset", () => {
 
       H.createQuestion({ query }, { visitQuestion: true });
 
-      verifyNoQuestionError();
       verifyTableContent([
         ["April 2025", ""],
         ["May 2025", "52.76"],
       ]);
+      verifyNoQuestionError();
 
       H.openNotebook();
       H.getNotebookStep("summarize").icon("play").should("be.visible");
@@ -163,19 +166,19 @@ describe("scenarios > question > offset", () => {
       addBreakout(breakoutName);
 
       H.visualize();
-      verifyNoQuestionError();
       verifyLineChart({
         xAxis: breakoutName + ": Month",
         yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
       });
+      verifyNoQuestionError();
 
       saveQuestion().then(({ response }) => {
         H.visitQuestion(response?.body.id);
-        verifyNoQuestionError();
         verifyLineChart({
           xAxis: breakoutName + ": Month",
           yAxis: OFFSET_SUM_TOTAL_AGGREGATION_NAME,
         });
+        verifyNoQuestionError();
       });
     });
 
@@ -223,11 +226,11 @@ describe("scenarios > question > offset", () => {
 
       H.visualize();
 
-      verifyNoQuestionError();
       verifyTableContent([
         ["April 2028", "Gadget", "15,713", "31,426.01"],
         ["September 2028", "Gadget", "15,017.31", "30,034.62"],
       ]);
+      verifyNoQuestionError();
     });
   });
 
@@ -287,6 +290,10 @@ describe("scenarios > question > offset", () => {
 
     H.echartsContainer().within(() => {
       cy.contains("January 2027").should("be.visible");
+    });
+    verifyLineChart({
+      xAxis: "Created At: Month",
+      legendItems: [metricName, "Count of orders (previous month)"],
     });
   });
 });

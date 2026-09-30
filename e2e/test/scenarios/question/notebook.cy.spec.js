@@ -55,9 +55,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.button("Visualize").click();
 
+    cy.location("pathname").should("not.include", "/notebook");
+    H.tableInteractive().should("be.visible");
     // there were no changes to the question, so we shouldn't have the option to "Save"
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").should("not.exist");
+    H.queryBuilderHeader().button("Save").should("not.exist");
   });
 
   it("should allow post-aggregation filters", () => {
@@ -135,10 +136,17 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       .click();
 
     H.popover().within(() => {
-      cy.findByText("User ID")
+      H.getDimensionByName({ name: "Created At" })
+        .findByLabelText("Temporal bucket")
+        .should("exist");
+      H.getDimensionByName({ name: "Subtotal" })
+        .findByLabelText("Binning strategy")
+        .should("exist");
+
+      H.getDimensionByName({ name: "User ID" })
         .findByLabelText("Binning strategy")
         .should("not.exist");
-      cy.findByText("User ID")
+      H.getDimensionByName({ name: "User ID" })
         .findByLabelText("Temporal bucket")
         .should("not.exist");
     });
@@ -159,13 +167,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("ID is between 96 and 97").click();
+    H.popover().findByDisplayValue("96").should("be.visible");
+    H.popover().findByDisplayValue("97").should("be.visible");
     H.popover().findByText("Between").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Is not");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Greater than");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Less than");
+    cy.findByRole("menu").within(() => {
+      cy.findByText("Is not").should("be.visible");
+      cy.findByText("Greater than").should("be.visible");
+      cy.findByText("Less than").should("be.visible");
+    });
   });
 
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
@@ -212,8 +221,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
       (req) => {
         req.on("response", (res) => {
-          // Throttle the response to 500 Kbps to simulate a mobile 3G connection
-          res.setThrottle(500);
+          res.setDelay(2000);
         });
       },
     ).as("dataset");
@@ -241,6 +249,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID is 2 selections");
 
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 98 rows",
+    );
     cy.wait("@dataset");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("Showing 175 rows");
@@ -311,6 +323,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         .click();
 
       H.popover().within(() => {
+        cy.findByText("Average of ...").should("be.visible");
         cy.findByText("Median of ...").should("not.exist");
       });
 
@@ -323,6 +336,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.getNotebookStep("summarize")
         .findByText("Pick a function or metric")
         .click();
+      H.popover().findByText("Average of ...").should("be.visible");
     });
   });
 
@@ -401,8 +415,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
-    cy.intercept("GET", "/api/table/*/query_metadata").as("loadMetadata");
-
     H.createQuestion({
       name: "Products model",
       query: { "source-table": PRODUCTS_ID },
@@ -428,7 +440,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Products model").click();
     });
 
+    H.getNotebookStep("join").within(() => {
+      cy.findByText("Products model").should("be.visible");
+      cy.findByText("Product ID").should("be.visible");
+      cy.findByText("ID").should("be.visible");
+    });
+
     H.visualize();
+    H.tableInteractive().should("be.visible");
   });
 
   describe('"median" aggregation function', { tags: "@external" }, () => {
