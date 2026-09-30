@@ -13,7 +13,7 @@ type InternalSdkConfig = {
     | "mcp-apps"
     | "data-app";
   metabaseClientRequestIdentifier: string | undefined;
-  enableEmbeddingSettingKey: "enable-embedding-sdk" | "enable-embedding-simple";
+  enableEmbeddingSettingKey: "enable-embedding-modular";
   tokenFeatureKey: "embedding_sdk" | "embedding_simple";
 };
 
@@ -55,7 +55,7 @@ export const EMBEDDING_SDK_CONFIG: InternalSdkConfig = {
   /**
    * Which setting indicates whether the embedding is enabled?
    */
-  enableEmbeddingSettingKey: "enable-embedding-sdk" satisfies SettingKey,
+  enableEmbeddingSettingKey: "enable-embedding-modular" satisfies SettingKey,
 
   /**
    * Which token feature indicates whether the embedding is available?

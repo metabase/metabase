@@ -1,0 +1,101 @@
+import { t } from "ttag";
+
+import {
+  useListEmbeddableCardsQuery,
+  useListEmbeddableDashboardsQuery,
+} from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { EmbeddedResources } from "metabase/embedding/settings/EmbeddedResources";
+import { EmbeddingMethodsCard } from "metabase/embedding/settings/EmbeddingMethodsCard";
+import { EmbeddingSecretKeyWidget } from "metabase/embedding/settings/EmbeddingSecretKeyWidget";
+import { CorsInputWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/CorsInputWidget";
+import { SameSiteSelectWidget } from "metabase/embedding/settings/EmbeddingSecuritySettings/SameSiteSelectWidget";
+import { EmbeddingHubUpsellBanner } from "metabase/embedding-hub/components/EmbeddingHubUpsellBanner";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSetting } from "metabase/settings";
+import {
+  SettingTitle,
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
+import { Box } from "metabase/ui";
+
+const UPSELL_CAMPAIGN = "embedding-hub";
+const UPSELL_LOCATION = "embedding-hub-security";
+
+/**
+ * Card order comes from the design: embedding methods, CORS, SameSite, secret
+ * key, then the two conditional cards.
+ *
+ * The hub has no Guest embeds tab, so this page carries what admin settings'
+ * Guest embeds page holds today: the Enable guest embeds toggle, the secret
+ * key and the published embeds list.
+ */
+export function EmbeddingHubSecurityPage() {
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+
+  const isFullAppEmbeddingEnabled = useSetting("enable-embedding-interactive");
+
+  // Keyed on whether anything is actually published, not on the toggle: an
+  // admin who has just turned guest embeds off still needs to see what is
+  // already out there, and that is exactly when they most need to.
+  const { data: embeddedDashboards } = useListEmbeddableDashboardsQuery();
+  const { data: embeddedCards } = useListEmbeddableCardsQuery();
+  const hasPublishedGuestEmbeds =
+    (embeddedDashboards?.length ?? 0) > 0 || (embeddedCards?.length ?? 0) > 0;
+
+  return (
+    <SettingsPageWrapper title={t`Security`}>
+      <EmbeddingMethodsCard />
+
+      {!hasSimpleEmbedding && (
+        <EmbeddingHubUpsellBanner
+          title={t`Upgrade to Metabase Pro to access the SDK for React and more advanced options.`}
+          campaign={UPSELL_CAMPAIGN}
+          location={UPSELL_LOCATION}
+        />
+      )}
+
+      <SettingsSection>
+        <CorsInputWidget />
+      </SettingsSection>
+
+      {/* SameSite governs the metabase.SESSION cookie, and guest embeds never
+          set one (src/metabase/request/cookies.clj:71-81). Guest is the only
+          method below the paywall, so the setting is inert there -- showing it
+          invites an admin to change a value that cannot affect their embeds. */}
+      {hasSimpleEmbedding && (
+        <SettingsSection>
+          <SameSiteSelectWidget />
+        </SettingsSection>
+      )}
+
+      <SettingsSection>
+        <EmbeddingSecretKeyWidget />
+      </SettingsSection>
+
+      {/* Per the design's annotation: only when published guest embeds exist. */}
+      {hasPublishedGuestEmbeds && (
+        <SettingsSection>
+          <Box data-testid="embedded-resources">
+            <SettingTitle
+              id="static-embeds"
+              fz="lg"
+              mb="lg"
+            >{t`Published guest embeds`}</SettingTitle>
+
+            <EmbeddedResources />
+          </Box>
+        </SettingsSection>
+      )}
+
+      {/* Per the design's annotation: only when full-app embedding is on. */}
+      {isFullAppEmbeddingEnabled &&
+        PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget && (
+          <SettingsSection>
+            <PLUGIN_ADMIN_SETTINGS.InteractiveEmbeddingAuthorizedOriginsWidget />
+          </SettingsSection>
+        )}
+    </SettingsPageWrapper>
+  );
+}

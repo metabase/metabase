@@ -11,6 +11,7 @@ export {
   type AuthSettingsPageProps,
   type AuthSettingsPageTab,
   type LdapUserProvisioningProps,
+  type SettingsJWTFormProps,
 } from "./oss/auth";
 export {
   PLUGIN_CACHING,

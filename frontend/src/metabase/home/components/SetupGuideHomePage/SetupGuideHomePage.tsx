@@ -58,7 +58,7 @@ export const SetupGuideHomePage = (): ReactNode => {
         </Menu>
       </Group>
 
-      <SetupGuide />
+      <SetupGuide returnTo="/" />
 
       <CustomHomePageModal
         isOpen={isCustomHomePageModalOpened}
