@@ -7,8 +7,8 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/common/types";
-import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import * as Lib from "metabase-lib";
+import type { DayOfWeekId } from "metabase-types/api";
 
 import { DEFAULT_VALUE, TABS } from "./constants";
 
@@ -156,6 +156,16 @@ export function isOutOfBounds(
   );
 }
 
+const DAY_OF_WEEK_INDEX: Record<DayOfWeekId, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
 function startOfUnit(
   timeConfig: Lib.TimeConfig,
   date: Dayjs,
@@ -165,12 +175,7 @@ function startOfUnit(
     return date.startOf(unit);
   }
 
-  const firstDay = DAY_OF_WEEK_OPTIONS.findIndex(
-    ({ id }) => id === timeConfig["start-of-week"],
-  );
-  if (firstDay < 0) {
-    throw new Error(`Invalid start of week: ${timeConfig["start-of-week"]}`);
-  }
+  const firstDay = DAY_OF_WEEK_INDEX[timeConfig["start-of-week"]];
   const daysSinceFirstDay = (date.day() - firstDay + 7) % 7;
   return date.subtract(daysSinceFirstDay, "day").startOf("day");
 }

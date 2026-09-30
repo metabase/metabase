@@ -7,6 +7,7 @@ import type {
   DatePickerUnit,
   RelativeDatePickerValue,
 } from "metabase/querying/common/types";
+import type { DayOfWeekId } from "metabase-types/api";
 
 import { CurrentDatePicker } from "./CurrentDatePicker";
 
@@ -20,6 +21,7 @@ interface SetupOpts {
   value?: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
   settingsLoaded?: boolean;
+  startOfWeek?: DayOfWeekId;
 }
 
 const userEvent = _userEvent.setup({
@@ -30,9 +32,10 @@ function setup({
   value = DEFAULT_VALUE,
   availableUnits = DATE_PICKER_UNITS,
   settingsLoaded = true,
+  startOfWeek = "sunday",
 }: SetupOpts = {}) {
   const onChange = jest.fn();
-  const settings = createMockSettingsState({ "start-of-week": "sunday" });
+  const settings = createMockSettingsState({ "start-of-week": startOfWeek });
 
   if (!settingsLoaded) {
     Reflect.deleteProperty(settings.values, "start-of-week");
@@ -73,12 +76,12 @@ describe("CurrentDatePicker", () => {
   });
 
   it("should show the date range for the selected interval", async () => {
-    setup();
+    setup({ startOfWeek: "monday" });
 
     await userEvent.hover(screen.getByText("Week"));
 
     expect(
-      await screen.findByText("Right now, this is Dec 29, 2019 – Jan 4, 2020"),
+      await screen.findByText("Right now, this is Dec 30, 2019 – Jan 5, 2020"),
     ).toBeInTheDocument();
   });
 

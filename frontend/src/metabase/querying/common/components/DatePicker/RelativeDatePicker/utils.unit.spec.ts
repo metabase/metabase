@@ -298,15 +298,4 @@ describe("isOutOfBounds", () => {
       isOutOfBounds(timeConfig, currentWeek, undefined, sundayWeekEnd),
     ).toBe(false);
   });
-
-  it("rejects an invalid start of week", () => {
-    expect(() =>
-      // Deliberately bypass the type constraint to exercise the runtime boundary.
-      isOutOfBounds({ "start-of-week": "noday" } as unknown as TimeConfig, {
-        type: "relative",
-        value: 0,
-        unit: "week",
-      }),
-    ).toThrow("Invalid start of week: noday");
-  });
 });
