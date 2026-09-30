@@ -245,6 +245,28 @@
   [engine]
   (u/seek #(not= engine %) (concat (active-engines) (supported-engines))))
 
+(defn keyword-engine
+  "The engine that matches keyword queries: the default engine, or the one semantic search falls back to when the
+  default is semantic."
+  []
+  (let [engine (default-engine)]
+    (if (= :search.engine/semantic engine)
+      (fallback-engine engine)
+      engine)))
+
+(defn keyword-flavour
+  "How the [[keyword-engine]] matches a query, or nil when there is none:
+
+  - `:fulltext`: app-db on Postgres. Lexemes, with stemming and stopwords from the text-search language, and boolean
+    tsquery operators.
+  - `:substring-and`: app-db on H2. Every term must appear somewhere as a substring.
+  - `:substring-or`: in-place. Any term may appear as a substring in any searched column."
+  []
+  (case (keyword-engine)
+    :search.engine/appdb    (if (= :postgres (mdb/db-type)) :fulltext :substring-and)
+    :search.engine/in-place :substring-or
+    nil))
+
 (defn resolved-engine
   "The engine a search will actually run on: the semantic engine when it's active (it serves a query
   alone, fusing keyword and vector matching), otherwise whatever the default precedence resolves to."

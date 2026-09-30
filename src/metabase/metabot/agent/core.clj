@@ -478,6 +478,8 @@
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
         base-tools   (profiles/profile->tools profile capabilities)
+        ;; resolved alongside the tools, so the prompt's "Unavailable tools" section matches what was offered
+        profile      (assoc profile :unavailable-tools (profiles/unavailable-tools profile capabilities))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)

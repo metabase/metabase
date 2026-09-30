@@ -54,7 +54,7 @@
   - :name - Keyword identifier for the profile (e.g. :internal)
   - :prompt-template - Selmer template name from resources/metabot/prompts/system/
   - :max-iterations - Maximum agent loop iterations
-  - :tools - Vector of tool vars (e.g. #'tools/search-tool)
+  - :tools - Vector of tool vars (e.g. #'tools/fulltext-search-tool)
   - :always-on-skills - Optional vector of skill ids (keywords) whose bodies are inlined into this
     profile's system prompt instead of being loaded on demand via `load_skill`. Always-on is a
     per-profile decision: the same skill can be inlined here and on-demand elsewhere.
@@ -90,9 +90,11 @@
         tool-names    (set tool-name-seq)]
     (doseq [tool-var tool-vars]
       (validate-tool-var! tool-var))
-    (when-not (apply distinct? tool-name-seq)
-      (let [dups (->> (frequencies tool-name-seq)
-                      (filter (fn [[_ cnt]] (< 1 cnt))))]
+    ;; A name may repeat only across alternatives: vars that each declare `:available?`, of which [[profile->tools]]
+    ;; serves at most one (e.g. the `substring_search` variants for in-place and for app-db on H2).
+    (let [dups (->> (group-by #(:tool-name (meta %)) tool-vars)
+                    (filter (fn [[_ vs]] (and (< 1 (count vs)) (not-every? #(:available? (meta %)) vs)))))]
+      (when (seq dups)
         (throw (ex-info "Duplicate tool names in profile" {:tool-names (map first dups)}))))
     (when (and (false? (:skills? profile)) (seq (:always-on-skills profile)))
       (throw (ex-info "Profile disables skills but lists :always-on-skills"
@@ -109,7 +111,10 @@
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
   :max-iterations  15
-  :tools           [#'tools/nlq-search-tool
+  :tools           [#'tools/nlq-semantic-search-tool
+                    #'tools/nlq-fulltext-search-tool
+                    #'tools/nlq-substring-or-search-tool
+                    #'tools/nlq-substring-and-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool
@@ -120,7 +125,10 @@
  {:name            :internal
   :prompt-template "internal.selmer"
   :max-iterations  15
-  :tools           [#'tools/search-tool
+  :tools           [#'tools/semantic-search-tool
+                    #'tools/fulltext-search-tool
+                    #'tools/substring-or-search-tool
+                    #'tools/substring-and-search-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/read-resource-tool
                     #'tools/create-sql-query-tool
@@ -154,7 +162,10 @@
   ;; non-terminal in other profiles.
   :terminal-tools      #{"create_sql_query" "edit_sql_query" "replace_sql_query"
                          "ask_for_sql_clarification"}
-  :tools               [#'tools/sql-search-tool
+  :tools               [#'tools/sql-semantic-search-tool
+                        #'tools/sql-fulltext-search-tool
+                        #'tools/sql-substring-or-search-tool
+                        #'tools/sql-substring-and-search-tool
                         #'tools/read-resource-tool
                         #'tools/create-sql-query-code-edit-tool
                         #'tools/edit-sql-query-tool
@@ -180,7 +191,10 @@
  {:name            :nlq-fallback
   :prompt-template "natural-language-querying-fallback.selmer"
   :max-iterations  15
-  :tools           [#'tools/nlq-search-tool
+  :tools           [#'tools/nlq-semantic-search-tool
+                    #'tools/nlq-fulltext-search-tool
+                    #'tools/nlq-substring-or-search-tool
+                    #'tools/nlq-substring-and-search-tool
                     #'tools/read-resource-tool
                     #'tools/construct-notebook-query-tool
                     #'tools/create-chart-tool
@@ -206,7 +220,10 @@
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
   :max-iterations  15
-  :tools           [#'tools/search-tool
+  :tools           [#'tools/semantic-search-tool
+                    #'tools/fulltext-search-tool
+                    #'tools/substring-or-search-tool
+                    #'tools/substring-and-search-tool
                     #'tools/slackbot-construct-notebook-query-tool
                     #'tools/list-available-fields-tool
                     #'tools/get-field-values-tool
@@ -221,7 +238,10 @@
   :temperature     0.3
   :system-prompt-context #'tools.explorations/research-plan-system-context
   :skills?         false
-  :tools           [#'tools/search-tool
+  :tools           [#'tools/semantic-search-tool
+                    #'tools/fulltext-search-tool
+                    #'tools/substring-or-search-tool
+                    #'tools/substring-and-search-tool
                     #'tools/read-resource-tool
                     #'tools/list-research-metrics-tool
                     #'tools/get-research-candidates-tool
@@ -255,10 +275,24 @@
                   (api-scope/scope-matches? scope/*current-user-scope* required-scope))))
           tool-vars))
 
+(defn- available?
+  "Whether a tool var can serve this turn: true unless its `:available?` metadata says otherwise."
+  [tool-var]
+  (if-let [pred (:available? (meta tool-var))]
+    (boolean (pred))
+    true))
+
 (defn- tool-map
-  "Create a map of tool-name -> tool-var from a sequence of tool vars."
+  "Create a map of tool-name -> tool-var from a sequence of tool vars. Of alternatives sharing a name, at most one
+  may be available (see [[register-profile!]]); two at once is a configuration bug, so it throws."
   [tool-vars]
-  (into {} (map (juxt #(:tool-name (meta %)) identity) tool-vars)))
+  (reduce (fn [acc tool-var]
+            (let [tool-name (:tool-name (meta tool-var))]
+              (when (contains? acc tool-name)
+                (throw (ex-info "Two available tools share a name" {:tool-name tool-name})))
+              (assoc acc tool-name tool-var)))
+          {}
+          tool-vars))
 
 ;;; API
 
@@ -306,11 +340,9 @@
   Profiles with `:skills? false` never get `load_skill` (see [[metabase.metabot.skills/build-skill-manifest]])."
   [profile capabilities]
   (when profile
-    (let [base     (-> profile
-                       :tools
-                       (filter-by-capabilities capabilities)
-                       filter-by-scope
-                       tool-map)
+    (let [base     (->> (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
+                        (filter available?)
+                        tool-map)
           manifest (skills/build-skill-manifest profile (keys base) capabilities)]
       (cond-> base
         ;; Register load_skill whenever the profile has ANY skills — on-demand (catalog) or
@@ -319,6 +351,24 @@
         ;; synthetic `load_skill` call that must resolve to a registered tool.
         (or (seq (:catalog manifest)) (seq (:always-on manifest)))
         (assoc "load_skill" #'tools/load-skill-tool)))))
+
+(defn unavailable-tools
+  "The tools `profile` would offer this turn but can't, for the system prompt's \"Unavailable tools\" section. These are
+  the tools the profile, capabilities and scope allow whose name no available tool carries, and that describe
+  themselves with an `:unavailable-note`. Each entry is `{:name ... :purpose ...}`, plus whichever of `:missing`,
+  `:reason` and `:workaround` the tool supplies."
+  [profile capabilities]
+  (when profile
+    (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
+          available-names (into #{} (comp (filter available?) (map #(:tool-name (meta %)))) allowed)]
+      (->> allowed
+           (remove #(available-names (:tool-name (meta %))))
+           (keep (fn [tool-var]
+                   (when-let [note (:unavailable-note (meta tool-var))]
+                     (assoc (note) :name (:tool-name (meta tool-var))))))
+           (into (sorted-map) (map (juxt :name identity)))
+           vals
+           vec))))
 
 (defn get-tools-for-profile
   "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).

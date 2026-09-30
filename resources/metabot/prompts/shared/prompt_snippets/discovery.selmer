@@ -3,11 +3,11 @@
 You have two ways to find data, with different strengths:
 
 - **`read_resource`** navigates the instance by URI and returns *exactly* what exists within a scope you name — a database's schemas, a schema's tables, a collection's items, a table's fields and sample values. When you're enumerating a scope you can already name, prefer it: it's complete and never silently "misses" the way a ranked search can.
-- **`search`** finds entities by topic when you *don't* know where they live. It returns a ranked guess, not a complete list — a top hit is a candidate, and absence from results is not proof something doesn't exist.
+- **Search** finds entities by topic when you *don't* know where they live. It returns a ranked guess, not a complete list — a top hit is a candidate, and absence from results is not proof something doesn't exist.
 
 These play different roles, and the distinction matters:
 
-- **Choosing which data source answers an analytical question → start with `search`.** When you don't know which database or collection holds the answer, topic search is the only way to surface the curated layer — models, and metrics when your search tool's scope includes them. (Once you *do* know the database, `read_resource` on `metabase://database/{id}/models` enumerates its models directly — use that when the question is "what models does this database have".) Navigating straight to a raw table whose name you happen to know silently skips a metric or model that may answer the question better (and that you're told to prefer; see "Prefer curated entities"). Search first, *then* drill into the best hit with `read_resource`, using the `uri` attribute from its search result. Recognizing a raw table's name is not a reason to skip the search.
+- **Choosing which data source answers an analytical question → start with a search.** When you don't know which database or collection holds the answer, topic search is the only way to surface the curated layer — models, and metrics when your search tool's scope includes them. (Once you *do* know the database, `read_resource` on `metabase://database/{id}/models` enumerates its models directly — use that when the question is "what models does this database have".) Navigating straight to a raw table whose name you happen to know silently skips a metric or model that may answer the question better (and that you're told to prefer; see "Prefer curated entities"). Search first, *then* drill into the best hit with `read_resource`, using the `uri` attribute from its search result. Recognizing a raw table's name is not a reason to skip the search.
 - **Enumerating a structure you can already name → navigate directly.** "What's in this collection", "what fields does this table have", "what schemas does this database have" are `read_resource` calls, not searches.
 
 When the location is genuinely unknown, search to get an entry point, then drill into a promising hit with `read_resource` instead of searching the same concept again. When a request spans several distinct concepts, issue one search per concept (fire them in parallel) so one concept's results don't crowd out another's.
@@ -21,34 +21,6 @@ Finding a candidate table, model, or metric is not the same as confirming it fit
 - **Whether a simpler source already answers it** — a single table with the right column beats a multi-table join you assemble yourself.
 
 Never pick a source on its name alone. The few seconds to read it is what makes the first query right on the first run.
-
-## How search matches your query
-
-{% if has_semantic_search %}Every query runs through **two matchers in parallel** and the results are fused (so you get the union of both):
-
-1. **Meaning (vector) match** — embeds your whole query and finds entities whose *meaning* is close, even with no shared words. This catches synonyms, paraphrases, and other-language phrasings automatically (`"shipments"` can surface an entity named *Fulfillment*; `"how much did we make"` can surface *Revenue*). You do **not** need to enumerate synonyms.
-2. **Keyword (full-text) match** — literal token overlap against names and descriptions, using the operator DSL below. This is what reliably catches exact names, codes, and rare abbreviations the meaning-match may not encode.
-
-Lead with a natural noun phrase or short question and let the meaning-match do the work; reach for the keyword operators only to pin down exact/rare terms.{% else %}Search uses **keyword (full-text) matching only** — there is no meaning awareness. Only literal token overlap against each entity's name and description scores, parsed with the operator DSL below. Because there's no synonym understanding, **you** must supply alternate wordings and abbreviations yourself, and lean toward the entity's likely real name rather than the user's phrasing (`"shipments"` won't match an entity named *Fulfillment*{% if has_tsquery_operators %} — search `shipments or fulfillment`{% else %}, so try the likely real name in a follow-up search{% endif %}).{% endif %}
-
-## Query operators
-
-{% if has_tsquery_operators %}These drive the keyword match{% if has_semantic_search %} (one half of every search){% endif %}. Matching is case-insensitive and common word endings are stemmed (`orders` matches `order`).
-
-- **Spaces = AND.** `customer churn rate` requires *all three* tokens to appear — each extra word narrows, never broadens. Search the core hypothesis, not a padded phrase.
-- **`or` = alternatives.** `shipments or fulfillment`, `LTV or "lifetime value"`. Use it for synonyms/abbreviations you're unsure are indexed.
-- **`"exact phrase"`** matches those words adjacent and in order: `"monthly recurring revenue"`.
-- **`-word` excludes:** `bounce -hard`.
-- **Trailing word is a prefix:** a fragment like `rev` matches `revenue` (only the last word completes).
-
-{% if has_semantic_search %}**These operators only shape the keyword half.** The meaning-match embeds your query *literally* and ignores operator semantics, and results are the union of both halves — so an operator that restricts the keyword half doesn't restrict the meaning half. In practice:
-- `"exact phrase"` and rare/exact tokens compose well — they sharpen the keyword half toward a precise hit.
-- **Negation is unreliable:** `-word` drops the token from the keyword half, but the meaning-match has no notion of "not" and can surface the excluded thing anyway. Don't rely on `-` to exclude; filter it out yourself when reading results.
-- **`or` is wasted effort:** the meaning-match already handles synonyms and paraphrases, and the literal word "or" just dilutes the embedding. Use one natural phrasing instead of OR-listing synonyms.{% else %}If a spaces-only (all-AND) query returns nothing, don't just resend it — reach for `or` yourself, joining the actual synonyms and abbreviations you suspect, so a single stray token can't collapse the result set to empty.{% endif %}{% else %}This instance has **no query operator support**: `or`, `"exact phrase"` and `-exclusion` are not parsed. They match as literal text, so never use them.
-
-- **Keep the query to one or two distinctive words.** How multi-word queries combine differs by backend here, so a long phrase is unreliable either way.
-- **Partial words already match:** `custom` finds `customers`, so a short stem is often the better query.
-- **If a query finds nothing, try a different word rather than adding more** — and search a synonym as its own separate call.{% endif %}
 
 ## What is and isn't searched
 

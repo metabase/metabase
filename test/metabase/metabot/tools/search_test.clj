@@ -27,9 +27,14 @@
 (deftest ^:parallel search-display-test
   (testing "surfaces the query as the search object (client owns the verb/tense)"
     (is (= "revenue" (#'search/search-display {:query "revenue"}))))
+  (testing "a structured query shows its positive terms"
+    (is (= "revenue income" (#'search/search-display {:query {:op   "and"
+                                                              :args [{:op "or" :args ["revenue" "income"]}
+                                                                     {:op "not" :args ["gross"]}]}}))))
   (testing "no query -> nil"
     (is (nil? (#'search/search-display {})))
-    (is (nil? (#'search/search-display {:query ""})))))
+    (is (nil? (#'search/search-display {:query ""})))
+    (is (nil? (#'search/search-display {:query {:op "bogus"}})))))
 
 (deftest ^:parallel search-result->item-test
   (testing "trims a result to the fields the results card renders, nesting collection id+name"
@@ -355,48 +360,48 @@
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
                     api/*current-user-id* 1]
-        (testing "nlq-search-tool with no entity_types searches table/model/metric/measure/segment/question/collection"
+        (testing "NLQ search with no entity_types searches table/model/metric/measure/segment/question/collection"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (search/nlq-search-tool {:query "x"}))
+              (search/nlq-substring-or-search-tool {:query "x"}))
             (is (= #{"table" "dataset" "metric" "measure" "segment" "card" "collection"} @captured))
             (is (not (contains? @captured "dashboard")))
             (is (not (contains? @captured "transform")))
             (is (not (contains? @captured "database")))))
-        (testing "sql-search-tool with no entity_types searches only table/model"
+        (testing "SQL search with no entity_types searches only table/model"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (search/sql-search-tool {:query "x" :database_id 1}))
+              (search/sql-substring-or-search-tool {:query "x" :database_id 1}))
             (is (= #{"table" "dataset"} @captured))))
         (testing "general search includes documents in its default entity types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (search/search-tool {:query "x"}))
+              (search/substring-or-search-tool {:query "x"}))
             (is (contains? @captured "document"))))
         (testing "agent-supplied entity_types narrow the default allowed set"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (search/nlq-search-tool {:query "x" :entity_types ["metric"]}))
+              (search/nlq-substring-or-search-tool {:query "x" :entity_types ["metric"]}))
             (is (= #{"metric"} @captured))))
         (testing "NLQ search accepts document and dashboard destination types"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:models context))
                                                              {:data []})]
-              (search/nlq-search-tool {:query        "plan"
-                                       :entity_types ["document" "dashboard"]}))
+              (search/nlq-substring-or-search-tool {:query        "plan"
+                                                    :entity_types ["document" "dashboard"]}))
             (is (= #{"document" "dashboard"} @captured))))))))
 
 (deftest tool-scope-args-test
-  (testing "search-tool surfaces database_id/collection_id scope args to the search context"
+  (testing "the general search tools surface database_id/collection_id scope args to the search context"
     (mt/with-test-user :rasta
       (with-redefs [perms/impersonated-user? (fn [] false)
                     perms/sandboxed-user? (fn [] false)
@@ -406,14 +411,14 @@
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured context)
                                                              {:data []})]
-              (search/search-tool {:query "x" :database_id 42}))
+              (search/substring-or-search-tool {:query "x" :database_id 42}))
             (is (= 42 (:table-db-id @captured)))))
         (testing "collection_id is forwarded as :collection (descendant scope)"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured context)
                                                              {:data []})]
-              (search/search-tool {:query "x" :collection_id 7}))
+              (search/substring-or-search-tool {:query "x" :collection_id 7}))
             (is (= 7 (:collection @captured)))))))))
 
 (deftest configured-collection-bounds-caller-collection-test
@@ -453,27 +458,83 @@
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:limit-int context))
                                                              {:data []})]
-              (search/search-tool {:query "x"}))
+              (search/substring-or-search-tool {:query "x"}))
             (is (= 25 @captured))))
         (testing "explicit limit is honored"
           (let [captured (atom nil)]
             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                              (reset! captured (:limit-int context))
                                                              {:data []})]
-              (search/search-tool {:query "x" :limit 10}))
+              (search/substring-or-search-tool {:query "x" :limit 10}))
             (is (= 10 @captured))))
         (testing "limit above 50 is rejected by schema validation"
           (is (thrown? Exception
-                       (search/search-tool {:query "x" :limit 75}))))
+                       (search/substring-or-search-tool {:query "x" :limit 75}))))
         (testing "limit below 1 is rejected by schema validation"
           (is (thrown? Exception
-                       (search/search-tool {:query "x" :limit 0}))))))))
+                       (search/substring-or-search-tool {:query "x" :limit 0}))))))))
 
 (deftest ^:parallel search-failure-throws-test
   (testing "an exception from search propagates out of the tool (BOT-2199)"
     (mt/with-dynamic-fn-redefs [search/search-by-query (fn [_] (throw (ex-info "Search index unavailable" {})))]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Search index unavailable"
-                            (search/search-tool {:query "x"}))))))
+                            (search/substring-or-search-tool {:query "x"}))))))
+
+(deftest matcher-engine-test
+  (testing "each matcher tool pins its engine, and the keyword tools pass the structured query through"
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (let [captured (atom nil)
+              expr     {:op "or" :args ["revenue" "income"]}]
+          (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                           (reset! captured context)
+                                                           {:data []})]
+            (search/substring-or-search-tool {:query expr}))
+          (is (=? {:search-engine (search.engine/keyword-engine)
+                   :search-string "revenue income"
+                   :search-expr   expr}
+                  @captured)))))))
+
+(deftest fulltext-validation-test
+  (when (= :postgres (mdb/db-type))
+    (mt/with-test-user :rasta
+      (with-redefs [perms/impersonated-user? (fn [] false)
+                    perms/sandboxed-user? (fn [] false)
+                    api/*current-user-id* 1]
+        (mt/with-dynamic-fn-redefs [search-core/search (fn [_] (throw (ex-info "should not search" {})))]
+          (testing "a leaf that is only stopwords is rejected, naming it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"`the and` can't match anything"
+                                  (search/fulltext-search-tool
+                                   {:query {:op "and" :args ["revenue" {:op "not" :args [{:op "phrase" :text "the and"}]}]}}))))
+          (testing "a query that can't restrict the index is rejected"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"would match almost everything"
+                                  (search/fulltext-search-tool
+                                   {:query {:op "or" :args ["revenue" {:op "not" :args ["archive"]}]}}))))
+          (testing "too many leaves is rejected"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"17 leaves; the most is 16"
+                                  (search/fulltext-search-tool
+                                   {:query {:op "or" :args (mapv #(str "t" %) (range 17))}})))))))))
+
+(deftest fulltext-search-end-to-end-test
+  (when (= :postgres (mdb/db-type))
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-test-user :crowberto
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Card {revenue-id :id} {:name "Zf8 revenue forecast"}
+                         :model/Card {income-id :id}  {:name "Zf8 income statement"}
+                         :model/Card {margin-id :id}  {:name "Zf8 gross margin"}]
+            (let [found (fn [expr]
+                          (->> (search/search-by-query {:search-expr  expr
+                                                        :engine       :search.engine/appdb
+                                                        :entity-types ["question"]})
+                               (map :id)
+                               set))]
+              (is (= #{revenue-id income-id}
+                     (found {:op "and" :args ["zf8" {:op "or" :args ["revenue" "income"]}]})))
+              (is (= #{margin-id}
+                     (found {:op "and" :args ["zf8" {:op "not" :args [{:op "or" :args ["revenue" "income"]}]}]}))))))))))
 
 (deftest ^:parallel scalar-search-args-test
   (testing "a scalar where an array is declared is rejected with guidance on how to repair the call"
@@ -482,17 +543,26 @@
               "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."]]]
       (testing (str "a scalar " field)
         (is (= message
-               (test-util/tool-boundary-error "search" #'metabot.tools/search-tool {:query "x" field value})))))))
+               (test-util/tool-boundary-error "substring_search" #'metabot.tools/substring-or-search-tool
+                                              {:query "x" field value})))))))
 
 (deftest ^:parallel scalar-search-args-every-variant-test
   (testing "every search tool variant rejects a scalar the same way"
-    (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
-                                   [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]
-                                   [#'metabot.tools/transform-search-tool {}]]]
+    (doseq [[tool-var extra-args] [[#'metabot.tools/semantic-search-tool {}]
+                                   [#'metabot.tools/fulltext-search-tool {}]
+                                   [#'metabot.tools/substring-or-search-tool {}]
+                                   [#'metabot.tools/substring-and-search-tool {}]
+                                   [#'metabot.tools/sql-semantic-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-fulltext-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-substring-or-search-tool {:database_id 1}]
+                                   [#'metabot.tools/sql-substring-and-search-tool {:database_id 1}]
+                                   [#'metabot.tools/nlq-semantic-search-tool {}]
+                                   [#'metabot.tools/nlq-fulltext-search-tool {}]
+                                   [#'metabot.tools/nlq-substring-or-search-tool {}]
+                                   [#'metabot.tools/nlq-substring-and-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `entity_types` must be an array of supported entity type strings; received a string."
-               (test-util/tool-boundary-error "search" tool-var
+               (test-util/tool-boundary-error (:tool-name (meta tool-var)) tool-var
                                               (assoc extra-args :query "x" :entity_types "table"))))))))
 
 (deftest other-user-collection-test

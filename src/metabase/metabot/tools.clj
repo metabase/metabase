@@ -40,10 +40,19 @@
 (p/import-vars
  [tools.analyze-chart
   analyze-chart-tool]
- [tools.search search-tool
-  sql-search-tool
-  nlq-search-tool
-  transform-search-tool]
+ [tools.search
+  semantic-search-tool
+  fulltext-search-tool
+  substring-or-search-tool
+  substring-and-search-tool
+  sql-semantic-search-tool
+  sql-fulltext-search-tool
+  sql-substring-or-search-tool
+  sql-substring-and-search-tool
+  nlq-semantic-search-tool
+  nlq-fulltext-search-tool
+  nlq-substring-or-search-tool
+  nlq-substring-and-search-tool]
  [tools.entity-retrieval
   retrieve-library-entities-tool]
  [tools.construct
@@ -111,6 +120,14 @@
     "edit_sql_query"
     "replace_sql_query"
     "construct_notebook_query"})
+
+(def search-tool-names
+  "Tool names that search Metabase content: one per matcher, plus `search`, the single tool they replaced, which
+  older conversations still record."
+  #{"search"
+    "semantic_search"
+    "fulltext_search"
+    "substring_search"})
 
 (def ^:private state-dependent-tools
   "Set of tool names that require access to agent state."
