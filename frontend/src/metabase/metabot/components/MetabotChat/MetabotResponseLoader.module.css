@@ -6,8 +6,8 @@
 }
 
 .dots {
-  --bright: rgba(7, 23, 34, 0.74);
-  --dim: rgba(7, 23, 34, 0.22);
+  --bright: var(--mb-color-icon-primary);
+  --dim: var(--mb-color-icon-disabled);
 
   width: 0.25rem;
   aspect-ratio: 1;
