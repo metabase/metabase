@@ -120,12 +120,6 @@ function isExplorationTreeHeadingProps(
   return props.item.data?.type === "heading";
 }
 
-function isThreadHeadingKind(
-  headingKind: ExplorationHeadingKind | undefined,
-): boolean {
-  return headingKind === "root" || headingKind === "sub-exploration";
-}
-
 function ExplorationTreeHeading({
   item,
   isExpanded,
@@ -144,8 +138,7 @@ function ExplorationTreeHeading({
       aria-busy={isLoading}
       className={cx(S.treeRow, S.treeRowHeading, {
         [S.treeRowNested]: depth > 0,
-        [S.treeRowThreadSeparated]:
-          depth === 0 && isThreadHeadingKind(item.data?.headingKind),
+        [S.treeRowThreadSeparated]: depth === 0,
       })}
       tabIndex={0}
       onKeyDown={(e) => {
@@ -529,7 +522,9 @@ function ExplorationHeadingIcon({
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
     );
   }
-  if (status === "error" && isThreadHeadingKind(headingKind)) {
+  const isThreadNode =
+    headingKind === "root" || headingKind === "sub-exploration";
+  if (status === "error" && isThreadNode) {
     return (
       <Icon name="warning_triangle_filled" c="error" aria-label={t`Failed`} />
     );
