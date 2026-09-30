@@ -19,17 +19,7 @@ export interface ChartBoundsCoords {
 
 export type TicksRotation = "horizontal" | "vertical";
 
-export interface RowChartMetricTicks {
-  interval: number;
-  min?: number;
-  max?: number;
-  showMinLabel: boolean;
-  showMaxLabel: boolean;
-}
-
 export interface ChartLayout {
-  /** Row charts only: legacy-matched ticks for the horizontal metric axis. */
-  metricTicks?: RowChartMetricTicks;
   padding: Padding;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;

@@ -1,7 +1,4 @@
 // Layout for row charts: a cartesian bar chart with the axes swapped.
-import * as d3 from "d3";
-import _ from "underscore";
-
 import type { RowValue } from "metabase-types/api";
 
 import type {
@@ -13,19 +10,8 @@ import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { CHART_STYLE } from "../constants/style";
 import type { LabelFormatter } from "../model/types";
 
-import type {
-  ChartLayout,
-  RowChartMetricTicks,
-  TicksDimensions,
-} from "./types";
-import {
-  type ChartLayoutInput,
-  MAX_OVERFLOW_PERCENTAGE,
-  TICK_OVERFLOW_BUFFER,
-  getChartBounds,
-  getDataset,
-  getYAxisExtentToMeasure,
-} from "./utils";
+import type { ChartLayout, TicksDimensions } from "./types";
+import { type ChartLayoutInput, getChartBounds, getDataset } from "./utils";
 
 // Caps the category label gutter so long names still leave room for bars.
 const ROW_CHART_LABEL_MAX_WIDTH_RATIO = 0.5;
@@ -122,123 +108,6 @@ const getRowChartDataLabelsWidth = (
   return widest === 0 ? 0 : widest + CHART_STYLE.seriesLabels.offset;
 };
 
-// Room for the half of the first/last metric tick label that hangs past the
-// plot edge, capped like the upright `getTicksOverflow`.
-const getRowChartMetricTickOverflow = (
-  input: ChartLayoutInput,
-  settings: ComputedVisualizationSettings,
-  padding: Padding,
-  chartWidth: number,
-  { measureText, fontFamily, theme }: RenderingContext,
-): { left: number; right: number } => {
-  const axisModel = input.leftAxisModel ?? input.rightAxisModel;
-  if (axisModel == null || settings["graph.y_axis.axis_enabled"] === false) {
-    return { left: 0, right: 0 };
-  }
-
-  const fontStyle = {
-    ...CHART_STYLE.axisTicks,
-    family: fontFamily,
-    size: theme.cartesian.label.fontSize,
-  };
-
-  const [min, max] = getYAxisExtentToMeasure(
-    axisModel,
-    settings,
-    input.yAxisScaleTransforms,
-  );
-
-  const halfWidth = (value: number) =>
-    measureText(axisModel.formatter(value), fontStyle) / 2;
-
-  const maxOverflow = chartWidth * MAX_OVERFLOW_PERCENTAGE;
-  const clamp = (overhang: number, existing: number) =>
-    Math.min(
-      Math.max(overhang - existing + TICK_OVERFLOW_BUFFER, 0),
-      maxOverflow,
-    );
-
-  return {
-    left: clamp(halfWidth(min), padding.left),
-    right: clamp(halfWidth(max), padding.right),
-  };
-};
-
-const ROW_CHART_MIN_TICK_GAP = 20;
-const ROW_CHART_MAX_TICKS_PER_WIDTH = 12;
-
-// Trims float noise from d3 tick steps such as 0.1 + 0.2.
-const roundTickValue = (value: number) => Number(value.toPrecision(12));
-
-// Legacy visx ticks (width-based budget, d3 1/2/5 steps) as a fixed interval;
-// ECharts' `splitNumber` is only a hint. Linear scales only.
-const getRowChartMetricTicks = (
-  input: ChartLayoutInput,
-  settings: ComputedVisualizationSettings,
-  gridWidth: number,
-  { measureText, fontFamily, theme }: RenderingContext,
-): RowChartMetricTicks | undefined => {
-  const axisModel = input.leftAxisModel ?? input.rightAxisModel;
-  const isLinear = (settings["graph.y_axis.scale"] ?? "linear") === "linear";
-  if (axisModel == null || !isLinear || gridWidth <= 0) {
-    return undefined;
-  }
-
-  const isFixedRange =
-    axisModel.isNormalized || !settings["graph.y_axis.auto_range"];
-  const goal = settings["graph.goal_value"];
-  const extent = getYAxisExtentToMeasure(
-    axisModel,
-    settings,
-    input.yAxisScaleTransforms,
-  );
-  const domain =
-    !isFixedRange && settings["graph.show_goal"] && typeof goal === "number"
-      ? [Math.min(extent[0], goal), Math.max(extent[1], goal)]
-      : extent;
-  const scale = d3.scaleLinear().domain(domain);
-  if (!isFixedRange) {
-    scale.nice();
-  }
-  const [min, max] = scale.domain();
-
-  const fontStyle = {
-    ...CHART_STYLE.axisTicks,
-    family: fontFamily,
-    size: theme.cartesian.label.fontSize,
-  };
-  const widestTick = Math.max(
-    ...[min, max].map((value) =>
-      measureText(axisModel.formatter(value), fontStyle),
-    ),
-  );
-  const tickSpacing = Math.max(
-    widestTick + ROW_CHART_MIN_TICK_GAP,
-    gridWidth / ROW_CHART_MAX_TICKS_PER_WIDTH,
-  );
-  const tickBudget = Math.floor(gridWidth / tickSpacing);
-
-  const ticks =
-    _.range(tickBudget, 0, -1)
-      .map((count) => scale.ticks(count))
-      .find((candidate) => candidate.length <= tickBudget) ?? [];
-  if (ticks.length < 2) {
-    return undefined;
-  }
-
-  const interval = roundTickValue(ticks[1] - ticks[0]);
-  const isOnTick = (value: number) =>
-    Math.abs(value / interval - Math.round(value / interval)) < 1e-9;
-
-  return {
-    interval,
-    ...(!isFixedRange && { min, max }),
-    // ECharts labels an axis end that is not on a tick; visx did not.
-    showMinLabel: isOnTick(min),
-    showMaxLabel: isOnTick(max),
-  };
-};
-
 // Built in row terms because every reserve in `getCartesianChartPadding`
 // assumes an upright chart.
 const getRowChartPadding = (
@@ -302,14 +171,6 @@ export const getRowChartLayout = (
     renderingContext,
   );
 
-  const tickOverflow = getRowChartMetricTickOverflow(
-    input,
-    settings,
-    basePadding,
-    width,
-    renderingContext,
-  );
-
   // Shrinks the grid so ECharts' centred bands land where visx's did.
   const bandPadding = CHART_STYLE.series.rowBandOuterPadding;
   const gridHeight = height - basePadding.top - basePadding.bottom;
@@ -318,21 +179,14 @@ export const getRowChartLayout = (
   const outerInset = (bandPadding / 2) * legacyBandStep;
 
   const padding = {
+    ...basePadding,
     top: basePadding.top + outerInset,
     bottom: basePadding.bottom + outerInset,
-    left: basePadding.left + tickOverflow.left,
-    right: basePadding.right + tickOverflow.right,
   };
 
   const bounds = getChartBounds(width, height, padding, ticksDimensions);
 
   return {
-    metricTicks: getRowChartMetricTicks(
-      input,
-      settings,
-      width - padding.left - padding.right,
-      renderingContext,
-    ),
     ticksDimensions,
     padding,
     bounds,

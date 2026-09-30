@@ -20,7 +20,7 @@ import {
   X_AXIS_DATA_KEY,
 } from "../constants/dataset";
 import { CHART_STYLE, Z_INDEXES } from "../constants/style";
-import type { ChartLayout, RowChartMetricTicks } from "../layout/types";
+import type { ChartLayout } from "../layout/types";
 import { getDisplaySeriesSettingsByDataKey } from "../model/series";
 import type {
   BaseCartesianChartModel,
@@ -201,7 +201,14 @@ export function buildGridAndSeriesOption(
 
   const grid: GridOption | GridOption[] = isSplitPanels
     ? buildSplitPanelGrid(chartLayout, panelCount)
-    : { ...chartLayout.padding, outerBoundsMode: "none" };
+    : {
+        ...chartLayout.padding,
+        // Row charts let ECharts keep metric tick labels in bounds, since it
+        // knows the rounded axis end; axis names stay where the layout put them.
+        ...(chartModel.isRowChart
+          ? { outerBoundsMode: "auto", outerBoundsContain: "axisLabel" }
+          : { outerBoundsMode: "none" }),
+      };
 
   const splitPanelOverrides = isSplitPanels
     ? buildSplitPanelOverrides(
@@ -218,23 +225,6 @@ export function buildGridAndSeriesOption(
     splitPanelOverrides,
   };
 }
-
-// Legacy-matched metric ticks for row charts; see `getRowChartMetricTicks`.
-const getRowMetricTicksOption = (
-  axis: XAXisOption,
-  ticks: RowChartMetricTicks | undefined,
-) => {
-  if (ticks == null) {
-    return {};
-  }
-  const { interval, min, max, showMinLabel, showMaxLabel } = ticks;
-  return {
-    interval,
-    ...(min != null && { min }),
-    ...(max != null && { max }),
-    axisLabel: { ...axis.axisLabel, showMinLabel, showMaxLabel },
-  };
-};
 
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
@@ -329,7 +319,6 @@ export const getCartesianChartOption = (
         nameGap:
           getAxisNameGap(ticksDimensions.xTicksHeight) +
           CHART_STYLE.rowChartAxisName.metricGapExtra,
-        ...getRowMetricTicksOption(axis, chartLayout.metricTicks),
         // Metric axes hide their line; rotated it runs along the bottom, where
         // the legacy renderer drew one.
         axisLine: {

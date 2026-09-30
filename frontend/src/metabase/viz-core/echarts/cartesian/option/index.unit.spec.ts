@@ -230,7 +230,7 @@ describe("row chart bands", () => {
       ),
     ].map((match) => ({ top: Number(match[1]), thickness: Number(match[2]) }));
 
-  const renderRowChartBars = () => {
+  const getRowChartOption = () => {
     const renderingContext: RenderingContext = {
       ...mockRenderingContext,
       getColor: () => "#509EE3",
@@ -271,25 +271,27 @@ describe("row chart bands", () => {
       renderingContext,
     );
 
+    return getCartesianChartOption(
+      chartModel,
+      chartLayout,
+      hasTimelineEvents,
+      null,
+      [],
+      rowSettings,
+      chartWidth,
+      false,
+      renderingContext,
+    );
+  };
+
+  const renderRowChartBars = () => {
     const chart = echarts.init(null, null, {
       renderer: "svg",
       ssr: true,
       width: chartWidth,
       height: chartHeight,
     });
-    chart.setOption(
-      getCartesianChartOption(
-        chartModel,
-        chartLayout,
-        hasTimelineEvents,
-        null,
-        [],
-        rowSettings,
-        chartWidth,
-        false,
-        renderingContext,
-      ),
-    );
+    chart.setOption(getRowChartOption());
     const bars = getBarRects(chart.renderToSVGString());
     chart.dispose();
 
@@ -310,5 +312,49 @@ describe("row chart bands", () => {
 
     // With no goal label, the plot starts at the base top padding.
     expect((bars[0].top - CHART_STYLE.padding.y) / pitch).toBeCloseTo(0.2, 2);
+  });
+
+  it("lets ECharts keep metric tick labels inside the chart, but not move axis names", () => {
+    expect(getRowChartOption().grid).toMatchObject({
+      outerBoundsMode: "auto",
+      outerBoundsContain: "axisLabel",
+    });
+  });
+});
+
+describe("chart grid bounds", () => {
+  it("keeps upright charts inside the layout's own padding", () => {
+    seriesFn.mockReturnValue({ display: "bar" });
+    const renderingContext: RenderingContext = {
+      ...mockRenderingContext,
+      getColor: () => "#509EE3",
+    };
+    const chartModel = getCartesianChartModel(
+      [mockSeries],
+      mockSettings,
+      hiddenSeries,
+      renderingContext,
+    );
+    const chartLayout = getChartLayout(
+      chartModel,
+      mockSettings,
+      hasTimelineEvents,
+      chartWidth,
+      chartHeight,
+      renderingContext,
+    );
+    const option = getCartesianChartOption(
+      chartModel,
+      chartLayout,
+      hasTimelineEvents,
+      null,
+      [],
+      mockSettings,
+      chartWidth,
+      false,
+      renderingContext,
+    );
+
+    expect(option.grid).toMatchObject({ outerBoundsMode: "none" });
   });
 });

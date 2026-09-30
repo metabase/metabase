@@ -24,14 +24,7 @@ import { getPaddedAxisLabel } from "../option/utils";
 
 import { getRowChartLayout } from "./row";
 import type { ChartLayout, TicksDimensions } from "./types";
-import {
-  type ChartLayoutInput,
-  MAX_OVERFLOW_PERCENTAGE,
-  TICK_OVERFLOW_BUFFER,
-  getChartBounds,
-  getDataset,
-  getYAxisExtentToMeasure,
-} from "./utils";
+import { type ChartLayoutInput, getChartBounds, getDataset } from "./utils";
 
 export type { ChartLayoutInput };
 export { getChartBounds };
@@ -77,6 +70,32 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
   }
 
   return [...middleValues, min, max];
+};
+
+const getYAxisExtentToMeasure = (
+  axisModel: YAxisModel,
+  settings: ComputedVisualizationSettings,
+  yAxisScaleTransforms: NumericAxisScaleTransforms,
+): [number, number] => {
+  const [min, max] = axisModel.extent.map((extent) =>
+    yAxisScaleTransforms.fromEChartsAxisValue(extent),
+  );
+
+  if (!settings["graph.y_axis.auto_range"]) {
+    return [
+      settings["graph.y_axis.min"] ?? min,
+      settings["graph.y_axis.max"] ?? max,
+    ];
+  }
+
+  if (
+    settings["graph.y_axis.unpin_from_zero"] ||
+    settings["graph.y_axis.scale"] === "log"
+  ) {
+    return [min, max];
+  }
+
+  return [Math.min(min, 0), Math.max(max, 0)];
 };
 
 /**
@@ -499,6 +518,17 @@ const getTicksDimensions = (
 
   return { ticksDimensions, axisEnabledSetting };
 };
+
+// The buffer is needed because in some cases the last x-axis tick that echarts
+// uses can be much wider than what we estimated. For example, with a log x-axis
+// scale on a dataset where dimension values range from 0 to 255, the string we use
+// to estimate the last tick width is "255". However, echarts will add an extra x-axis
+// tick, and after untransforming it (e.g. undoing the log) that last tick will be
+// "1,000", which is significantly longer than "255".
+const TICK_OVERFLOW_BUFFER = 4;
+
+// don't allow overflow greater than 12.5% of the chart width
+const MAX_OVERFLOW_PERCENTAGE = 0.125;
 
 const getTicksOverflow = (
   input: ChartLayoutInput,

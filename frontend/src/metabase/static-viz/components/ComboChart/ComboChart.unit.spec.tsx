@@ -177,38 +177,6 @@ const renderRowChart = (rawSeries: RawSeries) =>
   );
 
 describe("static row chart", () => {
-  it("spaces metric ticks by the chart width, like the legacy renderer", () => {
-    const values = [-155, 210, 100, -50];
-    renderRowChart(
-      createGroupedRowSeries({
-        metricCount: 1,
-        getValue: (rowIndex) => values[rowIndex],
-      }),
-    );
-
-    // Five fixed intervals would round the axis out to 300; width-based
-    // spacing ticks every 50 and stops at 250.
-    expect(screen.getByText("250")).toBeInTheDocument();
-    expect(screen.queryByText("300")).not.toBeInTheDocument();
-  });
-
-  it("caps the metric tick count like the legacy renderer, without labelling the rounded axis end", () => {
-    const values = [1005, 700, 400, 100];
-    renderRowChart(
-      createGroupedRowSeries({
-        metricCount: 1,
-        getValue: (rowIndex) => values[rowIndex],
-      }),
-    );
-
-    // ~9 ticks fit: capped d3 steps of 200 (a hint would give 100), ending at an
-    // unlabelled 1,100.
-    expect(screen.getByText("1,000")).toBeInTheDocument();
-    expect(screen.queryByText("100")).not.toBeInTheDocument();
-    expect(screen.queryByText("1,100")).not.toBeInTheDocument();
-    expect(screen.queryByText("1,200")).not.toBeInTheDocument();
-  });
-
   it("extends the metric axis to the folded Other row's total", () => {
     renderRowChart(
       createGroupedRowSeries({
