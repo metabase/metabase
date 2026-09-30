@@ -12,6 +12,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *scim-api-key* nil)
 
 (defn with-scim-setup-impl!

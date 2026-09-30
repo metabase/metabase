@@ -1636,6 +1636,7 @@
               (is (= (map #(dissoc % :id) original-tabs)
                      (map #(dissoc % :id) new-tabs))))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private
   ^{:doc "Set of ids that will report [[mi/can-write]] as true."}
   *readable-card-ids* #{})

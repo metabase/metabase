@@ -178,11 +178,17 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
       .should("contain", "Your dashboard was saved")
       .and("contain", "See it");
 
-    cy.findByTestId("automatic-dashboard-header").within(() => {
-      cy.findByRole("link", { name: "See it" }).should("be.visible").click();
-    });
+    cy.findByTestId("automatic-dashboard-header")
+      .findByRole("link", { name: "See it" })
+      .should("be.visible");
+
+    H.undoToast().findByRole("link", { name: "See it" }).realClick();
 
     cy.url().should("contain", "a-look-at-orders");
+
+    cy.log("toast should not stay paused after clicking a link inside it");
+    cy.get("body").realMouseMove(0, 0);
+    H.undoToast().should("not.have.attr", "data-paused");
 
     cy.findAllByTestId("dashcard").contains("18,760");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage

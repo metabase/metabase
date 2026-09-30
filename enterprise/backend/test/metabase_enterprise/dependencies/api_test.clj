@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -508,6 +509,33 @@
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=false&type=card&id=" (:id model-card)))]
                   (is (= #{(:id dependent-card) (:id next-card)} (set (map :id response2)))
                       "There should two dependents total"))))))))))
+
+(deftest ^:synchronized python-transform-not-broken-after-entity-check-test
+  (testing "GHY-3584: a Python transform has no query to validate, so the entity-check task must not record it as broken"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Python transform - ghy3584"
+                        :source {:type            :python
+                                 :source-database (mt/id)
+                                 :source-tables   [{:alias       "orders"
+                                                    :database_id (mt/id)
+                                                    :schema      "PUBLIC"
+                                                    :table       "ORDERS"
+                                                    :table_id    (mt/id :orders)}]
+                                 :body            "def transform(orders):\n    return orders"}}]
+          (deps.test/synchronously-run-backfill!)
+          (#'task.entity-check/check-entities!)
+          (let [dependent-ids (fn [broken?]
+                                (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                                    :type "table"
+                                                                    :id (mt/id :orders)
+                                                                    :dependent-types "transform"
+                                                                    :broken broken?))))]
+            (is (contains? (dependent-ids false) transform-id)
+                "the Python transform is a dependent of the table it reads")
+            (is (not (contains? (dependent-ids true) transform-id))
+                "the Python transform is not listed as broken")))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
