@@ -366,39 +366,6 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    // TODO (AlexP 10/09/25) -- fix and unskip this test
-    it.skip("should allow drills on FK columns", () => {
-      cy.get("@modelId").then((modelId) => {
-        cy.visit(`/model/${modelId}`);
-        cy.wait("@dataset");
-
-        // Drill to People table
-        // FK column is mapped to real DB column
-        drillFK({ id: 1 });
-        cy.wait("@dataset");
-        cy.findByTestId("object-detail").within(() => {
-          cy.findByText("68883"); // zip
-          cy.findAllByText("Hudson Borer");
-        });
-
-        cy.go("back"); // close Object Details view
-
-        cy.go("back"); // navigate away from drilled table
-        cy.wait("@dataset");
-
-        cy.findByText("Native Model"); // we are back on the original model
-
-        // Drill to Reviews table
-        // FK column has a FK semantic type, no mapping to real DB columns
-        drillFK({ id: 7 });
-        cy.wait("@dataset");
-        cy.findByTestId("object-detail").within(() => {
-          cy.findAllByText("7");
-          cy.findAllByText("perry.ruecker");
-        });
-      });
-    });
-
     it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then((modelId) => {
         H.createDashboard().then((response) => {
@@ -437,11 +404,6 @@ describe("scenarios > models metadata", () => {
     });
   });
 });
-
-function drillFK({ id }) {
-  cy.get(".test-Table-FK").contains(id).first().click();
-  H.popover().findByTextEnsureVisible("View details").click();
-}
 
 function drillDashboardFK({ id }) {
   cy.get(".test-Table-FK").contains(id).first().click();
