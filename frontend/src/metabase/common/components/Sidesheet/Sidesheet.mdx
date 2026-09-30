@@ -5,45 +5,37 @@ import * as SidesheetStories from "./Sidesheet.stories";
 
 # Sidesheet
 
-A panel anchored to the right edge of the screen, used to show details or
-settings for the thing the user is currently looking at.
+A Sidesheet keeps details and settings close to the item you're viewing. It
+opens from the right side of the screen, so you can stay in context as you work.
 
-Each story in the sidebar renders a real Sidesheet. They are not embedded on this
-page: a Sidesheet is a fixed-position overlay, so several of them on one page
-stack on top of each other and none of them can be read.
+Explore the individual stories in the sidebar to see each layout and theme.
 
-## When to use a Sidesheet
+## Show details and settings in context
 
-- Supporting information about the current object — info, history, relationships.
-- Settings that apply to the current object and can be changed without leaving it.
+Use a Sidesheet for information about the current item, such as its description,
+history, and relationships. It also works for settings you can change while
+viewing the item.
 
-Use a modal instead when the user must finish or cancel the task before doing
-anything else. Use a popover for a short, single-purpose interaction.
+## Choose a width for the content
 
-## Sizes
+The default size is `sm` (30rem / 480px). Use `md` for wider content, such as
+info panels with tabs. Other available sizes are `xs`, `lg`, `xl`, and `auto`.
 
-The default width is 464px, which fits the common info/settings content. The
-named `size` values (`xs`, `sm`, `md`, `lg`, `xl`, `auto`) are there for content
-that genuinely needs more room — tabbed panels, for example, use `md`.
+## Use the inset layout for a floating panel
 
-## Offset
+Set `offset={16}` to add 16px of space above, below, and to the right of the
+Sidesheet, with rounded corners. The design uses 16px as its offset.
 
-`offset={16}` insets the Sidesheet from the edges of the viewport and rounds its
-corners, so it reads as floating above the page rather than attached to it.
-`16` is the only supported value.
+## Organize content with cards, pages, and tabs
 
-## Composition
+- Use `SidesheetCard` to group related information and `SidesheetCardSection` to
+  divide a card into sections. Card borders separate them from the Sidesheet
+  surface.
+- Use `SidesheetSubPage` for a second level of settings with back navigation.
+- Use `SidesheetTabPanelContainer` with `removeBodyPadding` to scroll tab
+  content while keeping the tabs visible.
 
-- `SidesheetCard` groups related content; `SidesheetCardSection` subdivides a
-  card.
-- `SidesheetSubPage` renders a nested page with a back chevron, for settings that
-  need a second level.
-- `SidesheetTabPanelContainer` plus the `removeBodyPadding` prop keeps tab panels
-  scrolling internally so the tabs stay visible.
+## Keep Escape focused on the topmost dialog
 
-## Caveats
-
-- Cards sit on the same surface colour as the Sidesheet and are separated by
-  their border, so avoid nesting bordered containers inside a card.
-- Pass `closeOnEscape={false}` while a modal is open on top of the Sidesheet,
-  otherwise one Escape press closes both.
+Set `closeOnEscape={false}` on the Sidesheet while a dialog is open above it. One
+press of Escape then closes the topmost dialog.

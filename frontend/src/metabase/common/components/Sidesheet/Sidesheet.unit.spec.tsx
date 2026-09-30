@@ -47,14 +47,14 @@ describe("Sidesheet", () => {
     expect(screen.getByText("more content")).toBeInTheDocument();
   });
 
-  it("should use the Figma width by default", () => {
+  it("should use the sm width by default", () => {
     render(
       <Sidesheet isOpen onClose={jest.fn()}>
         hello world
       </Sidesheet>,
     );
 
-    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "29rem" });
+    expect(screen.getByTestId("sidesheet")).toHaveStyle({ width: "30rem" });
   });
 
   it("should preserve the explicit sm width", () => {

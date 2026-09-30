@@ -25,8 +25,6 @@ interface SidesheetProps {
   offset?: 16;
 }
 
-const DEFAULT_WIDTH = "29rem";
-
 const sizes: Record<SidesheetSize, string> = {
   xs: "20rem",
   sm: "30rem",
@@ -40,7 +38,7 @@ export function Sidesheet({
   title,
   isOpen,
   onClose,
-  size,
+  size = "sm",
   children,
   removeBodyPadding,
   withOverlay = true,
@@ -64,7 +62,7 @@ export function Sidesheet({
       <Modal.Content
         transitionProps={{ duration: 0 }}
         px={0}
-        w={size ? sizes[size] : DEFAULT_WIDTH}
+        w={sizes[size]}
         bg="background_surface-primary"
         data-testid="sidesheet"
         data-offset={offset}
