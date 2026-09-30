@@ -1170,6 +1170,7 @@
    :ns-prefix "metabase.agent-lib"
    :api #{metabase.agent-lib.representations metabase.agent-lib.representations.repair metabase.agent-lib.representations.resolve}
    :uses #{lib
+           lib.be
            lib.metadata
            lib.schema
            models
