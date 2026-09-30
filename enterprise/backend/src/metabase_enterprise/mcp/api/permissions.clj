@@ -34,7 +34,7 @@
 (def ^:private policy-lock
   "Serializes every write to the MCP tool policy across the cluster, so a PUT validated against one mode can't land
   after a switch to the other, and two PUTs can't both insert a group's first row."
-  ::policy)
+  ::mcp-policy-lock)
 
 (def ^:private no-access-permission
   "What a group with no row gets."
