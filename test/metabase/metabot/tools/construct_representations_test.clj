@@ -1209,17 +1209,39 @@
                                      "filters"     [["=" {} ["field" {"join-alias" "P"} "CATEGORY"] "Widget"]]
                                      "aggregation" [["count" {}]]
                                      "breakout"    [["field" {"join-alias" "P"} "CATEGORY"]]}]}))
-              stage  (get-in result [:structured-output :query :stages 0])
-              join   (get-in stage [:joins 0])
-              [_ _ lhs rhs] (get-in join [:conditions 0])]
-          (testing "joined refs are typed from the joined card"
-            (is (= :type/Text (get-in stage [:filters 0 2 1 :base-type])))
-            (is (= :type/Text (get-in stage [:breakout 0 1 :base-type])))
-            (is (= :type/Text (get-in join [:fields 0 1 :base-type])))
-            (is (= :type/Integer (get-in rhs [1 :base-type]))))
-          (testing "the condition's parent side is typed from the source card"
-            (is (= "PRODUCT_ID" (nth lhs 2)))
-            (is (= :type/Integer (get-in lhs [1 :base-type])))))))))
+              joined-category [:field {:join-alias "P" :base-type :type/Text} "CATEGORY"]]
+          (is (=? {:filters  [[:= {} joined-category "Widget"]]
+                   :breakout [joined-category]
+                   :joins    [{:conditions [[:=
+                                             {}
+                                             [:field {:base-type :type/Integer} "PRODUCT_ID"]
+                                             [:field {:join-alias "P" :base-type :type/Integer} "ID"]]]
+                               :fields     [joined-category]}]}
+                  (get-in result [:structured-output :query :stages 0]))))))))
+
+(deftest later-stage-join-to-card-by-column-name-test
+  (testing (str "A join onto a card in a stage after the first types its `join-alias` refs from the\n"
+                "joined card and the condition's parent side from the previous stage.")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "aggregation" [["sum" {} ["field" {} "TOTAL"]]]
+                                     "breakout"    [["field" {} "PRODUCT_ID"]]}
+                                    {"lib/type"    "mbql.stage/mbql"
+                                     "joins"       [(products-join ["field" {} "PRODUCT_ID"])]
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {"join-alias" "P"} "CATEGORY"]]}]}))]
+          (is (=? {:joins    [{:conditions [[:=
+                                             {}
+                                             [:field {:base-type :type/Integer} "PRODUCT_ID"]
+                                             [:field {:join-alias "P" :base-type :type/Integer} "ID"]]]}]
+                   :breakout [[:field {:join-alias "P" :base-type :type/Text} "CATEGORY"]]}
+                  (get-in result [:structured-output :query :stages 1]))))))))
 
 (deftest source-table-join-to-card-by-column-name-test
   (testing "a `source-table:` stage joined onto a card types the joined card's refs by name too"
@@ -1259,6 +1281,29 @@
           (is (= ["ID" "CATEGORY"] (:available d)))
           (is (re-find #"NO_SUCH_COLUMN" (ex-message e)))
           (is (re-find #"join `P`" (ex-message e))))))))
+
+(deftest source-card-unaliased-joined-column-hints-join-alias-test
+  (testing (str "a ref without `join-alias` naming a joined card's column fails against the source card's\n"
+                "columns, and the message says to set `join-alias`, listing each join's columns")
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [e (try (construct/execute-representations-query
+                      (query-data
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "joins"       [(products-join ["field" {} "PRODUCT_ID"])]
+                                     "aggregation" [["count" {}]]
+                                     "breakout"    [["field" {} "CATEGORY"]]}]}))
+                     nil
+                     (catch clojure.lang.ExceptionInfo ex ex))]
+          (is (=? {:agent-error? true
+                   :error        :unresolved-cross-stage-field
+                   :available    ["ID" "TOTAL" "PRODUCT_ID"]}
+                  (ex-data e)))
+          (is (str/includes? (ex-message e)
+                             "Columns of an explicit join need `join-alias` set to that join's alias: `P` (ID, CATEGORY).")))))))
 
 ;;; ============================================================
 ;;; Numeric-id dialect — accepted on the MCP v2 surface, rejected on the default (v1) surface
