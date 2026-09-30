@@ -409,7 +409,6 @@ describe("InteractiveQuestion", () => {
       screen.queryByText(/To run your code, click on the Run button/),
     ).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("dataset-post")).toHaveLength(0);
-
   });
 
   describe("navigation stack initialization", () => {
