@@ -1190,22 +1190,23 @@
 
 (deftest field-update-event-creates-entry-test
   (testing "field-update event creates remote sync object entry for field in published table in remote-synced collection"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
-                   :model/Table table {:name "Test Table"
-                                       :is_published true
-                                       :collection_id (:id remote-sync-collection)}
-                   :model/Field field {:name "test_field"
-                                       :table_id (:id table)
-                                       :base_type :type/Text}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/field-update
-                             {:object field :user-id (mt/user->id :rasta)})
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "Field"
-                 :model_id (:id field)
-                 :status "update"}
-                (first entries)))))))
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                     :model/Table table {:name "Test Table"
+                                         :is_published true
+                                         :collection_id (:id remote-sync-collection)}
+                     :model/Field field {:name "test_field"
+                                         :table_id (:id table)
+                                         :base_type :type/Text}]
+        (t2/delete! :model/RemoteSyncObject)
+        (events/publish-event! :event/field-update
+                               {:object field :user-id (mt/user->id :rasta)})
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Field"
+                   :model_id (:id field)
+                   :status "update"}
+                  (first entries))))))))
 
 (deftest field-update-event-no-entry-for-unpublished-table-test
   (testing "field-update event doesn't create entry for unpublished table"
