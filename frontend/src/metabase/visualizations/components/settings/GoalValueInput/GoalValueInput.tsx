@@ -58,6 +58,7 @@ export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
   datasetQuery: DatasetQuery | undefined;
+  excludedSelfColumn?: string;
   id: string;
   placeholder?: string;
   referencedEntities?: ReferencedEntity[];
@@ -70,6 +71,7 @@ export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
   datasetQuery,
+  excludedSelfColumn,
   id,
   placeholder,
   referencedEntities,
@@ -87,10 +89,16 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns = showSelfColumns ? getNumericColumnOptions(data.cols) : [];
+  const numericSelfColumns = showSelfColumns
+    ? getNumericColumnOptions(data.cols)
+    : [];
+  // an excluded column is still recognized when it is the current value
+  const selfColumns = numericSelfColumns.filter(
+    (column) => column.name !== excludedSelfColumn,
+  );
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
-    selfColumns.some((column) => column.name === value);
+    numericSelfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
 
   const entity: GoalForeignEntityRef | null = pickedEntity ?? foreignRef;
@@ -114,7 +122,7 @@ export const GoalValueInput = ({
     value,
   });
   const selfColumnLabel = isSelfRef
-    ? (selfColumns.find((column) => column.name === value)?.label ??
+    ? (numericSelfColumns.find((column) => column.name === value)?.label ??
       String(value))
     : null;
   const pillTooltip = getPillTooltip({

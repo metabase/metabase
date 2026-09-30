@@ -627,6 +627,19 @@ describe("getReferencedEntities", () => {
       { type: "measure", id: 2, columns: ["avg"] },
     ]);
   });
+
+  it("collects the reference of a progress chart's goal", () => {
+    const referencedEntities = getReferencedEntities({
+      display: "progress",
+      visualization_settings: {
+        "progress.goal": { type: "measure", id: 2, column: "sum" },
+      },
+    });
+
+    expect(referencedEntities).toEqual([
+      { type: "measure", id: 2, columns: ["sum"] },
+    ]);
+  });
 });
 
 describe("malformed persisted segments", () => {
@@ -907,6 +920,8 @@ describe("dynamic goal settings per display", () => {
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("line", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("progress", "progress.goal")).toBe(true);
+    expect(isDynamicGoalSetting("progress", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("row", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("row", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
