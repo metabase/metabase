@@ -59,68 +59,7 @@ export const SecretKeyModal = ({
     void generateToken();
   });
 
-<<<<<<< 8bfda478850
-  return (
-    <Modal onClose={onClose} opened title={t`Set up secret key`}>
-      <Stack>
-        <Flex align="end" gap="1rem">
-          <TextInput
-            onChange={(event) => setSecretKey(event.target.value || "")}
-            value={secretValue}
-            disabled={isGenerating}
-            rightSection={
-              isGenerating ? (
-                <Loader size="xs" />
-              ) : (
-                <Tooltip label={t`Copy to clipboard`}>
-                  <ActionIcon
-                    aria-label={t`Copy to clipboard`}
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(secretValue);
-                        sendSuccessToast(t`Secret key copied to clipboard`);
-                      } catch {
-                        sendErrorToast(
-                          t`Error copying secret key to clipboard.`,
-                        );
-                      }
-                    }}
-                  >
-                    <Icon name="copy" />
-                  </ActionIcon>
-                </Tooltip>
-              )
-            }
-            flex="1 0 auto"
-            aria-label={t`New secret key`}
-          />
-          <Button
-            flex="0 0 auto"
-            variant="filled"
-            size="lg"
-            onClick={generateToken}
-          >
-            {t`Regenerate key`}
-          </Button>
-        </Flex>
-        <Stack gap="sm">
-          <Alert size="compact" color="warning">
-            {t`Make sure you copy this key now and save it in a safe place.`}
-            <Text fw="bold" component="strong" display="block">
-              {t`You won't be able to see it again.`}
-            </Text>
-          </Alert>
-          {!!currentValue && (
-            <Alert size="compact" color="warning" mt="lg">
-              <Text component="strong" fw="bold">
-                {t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`}
-              </Text>
-            </Alert>
-          )}
-        </Stack>
-=======
   const copyFieldProps = getCopyTextFieldProps({ value: secretKey });
->>>>>>> d53a909a92f^
 
   return (
     <Modal

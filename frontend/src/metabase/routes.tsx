@@ -20,11 +20,8 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-<<<<<<< 8bfda478850
-import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
-=======
 import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
->>>>>>> d53a909a92f^
+import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
