@@ -42,10 +42,13 @@ async function waitForConnectionRefused(
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
+    const signal = AbortSignal.timeout(POLL_INTERVAL * 4);
     try {
-      await fetch(url);
+      await fetch(url, { signal });
     } catch {
-      return true;
+      if (!signal.aborted) {
+        return true;
+      }
     }
     await sleep(POLL_INTERVAL);
   }
