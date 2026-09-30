@@ -152,11 +152,16 @@
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (mu/defn dashcard-counts-by-card
-  "Rows of `:card_id` and `:count` of DashboardCards for each of `card-ids`."
+  "Rows of `:card_id` and `:count` of DashboardCards each of `card-ids` appears on, directly or as a series."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
-             :from     [:report_dashboardcard]
-             :where    [:in :card_id card-ids]
+             :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
+                                                                         :from   [:report_dashboardcard]
+                                                                         :where  [:in :card_id card-ids]}
+                                                       ^:allow-subquery {:select [:card_id]
+                                                                         :from   [:dashboardcard_series]
+                                                                         :where  [:in :card_id card-ids]}]}
+                         :placements]]
              :group-by [:card_id]}))
 
 (mu/defn parameter-card-counts-by-card
