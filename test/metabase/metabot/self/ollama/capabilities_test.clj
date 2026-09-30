@@ -174,15 +174,23 @@
   (contains? @@#'ollama.capabilities/in-flight
              (#'ollama.capabilities/cache-key credentials model)))
 
-(defn- age-out-lookups!
-  "Backdate every entry so the next read finds it stale — what the refresh interval elapsing does.
-  Emptying the cache would not do: that is forgetting, which is the thing under test."
-  []
+(defn- age-lookups-by!
+  "Backdate every entry by `ms`, so a test can put it either side of an interval.
+
+  Always relative: `:at` is a `u/start-timer`, a monotonic reading in nanoseconds counted from whenever
+  the machine decided to start counting. Nothing can be said about a fixed value of it."
+  [ms]
   (swap! @#'ollama.capabilities/capabilities-cache
          (fn [c]
-           (reduce (fn [acc [k v]] (cache/miss acc k (assoc v :at 0)))
+           (reduce (fn [acc [k v]] (cache/miss acc k (update v :at - (* ms 1000000))))
                    c
                    (into {} c)))))
+
+(defn- age-out-lookups!
+  "Backdate every entry past the refresh interval, so the next read finds it stale. Emptying the cache
+  would not do: that is forgetting, which is the thing under test."
+  []
+  (age-lookups-by! (inc @#'ollama.capabilities/refresh-after-ms)))
 
 (deftest a-stale-answer-is-served-not-waited-on-test
   (testing (str "an entry's age says when to re-ask, not what to believe. The listing asks about "
@@ -193,6 +201,10 @@
       (mt/with-dynamic-fn-redefs [http/request (showing {"gpt-oss:20b" ["completion" "tools" "thinking"]})]
         (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))
       (age-out-lookups!)
+      (is (true? (#'ollama.capabilities/stale?
+                  (cache/lookup @@#'ollama.capabilities/capabilities-cache
+                                (#'ollama.capabilities/cache-key credentials "gpt-oss:20b"))))
+          "the entry this test serves from has to be stale, or nothing below is exercised")
       (let [attempts (atom 0)]
         (mt/with-dynamic-fn-redefs [http/request (fn [_]
                                                    (swap! attempts inc)
@@ -212,16 +224,6 @@
             (is (true? (ollama.capabilities/reasoning-model? credentials "gpt-oss:20b"))))))
       (finally
         (ollama.capabilities/clear-cache!)))))
-
-(defn- age-lookups-by!
-  "Backdate every entry by `ms`, so a test can put it either side of a refresh interval. `:at` is a
-  `u/start-timer`, which counts nanoseconds."
-  [ms]
-  (swap! @#'ollama.capabilities/capabilities-cache
-         (fn [c]
-           (reduce (fn [acc [k v]] (cache/miss acc k (update v :at - (* ms 1000000))))
-                   c
-                   (into {} c)))))
 
 (deftest a-server-that-never-answered-is-re-asked-sooner-test
   (testing (str "serving the last answer needs there to be one. A first lookup that fails records no "
