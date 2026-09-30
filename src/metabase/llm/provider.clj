@@ -973,6 +973,21 @@
                     (get vars moved "the environment")
                     (get vars field "the matching environment variable")))))))
 
+(defn effective-config
+  "What the stored connection `conn` will run on once `env-config` is layered over it.
+
+  Not simply the two merged: a secret the environment has moved away from is no more this connection's
+  to send than it was to keep — see [[drop-captured-secrets]]. An edit has to be judged, probed and
+  answered for on this rather than on what it merged, or a write sends a credential where a read of the
+  same connection would not.
+
+  Only that half of what [[connections]] does. Dropping the stored destination as well would take a base
+  URL the caller has just supplied out of the comparison that decides whether they moved the connection,
+  which is the one thing that must see it."
+  [conn env-config]
+  (merge (:config (drop-captured-secrets (assoc conn :source :db) env-config))
+         env-config))
+
 (defn connections
   "Every connection this instance can use, in admin-facing order.
 

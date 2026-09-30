@@ -488,8 +488,8 @@
         ;; the connection as the app DB will hold it, so the checks below and the answer at the end are
         ;; about the connection the admin will have rather than the request that arrived
         merged     (update submitted :config #(llm.provider/config-to-store conn-type %))
-        ;; what the connection will actually run on: the stored config with the environment layered back over it
-        effective  (merge (:config merged) env-config)]
+        ;; what the connection will actually run on, which is not everything it merged
+        effective  (llm.provider/effective-config merged env-config)]
     ;; Before validation probes the new URL with the effective credentials, require proof that the caller holds every
     ;; secret that would travel there. Omitted and masked secrets were merged from storage; env-owned ones cannot be
     ;; re-supplied through this API at all.

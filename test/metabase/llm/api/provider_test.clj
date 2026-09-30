@@ -1,6 +1,7 @@
 (ns metabase.llm.api.provider-test
   (:require
    [clj-http.client :as http]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.llm.api.provider :as llm.api.provider]
@@ -726,6 +727,26 @@
                 (mt/user-http-request :crowberto :put 400 "llm/providers/anthropic"
                                       {:config {:api-key  "sk-ant-attempted-override"
                                                 :base-url "https://new.example.com"}})))))))
+
+(deftest update-does-not-verify-with-a-key-the-environment-moved-away-from-test
+  (testing (str "A connection the environment has moved no longer carries the key an admin entered for where "
+                "it used to point — a read of it drops that key. An edit merges its config from storage, so "
+                "without the same rule a rename would hand the key to the server it was moved to.")
+    (let [seen (atom [])]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& args] (swap! seen conj args) {:models []})]
+        (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                      {:hosting  "self-hosted"
+                                                                       :base-url "http://ollama.internal:11434/v1"
+                                                                       :api-key  "sk-own-proxy"})]]
+          (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
+            (mt/user-http-request :crowberto :put "llm/providers/ollama" {:name "renamed"})
+            (is (not (str/includes? (pr-str @seen) "sk-own-proxy"))
+                "the key an admin entered for their own server is not sent to ollama.com")
+            (testing "and the connection reads as incomplete, which is what the operator has to fix"
+              (is (false? (llm.provider/connection-usable? "ollama")))
+              (is (= "sk-own-proxy"
+                     (get-in (first (llm.provider/stored-connections)) [:config :api-key]))
+                  "while the stored key stays, so dropping the variable brings it back"))))))))
 
 (deftest generic-setting-api-cannot-write-provider-connections-test
   (let [planted [(connection "anthropic" "anthropic" {:base-url "https://attacker.example.com"})]]
