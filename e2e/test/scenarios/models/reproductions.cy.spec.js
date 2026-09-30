@@ -100,6 +100,7 @@ describe("issue 19737", () => {
 
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      H.entityPickerModalLevel(1).findByText(modelName).should("be.visible");
       cy.findByText("First collection").should("not.exist");
       H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
@@ -382,8 +383,8 @@ function mapModelColumnToDatabase({ table, field }) {
   H.popover().findByRole("option", { name: table }).click();
   H.popover().findByRole("option", { name: field }).click();
   cy.contains(`${table} → ${field}`).should("be.visible");
-  cy.findAllByDisplayValue(field);
-  cy.findByLabelText("Description").should("not.be.empty");
+  cy.findAllByDisplayValue(field).should("exist");
+  cy.findByLabelText("Description").should("not.have.value", "");
 }
 
 function selectModelColumn(column) {
@@ -458,14 +459,13 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 
   it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
     H.visitDashboard("@dashboardId");
 
     cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
+    );
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
     );
     H.cartesianChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
@@ -474,7 +474,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     cy.wait("@dashcardQuery");
 
-    cy.get("[data-testid=cell-data]").contains("37.65");
+    H.getDashboardCard().findAllByText("37.65").should("be.visible");
   });
 });
 

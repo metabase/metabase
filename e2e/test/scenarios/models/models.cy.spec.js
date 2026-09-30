@@ -259,8 +259,9 @@ describe("scenarios > models", () => {
 
     H.entityPickerModal().within(() => {
       cy.findByText(/Select a collection$/).should("exist"); // title should not have trailing "or dashboard"
+      cy.findByText("First collection").should("exist");
       cy.findByText("Orders in a dashboard").should("not.exist"); // this dashboard would be present if dashboards were an allowed save target
-      cy.findByText("First collection").should("exist").click();
+      cy.findByText("First collection").click();
       cy.findByRole("button", { name: "Select this collection" }).click();
     });
 
@@ -270,6 +271,9 @@ describe("scenarios > models", () => {
     });
 
     H.modal().should("not.exist");
+    cy.findByTestId("qb-header")
+      .should("contain.text", "Orders - Duplicate")
+      .and("contain.text", "First collection");
   });
 
   it("shows 404 when opening a question with a /dataset URL", () => {

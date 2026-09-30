@@ -415,7 +415,9 @@ describe("scenarios > models metadata", () => {
       };
 
       H.createQuestion(questionDetails, { visitQuestion: true });
-      cy.findAllByTestId("header-cell").should("not.contain", "Vendor");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Title")
+        .and("not.contain", "Vendor");
 
       H.openQuestionActions();
       H.popover().findByTextEnsureVisible("Edit metadata").click();

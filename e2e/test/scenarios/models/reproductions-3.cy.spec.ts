@@ -57,10 +57,10 @@ describe("issue 20042", () => {
 
     cy.wait("@query");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders Model");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
+    cy.findByTestId("qb-header")
+      .findByText("Orders Model")
+      .should("be.visible");
+    H.tableInteractive().findByText("37.65").should("be.visible");
   });
 });
 
@@ -318,12 +318,11 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().findByText("Orders Model → ID").should("not.exist");
-    H.popover().findByText("Products Model → ID").should("not.exist");
-
     H.popover().findByText("Orders → ID").should("be.visible");
     H.popover().findByText("People → ID").should("be.visible");
     H.popover().findByText("Products → ID").should("be.visible");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
     H.popover()
       .scrollTo("bottom")
       .findByText("Reviews → ID")

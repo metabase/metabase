@@ -55,6 +55,7 @@ describe("scenarios > models list view", () => {
       cy.wait("@dataset");
 
       cy.log("Display data as list after saving");
+      cy.findByTestId("dataset-edit-bar").should("not.exist");
       cy.findByTestId("list-view").should("be.visible");
     });
 
@@ -228,6 +229,7 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("sidebar-right").as("sidebarRight");
 
       cy.log("Check that used column is not present in unused columns list.");
+      cy.get("@sidebarRight").findByText("CREATED_AT").should("be.visible");
       cy.get("@sidebarRight").findByText("PRODUCT_ID").should("not.exist");
 
       cy.get("@rightColumns").within(() => {
@@ -407,7 +409,13 @@ describe("scenarios > models list view", () => {
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
       cy.wait("@dataset");
 
-      cy.findByTestId("mini-bar-container").should("not.exist");
+      cy.findByTestId("dataset-edit-bar").should("not.exist");
+      cy.findByTestId("list-view")
+        .should("be.visible")
+        .within(() => {
+          cy.findAllByText("37.65").should("be.visible");
+          cy.findByTestId("mini-bar-container").should("not.exist");
+        });
     });
   });
 });

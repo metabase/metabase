@@ -128,7 +128,8 @@ describe("scenarios > models query editor", () => {
       cy.wait("@dataset");
 
       // FE chooses the scalar visualization to display count of rows for regular questions
-      H.tableInteractive();
+      H.tableInteractiveHeader().should("contain", "Count");
+      H.tableInteractive().should("contain", "18,760");
       cy.findByTestId("scalar-value").should("not.exist");
     });
   });
@@ -170,6 +171,8 @@ describe("scenarios > models query editor", () => {
       cy.button("Save changes").click();
       cy.wait("@updateCard");
 
+      cy.url().should("not.include", "/query");
+      H.assertQueryBuilderRowCount(2);
       cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");

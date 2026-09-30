@@ -165,6 +165,8 @@ describe("issues with metadata editing on models with custom expressions", () =>
     assertNoError();
 
     cy.findByTestId("editor-tabs-query-name").click();
+    H.getNotebookStep("data").should("be.visible");
+    cy.findByTestId("run-button").should("have.attr", "aria-label", "Refresh");
     assertNoError();
   });
 });

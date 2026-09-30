@@ -403,6 +403,7 @@ describe("Issue 30712", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.startNewModel();
 
@@ -418,10 +419,14 @@ describe("Issue 30712", () => {
   it("should not crash the editor when ordering by columns on joined tables (metabase#30712)", () => {
     H.getNotebookStep("summarize").findByLabelText("Sort").click();
     H.popover().findByText("Total").click();
+    H.getNotebookStep("sort").findByText("Total").should("be.visible");
 
     cy.log("no error should be thrown");
     cy.get("main").findByText("Something's gone wrong").should("not.exist");
-    cy.findByTestId("run-button").should("be.visible");
+    cy.findByTestId("run-button").should("be.visible").click();
+    cy.wait("@dataset");
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().findByText("Total").should("be.visible");
   });
 });
 describe("Issue 56913", () => {

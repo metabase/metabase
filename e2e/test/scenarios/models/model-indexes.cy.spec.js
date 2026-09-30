@@ -36,58 +36,26 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true }); // needs to be forced because Mantine
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@modelIndexCreate").then(({ request, response }) => {
-      expect(request.body.model_id).to.equal(modelId);
-
-      // this will likely change when this becomes an async process
-      expect(response.body.state).to.equal("indexed");
-      expect(response.body.id).to.equal(1);
-    });
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
+    cy.wait("@modelIndexCreate");
+    assertIndexedValueSearchable();
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@modelIndexDelete").then(({ request, response }) => {
-      expect(request.url).to.include("/api/model-index/1");
-      expect(response.statusCode).to.equal(200);
-    });
-
+    getSurfaceIndividualRecordsToggle().should("be.checked");
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
+    cy.wait("@modelIndexDelete");
     cy.wait("@dataset");
 
     editTitleMetadata();
+    getSurfaceIndividualRecordsToggle().should("not.be.checked");
+    toggleSurfaceIndividualRecords();
+    saveModelIndexChanges();
 
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
-
-    cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.button("Save changes").click();
-    });
-
-    // this tests redux cache invalidation (#31407)
-    cy.wait("@modelIndexCreate").then(({ request, response }) => {
-      expect(request.body.model_id).to.equal(modelId);
-
-      // this will likely change when this becomes an async process
-      expect(response.body.state).to.equal("indexed");
-      expect(response.body.id).to.equal(2);
-    });
+    // the deleted index must not linger in the cached model index list
+    cy.wait("@modelIndexCreate");
+    assertIndexedValueSearchable();
   });
 
   it("should not allow indexing when a primary key has been unassigned", () => {
@@ -95,10 +63,7 @@ describe("scenarios > model indexes", () => {
     cy.wait("@dataset");
 
     editTitleMetadata();
-
-    H.sidebar()
-      .findByLabelText(/surface individual records/i)
-      .click({ force: true });
+    toggleSurfaceIndividualRecords();
 
     H.openColumnOptions("ID");
 
@@ -111,9 +76,12 @@ describe("scenarios > model indexes", () => {
       .findByText(/foreign key/i)
       .click();
 
-    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    saveModelIndexChanges();
 
     cy.wait("@cardUpdate");
+    // The editor closes once the model indexes have been updated
+    cy.findByTestId("dataset-edit-bar").should("not.exist");
+    H.tableInteractive().findByText("Rustic Paper Wallet").should("be.visible");
 
     // search should fail
     H.commandPaletteSearch("marble shoes", false);
@@ -189,6 +157,9 @@ describe("scenarios > model indexes", () => {
       .click();
 
     cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading", { name: "Ergonomic Silk Coat" }).should(
+        "be.visible",
+      );
       cy.findByText("Upton, Kovacek and Halvorson");
     });
 
@@ -203,6 +174,30 @@ function editTitleMetadata() {
   H.tableInteractive().findByTextEnsureVisible("Title");
 
   H.openColumnOptions("Title");
+}
+
+function getSurfaceIndividualRecordsToggle() {
+  return H.sidebar().findByLabelText(/surface individual records/i);
+}
+
+function toggleSurfaceIndividualRecords() {
+  // needs to be forced because Mantine
+  getSurfaceIndividualRecordsToggle().click({ force: true });
+}
+
+function saveModelIndexChanges() {
+  cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+}
+
+function assertIndexedValueSearchable() {
+  // The editor closes once the model indexes have been updated
+  cy.findByTestId("dataset-edit-bar").should("not.exist");
+  H.commandPaletteSearch("marble shoes", false);
+  H.commandPalette()
+    .findByRole("option", { name: "Small Marble Shoes" })
+    .should("exist");
+  cy.get("body").type("{esc}");
+  H.commandPalette().should("not.exist");
 }
 
 const expectCardQueries = (num) =>
