@@ -8,6 +8,7 @@ import type {
   IconName,
   ListDatabasesResponse,
 } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
@@ -263,6 +264,68 @@ describe("issue 53299", { tags: ["@mongo"] }, () => {
     H.selectNativeEditorDataSource("QA Mongo");
     H.nativeEditorDataSource().should("contain", "QA Mongo");
   });
+});
+
+describe("issue 47793", () => {
+  const MONGO_DB_ID = 2;
+
+  const questionDetails: NativeQuestionDetails = {
+    database: MONGO_DB_ID,
+    native: {
+      query: `[
+  { $match: { quantity: {{quantity}} }},
+  {
+    "$project": {
+      "_id": "$_id",
+      "id": "$id",
+      "user_id": "$user_id",
+      "product_id": "$product_id",
+      "subtotal": "$subtotal",
+      "tax": "$tax",
+      "total": "$total",
+      "created_at": "$created_at",
+      "quantity": "$quantity",
+      "discount": "$discount"
+    }
+  },
+  {
+    "$limit": 1048575
+  }
+]`,
+      "template-tags": {
+        quantity: {
+          type: "number",
+          name: "quantity",
+          id: "754ae827-661c-4fc9-b511-c0fb7b6bae2b",
+          "display-name": "Quantity",
+          default: "10",
+        },
+      },
+      collection: "orders",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("mongo-5");
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should be able to preview queries for mongodb (metabase#47793)",
+    { tags: ["@external", "@mongo"] },
+    () => {
+      H.createNativeQuestion(questionDetails, { visitQuestion: true });
+      cy.findByTestId("visibility-toggler")
+        .findByText(/open editor/i)
+        .click();
+      cy.findByTestId("native-query-editor-container")
+        .findByLabelText("Preview the query")
+        .click();
+      H.modal()
+        .should("contain.text", "$project")
+        .and("contain.text", "quantity: 10");
+    },
+  );
 });
 
 describe("issue 53171", () => {
@@ -1011,4 +1074,152 @@ describe("issue 69160", () => {
       .first()
       .should("have.attr", "placeholder", "B");
   });
+});
+
+describe("issue 14957", { tags: "@external" }, () => {
+  const PG_DB_NAME = "QA Postgres12";
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should save a question before query has been executed (metabase#14957)", () => {
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("gui-builder-data").click();
+    cy.findByLabelText(PG_DB_NAME).click();
+    H.NativeEditor.type("select pg_sleep(60)");
+    H.saveQuestion("14957", undefined, {
+      path: ["Our analytics"],
+    });
+    H.modal().should("not.exist");
+  });
+});
+
+describe("issue 64293", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#64293)", () => {
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM PEOPLE WHERE state = {{State}}",
+        "template-tags": {
+          State: {
+            type: "text",
+            name: "State",
+            id: "1",
+            "display-name": "State",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "State",
+          required: true,
+          name: "State",
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByPlaceholderText("State").should("exist");
+    cy.findByPlaceholderText("State").type("NY{enter}");
+
+    H.runButtonOverlay().should("exist");
+    H.runButtonOverlay().click();
+
+    H.ensureParameterColumnValue({
+      columnName: "STATE",
+      columnValue: "NY",
+    });
+  });
+});
+
+describe("issue 68574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const questionDetails: NativeQuestionDetails = {
+      name: "Question 1",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE CREATED_AT > {{ start }}",
+        "template-tags": {
+          start: {
+            type: "date",
+            name: "start",
+            "display-name": "Start",
+            id: "1",
+          },
+        },
+      },
+      parameters: [
+        createMockParameter({
+          id: "1",
+          slug: "start",
+          required: true,
+          name: "Start",
+          type: "date/single",
+          target: ["variable", ["template-tag", "start"]],
+        }),
+      ],
+    };
+
+    H.createNativeQuestion(questionDetails, { wrapId: true });
+  });
+
+  it("should be possible to run a query for a empty required parameter without a default value (metabase#68574)", () => {
+    updateFormattingSettings({
+      date_style: "D MMMM, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2027-01-01");
+    assertParameterFormat("1 January, 2027");
+
+    cy.log("change the date format");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: false,
+    });
+    visitQuestion("2027-01-01");
+    assertParameterFormat("Friday, January 1, 2027");
+
+    cy.log("enable date abbreviation");
+    updateFormattingSettings({
+      date_style: "dddd, MMMM D, YYYY",
+      date_abbreviate: true,
+    });
+    visitQuestion("2027-01-01");
+    assertParameterFormat("Fri, Jan 1, 2027");
+
+    cy.log("even when the setting is unset, it should render a valid format");
+    updateFormattingSettings(undefined);
+    visitQuestion("2027-01-01");
+    assertParameterFormat("January 1, 2027");
+  });
+
+  function updateFormattingSettings(settings: any) {
+    H.updateSetting("custom-formatting", {
+      "type/Temporal": settings,
+    });
+  }
+
+  function visitQuestion(value: string) {
+    cy.get("@questionId").then((id) => {
+      cy.visit(`/question/${id}?start=${value}`);
+    });
+  }
+
+  function assertParameterFormat(value: string) {
+    cy.findByTestId("parameter-value-widget-target")
+      .should("be.visible")
+      .should("contain.text", value);
+  }
 });

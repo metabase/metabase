@@ -345,6 +345,36 @@ describe("scenarios > question > native", () => {
     cy.findByText("Here's where your results will appear").should("be.visible");
   });
 
+  it("should not autorun native queries after updating a question (metabase#30165)", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("SELECT * FROM ORDERS");
+    H.saveQuestionToCollection("Q1");
+
+    H.NativeEditor.focus().type(" WHERE TOTAL < 20");
+    H.queryBuilderHeader().findByText("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save").click();
+    });
+    cy.wait("@updateQuestion");
+
+    H.NativeEditor.focus().type(" LIMIT 10");
+    H.queryBuilderHeader().findByText("Save").click();
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.findByText("Save").click();
+    });
+    cy.wait("@updateQuestion");
+
+    cy.get("@dataset.all").should("have.length", 0);
+    cy.get("@cardQuery.all").should("have.length", 0);
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
+  });
+
   it("should allow to preview a fully parameterized query", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from PRODUCTS where CATEGORY={{category}}");
