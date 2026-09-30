@@ -329,7 +329,6 @@ const SourceFeedbackModal = ({
     opened
     onClose={onClose}
     size="lg"
-    radius="lg"
     title={t`Give feedback`}
     data-testid="metabot-source-feedback-modal"
   >
