@@ -138,7 +138,8 @@ describe("revision history", () => {
               cy.findByTestId("revision-history-button").click();
               H.sidesheet().within(() => {
                 cy.findByRole("tab", { name: "History" }).click();
-                cy.findByTestId("question-revert-button").should("be.visible");
+                // The revert button only becomes visible on hover
+                cy.findByTestId("question-revert-button").should("exist");
               });
               H.sidesheet().findByLabelText("Close").click();
               H.sidesheet().should("not.exist");
