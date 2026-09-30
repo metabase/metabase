@@ -7,6 +7,7 @@
    [clojure.tools.namespace.dependency :as ns.deps]
    [clojure.tools.namespace.find :as ns.find]
    [clojure.tools.namespace.parse :as ns.parse]
+   [mb.javac :as javac]
    [metabuild-common.core :as u]
    [metabuild-common.misc :as misc]
    [org.corfield.log4j2-conflict-handler :refer [log4j2-conflict-handler]])
@@ -140,6 +141,8 @@
    ;; clean Docker env, so it's more of a nice to have to keep the clutter in our JARs down when building locally.
    #"\~$"
    #"^\.?#"
+   ;; what keeps java/classes in git; see `mb.javac`
+   #"^\.gitignore$"
    #"\.rej$"
    ;; Driver classes are now flattened directly into the uberjar via the :drivers alias — the old nested
    ;; driver JARs in resources/modules/ must not be included or we'd ship everything twice.
@@ -268,6 +271,9 @@
   (u/step (format "Build %s uberjar" edition)
     (with-duration-ms [duration-ms]
       (clean!)
+      ;; forced, so a build never ships classes compiled from other sources; before AOT, which resolves imports
+      (u/step "Compile Java sources"
+        (javac/compile! {:force true}))
       (let [basis (create-basis edition)]
         (compile-sources! basis)
         (copy-resources! basis)

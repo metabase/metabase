@@ -5,6 +5,7 @@
    [build-drivers.copy-source-files :as copy-source-files]
    [build-drivers.create-uberjar :as create-uberjar]
    [build-drivers.verify :as verify]
+   [mb.javac :as javac]
    [metabuild-common.core :as u]))
 
 (set! *warn-on-reflection* true)
@@ -32,6 +33,8 @@
                                           c/*target-directory*)]
        (u/step (format "Build driver %s (edition = %s, options = %s)" driver edition (pr-str options))
          (clean! driver)
+         ;; the driver is AOT-compiled against the backend, whose namespaces may import its Java classes
+         (javac/compile!)
          (copy-source-files/copy-source-files! driver edition)
          (compile-source-files/compile-clojure-source-files! driver edition)
          (create-uberjar/create-uberjar! driver edition)

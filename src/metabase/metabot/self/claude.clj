@@ -7,7 +7,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (metabase.metabot.providers.anthropic MessagesTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,181 +21,14 @@
   "The beta header opting a request into Anthropic fast mode."
   "fast-mode-2026-02-01")
 
-(defn- claude-usage->aisdk-usage
-  "Convert an Anthropic `usage` block into the AISDK `:usage` shape.
-
-  Anthropic reports three disjoint input-token buckets; the total input sent to
-  the model is the sum of all three:
-
-      input_tokens                 — fresh (non-cached) input
-      cache_creation_input_tokens  — input written to the provider cache
-      cache_read_input_tokens      — input served from the provider cache
-
-  We pre-sum these into :promptTokens so downstream analytics and ai_usage_log
-  see a provider-neutral total-input count, matching OpenAI's prompt_tokens
-  semantic (where cache counts are a subset breakdown of the total).
-
-  ai_usage_log column mapping:
-
-    without Anthropic prompt caching:
-      prompt_tokens     := input_tokens
-      completion_tokens := output_tokens
-      total_tokens      := input_tokens + output_tokens
-
-    with Anthropic prompt caching:
-      prompt_tokens     := input_tokens + cache_creation_input_tokens + cache_read_input_tokens
-      completion_tokens := output_tokens
-      total_tokens      := prompt_tokens + completion_tokens
-
-  The two are equivalent when caching is inactive (both cache buckets are 0),
-  so one unified formula is used in code; the split above is purely for reader
-  clarity."
-  [u]
-  {:promptTokens        (+ (:input_tokens u 0)
-                           (:cache_creation_input_tokens u 0)
-                           (:cache_read_input_tokens u 0))
-   :completionTokens    (:output_tokens u 0)
-   :cacheCreationTokens (:cache_creation_input_tokens u 0)
-   :cacheReadTokens     (:cache_read_input_tokens u 0)})
-
-(def ^:private translated-chunk-type?
-  "Claude content-block types we translate into AI SDK chunks."
-  #{:text :tool_use :thinking :redacted_thinking})
-
-(def ^:private stop-reasons
-  "Anthropic `stop_reason` → AI SDK v5 `FinishReason`."
-  {"end_turn"                      "stop"
-   "stop_sequence"                 "stop"
-   "max_tokens"                    "length"
-   "model_context_window_exceeded" "length"
-   "tool_use"                      "tool-calls"
-   "refusal"                       "content-filter"
-   "pause_turn"                    "stop"})
-
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
    https://ai-sdk.dev/docs/ai-sdk-ui/stream-protocol
 
-   Claude Streaming Format:
-   - Each event: {:type \"message_start\" :message {...}}
-                 {:type \"content_block_start\" :index 0 :content_block {:type \"text\"}}
-                 {:type \"content_block_delta\" :index 0 :delta {:type \"text_delta\" :text \"...\"}}
-                 {:type \"content_block_stop\" :index 0}
-                 {:type \"message_delta\" :delta {:stop_reason \"end_turn\"}}
-                 {:type \"message_stop\"}
-
-   AI SDK v5 Format (SSE protocol):
-   - Message parts: {:type :start, :messageId ...}
-   - Part types: start, text-start, text-delta, text-end, finish-step, finish
-   - Ends with: 'data: [DONE]\\n'"
+   The translation itself is [[MessagesTranslator]]."
   []
-  (fn [rf]
-    (let [current-type (volatile! nil)
-          current-id   (volatile! nil)
-          message-id   (volatile! nil)
-          model-name   (volatile! nil)
-          payload      (volatile! {})
-          ;; Track the latest usage we've seen (from any event) and whether we
-          ;; already emitted it. Claude reports usage at message_start and
-          ;; message_delta with cumulative values — we only emit at message_delta
-          ;; normally, but if the stream is interrupted we flush the last known
-          ;; usage in the completion arity so we don't lose data entirely.
-          last-usage   (volatile! nil)
-          stop-reason  (volatile! nil)
-          close!       (fn [result]
-                         (u/prog1 (if-let [end-type (case @current-type
-                                                      :text              :text-end
-                                                      :tool_use          :tool-input-available
-                                                      :thinking          :reasoning-end
-                                                      :redacted_thinking :reasoning-end
-                                                      nil)]
-                                    (rf result (merge {:type end-type} @payload))
-                                    result)
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
-      (fn
-        ([result]
-         (cond-> result
-           ;; close up latest type if incomplete
-           @current-type (close!)
-           ;; flush last-known usage if stream ended before message_delta.
-           @last-usage   (rf (cond-> {:type  :usage
-                                      :usage (claude-usage->aisdk-usage @last-usage)
-                                      :id    @message-id
-                                      :model @model-name}
-                               @stop-reason (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                   :raw-finish-reason @stop-reason)))
-           true          (rf)))
-        ([result {t :type :keys [message content_block delta error index] :as chunk}]
-         (let [block-type (when content_block
-                            (keyword (:type content_block)))
-               chunk-id   (or (:id content_block) @current-id (some-> index str) (core/mkid))]
-           (cond-> result
-             ;; start of message
-             (= t "message_start")       (-> (rf {:type :start :messageId (:id message)})
-                                             (u/prog1
-                                               (vreset! message-id (:id message))
-                                               (vreset! model-name (:model message))
-                                               (vreset! last-usage (:usage message))))
-             ;; start of new content block
-             (= t "content_block_start") (-> (u/prog1
-                                               (vreset! current-type block-type)
-                                               (vreset! current-id chunk-id)
-                                               (vreset! payload
-                                                        (case block-type
-                                                          :text              {:id chunk-id}
-                                                          :tool_use          {:toolCallId chunk-id
-                                                                              :toolName   (:name content_block)}
-                                                          :thinking          {:id chunk-id}
-                                                          ;; redactedData rides the reasoning-end (via @payload,
-                                                          ;; kept off the start); redacted blocks stream no deltas.
-                                                          :redacted_thinking {:id chunk-id
-                                                                              :providerMetadata {:anthropic {:redactedData (:data content_block)}}}
-                                                          nil)))
-                                             (cond->
-                                              (translated-chunk-type? block-type)
-                                               (rf (case block-type
-                                                     :text                          (merge {:type :text-start} @payload)
-                                                     :tool_use                      (merge {:type :tool-input-start} @payload)
-                                                     (:thinking :redacted_thinking) {:type :reasoning-start :id chunk-id}))))
-
-             ;; content block delta
-             (and (= t "content_block_delta")
-                  (contains? #{"text_delta" "input_json_delta" "thinking_delta"} (:type delta)))
-             (rf (case (:type delta)
-                   "text_delta"       {:type  :text-delta
-                                       :id    (:id @payload)
-                                       :delta (:text delta)}
-                   "thinking_delta"   {:type  :reasoning-delta
-                                       :id    (:id @payload)
-                                       :delta (:thinking delta)}
-                   "input_json_delta" {:type           :tool-input-delta
-                                       :toolCallId     (:toolCallId @payload)
-                                       :inputTextDelta (:partial_json delta)}))
-
-             ;; the signature rides the reasoning-end via @payload (needed to replay
-             ;; the block within the turn); nothing is emitted to the client
-             (and (= t "content_block_delta") (= "signature_delta" (:type delta)))
-             (u/prog1
-               (vswap! payload update-in [:providerMetadata :anthropic :signature] (fnil str "") (:signature delta)))
-
-             ;; end of content block
-             (= t "content_block_stop") (close!)
-             ;; Claude reports usage at both message_start and message_delta,
-             ;; but message_delta values are cumulative and include the earlier
-             ;; counts.
-             ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
-             ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
-             (= t "message_delta")      (u/prog1
-                                          (vreset! last-usage (:usage chunk))
-                                          (vreset! stop-reason (:stop_reason delta)))
-             ;; end of message
-             (= t "message_stop")       identity
-             ;; catch errors if any
-             (= t "error")              (rf {:type      :error
-                                             :errorText (:message error)}))))))))
+  (core/translator-xf #(MessagesTranslator. core/mkid core/log-malformed-event)))
 
 ;;; AISDK parts → Claude messages
 

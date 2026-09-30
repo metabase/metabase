@@ -1,0 +1,135 @@
+package metabase.metabot.providers.anthropic;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import metabase.metabot.providers.AiSdkChunk;
+import metabase.metabot.providers.AiSdkChunk.ErrorChunk;
+import metabase.metabot.providers.AiSdkChunk.Finish;
+import metabase.metabot.providers.AiSdkChunk.FinishReason;
+import metabase.metabot.providers.AiSdkChunk.ProviderMetadata;
+import metabase.metabot.providers.AiSdkChunk.Start;
+import metabase.metabot.providers.AiSdkChunk.TokenUsage;
+import metabase.metabot.providers.AiSdkChunk.Usage;
+import metabase.metabot.providers.ChunkTranslator;
+import metabase.metabot.providers.Part;
+import metabase.metabot.providers.anthropic.MessagesEvent.Block;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockDelta;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockStart;
+import metabase.metabot.providers.anthropic.MessagesEvent.BlockStop;
+import metabase.metabot.providers.anthropic.MessagesEvent.Delta;
+import metabase.metabot.providers.anthropic.MessagesEvent.Ignored;
+import metabase.metabot.providers.anthropic.MessagesEvent.MessageDelta;
+import metabase.metabot.providers.anthropic.MessagesEvent.MessageStart;
+import metabase.metabot.providers.anthropic.MessagesEvent.StreamError;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Translates one Anthropic Messages API stream into AI SDK v5 chunks.
+ *
+ * <p>Anthropic brackets each content block with `content_block_start` / `content_block_stop`, and at most one is
+ * open. Usage and the stop reason arrive in `message_delta` and are held to the end of the stream: that way an
+ * interrupted stream still reports the last usage it saw.
+ */
+public final class MessagesTranslator implements ChunkTranslator<MessagesEvent> {
+
+    private static final Map<String, FinishReason> STOP_REASONS = Map.of(
+        "end_turn", FinishReason.STOP,
+        "stop_sequence", FinishReason.STOP,
+        "pause_turn", FinishReason.STOP,
+        "max_tokens", FinishReason.LENGTH,
+        "model_context_window_exceeded", FinishReason.LENGTH,
+        "tool_use", FinishReason.TOOL_CALLS,
+        "refusal", FinishReason.CONTENT_FILTER);
+
+    private final Supplier<String> newId;
+    private final Consumer<String> malformed;
+
+    private final Part.Slot open = new Part.Slot();
+    private @Nullable String messageId;
+    private @Nullable String model;
+    private @Nullable TokenUsage lastUsage;
+    private @Nullable String stopReason;
+
+    public MessagesTranslator(Supplier<String> newId, Consumer<String> malformed) {
+        this.newId = newId;
+        this.malformed = malformed;
+    }
+
+    @Override
+    public MessagesEvent parse(Map<?, ?> event) {
+        return MessagesEvent.parse(event);
+    }
+
+    @Override
+    public List<AiSdkChunk> step(MessagesEvent event) {
+        var out = new ArrayList<AiSdkChunk>(1);
+        switch (event) {
+            case MessageStart start -> {
+                messageId = start.messageId();
+                model = start.model();
+                lastUsage = start.usage();
+                out.add(new Start(messageId));
+            }
+            case BlockStart start -> {
+                // Anthropic stops every block before starting the next; a stray one is closed rather than lost
+                open.close(out);
+                String given = start.id();
+                String id = given != null ? given : newId.get();
+                switch (start.block()) {
+                    case Block.Text() -> open.start(out, new Part.Text(id));
+                    case Block.ToolUse(var name) -> open.start(out, new Part.Tool(id, name));
+                    case Block.Thinking() -> open.start(out, new Part.Reasoning(id));
+                    // opaque to us, and streams no deltas; the data has to be echoed back verbatim
+                    case Block.RedactedThinking(var data) ->
+                        open.start(out, new Part.Reasoning(id, ProviderMetadata.of("anthropic", "redactedData", data)));
+                    case Block.Unsupported() -> {}
+                    case Block.Malformed(var what) -> malformed.accept(what);
+                }
+            }
+            case BlockDelta(var delta) -> {
+                switch (delta) {
+                    case Delta.Text(var text) when open.get() instanceof Part.Text part -> out.add(part.delta(text));
+                    case Delta.Thinking(var text) when open.get() instanceof Part.Reasoning part ->
+                        out.add(part.delta(text));
+                    case Delta.InputJson(var json) when open.get() instanceof Part.Tool part -> out.add(part.delta(json));
+                    // the signature rides the reasoning-end; nothing is emitted to the client
+                    case Delta.Signature(var piece) when open.get() instanceof Part.Reasoning reasoning ->
+                        open.update(new Part.Reasoning(reasoning.id(), withSignaturePiece(reasoning.metadata(), piece)));
+                    case Delta.Malformed(var what) -> malformed.accept(what);
+                    // a delta that does not belong to the open block, or no block at all
+                    default -> {}
+                }
+            }
+            case BlockStop() -> open.close(out);
+            case MessageDelta delta -> {
+                lastUsage = delta.usage();
+                stopReason = delta.stopReason();
+            }
+            case StreamError error -> out.add(new ErrorChunk(error.message()));
+            case Ignored() -> {}
+        }
+        return out;
+    }
+
+    @Override
+    public List<AiSdkChunk> finish() {
+        var out = new ArrayList<AiSdkChunk>(2);
+        open.close(out);
+        if (lastUsage != null) {
+            out.add(new Usage(messageId, model, lastUsage, Finish.ofNullable(STOP_REASONS, stopReason)));
+        }
+        return out;
+    }
+
+    /** A signature arrives in pieces, which concatenate into the one a thinking block is replayed with. */
+    private static ProviderMetadata withSignaturePiece(@Nullable ProviderMetadata metadata, String piece) {
+        String prior = metadata == null ? null : metadata.fields().get("signature");
+        String signature = prior == null ? piece : prior + piece;
+        return metadata == null
+            ? ProviderMetadata.of("anthropic", "signature", signature)
+            : metadata.with("signature", signature);
+    }
+}

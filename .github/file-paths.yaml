@@ -147,6 +147,7 @@ backend_sources: &backend_sources
   - "**deps.edn"
   - "enterprise/backend/src/**"
   - "src/**"
+  - "java/**"
   - "modules/drivers/{*,*/{*,!(test)/**}}"
   - "resources/**"
   # Ratchet files drive project_ratchet_checks alone, so automation PRs that lower budgets
@@ -301,6 +302,11 @@ embedding_documentation:
 yaml:
   - "**/*.yml"
   - "**/*.yaml"
+
+java:
+  - ".github/workflows/lint.yml"
+  - "deps.edn"
+  - "java/**"
 
 codeql:
   - ".github/workflows/lint.yml"

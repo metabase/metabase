@@ -23,7 +23,8 @@
    [metabase.util.o11y :refer [with-span]])
   (:import
    (java.io BufferedReader Closeable InputStream)
-   (java.util.concurrent Callable Executors ExecutorService)))
+   (java.util.concurrent Callable Executors ExecutorService)
+   (metabase.metabot.providers ChunkTranslator)))
 
 (set! *warn-on-reflection* true)
 
@@ -319,16 +320,23 @@
 
 ;;; AISDK5
 
-(def finish-reasons
-  "The AI SDK v5 `FinishReason` values a provider stop reason may be translated to."
-  #{"stop" "length" "content-filter" "tool-calls" "error" "other"})
+(defn log-malformed-event
+  "How a Java translator reports a provider event missing something it needs, which it drops: the stream goes on, but
+  the answer may lack a part, so it is worth a warning. `what` names the event and what it lacks."
+  [what]
+  (log/warn "LLM provider sent a malformed event; dropped it" {:what what}))
 
-(defn stop-reason->finish-reason
-  "Translate a raw provider stop reason to an AI SDK v5 `FinishReason` through that provider's `stop-reasons` table.
-  Unmapped reasons → \"other\"; nil → nil."
-  [stop-reasons raw]
-  (when raw
-    (get stop-reasons raw "other")))
+(defn translator-xf
+  "A transducer driving a Java [[ChunkTranslator]] over a provider's decoded SSE events. `new-translator` is called
+  once per transduction, since a translator holds the state of one stream."
+  [new-translator]
+  (fn [rf]
+    (let [^ChunkTranslator translator (new-translator)]
+      (fn
+        ([result]
+         (rf (unreduced (u/reduce-preserving-reduced rf result (.finishClj translator)))))
+        ([result event]
+         (u/reduce-preserving-reduced rf result (.stepClj translator event)))))))
 
 (defn- parse-tool-arguments
   "Parse concatenated tool input deltas as JSON.

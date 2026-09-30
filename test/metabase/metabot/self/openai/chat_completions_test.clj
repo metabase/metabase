@@ -299,7 +299,7 @@
 
 (deftest ^:parallel chunks-xf-flat-cached-tokens-are-not-read-test
   (testing "a flat cached_tokens with no prompt_tokens_details leaves cacheReadTokens at 0"
-    ;; `usage->aisdk-usage` reads the nested bucket only. Providers that report cache reads flat *and*
+    ;; `ChatChunk/parseUsage` reads the nested bucket only. Providers that report cache reads flat *and*
     ;; nested (Moonshot) are covered by the nested read; one that reported only flat would need a
     ;; deliberate change here, not an incidental one.
     (is (=? {:usage {:promptTokens    100

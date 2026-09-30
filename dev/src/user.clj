@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.tools.cli :as cli]
    [dev.debug]
+   [dev.java] ; compiles java/src, ahead of the `metabase.*` namespaces
    [environ.core :as env]
    [hashp.preload]
    [metabase.classloader.core :as classloader]
