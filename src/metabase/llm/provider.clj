@@ -189,9 +189,6 @@
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
     ;; its own one day.
     :label         (deferred-tru "Google Gemini Enterprise")
-    ;; `:location` picks the host whenever the base URL is left at the global default, so it moves a
-    ;; connection as surely as the URL does. See [[destination-fields]].
-    :destination-fields [:base-url :location]
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
@@ -294,8 +291,6 @@
                      :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
-    ;; `:region` is the whole address here — there is no base URL to guard. See [[destination-fields]].
-    :destination-fields [:region]
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
@@ -853,10 +848,13 @@
     (into [] (map annotate) (stored-connections))))
 
 (defn- destination-fields
-  "The `:config` fields that decide where a connection's requests are sent — `:base-url` unless the registry says
-  otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the connection
-  can be moved without `:base-url` changing at all. The registry has to carry this because the adapters that
-  resolve addresses live downstream of this namespace and cannot be asked.
+  "The `:config` fields that decide which server a connection's credentials are sent to — `:base-url` unless the
+  registry says otherwise, as Ollama does: its `:hosting` picks between the stored URL and Cloud's fixed one, so the
+  connection can be moved without `:base-url` changing at all. The registry has to carry this because the adapters
+  that resolve addresses live downstream of this namespace and cannot be asked.
+
+  A field that only picks among the vendor's own endpoints — Google's `:location`, Bedrock's `:region` — is not one:
+  a credential cannot follow it anywhere else, and treating it as one would move requests out of the chosen region.
 
   Compared, never interpreted: this namespace does not resolve addresses, it only needs to know when one moved."
   [type-name]

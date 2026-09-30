@@ -487,10 +487,10 @@
         (is (= [{:key        "google"
                  :type       "google"
                  :name       "google"
-                 ;; the env credential wins; everything the environment does not supply stays as stored,
-                 ;; except the location — it picks the host, so it goes the way a stored base URL does
+                 ;; the env credential wins; everything the environment does not supply stays as stored
                  :config     {:service-account-key "{\"type\":\"env\"}"
-                              :project-id          "stored-project"}
+                              :project-id          "stored-project"
+                              :location            "us-central1"}
                  :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
                  :env-fields #{:service-account-key}
                  :source     :db}]
@@ -500,6 +500,14 @@
       (mt/with-temp-env-var-value! [mb-llm-anthropic-api-base-url "https://env.example.com"]
         (is (= {:api-key "sk-ant-db" :base-url "https://env.example.com"}
                (llm.provider/credentials "anthropic")))))))
+
+(deftest a-region-survives-keys-from-the-environment-test
+  (testing "the region only picks an AWS endpoint, so keys from the environment do not reset it to the default"
+    (mt/with-temporary-setting-values [llm-providers [(connection "bedrock" "bedrock" {:region "eu-central-1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id     "AKIAENV"
+                                    mb-llm-bedrock-secret-access-key "env-secret"]
+        (is (=? [{:key "bedrock" :config {:region "eu-central-1"}}]
+                (llm.provider/connections)))))))
 
 (deftest moving-a-connection-to-cloud-drops-the-address-it-leaves-behind-test
   (testing (str "the connection form clears a field it hides before saving; every other writer has to "
@@ -844,10 +852,11 @@
     (is (false? (llm.provider/type-available? "evilai")))))
 
 (deftest destination-fields-are-declared-for-every-type-test
-  (testing (str "Which config fields decide where a connection's requests go. The registry has to carry this "
-                "because the adapters that resolve addresses live downstream of it, so nothing can derive the "
-                "truth — this table is the only thing that makes an omission loud. A type whose adapter builds "
-                "its host from anything but `:base-url` has to say so, or "
+  (testing (str "Which config fields decide which server a connection's credentials go to. The registry has to "
+                "carry this because the adapters that resolve addresses live downstream of it, so nothing can "
+                "derive the truth — this table is the only thing that makes an omission loud. A type whose adapter "
+                "can reach a server outside the vendor's own endpoints through anything but `:base-url` has to say "
+                "so, or "
                 "`assert-destination-change-authorized!` cannot tell that the connection moved and will let a "
                 "stored credential follow it to the new address.")
     (is (= {"anthropic"  [:base-url]
@@ -857,11 +866,11 @@
             "zai"        [:base-url]
             "moonshot"   [:base-url]
             "deepseek"   [:base-url]
-            ;; google's host can come from :location and bedrock's comes only from :region — see the
-            ;; comment on each registry entry
-            "google"     [:base-url :location]
+            ;; google's :location and bedrock's :region only pick among the vendor's own endpoints, so a key
+            ;; cannot follow them anywhere else, and dropping them would move requests out of the chosen region
+            "google"     [:base-url]
             "azure"      [:base-url]
-            "bedrock"    [:region]
+            "bedrock"    [:base-url]
             "vllm"       [:base-url]
             "ollama"     [:base-url :hosting]
             "metabase"   [:base-url]}

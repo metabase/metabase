@@ -728,6 +728,16 @@
                                       {:config {:api-key  "sk-ant-attempted-override"
                                                 :base-url "https://new.example.com"}})))))))
 
+(deftest update-keeps-a-location-the-environment-does-not-set-test
+  (testing "a location only picks among Google's own endpoints, so a key from the environment keeps it"
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+      (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                    {:project-id "my-project"
+                                                                     :location   "europe-west4"})]]
+        (mt/with-temp-env-var-value! [mb-llm-google-oauth-access-token "ya29.env"]
+          (is (=? {:config {:location "europe-west4"}}
+                  (mt/user-http-request :crowberto :put 200 "llm/providers/google" {:name "renamed"}))))))))
+
 (deftest update-does-not-verify-with-a-key-the-environment-moved-away-from-test
   (testing (str "A connection the environment has moved no longer carries the key an admin entered for where "
                 "it used to point — a read of it drops that key. An edit merges its config from storage, so "
