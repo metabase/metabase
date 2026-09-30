@@ -217,6 +217,22 @@
                  "for a `stop` the grammar failed to shape — on `length` the buffer is a half-written "
                  "call, and half a JSON object is not an answer to show anyone"))))))
 
+(deftest ^:parallel read-back-stops-when-the-consumer-has-had-enough-test
+  (testing (str "The call and the finish chunk that closes it come from one input chunk, so the first is "
+                "handed downstream while the reduction may already be over — the writer ends it as soon "
+                "as the client hangs up.")
+    (let [seen (atom [])
+          rf   (fn ([acc] acc)
+                 ([acc chunk]
+                  (swap! seen conj chunk)
+                  (reduced acc)))]
+      (transduce (forced/read-back-xf structured-plan) rf nil
+                 [(content-chunk "{\"title\": \"Late orders\"}" "stop")])
+      (is (= 1 (count @seen)) "the finish chunk is not emitted past the end of the reduction")
+      (is (= [{:name "structured_output" :arguments "{\"title\": \"Late orders\"}"}]
+             (map :function (tool-calls @seen)))
+          "and the one chunk that did go is the call"))))
+
 (deftest ^:parallel read-back-mints-no-call-from-a-stream-without-a-finish-chunk-test
   (testing (str "a stream that ends without a finish chunk leaves no `stop` to vouch for the buffer, so "
                 "no call is minted from it — `:structured`'s name is fixed, so it would mint one from "

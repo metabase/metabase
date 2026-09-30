@@ -487,10 +487,10 @@
         (is (= [{:key        "google"
                  :type       "google"
                  :name       "google"
-                 ;; the env credential wins; everything the environment does not supply stays as stored
+                 ;; the env credential wins; everything the environment does not supply stays as stored,
+                 ;; except the location — it picks the host, so it goes the way a stored base URL does
                  :config     {:service-account-key "{\"type\":\"env\"}"
-                              :project-id          "stored-project"
-                              :location            "us-central1"}
+                              :project-id          "stored-project"}
                  :env-vars   #{"MB_LLM_GOOGLE_SERVICE_ACCOUNT_KEY"}
                  :env-fields #{:service-account-key}
                  :source     :db}]
@@ -857,14 +857,11 @@
             "zai"        [:base-url]
             "moonshot"   [:base-url]
             "deepseek"   [:base-url]
-            ;; NOTE: google's adapter derives the host from :location whenever :base-url is left at the global
-            ;; default (metabase.metabot.self.google/api-base-url), and bedrock has no :base-url field at all —
-            ;; its host is built from :region (metabase.metabot.self.bedrock). Both are the same bug class as
-            ;; Ollama's :hosting and are deliberately left undeclared here: fixing them changes what existing
-            ;; edits are allowed, which is its own change with its own review. Declaring them is the fix.
-            "google"     [:base-url]
+            ;; google's host can come from :location and bedrock's comes only from :region — see the
+            ;; comment on each registry entry
+            "google"     [:base-url :location]
             "azure"      [:base-url]
-            "bedrock"    [:base-url]
+            "bedrock"    [:region]
             "vllm"       [:base-url]
             "ollama"     [:base-url :hosting]
             "metabase"   [:base-url]}

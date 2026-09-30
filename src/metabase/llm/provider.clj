@@ -189,6 +189,9 @@
     ;; Gemini": the Gemini API is a separate surface with its own credentials, and may become a provider type of
     ;; its own one day.
     :label         (deferred-tru "Google Gemini Enterprise")
+    ;; `:location` picks the host whenever the base URL is left at the global default, so it moves a
+    ;; connection as surely as the URL does. See [[destination-fields]].
+    :destination-fields [:base-url :location]
     :default-model "google/gemini-3.5-flash"
     ;; The Gemini Enterprise Agent Platform has no listing endpoint we can trust — the one it exposes reports models
     ;; that are not really available and omits ones that are — so the models Metabot is known to work with are fixed
@@ -291,6 +294,8 @@
                      :help        (deferred-tru "The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.")}]}
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
+    ;; `:region` is the whole address here — there is no base URL to guard. See [[destination-fields]].
+    :destination-fields [:region]
     :default-model "anthropic.claude-opus-4-8"
     :mini-model    "anthropic.claude-haiku-4-5"
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
@@ -355,7 +360,7 @@
     ;; serves whatever the operator pulled, so a new connection takes its model from the catalog
     ;; that connecting fetches (see [[metabase.metabot.self.ollama/list-models]])
     :default-model nil
-    ;; the coarse rule, which the docs and the connection form read; `:validate` below is the exact one
+    ;; the coarse rule, which the connection form reads; `:validate` below is the exact one
     :required-any  [[:base-url] [:api-key]]
     :validate
     (fn [{:keys [hosting api-key base-url]}]
@@ -931,12 +936,12 @@
   [type config env-config]
   (let [effective (merge config env-config)]
     (some (fn [field]
-            (let [descriptor (field-descriptor type field)]
-              (when (and (u/trimmed-string (get env-config field))
-                         (field-active? type descriptor effective))
-                (when-let [chosen (destination-choice descriptor config)]
-                  (when (not= chosen (destination-choice descriptor env-config))
-                    field)))))
+            (when (u/trimmed-string (get env-config field))
+              (let [descriptor (field-descriptor type field)]
+                (when (field-active? type descriptor effective)
+                  (when-let [chosen (destination-choice descriptor config)]
+                    (when (not= chosen (destination-choice descriptor env-config))
+                      field))))))
           (destination-fields type))))
 
 (defn- drop-captured-secrets

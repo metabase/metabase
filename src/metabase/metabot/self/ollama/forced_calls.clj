@@ -25,6 +25,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai.chat-completions :as chat-completions]
    [metabase.metabot.self.schema :as schema]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -268,10 +269,14 @@
                      ;; fragment left with the buffer, so leaving it on the chunk too would put the
                      ;; grammar's raw answer on the content channel, which is what this transducer
                      ;; exists to keep it off.
-                     (-> (rf result call)
-                         (rf (-> chunk
-                                 strip-content
-                                 (assoc-in [:choices 0 :finish_reason] "tool_calls"))))
+                     ;;
+                     ;; two chunks from one, so the first `rf` may already have ended the reduction —
+                     ;; a client that hung up mid-stream does exactly that
+                     (u/reduce-preserving-reduced
+                      rf result
+                      [call (-> chunk
+                                strip-content
+                                (assoc-in [:choices 0 :finish_reason] "tool_calls"))])
                      ;; nothing became a call, so nothing may claim one: restating `stop` as
                      ;; `tool_calls` would promise the agent loop a call and hand it none. On `stop`
                      ;; the model answered outside the grammar, and that prose is the only answer

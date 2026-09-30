@@ -24,6 +24,12 @@
   {"metabase" "metabase/cmd/resources/ai-provider-metabase.md"
    "bedrock"  "metabase/cmd/resources/ai-provider-bedrock.md"})
 
+(def ^:private required-any-sentences
+  "What is enough to connect, for the types whose rule depends on another field and so cannot be generated
+  from `:required-any` — those groups read as though any one of them served any configuration."
+  {"ollama" (str "A self-hosted Ollama needs the **API base URL**. "
+                 "Ollama Cloud needs the **API key**.")})
+
 (def ^:private dynamic-catalog-types
   "Provider types that serve whatever models the operator loaded, so there is no list to publish."
   #{"vllm" "ollama"})
@@ -215,13 +221,14 @@
       (when singleton? "You can only connect one.")])]))
 
 (defn- required-any-sentence
-  "The `:required-any` credential groups spelled out, or nil for a type that has none."
-  [{:keys [required-any fields] :as provider}]
+  "Which combinations of credentials are enough, or nil for a type that needs no such sentence."
+  [{:keys [type required-any fields] :as provider}]
   ;; the per-field `(optional)` markers on their own would read as though none of the credentials were needed
-  (when (seq required-any)
-    (str (label provider) " needs either "
-         (str/join ", or " (map #(field-labels fields %) required-any))
-         ".")))
+  (or (get required-any-sentences type)
+      (when (seq required-any)
+        (str (label provider) " needs either "
+             (str/join ", or " (map #(field-labels fields %) required-any))
+             "."))))
 
 (defn- credentials-section
   "What an admin has to enter to connect, and which combinations of it are enough."
