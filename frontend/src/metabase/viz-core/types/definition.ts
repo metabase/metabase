@@ -19,7 +19,7 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
   ChartSettingColorRangeProps,
-  ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
@@ -224,7 +224,10 @@ export type VisualizationSettingsDefinitions = {
   "graph.colors"?: SeriesSettingDefinition<Value, Props>;
   "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
   "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
-  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingGoalValueProps
+  >;
   "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
   /**
    * "graph.label_value_frequency" key is used for 2 different settings:
@@ -319,7 +322,7 @@ export type VisualizationSettingsDefinitions = {
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
   prefix?: DatasetColumnSettingDefinition<Value, Props>;
   "progress.color"?: SeriesSettingDefinition<Value, Props>;
-  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalInputProps>;
+  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalValueProps>;
   "progress.value"?: SeriesSettingDefinition<Value, Props>;
   "sankey.edge_color"?: SeriesSettingDefinition<Value, Props>;
   "sankey.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
@@ -335,6 +338,10 @@ export type VisualizationSettingsDefinitions = {
     SmartScalarComparisonWidgetProps
   >;
   "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.segments"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentsEditorProps
+  >;
   "scalar.show_comparison_value"?: SeriesSettingDefinition<Value, Props>;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
   scale?: DatasetColumnSettingDefinition<Value, Props>;

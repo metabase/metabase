@@ -359,6 +359,70 @@
                                          :semantic_type nil}]
                                  :rows [["2014-04-01T08:30:00.0000"]]})))))
 
+(defn- scalar-style [results]
+  (-> (body/render :scalar nil pacific-tz nil nil results)
+      :content
+      second
+      :style))
+
+(def ^:private segment-color "#84BB4C")
+
+(defn- scalar-results
+  ([segments] (scalar-results segments 42))
+  ([segments value]
+   {:cols         [{:name "count" :display_name "Count" :base_type :type/Integer}
+                   {:name "target" :display_name "Target" :base_type :type/Integer}]
+    :rows         [[value 80]]
+    :viz-settings {:scalar.segments segments}}))
+
+(deftest ^:parallel scalar-segment-color-test
+  (testing "the value takes the color of the first segment whose range contains it"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
+      [{:min 0 :max 100 :color segment-color}]
+      [{:min 0 :max 10 :color "#FF0000"} {:min 10 :max 100 :color segment-color}]
+      [{:min 40 :color segment-color}]
+      [{:max 50 :color segment-color}]
+      [{:min nil :max 50 :color segment-color}]))
+  (testing "a bound naming another column of the same result resolves to that column's value"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) segment-color)
+      [{:min 0 :max "target" :color segment-color}]
+      [{:min "count" :max "target" :color segment-color}])
+    (is (not (str/includes? (scalar-style (scalar-results [{:min "target" :color segment-color}])) segment-color))))
+  (testing "no matching segment falls back to the default color"
+    (are [segments] (not (str/includes? (scalar-style (scalar-results segments)) segment-color))
+      nil
+      []
+      [{:min 0 :max 10 :color segment-color}]
+      [{:min 50 :color segment-color}]
+      [{:min nil :max nil :color segment-color}]))
+  (testing "a matching segment without a color gets the same fallback as in the app"
+    (are [segments] (str/includes? (scalar-style (scalar-results segments)) style/color-text-secondary)
+      [{:min 0 :max 100}]
+      [{:min 0 :max 100 :color nil}]
+      [{:min 0 :max 100} {:min 0 :max 100 :color segment-color}]))
+  (testing "a numeric string is colored by its number, like in the app"
+    (is (str/includes? (scalar-style (scalar-results [{:min 0 :max 100 :color segment-color}] "42")) segment-color))
+    (is (not (str/includes? (scalar-style (scalar-results [{:min 0 :max 10 :color segment-color}] "42")) segment-color))))
+  (testing "a non-numeric value is never colored (#82820)"
+    (are [value] (not (str/includes? (scalar-style (scalar-results [{:min 0 :color segment-color}] value)) segment-color))
+      "foo"
+      "42%"
+      ""
+      nil))
+  (testing "a bound that can't resolve fails the render"
+    (are [segments] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal"
+                                      (scalar-style (scalar-results segments)))
+      [{:min 0 :max "nope" :color segment-color}]
+      [{:min 0 :max {:id 1 :type "card" :column "count"} :color segment-color}]))
+  (testing "a self-column bound fails the render when its cell is null or the result has no rows"
+    (are [results] (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal \(not-a-number\): column count"
+                                     (scalar-style results))
+      (scalar-results [{:min "count" :color segment-color}] nil)
+      (assoc (scalar-results [{:min "count" :color segment-color}]) :rows []))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unresolved dynamic goal \(not-a-number\): column target"
+                          (scalar-style (assoc (scalar-results [{:min 0 :max "target" :color segment-color}])
+                                               :rows [[42 nil]]))))))
+
 (deftest ^:parallel scalar-test-5
   (testing "Includes raw text"
     (testing "for scalars"
@@ -643,6 +707,61 @@
                             (hik.s/class "pulse-body")
                             doc)]
             (is (not (render-error? pulse-body)))))))))
+
+(deftest render-gauge-with-dynamic-goals-test
+  (testing "Static-viz Gauge resolves a bound naming another column of the same query and fills a legacy colorless
+            segment with a default color instead of failing"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display                :gauge
+                                                :dataset_query          (mt/mbql-query venues
+                                                                          {:aggregation [[:count] [:sum $price]]})
+                                                :visualization_settings {:gauge.segments
+                                                                         [{:min 0 :max "sum" :color "#84BB4C"}
+                                                                          {:min 0 :max "count"}]}}]
+        (let [doc        (render.tu/render-card-as-hickory! card-id)
+              pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+              arc-paths  (hik.s/select (hik.s/descendant (hik.s/class "visx-pie-arcs-group") (hik.s/tag :path))
+                                       doc)
+              arc-fills  (->> arc-paths
+                              (map (comp :fill :attrs))
+                              ;; the first arc is the full-range background arc
+                              rest)]
+          (is (not (render-error? pulse-body)))
+          (is (= 2 (count arc-fills)))
+          (is (some #{"#84BB4C"} arc-fills))
+          (is (every? #(re-matches #"#[0-9A-Fa-f]{6}" %) arc-fills)
+              "the colorless segment gets a resolved hex fill"))))))
+
+(deftest render-scalar-with-self-column-segment-test
+  (testing "Static-viz Scalar colors its value by a segment whose bound names another column of the same query"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {card-id :id} {:display                :scalar
+                                                :dataset_query          (mt/mbql-query venues
+                                                                          {:aggregation [[:count] [:sum $price]]})
+                                                :visualization_settings {:scalar.field    "count"
+                                                                         :scalar.segments [{:min 0 :max "sum" :color "#84BB4C"}]}}]
+        (let [doc        (render.tu/render-card-as-hickory! card-id)
+              pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+              colored    (hik.s/select (hik.s/attr :style #(str/includes? % "#84BB4C")) doc)]
+          (is (not (render-error? pulse-body)))
+          (is (= ["100"] (mapcat :content colored))))))))
+
+(deftest render-scalar-with-referenced-segment-test
+  (testing "Static-viz Scalar colors its value by a segment whose bound is another card's value"
+    ;; venues count is 100, checkins count is 1000: the value is below the goal, so only the `:max` segment may match
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
+                   :model/Card card          {:display                :scalar
+                                              :dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                              :visualization_settings {:scalar.segments
+                                                                       [{:min   {:id goal-id :type "card" :column "count"}
+                                                                         :color "#FF0000"}
+                                                                        {:max   {:id goal-id :type "card" :column "count"}
+                                                                         :color "#84BB4C"}]}}]
+      (let [result  (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))
+            content (html (:content (channel.render/render-pulse-card :inline "UTC" card nil result)))]
+        (is (= 1000 (get-in result [:data :referenced_entities "card" (str goal-id) :data :rows 0 0])))
+        (is (str/includes? content "#84BB4C"))
+        (is (not (str/includes? content "#FF0000")))))))
 
 (def ^:private funnel-rows
   [["cart" 1500]
@@ -1355,13 +1474,13 @@
           test-rows [[1 "Alice"] [2 "Bob"]]
           test-data {:cols test-cols :rows test-rows}
           ;; Simulate duplicated table columns viz settings
-          viz-settings {:metabase.models.visualization-settings/table-columns
-                        [{:metabase.models.visualization-settings/table-column-name "ID"
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "ID" ; duplicate
-                          :metabase.models.visualization-settings/table-column-enabled true}
-                         {:metabase.models.visualization-settings/table-column-name "NAME"
-                          :metabase.models.visualization-settings/table-column-enabled true}]}
+          viz-settings {:metabase.visualization-settings.core/table-columns
+                        [{:metabase.visualization-settings.core/table-column-name "ID"
+                          :metabase.visualization-settings.core/table-column-enabled true}
+                         {:metabase.visualization-settings.core/table-column-name "ID" ; duplicate
+                          :metabase.visualization-settings.core/table-column-enabled true}
+                         {:metabase.visualization-settings.core/table-column-name "NAME"
+                          :metabase.visualization-settings.core/table-column-enabled true}]}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "should return cols without errors"
         (is (= 2 (count ordered-cols)))
@@ -1382,10 +1501,10 @@
           test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
           test-data {:cols test-cols :rows test-rows}
           reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
-          viz-settings {:metabase.models.visualization-settings/table-columns
+          viz-settings {:metabase.visualization-settings.core/table-columns
                         (vec (for [col-name reordered-names]
-                               {:metabase.models.visualization-settings/table-column-name col-name
-                                :metabase.models.visualization-settings/table-column-enabled true}))}
+                               {:metabase.visualization-settings.core/table-column-name col-name
+                                :metabase.visualization-settings.core/table-column-enabled true}))}
           [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
       (testing "cols should follow table-columns order"
         (is (= reordered-names (map :name ordered-cols))))
@@ -1397,10 +1516,10 @@
   (mt/with-column-remappings [orders.product_id products.title]
     (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
       (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
-                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                       :visualization_settings {:metabase.visualization-settings.core/table-columns
                                                                 (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
-                                                                       {:metabase.models.visualization-settings/table-column-name col-name
-                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+                                                                       {:metabase.visualization-settings.core/table-column-name col-name
+                                                                        :metabase.visualization-settings.core/table-column-enabled true}))}}]
         ;; trigger render to gather prep-data for rendering
         (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
           (is (=  ["Quantity"

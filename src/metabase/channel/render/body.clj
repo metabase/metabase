@@ -20,7 +20,6 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
    [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.compile :as qp.compile]
@@ -36,7 +35,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.core :as mb.viz]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -95,15 +96,31 @@
     :else
     (str value)))
 
-(defn get-color-from-segment
-  "Returns the color of the first segment who's max is higher than value and min is lower than value"
-  [viz-settings value]
-  (let [{segments :scalar.segments} viz-settings
-        ->min (fn [min] (if (number? min) min Double/NEGATIVE_INFINITY))
-        ->max (fn [max] (if (number? max) max Double/POSITIVE_INFINITY))]
+(defn- scalar-segments
+  "Resolve column names in scalar segment bounds using `data`. Omit segments with no bounds.
+  Eager, so a bound that can't resolve throws even when there is no value to color.
+  Entity references must already be resolved by `metabase.channel.render.card`."
+  [viz-settings data]
+  (into []
+        (comp (map (fn [segment]
+                     (-> segment
+                         (update :min dynamic-goals/resolve-self-column-value data)
+                         (update :max dynamic-goals/resolve-self-column-value data))))
+              (filter (fn [{:keys [min max]}]
+                        (or (some? min) (some? max)))))
+        (:scalar.segments viz-settings)))
+
+(defn- scalar-color
+  "Return the color of the first segment containing `value`, or nil if none matches or `value` is not numeric.
+  Like the app, a numeric string counts as its number (\"42\" but not \"42%\") and a segment without a color gets
+  the default fallback."
+  [segments value]
+  (when-let [value (cond
+                     (number? value) value
+                     (string? value) (parse-double value))]
     (some (fn [{:keys [min max color]}]
-            (when (<= (->min min) value (->max max))
-              color))
+            (when (<= (or min Double/NEGATIVE_INFINITY) value (or max Double/POSITIVE_INFINITY))
+              (or color style/color-text-secondary)))
           segments)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
@@ -168,6 +185,18 @@
    [:col            {:optional true} [:maybe :string]]
    [:unit           {:optional true} [:maybe :keyword]]])
 
+(mr/def ::ReferencedEntityResult
+  "One entity's result under a QP result's `[:data :referenced_entities type-string id-string]`, as built by
+  `metabase.query-processor.referenced-entities` for dynamic goals."
+  [:map {:closed true}
+   [:status [:enum "completed" "failed"]]
+   [:error  {:optional true} [:maybe :string]]
+   [:data   {:optional true} [:maybe [:map {:closed true}
+                                      [:cols {:optional true}
+                                       [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+                                      [:rows {:optional true}
+                                       [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
+
 (mr/def ::QPResultData
   "The `:data` of a QP result, as the render pipeline reads it: the query processor's result metadata plus the rows."
   [:merge
@@ -187,6 +216,7 @@
     [:rows-file-size   {:optional true} [:maybe :int]]
     [:model            {:optional true} [:maybe :boolean]]
     [:dataset          {:optional true} [:maybe :boolean]]
+    [:referenced_entities {:optional true} [:maybe [:map-of :string [:map-of :string ::ReferencedEntityResult]]]]
     [:pivot-export-options {:optional true} [:maybe [:map {:closed true}
                                                      [:pivot-rows         {:optional true} [:maybe [:sequential :int]]]
                                                      [:pivot-cols         {:optional true} [:maybe [:sequential :int]]]
@@ -750,7 +780,7 @@
       (dissoc :result)))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
-  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
+  [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings] :as data}]
   (let [field-name    (:scalar.field viz-settings)
         [row-idx col] (or (when field-name
                             (get-col-by-name cols field-name))
@@ -758,7 +788,7 @@
         row           (first rows)
         raw-value     (get row row-idx)
         value         (format-scalar-value timezone-id raw-value col viz-settings)
-        color         (get-color-from-segment viz-settings raw-value)]
+        color         (scalar-color (scalar-segments viz-settings data) raw-value)]
     {:attachments
      nil
 

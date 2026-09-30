@@ -1,6 +1,7 @@
 (ns metabase.channel.render.card
   (:require
    [hiccup.core :refer [h]]
+   [medley.core :as m]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.image-bundle :as image-bundle]
@@ -16,7 +17,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.markdown :as markdown]))
+   [metabase.util.markdown :as markdown]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (defn- card-href
   [card]
@@ -198,10 +200,25 @@
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
-                         (when (is-attached? card)
-                           :attached)
-                         :unknown)]
+    ;; Renderers read settings from the card, dashcard, or query result, so resolve entity references in all three.
+    ;; Resolution errors are caught below and displayed in the standard error box.
+    (let [;; toggles come off the merge, since either half can flip graph.show_goal
+          effective     (merge (:visualization_settings card) (:visualization_settings dashcard))
+          resolve-goals (fn [m k]
+                          (cond-> m
+                            (k m)
+                            (update k dynamic-goals/resolve-dynamic-goals (:referenced_entities data) effective)))
+          card          (resolve-goals card :visualization_settings)
+          dashcard      (some-> dashcard
+                                (resolve-goals :visualization_settings)
+                                ;; a visualizer dashcard's chart reads the settings nested here, which toggle their own goals
+                                (m/update-existing-in [:visualization_settings :visualization :settings]
+                                                      dynamic-goals/resolve-dynamic-goals (:referenced_entities data)))
+          data          (some-> data (resolve-goals :viz-settings))
+          chart-type    (or (detect-pulse-chart-type card dashcard data)
+                            (when (is-attached? card)
+                              :attached)
+                            :unknown)]
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { getGoalLineValue } from "../../../lib/dynamic-goals";
 import type {
   ComputedVisualizationSettings,
   Padding,
@@ -181,8 +182,13 @@ const getYAxisTicksWidth = (
     }
   }
 
-  if (settings["graph.show_goal"] && settings["graph.goal_value"] != null) {
-    valuesToMeasure.push(settings["graph.goal_value"]);
+  // Normalized axes are pinned to 0-100%, so a goal can never add a tick
+  const goalValue = axisModel.isNormalized
+    ? null
+    : getGoalLineValue(settings, false);
+
+  if (goalValue !== null) {
+    valuesToMeasure.push(goalValue);
   }
 
   // This is a simplistic assumption to predict if ECharts will use decimal

@@ -7,11 +7,11 @@
   (:refer-clojure :exclude [mapv empty?])
   (:require
    [clojure.set :as set]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [mapv empty?]]))
+   [metabase.util.performance :as perf :refer [mapv empty?]]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (set! *warn-on-reflection* true)
 

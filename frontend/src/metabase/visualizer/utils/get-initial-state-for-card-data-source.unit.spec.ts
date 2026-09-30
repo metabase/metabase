@@ -102,6 +102,47 @@ describe("getInitialStateForCardDataSource", () => {
     });
   });
 
+  it("should rewrite a goal that names a column of the same query to the column's reference", () => {
+    const dataset = createMockDataset({
+      data: createMockDatasetData({
+        cols: [
+          createMockColumn({
+            name: "CREATED_AT",
+            base_type: "type/DateTime",
+            effective_type: "type/DateTime",
+            semantic_type: null,
+            unit: "month",
+          }),
+          createMockColumn({
+            name: "SOME_METRIC",
+            database_type: "int8",
+            semantic_type: "type/Quantity",
+            base_type: "type/BigInteger",
+          }),
+        ],
+      }),
+    });
+
+    const card = createMockCard({
+      display: "line",
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["SOME_METRIC"],
+        "graph.show_goal": true,
+        "graph.goal_value": "SOME_METRIC",
+      },
+    });
+
+    const state = getInitialStateForCardDataSource(card, dataset);
+
+    expect(state.settings).toEqual({
+      "graph.dimensions": ["COLUMN_1"],
+      "graph.metrics": ["COLUMN_2"],
+      "graph.show_goal": true,
+      "graph.goal_value": "COLUMN_2",
+    });
+  });
+
   it("should pick columns from graph.tooltip_columns as well (metabase#64721)", () => {
     const dataset = createMockDataset({
       data: createMockDatasetData({

@@ -230,6 +230,26 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  getGoalSegmentBounds,
+  getNumericGoalValue,
+  getReferencedEntities,
+  getSegmentColor,
+  getUnansweredGoalEntities,
+  getUnresolvedGoalMessage,
+  hasFailedGoalValues,
+  hasUnansweredGoalReferences,
+  hasUnresolvedGoalReferences,
+  hasUnresolvedGoalValues,
+  isDynamicGoalSetting,
+  needsAnswer,
+  needsGraphGoalResolution,
+  resolveGoalSegments,
+  resolveGoalValue,
+  resolveOpenEndedGoalSegments,
+  toReferencedEntity,
+} from "./lib/dynamic-goals";
+export type { GoalSettingKind } from "./lib/dynamic-goal-settings";
+export {
   ChartSettingsError,
   getDatasetError,
   getDatasetPermissionError,
@@ -362,6 +382,7 @@ export {
   validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
+  validateGoalReferences,
   validateStacking,
 } from "./lib/settings/validation";
 export {
@@ -404,7 +425,6 @@ export {
   getDefaultPivotColumn,
   isSameSeries,
   MAX_SERIES,
-  segmentIsValid,
 } from "./lib/utils";
 export { DEFAULT_VIZ_ORDER } from "./lib/viz-order";
 export {
@@ -482,6 +502,13 @@ export type {
   VisualizationSettingsDefinitions,
   Widget,
 } from "./types/definition";
+export type {
+  GoalData,
+  GoalRefError,
+  GoalValueResult,
+  ResolvedGoalSegment,
+  ResolvedOpenEndedGoalSegment,
+} from "./types/dynamic-goals";
 export type { EChartsEventHandler, ZREventHandler } from "./types/echarts";
 export type {
   DataPoint,
@@ -500,7 +527,7 @@ export type {
   AggregationFunction,
   ChartSettingColorRangeProps,
   ChartSettingEnumToggleProps,
-  ChartSettingGoalInputProps,
+  ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
   ChartSettingSegmentedControlProps,

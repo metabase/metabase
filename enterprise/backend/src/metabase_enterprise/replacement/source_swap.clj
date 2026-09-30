@@ -18,9 +18,9 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.models.visualization-settings :as vs]
    [metabase.queries.models.query :as queries.query]
-   [metabase.source-swap.core :as source-swap]))
+   [metabase.source-swap.core :as source-swap]
+   [metabase.visualization-settings.core :as vs]))
 
 (set! *warn-on-reflection* true)
 

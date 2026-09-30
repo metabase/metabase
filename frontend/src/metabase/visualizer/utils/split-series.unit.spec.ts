@@ -4,11 +4,18 @@ import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 
 import { splitVisualizerSeries } from "./split-series";
 
 registerVisualizations();
+
+const referencedEntities = createMockReferencedEntitiesResults({
+  id: 10,
+  column: "count",
+  value: 10,
+});
 
 describe("splitVisualizerSeries", () => {
   it("should split a single series into multiple series", () => {
@@ -57,6 +64,7 @@ describe("splitVisualizerSeries", () => {
                 "previous-value": 0,
               },
             ],
+            referenced_entities: referencedEntities,
           }),
         },
       ],
@@ -120,5 +128,8 @@ describe("splitVisualizerSeries", () => {
     ]);
     expect(series1.columnValuesMapping).toBeDefined();
     expect(series2.columnValuesMapping).toBeDefined();
+    // dynamic goals resolve from the referenced entities of every split series
+    expect(series1.data.referenced_entities).toEqual(referencedEntities);
+    expect(series2.data.referenced_entities).toEqual(referencedEntities);
   });
 });

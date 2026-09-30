@@ -1,0 +1,41 @@
+import type { VisualizationDisplay } from "metabase-types/api";
+
+export type GoalSettingKey =
+  | "graph.goal_value"
+  | "progress.goal"
+  | "gauge.segments"
+  | "scalar.segments";
+
+export type GoalSettingKind = "value" | "segments";
+
+// Mirrors `goal-settings` in metabase.visualization-settings.dynamic-goals
+export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
+  "graph.goal_value": "value",
+  "progress.goal": "value",
+  "gauge.segments": "segments",
+  "scalar.segments": "segments",
+};
+
+const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
+  Record<VisualizationDisplay, GoalSettingKey[]>
+> = {
+  area: ["graph.goal_value"],
+  bar: ["graph.goal_value"],
+  boxplot: ["graph.goal_value"],
+  combo: ["graph.goal_value"],
+  gauge: ["gauge.segments"],
+  line: ["graph.goal_value"],
+  progress: ["progress.goal"],
+  row: ["graph.goal_value"],
+  scalar: ["scalar.segments"],
+  scatter: ["graph.goal_value"],
+  waterfall: ["graph.goal_value"],
+};
+
+export function getDynamicGoalSettingKeys(
+  display: VisualizationDisplay | undefined,
+): GoalSettingKey[] {
+  return display !== undefined
+    ? (DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display] ?? [])
+    : [];
+}

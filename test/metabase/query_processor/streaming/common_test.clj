@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (set! *warn-on-reflection* true)
 

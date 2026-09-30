@@ -24,7 +24,6 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util :as lib.util]
-   [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -45,7 +44,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]))
+   [metabase.util.performance :refer [empty? every? get-in mapv not-empty select-keys some update-keys]]
+   [metabase.visualization-settings.core :as mb.viz]))
 
 (set! *warn-on-reflection* true)
 

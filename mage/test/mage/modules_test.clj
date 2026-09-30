@@ -310,9 +310,16 @@
           ;; 2026-04-07 Bumped to 41 due to agent-lib addition (Metabot MBQL improvements #71524)
           ;; 2026-06-04 Bumped to 42 due to run-tracking addition (Zombie transform reaper #75194)
           ;; 2026-06-24 Bumped to 44 for indexes + indexes-rest (Index manager #75848)
+          ;; 2026-09-10 Bumped to 45 for visualization-settings, extracted out of models
+          ;;            (which already triggered driver tests) rather than newly coupled to
+          ;;            driver code (Dynamic goals #77365). It reaches driver tests via the
+          ;;            query-processor xlsx/csv export formatters. Worth considering for
+          ;;            driver-affecting-overrides alongside channel/appearance, but that
+          ;;            narrows CI coverage, so it wants a deliberate decision.
           ;; 2026-09-11 Bumped to 47: lib.schema, lib.metadata and query-processor.cache-backend are carved out of
           ;;            lib and query-processor, which already trigger driver tests
-          max-allowed-count 47]
+          ;; 2026-09-29 48 after merging master's 47 into Dynamic goals (+1 visualization-settings)
+          max-allowed-count 48]
       (is (<= (count modules-triggering-drivers) max-allowed-count)
           (format "Too many modules trigger driver tests! Expected <= %d, got %d.
                    Modules triggering driver tests: %s
