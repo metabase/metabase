@@ -1252,12 +1252,15 @@
   (let [existing-public-uuid (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/dashboard-public-link-created
-                                          {:object-id dashboard-id
-                                           :user-id api/*current-user-id*})
-                   (t2/update! :model/Dashboard dashboard-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (t2/update! :model/Dashboard dashboard-id
+                                 {:public_uuid       <>
+                                  :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/dashboard-public-link-created
+                                            {:object    (t2/select-one :model/Dashboard :id dashboard-id)
+                                             :object-id dashboard-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1274,12 +1277,14 @@
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (t2/update! :model/Dashboard dashboard-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
-  (events/publish-event! :event/dashboard-public-link-deleted
-                         {:object-id dashboard-id
-                          :user-id api/*current-user-id*})
+  (t2/with-transaction [_conn]
+    (t2/update! :model/Dashboard dashboard-id
+                {:public_uuid       nil
+                 :made_public_by_id nil})
+    (events/publish-event! :event/dashboard-public-link-deleted
+                           {:object    (t2/select-one :model/Dashboard :id dashboard-id)
+                            :object-id dashboard-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

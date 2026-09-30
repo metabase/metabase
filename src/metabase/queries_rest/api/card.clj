@@ -980,12 +980,15 @@
   (let [{existing-public-uuid :public_uuid} (t2/select-one [:model/Card :public_uuid :card_schema] :id card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
-                   (events/publish-event! :event/card-public-link-created
-                                          {:object-id card-id
-                                           :user-id api/*current-user-id*})
-                   (t2/update! :model/Card card-id
-                               {:public_uuid       <>
-                                :made_public_by_id api/*current-user-id*})))]
+                   ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
+                   (t2/with-transaction [_conn]
+                     (t2/update! :model/Card card-id
+                                 {:public_uuid       <>
+                                  :made_public_by_id api/*current-user-id*})
+                     (events/publish-event! :event/card-public-link-created
+                                            {:object    (t2/select-one :model/Card :id card-id)
+                                             :object-id card-id
+                                             :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1001,13 +1004,15 @@
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
-  (t2/update! :model/Card card-id
-              {:public_uuid       nil
-               :made_public_by_id nil})
-  (events/publish-event! :event/card-public-link-deleted
-                         {:object-id card-id
-                          :user-id api/*current-user-id*})
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
+  (t2/with-transaction [_conn]
+    (t2/update! :model/Card card-id
+                {:public_uuid       nil
+                 :made_public_by_id nil})
+    (events/publish-event! :event/card-public-link-deleted
+                           {:object    (t2/select-one :model/Card :id card-id)
+                            :object-id card-id
+                            :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
