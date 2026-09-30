@@ -151,8 +151,6 @@
       [(.startOf value      (name unit))
        (.endOf   adjusted   (name unit))])))
 
-;; NB: Only the :default for to-range is needed in CLJS, since Day.js's startOf and endOf methods are doing the work.
-
 ;;; -------------------------------------------- string->timestamp ---------------------------------------------------
 (defn- valid-date-string?
   "Check if a date string is a valid ISO-8601 format.

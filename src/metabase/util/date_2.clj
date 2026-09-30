@@ -219,6 +219,7 @@
     :year})
 
 (def ^:private TimeConfig
+  ;; Mirrors ::lib.schema.common/time-config, duplicated because util can't depend on lib.
   [:map
    {:closed true}
    [:start-of-week [:enum :monday :tuesday :wednesday :thursday :friday :saturday :sunday]]])

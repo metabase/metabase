@@ -425,6 +425,9 @@
   "Formats a time difference between two temporal values.
    Drops redundant information."
   [temporal-value-1 temporal-value-2]
+  ;; This is a placeholder, not the instance's real setting.
+  ;; Formatting a diff never resolves a week-based unit, but format-unit's schema still requires a full
+  ;; time-config map.
   (let [time-config  {:start-of-week :sunday}
         default-format #(str (format-unit time-config temporal-value-1 nil)
                              " – "

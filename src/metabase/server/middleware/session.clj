@@ -37,6 +37,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.string :as string]))
 
@@ -166,7 +167,7 @@
    {:closed true}
    [:extract-token     ifn?]
    [:resolve-token     ifn?]
-   [:full-access-scope :string]])
+   [:full-access-scope ms/NonBlankString]])
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
