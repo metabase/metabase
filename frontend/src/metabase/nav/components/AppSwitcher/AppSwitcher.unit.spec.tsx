@@ -217,23 +217,26 @@ describe("ProfileLink", () => {
       });
     });
 
-    it("should show data studio for analysts when advanced-permissions is available", async () => {
+    it("should show data studio and monitor for analysts when advanced-permissions is available", async () => {
       await setup({
         isAnalyst: true,
         tokenFeatures: { advanced_permissions: true },
       });
 
       expect(screen.getByText("Data studio")).toBeInTheDocument();
+      expect(screen.getByText("Monitor")).toBeInTheDocument();
     });
 
-    it("should hide data studio from analysts when advanced-permissions is absent", async () => {
+    // Data Studio and Monitor diagnostics both come with the Data Analyst role rather than a
+    // permissions graph, so both pause while the plan lacks the feature.
+    it("should hide data studio and monitor from analysts when advanced-permissions is absent", async () => {
       await setup({
         isAnalyst: true,
         tokenFeatures: { advanced_permissions: false },
       });
 
       expect(screen.queryByText("Data studio")).not.toBeInTheDocument();
-      expect(screen.getByText("Monitor")).toBeInTheDocument();
+      expect(screen.queryByText("Monitor")).not.toBeInTheDocument();
     });
 
     it("should show data studio for admins when advanced-permissions is absent", async () => {
