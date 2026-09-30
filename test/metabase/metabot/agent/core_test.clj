@@ -364,7 +364,7 @@
                                                                               (let [n (swap! call-count inc)]
                                                                                 (mut/mock-llm-response
                                                                                  ((nth responses (dec n)) n))))
-                                                      metabot-search/search (constantly [])]
+                                                      metabot-search/search-by-query (constantly [])]
                             (mt/with-log-level [metabase.metabot.agent.core :warn]
                               (->> (agent/run-agent-loop {:messages [{:role :user :content "Hi"}]
                                                           :profile-id :embedding_next})
@@ -593,18 +593,18 @@
                   {:type :text
                    :text "Here are the first 10 orders from the orders table."}
                   {:type :usage :usage {:promptTokens 300 :completionTokens 10} :model "test" :id "msg-3"}]]]
-            ;; Mock only openrouter/openrouter (LLM) and metabot-search/search (search backend)
+            ;; Mock only openrouter/openrouter (LLM) and metabot-search/search-by-query (search backend)
             ;; Everything else runs real code
             (mt/with-dynamic-fn-redefs [openrouter/openrouter           (fn [_opts]
                                                                           (let [n (swap! llm-call-count inc)]
                                                                             (mut/mock-llm-response (get llm-responses (dec n) []))))
-                                        metabot-search/search (fn [_args]
-                                                                [{:id           orders-table-id
-                                                                  :type         "table"
-                                                                  :name         "orders"
-                                                                  :display_name "Orders"
-                                                                  :description  "This is a confirmed order for a product from a user."
-                                                                  :database_id  (mt/id)}])]
+                                        metabot-search/search-by-query (fn [_args]
+                                                                         [{:id           orders-table-id
+                                                                           :type         "table"
+                                                                           :name         "orders"
+                                                                           :display_name "Orders"
+                                                                           :description  "This is a confirmed order for a product from a user."
+                                                                           :database_id  (mt/id)}])]
               (testing "Should successfully go through 3 iterations"
                 (is (=? [{:type :start}
                          {:type :tool-input :function "search"}
@@ -678,16 +678,16 @@
                                       http/request            (fn [req]
                                                                 (let [n (count (swap! requests conj req))]
                                                                   {:status 200 :body (get responses (dec n) [])}))
-                                      metabot-search/search   (fn [_args]
-                                                                [{:id               (mt/id :orders)
-                                                                  :type             "table"
-                                                                  :name             "ORDERS"
-                                                                  :display_name     "Orders"
-                                                                  :description      "Confirmed orders."
-                                                                  :database_id      (mt/id)
-                                                                  :database_schema  "PUBLIC"
-                                                                  :moderated_status nil
-                                                                  :collection       {:id nil :name nil}}])]
+                                      metabot-search/search-by-query   (fn [_args]
+                                                                         [{:id               (mt/id :orders)
+                                                                           :type             "table"
+                                                                           :name             "ORDERS"
+                                                                           :display_name     "Orders"
+                                                                           :description      "Confirmed orders."
+                                                                           :database_id      (mt/id)
+                                                                           :database_schema  "PUBLIC"
+                                                                           :moderated_status nil
+                                                                           :collection       {:id nil :name nil}}])]
             (let [result      (mt/with-log-level [metabase.metabot.agent.core :fatal]
                                 (into [] (agent/run-agent-loop
                                           {:messages   [{:role :user :content "Where are the orders?"}]
@@ -736,13 +736,13 @@
                                       openrouter/openrouter (fn [_opts]
                                                               (let [n (swap! llm-call-count inc)]
                                                                 (mut/mock-llm-response (get llm-responses (dec n) []))))
-                                      metabot-search/search (fn [_args]
-                                                              [{:id           (mt/id :orders)
-                                                                :type         "table"
-                                                                :name         "orders"
-                                                                :display_name "Orders"
-                                                                :description  "Confirmed orders."
-                                                                :database_id  (mt/id)}])]
+                                      metabot-search/search-by-query (fn [_args]
+                                                                       [{:id           (mt/id :orders)
+                                                                         :type         "table"
+                                                                         :name         "orders"
+                                                                         :display_name "Orders"
+                                                                         :description  "Confirmed orders."
+                                                                         :database_id  (mt/id)}])]
             (let [{:keys [trace result]} (mt/with-log-level [metabase.metabot.agent.core :warn]
                                            (ait/capture-reducible
                                             (agent/run-agent-loop
@@ -971,7 +971,7 @@
                                             {:type :text :text "Done"}
                                             {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                              :model "test-model" :id "msg-2"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id
@@ -1014,7 +1014,7 @@
                                             {:type :text :text "Done"}
                                             {:type :usage :usage {:promptTokens 150 :completionTokens 30}
                                              :model "test-model" :id "msg-2"}]))))
-                                    metabot-search/search
+                                    metabot-search/search-by-query
                                     (fn [_args] (throw (ex-info "should not be called" {})))]
           (mt/with-log-level [metabase.metabot.agent.core :warn]
             (mt/with-current-user rasta-id

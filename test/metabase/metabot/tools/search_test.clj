@@ -7,6 +7,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -309,7 +310,7 @@
                             (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                                              (reset! captured context)
                                                                              {:data []})]
-                              (search/search args))
+                              (search/search-by-query args))
                             (select-keys @captured [:context :weights])))]
         (is (= {:context :metabot :weights nil}
                (context-for {:query "x"})))
@@ -334,18 +335,18 @@
                                                          (is (true? (:search-native-query context)))
                                                          {:data []})]
           (search/search-by-query {:query "test"
-                          :entity-types ["card"]
-                          :search-native-query true})))
+                                   :entity-types ["card"]
+                                   :search-native-query true})))
       (testing ":search-native-query is not included in context when nil or false"
         (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                          (is (not (contains? context :search-native-query)))
                                                          {:data []})]
           (search/search-by-query {:query "test"
-                          :entity-types ["card"]
-                          :search-native-query false})
+                                   :entity-types ["card"]
+                                   :search-native-query false})
           (search/search-by-query {:query "test"
-                          :entity-types ["card"]
-                          :search-native-query nil}))))))
+                                   :entity-types ["card"]
+                                   :search-native-query nil}))))))
 
 (deftest tool-default-entity-types-test
   (testing "tool variants restrict default entity types to their allowed set"
@@ -428,8 +429,8 @@
                                         (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
                                                                                          (reset! captured context)
                                                                                          {:data []})]
-                                          (search/search (cond-> {:query "x" :metabot-id metabot-eid :profile-id "nlq"}
-                                                           caller-id (assoc :collection-id caller-id))))
+                                          (search/search-by-query (cond-> {:query "x" :metabot-id metabot-eid :profile-id "nlq"}
+                                                                    caller-id (assoc :collection-id caller-id))))
                                         (:collection @captured)))]
             (is (= {:none       scope-id
                     :configured scope-id
@@ -525,8 +526,8 @@
                          :model/Document  {doc-id :id}   {:name "Zx9Doc"  :collection_id off-id}]
             ;; keyed by [type id]: ids are only unique per table, so a collection and a card can
             ;; collide and silently overwrite each other here
-            (let [by-ref (->> (search/search {:query        "Zx9"
-                                              :entity-types ["collection" "question" "document"]})
+            (let [by-ref (->> (search/search-by-query {:query        "Zx9"
+                                                       :entity-types ["collection" "question" "document"]})
                               (map (juxt (juxt :type :id) identity))
                               (into {}))
                   by-id  (fn [t id] (by-ref [t id]))]
@@ -561,7 +562,7 @@
                            :model/Table {final-id :id}     {:name       "Zq7FinalTable"
                                                             :db_id      db-id
                                                             :data_layer :final}]
-              (let [by-id (->> (search/search {:query "Zq7" :entity-types ["table"]})
+              (let [by-id (->> (search/search-by-query {:query "Zq7" :entity-types ["table"]})
                                (map (juxt :id identity))
                                (into {}))]
                 (is (=? {:library_member  true
@@ -588,7 +589,7 @@
                          :model/Measure {m-id :id} {:name "Pb6Measure" :table_id tbl-id}]
             (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
             (mt/with-test-user :rasta
-              (let [by-ref (->> (search/search {:query "Pb6" :entity-types ["table" "measure"]})
+              (let [by-ref (->> (search/search-by-query {:query "Pb6" :entity-types ["table" "measure"]})
                                 (map (juxt (juxt :type :id) identity))
                                 (into {}))
                     tbl    (by-ref ["table" tbl-id])
@@ -618,8 +619,8 @@
                            :model/Measure {lib-measure :id} {:name "Pb5LibMeasure" :table_id lib-tbl}
                            :model/Segment {lib-segment :id} {:name "Pb5LibSegment" :table_id lib-tbl}
                            :model/Measure {plain-measure :id} {:name "Pb5PlainMeasure" :table_id plain-tbl}]
-              (let [by-ref (->> (search/search {:query        "Pb5"
-                                                :entity-types ["table" "measure" "segment"]})
+              (let [by-ref (->> (search/search-by-query {:query        "Pb5"
+                                                         :entity-types ["table" "measure" "segment"]})
                                 (map (juxt (juxt :type :id) identity))
                                 (into {}))]
                 (is (=? {:library_member true} (by-ref ["measure" lib-measure])))
@@ -649,7 +650,7 @@
               "this test is only meaningful against the in-place engine")
           (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
                          :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
-            (let [doc (->> (search/search {:query "Ip4" :entity-types ["document"]})
+            (let [doc (->> (search/search-by-query {:query "Ip4" :entity-types ["document"]})
                            (filter #(= doc-id (:id %)))
                            first)]
               (is (=? {:type "document" :official true} doc)))))))))
@@ -671,7 +672,7 @@
                            :model/Table {stale-id :id} {:name "Pb2StaleUnpublished" :db_id db-id
                                                         :is_published false :collection_id data-id
                                                         :data_layer :internal}]
-              (let [by-id (->> (search/search {:query "Pb2" :entity-types ["table"]})
+              (let [by-id (->> (search/search-by-query {:query "Pb2" :entity-types ["table"]})
                                (map (juxt :id identity))
                                (into {}))]
                 (testing "the search completes at all"
@@ -690,7 +691,7 @@
         (mt/with-temp [:model/Document {document-id :id}
                        {:name "Quarterly planning sh1b0le#doc"}]
           (let [result (->> (search/search-by-query {:query        "sh1b0le#doc"
-                                            :entity-types ["document"]})
+                                                     :entity-types ["document"]})
                             (filter #(= document-id (:id %)))
                             first)]
             (is (= "document" (:type result)))
@@ -844,9 +845,8 @@
                                         search.engine/default-engine (constantly default)
                                         mdb/db-type                  (constantly db-type)
                                         ;; No metabot-id and always-empty results, so the metabot
-                                        ;; row is irrelevant; stub the lookup (the `:model/Metabot`
-                                        ;; table isn't present in the OSS test DB).
-                                        t2/select-one                (constantly nil)]
+                                        ;; row is irrelevant; stub the lookup.
+                                        metabot.db/metabot-by-entity-id (constantly nil)]
                             (#'search/search-by-query {:query "hard bounce rate"}))
                           @calls)]
         (testing "Postgres appdb: empty primary triggers a second call with the OR-broadened string"
@@ -1226,7 +1226,6 @@
           ;; three distinct items survive fusion; total counts them once, not 2+2=4
           (is (= 3 (:total (meta results))))
           (is (= #{1 2 3} (set (map :id results)))))))))
-
 
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a

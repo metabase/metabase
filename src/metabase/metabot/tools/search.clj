@@ -23,8 +23,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -190,8 +189,7 @@
         ;; Bulk-fetch direct collections (with their effective location, which elides ancestors
         ;; the current user can't read) so we can chase ancestors permission-safely.
         direct-rows  (when (seq direct-ids)
-                       (t2/hydrate (t2/select [:model/Collection :id :name :location :type] :id [:in direct-ids])
-                                   :effective_location))
+                       (metabot.db/collection-path-rows-with-effective-location direct-ids))
         id->eff-loc  (u/index-by :id :effective_location direct-rows)
         ;; Chase ancestors from the *raw* location so library-member detection (which reads the
         ;; root's :type, not its name) still works even when the root isn't readable. Only the
@@ -201,8 +199,7 @@
                               (remove (set direct-ids))
                               distinct)
         ancestor-rows    (when (seq ancestor-delta)
-                           (t2/select [:model/Collection :id :name :location :type]
-                                      :id [:in ancestor-delta]))
+                           (metabot.db/collection-path-rows ancestor-delta))
         id->row      (u/index-by :id (concat direct-rows ancestor-rows))
         ;; A table (and so a measure/segment bound to it) is reachable through *data* permissions,
         ;; which say nothing about its collection. Everything name-shaped is gated on reading that
@@ -277,21 +274,21 @@
   them O(1) per search call regardless of how many of each appear in the result set."
   [results]
   (let [card-types  #{"question" "model" "metric"}
-        type->model {"measure" :model/Measure
-                     "segment" :model/Segment}
+        type->rows  {"measure" metabot.db/measures
+                     "segment" metabot.db/segments}
         card-ids    (->> results (filter #(card-types (:type %))) (keep :id) distinct)
         card-id->eid (when (seq card-ids)
-                       (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
+                       (metabot.db/card-entity-ids card-ids))
         other-eid-lookups (into {}
-                                (map (fn [[type model]]
+                                (map (fn [[type rows-fn]]
                                        (let [ids (->> results (filter #(= type (:type %))) (keep :id) distinct)]
                                          (when (seq ids)
-                                           [type (t2/select-pk->fn :entity_id model :id [:in ids])]))))
-                                type->model)]
+                                           [type (u/index-by :id :entity_id (rows-fn ids))]))))
+                                type->rows)]
     (mapv (fn [r]
             (let [eid (cond
                         (card-types (:type r)) (get card-id->eid (:id r))
-                        (contains? type->model (:type r))
+                        (contains? type->rows (:type r))
                         (get-in other-eid-lookups [(:type r) (:id r)]))]
               (cond-> r
                 eid (assoc :portable_entity_id eid))))
@@ -331,9 +328,7 @@
                        distinct)
         table-rows (when (seq table-ids)
                      (filter mi/can-read?
-                             (t2/select [:model/Table :id :schema :name :db_id
-                                         :collection_id :is_published]
-                                        :id [:in table-ids])))
+                             (metabot.db/table-publication-rows table-ids)))
         table-id->info (into {} (map (juxt :id (juxt :schema :name))) table-rows)
         ;; A measure or segment inherits its binding table's collection, so one published into the
         ;; Library carries `library_member` like the table does. Deliberately wider than
@@ -644,7 +639,7 @@
     (nil? caller-id)            configured-id
     (= caller-id configured-id) caller-id
 
-    (some-> (t2/select-one-fn :location :model/Collection :id caller-id)
+    (some-> (:location (metabot.db/collection caller-id))
             (str/includes? (str "/" configured-id "/")))
     caller-id
 
@@ -653,6 +648,10 @@
                    caller-id configured-id configured-id)
         configured-id)))
 
+;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
+;; semantic queries, fused by rank, paginated) behind MCP v2's `search` tool and `/v1/search`. [[search-by-query]] is
+;; the single-query search the Metabot tools use, with its own engine choice, zero-hit broadening, and richer result
+;; enrichment. We may want to consolidate them once it's clear which shape both callers should share.
 (defn search-by-query
   "Search for data sources (tables, models, cards, dashboards, metrics, measures,
    segments, transforms) in Metabase with a single query string. This is the Metabot tools' search.
@@ -753,9 +752,7 @@
   (when (seq ids)
     ;; only surface tables the current user can read — a curated entry may point at one they can't access
     (for [t (filter mi/can-read?
-                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description
-                                :collection_id :is_published]
-                               :id [:in ids]))]
+                    (metabot.db/table-summaries-with-publication ids))]
       (cond-> {:id              (:id t)
                :type            "table"
                :name            (:name t)
@@ -925,24 +922,24 @@
     {:output (str "Invalid entity_types for " label ": " (pr-str (vec invalid))
                   ". Allowed types: " (str/join ", " allowed-types) ".")}
     (let [results (search-by-query (merge {:query        query
-                                    :entity-types (or (seq entity_types) (vec allowed-types))
-                                    :metabot-id   shared/*metabot-id*
-                                    :limit        (min max-search-limit
-                                                       (or limit default-search-limit))}
-                                   search-opts
-                                   ;; Caller-supplied scope args from the LLM. `database_id`
-                                   ;; may also be set via `search-opts` (sql-search), in which
-                                   ;; case the explicit map entry from this caller wins.
-                                   (cond-> {}
-                                     database_id   (assoc :database-id database_id)
-                                     collection_id (assoc :collection-id collection_id))))]
-        {:output (format-search-output query results)
-         :structured-output {:result-type :search
-                             :data results
-                             :total_count (count results)}
-         :data-parts [(streaming/search-results-part
-                       {:total_count (count results)
-                        :results (mapv search-result->item results)})]})))
+                                           :entity-types (or (seq entity_types) (vec allowed-types))
+                                           :metabot-id   shared/*metabot-id*
+                                           :limit        (min max-search-limit
+                                                              (or limit default-search-limit))}
+                                          search-opts
+                                          ;; Caller-supplied scope args from the LLM. `database_id`
+                                          ;; may also be set via `search-opts` (sql-search), in which
+                                          ;; case the explicit map entry from this caller wins.
+                                          (cond-> {}
+                                            database_id   (assoc :database-id database_id)
+                                            collection_id (assoc :collection-id collection_id))))]
+      {:output (format-search-output query results)
+       :structured-output {:result-type :search
+                           :data results
+                           :total_count (count results)}
+       :data-parts [(streaming/search-results-part
+                     {:total_count (count results)
+                      :results (mapv search-result->item results)})]})))
 
 (def ^:private search-schema
   [:map {:closed true}
