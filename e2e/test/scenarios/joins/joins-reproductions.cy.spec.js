@@ -183,6 +183,9 @@ describe("issue 17710, 39448", () => {
       cy.findByText("Products").click();
     });
 
+    cy.log(
+      "should load joined table metadata for suggested join conditions (metabase#39448)",
+    );
     H.getNotebookStep("join").within(() => {
       cy.findByLabelText("Right table").should("have.text", "Products");
       cy.findByLabelText("Left column")
@@ -192,6 +195,7 @@ describe("issue 17710, 39448", () => {
       cy.findByLabelText("Change operator").should("have.text", "=");
     });
 
+    cy.log("should remove only invalid join clauses (metabase#17710)");
     H.getNotebookStep("join").icon("add").click();
 
     // Close the LHS column popover that opens automatically
