@@ -1256,47 +1256,47 @@
    {:stages [(assoc first-stage :source {:type :table :id (meta/id :orders)})
              second-stage]}))
 
-(deftest ^:parallel test-query-later-stage-prefers-result-column-over-implicitly-joinable-test
-  (testing "USER_ID in the result makes PEOPLE.CREATED_AT joinable next to the CREATED_AT result column"
-    (is (=? [[:> {} [:field {} "CREATED_AT"] "2024-01-01"]]
+(deftest ^:parallel test-query-later-stage-column-with-table-id-test
+  (testing "USER_ID in the result makes PEOPLE.CREATED_AT joinable next to the CREATED_AT result column; the table
+            tells them apart"
+    (is (=? [[:> {} [:field {:inherited-temporal-unit :month} "CREATED_AT"] "2024-01-01"]]
             (lib/filters
              (orders-then {:aggregations [{:type :operator :operator :count :args []}]
                            :breakouts    [(assoc (orders-column "CREATED_AT") :unit :month)
                                           (orders-column "USER_ID")]}
                           {:filters [{:type     :operator
                                       :operator :>
-                                      :args     [{:type :column :name "CREATED_AT"}
+                                      :args     [(orders-column "CREATED_AT")
                                                  {:type :literal :value "2024-01-01"}]}]})
              1)))))
 
-(deftest ^:parallel test-query-later-stage-resolves-repeated-aggregations-by-result-name-test
-  (let [sums (fn [order-by-name]
-               (lib/order-bys
-                (orders-then {:aggregations [{:type :operator :operator :sum :args [(orders-column "TOTAL")]}
-                                             {:type :operator :operator :sum :args [(orders-column "SUBTOTAL")]}]
-                              :breakouts    [(orders-column "PRODUCT_ID")]}
-                             {:order-bys [{:type :column :name order-by-name :direction :desc}]})
-                1))]
-    (testing "the first aggregation keeps its name"
-      (is (=? [[:desc {} [:field {} "sum"]]] (sums "sum"))))
-    (testing "the second is returned as sum_2"
-      (is (=? [[:desc {} [:field {} "sum_2"]]] (sums "sum_2"))))))
+(def ^:private named-sums
+  {:aggregations [{:type :operator :operator :sum :name "sum A" :args [(orders-column "TOTAL")]}
+                  {:type :operator :operator :sum :name "sum B" :args [(orders-column "SUBTOTAL")]}]
+   :breakouts    [(orders-column "PRODUCT_ID")]})
 
-(deftest ^:parallel test-query-later-stage-prefers-result-name-over-joinable-column-name-test
-  (testing "a result column wins even when a joinable column's plain name is the result name"
-    (let [mp (lib.tu/merged-mock-metadata-provider
-              meta/metadata-provider
-              {:fields [{:id (meta/id :products :title) :name "sum_2"}]})]
-      (is (=? [[:desc {} [:field {} "sum_2"]]]
-              (lib/order-bys
-               (lib.query.test-spec/test-query
-                mp
-                {:stages [{:source       {:type :table :id (meta/id :orders)}
-                           :aggregations [{:type :operator :operator :sum :args [(orders-column "TOTAL")]}
-                                          {:type :operator :operator :sum :args [(orders-column "SUBTOTAL")]}]
-                           :breakouts    [(orders-column "PRODUCT_ID")]}
-                          {:order-bys [{:type :column :name "sum_2" :direction :desc}]}]})
-               1))))))
+(deftest ^:parallel test-query-aggregation-result-name-test
+  (let [query (orders-then named-sums {:order-bys [{:type :column :name "sum B" :direction :desc}]})]
+    (testing "an aggregation's :name names its result column, and keeps the display name"
+      (is (=? [{:name "PRODUCT_ID"}
+               {:name "sum A" :display-name "Sum of Total"}
+               {:name "sum B" :display-name "Sum of Subtotal"}]
+              (lib/returned-columns query 0))))
+    (testing "a later stage refers to it by that name"
+      (is (=? [[:desc {} [:field {} "sum B"]]]
+              (lib/order-bys query 1))))))
+
+(deftest ^:parallel test-query-aggregation-result-name-through-card-test
+  (testing "a stage on a saved question refers to the question's named aggregation by that name"
+    (let [card-query (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [(assoc named-sums :source {:type :table :id (meta/id :orders)})]})
+          query      (lib.query.test-spec/test-query
+                      (lib.tu/metadata-provider-with-card-from-query 1 card-query)
+                      {:stages [{:source {:type :card :id 1}}
+                                {:order-bys [{:type :column :name "sum B" :direction :desc}]}]})]
+      (is (=? [[:desc {} [:field {} "sum B"]]]
+              (lib/order-bys query 1))))))
 
 (deftest ^:parallel test-query-later-stage-tells-joined-result-columns-apart-by-fk-test
   (testing "PRODUCTS.ID and PEOPLE.ID are both named ID; the FK they were reached through picks one"

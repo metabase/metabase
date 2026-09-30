@@ -254,64 +254,55 @@ describe("scenarios > embedding-sdk > query runtime clauses", () => {
   });
 
   describe("two aggregations of the same kind", () => {
+    // Unnamed, both return a column named `sum`, which a later stage cannot
+    // tell apart.
+    const totalSum = aggregations.sum(totalField, { name: "total" });
+    const subtotalSum = aggregations.sum(subtotalField, { name: "subtotal" });
     const staticQuery = defineQuery({
       source: tableSource,
-      aggregations: [
-        aggregations.sum(totalField),
-        aggregations.sum(subtotalField),
-      ],
+      aggregations: [totalSum, subtotalSum],
       breakouts: [breakout(productIdField)],
     });
     const cardQuery: StructuredQuery = {
       "source-table": ORDERS_ID,
       aggregation: [
-        ["sum", ["field", ORDERS.TOTAL, null]],
-        ["sum", ["field", ORDERS.SUBTOTAL, null]],
+        [
+          "aggregation-options",
+          ["sum", ["field", ORDERS.TOTAL, null]],
+          { name: "total", "display-name": "Sum of Total" },
+        ],
+        [
+          "aggregation-options",
+          ["sum", ["field", ORDERS.SUBTOTAL, null]],
+          { name: "subtotal", "display-name": "Sum of Subtotal" },
+        ],
       ],
       breakout: [["field", ORDERS.PRODUCT_ID, null]],
     };
 
-    it("orders by the first one", () => {
-      const dynamicQuery = {
-        orderBys: [orderBy({ type: "column", name: "sum" }, "desc")],
-      };
+    [
+      { aggregation: totalSum, name: "total", index: 1 },
+      { aggregation: subtotalSum, name: "subtotal", index: 2 },
+    ].forEach(({ aggregation, name, index }) => {
+      it(`orders by ${name}, by its name`, () => {
+        const dynamicQuery = { orderBys: [orderBy(aggregation, "desc")] };
 
-      expectRuntimeClauses({
-        cardQuery,
-        useQueryStates: (cardId) => ({
-          fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
-          fromCard: useMetabaseQuery(
-            asCardQuery<typeof staticQuery>(cardId),
-            dynamicQuery,
-          ),
-        }),
-        check: ({ rawRows }) =>
-          isSortedDescending(rawRows.map((row) => row[1]))
-            ? null
-            : "rows are not sorted by the first sum",
-      });
-    });
-
-    it("orders by the second one, by the name the result reports for it", () => {
-      const dynamicQuery = {
-        orderBys: [orderBy({ type: "column", name: "sum_2" }, "desc")],
-      };
-
-      expectRuntimeClauses({
-        cardQuery,
-        useQueryStates: (cardId) => ({
-          fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
-          fromCard: useMetabaseQuery(
-            asCardQuery<typeof staticQuery>(cardId),
-            dynamicQuery,
-          ),
-        }),
-        check: ({ columns, rawRows }) =>
-          columns[2]?.name !== "sum_2"
-            ? `second sum is reported as ${columns[2]?.name}`
-            : isSortedDescending(rawRows.map((row) => row[2]))
-              ? null
-              : "rows are not sorted by the second sum",
+        expectRuntimeClauses({
+          cardQuery,
+          useQueryStates: (cardId) => ({
+            fromTable: useMetabaseQuery(staticQuery, dynamicQuery),
+            fromCard: useMetabaseQuery(
+              asCardQuery<typeof staticQuery>(cardId),
+              dynamicQuery,
+            ),
+          }),
+          check: ({ columns, rawRows }) =>
+            columns[index]?.name !== name
+              ? `column ${index} is reported as ${columns[index]?.name}`
+              : isSortedDescending(rawRows.map((row) => row[index]))
+                ? null
+                : `rows are not sorted by ${name}`,
+        });
       });
     });
   });
