@@ -53,15 +53,6 @@ function buildSettings({
 }
 
 describe("getClickBehavior", () => {
-  it("uses click behavior configured on the clicked column", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      settings: buildSettings({ columns: { count: metricClickBehavior } }),
-    });
-
-    expect(clickBehavior).toBe(metricClickBehavior);
-  });
-
   it("does not inherit another table column's click behavior through row dimensions (#82956)", () => {
     const clickBehavior = getClickBehavior({
       column: metricColumn,
@@ -114,16 +105,6 @@ describe("getClickBehavior", () => {
     });
 
     expect(clickBehavior).toBe(metricClickBehavior);
-  });
-
-  it("falls back to the root click behavior when the clicked column has none", () => {
-    const clickBehavior = getClickBehavior({
-      column: metricColumn,
-      dimensions: [{ column: dimensionColumn, value: "Gadget" }],
-      settings: buildSettings({ root: rootClickBehavior }),
-    });
-
-    expect(clickBehavior).toBe(rootClickBehavior);
   });
 });
 

@@ -316,7 +316,7 @@ describe("table and chart click behavior", () => {
     H.saveDashboard();
   });
 
-  it("keeps a table column's filter action separate from metric drill-through (#82956)", () => {
+  it("preserves click behavior when visualizing a dashboard table as a bar (#82956, #73448)", () => {
     for (const value of ["3,976", "297,270.99"]) {
       H.getDashboardCard().findByText(value).click();
       H.popover()
@@ -334,9 +334,7 @@ describe("table and chart click behavior", () => {
     H.getDashboardCard().findByText("Doohickey").click();
     H.filterWidget().should("not.contain", "Doohickey");
     H.assertTableRowsCount(4);
-  });
 
-  it("configures chart click behavior after visualizing a table as a bar on a dashboard (#73448)", () => {
     cy.log(
       "Convert the dashboard visualization, keeping the saved question a table",
     );
