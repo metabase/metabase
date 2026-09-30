@@ -667,11 +667,13 @@ export const getCartesianChartPadding = (
 
   // 1. Top Padding
 
+  const hasGoalLabel =
+    renderingContext.isStatic &&
+    settings["graph.show_goal"] &&
+    !!settings["graph.goal_label"];
+
   // Prevent data labels from being rendered outside the chart
-  if (
-    settings["graph.show_values"] ||
-    (settings["graph.show_goal"] && settings["graph.goal_label"])
-  ) {
+  if (settings["graph.show_values"] || hasGoalLabel) {
     padding.top += seriesLabelFontSize + CHART_STYLE.seriesLabels.offset;
   }
 

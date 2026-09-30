@@ -454,6 +454,33 @@ describe("scenarios > visualizations > waterfall", () => {
     H.goalLineMarker().should("be.visible");
   });
 
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      display: "waterfall",
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field-id", ORDERS.TOTAL]]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        },
+      },
+      visualization_settings: {
+        "graph.show_goal": true,
+        "graph.goal_value": 11000,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("11,000").should("be.visible");
+    });
+  });
+
   describe("scenarios > visualizations > waterfall settings", () => {
     beforeEach(() => {
       H.restore();

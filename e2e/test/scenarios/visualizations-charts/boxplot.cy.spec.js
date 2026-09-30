@@ -180,6 +180,25 @@ describe("scenarios > visualizations > boxplot", () => {
     H.goalLineMarker().should("be.visible");
   });
 
+  it("should show the goal in a tooltip when hovering the goal marker", () => {
+    H.visitQuestionAdhoc({
+      ...singleSeriesQuestion,
+      visualization_settings: {
+        ...singleSeriesQuestion.visualization_settings,
+        "graph.show_goal": true,
+        "graph.goal_value": 100,
+        "graph.goal_label": "Target",
+      },
+    });
+
+    H.goalLineMarker().trigger("mousemove");
+
+    H.tooltip().within(() => {
+      cy.findByText("Target:").should("be.visible");
+      cy.findByText("100").should("be.visible");
+    });
+  });
+
   it("should render in dashboard and support drill-through on boxes and outliers", () => {
     H.createQuestionAndDashboard({
       questionDetails: {

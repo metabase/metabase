@@ -213,7 +213,10 @@ export type MetabaseComponentTheme = {
 
     goalLine: {
       label: {
-        /** Font size of goal line labels */
+        /**
+         * Font size of goal line labels
+         * @deprecated Has no effect, goal line labels are not shown on interactive charts.
+         */
         fontSize: string;
       };
     };

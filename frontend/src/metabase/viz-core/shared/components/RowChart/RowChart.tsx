@@ -252,8 +252,15 @@ export const RowChart = <TDatum,>({
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
-    [goal, measureTextWidth, theme.goal, paddedXScale],
+    () =>
+      getRowChartGoal(
+        goal,
+        theme.goal,
+        measureTextWidth,
+        paddedXScale,
+        isStatic,
+      ),
+    [goal, measureTextWidth, theme.goal, paddedXScale, isStatic],
   );
 
   return (
