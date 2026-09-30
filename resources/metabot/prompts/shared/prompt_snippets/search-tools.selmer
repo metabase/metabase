@@ -6,7 +6,7 @@
   - `{"op": "and", "args": [...]}`: every arg must match. `{"op": "or", "args": [...]}`: any one may match.
   - `{"op": "not", "args": [...]}`: excludes a match. Put it inside an `and`, beside a term that must match.
   - `{"op": "phrase", "text": "gross margin"}`: words together, in order. `{"op": "prefix", "text": "rev"}`: the start of a word.
-  - A term is one word with no spaces. To find data, give its distinctive words as an `or`. An `and` needs every word in the same name or description, so use it to narrow a long list.
+  - A term is one word with no spaces. To find data, give its distinctive words as an `or`. An `and` needs every word in the same name or description, so use it to narrow a long list. Terms match whole words only, so a short word that may start a longer name (`shop` for `shopify`) goes in as a `prefix`.
 {% endif %}{% if has_substring_or_search %}- **`substring_search`** finds text anywhere inside names and descriptions, so `cust` finds `customers`. Its `query` is one term, or `{"op": "or", "args": [...]}` of terms where any may match. A term is one word with no spaces. There is no stemming and no way to require several words together, so search for the most distinctive word, and give alternative spellings and synonyms as `or` terms.
 {% endif %}{% if has_substring_and_search %}- **`substring_search`** finds text anywhere inside names and descriptions, so `cust` finds `customers`. Its `query` is one term, or `{"op": "and", "args": [...]}` of terms that must all appear. A term is one word with no spaces. Every extra term narrows the results and there is no stemming, so start from one distinctive word or stem, and search a synonym as its own call.
 {% endif %}
