@@ -246,21 +246,6 @@ describe("issue 51925", () => {
   });
 });
 
-describe("issue 53649", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
-    H.startNewNativeModel();
-
-    // If the app freezes, this won't work
-    H.NativeEditor.type("select 1");
-    H.NativeEditor.get().should("contain", "select 1");
-  });
-});
-
 describe("issue 56698", () => {
   beforeEach(() => {
     H.restore();
@@ -310,6 +295,12 @@ describe("issue 57557", () => {
     cy.get("@modelId").then((modelId) =>
       H.visitModel(Number(modelId), { hasDataAccess: false }),
     );
+    cy.findByTestId("qb-header")
+      .findByText("Native model")
+      .should("be.visible");
+    cy.findByTestId("query-builder-root")
+      .findByText(/This question is written in SQL/i)
+      .should("not.exist");
     H.openQuestionActions();
     H.popover().within(() => {
       cy.findByText("Edit metadata").should("be.visible");

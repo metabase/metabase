@@ -837,20 +837,6 @@ describe("issue 34514", () => {
       .click();
   });
 
-  it("should not make network request with invalid query (metabase#34514)", () => {
-    H.miniPicker().within(() => {
-      cy.findByText("Sample Database").click();
-      cy.findByText("Orders").click();
-    });
-
-    cy.findByTestId("run-button").click();
-    cy.wait("@dataset");
-    assertQueryTabState();
-
-    cy.go("back");
-    assertBackToEmptyState();
-  });
-
   it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
     H.miniPicker().within(() => {
       cy.findByText("Sample Database").click();

@@ -585,22 +585,6 @@ describe("scenarios > models", () => {
     });
   });
 
-  it("should correctly show native models for no-data users", () => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createNativeQuestion({
-      name: "TEST MODEL",
-      type: "model",
-      native: {
-        query: "select * from orders",
-      },
-    }).then(({ body: { id: modelId } }) => {
-      cy.signIn("nodata");
-      cy.visit(`/model/${modelId}`);
-      cy.wait("@cardQuery");
-      cy.findByText(/This question is written in SQL/i).should("not.exist");
-    });
-  });
-
   describe("listing", () => {
     const modelDetails = {
       name: "Orders Model 2",

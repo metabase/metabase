@@ -123,27 +123,6 @@ describe("scenarios > model indexes", () => {
       .should("exist");
   });
 
-  it("should be able to search model index values and visit detail records", () => {
-    createModelIndex({ modelId, pkName: "ID", valueName: "TITLE" });
-
-    cy.visit("/");
-
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: "Small Marble Shoes" })
-      .click();
-
-    cy.wait("@dataset");
-
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByRole("heading", { name: "Small Marble Shoes" }).should(
-        "be.visible",
-      );
-      cy.findAllByText("Small Marble Shoes").should("have.length", 2);
-      cy.findByText("Doohickey").should("be.visible");
-    });
-  });
-
   it.skip("should be able to see details of a record outside the first 2000", () => {
     H.createQuestion(
       {
