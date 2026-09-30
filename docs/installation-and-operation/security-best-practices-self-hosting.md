@@ -1,9 +1,9 @@
 ---
-title: Security best practices for self-hosted Metabase
+title: Security best practices for a self-hosted Metabase
 summary: Harden a self-hosted Metabase by keeping it patched, protecting secrets, encrypting traffic, and limiting access to your data.
 ---
 
-# Security best practices for self-hosted Metabase
+# Security best practices for a self-hosted Metabase
 
 This guide covers the Metabase-specific controls for hardening a self-hosted Metabase.
 
