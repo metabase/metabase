@@ -97,8 +97,9 @@
   from the trash by a user, say) is skipped."
   [{:keys [permission_group_id resource_collection_id]}]
   (when (and resource_collection_id (data-apps.db/resource-collection resource_collection_id))
-    (collection/delete-collection! (proof/provisioning {:model     :model/Collection
-                                                        :operation :delete
-                                                        :subject   resource_collection_id})))
+    (collection/delete-collection!
+     ;; The app's own collection, deleted with it; sync pruning runs with no user to check.
+     #_{:clj-kondo/ignore [:metabase/dangerously-issue-system-proof]}
+     (proof/provisioning {:model :model/Collection, :operation :delete, :subject resource_collection_id})))
   (when permission_group_id
     (data-apps.db/delete-permission-group! permission_group_id)))

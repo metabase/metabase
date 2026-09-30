@@ -4,10 +4,11 @@
   - `:metabase/proof-constructor`: the proof constructor (`->Proof`, an `:analyze-call` hook here) and the class
     import (checked from the `ns` hook) are allowed only inside the proof namespace, so a proof can only come from an
     issuing check.
-  - `:metabase/proof-system-issuer`: each system issuer may be called only from the namespaces enumerated for it under
-    `[:linters :metabase/proof-system-issuer :allowed-callers]` in `config.edn`, keyed by the issuer's simple name;
-    an entry is a namespace symbol (exact) or a string (a regex on the namespace name). That list is the residual
-    ambient authority.
+  - `:metabase/dangerously-issue-system-proof`: every call of a system issuer outside the proof namespace is flagged,
+    except a `test-only` call from a namespace matching `[:linters :metabase/dangerously-issue-system-proof
+    :test-only-callers]` in `config.edn` (a namespace symbol, or a string regex on the namespace name). A call that
+    acts on nobody's behalf is waved through at the site with an inline ignore and a justifying comment; the ratchet
+    in `ratchets.edn` budgets those ignores, which are the residual ambient authority.
   - `:metabase/proof-gated-mutator`: in the `.db` namespace of a module marked `:proof-gated` in the modules config,
     every function whose name ends in `!` takes `proof` as its first parameter in every arity (called from the `defn`
     hook).
@@ -78,22 +79,26 @@
                      :else           false))
                  allowed)))
 
+(def ^:private system-issuer-linter :metabase/dangerously-issue-system-proof)
+
 (defn lint-system-issuer-call
-  "Register a `:metabase/proof-system-issuer` finding when a system issuer is called from a namespace not enumerated
-  for it in the config."
+  "Register a `:metabase/dangerously-issue-system-proof` finding on a system issuer call outside the proof namespace,
+  unless it is a `test-only` call from a namespace matching the linter's `:test-only-callers`."
   [{:keys [node ns config], :as input}]
-  (let [fn-node (first (:children node))
-        issuer  (when (hooks/token-node? fn-node)
-                  (symbol (name (hooks/sexpr fn-node))))
-        allowed (get-in config [:linters :metabase/proof-system-issuer :allowed-callers issuer])]
-    (when (and ns issuer (not (allowed-caller? allowed ns)))
+  (let [fn-node      (first (:children node))
+        issuer       (when (hooks/token-node? fn-node)
+                       (symbol (name (hooks/sexpr fn-node))))
+        test-callers (get-in config [:linters system-issuer-linter :test-only-callers])]
+    (when (and ns issuer
+               (not= ns proof-namespace)
+               (not (and (= issuer 'test-only) (allowed-caller? test-callers ns))))
       (hooks/reg-finding!
        (assoc (meta fn-node)
-              :message (format (str "The system issuer %s may not be called from %s; add the namespace to "
-                                    ":allowed-callers in .clj-kondo/config.edn if it acts on nobody's behalf "
-                                    "[:metabase/proof-system-issuer]")
-                               issuer ns)
-              :type    :metabase/proof-system-issuer))))
+              :message (format (str "%s issues a proof with no user check. If this call acts on nobody's behalf, "
+                                    "suppress it with #_{:clj-kondo/ignore [%s]} and a comment saying why; "
+                                    ".clj-kondo/ratchets.edn budgets those ignores")
+                               issuer system-issuer-linter)
+              :type    system-issuer-linter))))
   input)
 
 ;;; ---------------------------------------------- proof-gated modules -----------------------------------------------

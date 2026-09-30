@@ -255,7 +255,10 @@
 (defn- provision-collection!
   "Insert a Collection the application provisions for itself or for a User (see [[proof/provisioning]])."
   [row]
-  (collections.db/insert-collection! (proof/provisioning {:model :model/Collection, :operation :create, :changes row})))
+  (collections.db/insert-collection!
+   ;; Personal and Library collections are the application's own: no user has editorial right over them.
+   #_{:clj-kondo/ignore [:metabase/dangerously-issue-system-proof]}
+   (proof/provisioning {:model :model/Collection, :operation :create, :changes row})))
 
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."

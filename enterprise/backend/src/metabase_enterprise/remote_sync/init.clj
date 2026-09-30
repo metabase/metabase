@@ -75,6 +75,8 @@
     (when (collection/has-remote-synced-collection?)
       (log/info "Remote sync is disabled but a remote-synced collection exists. Marking collections as not remote-sync.")
       (collection/clear-remote-synced-collection!
+       ;; Boot-time serdes housekeeping with no user acting: the flags come off whatever the collections' owners.
+       #_{:clj-kondo/ignore [:metabase/dangerously-issue-system-proof]}
        (proof/serdes-load collection/clear-remote-synced-write)))))
 
 (SystemReader/setInstance (create-isolated-system-reader))

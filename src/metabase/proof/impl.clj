@@ -10,9 +10,10 @@
 
   - the per-user checks [[authorize-create]], [[authorize-update]] and [[authorize-delete]];
   - [[cascade]], for a parent's children;
-  - the system issuers [[serdes-load]], [[provisioning]] and [[test-only]], for contexts in which no user is acting;
-    their callers are enumerated under `:metabase/proof-system-issuer` in `.clj-kondo/config.edn`, and that list is
-    the residual ambient authority.
+  - the system issuers [[serdes-load]], [[provisioning]] and [[test-only]], for contexts in which no user is acting.
+    Every call of one outside this namespace is flagged by the `:metabase/dangerously-issue-system-proof` lint; a call
+    that acts on nobody's behalf is waved through at the site with an inline ignore and a comment saying why, and
+    `.clj-kondo/ratchets.edn` budgets those ignores. They are the residual ambient authority.
 
   Everything here is exported through `metabase.proof.core`, the `proof` module's API namespace. This namespace
   requires only `metabase.api.common` and utilities, so any module that writes rows can use it without a load-order
@@ -328,8 +329,9 @@
 ;;; ------------------------------------------------- System issuers -------------------------------------------------
 
 ;;; Each system issuer serves one context in which no user is acting or no user has editorial right to the row. It
-;;; cannot verify its context at runtime, so its policy is the list of namespaces allowed to call it, enforced by
-;;; the `:metabase/proof-system-issuer` lint. The proof records which issuer made it.
+;;; cannot verify its context at runtime, so its policy is the `:metabase/dangerously-issue-system-proof` lint: every
+;;; call outside this namespace is flagged, each waved through at its site with an inline ignore and a justifying
+;;; comment, under a ratchet budget. The proof records which issuer made it.
 
 (mu/defn serdes-load
   "System issuer for serialization load: the import endpoint, the `import` command, boot-time loading of audit

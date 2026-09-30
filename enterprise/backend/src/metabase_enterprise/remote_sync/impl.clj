@@ -1726,5 +1726,7 @@
         (:id (async-import! (settings/remote-sync-branch) true {} :force-deletion? false))))
     (do
       (collection/clear-remote-synced-collection!
+       ;; Serdes housekeeping for an admin turning remote sync off: the flags come off whatever the collections' owners.
+       #_{:clj-kondo/ignore [:metabase/dangerously-issue-system-proof]}
        (proof/serdes-load collection/clear-remote-synced-write))
       nil)))

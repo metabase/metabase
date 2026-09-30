@@ -90,16 +90,14 @@
   :metabase/validate-mb-driver-tests                         {:level :warning}
   :metabase/validate-mb-once                                 {:level :warning}
 
-  ;; Each system issuer in [[metabase.proof.impl]] hands out proofs with no user check, so the namespaces
-  ;; allowed to call it are enumerated here: this list is the residual ambient authority and should only shrink. An
-  ;; entry is a namespace symbol (exact) or a string (a regex on the namespace name).
-  :metabase/proof-system-issuer
-  {:level :warning
-   :allowed-callers {provisioning #{metabase.collections.models.collection
-                                    metabase-enterprise.data-apps.resources}
-                     serdes-load  #{metabase-enterprise.remote-sync.impl
-                                    metabase-enterprise.remote-sync.init}
-                     test-only    #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}}
+  ;; Each system issuer in [[metabase.proof.impl]] hands out proofs with no user check, so every call outside the
+  ;; proof namespace is flagged. A call that really acts on nobody's behalf is waved through at the site with an
+  ;; inline ignore and a comment saying why; ratchets.edn budgets the count of those ignores, so the residual ambient
+  ;; authority cannot grow without an explained bump. `test-only` is exempt from namespaces matching
+  ;; :test-only-callers (a namespace symbol, or a string regex on the namespace name): a test is its own reason.
+  :metabase/dangerously-issue-system-proof
+  {:level             :warning
+   :test-only-callers #{"(?:-test(?:\\..*)?$)|(?:^metabase\\.test(?:\\.|$))"}}
 
   :metabase/validate-deftest
   {:level :warning

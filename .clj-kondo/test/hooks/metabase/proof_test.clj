@@ -60,35 +60,37 @@
                              metabase.util.secret.Secret)))))))
 
 (deftest ^:parallel system-issuer-callers-test
-  (let [config '{:linters {:metabase/proof-system-issuer
-                           {:level           :warning
-                            :allowed-callers {serdes-load #{metabase.models.serialization}
-                                              test-only   #{"-test$"}}}}}]
-    (testing "an enumerated caller may call its issuer"
-      (is (empty? (findings-of proof/lint-system-issuer-call
-                               '(metabase.proof.impl/serdes-load {:model :model/Card, :operation :delete})
-                               'metabase.models.serialization
-                               config)))
-      (is (empty? (findings-of proof/lint-system-issuer-call
-                               '(proof/serdes-load write)
-                               'metabase.models.serialization
-                               config))))
-    (testing "any other namespace is flagged"
-      (is (=? [{:type    :metabase/proof-system-issuer
-                :message #".*serdes-load may not be called from metabase.queries.api.*"}]
+  (let [config '{:linters {:metabase/dangerously-issue-system-proof
+                           {:level             :warning
+                            :test-only-callers #{"-test$" metabase.test.util}}}}]
+    (testing "every system issuer call outside the proof namespace is flagged, whoever the caller is"
+      (is (=? [{:type    :metabase/dangerously-issue-system-proof
+                :message #"serdes-load issues a proof with no user check.*:metabase/dangerously-issue-system-proof.*"}]
               (findings-of proof/lint-system-issuer-call
                            '(proof/serdes-load write)
-                           'metabase.queries.api
-                           config))))
-    (testing "a string entry is a regex on the namespace name"
+                           'metabase.models.serialization
+                           config)))
+      (is (=? [{:type :metabase/dangerously-issue-system-proof}]
+              (findings-of proof/lint-system-issuer-call
+                           '(metabase.proof.impl/provisioning {:model :model/Collection, :operation :create})
+                           'metabase.collections.models.collection
+                           config)))
+      (is (=? [{:type :metabase/dangerously-issue-system-proof}]
+              (findings-of proof/lint-system-issuer-call '(proof/spec-update write)
+                           'metabase.models.util.spec-update config))))
+    (testing "the proof namespace itself is not flagged"
+      (is (empty? (findings-of proof/lint-system-issuer-call '(provisioning write) 'metabase.proof.impl config))))
+    (testing "test-only is exempt from the configured test callers: a regex string or an exact namespace symbol"
       (is (empty? (findings-of proof/lint-system-issuer-call '(proof/test-only write)
                                'metabase.queries.api-test config)))
-      (is (=? [{:type :metabase/proof-system-issuer}]
+      (is (empty? (findings-of proof/lint-system-issuer-call '(proof/test-only write)
+                               'metabase.test.util config)))
+      (is (=? [{:type :metabase/dangerously-issue-system-proof}]
               (findings-of proof/lint-system-issuer-call '(proof/test-only write) 'metabase.queries.api config))))
-    (testing "an issuer with no entry has no allowed callers"
-      (is (=? [{:type :metabase/proof-system-issuer}]
-              (findings-of proof/lint-system-issuer-call '(proof/spec-update write)
-                           'metabase.models.util.spec-update config))))))
+    (testing "the exemption is for test-only alone"
+      (is (=? [{:type :metabase/dangerously-issue-system-proof}]
+              (findings-of proof/lint-system-issuer-call '(proof/serdes-load write)
+                           'metabase.queries.api-test config))))))
 
 (deftest ^:parallel proof-gated-mutator-test
   (let [config '{:linters          {:metabase/proof-gated-mutator {:level :warning}}
