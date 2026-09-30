@@ -417,7 +417,7 @@
 
   `time-config` controls the beginning of week-based ranges."
   ([time-config     :- TimeConfig
-    t             :- TemporalInstance
+    t               :- TemporalInstance
     unit            :- (into [:enum] truncate-units)
     comparison-type :- ComparisonType]
    (comparison-range time-config t unit comparison-type nil))
