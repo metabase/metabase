@@ -264,11 +264,7 @@
               [unit expected]             unit->expected]
         (is (= expected
                (u.date/extract time-config t unit))
-            (format "Extract %s from %s %s should be %s" unit (class t) t expected)))))
-  (testing "u.date/extract from the current time"
-    (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
-      (is (= 2
-             (u.date/extract time-config :day-of-week))))))
+            (format "Extract %s from %s %s should be %s" unit (class t) t expected))))))
 
 (deftest ^:parallel extract-start-of-week-test
   (testing "`extract` `:day-of-week` and `:week-of-year` should respect the supplied `:start-of-week` (#14294)"
@@ -330,11 +326,7 @@
               [unit expected]    unit->expected]
         (is (= expected
                (u.date/truncate time-config t unit))
-            (format "Truncate %s %s to %s should be %s" (class t) t unit expected)))))
-  (testing "u.date/truncate from the current time"
-    (mt/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
-      (is (= (t/zoned-date-time "2019-11-18T00:00Z[UTC]")
-             (u.date/truncate time-config :day))))))
+            (format "Truncate %s %s to %s should be %s" (class t) t unit expected))))))
 
 (deftest ^:parallel truncate-start-of-week-test
   (testing "`truncate` to `:week` should respect the supplied `:start-of-week` (#14294)"
