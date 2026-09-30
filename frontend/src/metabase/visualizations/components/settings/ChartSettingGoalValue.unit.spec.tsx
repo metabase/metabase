@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { GoalValue } from "metabase-types/api";
 import {
   createMockColumn,
@@ -18,12 +18,11 @@ const DATA = createMockDatasetData({
 const DYNAMIC_TRIGGER = { name: "Pick a dynamic value" };
 
 type SetupOpts = {
-  isDynamic?: boolean;
   showSelfColumns?: boolean;
   value?: GoalValue | null;
 };
 
-function setup({ isDynamic, showSelfColumns, value = 5 }: SetupOpts) {
+function setup({ showSelfColumns, value = 5 }: SetupOpts = {}) {
   const onChange = jest.fn();
 
   renderWithProviders(
@@ -31,7 +30,6 @@ function setup({ isDynamic, showSelfColumns, value = 5 }: SetupOpts) {
       data={DATA}
       datasetQuery={createMockStructuredDatasetQuery()}
       id="goal"
-      isDynamic={isDynamic}
       showSelfColumns={showSelfColumns}
       value={value}
       onChange={onChange}
@@ -42,99 +40,38 @@ function setup({ isDynamic, showSelfColumns, value = 5 }: SetupOpts) {
 }
 
 describe("ChartSettingGoalValue", () => {
-  describe("without dynamic goals", () => {
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
+  it("unsets the goal when the input is cleared", () => {
+    const { input, onChange } = setup();
 
-    afterEach(() => {
-      jest.useRealTimers();
-    });
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
 
-    it("behaves like the numeric input, without a dynamic value trigger", async () => {
-      const { input, onChange } = setup({ isDynamic: false });
-      const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
-      });
-
-      expect(input).toHaveDisplayValue("5");
-      expect(
-        screen.queryByRole("button", DYNAMIC_TRIGGER),
-      ).not.toBeInTheDocument();
-
-      await user.clear(input);
-      await user.type(input, "12.5");
-      act(() => jest.runAllTimers());
-      expect(onChange).toHaveBeenLastCalledWith(12.5);
-
-      await user.clear(input);
-      act(() => jest.runAllTimers());
-      expect(onChange).toHaveBeenLastCalledWith(undefined);
-    });
-
-    it("shows a reference as an empty input and keeps it when the input is left untouched", () => {
-      const { input, onChange } = setup({
-        isDynamic: false,
-        value: { type: "card", id: 1, column: "sum" },
-      });
-
-      expect(input).toHaveDisplayValue("");
-
-      fireEvent.focus(input);
-      fireEvent.blur(input);
-      expect(onChange).not.toHaveBeenCalled();
-    });
-
-    it("replaces a reference when a number is typed over it", async () => {
-      const { input, onChange } = setup({
-        isDynamic: false,
-        value: { type: "card", id: 1, column: "sum" },
-      });
-      const user = userEvent.setup({
-        advanceTimers: jest.advanceTimersByTime,
-      });
-
-      await user.type(input, "3");
-      act(() => jest.runAllTimers());
-
-      expect(onChange).toHaveBeenLastCalledWith(3);
-    });
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
   });
 
-  describe("with dynamic goals", () => {
-    it("unsets the goal when the input is cleared", () => {
-      const { input, onChange } = setup({ isDynamic: true });
+  it("offers dynamic values", async () => {
+    setup();
 
-      fireEvent.change(input, { target: { value: "" } });
-      fireEvent.blur(input);
+    await userEvent.click(screen.getByRole("button", DYNAMIC_TRIGGER));
 
-      expect(onChange).toHaveBeenLastCalledWith(undefined);
-    });
+    expect(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
+    ).toBeInTheDocument();
+  });
 
-    it("offers dynamic values", async () => {
-      setup({ isDynamic: true });
+  it("can hide values from this question", async () => {
+    setup({ showSelfColumns: false });
 
-      await userEvent.click(screen.getByRole("button", DYNAMIC_TRIGGER));
+    await userEvent.click(screen.getByRole("button", DYNAMIC_TRIGGER));
 
-      expect(
-        screen.getByRole("menuitem", { name: /Value from this question/ }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", { name: /Value from another question/ }),
-      ).toBeInTheDocument();
-    });
-
-    it("can hide values from this question", async () => {
-      setup({ isDynamic: true, showSelfColumns: false });
-
-      await userEvent.click(screen.getByRole("button", DYNAMIC_TRIGGER));
-
-      expect(
-        screen.queryByRole("menuitem", { name: /Value from this question/ }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByRole("menuitem", { name: /Value from another question/ }),
-      ).toBeInTheDocument();
-    });
+    expect(
+      screen.queryByRole("menuitem", { name: /Value from this question/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /Value from another question/ }),
+    ).toBeInTheDocument();
   });
 });

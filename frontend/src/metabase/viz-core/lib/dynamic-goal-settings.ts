@@ -16,7 +16,6 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
   "scalar.segments": "segments",
 };
 
-// Kept in a separate module so `__support__/dynamic-goals` can spy on `getDynamicGoalSettingKeys` .
 const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {

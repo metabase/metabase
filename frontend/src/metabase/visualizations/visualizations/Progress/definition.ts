@@ -95,7 +95,6 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
         data,
         datasetQuery: card.dataset_query,
         excludedSelfColumn: settings["progress.value"],
-        isDynamic: true,
         placeholder: t`Enter goal value`,
       }),
       readDependencies: ["progress.value"],
