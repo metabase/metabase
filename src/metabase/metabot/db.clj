@@ -692,9 +692,9 @@
   (t2/select-one :model/Card :id card-id :type type))
 
 (mu/defn card-type-row
-  "The ID, type, and schema of the Card with `card-id`, or nil."
+  "The ID and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :type :card_schema] :id card-id))
+  (t2/select-one [:model/Card :id :type] :id card-id))
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
@@ -783,26 +783,26 @@
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema :type] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :id [:in card-ids]
              :archived false))
 
 (mu/defn cards-in-collection
   "The presentable columns of the unarchived Cards in the Collection with `collection-id`, ordered by name."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn cards-for-table
   "The presentable columns of the unarchived Cards on the Table with `table-id`, ordered by name."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :table_id table-id
              :archived false
              {:order-by [[:%lower.name :asc]]}))
@@ -810,7 +810,7 @@
 (mu/defn models-for-database
   "The presentable columns of the unarchived model Cards on the Database with `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Card :id :name :type :description :card_schema :collection_id :database_id :table_id]
+  (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :type :model
              :database_id database-id
              :archived false

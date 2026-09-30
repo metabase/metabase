@@ -171,7 +171,7 @@
   Emits the same internal chunk types as claude.clj and openai.clj:
     :start, :text-start, :text-delta, :text-end,
     :tool-input-start, :tool-input-delta, :tool-input-available,
-    :usage
+    :usage, :error
 
   Chat Completions has no explicit start/stop events per content block like
   Claude or OpenAI Responses do — we infer transitions from the delta shape.
@@ -183,7 +183,8 @@
   would lose their arguments, since neither the start branch (needs `:name`) nor
   the argument-delta branch (needs no `:id`) would fire.
 
-  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]].
+  Takes the dialect's `finish_reason` table, defaulting to OpenAI's [[stop-reasons]]. A reason the table maps to
+  \"error\" (Mistral's `error`, Z.AI's `network_error`) fails the response the same way an error object does.
 
   `opts` may carry `:forward-reasoning?`, which additionally translates reasoning
   deltas (see [[delta-reasoning]]) into :reasoning-start / :reasoning-delta /
@@ -202,25 +203,32 @@
            model-name   (volatile! nil)
            payload      (volatile! {})  ;; carried across start/delta/end, same as openai.clj
            stop-reason  (volatile! nil)
+           clear!       (fn []
+                          (vreset! current-type nil)
+                          (vreset! current-id nil)
+                          (vreset! payload {}))
            close!       (fn [result]
                           (u/prog1 (rf result (merge {:type (case @current-type
                                                               :text          :text-end
                                                               :reasoning     :reasoning-end
                                                               :function_call :tool-input-available)}
                                                      @payload))
-                            (vreset! current-type nil)
-                            (vreset! current-id nil)
-                            (vreset! payload {})))]
+                            (clear!)))]
        (fn
          ([result]
           (cond-> result
             @current-type (close!)
             true          (rf)))
 
-         ([result {:keys [id model choices usage] :as _chunk}]
+         ([result {:keys [id model choices usage error] :as _chunk}]
           (let [choice        (first choices)
                 delta         (:delta choice)
                 finish-reason (:finish_reason choice)
+                error-text    (when (or (some? error)
+                                        (= "error" (core/stop-reason->finish-reason stop-reasons finish-reason)))
+                                (or (:message error)
+                                    (some-> error pr-str)
+                                    (tru "The model provider failed to complete the response")))
                 tool-call     (first (:tool_calls delta))
                 reasoning-md  (:reasoning_metadata delta)
                 ;; Determine what kind of content this chunk carries.
@@ -312,6 +320,9 @@
                    (some? (:arguments (:function tool-call)))) (rf {:type           :tool-input-delta
                                                                     :toolCallId     (:toolCallId @payload)
                                                                     :inputTextDelta (:arguments (:function tool-call))})
+              ;; Closing a tool call runs it, so drop one that an error cuts off
+              (and error-text
+                   (= @current-type :function_call))           (u/prog1 (clear!))
               ;; Finish reason — close whatever is open
               (some? finish-reason)                            (-> (u/prog1
                                                                      (vreset! stop-reason finish-reason))
@@ -324,7 +335,10 @@
                                                                             :model @model-name}
                                                                      @stop-reason
                                                                      (assoc :finish-reason     (core/stop-reason->finish-reason stop-reasons @stop-reason)
-                                                                            :raw-finish-reason @stop-reason)))))))))))
+                                                                            :raw-finish-reason @stop-reason)))
+              ;; An error in the stream, e.g. a failure partway through generation
+              error-text                                       (-> (cond-> @current-type (close!))
+                                                                   (rf {:type :error :errorText error-text}))))))))))
 
 ;;; Request body
 
