@@ -2467,6 +2467,35 @@
         (let [joins (get stage "joins")]
           (when (sequential? joins) joins))))
 
+(defn- fill-join-fields-alias
+  "Stamp `join`'s own `alias` onto every string-named ref in its `fields` that carries no
+  `join-alias`: a join's `fields` can only name that join's columns."
+  [join]
+  (let [join-alias (when (map? join) (get join "alias"))
+        fields     (when (map? join) (get join "fields"))]
+    (if (and (non-blank-string? join-alias) (sequential? fields))
+      (assoc join "fields" (mapv (fn [clause]
+                                   (if (and (string-cross-stage-field-clause? clause)
+                                            (not (contains? (nth clause 1) "join-alias")))
+                                     (assoc-in clause [1 "join-alias"] join-alias)
+                                     clause))
+                                 fields))
+      join)))
+
+(defn- fill-join-fields-aliases*
+  "Pass 3.6: [[fill-join-fields-alias]] over every explicit join of every stage, so the passes
+  below type and check those refs against the join's columns rather than the stage's source."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages"
+            (fn [stages]
+              (mapv (fn [stage]
+                      (if (and (map? stage) (sequential? (get stage "joins")))
+                        (update stage "joins" #(mapv fill-join-fields-alias %))
+                        stage))
+                    stages)))))
+
 (defn- walk-stage-refs
   "Postwalk `f` over `stage`, including its joins' `conditions` and `fields` but not their own
   `stages` - a join's source is a separate query with its own columns."
@@ -3045,6 +3074,8 @@
     3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
        stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
        aggregation clause and `base-type`/`effective-type` on the ref's options;
+    3.6. stamp an explicit join's `alias` onto the string-named refs in its own `fields` that
+       carry no `join-alias` - a join's `fields` can only name that join's columns;
     3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
        on field clauses whose target table is reachable through **exactly one** explicit
        join on the stage via a single unambiguous FK on the joined table. Skips clauses
@@ -3056,7 +3087,8 @@
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution);
     4.5. infer `base-type` / `effective-type` on field references in a stage whose source is
-       a saved question / model (`source-card:`), using the card's resolved returned columns.
+       a saved question / model (`source-card:`), using the card's resolved returned columns,
+       and on `join-alias` refs in any stage, using that join's own resolved returned columns.
        Must run *before* Pass 5: a `source-card` stage's own bare-name field refs need
        `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
     5. infer `base-type` / `effective-type` on cross-stage field references
@@ -3106,6 +3138,7 @@
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*
        hoist-temporal-buckets*
+       fill-join-fields-aliases*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
        (infer-source-card-field-types* mp content-store)
