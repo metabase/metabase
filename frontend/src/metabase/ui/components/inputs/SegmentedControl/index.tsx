@@ -17,6 +17,7 @@ export interface SegmentedControlProps<Value extends string> extends Omit<
   | "data"
   | "value"
   | "onChange"
+  | "c"
   | "color"
   | "size"
   | "radius"
