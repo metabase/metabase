@@ -1310,3 +1310,26 @@
                                       :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
                                                  {:type :literal :value 10}]}]})
              1)))))
+
+(deftest ^:parallel test-query-joined-result-column-through-card-test
+  (testing "a saved card stores the second joined ID as ID_2; its original name and FK still pick it"
+    (let [card-query (lib.query.test-spec/test-query
+                      meta/metadata-provider
+                      {:stages [{:source       {:type :table :id (meta/id :orders)}
+                                 :aggregations [{:type :operator :operator :count :args []}]
+                                 :breakouts    [{:type :column :name "ID" :source-field-id (meta/id :orders :product-id)}
+                                                {:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}]}]})
+          ;; Saved result metadata carries the deduplicated names, as the query processor returns them.
+          mp         (lib.tu/metadata-provider-with-card-from-query
+                      meta/metadata-provider 1 card-query
+                      {:result-metadata (mapv #(assoc % :name (:lib/deduplicated-name %))
+                                              (lib/returned-columns card-query))})
+          query      (lib.query.test-spec/test-query
+                      mp
+                      {:stages [{:source {:type :card :id 1}}
+                                {:filters [{:type     :operator
+                                            :operator :<
+                                            :args     [{:type :column :name "ID" :source-field-id (meta/id :orders :user-id)}
+                                                       {:type :literal :value 10}]}]}]})]
+      (is (=? [[:< {} [:field {} "PEOPLE__via__USER_ID__ID"] 10]]
+              (lib/filters query 1))))))
