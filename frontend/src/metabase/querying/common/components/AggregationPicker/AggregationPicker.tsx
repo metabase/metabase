@@ -36,10 +36,7 @@ import {
 import { Box, Flex, Icon, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import {
-  ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitleContainer,
-} from "./AggregationPicker.styled";
+import S from "./AggregationPicker.module.css";
 
 export interface AggregationPickerProps {
   className?: string;
@@ -487,14 +484,27 @@ function ColumnPickerHeader({
   onClick: () => void;
 }) {
   return (
-    <ColumnPickerHeaderContainer>
-      <ColumnPickerHeaderTitleContainer onClick={onClick} aria-label={t`Back`}>
+    <Flex
+      className={S.header}
+      align="center"
+      py="lg"
+      px="sm"
+      c="text-secondary"
+    >
+      <Flex
+        component="a"
+        className={S.backLink}
+        align="center"
+        gap="sm"
+        onClick={onClick}
+        aria-label={t`Back`}
+      >
         <Icon name="chevronleft" size={18} />
         <Text fz="lg" fw="bold" lh="normal" c="inherit">
           {children}
         </Text>
-      </ColumnPickerHeaderTitleContainer>
-    </ColumnPickerHeaderContainer>
+      </Flex>
+    </Flex>
   );
 }
 
