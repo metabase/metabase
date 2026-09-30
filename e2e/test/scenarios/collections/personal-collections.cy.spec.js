@@ -136,7 +136,8 @@ describe("personal collections", () => {
   });
 
   describe("all users", () => {
-    Object.keys(USERS).forEach((user) => {
+    // One user per collection-permission class: admin, curate, view, none
+    ["admin", "normal", "readonly", "nocollection"].forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);

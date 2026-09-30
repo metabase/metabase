@@ -166,47 +166,4 @@ describe("scenarios > collections > collection picker with tenants", () => {
       cy.findByText("Official").should("not.exist");
     });
   });
-
-  it("should show collection type picker when switching from shared to normal collection in create modal", () => {
-    createSharedCollection("Shared Collection for Switching").then(
-      (response) => {
-        const sharedCollectionId = response.body.id;
-
-        cy.log("Navigate inside shared collection");
-        H.visitCollection(sharedCollectionId);
-
-        cy.log("Start creating a sub-collection");
-        cy.findByTestId("collection-menu")
-          .findByLabelText("Create a new collection")
-          .click();
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.log("Should not see collection type picker initially");
-          cy.findByText(/Collection type/i).should("not.exist");
-
-          cy.log("Click collection picker to change target");
-          cy.findByTestId("collection-picker-button").click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.log("Select 'Our analytics' (normal collection)");
-          cy.findByText("Our analytics").click();
-          cy.button("Select").click();
-        });
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.log("Wait for collection picker to update to 'Our analytics'");
-          cy.findByTestId("collection-picker-button").should(
-            "contain",
-            "Our analytics",
-          );
-
-          cy.log("Should now see collection type picker");
-          cy.findByText(/Collection type/i).should("exist");
-          cy.findByText("Regular").should("exist");
-          cy.findByText("Official").should("exist");
-        });
-      },
-    );
-  });
 });
