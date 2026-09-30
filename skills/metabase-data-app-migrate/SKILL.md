@@ -123,10 +123,12 @@ Do not batch steps across upgrades. Do not touch `version` before item 5.
    stop. Otherwise, at most three fix rounds, then stop and ask.
 2. `npm run build`. It runs `sync-resources` and refuses to bundle when
    definitions and `resources_metadata.json` disagree; follow its message.
-3. `npm run dev`, open `http://localhost:5174`, then read the diagnostics feed
-   once:
+3. `npm run dev`, then take the preview URL from the `Local:` line Vite prints.
+   The template asks for port 5174, but Vite moves to the next free port when
+   that one is taken, so never assume it. Open that URL, then read the
+   diagnostics feed once from the same origin:
    ```bash
-   curl -s "http://localhost:5174/__data-app/diagnostics?startEventId=0"
+   curl -s "<preview-url>/__data-app/diagnostics?startEventId=0"
    ```
    Expect `clients: 1` and no entry with `"alert": true`. `clients: 0` means no
    preview tab is open, so an empty feed proves nothing.
