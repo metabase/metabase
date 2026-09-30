@@ -2,7 +2,11 @@ import {
   setupDatabaseEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+} from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { Transform } from "metabase-types/api";
@@ -90,8 +94,9 @@ describe("TransformSettingsSection", () => {
   });
 
   describe("when remote sync is read-only", () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       setup({ remoteSyncReadOnly: true });
+      await settlePendingUpdates();
     });
 
     it("does not show the change target button", () => {

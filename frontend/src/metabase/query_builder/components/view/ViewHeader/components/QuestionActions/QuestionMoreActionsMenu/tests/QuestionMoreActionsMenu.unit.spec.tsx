@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { screen, settlePendingUpdates } from "__support__/ui";
 import { createMockNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setup } from "./setup";
@@ -15,6 +15,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
@@ -27,6 +28,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
     });
@@ -39,6 +41,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       await userEvent.click(await screen.findByText("Edit alerts"));
       expect(await screen.findByTestId("alert-list-modal")).toBeInTheDocument();
@@ -55,6 +58,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
@@ -67,6 +71,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
     });
@@ -79,6 +84,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEmailSetup: true,
         isEnterprise: false,
       });
+      await settlePendingUpdates();
       await openMenu();
       await userEvent.click(await screen.findByText("Edit alerts"));
       expect(await screen.findByTestId("alert-list-modal")).toBeInTheDocument();
