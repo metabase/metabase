@@ -3,8 +3,6 @@ import { USERS } from "e2e/support/cypress_data";
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data.js";
 import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
-import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
-
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
@@ -29,10 +27,10 @@ describe("collection permissions", () => {
                 onlyOn(user !== "nodata", () => {
                   it("should offer to save dashboard to a currently opened collection", () => {
                     cy.visit("/collection/root");
-                    H.navigationSidebar().within(() => {
-                      displaySidebarChildOf("First collection");
-                      cy.findByText("Second collection").click();
-                    });
+                    H.displaySidebarChildOf("First collection");
+                    H.navigationSidebar()
+                      .findByText("Second collection")
+                      .click();
                     H.appBar().within(() => {
                       cy.icon("add").click();
                     });
@@ -437,15 +435,6 @@ function pinItem(item) {
   H.popover().icon("pin").click();
 }
 
-function exposeChildrenFor(collectionName) {
-  H.navigationSidebar()
-    .findByText(collectionName)
-    .parentsUntil("[data-testid=sidebar-collection-link-root]")
-    .find(".Icon-chevronright")
-    .eq(0) // there may be more nested icons, but we need the top level one
-    .click();
-}
-
 function move(item) {
   cy.visit("/collection/root");
   H.openCollectionItemMenu(item);
@@ -460,7 +449,7 @@ function move(item) {
 
   cy.findByText(item).should("not.exist");
   // Make sure item was properly moved to a correct sub-collection
-  exposeChildrenFor("First collection");
+  H.displaySidebarChildOf("First collection");
   cy.findByText("Second collection").click();
   cy.findByText(item);
   // Undo the whole thing
