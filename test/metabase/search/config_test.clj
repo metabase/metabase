@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.search.config :as search.config]
+   [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
 ;; All that matters is that this is not legacy search.
@@ -92,3 +93,15 @@
     (is (> (search.config/weight {:context :data-picker} :library)
            (+ (search.config/weight {:context :data-picker} :official-collection)
               (search.config/weight {:context :data-picker} :verified))))))
+
+(deftest metabot-curation-boost-test
+  (testing "Metabot searches boost the curation badges and popularity"
+    (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+      (is (=? {:official-collection 4 :verified 5 :view-count 3}
+              (search.config/weights {:context :metabot})))))
+  (testing "an admin's weight overrides still beat the Metabot boost, and a request's beat both"
+    (mt/with-temporary-setting-values [experimental-search-weight-overrides {:metabot {:verified 20}}]
+      (is (=? {:official-collection 4 :verified 20}
+              (search.config/weights {:context :metabot})))
+      (is (=? {:verified 99}
+              (search.config/weights {:context :metabot :weights {:verified 99}}))))))

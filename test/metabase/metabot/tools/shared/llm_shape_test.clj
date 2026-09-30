@@ -742,21 +742,6 @@
                        :pages     1})
                      "can_write=\"false\"")))
 
-(deftest ^:parallel search-results->xml-test
-  (testing "formats multiple search results"
-    (let [results [{:id 1 :type :metric :name "Metric 1"}
-                   {:id 2 :type :table :name "Table 1"}]
-          xml (llm-shape/search-results->xml results)]
-      (is (str/includes? xml "Here are the search results:"))
-      (is (str/includes? xml "<search-results>"))
-      (is (str/includes? xml "<metric id=\"1\""))
-      (is (str/includes? xml "<table id=\"2\""))
-      (is (str/includes? xml "</search-results>"))))
-  (testing "handles empty results"
-    (let [xml (llm-shape/search-results->xml [])]
-      (is (str/includes? xml "<search-results>"))
-      (is (str/includes? xml "</search-results>")))))
-
 (deftest ^:parallel field-values-metadata->xml-test
   (testing "formats field values with samples"
     (let [metadata {:field_values ["US" "DE" "FR"]

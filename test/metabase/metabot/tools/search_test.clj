@@ -15,6 +15,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
    [metabase.search.engine :as search.engine]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms.feature-gating :as transforms.gating]
@@ -94,11 +95,11 @@
               :name                "Gold"
               :database_id         1
               :table_schema        "public"
-              :curated             true
-              :official_collection true
-              :data_authority      "authoritative"
-              :data_layer          "final"
-              :collection          {:id 3 :name "Official" :authority_level "official"}})))))
+              :curated                    true
+              :collection_authority_level "official"
+              :data_authority             "authoritative"
+              :data_layer                 "final"
+              :collection                 {:id 3 :name "Official" :authority_level "official"}})))))
 
 (deftest ^:parallel search-result-xml-renders-curation-signals-test
   (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
@@ -110,11 +111,11 @@
                    :name                "Gold"
                    :database_id         1
                    :table_schema        "public"
-                   :curated             true
-                   :official_collection true
-                   :data_authority      "authoritative"
-                   :data_layer          "final"
-                   :collection          {:id 3 :name "Official" :authority_level "official"}})
+                   :curated                    true
+                   :collection_authority_level "official"
+                   :data_authority             "authoritative"
+                   :data_layer                 "final"
+                   :collection                 {:id 3 :name "Official" :authority_level "official"}})
           xml    (llm-shape/search-result->xml result)]
       (is (str/includes? xml "is_curated=\"true\""))
       (is (str/includes? xml "is_official=\"true\""))
@@ -170,7 +171,7 @@
                   :description "Dashboard desc"
                   :verified false
                   :can_write false
-                  :official_collection true
+                  :collection_authority_level "official"
                   :collection {:id 10 :name "Finance" :authority_level "official"}
                   :updated_at "2024-01-03"
                   :created_at "2024-01-03"}
@@ -190,14 +191,14 @@
 
 (deftest ^:parallel postprocess-document-search-result-test
   (testing "document result postprocessing"
-    (let [result   {:model               "document"
-                    :id                  8
-                    :name                "Quarterly plan"
-                    :can_write           false
-                    :official_collection true
-                    :collection          {:id 10 :name "Finance" :authority_level "official"}
-                    :updated_at          "2024-01-03"
-                    :created_at          "2024-01-02"}
+    (let [result   {:model                      "document"
+                    :id                         8
+                    :name                       "Quarterly plan"
+                    :can_write                  false
+                    :collection_authority_level "official"
+                    :collection                 {:id 10 :name "Finance" :authority_level "official"}
+                    :updated_at                 "2024-01-03"
+                    :created_at                 "2024-01-02"}
           expected {:id                  8
                     :type                "document"
                     :name                "Quarterly plan"
@@ -278,9 +279,8 @@
                   :id 7
                   :name "Marketing"
                   :description "Marketing collection"
-                  :authority_level "official"
+                  :collection_authority_level "official"
                   :location "/"
-                  :official_collection true
                   :updated_at "2024-01-07"
                   :created_at "2024-01-07"}
         expected {:id 7
@@ -296,6 +296,33 @@
                   :updated_at "2024-01-07"
                   :created_at "2024-01-07"}]
     (is (= expected (#'search/postprocess-search-result result)))))
+
+(deftest weights-reach-the-search-context-test
+  ;; The curation boost lives in the `:metabot` search context (see `search.config/static-context-weights`),
+  ;; so the admin's weight overrides apply on top of it. Only a caller's own weights travel per request.
+  (mt/with-test-user :rasta
+    (with-redefs [perms/impersonated-user? (fn [] false)
+                  perms/sandboxed-user? (fn [] false)
+                  api/*current-user-id* 1]
+      (let [context-for (fn [args]
+                          (let [captured (atom nil)]
+                            (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                                             (reset! captured context)
+                                                                             {:data []})]
+                              (search/search args))
+                            (select-keys @captured [:context :weights])))]
+        (is (= {:context :metabot :weights nil}
+               (context-for {:query "x"})))
+        (is (= {:context :metabot :weights {:verified 99}}
+               (context-for {:query "x" :weights {:verified 99}})))))))
+
+(deftest entity-refs-ignore-transform-refs-test
+  ;; `entity-refs->search-results` has no transform branch, which is why dropping
+  ;; `remove-unreadable-transforms` from its pipeline was safe. Pin that: a transform ref must
+  ;; produce nothing rather than an unfiltered record.
+  (testing "a transform ref yields no result, so there is nothing for a transform filter to remove"
+    (mt/with-test-user :crowberto
+      (is (empty? (search/entity-refs->search-results [{:model "transform" :id 1}]))))))
 
 (deftest search-native-query-test
   (mt/with-test-user :rasta
@@ -387,6 +414,32 @@
               (search/search-tool {:query "x" :collection_id 7}))
             (is (= 7 (:collection @captured)))))))))
 
+(deftest configured-collection-bounds-caller-collection-test
+  (testing "an NLQ metabot's configured collection can be narrowed by the caller but never escaped"
+    (mt/with-temp [:model/Collection {scope-id :id}   {:name "Scope"}
+                   :model/Collection {child-id :id}   {:name "Child" :location (format "/%d/" scope-id)}
+                   :model/Collection {outside-id :id} {:name "Outside"}
+                   :model/Metabot    {metabot-eid :entity_id} {:name "scoped bot" :collection_id scope-id}]
+      (mt/with-test-user :rasta
+        (with-redefs [perms/impersonated-user? (fn [] false)
+                      perms/sandboxed-user? (fn [] false)]
+          (let [searched-collection (fn [caller-id]
+                                      (let [captured (atom nil)]
+                                        (mt/with-dynamic-fn-redefs [search-core/search (fn [context]
+                                                                                         (reset! captured context)
+                                                                                         {:data []})]
+                                          (search/search (cond-> {:query "x" :metabot-id metabot-eid :profile-id "nlq"}
+                                                           caller-id (assoc :collection-id caller-id))))
+                                        (:collection @captured)))]
+            (is (= {:none       scope-id
+                    :configured scope-id
+                    :child      child-id
+                    :outside    scope-id}
+                   {:none       (searched-collection nil)
+                    :configured (searched-collection scope-id)
+                    :child      (searched-collection child-id)
+                    :outside    (searched-collection outside-id)}))))))))
+
 (deftest tool-limit-test
   (testing "tool variants apply the :limit arg with default 25 and cap 50"
     (mt/with-test-user :rasta
@@ -456,6 +509,179 @@
                           (filter (fn [{:keys [id type]}] (and (= "dashboard" type) (contains? test-dashboard-ids id))))
                           (map :name)
                           (set)))))))))))
+
+(deftest official-flag-end-to-end-test
+  ;; Runs the real pipeline rather than a hand-written row, because the `official` regression this
+  ;; guards was invisible to unit fixtures: they fed a shape (`official_collection` / a top-level
+  ;; `authority_level`) that the pipeline never actually produces.
+  (testing "is_official is derived from the shape a real search returns"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-test-user :crowberto
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {off-id :id} {:name            "Zx9OfficialColl"
+                                                         :authority_level "official"}
+                         :model/Collection {plain-id :id} {:name "Zx9PlainColl"}
+                         :model/Card      {card-id :id}  {:name "Zx9Card" :collection_id off-id}
+                         :model/Document  {doc-id :id}   {:name "Zx9Doc"  :collection_id off-id}]
+            ;; keyed by [type id]: ids are only unique per table, so a collection and a card can
+            ;; collide and silently overwrite each other here
+            (let [by-ref (->> (search/search {:query        "Zx9"
+                                              :entity-types ["collection" "question" "document"]})
+                              (map (juxt (juxt :type :id) identity))
+                              (into {}))
+                  by-id  (fn [t id] (by-ref [t id]))]
+              (testing "a collection reports its *own* authority, not its parent's"
+                (is (=? {:official true :authority_level "official" :is_container true}
+                        (by-id "collection" off-id)))
+                (is (=? {:official false} (by-id "collection" plain-id))))
+              (testing "items inside an official collection inherit the flag"
+                (is (=? {:official true} (by-id "question" card-id)))
+                (testing "including documents, whose spec has no official_collection attr"
+                  (is (=? {:official true} (by-id "document" doc-id))))))))))))
+
+(deftest published-table-in-library-collection-test
+  ;; Tables *can* live in collections: the table search spec joins Collection on `is_published`.
+  ;; Before this, table results dropped `:collection` outright and library membership came only from
+  ;; `data_layer`, so a table sitting in a Library collection reported `is_library_member=false`
+  ;; while a table in no collection at all reported true — exactly backwards.
+  (testing "a published table in a library collection is a library member and has a collection path"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {lib-id :id} {:name "Zq7LibColl" :type "library-data"}
+                           :model/Database {db-id :id}   {:name "Zq7DB"}
+                           ;; deliberately *not* on the :final tier, so the only thing that can make
+                           ;; this a library member is the collection it was published into
+                           :model/Table {published-id :id} {:name          "Zq7PublishedTable"
+                                                            :db_id         db-id
+                                                            :is_published  true
+                                                            :collection_id lib-id
+                                                            :data_layer    :internal}
+                           :model/Table {final-id :id}     {:name       "Zq7FinalTable"
+                                                            :db_id      db-id
+                                                            :data_layer :final}]
+              (let [by-id (->> (search/search {:query "Zq7" :entity-types ["table"]})
+                               (map (juxt :id identity))
+                               (into {}))]
+                (is (=? {:library_member  true
+                         :collection_path "Zq7LibColl"
+                         :collection      {:id lib-id :name "Zq7LibColl"}}
+                        (by-id published-id)))
+                (testing "a :final table in no collection is not a library member"
+                  (is (not (:library_member (by-id final-id))))
+                  (is (nil? (:collection (by-id final-id)))
+                      "an unpublished table carries no collection map"))))))))))
+
+(deftest unreadable-collection-name-not-leaked-test
+  ;; A published table is reachable through *data* permissions, which say nothing about the
+  ;; collection it was published into — unlike a card, whose search hit already implies collection
+  ;; read. So neither the table nor a measure bound to it may surface that collection's name.
+  (testing "a collection the user cannot read contributes no name to a table or measure result"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (search.tu/with-temp-index-table
+          (mt/with-temp [:model/Collection {secret-id :id} {:name "Pb6SecretLibColl" :type "library-data"}
+                         :model/Database   {db-id :id}     {:name "Pb6DB"}
+                         :model/Table {tbl-id :id} {:name "Pb6PublishedTable" :db_id db-id
+                                                    :is_published true :collection_id secret-id}
+                         :model/Measure {m-id :id} {:name "Pb6Measure" :table_id tbl-id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+            (mt/with-test-user :rasta
+              (let [by-ref (->> (search/search {:query "Pb6" :entity-types ["table" "measure"]})
+                                (map (juxt (juxt :type :id) identity))
+                                (into {}))
+                    tbl    (by-ref ["table" tbl-id])
+                    msr    (by-ref ["measure" m-id])]
+                (is (some? tbl) "the table is still reachable via data perms")
+                (doseq [[label r] [["table" tbl] ["measure" msr]]]
+                  (testing label
+                    (is (nil? (:collection_path r)))
+                    (is (nil? (:collection r)))))
+                (testing "library membership still lands — it discloses the root's type, never a name"
+                  (is (true? (:library_member tbl)))
+                  (is (true? (:library_member msr))))))))))))
+
+(deftest measure-segment-inherit-library-membership-test
+  ;; A measure or segment is only surfaced by `retrieve_library_entities` because its binding table
+  ;; was published into the Library, so it must carry the same `library_member` the table does.
+  (testing "measures and segments inherit library membership from their binding table"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {data-id :id}  {:name "Pb5Data" :type "library-data"}
+                           :model/Database   {db-id :id}    {:name "Pb5DB"}
+                           :model/Table {lib-tbl :id}       {:name "Pb5LibTable" :db_id db-id
+                                                             :is_published true :collection_id data-id}
+                           :model/Table {plain-tbl :id}     {:name "Pb5PlainTable" :db_id db-id}
+                           :model/Measure {lib-measure :id} {:name "Pb5LibMeasure" :table_id lib-tbl}
+                           :model/Segment {lib-segment :id} {:name "Pb5LibSegment" :table_id lib-tbl}
+                           :model/Measure {plain-measure :id} {:name "Pb5PlainMeasure" :table_id plain-tbl}]
+              (let [by-ref (->> (search/search {:query        "Pb5"
+                                                :entity-types ["table" "measure" "segment"]})
+                                (map (juxt (juxt :type :id) identity))
+                                (into {}))]
+                (is (=? {:library_member true} (by-ref ["measure" lib-measure])))
+                (is (=? {:library_member true} (by-ref ["segment" lib-segment])))
+                (testing "one bound to an unpublished table does not inherit it"
+                  (is (not (:library_member (by-ref ["measure" plain-measure]))))))
+              (testing "and the same holds through the entity-ref path"
+                (let [by-type (->> (search/entity-refs->search-results
+                                    [{:model "measure" :id lib-measure}
+                                     {:model "segment" :id lib-segment}])
+                                   (map (juxt :type identity))
+                                   (into {}))]
+                  (is (=? {:library_member true} (by-type "measure")))
+                  (is (=? {:library_member true} (by-type "segment"))))))))))))
+
+(deftest official-document-under-in-place-test
+  ;; `official-flag-end-to-end-test` runs on whichever engine resolves by default (appdb here), so it
+  ;; cannot catch the in-place document projection dropping its collection columns again.
+  (testing "a document in an official collection reads as official under the in-place engine too"
+    (mt/with-test-user :crowberto
+      (search.tu/with-legacy-search
+        ;; `with-legacy-search` leaves semantic *active* where it's supported, and metabot resolves
+        ;; through `resolved-engine`, which prefers semantic — so on an instance with the feature on
+        ;; this would quietly stop exercising in-place. Force it, then assert we got there.
+        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly nil)]
+          (is (= :search.engine/in-place (search.engine/resolved-engine))
+              "this test is only meaningful against the in-place engine")
+          (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
+                         :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
+            (let [doc (->> (search/search {:query "Ip4" :entity-types ["document"]})
+                           (filter #(= doc-id (:id %)))
+                           first)]
+              (is (=? {:type "document" :official true} doc)))))))))
+
+(deftest table-collection-edge-cases-test
+  ;; A table published at the *root* has no collection row, and the table spec coalesces a display
+  ;; name for it, which makes `search.impl/serialize` stamp the collection id as the string "root".
+  ;; Feeding that to a numeric `:id [:in ...]` lookup threw and failed the entire search.
+  (testing "root-published and stale-collection tables neither break search nor claim a collection"
+    (binding [search.ingestion/*force-sync* true]
+      (mt/with-additional-premium-features #{:library}
+        (mt/with-test-user :crowberto
+          (search.tu/with-temp-index-table
+            (mt/with-temp [:model/Collection {data-id :id} {:name "Pb2Data" :type "library-data"}
+                           :model/Database   {db-id :id}   {:name "Pb2DB"}
+                           :model/Table {root-id :id}  {:name "Pb2RootPublished" :db_id db-id
+                                                        :is_published true :collection_id nil}
+                           ;; unpublished, but still carrying a collection id it isn't published into
+                           :model/Table {stale-id :id} {:name "Pb2StaleUnpublished" :db_id db-id
+                                                        :is_published false :collection_id data-id
+                                                        :data_layer :internal}]
+              (let [by-id (->> (search/search {:query "Pb2" :entity-types ["table"]})
+                               (map (juxt :id identity))
+                               (into {}))]
+                (testing "the search completes at all"
+                  (is (= 2 (count by-id))))
+                (testing "a root-published table carries no collection"
+                  (is (nil? (:collection (by-id root-id))))
+                  (is (nil? (:collection_path (by-id root-id)))))
+                (testing "an unpublished table does not claim a stale collection"
+                  (is (nil? (:collection (by-id stale-id))))
+                  (is (not (:library_member (by-id stale-id)))))))))))))
 
 (deftest document-search-test
   (testing "search can discover documents by name"
@@ -543,33 +769,24 @@
 
 (deftest library-membership-test
   (testing "library_member reflects real curation, gated on the :library feature"
-    (mt/with-premium-features #{:library}
-      (mt/with-temp [:model/Collection {lib-coll-id :id}      {:name "Lib Coll" :type "library"}
-                     :model/Collection {official-coll-id :id} {:name "Official Coll" :authority_level "official"}
-                     :model/Database   {db-id :id}            {}
-                     :model/Table      {final-table-id :id}    {:db_id db-id :data_layer :final}
-                     :model/Table      {internal-table-id :id} {:db_id db-id :data_layer :internal}]
-        (testing "collection items: true when the root collection is a library type, not merely shared/official"
-          (let [by-id (u/index-by :id
-                                  (mt/with-test-user :crowberto
-                                    (#'search/enrich-with-collection-paths
-                                     [{:type "model" :id 1 :collection {:id lib-coll-id}}
-                                      {:type "model" :id 2 :collection {:id official-coll-id}}])))]
+    (mt/with-temp [:model/Collection {lib-coll-id :id}      {:name "Lib Coll" :type "library"}
+                   :model/Collection {official-coll-id :id} {:name "Official Coll" :authority_level "official"}]
+      (let [enrich (fn []
+                     (u/index-by :id
+                                 (mt/with-test-user :crowberto
+                                   (#'search/enrich-with-collection-paths
+                                    [{:type "model" :id 1 :collection {:id lib-coll-id}}
+                                     {:type "model" :id 2 :collection {:id official-coll-id}}
+                                     {:type "table" :id 3}]))))]
+        (mt/with-premium-features #{:library}
+          (let [by-id (enrich)]
             (is (true?  (:library_member (by-id 1))) "item in a library collection")
-            (is (false? (:library_member (by-id 2))) "item in an official (non-library) collection")))
-        (testing "tables: true only when the data layer is :final"
-          (let [by-id (u/index-by :id
-                                  (#'search/enrich-tables-with-data-layer
-                                   [{:type "table" :id final-table-id}
-                                    {:type "table" :id internal-table-id}]))]
-            (is (true?  (:library_member (by-id final-table-id)))    ":final tables are library members")
-            (is (false? (:library_member (by-id internal-table-id))) ":internal tables are not"))))))
-  (testing "without the :library feature, tables are not flagged"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {t-id :id} {:db_id db-id :data_layer :final}]
-        (is (nil? (:library_member (first (#'search/enrich-tables-with-data-layer
-                                           [{:type "table" :id t-id}])))))))))
+            (is (false? (:library_member (by-id 2))) "item in an official (non-library) collection")
+            ;; upgraded instances put nearly every visible table on the :final tier, so it can't count
+            (is (not (contains? (by-id 3) :library_member)) "a table in no collection")))
+        (testing "without the :library feature, nothing is flagged"
+          (mt/with-premium-features #{}
+            (is (not-any? #(contains? % :library_member) (vals (enrich))))))))))
 
 (deftest collection-path-respects-read-permissions-test
   (testing "collection_path omits ancestor collections the current user can't read (no name leak)"

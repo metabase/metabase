@@ -157,7 +157,13 @@
     :data-layer/final    1     ; ≈ 33
     :data-layer/internal 0.3   ; ≈ 10
     :data-layer/hidden   0.03  ; ≈ 1
-    }})
+    ;; Nudge the curation badges and popularity up so they break near-ties: the LLM has no implicit
+    ;; affordance to 'trust' results otherwise, and these signals are how a human user would visually
+    ;; distinguish 'safe', well-trodden content. The boost is deliberately small — against :exact (100)
+    ;; and :data-layer (33), text relevance still decides the ranking.
+    :official-collection 4
+    :verified            5
+    :view-count          3}})
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every

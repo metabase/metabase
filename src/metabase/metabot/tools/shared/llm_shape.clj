@@ -236,7 +236,6 @@
    :is_database (= type :database)
    :is_user (= type :user)
    :is_search_result (= type :search_result)
-   :is_search_results (= type :search_results)
    :is_field_values_metadata (= type :field_values_metadata)
    :is_field_metadata (= type :field_metadata)
    :is_get_metadata_result (= type :get_metadata_result)
@@ -848,7 +847,11 @@
       nil)))
 
 (defn- container-type?
-  "Whether a (normalized, keyword) result type is a container the LLM drills into rather than queries."
+  "Whether a (normalized, keyword) result type is a container the LLM drills into rather than queries.
+
+  Second home for \"what counts as a container\": `metabase.metabot.tools.search/postprocess-search-result`
+  sets `:is_container` per entity branch, and this decides the rendered `is_container` attribute. Adding a
+  container type to one without the other silently half-works — keep them in sync."
   [type-kw]
   (#{:dashboard :collection} type-kw))
 
@@ -932,17 +935,6 @@
                                         (= 3 (count base_table_portable_fk)))
                                (let [[_db schema table] base_table_portable_fk]
                                  (fully-qualified-name schema table)))})))
-
-(defn search-results->xml
-  "Format search results as XML wrapped in a `<search_results>` envelope. Retained as the shared
-   API for rendering a whole result block; the metabot search tool currently renders per-item via
-   [[search-result->xml]] and joins them itself, so this wrapper has no production caller today
-   (only a test still exercises it). Prefer per-item rendering; drop this var once nothing depends
-   on it, to avoid the two render paths drifting."
-  [results]
-  (render-llm-template
-   :search_results
-   {:search_results_xml (str/join "\n" (map search-result->xml results))}))
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.

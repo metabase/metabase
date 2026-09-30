@@ -299,12 +299,6 @@ Collection: {{search_collection_name}}
 {% endif %}
 </{{search_tag_name}}>
 {% endif %}
-{% if is_search_results %}
-Here are the search results:
-<search-results>
-{{search_results_xml|safe}}
-</search-results>
-{% endif %}
 {% if is_field_values_metadata %}
 {% if sample_values_table %}
 **Sample Values (for understanding format pattern)**
