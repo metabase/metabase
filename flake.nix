@@ -334,7 +334,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-sUe42mwqSMhUbRcnTA+K0SejWRCfLa2AH8asIrWR/qA=";
+            outputHash = "sha256-W+I/xiaYID3O9x9Az+BbpO9YzjTIGzWHf7Z8929eAmE=";
 
             dontConfigure = true;
             dontFixup = true;
@@ -387,7 +387,7 @@
 
             outputHashAlgo = "sha256";
             outputHashMode = "recursive";
-            outputHash = "sha256-5BkjOB2Q+SfSKnK7bgJXo/m1E6r1x16ihkkEnwb9r28=";
+            outputHash = "sha256-ImGxQRFIjJpMMoJtGEo38eDpFtjpxEN1nCK1waKKQy8=";
 
             dontConfigure = true;
             dontFixup = true;
