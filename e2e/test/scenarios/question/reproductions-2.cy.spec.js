@@ -138,7 +138,7 @@ describe("issue 28221", () => {
     cy.signInAsAdmin();
   });
 
-  it("should be able to select see notebook view even if a question custom field metadata is missing#27462", () => {
+  it("should be able to select see notebook view even if a question custom field metadata is missing (metabase#28221)", () => {
     const questionName = "Reproduce 28221";
     const customFieldName = "Non-existing field";
     const questionDetails = {
@@ -399,7 +399,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
     H.popover().within(() => {
-      cy.findByLabelText("Display as").as("viewAsDropdown").click();
+      cy.findByLabelText("Display as").click();
     });
 
     cy.findAllByRole("option", { name: "Email link" }).click();

@@ -759,7 +759,7 @@ describe("issue 44532", () => {
     H.openProductsTable();
   });
 
-  it("should update chart metrics and dimensions with each added breakout (metabase #44532)", () => {
+  it("should update chart metrics and dimensions with each added breakout (metabase#44532)", () => {
     H.summarize();
 
     H.rightSidebar()
@@ -850,7 +850,7 @@ describe("issue 31960", () => {
     },
   };
 
-  // the dot that corresponds to July 10–16, 2025
+  // the dot that corresponds to July 13–19, 2025
   const dotIndex = 10;
   const rowCount = 11;
 

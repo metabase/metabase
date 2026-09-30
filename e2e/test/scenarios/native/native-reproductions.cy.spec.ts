@@ -1175,7 +1175,7 @@ describe("issue 68574", () => {
     H.createNativeQuestion(questionDetails, { wrapId: true });
   });
 
-  it("should be possible to run a query for a empty required parameter without a default value (metabase#68574)", () => {
+  it("should format a date parameter widget value according to the custom date formatting setting (metabase#68574)", () => {
     updateFormattingSettings({
       date_style: "D MMMM, YYYY",
       date_abbreviate: false,

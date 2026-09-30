@@ -296,7 +296,7 @@ describe("issue 17514", () => {
 
       moveColumnToTop("Subtotal");
 
-      openNotebookMode();
+      H.openNotebook();
 
       removeJoinedTable();
 
@@ -311,7 +311,7 @@ describe("issue 17514", () => {
     });
 
     it("should not show the run overlay because of the references to the orphaned fields (metabase#17514-2)", () => {
-      openNotebookMode();
+      H.openNotebook();
 
       H.join();
       H.miniPicker().within(() => {
@@ -355,10 +355,6 @@ function closeModal() {
   });
 }
 
-function openNotebookMode() {
-  H.openNotebook();
-}
-
 function removeJoinedTable() {
   cy.findAllByText("Join data")
     .first()
@@ -391,7 +387,7 @@ describe("issue 17910", () => {
     cy.intercept("POST", "/api/card").as("card");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
+    cy.findByTestId("save-question-modal").within(() => {
       cy.findByText("Save").click();
     });
     cy.wait("@card");

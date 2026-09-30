@@ -70,6 +70,18 @@ describe("scenarios > notebook > data source", () => {
       assertDataPickerEntitySelected(2, "Orders");
     });
 
+    it("should correctly display a table as the model's source when editing simple model's query", () => {
+      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+
+      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
+      H.miniPicker().within(() => {
+        H.miniPickerHeader().should("contain", "Sample Database");
+        cy.findByText("Orders").should("exist");
+      });
+    });
+  });
+
+  describe("multi-schema table as a source", () => {
     it(
       "should correctly display a table from a multi-schema database (metabase#39807,metabase#11958)",
       { tags: "@external" },
@@ -136,16 +148,6 @@ describe("scenarios > notebook > data source", () => {
         H.popover().findByText("Name").click();
       },
     );
-
-    it("should correctly display a table as the model's source when editing simple model's query", () => {
-      cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
-
-      cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
-      H.miniPicker().within(() => {
-        H.miniPickerHeader().should("contain", "Sample Database");
-        cy.findByText("Orders").should("exist");
-      });
-    });
   });
 
   describe("library table as a source", () => {

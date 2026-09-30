@@ -273,7 +273,6 @@ describe("scenarios > question > new", () => {
   it("should not suggest recent items where can_write=false when saving a question", () => {
     // SETUP TEST - prevent normal user from having access to third collection w/ added content
     cy.log("setup restricted permissions scenario");
-    cy.signInAsAdmin();
 
     // create dashboard that will have restricted access
     H.createDashboard(
@@ -485,7 +484,7 @@ describe("scenarios > question > new", () => {
 
         H.queryBuilderHeader().button("Save").click();
 
-        cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByTestId("save-question-modal").within(() => {
           cy.findByLabelText(/Where do you want to save/).click();
         });
 
@@ -503,7 +502,6 @@ describe("scenarios > question > new", () => {
       });
 
       it("when selecting a collection", () => {
-        // H.miniPickerBrowseAll().click();
         H.entityPickerModal().within(() => {
           H.pickEntity({
             path: ["Our analytics", "Collection in root collection"],

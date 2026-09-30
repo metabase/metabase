@@ -84,8 +84,6 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question into a collection", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -105,8 +103,6 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question into a dashboard", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -137,8 +133,6 @@ describe("scenarios > question > saved", () => {
   });
 
   it("should duplicate a saved question to a collection created on the go", () => {
-    cy.intercept("POST", "/api/card").as("cardCreate");
-
     H.visitQuestion(ORDERS_QUESTION_ID);
 
     H.openQuestionActions();
@@ -502,7 +496,6 @@ describe("scenarios > question > saved", () => {
 
   describe("with watermark", () => {
     beforeEach(() => {
-      H.restore();
       cy.signInAsAdmin();
       H.activateToken("pro-self-hosted");
 

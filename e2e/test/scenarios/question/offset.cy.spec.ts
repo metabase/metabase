@@ -363,8 +363,6 @@ function verifyTableContent(dataRows: string[][]) {
   });
 
   for (const { index, text } of pairs) {
-    cy.log("index", index);
-    cy.log("text", text);
     verifyTableCellContent(index, text);
   }
 }

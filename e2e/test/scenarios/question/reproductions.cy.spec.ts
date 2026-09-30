@@ -467,7 +467,7 @@ describe("issue 46845", () => {
     H.assertQueryBuilderRowCount(1);
   });
 });
-describe("54205", () => {
+describe("54205", { tags: "@external" }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
 
@@ -483,7 +483,7 @@ describe("54205", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "products" });
   });
 
-  it("should be able to select a comma separated value", () => {
+  it("should be able to select a comma separated value (metabase#54205)", () => {
     H.getTableId({
       name: "products",
     }).then((tableId) => {
@@ -511,7 +511,6 @@ describe("54205", () => {
           name: "Q 54205",
           dataset_query: query,
         }).then((card) => {
-          cy.wrap(card.id).as("questionId");
           H.visitQuestion(card.id);
         });
       });
@@ -628,7 +627,7 @@ describe("issue 52872", () => {
     );
   });
 
-  it("Saved questions with a very long title should wrap (metabse#52872)", () => {
+  it("Saved questions with a very long title should wrap (metabase#52872)", () => {
     cy.findByDisplayValue(LONG_NAME)
       .should("be.visible")
       .then(($el) => {
@@ -642,7 +641,6 @@ describe("issue 52872", () => {
 describe("issue #47005", () => {
   beforeEach(() => {
     H.restore();
-    H.restore("postgres-12");
     cy.signInAsNormalUser();
 
     H.createQuestion({
@@ -690,7 +688,7 @@ describe("issue 66210", () => {
     cy.visit("/");
   });
 
-  it("should not allow you to join on metrics", () => {
+  it("should not allow you to join on metrics (metabase#66210)", () => {
     H.startNewQuestion();
     H.miniPickerBrowseAll().click();
     H.entityPickerModalItem(0, "Our analytics").click();

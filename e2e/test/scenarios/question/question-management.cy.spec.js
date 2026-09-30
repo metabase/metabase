@@ -10,7 +10,6 @@ const { H } = cy;
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
-  no: ["nocollection", "nosql", "none"],
 };
 
 describe(
@@ -133,44 +132,44 @@ describe(
                   cy.get("header").findByText(NEW_COLLECTION_NAME);
                 });
 
-                it("should be able to move models", () => {
-                  // TODO: Currently nodata users can't turn a question into a model
-                  cy.skipOn(user === "nodata");
+                // TODO: Currently nodata users can't turn a question into a model
+                onlyOn(user !== "nodata", () => {
+                  it("should be able to move models", () => {
+                    turnIntoModel();
 
-                  turnIntoModel();
+                    H.openNavigationSidebar();
+                    H.navigationSidebar().within(() => {
+                      // Highlight "Our analytics"
+                      cy.findByText("Our analytics")
+                        .parents("li")
+                        .should("have.attr", "aria-selected", "true");
+                      cy.findByText("Your personal collection")
+                        .parents("li")
+                        .should("have.attr", "aria-selected", "false");
+                    });
 
-                  H.openNavigationSidebar();
-                  H.navigationSidebar().within(() => {
-                    // Highlight "Our analytics"
-                    cy.findByText("Our analytics")
-                      .parents("li")
-                      .should("have.attr", "aria-selected", "true");
-                    cy.findByText("Your personal collection")
-                      .parents("li")
-                      .should("have.attr", "aria-selected", "false");
-                  });
+                    moveQuestionTo(/Personal Collection/);
+                    assertRequestNot403("updateQuestion");
 
-                  moveQuestionTo(/Personal Collection/);
-                  assertRequestNot403("updateQuestion");
+                    cy.findAllByRole("status")
+                      .contains(
+                        `Model moved to ${H.getPersonalCollectionName(
+                          USERS[user],
+                        )}`,
+                      )
+                      .should("exist");
+                    assertNoPermissionsError();
+                    cy.findAllByRole("gridcell").contains("37.65");
 
-                  cy.findAllByRole("status")
-                    .contains(
-                      `Model moved to ${H.getPersonalCollectionName(
-                        USERS[user],
-                      )}`,
-                    )
-                    .should("exist");
-                  assertNoPermissionsError();
-                  cy.findAllByRole("gridcell").contains("37.65");
-
-                  H.navigationSidebar().within(() => {
-                    // Highlight "Your personal collection" after move
-                    cy.findByText("Our analytics")
-                      .parents("li")
-                      .should("have.attr", "aria-selected", "false");
-                    cy.findByText("Your personal collection")
-                      .parents("li")
-                      .should("have.attr", "aria-selected", "true");
+                    H.navigationSidebar().within(() => {
+                      // Highlight "Your personal collection" after move
+                      cy.findByText("Our analytics")
+                        .parents("li")
+                        .should("have.attr", "aria-selected", "false");
+                      cy.findByText("Your personal collection")
+                        .parents("li")
+                        .should("have.attr", "aria-selected", "true");
+                    });
                   });
                 });
               });

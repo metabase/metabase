@@ -106,6 +106,15 @@ describe("scenarios > question > summarize sidebar", () => {
       cy.findByLabelText("Binning strategy").should("be.visible");
     });
   });
+});
+
+describe("scenarios > question > summarize", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
 
   it("should allow using `Custom Expression` in orders metrics and keep manually entered parenthesis intact if they affect the result (metabase#12899, metabase#13306)", () => {
     H.openOrdersTable({ mode: "notebook" });

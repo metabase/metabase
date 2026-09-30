@@ -895,14 +895,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findAllByText("[zz] Average of Subtotal").should("exist");
     cy.findAllByText("Average of Subtotal").should("not.exist");
-
-    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "en",
-    });
   });
 
   it("should support browser based navigation (metabase#55162)", () => {
-    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
     H.createQuestion(
       { query: { "source-table": PRODUCTS_ID }, name: "products" },
       { visitQuestion: true, wrapId: true },
@@ -1053,16 +1048,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         "equal",
         `/model/${PRODUCT_QUESTION_ID}-products`,
       );
-
-      /**
-       * foreign key relation orders should work, but it consistently fails in CI
-       */
-      // cy.wait("@tableFK");
-
-      // H.modal().findByTestId("fk-relation-orders").click();
-
-      // cy.location("pathname").should("contain", "/question");
-      // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
 
       H.openQuestionActions("Turn back to saved question");
 

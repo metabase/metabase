@@ -796,7 +796,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.wait("@dataset");
         }
 
-        // Fragile and bound to break when the year changes
         cy.log("temporal breakouts");
         testDatePostAggregationExpression({
           questionDetails: questionWith2TemporalBreakoutsDetails,
@@ -840,7 +839,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testDatePostAggregationExpression({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           expression1: "[Latitude: 20°] + 100",
@@ -1090,7 +1089,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           firstRows: [["-60", "155"]],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testPostAggregationAggregation({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
@@ -1165,7 +1164,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
         });
 
-        cy.log("'max-bins' breakouts");
+        cy.log("'bin-width' breakouts");
         testPostAggregationBreakout({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
@@ -1328,19 +1327,8 @@ describe("scenarios > question > multiple column breakouts", () => {
   });
 });
 
-function tableHeaderClick(
-  columnName: string,
-  { columnIndex = 0 }: { columnIndex?: number } = {},
-) {
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.tableInteractive()
-    .findAllByText(columnName)
-    .eq(columnIndex)
-    .trigger("mousedown");
+function tableHeaderClick(columnName: string) {
+  H.tableInteractive().findAllByText(columnName).eq(0).trigger("mousedown");
 
-  // eslint-disable-next-line metabase/no-unsafe-element-filtering
-  H.tableInteractive()
-    .findAllByText(columnName)
-    .eq(columnIndex)
-    .trigger("mouseup");
+  H.tableInteractive().findAllByText(columnName).eq(0).trigger("mouseup");
 }
