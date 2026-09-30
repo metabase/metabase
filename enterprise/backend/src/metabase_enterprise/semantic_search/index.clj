@@ -1360,13 +1360,13 @@
                                                           :from   [table]
                                                           :where  [:and [:= :model model] [:= :model_id (str id)]]})
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-                                  :distance)]
+                                  :distance)
+                    cutoff    (distance-cutoff search-context)]
                 ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it
                 ;; via RRF, so treat it as a candidate within the cutoff and only call it not-matching past it.
-                (let [cutoff (distance-cutoff search-context)]
-                  (if (and distance (> distance cutoff))
-                    {:type :not-matching :details {:max-cosine-distance cutoff :distance distance}}
-                    {:type :candidate :details {:distance distance}}))))))))))
+                (if (and distance (> distance cutoff))
+                  {:type :not-matching :details {:max-cosine-distance cutoff :distance distance}}
+                  {:type :candidate :details {:distance distance}})))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
