@@ -475,25 +475,29 @@
 
 (mu/defn ollama-raw
   "Stream a Chat Completions request. `:credentials` come from the connection serving it; `:ai-proxy?` is
-  unsupported and throws."
-  [{:keys [model credentials] :as opts} :- core/LLMRequestOpts]
-  (when (str/blank? model) (throw (missing-model-ex)))
-  (let [plan       (forced/plan opts (conn/cloud? credentials))
-        timeout-ms (llm/llm-ollama-request-timeout-ms)]
-    (adapter/stream! provider opts
-                     {:path             "/chat/completions"
-                      :body             (ollama-request-body opts plan)
-                      :request-options  (inference-timeouts)
-                      :span-attrs       {:forced (some-> (:mechanism plan) name)}
-                      :wrap-stream      #(adapter/io-guarded % (fn [e] (stream-io-ex e timeout-ms)))
-                      ;; clj-http raises an `IOException` only when there is no response at all, so the
-                      ;; IO branch cannot swallow a failure the provider's own messages would translate.
-                      :on-request-error (fn [e]
-                                          (if (instance? IOException e)
-                                            ;; the address as resolved, not `(:base-url credentials)`: a
-                                            ;; Cloud connection carries none of its own
-                                            (throw (request-io-ex e (conn/base-url credentials) timeout-ms))
-                                            (adapter/rethrow! provider e)))})))
+  unsupported and throws. `plan` may be supplied by a caller that already has one, as in
+  [[ollama-request-body]]."
+  ([opts :- core/LLMRequestOpts]
+   (ollama-raw opts (forced/plan opts (conn/cloud? (:credentials opts)))))
+
+  ([{:keys [model credentials] :as opts} :- core/LLMRequestOpts
+    plan                                 :- [:maybe ::forced/plan]]
+   (when (str/blank? model) (throw (missing-model-ex)))
+   (let [timeout-ms (llm/llm-ollama-request-timeout-ms)]
+     (adapter/stream! provider opts
+                      {:path             "/chat/completions"
+                       :body             (ollama-request-body opts plan)
+                       :request-options  (inference-timeouts)
+                       :span-attrs       {:forced (some-> (:mechanism plan) name)}
+                       :wrap-stream      #(adapter/io-guarded % (fn [e] (stream-io-ex e timeout-ms)))
+                       ;; clj-http raises an `IOException` only when there is no response at all, so the
+                       ;; IO branch cannot swallow a failure the provider's own messages would translate.
+                       :on-request-error (fn [e]
+                                           (if (instance? IOException e)
+                                             ;; the address as resolved, not `(:base-url credentials)`: a
+                                             ;; Cloud connection carries none of its own
+                                             (throw (request-io-ex e (conn/base-url credentials) timeout-ms))
+                                             (adapter/rethrow! provider e)))}))))
 
 (mu/defn streams-reasoning? :- :boolean
   "Registry capability. Ollama answers per *model*, from what the server reports about it — a connection
@@ -519,4 +523,4 @@
   (let [plan (forced/plan opts (conn/cloud? credentials))]
     (eduction (comp (or (forced/read-back-xf plan) identity)
                     (ollama->aisdk-chunks-xf))
-              (ollama-raw opts))))
+              (ollama-raw opts plan))))
