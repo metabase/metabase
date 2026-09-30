@@ -957,7 +957,7 @@
       "duration": 23494
     },
     {
-      "spec": "../test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js",
+      "spec": "../test/scenarios/filters/filters-reproductions.cy.spec.js",
       "duration": 96871
     },
     {
