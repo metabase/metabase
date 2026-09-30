@@ -84,8 +84,12 @@ function sourceTablePath(document: Document): unknown {
   return normalizePath(definition["source-table"]);
 }
 
-function readRepository(root: string): Source[] {
+function readRepository(root: string): {
+  sources: Source[];
+  yamlFileCount: number;
+} {
   const sources: Source[] = [];
+  let yamlFileCount = 0;
   const walk = (directory: string) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       if (entry.name.startsWith(".") || entry.name === "node_modules") {
@@ -95,6 +99,7 @@ function readRepository(root: string): Source[] {
       if (entry.isDirectory()) {
         walk(file);
       } else if (entry.isFile() && /\.ya?ml$/.test(entry.name)) {
+        yamlFileCount += 1;
         const parsed: unknown = parseYaml(fs.readFileSync(file, "utf8"));
         if (!isRecord(parsed) || !Array.isArray(parsed["serdes/meta"])) {
           continue;
@@ -120,13 +125,18 @@ function readRepository(root: string): Source[] {
       )
       .map((source) => [identity(source.document["serdes/meta"]), source]),
   );
-  for (const { document } of sources) {
+  for (const source of [...sources]) {
+    const { document } = source;
     const meta = document["serdes/meta"];
     if (meta.at(-1)?.model !== "TableUserSettings") {
       continue;
     }
     const table = tableByIdentity.get(identity(meta.slice(0, -1)));
     if (!table) {
+      sources.push({
+        file: source.file,
+        document: { ...document, "serdes/meta": meta.slice(0, -1) },
+      });
       continue;
     }
     for (const setting of [
@@ -140,7 +150,7 @@ function readRepository(root: string): Source[] {
       }
     }
   }
-  return sources;
+  return { sources, yamlFileCount };
 }
 
 function findRepositoryRoot(appRoot: string): string {
@@ -357,11 +367,10 @@ async function fetchMetadata(
   selected: Source[],
   requestedDatabaseId?: number,
 ): Promise<Metadata[]> {
-  const databases = await request<Array<{ id: number; name: string }>>(
-    origin,
-    apiKey,
-    "database",
-  );
+  const response = await request<{
+    data: Array<{ id: number; name: string }>;
+  }>(origin, apiKey, "database");
+  const databases = response.data;
   const groups = new Map<number, Array<[string | null, string]>>();
   for (const { document, file } of selected) {
     const meta = document["serdes/meta"];
@@ -728,7 +737,7 @@ export async function repositorySchemaAction(
   const root = options.repositoryRoot
     ? path.resolve(options.repositoryRoot)
     : findRepositoryRoot(appRoot);
-  const sources = readRepository(root);
+  const { sources, yamlFileCount } = readRepository(root);
   const { metabaseUrl, apiKey } = getResourceSyncCredentials(appRoot);
   const origin = new URL(metabaseUrl).toString().replace(/\/$/, "");
   const database =
@@ -757,6 +766,16 @@ export async function repositorySchemaAction(
     database: database?.name ?? options.database,
     libraryCollections,
   });
+  if (selected.length === 0) {
+    const scope = options.database
+      ? `database ${options.database}`
+      : options.includeDataLibrary
+        ? "Data library"
+        : `Data library collections ${libraryCollections.join(", ")}`;
+    throw new Error(
+      `Repository scope ${scope} selected 0 tables after scanning ${yamlFileCount} YAML files.`,
+    );
+  }
   const databases = await metadata(
     { ...options, appRoot, forceRefresh: refreshOnly || options.forceRefresh },
     selected,

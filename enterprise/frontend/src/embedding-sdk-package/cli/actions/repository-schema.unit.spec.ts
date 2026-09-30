@@ -58,7 +58,7 @@ describe("repository schema generation", () => {
       .mockImplementation(async (input) => {
         const url = String(input);
         if (url.endsWith("/api/database")) {
-          return Response.json([{ id: 1, name: "DB" }]);
+          return Response.json({ data: [{ id: 1, name: "DB" }], total: 1 });
         }
         if (url.includes("/metadata?")) {
           return Response.json({
@@ -192,6 +192,111 @@ describe("repository schema generation", () => {
     expect(generated).not.toContain("instance_only");
   });
 
+  it("generates a table represented only by user settings", async () => {
+    const publicTableMeta = [
+      { model: "Database", id: "DB" },
+      { model: "Schema", id: "public" },
+      { model: "Table", id: "orders" },
+    ];
+
+    writeYaml(path.join(root, "databases", "orders.yaml"), {
+      "serdes/meta": [
+        ...publicTableMeta,
+        { model: "TableUserSettings", id: "1" },
+      ],
+      display_name: "Customer orders",
+      is_published: true,
+      fields: [{ "serdes/meta": [{ model: "FieldUserSettings", id: "1" }] }],
+    });
+    writeYaml(path.join(root, "databases", "measure.yaml"), {
+      "serdes/meta": measureMeta,
+      name: "Latest order",
+      definition: {
+        stages: [
+          {
+            "source-table": ["DB", "public", "orders"],
+            aggregation: [
+              [
+                "max",
+                {},
+                ["field", {}, ["DB", "public", "orders", "created_at"]],
+              ],
+            ],
+          },
+        ],
+      },
+    });
+    fetchMock.mockResolvedValueOnce(
+      Response.json({ data: [{ id: 1, name: "DB" }], total: 1 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      Response.json({
+        id: 1,
+        name: "DB",
+        tables: [
+          {
+            id: 10,
+            name: "orders",
+            schema: "public",
+            fields: [
+              {
+                id: 100,
+                table_id: 10,
+                name: "created_at",
+                base_type: "type/DateTime",
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    await repositorySchemaAction({ appRoot, database: "DB" });
+
+    const generated = fs.readFileSync(
+      path.join(appRoot, "src", "metabase.data.ts"),
+      "utf8",
+    );
+    expect(generated).toContain('"customerOrders"');
+    expect(generated).toContain('"fieldId": 100');
+    expect(generated).toContain('"latestOrder"');
+  });
+
+  it("merges user settings into a separate table representation", async () => {
+    writeYaml(path.join(root, "databases", "orders-settings.yaml"), {
+      "serdes/meta": [...tableMeta, { model: "TableUserSettings", id: "1" }],
+      display_name: "Customer orders",
+      is_published: true,
+      collection_id: "librarylibrarydatadat",
+    });
+    writeYaml(path.join(root, "collections", "data.yaml"), {
+      "serdes/meta": [{ model: "Collection", id: "librarylibrarydatadat" }],
+      entity_id: "librarylibrarydatadat",
+      type: "library-data",
+    });
+
+    await repositorySchemaAction({ appRoot, includeDataLibrary: true });
+
+    const generated = fs.readFileSync(
+      path.join(appRoot, "src", "metabase.data.ts"),
+      "utf8",
+    );
+    expect(generated).toContain('"customerOrders"');
+    expect(generated).toContain('"fieldId": 100');
+  });
+
+  it("rejects a scope with no represented tables", async () => {
+    const target = path.join(appRoot, "src", "metabase.data.ts");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "previous schema");
+
+    await expect(
+      repositorySchemaAction({ appRoot, database: "Missing" }),
+    ).rejects.toThrow(/database Missing.*0 tables.*YAML files/);
+
+    expect(fs.readFileSync(target, "utf8")).toBe("previous schema");
+  });
+
   it("keeps the generated file when a repository measure has no instance ID", async () => {
     await repositorySchemaAction({ appRoot, database: "DB" });
     const generatedFile = path.join(appRoot, "src", "metabase.data.ts");
@@ -222,10 +327,13 @@ describe("repository schema generation", () => {
       },
     });
     fetchMock.mockResolvedValueOnce(
-      Response.json([
-        { id: 1, name: "DB" },
-        { id: 2, name: "DB" },
-      ]),
+      Response.json({
+        data: [
+          { id: 1, name: "DB" },
+          { id: 2, name: "DB" },
+        ],
+        total: 2,
+      }),
     );
     fetchMock.mockResolvedValueOnce(
       Response.json({
