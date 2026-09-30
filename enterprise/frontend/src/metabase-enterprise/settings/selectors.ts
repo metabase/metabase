@@ -66,15 +66,13 @@ export function getLoginPageIllustration(state: State): IllustrationValue {
     case "none":
       return null;
 
-    case "custom":
-      return {
-        // Unjustified type cast. FIXME
-        src: getCustomIllustrationUrl(
-          state,
-          "login-page-illustration-custom",
-        ) as string,
-        isDefault: false,
-      };
+    case "custom": {
+      const src = getCustomIllustrationUrl(
+        state,
+        "login-page-illustration-custom",
+      );
+      return src ? { src, isDefault: false } : null;
+    }
   }
 }
 
@@ -95,15 +93,13 @@ export function getLandingPageIllustration(state: State): IllustrationValue {
     case "none":
       return null;
 
-    case "custom":
-      return {
-        // Unjustified type cast. FIXME
-        src: getCustomIllustrationUrl(
-          state,
-          "landing-page-illustration-custom",
-        ) as string,
-        isDefault: false,
-      };
+    case "custom": {
+      const src = getCustomIllustrationUrl(
+        state,
+        "landing-page-illustration-custom",
+      );
+      return src ? { src, isDefault: false } : null;
+    }
   }
 }
 
@@ -122,11 +118,9 @@ export function getNoDataIllustration(state: State): string | null {
       return null;
 
     case "custom":
-      // Unjustified type cast. FIXME
-      return getCustomIllustrationUrl(
-        state,
-        "no-data-illustration-custom",
-      ) as string;
+      return (
+        getCustomIllustrationUrl(state, "no-data-illustration-custom") ?? null
+      );
   }
 }
 
@@ -145,10 +139,8 @@ export function getNoObjectIllustration(state: State): string | null {
       return null;
 
     case "custom":
-      // Unjustified type cast. FIXME
-      return getCustomIllustrationUrl(
-        state,
-        "no-object-illustration-custom",
-      ) as string;
+      return (
+        getCustomIllustrationUrl(state, "no-object-illustration-custom") ?? null
+      );
   }
 }
