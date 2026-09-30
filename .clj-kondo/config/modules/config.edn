@@ -1310,6 +1310,7 @@
    :module-exports #{mcp.oauth-server}
    :api  #{metabase.mcp.callback-api
            metabase.mcp.core
+           metabase.mcp.http-handler
            metabase.mcp.init
            metabase.mcp.usage
            metabase.mcp.v2.api}
@@ -2501,8 +2502,6 @@
            embedding
            lib.be
            lib.schema
-           mcp
-           mcp.oauth-server
            metabot.agent-api
            premium-features
            query-processor

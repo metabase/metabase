@@ -81,7 +81,7 @@
     (defn middleware-fn [handler]
       (fn handler' [request respond raise]
         (handler request respond raise)))"
-  [{:keys [cors]}]
+  [{:keys [cors] :as options}]
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
@@ -104,7 +104,8 @@
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
-        #'mw.session/wrap-current-user-info          ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
+        (fn [handler]
+          (#'mw.session/wrap-current-user-info handler options)) ; sets :metabase-user-id and other info from a valid session, API key, or configured credential
         #'mw.pf-cache/wrap-premium-features-cache-check ; check cookie to refresh premium features cache if needed
         #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed
         #'analytics/embedding-mw                     ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
@@ -126,16 +127,17 @@
        (remove nil?)))
 
 (def ^:private Options
-  "Explicit middleware configuration. `:cors` carries the origin callbacks the application supplies."
-  [:maybe
-   [:map
-    {:closed true}
-    [:cors {:optional true}
-     [:maybe
-      [:map
-       {:closed true}
-       [:origins-fn         {:optional true} ifn?]
-       [:sandbox-origin?-fn {:optional true} ifn?]]]]]])
+  "Middleware configuration the application supplies: extra CORS origins, and the credentials beyond sessions and API
+  keys that authenticate a request."
+  [:map
+   {:closed true}
+   [:cors {:optional true}
+    [:map
+     {:closed true}
+     [:origins-fn         ifn?]
+     [:sandbox-origin?-fn ifn?]]]
+   [:oauth-bearer       {:optional true} ::mw.session/oauth-bearer]
+   [:mcp-ui-credentials {:optional true} ::mw.session/mcp-ui-credentials]])
 
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler
@@ -155,7 +157,8 @@
         handler    (atom (apply-middleware server-routes options))]
     (doseq [varr  (concat [#'middleware
                            #'mw.exceptions/catch-api-exceptions
-                           #'mw.security/add-security-headers]
+                           #'mw.security/add-security-headers
+                           #'mw.session/wrap-current-user-info]
                           middleware)
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
@@ -165,12 +168,9 @@
       (@handler request respond raise))))
 
 (mu/defn make-handler :- ::api.macros/handler
-  "Create the primary entry point to the Ring HTTP server. `options` may contain explicit configuration for middleware,
-  such as `:cors` callbacks supplied by the application."
-  ([server-routes :- ::api.macros/handler]
-   (make-handler server-routes nil))
-  ([server-routes :- ::api.macros/handler
-    options       :- Options]
-   (if config/is-dev?
-     (dev-handler server-routes options)
-     (apply-middleware server-routes options))))
+  "Create the primary entry point to the Ring HTTP server, with middleware configured by `options`."
+  [server-routes :- ::api.macros/handler
+   options       :- Options]
+  (if config/is-dev?
+    (dev-handler server-routes options)
+    (apply-middleware server-routes options)))
