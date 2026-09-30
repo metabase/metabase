@@ -270,15 +270,24 @@ describe("scenarios > models metadata", () => {
     cy.url().should("include", "/columns");
     H.waitForLoaderToBeRemoved();
 
-    cy.log("move Product -> Price before Products -> Vendor");
+    H.tableInteractiveScrollContainer().scrollTo("right");
+    H.tableInteractiveScrollContainer().should(($container) => {
+      expect($container[0].scrollLeft).to.be.greaterThan(0);
+    });
+
+    cy.log("move Products → Price before Products → Vendor");
 
     cy.findAllByTestId("header-cell")
       .contains("Products → Price")
       .closest("[data-testid='header-cell']")
       .as("dragHeader");
 
-    H.moveDnDKitElementByAlias("@dragHeader", { horizontal: 600 });
+    H.moveDnDKitElementByAlias("@dragHeader", { horizontal: -150 });
 
+    cy.log("the table should keep its scroll position");
+    H.tableInteractiveScrollContainer().should(($container) => {
+      expect($container[0].scrollLeft).to.be.greaterThan(0);
+    });
     cy.findAllByTestId("header-cell")
       .contains("Products → Vendor")
       .should("be.visible");

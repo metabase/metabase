@@ -82,6 +82,7 @@ describe("scenarios > models", () => {
         collection: "Our analytics",
         table: "Products",
       });
+      cy.location("pathname").should("match", /^\/question\/\d+-q1$/);
 
       cy.findByTestId("qb-header")
         .findAllByText("Our analytics")
@@ -89,8 +90,6 @@ describe("scenarios > models", () => {
         .click();
       getCollectionItemRow("Products Model").icon("model");
       getCollectionItemRow("Q1").icon("table2");
-
-      cy.url().should("not.include", "/question/" + id);
     });
 
     cy.log(
@@ -192,11 +191,15 @@ describe("scenarios > models", () => {
     turnIntoModel();
     H.undoToast().findByText("This is a model now.").should("exist");
     H.undo();
+    cy.wait("@cardUpdate");
 
     H.openQuestionActions();
     H.popover().within(() => {
       cy.icon("model").click();
     });
+    cy.wait("@cardUpdate");
+    H.undoToast().findByText("This is a model now.").should("be.visible");
+    H.tableInteractive().should("be.visible");
     H.modal().should("not.exist");
   });
 
@@ -421,6 +424,14 @@ describe("scenarios > models", () => {
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");
         cy.findByText("Reviews").should("exist");
+
+        H.entityPickerModalItem(0, "Our analytics").click();
+        H.entityPickerModalLevel(1)
+          .findByText("First collection")
+          .should("be.visible");
+        H.entityPickerModalLevel(1)
+          .findByText("Orders Model")
+          .should("not.exist");
       });
     });
   });
@@ -471,7 +482,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
+      cy.location("pathname").should("match", /^\/question\/\d+-q1$/);
     });
 
     it("can create a question using table click actions", () => {
@@ -497,7 +508,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      cy.url().should("not.include", "/question/" + ORDERS_QUESTION_ID);
+      cy.location("pathname").should("match", /^\/question\/\d+-q1$/);
     });
 
     it("can edit model info", () => {
@@ -580,6 +591,10 @@ describe("scenarios > models", () => {
         H.NativeEditor.focus().type("{movetoend}").type(" WHERE {{F", {
           parseSpecialCharSequences: false,
         });
+        // Blurring flushes the debounced query update that would open the sidebar
+        H.NativeEditor.blur();
+        H.NativeEditor.get().should("contain", "WHERE {{F");
+        cy.findByTestId("dataset-edit-bar").should("be.visible");
         cy.findByTestId("tag-editor-sidebar").should("not.exist");
       });
     });

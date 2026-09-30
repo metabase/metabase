@@ -10,7 +10,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("issue 46221", () => {
   const modelDetails: NativeQuestionDetails = {
     name: "46221",
@@ -429,18 +429,10 @@ describe("Issue 56913", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByText("Turn into a model").click();
-    H.modal().button("Turn this into a model").click();
+    const ackUrl =
+      "/api/user-key-value/namespace/user_acknowledgement/key/turn_into_model_modal";
+    cy.request("PUT", ackUrl, { value: true });
+    cy.intercept("GET", ackUrl).as("modelModalAck");
 
     H.createNativeQuestion(
       {
@@ -463,6 +455,7 @@ describe("Issue 56913", () => {
 
   it("should show the error modal when converting a native question with variables into a model, even when the 'turn into a model' modal was previously acknowledged (metabase#56913)", () => {
     H.openQuestionActions();
+    cy.wait("@modelModalAck").its("response.body").should("eq", true);
     H.popover().findByText("Turn into a model").click();
     H.modal()
       .findByText("Variables in models aren't supported yet")

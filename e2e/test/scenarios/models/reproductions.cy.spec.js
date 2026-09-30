@@ -250,12 +250,15 @@ describe("issue 23449", () => {
   const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
   function turnIntoModel() {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.openQuestionActions();
     cy.findByText("Turn into a model").click();
     cy.findByText("Turn this into a model").click();
 
-    cy.wait("@cardUpdate").then(({ response }) => {
+    cy.wait("@cardUpdate");
+    // Turning the question into a model re-runs its query
+    cy.wait("@cardQuery").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
   }
@@ -285,7 +288,7 @@ describe("issue 23449", () => {
     cy.findByTextEnsureVisible("Perfecto");
 
     turnIntoModel();
-    cy.findByTextEnsureVisible("Perfecto");
+    H.tableInteractive().findByTextEnsureVisible("Perfecto");
   });
 });
 

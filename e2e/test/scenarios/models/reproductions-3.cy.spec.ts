@@ -139,7 +139,11 @@ describe("issue 26091", () => {
     startNewQuestion();
     H.miniPicker().within(() => {
       cy.findByText("Our analytics").click();
-      cy.findByText("New model").should("be.visible");
+      cy.findByText("New model")
+        .should("be.visible")
+        .closest("[role=menuitem]")
+        .icon("model")
+        .should("exist");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
     });
