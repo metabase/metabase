@@ -649,6 +649,13 @@
                                :error-code    "structured-output-invalid"
                                :raw-arguments (:_raw_arguments result)}))
 
+              ;; The tool call's JSON parsed but isn't an object; `parse-tool-arguments` returned the
+              ;; `{:_non_object_arguments ...}` sentinel. Reject it the same way.
+              (and (map? result) (contains? result :_non_object_arguments))
+              (throw (ex-info "LLM returned a JSON value that is not an object in its structured tool call"
+                              {:parts      parts
+                               :error-code "structured-output-invalid"}))
+
               result
               {:result result :parts parts}
 

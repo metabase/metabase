@@ -339,12 +339,11 @@
       (is (nil? (speed {:model "claude-opus-5" :fast? true :ai-proxy? true}))))))
 
 (deftest ^:parallel claude-request-body-nested-object-arguments-test
-  (testing "a replayed tool call whose arguments hold nested keyword-keyed maps is accepted and sent as-is"
-    ;; `parse-tool-arguments` keywordizes nested objects; this instrumented entry point is where the next
-    ;; agent-loop turn used to throw `Invalid input` on them (BOT-2190).
-    (let [arguments {:query         {:lib/type "mbql/query"
-                                     :stages   [{:source-table ["db" "public" "orders"]}]}
-                     :visualization {:chart_type "line"}
+  (testing "a replayed tool call whose arguments hold nested string-keyed objects is accepted and sent as-is"
+    ;; Replayed tool calls go through this instrumented entry point, so their arguments must validate here.
+    (let [arguments {:query         {"lib/type" "mbql/query"
+                                     "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                     :visualization {"chart_type" "line"}
                      :title         "Orders per month"
                      :description   "Monthly orders in 2025"}
           body      (claude/claude-request-body

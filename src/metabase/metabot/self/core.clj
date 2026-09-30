@@ -345,14 +345,23 @@
     (get stop-reasons raw "other")))
 
 (defn- parse-tool-arguments
-  "Parse concatenated tool input deltas as JSON.
-  Falls back to returning the raw string wrapped in a map when parsing fails,
-  e.g. when the LLM produces malformed JSON in tool call arguments."
+  "Parse concatenated tool input deltas as a JSON object with keyword argument names.
+
+  `{\"query\":{\"stages\":[]}}` becomes `{:query {\"stages\" []}}`: only the top-level names are keywordized. Blank
+  input (a call to a tool with no arguments) parses to nil. Anything else comes back as a sentinel map that
+  [[reject-unparsed-arguments!]] turns into an error for the model: `{:_raw_arguments raw}` for malformed JSON, and
+  `{:_non_object_arguments decoded}` for valid JSON that isn't an object, e.g. `[\"orders\"]`."
   [chunks]
   (let [raw (->> (map :inputTextDelta chunks)
                  (str/join ""))]
     (try
-      (json/decode+kw raw)
+      ;; Keywordize only the top-level argument names. Nested objects are data the model wrote and stay string-keyed
+      ;; JSON. The executor and title-fn keywordize the full arguments themselves.
+      (let [arguments (json/decode raw)]
+        (cond
+          (map? arguments) (update-keys arguments keyword)
+          (nil? arguments) nil
+          :else            {:_non_object_arguments arguments}))
       (catch Exception e
         (log/warn "Failed to parse tool arguments as JSON, passing raw string"
                   {:tool    (:toolName (first chunks))
@@ -916,23 +925,37 @@
              (str "; received " (json-type-name (get arguments field))))
            "."))))
 
+(defn- non-object-arguments-message
+  "The error for tool `arguments` that are not a JSON object, e.g. `[\"orders\"]`."
+  [arguments]
+  (str "Invalid tool arguments: expected an object of named arguments; received " (json-type-name arguments) "."))
+
 (defn- invalid-arguments-message
   "A repair-oriented message describing how `arguments` violate `schema`, or nil when they match."
   [schema arguments]
   (when-let [error (mr/explain schema arguments)]
     (let [humanized (me/humanize error)]
-      (str "Invalid tool arguments: "
-           (if (map? humanized)
+      (if (map? humanized)
+        (str "Invalid tool arguments: "
              (str/join " " (for [[field messages] (sort-by (comp name key) humanized)]
-                             (argument-error-text arguments field messages)))
-             (str "expected an object of named arguments; received "
-                  (json-type-name arguments) "."))))))
+                             (argument-error-text arguments field messages))))
+        (non-object-arguments-message arguments)))))
+
+(defn- reject-unparsed-arguments!
+  "Throw an agent error when `arguments` is a [[parse-tool-arguments]] sentinel rather than a JSON object."
+  [arguments]
+  (when (map? arguments)
+    (cond
+      (contains? arguments :_raw_arguments)
+      (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
+                      {:agent-error? true}))
+
+      (contains? arguments :_non_object_arguments)
+      (throw (ex-info (non-object-arguments-message (:_non_object_arguments arguments))
+                      {:agent-error? true})))))
 
 (defn- validate-tool-arguments!
   [tool arguments]
-  (when (and (map? arguments) (contains? arguments :_raw_arguments))
-    (throw (ex-info "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
-                    {:agent-error? true})))
   (when-let [schema (tool-args-schema tool)]
     (when-let [message (invalid-arguments-message schema arguments)]
       (throw (ex-info message {:agent-error? true})))))
@@ -983,6 +1006,9 @@
                                                 (str/join ", " (sort (keys tools))) ".")
                                            {:agent-error? true})))
                          (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                               ;; Before coercion: `coerce-stringified-json` would decode a double-encoded
+                               ;; `{:_non_object_arguments "{...}"}` into an object and garble the message.
+                               _         (reject-unparsed-arguments! arguments)
                                arguments (walk/keywordize-keys (or (coerce-stringified-json arguments) {}))
                                arguments (coerce-stringified-scalars tool arguments)
                                decode    (tool-decode-fn tool)
