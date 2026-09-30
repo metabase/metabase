@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
-import type { TableFieldOrder } from "metabase-types/api";
-
-import { Label } from "./Label";
+import {
+  Icon,
+  SegmentedControl,
+  type SegmentedControlItem,
+  type SegmentedControlProps,
+} from "metabase/ui";
+import type { IconName, TableFieldOrder } from "metabase-types/api";
 
 interface Props extends Omit<
   SegmentedControlProps<TableFieldOrder>,
@@ -40,23 +43,45 @@ export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   );
 };
 
-function getData() {
+function getData(): SegmentedControlItem<TableFieldOrder>[] {
   return [
-    {
-      value: "smart" as const,
-      label: <Label icon="sparkles" tooltip={t`Auto order`} />,
-    },
-    {
-      value: "database" as const,
-      label: <Label icon="database" tooltip={t`Database order`} />,
-    },
-    {
-      value: "alphabetical" as const,
-      label: <Label icon="string" tooltip={t`Alphabetical order`} />,
-    },
-    {
-      value: "custom" as const,
-      label: <Label icon="palette" tooltip={t`Custom order`} />,
-    },
+    getIconOnlyItem({
+      value: "smart",
+      iconName: "sparkles",
+      label: t`Auto order`,
+    }),
+    getIconOnlyItem({
+      value: "database",
+      iconName: "database",
+      label: t`Database order`,
+    }),
+    getIconOnlyItem({
+      value: "alphabetical",
+      iconName: "string",
+      label: t`Alphabetical order`,
+    }),
+    getIconOnlyItem({
+      value: "custom",
+      iconName: "palette",
+      label: t`Custom order`,
+    }),
   ];
+}
+
+interface IconOnlyItemOpts {
+  value: TableFieldOrder;
+  iconName: IconName;
+  label: string;
+}
+
+function getIconOnlyItem({
+  value,
+  iconName,
+  label,
+}: IconOnlyItemOpts): SegmentedControlItem<TableFieldOrder> {
+  return {
+    value,
+    ariaLabel: label,
+    icon: <Icon name={iconName} tooltip={label} />,
+  };
 }

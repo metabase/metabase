@@ -45,7 +45,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--mantine-spacing-xs);
   min-height: 1rem;
+}
+
+.SegmentedControlIconElement {
+  display: flex;
 }
 
 .SegmentedControlIndicator {

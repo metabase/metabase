@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { FixedSizeIcon } from "metabase/ui";
 import type { DependencySortColumn } from "metabase-types/api";
 
 import type { SortColumnItem, SortDirectionItem } from "./types";
@@ -26,11 +25,13 @@ export function getSortDirectionItems(): SortDirectionItem[] {
   return [
     {
       value: "asc",
-      label: <FixedSizeIcon name="arrow_up" aria-label={t`Ascending`} />,
+      ariaLabel: t`Ascending`,
+      icon: "arrow_up",
     },
     {
       value: "desc",
-      label: <FixedSizeIcon name="arrow_down" aria-label={t`Descending`} />,
+      ariaLabel: t`Descending`,
+      icon: "arrow_down",
     },
   ];
 }
