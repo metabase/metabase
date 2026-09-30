@@ -666,10 +666,9 @@ describe(
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
         cy.findByText("Recent items").click();
-        cy.findAllByTestId("result-item").should(
-          "contain.text",
-          "Orders Model",
-        );
+        cy.findAllByTestId("result-item")
+          .first()
+          .should("contain.text", "Orders Model");
       });
     });
   },
