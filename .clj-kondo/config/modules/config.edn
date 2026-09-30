@@ -2468,7 +2468,8 @@
 
   segments.rest
   {:team "Graphy"
-   :api  #{metabase.segments.rest.api}
+   :ns-prefix "metabase.segments-rest"
+   :api  #{metabase.segments-rest.api}
    :uses #{api
            events
            lib
