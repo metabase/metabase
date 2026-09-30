@@ -32,6 +32,17 @@ export function optionMatchesFilter(
 export const removeDiacritics = (value: string) =>
   value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+/** Turns selected values that have no matching option into options of their own. */
+export function createOptionsFromValuesWithoutOptions(
+  values: RowValue[],
+  options: Option[],
+): Option[] {
+  const optionsMap = new Map(options.map((option) => [option[0], option]));
+  return values
+    .filter((value) => !optionsMap.has(value))
+    .map((value) => [value]);
+}
+
 export const getOptionDisplayName = (option: Option | RowValue[]) =>
   String(option.at(-1));
 

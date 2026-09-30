@@ -1,41 +1,27 @@
 import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
-import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";
-import { Checkbox, Input, Text, TextInput } from "metabase/ui";
+import { Box, Checkbox, Input, Text, TextInput, rem } from "metabase/ui";
 import { delay } from "metabase/utils/delay";
 import type { RowValue } from "metabase-types/api";
 
-import {
-  EmptyStateContainer,
-  FilterInputContainer,
-  OptionContainer,
-  OptionsList,
-} from "./ListField.styled";
+import { optionItemEqualsFilter } from "../SingleSelectListField/utils";
+
+import S from "./ListField.module.css";
 import type { ListFieldProps, Option } from "./types";
 import {
+  createOptionsFromValuesWithoutOptions,
   getOptionDisplayName,
   normalizeValuesToOptionKeys,
   optionMatchesFilter,
 } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
-
-function createOptionsFromValuesWithoutOptions(
-  values: RowValue[],
-  options: Option[],
-): Option[] {
-  const optionsMap = new Map(options.map((option) => [option[0], option]));
-  return values
-    .filter((value) => !optionsMap.has(value))
-    .map((value) => [value]);
-}
 
 export const ListField = ({
   onChange,
@@ -124,13 +110,13 @@ export const ListField = ({
   const shouldShowEmptyState =
     augmentedOptions.length > 0 && filteredOptions.length === 0;
 
-  const handleToggleOption = (option: any) => {
+  const handleToggleOption = (option: RowValue) => {
     const newSelectedValues = selectedValues.has(option)
       ? Array.from(selectedValues).filter((value) => value !== option)
       : [...selectedValues, option];
 
     setSelectedValues(new Set(newSelectedValues));
-    onChange?.(newSelectedValues);
+    onChange(newSelectedValues);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -140,7 +126,7 @@ export const ListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) =>
+      !augmentedOptions.some((option) =>
         optionItemEqualsFilter(option[0], filter),
       )
     ) {
@@ -167,7 +153,7 @@ export const ListField = ({
 
   return (
     <>
-      <FilterInputContainer isDashboardFilter={isDashboardFilter}>
+      <Box mb={isDashboardFilter ? 0 : "sm"}>
         <TextInput
           autoFocus
           placeholder={placeholder}
@@ -185,17 +171,23 @@ export const ListField = ({
           }
           data-testid="list-field"
         />
-      </FilterInputContainer>
+      </Box>
 
       {shouldShowEmptyState && (
-        <EmptyStateContainer>
+        <Box pt="xxl" px="xxl">
           <EmptyState message={t`Didn't find anything`} icon="search" />
-        </EmptyStateContainer>
+        </Box>
       )}
 
-      <OptionsList isDashboardFilter={isDashboardFilter}>
+      <Box
+        component="ul"
+        className={S.optionsList}
+        mah={isDashboardFilter ? rem(300) : undefined}
+        pt={isDashboardFilter ? "sm" : undefined}
+        px={isDashboardFilter ? "sm" : undefined}
+      >
         {filteredOptions.length > 0 && (
-          <OptionContainer>
+          <Box component="li" py="sm" px="xxxs">
             <Checkbox
               variant="stacked"
               label={
@@ -207,19 +199,19 @@ export const ListField = ({
               indeterminate={!isAll && !isNone}
               onChange={handleToggleAll}
             />
-          </OptionContainer>
+          </Box>
         )}
         {filteredOptions.map((option, index) => (
-          <OptionContainer key={index}>
+          <Box component="li" key={index} py="sm" px="xxxs">
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
               checked={selectedValues.has(option[0])}
               label={optionRenderer(option)}
               onChange={() => handleToggleOption(option[0])}
             />
-          </OptionContainer>
+          </Box>
         ))}
-      </OptionsList>
+      </Box>
     </>
   );
 };

@@ -57,7 +57,7 @@ import type {
 import { Value as ValueComponent } from "../Value";
 
 import { ListField } from "./ListField";
-import SingleSelectListField from "./SingleSelectListField";
+import { SingleSelectListField } from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
@@ -384,7 +384,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
