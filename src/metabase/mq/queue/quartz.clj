@@ -50,7 +50,7 @@
 
 ;; Install the queue node-affinity DriverDelegate when Quartz's JDBC properties are set. Registered at
 ;; load time, and here rather than in `metabase.mq.init`, because it is a property of *this* backend —
-;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `task`,
+;; init has no business knowing that one backend swaps out a Quartz internal. (`mq` depends on `app-db`,
 ;; not the reverse, so `app-db.quartz` calls back into this rather than referencing `mq`.)
 ;; install-delegate! falls back to the plain per-DB delegate if the affinity subclass can't be loaded.
 (app-db.quartz/register-jdbc-property-setter! quartz-affinity/install-delegate!)

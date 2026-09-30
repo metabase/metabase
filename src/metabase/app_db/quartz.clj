@@ -63,13 +63,13 @@
 (defonce ^:private jdbc-property-setters
   ;; Extra fns (of db-type) run by set-jdbc-backend-properties! right before the scheduler initializes.
   ;; Lets a higher-level module (e.g. `mq`, which installs its node-affinity Quartz DriverDelegate)
-  ;; hook in without `task` depending on it — `task` cannot depend on the modules that depend on it.
+  ;; hook in without `app-db` depending on it, since `app-db` cannot depend on the modules that depend on it.
   (atom []))
 
 (defn register-jdbc-property-setter!
   "Register `f` (a fn of the app-db `db-type`) to run when Quartz's JDBC backend properties are set,
   just before the scheduler initializes. Used by the `mq` module to install its node-affinity
-  `DriverDelegate` — registering here inverts the dependency so `task` never references `mq`."
+  `DriverDelegate` — registering here inverts the dependency so `app-db` never references `mq`."
   [f]
   (swap! jdbc-property-setters conj f))
 
