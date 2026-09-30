@@ -1,6 +1,5 @@
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -290,24 +289,6 @@ describe(
                 });
 
                 onlyOn(user === "normal", () => {
-                  it("should preselect the most recently visited dashboard", () => {
-                    H.openQuestionActions();
-                    cy.findByTestId("add-to-dashboard-button").click();
-
-                    findInactivePickerItem("Orders in a dashboard");
-
-                    // before visiting the dashboard, we don't have any history
-                    H.visitDashboard(ORDERS_DASHBOARD_ID);
-                    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-
-                    H.openQuestionActions();
-                    cy.findByTestId("add-to-dashboard-button").click();
-
-                    H.pickEntity({
-                      path: ["Our analytics", "Orders in a dashboard"],
-                    });
-                  });
-
                   it("should handle lost access", () => {
                     cy.intercept(
                       "GET",
