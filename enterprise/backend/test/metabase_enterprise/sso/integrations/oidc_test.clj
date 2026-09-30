@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
+   [metabase-enterprise.sso.providers.oidc :as oidc.provider]
+   [metabase-enterprise.sso.settings :as sso-settings]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.sso.oidc.state :as oidc.state]
@@ -371,6 +373,22 @@
                    group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
                (is (contains? group-ids group-a-id))
                (is (not (contains? group-ids group-b-id)))))))))))
+
+(deftest build-oidc-config-attribute-map-test
+  (testing "custom attribute keys survive the setting's JSON round trip into the OIDC config"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-temporary-setting-values
+        [oidc-providers [(assoc test-provider :attribute-map {"email"      "mail"
+                                                              "first_name" "gn"
+                                                              "last_name"  "sn"})]]
+        (let [stored (sso-settings/get-oidc-provider "test-idp")
+              config (#'oidc.provider/build-oidc-config stored {:redirect-uri "http://localhost/callback"})]
+          (testing "the stored map comes back with keyword keys"
+            (is (= "mail" (get-in stored [:attribute-map :email]))))
+          (is (= {:attribute-email     "mail"
+                  :attribute-firstname "gn"
+                  :attribute-lastname  "sn"}
+                 (select-keys config [:attribute-email :attribute-firstname :attribute-lastname]))))))))
 
 (deftest oidc-group-sync-custom-attribute-test
   (testing "Non-default group attribute — using a custom claim name"

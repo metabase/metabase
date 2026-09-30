@@ -24,7 +24,8 @@
   (when (and (:client-id provider-config)
              (:client-secret provider-config)
              (:issuer-uri provider-config))
-    (let [attribute-map (:attribute-map provider-config)]
+    ;; the stored setting decodes with keyword keys, while the lookups below use strings
+    (let [attribute-map (update-keys (:attribute-map provider-config) name)]
       (cond-> {:client-id     (:client-id provider-config)
                :client-secret (:client-secret provider-config)
                :issuer-uri    (:issuer-uri provider-config)
