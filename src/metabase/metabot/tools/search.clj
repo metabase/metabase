@@ -952,9 +952,9 @@
 (def ^:private matchers
   "How each matcher runs: the engine it pins, and whether its `query` is a structured query."
   {:semantic      {:engine                (constantly :search.engine/semantic)
-                  :expr?                 false
-                  :vector-only?          true
-                  :max-semantic-distance metabot-max-semantic-distance}
+                   :expr?                 false
+                   :vector-only?          true
+                   :max-semantic-distance metabot-max-semantic-distance}
    :fulltext      {:engine search.engine/keyword-engine :expr? true :validate-tsquery? true}
    :substring-or  {:engine search.engine/keyword-engine :expr? true}
    :substring-and {:engine search.engine/keyword-engine :expr? true}})
