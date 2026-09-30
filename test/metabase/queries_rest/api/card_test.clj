@@ -3331,7 +3331,12 @@
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card)))))))
       (testing "Endpoint should 404 if Card doesn't exist"
         (is (= "Not found."
-               (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
+               (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE)))))
+      (testing "GHY-4650: Endpoint should 404 if Card is archived, as for dashboards"
+        (mt/with-temp [:model/Card card (assoc (shared-card) :archived true)]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" (u/the-id card)))))
+          (is (some? (t2/select-one-fn :public_uuid :model/Card :id (u/the-id card)))))))))
 
 (deftest share-card-audit-log-test
   (testing "POST /api/card/:id/public_link creates audit log entry"

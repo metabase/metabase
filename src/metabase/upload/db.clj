@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -91,17 +92,20 @@
   (t2/update! :model/Field field-id {:display_name display-name}))
 
 (mu/defn unarchived-models-for-table
-  "The id, query, and schema of the unarchived model Cards of the Table with `table-id`."
+  "The query-relevant columns of the unarchived model Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select [:model/Card :id :dataset_query :card_schema]
+  (t2/select (queries.card-schema/selection)
              :table_id table-id
              :type     :model
              :archived false))
 
 (mu/defn card-query-and-metadata
-  "The query, result metadata, and schema of the Card with `card-id`, or nil."
+  "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :dataset_query :result_metadata :card_schema] card-id))
+  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `upload` (via
+  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
+  ;; dependency-free namespace that exists for exactly this.
+  (t2/select-one (queries.card-schema/selection) :id card-id))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id`."
