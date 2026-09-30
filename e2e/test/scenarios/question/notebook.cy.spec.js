@@ -126,7 +126,9 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         "DistinctIf(column, condition)",
       );
     });
+    H.expressionEditorWidget().button("Cancel").click();
     cy.realPress("Escape");
+    H.popover().should("not.exist");
 
     H.getNotebookStep("summarize")
       .findByText("Pick a column to group by")

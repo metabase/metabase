@@ -78,8 +78,9 @@ describe("scenarios > question > offset", () => {
         );
       });
 
+      H.expressionEditorWidget().button("Cancel").click();
       cy.realPress("Escape");
-      H.expressionEditorWidget().should("not.exist");
+      H.popover().should("not.exist");
 
       cy.button("Custom column").click();
       H.enterCustomColumnDetails({ formula: customColumnPrefix });
@@ -97,7 +98,7 @@ describe("scenarios > question > offset", () => {
         );
       });
 
-      cy.realPress("Escape");
+      H.expressionEditorWidget().button("Cancel").click();
       H.expressionEditorWidget().should("not.exist");
 
       cy.button("Summarize").click();
