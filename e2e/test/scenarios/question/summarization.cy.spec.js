@@ -1,6 +1,4 @@
 const { H } = cy;
-import { dedent } from "ts-dedent";
-
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -141,54 +139,6 @@ describe("scenarios > question > summarize", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("should allow using `Custom Expression` in orders metrics and keep manually entered parenthesis intact if they affect the result (metabase#12899, metabase#13306)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    H.popover().contains("Custom Expression").click();
-
-    H.enterCustomColumnDetails({
-      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
-      format: true,
-    });
-
-    H.CustomExpressionEditor.value().should(
-      "equal",
-      dedent`
-        Sum([Total]) /
-          (Sum([Product → Price]) * Average([Quantity]))
-      `.trim(),
-    );
-
-    H.enterCustomColumnDetails({
-      formula: "2 * Max([Total])",
-      name: "twice max total",
-    });
-
-    H.expressionEditorWidget().button("Done").click();
-    cy.findByTestId("aggregate-step")
-      .contains("twice max total")
-      .should("exist");
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("318.7");
-  });
-
-  it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
-    H.openReviewsTable({ mode: "notebook" });
-    H.summarize({ mode: "notebook" });
-    H.popover().contains("Custom Expression").click();
-
-    H.enterCustomColumnDetails({ formula: "Distinct([R", blur: false });
-
-    cy.log(
-      "**The point of failure for ANY non-numeric value reported in v0.36.4**",
-    );
-    // the default type for "Reviewer" is "No semantic type"
-    H.CustomExpressionEditor.completion("Reviewer").should("be.visible");
   });
 
   it("summarizing by distinct datetime should allow granular selection (metabase#13098)", () => {

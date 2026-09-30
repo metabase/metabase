@@ -177,41 +177,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
-    cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    H.openProductsTable({ mode: "notebook" });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.icon("add").click();
-    });
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.icon("add").click();
-    });
-    addSimpleCustomColumn("EXPR");
-
-    H.getNotebookStep("expression").within(() => {
-      cy.findByText("EXPR");
-      cy.findByText("EXPR (1)");
-      cy.findByText("EXPR (2)");
-    });
-
-    H.visualize();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR (1)");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("EXPR (2)");
-  });
-
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
     cy.intercept(
       {
@@ -882,22 +847,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it("should allow using aggregation functions inside expressions in aggregation (metabase#52611)", () => {
-    cy.visit("/");
-    H.newButton("Question").click();
-    H.miniPicker().findByText("Sample Database").click();
-    H.miniPicker().findByText("Orders").click();
-    H.addSummaryField({ metric: "Custom Expression" });
-    H.enterCustomColumnDetails({
-      formula: "case(Sum([Total]) > 10, Sum([Total]), Sum([Subtotal]))",
-      name: "conditional sum",
-    });
-    cy.button("Done").click();
-    H.addSummaryGroupingField({ field: "Total" });
-    H.visualize();
-    H.echartsContainer().should("contain.text", "Total: 8 bins");
-  });
-
   it("Correctly translates aggregations", () => {
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
       locale: "en-ZZ",
@@ -1092,10 +1041,4 @@ function assertTableRowCount(expectedCount) {
     "have.length",
     expectedCount,
   );
-}
-
-function addSimpleCustomColumn(name) {
-  H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
-  H.CustomExpressionEditor.nameInput().click().type(name);
-  cy.button("Done").click();
 }

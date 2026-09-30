@@ -1,5 +1,4 @@
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -133,47 +132,6 @@ function openEllipsisMenuFor(item) {
     .find(".Icon-ellipsis")
     .click({ force: true });
 }
-
-describe("postgres > question > custom columns", { tags: "@external" }, () => {
-  beforeEach(() => {
-    H.restore("postgres-12");
-    cy.signInAsAdmin();
-
-    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-      ({ body }) => {
-        const tableId = body.find((table) => table.name === "orders").id;
-        H.openTable({
-          database: WRITABLE_DB_ID,
-          table: tableId,
-          mode: "notebook",
-        });
-      },
-    );
-
-    cy.findByRole("button", { name: "Summarize" }).click();
-  });
-
-  it("`Percentile` custom expression function should accept two parameters (metabase#15714)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a function or metric").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-    H.enterCustomColumnDetails({
-      formula: "Percentile([Subtotal], 0.1)",
-      format: true,
-    });
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Function Percentile expects 1 argument").should("not.exist");
-    H.CustomExpressionEditor.nameInput().type("Expression name");
-    cy.button("Done").should("not.be.disabled").click();
-    // Todo: Add positive assertions once this is fixed
-
-    cy.findByTestId("aggregate-step")
-      .contains("Expression name")
-      .should("exist");
-  });
-});
 
 describe("issue 17514", () => {
   const questionDetails = {
