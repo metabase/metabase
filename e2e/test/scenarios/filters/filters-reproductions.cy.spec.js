@@ -19,13 +19,13 @@ const {
   INVOICES,
 } = SAMPLE_DATABASE;
 
-describe("issue 9339", () => {
+describe("issue 9339 + 27123", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should not paste non-numeric values into single-value numeric filters (metabase#9339)", () => {
+  it("should not paste non-numeric values into single-value numeric filters and should open the chosen exclude granularity (metabase#9339, metabase#27123)", () => {
     H.openOrdersTable();
 
     H.tableHeaderClick("Total");
@@ -37,6 +37,23 @@ describe("issue 9339", () => {
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
+
+    cy.log(
+      "exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity (metabase#27123)",
+    );
+    cy.realPress("Escape");
+    cy.get(H.POPOVER_ELEMENT).should("not.exist");
+
+    H.tableHeaderClick("Created At");
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Exclude…").click();
+      cy.findByText("Months of the year…").click();
+    });
+
+    H.popover()
+      .should("contain", "Months of the year…")
+      .and("contain", "January");
   });
 });
 
@@ -404,36 +421,6 @@ describe("issue 45410", () => {
           });
         });
     });
-  });
-});
-
-describe("issue 27123", () => {
-  const questionDetails = {
-    query: {
-      "source-table": ORDERS_ID,
-      limit: 100,
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-  });
-
-  it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
-    H.tableHeaderClick("Created At");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Exclude…").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Months of the year…").click();
-
-    H.popover()
-      .should("contain", "Months of the year…")
-      .and("contain", "January");
   });
 });
 
