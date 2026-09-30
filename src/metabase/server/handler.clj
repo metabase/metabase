@@ -139,6 +139,12 @@
    [:oauth-bearer       {:optional true} ::mw.session/oauth-bearer]
    [:mcp-ui-credentials {:optional true} ::mw.session/mcp-ui-credentials]])
 
+(def ^:private OptionsOrVar
+  [:or Options [:fn {:error/message "a var holding handler options"} var?]])
+
+(defn- current-options [options]
+  (if (var? options) @options options))
+
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler
    options :- Options]
@@ -149,28 +155,30 @@
    (middleware options)))
 
 ;;; for interactive dev we'll create a handler that rebuilds itself (reapplies the middleware) whenever any of it
-;;; changes.
+;;; changes, including the options when they are passed as a var.
 (mu/defn- dev-handler :- ::api.macros/handler
   [server-routes :- ::api.macros/handler
-   options       :- Options]
-  (let [middleware (middleware options)
-        handler    (atom (apply-middleware server-routes options))]
+   options       :- OptionsOrVar]
+  (let [rebuild #(apply-middleware server-routes (current-options options))
+        handler (atom (rebuild))]
     (doseq [varr  (concat [#'middleware
                            #'mw.exceptions/catch-api-exceptions
                            #'mw.security/add-security-headers
-                           #'mw.session/wrap-current-user-info]
-                          middleware)
+                           #'mw.session/wrap-current-user-info
+                           options]
+                          (middleware (current-options options)))
             :when (instance? clojure.lang.IRef varr)]
       (add-watch varr ::reload (fn [_key _ref _old-state _new-state]
                                  (log/infof "%s changed, rebuilding handler" varr)
-                                 (reset! handler (apply-middleware server-routes options)))))
+                                 (reset! handler (rebuild)))))
     (fn dev-handler* [request respond raise]
       (@handler request respond raise))))
 
 (mu/defn make-handler :- ::api.macros/handler
-  "Create the primary entry point to the Ring HTTP server, with middleware configured by `options`."
+  "Create the primary entry point to the Ring HTTP server, with middleware configured by `options`.
+  Pass `options` as a var to have the dev handler rebuild when it is redefined."
   [server-routes :- ::api.macros/handler
-   options       :- Options]
+   options       :- OptionsOrVar]
   (if config/is-dev?
     (dev-handler server-routes options)
-    (apply-middleware server-routes options)))
+    (apply-middleware server-routes (current-options options))))

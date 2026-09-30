@@ -284,7 +284,7 @@
                                              :auth       #'auth-wrapper/routes
                                              :oauth      #'oauth-server.api/oauth-routes
                                              :well-known #'oauth-server.api/well-known-routes})
-          handler       (server/make-handler server-routes mcp.http-handler/options)]
+          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
       (server/start-web-server! handler))
     ;; run our initialization process
     (init!)

@@ -144,7 +144,7 @@
                           :auth       #'metabase.sso.auth-wrapper/routes
                           :oauth      #'metabase.oauth-server.api/oauth-routes
                           :well-known #'metabase.oauth-server.api/well-known-routes})
-          handler       (metabase.server.core/make-handler server-routes metabase.mcp.http-handler/options)]
+          handler       (metabase.server.core/make-handler server-routes #'metabase.mcp.http-handler/options)]
         (metabase.server.core/start-web-server! handler))"
   [handler :- ::api.macros/handler]
   (when-not (instance)

@@ -9,7 +9,7 @@
    [metabase.test :as mt]))
 
 (deftest make-handler-accepts-mcp-options-test
-  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) mcp.http-handler/options))))
+  (is (ifn? (server.handler/make-handler (fn [_request _respond _raise]) #'mcp.http-handler/options))))
 
 (defn- get-cors-origin-header
   "Returns the Access-Control-Allow-Origin header value for a given request origin."

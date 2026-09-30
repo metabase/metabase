@@ -13,4 +13,4 @@
                                         (reset! handler-options options)
                                         server-routes)]
       (#'metabase.test.server.handler/make-test-handler))
-    (is (= mcp.http-handler/options @handler-options))))
+    (is (= #'mcp.http-handler/options @handler-options))))
