@@ -33,6 +33,7 @@ import {
   type EChartsTooltipModel,
   type EChartsTooltipRow,
   INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   type SeriesModel,
@@ -927,6 +928,10 @@ export const getSeriesClickData = (
   }
 
   const datum = chartModel.dataset[dataIndex];
+  // A row chart's folded "Other" row has no single category to drill into.
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    return null;
+  }
 
   const data = getEventColumnsData(chartModel, seriesModel, datum);
   const dimensions = getEventDimensions(

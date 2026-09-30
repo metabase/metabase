@@ -23,7 +23,10 @@ import {
   getSeriesDefaultShowSeriesTrendline,
   getSeriesDefaultShowSeriesValues,
 } from "../../shared/settings/series";
-import type { VisualizationSettingsDefinitions } from "../../types";
+import type {
+  SettingsExtra,
+  VisualizationSettingsDefinitions,
+} from "../../types";
 import { getNameForCard } from "../series";
 
 import { type NestedSettingsOptions, nestedSettings } from "./nested";
@@ -57,6 +60,11 @@ export interface SeriesSettingOptions {
   readDependencies?: string[];
   def?: Partial<NestedSettingsOptions<SingleSeries>>;
 }
+
+// The chart model looks settings up with a bare `{ card: { _seriesKey } }`
+// object, so the card's display is only reliable on the transformed series.
+const isRowChartSeries = (extra?: SettingsExtra) =>
+  extra?.series?.[0]?.card.display === "row";
 
 export function seriesSetting({
   readDependencies = [],
@@ -93,6 +101,8 @@ export function seriesSetting({
       getHidden: (single, settings, _extra) =>
         !["line", "area", "bar", "combo"].includes(single.card.display ?? "") ||
         settings["stackable.stack_type"] != null,
+      // Row charts only draw bars; ignore a display saved as another chart type.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra),
       getDefault: (single, _settings, extra) => {
         const { series = [] } = extra ?? {};
         if (keyForSingleSeries(single) === OTHER_DATA_KEY) {
@@ -219,6 +229,8 @@ export function seriesSetting({
       getHidden: (single, _seriesSettings, extra) =>
         single.card.display === "row" ||
         extra?.settings?.["graph.split_panels"] === true,
+      // Row charts have a single metric axis; ignore a saved position.
+      isValid: (_single, _settings, extra) => !isRowChartSeries(extra),
       getDefault: (_single, _seriesSettings, extra) =>
         extra?.settings?.["graph.split_panels"] === true ? "left" : null,
       getProps: () => ({

@@ -3,10 +3,17 @@ import { t } from "ttag";
 import { checkNumber } from "metabase/utils/types";
 
 import type { ComputedVisualizationSettings } from "../../../types";
-import { X_AXIS_DATA_KEY } from "../constants/dataset";
+import {
+  INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
+  NEGATIVE_STACK_TOTAL_DATA_KEY,
+  POSITIVE_STACK_TOTAL_DATA_KEY,
+  X_AXIS_DATA_KEY,
+} from "../constants/dataset";
 
 import { refitYAxisExtents } from "./axis";
 import type { CartesianChartModel, ChartDataset, Datum } from "./types";
+import { getBarSeriesDataLabelKey } from "./util";
 
 /**
  * Row charts fold the rows that will not fit into a single summed "Other" bar.
@@ -45,10 +52,40 @@ const sumInto = (target: Datum, source: Datum, keys: string[]) => {
   });
 };
 
+/**
+ * The dataset transforms flag each transformed row with sign markers that the
+ * data-label and stack-total series draw from. A summed row needs its own,
+ * taken from the summed values since the folded rows' signs can differ.
+ */
+const markLabelSigns = (
+  total: Datum,
+  seriesKeys: string[],
+  isStacked: boolean,
+) => {
+  seriesKeys.forEach((key) => {
+    const value = total[key];
+    if (typeof value !== "number") {
+      return;
+    }
+    const isPositive = value >= 0;
+    const marker = isPositive ? Number.MIN_VALUE : -Number.MIN_VALUE;
+    total[getBarSeriesDataLabelKey(key, isPositive ? "+" : "-")] = marker;
+    if (isStacked) {
+      total[
+        isPositive
+          ? POSITIVE_STACK_TOTAL_DATA_KEY
+          : NEGATIVE_STACK_TOTAL_DATA_KEY
+      ] = marker;
+    }
+  });
+};
+
 const foldDataset = (
   dataset: ChartDataset,
   budget: number,
   seriesKeys: string[],
+  // Set when folding `transformedDataset`, whose rows carry extra keys.
+  transformed?: { isStacked: boolean },
 ): ChartDataset => {
   if (dataset.length <= budget) {
     return dataset;
@@ -62,8 +99,17 @@ const foldDataset = (
       ? t`All values (${folded.length})`
       : t`Other (${folded.length})`;
 
-  const total: Datum = { [X_AXIS_DATA_KEY]: label };
+  const total: Datum = {
+    [X_AXIS_DATA_KEY]: label,
+    [IS_FOLDED_ROW_DATA_KEY]: true,
+  };
   folded.forEach((datum) => sumInto(total, datum, seriesKeys));
+  if (transformed) {
+    markLabelSigns(total, seriesKeys, transformed.isStacked);
+    // Events map a transformed row back to `dataset` through this index; both
+    // datasets fold at the same position, so Other sits at the same one.
+    total[INDEX_KEY] = kept.length;
+  }
 
   return [...kept, total];
 };
@@ -97,6 +143,7 @@ export const foldRowChartModel = (
     chartModel.transformedDataset,
     budget,
     seriesKeys,
+    { isStacked: settings["stackable.stack_type"] === "stacked" },
   );
 
   return {

@@ -60,6 +60,10 @@ export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
     },
     index: 4,
     widget: "select",
+    // Row charts only draw a categorical axis; a time or linear scale saved as
+    // a bar chart would make it continuous and enable brush zoom.
+    isValid: (_series, vizSettings) =>
+      vizSettings["graph.x_axis.scale"] === "ordinal",
     getDefault: () => "ordinal",
     getProps: () => {
       return { options: [{ name: t`Ordinal`, value: "ordinal" }] };

@@ -16,6 +16,7 @@ export { extractSeriesDataKeyFromName } from "./echarts/boxplot/utils";
 export {
   GOAL_LINE_SERIES_ID,
   INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,

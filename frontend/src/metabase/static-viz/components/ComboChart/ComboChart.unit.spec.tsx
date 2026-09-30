@@ -225,6 +225,73 @@ describe("static row chart", () => {
     expect(screen.getByText("1,000")).toBeInTheDocument();
   });
 
+  describe("folded Other row labels", () => {
+    const FOLDED_CATEGORIES = Array.from(
+      { length: 40 },
+      (_, index) => `C${index + 1}`,
+    );
+
+    const getFoldedRowCount = () =>
+      Number(
+        /\((\d+)\)/.exec(
+          screen.getByText(/^Other \(\d+\)$/).textContent ?? "",
+        )?.[1],
+      );
+
+    it("labels the Other row's value", () => {
+      renderRowChart(
+        createGroupedRowSeries({
+          metricCount: 1,
+          categories: FOLDED_CATEGORIES,
+          getValue: () => 13,
+          settings: { "graph.show_values": true },
+        }),
+      );
+
+      // Labels render twice: an outline stroke and the fill.
+      expect(
+        screen.getAllByText(String(getFoldedRowCount() * 13)).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("labels the Other row's stack total", () => {
+      const sourceColumn = createMockColumn({
+        name: "SOURCE",
+        display_name: "Source",
+        id: 2,
+        field_ref: ["field", 2, null],
+        base_type: "type/Text",
+        semantic_type: "type/Category",
+        source: "breakout",
+      });
+      renderRowChart([
+        {
+          card: createMockCard({
+            display: "row",
+            visualization_settings: {
+              "graph.dimensions": ["CATEGORY", "SOURCE"],
+              "graph.metrics": ["count"],
+              "stackable.stack_type": "stacked",
+              "graph.show_values": true,
+            },
+          }),
+          data: createMockDatasetData({
+            cols: [categoryColumn, sourceColumn, metricColumns[0]],
+            rows: FOLDED_CATEGORIES.flatMap((category) => [
+              [category, "A", 10],
+              [category, "B", 7],
+            ]),
+          }),
+        },
+      ]);
+
+      // Labels render twice: an outline stroke and the fill.
+      expect(
+        screen.getAllByText(String(getFoldedRowCount() * 17)).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
   it("keeps the dimension axis title inside the chart with more than one metric", () => {
     renderRowChart(createGroupedRowSeries({ metricCount: 2 }));
 
