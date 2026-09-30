@@ -125,12 +125,6 @@
       (throw (ex-info "Week-based time operations require :start-of-week"
                       {:time-config time-config}))))
 
-(defn- require-time-config [{:keys [start-of-week] :as time-config}]
-  (when-not start-of-week
-    (throw (ex-info "Date operations require :start-of-week"
-                    {:time-config time-config})))
-  time-config)
-
 (defn- ^dayjs truncate-to-week [time-config ^dayjs value]
   (let [days-since-start (mod (- (.day value) (start-of-week-index time-config)) 7)
         ^dayjs shifted   (.subtract value days-since-start "day")]
@@ -721,7 +715,7 @@
   "ClojureScript implementation of [[metabase.util.time/truncate]]; supports both Day.js instances and ISO-8601
   strings."
   [time-config t unit]
-  (let [time-config (require-time-config time-config)
+  (let [time-config (common/require-time-config time-config)
         unit        (keyword unit)]
     (with-string-preservation t (fn [^dayjs parsed]
                                   (if (= unit :week)
@@ -766,7 +760,7 @@
 (defn extract
   "Extract a field such as `:minute-of-hour` from a temporal value `t`."
   [time-config ^dayjs t unit]
-  (let [time-config (require-time-config time-config)]
+  (let [time-config (common/require-time-config time-config)]
     (case unit
       :second-of-minute (.second t)
       :minute-of-hour   (.minute t)

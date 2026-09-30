@@ -44,12 +44,6 @@
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
 
-(defn- require-time-config [{:keys [start-of-week] :as time-config}]
-  (when-not start-of-week
-    (throw (ex-info "Date operations require :start-of-week"
-                    {:time-config time-config})))
-  time-config)
-
 (defn ^:export timestamp-coercible?
   "Check whether value is coercible to timestamp. Condition resembles [[coerce-to-timestamp]]."
   [value]
@@ -97,7 +91,7 @@
   ([time-config temporal-value unit]
    (format-unit time-config temporal-value unit {}))
   ([time-config temporal-value unit format-options]
-   (internal/format-unit (require-time-config time-config) temporal-value unit format-options)))
+   (internal/format-unit (common/require-time-config time-config) temporal-value unit format-options)))
 
 (defn parse-unit
   "Parses a string given the unit of time to parse by."
@@ -123,9 +117,9 @@
   ([time-config n unit offset-n offset-unit]
    (format-relative-date-range time-config n unit offset-n offset-unit nil))
   ([time-config n unit offset-n offset-unit options]
-   (internal/format-relative-date-range (require-time-config time-config) n unit offset-n offset-unit options))
+   (internal/format-relative-date-range (common/require-time-config time-config) n unit offset-n offset-unit options))
   ([time-config t n unit offset-n offset-unit options]
-   (let [time-config (require-time-config time-config)]
+   (let [time-config (common/require-time-config time-config)]
      (internal/format-relative-date-range time-config
                                           (coerce-to-timestamp t)
                                           n unit offset-n offset-unit options))))
