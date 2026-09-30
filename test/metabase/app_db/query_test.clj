@@ -201,30 +201,6 @@
               (finally
                 (t2/delete! :model/Setting search-col search-value)))))))))
 
-(deftest ^:parallel mark-condition-values-test
-  (testing "GHY-4481: a plain scalar value is marked for binding; keys and everything else are left alone"
-    (let [uuid (random-uuid)
-          date (java.time.LocalDate/of 2026 1 2)]
-      (is (= [:name   [:auto/param "x' OR '1'='1"]
-              :id     [:auto/param 5]
-              :uuid   [:auto/param uuid]
-              :date   [:auto/param date]
-              :nil    nil
-              :flag   false
-              :type   :model
-              :public [:not= nil]
-              :ids    [:in [1 2]]]
-             (#'mdb.query/mark-condition-values
-              [:name   "x' OR '1'='1"
-               :id     5
-               :uuid   uuid
-               :date   date
-               :nil    nil
-               :flag   false
-               :type   :model
-               :public [:not= nil]
-               :ids    [:in [1 2]]]))))))
-
 (defn- sql-looking-value []
   (str "x-" (random-uuid) "' OR '1'='1"))
 

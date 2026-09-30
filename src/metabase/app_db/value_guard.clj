@@ -268,6 +268,24 @@
                 query)]
     [walked @params]))
 
+(defn- bindable-scalar?
+  [x]
+  (or (string? x) (number? x) (uuid? x) (instance? java.time.temporal.Temporal x)))
+
+(defn mark-condition-values
+  "Mark each plain scalar value (string, number, UUID, java.time value) of the `:column value` pairs in the Toucan
+  query args `args` for binding. Leading positional args (a primary key) and a trailing query map are returned
+  unchanged, as are keys, nil, booleans, keywords, and operator forms like `[:not= nil]`."
+  [args]
+  ;; Keywords stay unmarked: a column's keyword transform, or the caller's literal, decides what they mean.
+  (let [[positional kvs] (split-with (complement keyword?) args)]
+    (into (vec positional)
+          (mapcat (fn [[k v :as pair]]
+                    (if (and (= 2 (count pair)) (bindable-scalar? v))
+                      [k [:auto/param v]]
+                      pair)))
+          (partition-all 2 kvs))))
+
 (defn- assert-no-marker-survived!
   "A marker must never reach SQL. HoneySQL does not recognise it and compiles the leftover form into
   a call to a function named PARAM, or -- in a slot it formats as an identifier -- into the literal

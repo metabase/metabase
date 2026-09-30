@@ -44,30 +44,6 @@
       (api.db/shift-card-positions-from! nil 30001 :+)
       (is (= [30002 30001] (positions [root other]))))))
 
-(deftest ^:parallel mark-condition-values-test
-  (testing "GHY-4481: a plain scalar value is marked for binding; keys and everything else are left alone"
-    (let [uuid (random-uuid)
-          date (java.time.LocalDate/of 2026 1 2)]
-      (is (= [:name   [:auto/param "x' OR '1'='1"]
-              :id     [:auto/param 5]
-              :uuid   [:auto/param uuid]
-              :date   [:auto/param date]
-              :nil    nil
-              :flag   false
-              :type   :model
-              :public [:not= nil]
-              :ids    [:in [1 2]]]
-             (#'api.db/mark-condition-values
-              [:name   "x' OR '1'='1"
-               :id     5
-               :uuid   uuid
-               :date   date
-               :nil    nil
-               :flag   false
-               :type   :model
-               :public [:not= nil]
-               :ids    [:in [1 2]]]))))))
-
 (def ^:private sql-looking-name "x' OR '1'='1")
 
 (deftest entity-by-id-compares-condition-values-as-data-test

@@ -85,6 +85,8 @@
   with-conflict-retry]
  [metabase.app-db.query-cancelation
   query-canceled-exception?]
+ [metabase.app-db.value-guard
+  mark-condition-values]
  [liquibase
   changelog-by-id])
 

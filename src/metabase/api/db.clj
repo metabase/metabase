@@ -2,6 +2,7 @@
   "Application database queries for the API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -13,28 +14,15 @@
   [:or :keyword :string :boolean ms/PositiveInt
    [:cat :keyword [:* [:maybe [:or :string :boolean ms/PositiveInt :keyword]]]]])
 
-(defn- mark-condition-values
-  "Mark each plain scalar value (string, number, UUID, java.time value) of the flat key-value `kvs` for binding.
-  Keys, nil, booleans, keywords, and operator forms like `[:not= nil]` are returned unchanged."
-  [kvs]
-  ;; Keywords stay unmarked: a column's keyword transform, or the caller's literal, decides what they mean.
-  ;; Values sit at odd indexes; a trailing unpaired arg sits at an even one and passes through.
-  (into [] (map-indexed (fn [i x]
-                          (if (and (odd? i)
-                                   (or (string? x) (number? x) (uuid? x) (instance? java.time.temporal.Temporal x)))
-                            [:auto/param x]
-                            x)))
-        kvs))
-
 (mu/defn entity-exists?
   "Whether a row of `entity` matching the key-value `conditions` exists."
   [entity :- :keyword & conditions :- [:* [:maybe ::condition-value]]]
-  (apply t2/exists? entity (mark-condition-values conditions)))
+  (apply t2/exists? entity (mdb/mark-condition-values conditions)))
 
 (mu/defn entity-by-id
   "The `entity` row with `id` also matching the key-value `conditions`, or nil."
   [entity :- :keyword id :- [:maybe [:or ms/PositiveInt :string]] & conditions :- [:* [:maybe ::condition-value]]]
-  (apply t2/select-one entity (mark-condition-values (list* :id id conditions))))
+  (apply t2/select-one entity (mdb/mark-condition-values (list* :id id conditions))))
 
 (defn- shifted-position
   "The SQL expression for `collection_position` plus or minus one."
