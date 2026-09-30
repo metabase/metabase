@@ -88,7 +88,7 @@ export function SettingsSection({
 type SwitchSettingsSectionProps = {
   title: string;
   description: React.ReactNode;
-  // says why the switch cannot be toggled, already styled by the caller and rendered as given
+  // says why the switch is locked, rendered as given
   note?: React.ReactNode;
   checked: boolean;
   // greys the whole card, locks the switch and keeps the children hidden

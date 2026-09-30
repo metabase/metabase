@@ -6,7 +6,14 @@ import {
   setupSettingsEndpoints,
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { delay } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type { CustomOidcConfig } from "metabase-enterprise/api";
 import {
@@ -114,6 +121,7 @@ const setup = async ({
   providers = [],
   configured = providers.length > 0,
   providersEnvName,
+  groupDeleteGate,
   ...delays
 }: {
   providers?: CustomOidcConfig[];
@@ -121,6 +129,8 @@ const setup = async ({
   configured?: boolean;
   // the env var that owns the providers, which the settings list reports as an env setting
   providersEnvName?: string;
+  // the cascade's group delete waits on this, so a test can look at the page while the cascade runs
+  groupDeleteGate?: Promise<void>;
 } & ProviderDelays = {}) => {
   setupSettingsEndpoints(
     providersEnvName == null
@@ -139,7 +149,10 @@ const setup = async ({
   );
   fetchMock.get("path:/api/permissions/group", GROUPS);
   fetchMock.put("express:/api/permissions/membership/:id/clear", 204);
-  fetchMock.delete("express:/api/permissions/group/:id", 204);
+  fetchMock.delete("express:/api/permissions/group/:id", async () => {
+    await groupDeleteGate;
+    return 204;
+  });
   setupProviderEndpoints(providers, delays, settingsStore);
 
   renderWithProviders(<SettingsOIDCForm />, { withUndos: true });
@@ -150,10 +163,10 @@ const setup = async ({
   }
 };
 
-const getOidcPuts = async () => {
+async function getOidcPutCalls() {
   const puts = await findRequests("PUT");
   return puts.filter(({ url }) => url.includes("/api/ee/sso/oidc/okta"));
-};
+}
 
 const groupMappingSwitch = () =>
   screen.getByRole("switch", { name: "Group mapping" });
@@ -177,6 +190,10 @@ const fillRequiredFields = async () => {
     "https://idp.example.test",
   );
   await userEvent.type(screen.getByLabelText(/^Client ID/), "client-123");
+  await userEvent.type(
+    screen.getByLabelText(/^Client secret/),
+    "client-secret-123",
+  );
 };
 
 const addMapping = async (name: string, groupName: string) => {
@@ -243,6 +260,39 @@ describe("SettingsOIDCForm", () => {
       expect(
         screen.queryByRole("button", { name: "Save and enable" }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("client secret", () => {
+    it("is required for a new provider and optional afterwards", async () => {
+      await setup();
+      await userEvent.type(screen.getByLabelText(/^Key/), "okta");
+      await userEvent.type(screen.getByLabelText(/^Login prompt/), "Sign in");
+      await userEvent.type(
+        screen.getByLabelText(/^Issuer URI/),
+        "https://idp.example.test",
+      );
+      await userEvent.type(screen.getByLabelText(/^Client ID/), "client-123");
+      expect(screen.getByLabelText(/^Client secret/)).toBeRequired();
+      expect(
+        screen.getByRole("button", { name: "Save and enable" }),
+      ).toBeDisabled();
+
+      await userEvent.type(
+        screen.getByLabelText(/^Client secret/),
+        "client-secret-123",
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole("button", { name: "Save and enable" }),
+        ).toBeEnabled(),
+      );
+    });
+
+    it("stays optional for an existing provider", async () => {
+      await setup({ providers: [EXISTING_PROVIDER] });
+
+      expect(screen.getByLabelText(/^Client secret/)).not.toBeRequired();
     });
   });
 
@@ -453,7 +503,7 @@ describe("SettingsOIDCForm", () => {
         screen.getByRole("textbox", { name: /Group attribute name/ }),
       ).toHaveValue("roles");
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-      const puts = await getOidcPuts();
+      const puts = await getOidcPutCalls();
       expect(puts).toHaveLength(1);
       // the API swaps the whole group sync map, so the write carries the rest of it along
       expect(puts[0].body).toEqual({
@@ -474,7 +524,7 @@ describe("SettingsOIDCForm", () => {
       await userEvent.click(groupMappingSwitch());
 
       expect(await screen.findByText("Changes saved")).toBeInTheDocument();
-      const puts = await getOidcPuts();
+      const puts = await getOidcPutCalls();
       expect(puts).toHaveLength(1);
       // without an attribute the backend syncs no groups at all, so the default goes out with the switch
       expect(puts[0].body).toEqual({
@@ -575,7 +625,7 @@ describe("SettingsOIDCForm", () => {
       );
       expect(groupMappingSwitch()).toBeChecked();
       expect(screen.getByRole("button", { name: "New" })).toBeEnabled();
-      expect(await getOidcPuts()).toHaveLength(1);
+      expect(await getOidcPutCalls()).toHaveLength(1);
     });
 
     it("holds the switch until the providers refetch after the write lands", async () => {
@@ -644,7 +694,7 @@ describe("SettingsOIDCForm", () => {
       await addMapping("devs", "Engineering");
 
       expect(await screen.findByText("Mapping added")).toBeInTheDocument();
-      const puts = await getOidcPuts();
+      const puts = await getOidcPutCalls();
       expect(puts).toHaveLength(1);
       expect(puts[0].body).toEqual({
         "group-sync": {
@@ -678,14 +728,72 @@ describe("SettingsOIDCForm", () => {
       );
 
       await waitFor(async () => {
-        expect(await getOidcPuts()).toHaveLength(2);
+        expect(await getOidcPutCalls()).toHaveLength(2);
       });
-      const [, formPut] = await getOidcPuts();
+      const [, formPut] = await getOidcPutCalls();
       expect(formPut.body["group-sync"]).toEqual({
         enabled: true,
         "group-attribute": "roles",
         "group-mappings": { admins: [2], devs: [3] },
       });
+    });
+
+    it("holds the switch and the page save until the delete-groups cascade finishes", async () => {
+      let finishGroupDelete = () => {};
+      const groupDeleteGate = new Promise<void>((resolve) => {
+        finishGroupDelete = resolve;
+      });
+      await setup({
+        providers: [
+          {
+            ...EXISTING_PROVIDER,
+            "group-sync": {
+              enabled: true,
+              "group-attribute": "groups",
+              "group-mappings": { old: [4], devs: [4, 3] },
+            },
+          },
+        ],
+        groupDeleteGate,
+      });
+      const saveButton = () =>
+        screen.getByRole("button", { name: "Save changes" });
+      // an unsaved edit, so only a hold can disable the save button
+      await userEvent.type(
+        screen.getByRole("textbox", { name: /Group attribute name/ }),
+        "X",
+      );
+      expect(saveButton()).toBeEnabled();
+
+      await userEvent.click(
+        within(getMappingRow("old")).getByRole("button", {
+          name: "Delete mapping",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("radio", { name: /Also delete the group/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove mapping and delete group" }),
+      );
+
+      try {
+        // the mapping write is done once the row is gone, and the group delete waits on the gate
+        await waitFor(() => expect(queryMappingRow("old")).toBeUndefined());
+        // the refetch after that write settles meanwhile, so only the cascade can still be holding the controls
+        await act(async () => {
+          await delay(100);
+        });
+        expect(groupMappingSwitch()).toHaveAttribute("aria-disabled", "true");
+        expect(saveButton()).toBeDisabled();
+      } finally {
+        finishGroupDelete();
+      }
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+      await waitFor(() =>
+        expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
+      );
+      expect(saveButton()).toBeEnabled();
     });
   });
 });

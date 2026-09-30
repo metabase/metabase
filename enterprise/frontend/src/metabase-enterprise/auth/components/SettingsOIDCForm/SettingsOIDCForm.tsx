@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -44,10 +44,7 @@ import {
 } from "metabase-enterprise/api";
 import { UserProvisioningSection } from "metabase-enterprise/auth/components/UserProvisioningSection";
 
-import {
-  OidcGroupMappingSection,
-  useGroupSyncWriter,
-} from "./OidcGroupMappingSection";
+import { OidcGroupMappingSection } from "./OidcGroupMappingSection";
 import {
   DEFAULT_EMAIL_ATTRIBUTE,
   DEFAULT_FIRST_NAME_ATTRIBUTE,
@@ -57,7 +54,8 @@ import {
 } from "./constants";
 import { type OidcGroupSync, toGroupSync } from "./group-sync";
 
-function getOidcFormSchema() {
+// the API keeps an existing provider's secret when none is sent, but a new provider needs one
+function getOidcFormSchema({ isExisting }: { isExisting: boolean }) {
   return Yup.object({
     "login-prompt": Yup.string().required(t`Login prompt is required`),
     key: Yup.string()
@@ -68,7 +66,9 @@ function getOidcFormSchema() {
       ),
     "issuer-uri": Yup.string().required(t`Issuer URI is required`),
     "client-id": Yup.string().required(t`Client ID is required`),
-    "client-secret": Yup.string().nullable().default(null),
+    "client-secret": isExisting
+      ? Yup.string().nullable().default(null)
+      : Yup.string().required(t`Client secret is required`),
     scopes: Yup.string().nullable().default(null),
     "attribute-email": Yup.string().nullable().default(null),
     "attribute-firstname": Yup.string().nullable().default(null),
@@ -175,7 +175,7 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
-    // the switch and the mappings save on their own, so the form carries their latest saved state next to the attribute
+    // the switch and the mappings save on their own, so the form resends their saved state with the attribute
     "group-sync": toGroupSync(groupSync, {
       "group-attribute": values["group-attribute"] ?? DEFAULT_GROUP_ATTRIBUTE,
     }),
@@ -202,8 +202,8 @@ export function SettingsOIDCForm() {
   const [checkConnection, { isLoading: isChecking }] =
     useCheckOidcConnectionMutation();
   const [sendToast] = useToast();
-  // the card writes the same provider as the form, so the page owns the writer and can see when it is busy
-  const groupSyncWriter = useGroupSyncWriter();
+  // the card writes the same provider as the form, so the save waits while the card saves
+  const [isGroupMappingSaving, setIsGroupMappingSaving] = useState(false);
 
   const existingProvider =
     providers && providers.length > 0 ? providers[0] : null;
@@ -222,6 +222,10 @@ export function SettingsOIDCForm() {
   const initialValues = useMemo(
     () => providerToFormValues(existingProvider),
     [existingProvider],
+  );
+  const validationSchema = useMemo(
+    () => getOidcFormSchema({ isExisting }),
+    [isExisting],
   );
   // the card opens by itself once a claim was customized
   const hasCustomAttributes = [
@@ -273,7 +277,7 @@ export function SettingsOIDCForm() {
 
   const handleSubmit = useCallback(
     async (values: OIDCFormValues, helpers: FormikHelpers<OIDCFormValues>) => {
-      // the connection check runs before saving and throws on failure
+      // a failed connection check throws, which the form shows as its error
       await runCheck(values);
 
       // the card and the save button hold each other, so no card write can be in flight here
@@ -313,14 +317,13 @@ export function SettingsOIDCForm() {
       <FormProvider
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        validationSchema={getOidcFormSchema()}
+        validationSchema={validationSchema}
         enableReinitialize
       >
         {({ dirty, values, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
               {lockedEnvName != null && <SetByEnvVar varName={lockedEnvName} />}
-              {/* the card saves on its own, so it stays out of the form's values */}
               <UserProvisioningSection
                 settingKey="oidc-user-provisioning-enabled?"
                 providerName="OIDC"
@@ -375,6 +378,7 @@ export function SettingsOIDCForm() {
                     description={t`This is configured in your OIDC provider`}
                     descriptionProps={SETTINGS_FIELD_DESCRIPTION_PROPS}
                     type="password"
+                    required={!isExisting}
                     placeholder={
                       existingProvider
                         ? t`Leave blank to keep current value`
@@ -427,7 +431,7 @@ export function SettingsOIDCForm() {
 
               <OidcGroupMappingSection
                 provider={existingProvider}
-                writer={groupSyncWriter}
+                onSavingChange={setIsGroupMappingSaving}
                 disabled={!isConfigured}
                 lockedEnvName={lockedEnvName}
                 isPageSaving={isSubmitting}
@@ -462,8 +466,8 @@ export function SettingsOIDCForm() {
                 </Button>
                 {!isLocked && (
                   <FormSubmitButton
-                    // a card write still in flight would be overwritten by this save
-                    disabled={!dirty || groupSyncWriter.isSaving}
+                    // a card write or a delete-groups cascade still running would be overwritten by this save
+                    disabled={!dirty || isGroupMappingSaving}
                     label={isEnabled ? t`Save changes` : t`Save and enable`}
                     variant="filled"
                   />

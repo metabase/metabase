@@ -37,7 +37,7 @@ export const getExtraFormFieldProps = (setting?: SettingDefinition) => {
   };
 };
 
-/** Spread after a field's own props: a setting managed by an env var turns readOnly and shows "Using MB_..." instead of its description */
+/** Spread after a field's props: an env-managed setting turns readOnly and shows "Using MB_..." as its description */
 export const getEnvNoticeProps = (setting?: SettingDefinition) =>
   setting?.is_env_setting ? getExtraFormFieldProps(setting) : {};
 
@@ -51,7 +51,7 @@ export const getDefaultPlaceholder = (
   return setting.default;
 };
 
-/** The value a form field starts with: an unset setting stays empty so its default shows as the placeholder, while an env-locked one shows the env value */
+/** A field's initial value: empty when unset, so the default shows as the placeholder; the env value when env-locked */
 export const getStoredFieldValue = <Key extends EnterpriseSettingKey>(
   setting: SettingDefinition<Key> | undefined,
   envValue: EnterpriseSettingValue<Key> | undefined,

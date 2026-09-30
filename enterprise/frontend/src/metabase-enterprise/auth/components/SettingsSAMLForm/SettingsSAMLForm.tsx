@@ -129,7 +129,6 @@ export function SettingsSAMLForm() {
         {({ dirty, initialValues, isSubmitting, setFieldValue }) => (
           <Form>
             <Stack gap="xl">
-              {/* the card saves on its own, so it stays out of the form's values */}
               <UserProvisioningSection
                 settingKey="saml-user-provisioning-enabled?"
                 providerName="SAML"

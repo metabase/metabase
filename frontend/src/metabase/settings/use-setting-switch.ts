@@ -19,7 +19,6 @@ type BooleanSettingKey = {
 
 export type SettingSwitchState = {
   checked: boolean;
-  // the env var that owns the value, when one does
   envName: string | undefined;
   // true while the settings load or refetch and while the write runs
   isBusy: boolean;

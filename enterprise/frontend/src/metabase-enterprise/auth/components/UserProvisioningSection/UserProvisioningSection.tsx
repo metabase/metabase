@@ -27,7 +27,6 @@ export function UserProvisioningSection({
 }: UserProvisioningSectionProps) {
   const applicationName = useSelector(getApplicationName);
   const provisioningSwitch = useSettingSwitch(settingKey);
-  // a note built as `condition && <Note/>` is `false` when its condition is off, so coerce rather than compare
   const hasLockedNote = Boolean(lockedNote);
 
   return (

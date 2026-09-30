@@ -7,7 +7,15 @@ import {
   setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { settingsApi } from "metabase/settings";
+import { delay } from "metabase/utils/promise";
 import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
@@ -48,12 +56,16 @@ const setup = async ({
   settingDefinitions = [],
   updateDelay,
   readDelay,
+  groupsDelay,
+  groupsStatus,
 }: {
   settingValues?: Partial<EnterpriseSettings>;
   // entries here win over the ones derived from settingValues
   settingDefinitions?: SettingDefinition[];
   updateDelay?: number;
   readDelay?: number;
+  groupsDelay?: number;
+  groupsStatus?: number;
 } = {}) => {
   const settings = createMockSettings(settingValues);
   const listedKeys = new Set(
@@ -64,10 +76,17 @@ const setup = async ({
     ...toDefinitions(settingValues).filter(({ key }) => !listedKeys.has(key)),
   ]);
   // the switch and the mappings read their values back after saving, so the properties mock has to remember writes
-  setupStatefulSettingsEndpoints(settings, { updateDelay, readDelay });
-  fetchMock.get("path:/api/permissions/group", GROUPS);
+  const settingsStore = setupStatefulSettingsEndpoints(settings, {
+    updateDelay,
+    readDelay,
+  });
+  fetchMock.get(
+    "path:/api/permissions/group",
+    groupsStatus == null ? GROUPS : { status: groupsStatus },
+    { delay: groupsDelay },
+  );
 
-  renderWithProviders(
+  const { store } = renderWithProviders(
     <SettingsGroupMappingSection
       syncSettingKey="ldap-group-sync"
       mappingsSettingKey="ldap-group-mappings"
@@ -93,6 +112,7 @@ const setup = async ({
       expect(groupMappingSwitch()).not.toHaveAttribute("aria-disabled"),
     );
   }
+  return { store, settingsStore };
 };
 
 describe("SettingsGroupMappingSection", () => {
@@ -169,6 +189,109 @@ describe("SettingsGroupMappingSection", () => {
     expect(groupMappingSwitch()).toBeChecked();
     expect(screen.getByText("No mappings yet")).toBeInTheDocument();
     expect(findMappingRow(DEVS_DN)).toBeUndefined();
+  });
+
+  it("holds the mappings while the settings refetch after a write", async () => {
+    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [3] },
+      },
+      readDelay: 200,
+    });
+    const newButton = () => screen.getByRole("button", { name: "New" });
+    const deleteButton = () =>
+      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+        name: "Delete mapping",
+      });
+    // the initial settings read is slow too, so wait for the panel to open up
+    await waitFor(() => expect(deleteButton()).toBeEnabled());
+
+    await userEvent.click(deleteButton());
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: "Remove mapping" }),
+    );
+
+    // the write is done once the toast shows, while the refetch it triggered is still in flight
+    expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
+    await act(async () => {
+      await delay(50);
+    });
+    expect(newButton()).toBeDisabled();
+    await waitFor(() => expect(newButton()).toBeEnabled());
+    expect(findMappingRow(DEVS_DN)).toBeUndefined();
+  });
+
+  it("carries on as a new mapping when the one being edited disappears", async () => {
+    const OPS_DN = "cn=ops,ou=groups,dc=example,dc=org";
+    const { store, settingsStore } = await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3], [OPS_DN]: [3] },
+      },
+    });
+    await waitFor(() =>
+      expect(
+        within(findMappingRow(DEVS_DN)!).getByRole("button", {
+          name: "Edit mapping",
+        }),
+      ).toBeEnabled(),
+    );
+    await userEvent.click(
+      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+        name: "Edit mapping",
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+
+    // another admin deletes the mapping, and a refetch brings that in
+    settingsStore["ldap-group-mappings"] = { [OPS_DN]: [3] };
+    store.dispatch(settingsApi.util.invalidateTags(["session-properties"]));
+
+    expect(
+      await screen.findByRole("button", { name: "Add mapping" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("LDAP group name")).toHaveValue(DEVS_DN);
+    expect(
+      screen.queryByRole("button", { name: "Save" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds the mapping controls until the groups have loaded", async () => {
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3] },
+      },
+      groupsDelay: 200,
+    });
+    const newButton = () => screen.getByRole("button", { name: "New" });
+    const editButton = () =>
+      within(findMappingRow(DEVS_DN)!).getByRole("button", {
+        name: "Edit mapping",
+      });
+    expect(newButton()).toBeDisabled();
+    expect(editButton()).toBeDisabled();
+
+    await waitFor(() => expect(newButton()).toBeEnabled());
+    expect(editButton()).toBeEnabled();
+  });
+
+  it("says so when the groups could not be loaded", async () => {
+    await setup({
+      settingValues: {
+        "ldap-group-sync": true,
+        "ldap-group-mappings": { [DEVS_DN]: [3] },
+      },
+      groupsStatus: 500,
+    });
+
+    expect(
+      await screen.findByText("Groups could not be loaded"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New" })).toBeDisabled();
   });
 
   it("locks the mappings to the ones an env var sets", async () => {

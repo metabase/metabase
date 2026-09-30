@@ -1,18 +1,22 @@
 import { t } from "ttag";
 
 import { Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import type { GroupMappings } from "metabase-types/api";
 
 import { GroupMappingList } from "./GroupMappingList";
-import type { GroupMappingsState } from "./use-group-mappings";
+import type { SaveMappings } from "./use-group-mappings";
 import { useMappingDeletion } from "./use-mapping-deletion";
 import { useMappingEditor } from "./use-mapping-editor";
 import type { GroupLookup } from "./utils";
 
 type GroupMappingsPanelProps = {
-  groupMapping: GroupMappingsState;
+  mappings: GroupMappings;
+  saveMappings: SaveMappings;
+  // reports deletions to a page whose other controls write the same setting
+  onDeletingChange?: (isDeleting: boolean) => void;
   groupLookup: GroupLookup;
-  // another reason the panel is busy, on top of its own save and delete
-  isBusy?: boolean;
+  // set by the page while it writes or refetches the mappings, since a row edit would race that
+  disabled?: boolean;
   // locks the mappings for a reason the page explains elsewhere
   readOnly?: boolean;
   // the env var that owns the mappings, which locks them and is named above the rows
@@ -23,18 +27,29 @@ type GroupMappingsPanelProps = {
 
 /** The manual group mappings of one provider: a header, the rows, and the editor the rows open */
 export function GroupMappingsPanel({
-  groupMapping,
+  mappings,
+  saveMappings,
+  onDeletingChange,
   groupLookup,
-  isBusy = false,
+  disabled = false,
   readOnly = false,
   lockedEnvName,
   nameLabel,
   namePlaceholder,
 }: GroupMappingsPanelProps) {
-  const deletion = useMappingDeletion({ groupMapping, groupLookup });
-  const editor = useMappingEditor({ groupMapping, groupLookup });
-  // the editor and the deletion own their in-flight flags, so the panel releases as soon as they do
-  const isDisabled = isBusy || editor.isSubmitting || deletion.isDeleting;
+  const deletion = useMappingDeletion({
+    mappings,
+    saveMappings,
+    onDeletingChange,
+    groupLookup,
+  });
+  const editor = useMappingEditor({ mappings, saveMappings, groupLookup });
+  // a mapping's ids only read right once the groups have arrived, so the panel waits for them too
+  const isDisabled =
+    disabled ||
+    editor.isSubmitting ||
+    deletion.isDeleting ||
+    !groupLookup.isLoaded;
   const isReadOnly = readOnly || lockedEnvName != null;
 
   return (
@@ -55,8 +70,11 @@ export function GroupMappingsPanel({
       {lockedEnvName != null && (
         <Text c="text-secondary">{t`Using ${lockedEnvName}`}</Text>
       )}
+      {groupLookup.loadFailed && (
+        <Text c="error">{t`Groups could not be loaded`}</Text>
+      )}
       <GroupMappingList
-        mappings={groupMapping.mappings}
+        mappings={mappings}
         groupLookup={groupLookup}
         editor={editor}
         deletion={deletion}

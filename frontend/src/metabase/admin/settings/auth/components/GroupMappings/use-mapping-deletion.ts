@@ -6,10 +6,10 @@ import {
   useDeletePermissionsGroupMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
-import type { GroupId } from "metabase-types/api";
+import type { GroupId, GroupMappings } from "metabase-types/api";
 
 import type { CascadeValue, DeleteMappingModalValueType } from "./types";
-import type { GroupMappingsState } from "./use-group-mappings";
+import type { SaveMappings } from "./use-group-mappings";
 import { type GroupLookup, withoutGroups, withoutMapping } from "./utils";
 
 type MappingCascade = {
@@ -32,14 +32,15 @@ export type MappingDeletionState = {
 };
 
 export function useMappingDeletion({
-  groupMapping,
+  mappings,
+  saveMappings,
+  onDeletingChange,
   groupLookup,
-  lastMappingDeletedMessage,
 }: {
-  groupMapping: GroupMappingsState;
+  mappings: GroupMappings;
+  saveMappings: SaveMappings;
+  onDeletingChange?: (isDeleting: boolean) => void;
   groupLookup: GroupLookup;
-  // replaces the success toast when the deletion empties the mappings, for providers that stop syncing then
-  lastMappingDeletedMessage?: string;
 }): MappingDeletionState {
   const [sendToast] = useToast();
   const [clearGroupMembership] = useClearGroupMembershipMutation();
@@ -48,9 +49,7 @@ export function useMappingDeletion({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const targetGroupIds =
-    target == null
-      ? []
-      : groupLookup.existingIds(groupMapping.mappings[target] ?? []);
+    target == null ? [] : groupLookup.existingIds(mappings[target] ?? []);
 
   // "nothing, just remove the mapping" arrives as null and touches no group
   const runCascade = async (
@@ -82,8 +81,8 @@ export function useMappingDeletion({
     cascade: MappingCascade | null,
   ) => {
     // the mapping goes first, so a failed write never leaves deleted groups behind
-    const nextMappings = withoutMapping(groupMapping.mappings, name);
-    const result = await groupMapping.saveMappings(nextMappings);
+    const nextMappings = withoutMapping(mappings, name);
+    const result = await saveMappings(nextMappings);
     if (!result.ok) {
       return;
     }
@@ -94,7 +93,7 @@ export function useMappingDeletion({
       ids.some((groupId) => deleted.has(groupId)),
     );
     if (hasDeletedGroups) {
-      const scrubResult = await groupMapping.saveMappings(
+      const scrubResult = await saveMappings(
         withoutGroups(nextMappings, deletedIds),
       );
       if (!scrubResult.ok) {
@@ -107,16 +106,9 @@ export function useMappingDeletion({
         icon: "warning",
         toastColor: "feedback-negative",
       });
-      return;
+    } else {
+      sendToast({ message: t`Mapping deleted`, icon: "check_filled" });
     }
-    const isLastMapping = Object.keys(nextMappings).length === 0;
-    sendToast({
-      message:
-        isLastMapping && lastMappingDeletedMessage != null
-          ? lastMappingDeletedMessage
-          : t`Mapping deleted`,
-      icon: "check_filled",
-    });
   };
 
   const confirmDelete = async (value: DeleteMappingModalValueType) => {
@@ -132,10 +124,12 @@ export function useMappingDeletion({
         : { value, groupIds: groupLookup.actionableIds(groupIds, value) };
     // the write releases its own busy flag before the cascade, so this one covers the whole operation
     setIsDeleting(true);
+    onDeletingChange?.(true);
     try {
       await deleteMapping(name, cascade);
     } finally {
       setIsDeleting(false);
+      onDeletingChange?.(false);
     }
   };
 

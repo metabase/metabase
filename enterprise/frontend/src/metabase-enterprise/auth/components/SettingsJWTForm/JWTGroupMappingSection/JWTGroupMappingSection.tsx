@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   GroupMappingList,
-  type GroupMappingsState,
   useGroupLookup,
   useMappingDeletion,
   useMappingEditor,
@@ -34,19 +33,19 @@ export function JWTGroupMappingSection({
   const groupMapping = useGroupMappingSettings();
   const modeSwitch = useGroupMappingMode(groupMapping);
 
-  // saving a mapping always turns sync on, since a mapping is only meaningful while it is
-  const editorStore: GroupMappingsState = {
+  const editor = useMappingEditor({
     mappings: groupMapping.mappings,
+    // saving a mapping always turns sync on, since a mapping is only meaningful while it is
     saveMappings: (mappings, options) =>
       groupMapping.saveSettings(
         { "jwt-group-sync": true, "jwt-group-mappings": mappings },
         options,
       ),
-  };
-
-  // deleting the last mapping turns sync off, otherwise the backend falls back to matching by name
-  const deletionStore: GroupMappingsState = {
+    groupLookup,
+  });
+  const deletion = useMappingDeletion({
     mappings: groupMapping.mappings,
+    // deleting the last mapping turns sync off, otherwise the backend falls back to matching by name
     saveMappings: (mappings, options) =>
       groupMapping.saveSettings(
         Object.keys(mappings).length === 0
@@ -54,19 +53,15 @@ export function JWTGroupMappingSection({
           : { "jwt-group-mappings": mappings },
         options,
       ),
-  };
-
-  const editor = useMappingEditor({ groupMapping: editorStore, groupLookup });
-  const deletion = useMappingDeletion({
-    groupMapping: deletionStore,
     groupLookup,
-    lastMappingDeletedMessage: t`Mapping deleted and group mapping turned off`,
   });
   // a settings refetch still in flight could overwrite a new write, so the section waits for it too
   const isBusy =
     groupMapping.isSaving ||
     groupMapping.isAdminSettingsFetching ||
     deletion.isDeleting;
+  // a mapping's ids only read right once the groups have arrived, so the list waits for them too
+  const isListHeld = isBusy || !groupLookup.isLoaded;
 
   const isLocked = lockedEnvNames.length > 0;
   const isReadOnly = isLocked || !isServerConfigured;
@@ -97,7 +92,7 @@ export function JWTGroupMappingSection({
             // the heading wraps before the button does, so the button keeps its whole label
             flex="0 0 auto"
             leftSection={<Icon name="add" aria-hidden />}
-            disabled={isBusy}
+            disabled={isListHeld}
             onClick={editor.startNew}
           >{t`New mapping`}</Button>
         )}
@@ -113,6 +108,10 @@ export function JWTGroupMappingSection({
         </Text>
       )}
 
+      {modeSwitch.mode === "manual" && groupLookup.loadFailed && (
+        <Text c="error">{t`Groups could not be loaded`}</Text>
+      )}
+
       {modeSwitch.mode === "manual" && (
         <GroupMappingList
           mappings={groupMapping.mappings}
@@ -120,7 +119,7 @@ export function JWTGroupMappingSection({
           editor={editor}
           deletion={deletion}
           readOnly={isReadOnly}
-          disabled={isBusy}
+          disabled={isListHeld}
           nameLabel={t`JWT group name`}
           namePlaceholder={t`Enter JWT group...`}
           emptyMessage={t`Add at least one mapping to use manual group mapping`}

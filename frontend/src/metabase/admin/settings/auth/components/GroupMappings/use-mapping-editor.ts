@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { GroupId } from "metabase-types/api";
+import type { GroupId, GroupMappings } from "metabase-types/api";
 
-import type { GroupMappingsState } from "./use-group-mappings";
+import type { SaveMappings } from "./use-group-mappings";
 import { type GroupLookup, withMappingEntry } from "./utils";
 
 export type MappingDraft = {
@@ -17,7 +17,6 @@ export type MappingEditorState = {
   draft: MappingDraft | null;
   nameError: string | null;
   canSave: boolean;
-  // true from the save click until the write answers
   isSubmitting: boolean;
   startNew: () => void;
   startEdit: (name: string, groupIds: GroupId[]) => void;
@@ -28,10 +27,12 @@ export type MappingEditorState = {
 
 /** Holds the mapping being added or edited and writes it into the mappings setting */
 export function useMappingEditor({
-  groupMapping,
+  mappings,
+  saveMappings,
   groupLookup,
 }: {
-  groupMapping: GroupMappingsState;
+  mappings: GroupMappings;
+  saveMappings: SaveMappings;
   groupLookup: GroupLookup;
 }): MappingEditorState {
   const [draft, setDraft] = useState<MappingDraft | null>(null);
@@ -41,7 +42,7 @@ export function useMappingEditor({
   const trimmedName = draft?.name.trim() ?? "";
   const isDuplicateName =
     draft != null &&
-    Object.hasOwn(groupMapping.mappings, trimmedName) &&
+    Object.hasOwn(mappings, trimmedName) &&
     trimmedName !== draft.originalName;
   const canSave =
     draft != null &&
@@ -67,9 +68,9 @@ export function useMappingEditor({
     const isNewMapping = draft.originalName == null;
     setIsSubmitting(true);
     try {
-      const result = await groupMapping.saveMappings(
+      const result = await saveMappings(
         withMappingEntry(
-          groupMapping.mappings,
+          mappings,
           draft.originalName,
           trimmedName,
           draft.groupValues.map(Number),

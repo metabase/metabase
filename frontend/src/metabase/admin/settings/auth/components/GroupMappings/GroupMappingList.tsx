@@ -40,6 +40,11 @@ export function GroupMappingList({
 }: GroupMappingListProps) {
   const { draft } = editor;
   const hasMappings = Object.keys(mappings).length > 0;
+  // a draft whose mapping was deleted meanwhile, say by another admin, carries on as a new one
+  const isDraftNew =
+    draft != null &&
+    (draft.originalName == null ||
+      !Object.hasOwn(mappings, draft.originalName));
   const groupOptions = groupLookup.mappableGroups.map((group) => ({
     value: String(group.id),
     label: getGroupNameLocalized(group),
@@ -83,7 +88,7 @@ export function GroupMappingList({
             />
           ),
         )}
-        {draft != null && draft.originalName == null && (
+        {draft != null && isDraftNew && (
           <MappingEditorRow
             draft={draft}
             submitLabel={t`Add mapping`}

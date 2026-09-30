@@ -77,17 +77,19 @@ function SettingsGroupMappings({
   nameLabel,
   namePlaceholder,
 }: SettingsGroupMappingsProps) {
-  const { settingDetails } = useAdminSetting(settingKey);
+  const { settingDetails, isFetching } = useAdminSetting(settingKey);
   const groupLookup = useGroupLookup({ tenancy });
-  const groupMapping = useGroupMappings({ settingKey });
+  const { mappings, saveMappings } = useGroupMappings({ settingKey });
   const envName = settingDetails?.is_env_setting
     ? settingDetails.env_name
     : undefined;
 
   return (
     <GroupMappingsPanel
-      groupMapping={groupMapping}
+      mappings={mappings}
+      saveMappings={saveMappings}
       groupLookup={groupLookup}
+      disabled={isFetching}
       lockedEnvName={envName}
       nameLabel={nameLabel}
       namePlaceholder={namePlaceholder}

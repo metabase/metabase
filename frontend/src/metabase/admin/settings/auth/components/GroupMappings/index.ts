@@ -4,7 +4,6 @@ export { SettingsGroupMappingSection } from "./SettingsGroupMappingSection";
 export { useGroupLookup } from "./use-group-lookup";
 export {
   type GroupMappingsSaveResult,
-  type GroupMappingsState,
   type SaveOptions,
   useGroupMappings,
 } from "./use-group-mappings";

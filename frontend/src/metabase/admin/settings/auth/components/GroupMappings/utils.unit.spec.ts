@@ -36,6 +36,12 @@ describe("withMappingEntry", () => {
     expect(Object.hasOwn(result, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
   });
+  it("adds the entry when the mapping it edits is already gone", () => {
+    expect(withMappingEntry({ ops: [3] }, "devs", "devs", [4])).toEqual({
+      ops: [3],
+      devs: [4],
+    });
+  });
 });
 
 describe("withoutMapping", () => {
@@ -79,6 +85,14 @@ describe("createGroupLookup", () => {
 
   it("filters ids of groups that no longer exist", () => {
     expect(groupLookup.existingIds([3, 9])).toEqual([3]);
+  });
+
+  it("knows whether the groups have arrived and whether the load failed", () => {
+    expect(groupLookup.isLoaded).toBe(true);
+    expect(groupLookup.loadFailed).toBe(false);
+    expect(createGroupLookup([]).isLoaded).toBe(true);
+    expect(createGroupLookup(undefined).isLoaded).toBe(false);
+    expect(createGroupLookup(undefined, true).loadFailed).toBe(true);
   });
 
   it("leaves every built-in group out of a delete cascade", () => {

@@ -55,6 +55,7 @@ const setup = async ({
   deleteGroupStatuses,
   cascadeDelayMs,
   propertiesReadDelayMs,
+  groupsDelayMs,
 }: {
   jwtEnabled?: boolean;
   useTenants?: boolean;
@@ -78,6 +79,7 @@ const setup = async ({
   deleteGroupStatuses?: Record<number, number>;
   cascadeDelayMs?: number;
   propertiesReadDelayMs?: number;
+  groupsDelayMs?: number;
 } = {}) => {
   const settingDefinitions: SettingDefinition[] = [
     { key: "use-tenants", value: useTenants ?? false },
@@ -217,7 +219,9 @@ const setup = async ({
   }
   setupGenerateRandomTokenEndpoint("1234abcd");
 
-  fetchMock.get("path:/api/permissions/group", GROUPS);
+  fetchMock.get("path:/api/permissions/group", GROUPS, {
+    delay: groupsDelayMs,
+  });
   fetchMock.put(
     "express:/api/permissions/membership/:id/clear",
     cascadeStatus ?? 204,
@@ -490,6 +494,34 @@ describe("SettingsJWTForm", () => {
       ).toBeEnabled();
     });
 
+    it("keeps existing mappings when the shared secret is saved later", async () => {
+      await setup({
+        uriOnly: true,
+        groupSync: true,
+        groupMappings: { devs: [3] },
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Set up key/ }),
+      );
+      await userEvent.clear(await screen.findByLabelText(/New secret key/));
+      await userEvent.type(
+        await screen.findByLabelText(/New secret key/),
+        ATTRS["jwt-shared-secret"],
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Done/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: /Save and enable/ }),
+      );
+
+      const [{ body }] = await findRequests("PUT");
+      // the setup already has mappings, so the first-save reset must leave them alone
+      expect(body).not.toHaveProperty("jwt-group-mappings");
+      expect(body).not.toHaveProperty("jwt-group-sync");
+    });
+
     it("stays editable while only the identity provider URI is saved", async () => {
       await setup({ uriOnly: true });
 
@@ -735,9 +767,7 @@ describe("SettingsJWTForm", () => {
         await screen.findByRole("button", { name: "Remove mapping" }),
       );
 
-      expect(
-        await screen.findByText("Mapping deleted and group mapping turned off"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
       expect(screen.getByRole("radio", { name: "Manual" })).not.toBeChecked();
     });
@@ -920,6 +950,29 @@ describe("SettingsJWTForm", () => {
         await screen.findByText("Mapping added", {}, { timeout: 3000 }),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "New mapping" })).toBeEnabled();
+    });
+
+    it("holds the mapping controls until the groups have loaded", async () => {
+      await setup({
+        jwtEnabled: true,
+        configured: true,
+        groupSync: true,
+        groupMappings: { devs: [3] },
+        groupsDelayMs: 200,
+      });
+      const newButton = () =>
+        screen.getByRole("button", { name: "New mapping" });
+      const deleteButton = () =>
+        within(findMappingRow("devs")!).getByRole("button", {
+          name: "Delete mapping",
+        });
+      expect(newButton()).toBeDisabled();
+      expect(deleteButton()).toBeDisabled();
+      // the mode control writes settings, not group ids, so it does not wait
+      expect(screen.getByRole("radio", { name: "Off" })).toBeEnabled();
+
+      await waitFor(() => expect(newButton()).toBeEnabled());
+      expect(deleteButton()).toBeEnabled();
     });
 
     it("holds the controls until the cascade finishes", async () => {
@@ -1110,9 +1163,7 @@ describe("SettingsJWTForm", () => {
         screen.getByRole("button", { name: "Remove mapping" }),
       );
 
-      expect(
-        await screen.findByText("Mapping deleted and group mapping turned off"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Mapping deleted")).toBeInTheDocument();
       const [{ body }] = await findRequests("PUT");
       expect(body).toEqual({
         "jwt-group-mappings": {},

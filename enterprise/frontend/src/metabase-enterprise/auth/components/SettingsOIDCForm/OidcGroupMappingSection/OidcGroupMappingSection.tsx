@@ -1,10 +1,10 @@
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
   EMPTY_MAPPINGS,
   GroupMappingsPanel,
   type GroupMappingsSaveResult,
-  type GroupMappingsState,
   type SaveOptions,
   useGroupLookup,
 } from "metabase/admin/settings/auth/components/GroupMappings";
@@ -23,30 +23,60 @@ import {
 
 import { type OidcGroupSync, toGroupSync } from "../group-sync";
 
-export type GroupSyncWriter = {
-  isSaving: boolean;
-  saveGroupSync: (
-    provider: CustomOidcConfig,
-    changes: Partial<OidcGroupSync>,
-    options?: SaveOptions,
-  ) => Promise<GroupMappingsSaveResult>;
-};
+type OidcGroupMappingSectionProps = {
+  // null until the provider is saved, and the card stays disabled until then
+  provider: CustomOidcConfig | null;
+  // reports the card's writes and deletions, so the page's save waits for them
+  onSavingChange?: (isSaving: boolean) => void;
+  // the group fields of the page form, shown only while group mapping is on
+  children: React.ReactNode;
+  // the env var that owns the providers; the page shows the notice, the card only locks
+  lockedEnvName?: string;
+  // true while the page form saves the provider, which a card write would race
+  isPageSaving?: boolean;
+  disabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
+} & BoxProps;
 
-/** Writes the provider's group sync config with some fields replaced, since the API swaps the whole map */
-export function useGroupSyncWriter(): GroupSyncWriter {
+/** The group mapping card of an OIDC provider, with a switch that saves on its own and the mappings under it */
+export function OidcGroupMappingSection({
+  provider,
+  onSavingChange,
+  children,
+  lockedEnvName,
+  isPageSaving = false,
+  disabled = false,
+  onToggle,
+  ...boxProps
+}: OidcGroupMappingSectionProps) {
+  const applicationName = useSelector(getApplicationName);
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [updateProvider, { isLoading: isSaving }] =
+  const groupLookup = useGroupLookup();
+  const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
+  const [updateProvider, { isLoading: isUpdating }] =
     useUpdateCustomOidcMutation();
+  const [isDeleting, setIsDeleting] = useState(false);
+  // a deletion makes several writes, and nothing else may write the provider between them
+  const isSaving = isUpdating || isDeleting;
+  // the page form writes the same provider, so its save waits while the card saves
+  useEffect(() => {
+    onSavingChange?.(isSaving);
+  }, [isSaving, onSavingChange]);
+  // a refetch still in flight could answer with the value from before the write
+  // the page form's save carries the group sync too, so the card waits for it as well
+  const isWriting = isSaving || isProvidersFetching || isPageSaving;
+  const isLocked = lockedEnvName != null;
 
+  // writes the group sync with some fields replaced, since the API swaps the whole map
   const saveGroupSync = async (
-    provider: CustomOidcConfig,
+    current: CustomOidcConfig,
     changes: Partial<OidcGroupSync>,
     { successMessage, showErrorToast = true }: SaveOptions = {},
   ): Promise<GroupMappingsSaveResult> => {
     const { data: savedProvider, error: writeError } = await updateProvider({
-      key: provider.key,
-      provider: { "group-sync": toGroupSync(provider["group-sync"], changes) },
+      key: current.key,
+      provider: { "group-sync": toGroupSync(current["group-sync"], changes) },
     });
     if (writeError != null || savedProvider == null) {
       const error = getErrorMessage(writeError, t`Error saving group mapping`);
@@ -65,7 +95,7 @@ export function useGroupSyncWriter(): GroupSyncWriter {
         "getCustomOidcProviders",
         undefined,
         (draft) => {
-          const index = draft.findIndex((entry) => entry.key === provider.key);
+          const index = draft.findIndex((entry) => entry.key === current.key);
           if (index !== -1) {
             draft[index] = savedProvider;
           }
@@ -78,50 +108,11 @@ export function useGroupSyncWriter(): GroupSyncWriter {
     return { ok: true };
   };
 
-  return { isSaving, saveGroupSync };
-}
-
-type OidcGroupMappingSectionProps = {
-  // null until the provider is saved, and the card stays disabled until then
-  provider: CustomOidcConfig | null;
-  // the page's writer, since the switch, the mappings and the page form all write the one provider
-  writer: GroupSyncWriter;
-  // the group fields of the page form, shown only while group mapping is on
-  children: React.ReactNode;
-  // the env var that owns the providers, which the page names and the card only obeys
-  lockedEnvName?: string;
-  // true while the page form saves the provider, which a card write would race
-  isPageSaving?: boolean;
-  // greys the card until the backend counts the provider as configured, like the cards above it
-  disabled?: boolean;
-  onToggle?: (enabled: boolean) => void;
-} & BoxProps;
-
-/** The group mapping card of an OIDC provider, with a switch that saves on its own and the mappings under it */
-export function OidcGroupMappingSection({
-  provider,
-  writer,
-  children,
-  lockedEnvName,
-  isPageSaving = false,
-  disabled = false,
-  onToggle,
-  ...boxProps
-}: OidcGroupMappingSectionProps) {
-  const applicationName = useSelector(getApplicationName);
-  const dispatch = useDispatch();
-  const { isFetching: isProvidersFetching } = useGetCustomOidcProvidersQuery();
-  const { isSaving, saveGroupSync } = writer;
-  // a refetch still in flight could answer with the value from before the write
-  // the page form's save carries the group sync too, so the card waits for it as well
-  const isWriting = isSaving || isProvidersFetching || isPageSaving;
-  const isLocked = lockedEnvName != null;
-
   const handleChange = async (enabled: boolean) => {
     if (provider == null) {
       return;
     }
-    // show the click at once, the way the writer shows the saved provider after the write
+    // show the click at once and let the write confirm it
     const patch = dispatch(
       customOidcApi.util.updateQueryData(
         "getCustomOidcProviders",
@@ -159,46 +150,23 @@ export function OidcGroupMappingSection({
       {...boxProps}
     >
       {provider != null && (
-        <OidcGroupMappings
-          provider={provider}
-          saveGroupSync={saveGroupSync}
-          isWriting={isWriting}
+        <GroupMappingsPanel
+          mappings={
+            provider["group-sync"]?.["group-mappings"] ?? EMPTY_MAPPINGS
+          }
+          saveMappings={(mappings, options) =>
+            saveGroupSync(provider, { "group-mappings": mappings }, options)
+          }
+          // every write sends the whole group sync, so nothing else may write it mid-cascade
+          onDeletingChange={setIsDeleting}
+          groupLookup={groupLookup}
+          disabled={isWriting}
           readOnly={isLocked}
+          nameLabel={t`OIDC group name`}
+          namePlaceholder={t`Enter OIDC group...`}
         />
       )}
       {children}
     </SwitchSettingsSection>
-  );
-}
-
-type OidcGroupMappingsProps = {
-  provider: CustomOidcConfig;
-  saveGroupSync: GroupSyncWriter["saveGroupSync"];
-  isWriting: boolean;
-  readOnly: boolean;
-};
-
-function OidcGroupMappings({
-  provider,
-  saveGroupSync,
-  isWriting,
-  readOnly,
-}: OidcGroupMappingsProps) {
-  const groupLookup = useGroupLookup();
-  const groupMapping: GroupMappingsState = {
-    mappings: provider["group-sync"]?.["group-mappings"] ?? EMPTY_MAPPINGS,
-    saveMappings: (mappings, options) =>
-      saveGroupSync(provider, { "group-mappings": mappings }, options),
-  };
-
-  return (
-    <GroupMappingsPanel
-      groupMapping={groupMapping}
-      groupLookup={groupLookup}
-      isBusy={isWriting}
-      readOnly={readOnly}
-      nameLabel={t`OIDC group name`}
-      namePlaceholder={t`Enter OIDC group...`}
-    />
   );
 }

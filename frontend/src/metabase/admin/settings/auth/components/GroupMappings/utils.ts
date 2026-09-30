@@ -25,7 +25,8 @@ export function withMappingEntry(
     ([mappingName, ids]): [string, GroupId[]] =>
       mappingName === originalName ? [name, groupIds] : [mappingName, ids],
   );
-  if (originalName == null) {
+  // an edit whose mapping was deleted meanwhile adds it back rather than vanishing
+  if (originalName == null || !Object.hasOwn(mappings, originalName)) {
     entries.push([name, groupIds]);
   }
   // fromEntries defines own properties, so names like __proto__ stay plain keys
@@ -57,8 +58,12 @@ export function withoutGroups(
 
 export type GroupLookup = ReturnType<typeof createGroupLookup>;
 
-export function createGroupLookup(groups: GroupListQuery[]) {
-  const groupsById = new Map(groups.map((group) => [group.id, group]));
+export function createGroupLookup(
+  groups: GroupListQuery[] | undefined,
+  loadFailed = false,
+) {
+  const loadedGroups = groups ?? [];
+  const groupsById = new Map(loadedGroups.map((group) => [group.id, group]));
   // the backend refuses to delete any built-in group, and to clear only the Administrators group
   const isKeptBy = (value: CascadeValue, group: GroupListQuery) => {
     if (value === "delete") {
@@ -67,8 +72,11 @@ export function createGroupLookup(groups: GroupListQuery[]) {
     return isAdminGroup(group);
   };
   return {
+    // every id reads as missing until the groups arrive, so callers hold their controls until then
+    isLoaded: groups != null,
+    loadFailed,
     // the default groups can't be mapped to
-    mappableGroups: groups.filter(
+    mappableGroups: loadedGroups.filter(
       (group) => !isDefaultGroup(group) && !isDefaultTenantGroup(group),
     ),
     getGroup: (groupId: GroupId) => groupsById.get(groupId),

@@ -26,19 +26,21 @@ export type SaveOptions = {
   showErrorToast?: boolean;
 };
 
-export type GroupMappingsState = {
+export type SaveMappings = (
+  mappings: GroupMappings,
+  options?: SaveOptions,
+) => Promise<GroupMappingsSaveResult>;
+
+export type GroupMappingsSetting = {
   mappings: GroupMappings;
-  saveMappings: (
-    mappings: GroupMappings,
-    options?: SaveOptions,
-  ) => Promise<GroupMappingsSaveResult>;
+  saveMappings: SaveMappings;
 };
 
 export function useGroupMappings({
   settingKey,
 }: {
   settingKey: GroupMappingsSettingKey;
-}): GroupMappingsState {
+}): GroupMappingsSetting {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
   const [updateSettings] = useUpdateSettingsMutation();

@@ -77,6 +77,8 @@ export const SettingsJWTForm = () => {
 
   // the flag the overview card reads: the URI and the shared secret are both saved, paused or not
   const isServerConfigured = settingValues?.["jwt-configured"] ?? false;
+  const hasMappings =
+    Object.keys(settingValues?.["jwt-group-mappings"] ?? {}).length > 0;
 
   // either env var locks the whole group mapping section, since the two settings act as one feature
   const groupMappingEnvNames = [
@@ -98,7 +100,8 @@ export const SettingsJWTForm = () => {
     }
 
     // per the design, the first save turns automatic group mapping on; the section owns it from then on
-    if (!isServerConfigured && !isGroupMappingEnvConfigured) {
+    // a setup that already has mappings is not new, even if the shared secret went missing
+    if (!isServerConfigured && !isGroupMappingEnvConfigured && !hasMappings) {
       settingsToUpdate["jwt-group-sync"] = true;
       settingsToUpdate["jwt-group-mappings"] = {};
     }
@@ -150,7 +153,6 @@ export const SettingsJWTForm = () => {
         {({ dirty, isSubmitting }) => (
           <Form>
             <Stack gap="xl">
-              {/* the card saves on its own, so it stays out of the form's values */}
               <UserProvisioningSection
                 settingKey="jwt-user-provisioning-enabled?"
                 providerName="JWT"
