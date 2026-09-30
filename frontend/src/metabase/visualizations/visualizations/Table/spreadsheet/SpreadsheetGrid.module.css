@@ -1,0 +1,255 @@
+.tableWrapper {
+  overflow: auto;
+  flex: 1;
+  height: 100%;
+  background-color: var(--mb-color-background-primary);
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  table-layout: fixed;
+}
+
+.table.autoWidth {
+  width: auto;
+}
+
+/* table-layout:fixed only engages when the table's own width isn't auto —
+   without this the per-cell widths below are treated as mere hints and
+   columns still size to their content. */
+.table.fixedWidth {
+  width: max-content;
+}
+
+.table.fixedWidth td,
+.table.fixedWidth th {
+  width: 140px;
+  max-width: 140px;
+}
+
+/* Row-number / field-name gutter stays narrow rather than 140px. */
+.table.fixedWidth th.gutterCell {
+  width: 52px;
+  max-width: 52px;
+}
+
+.gutterCell {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
+  text-align: center;
+  min-width: 44px;
+  border: 1px solid var(--mb-color-border);
+}
+
+.letterHeaderRow th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
+  border: 1px solid var(--mb-color-border);
+  padding: 2px 8px;
+  font-weight: normal;
+  text-align: center;
+}
+
+.letterHeaderRow th.gutterCell {
+  z-index: 3;
+}
+
+.fieldHeaderRow th {
+  position: sticky;
+  /* Offset by the letter row's height when it's rendered above this one;
+     .noLetterRow overrides this back to 0 when it isn't (transposed view,
+     or the "View Names" letter row toggled off), otherwise this row's
+     sticky offset would overlap and hide the first row underneath it. */
+  top: 22px;
+  z-index: 1;
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  padding: 6px 8px;
+  font-weight: 600;
+}
+
+.fieldHeaderRow.noLetterRow th {
+  top: 0;
+}
+
+.fieldHeaderRow th.gutterCell {
+  z-index: 3;
+}
+
+/* Height is pinned rather than content-driven because only the rows on
+   screen are rendered — SpreadsheetGrid sizes its spacer rows with a
+   constant ROW_HEIGHT, and the scrollbar only stays honest if every row
+   really is that tall. */
+.table tbody td,
+.table tbody th {
+  height: 25px;
+  line-height: 15px;
+  box-sizing: border-box;
+}
+
+.cell {
+  border: 1px solid var(--mb-color-border-subtle);
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: cell;
+}
+
+.cell.selected {
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: -1px;
+  background-color: var(--mb-color-background-selected);
+}
+
+.cell.errored {
+  color: var(--mb-color-error);
+}
+
+.cell.blankColumn {
+  background-color: var(--mb-color-background-secondary);
+}
+
+/* Cells the formula being typed refers to, outlined in cycling colours
+   the way Excel/Sheets mark "=A1+B1" — so you can see at a glance what
+   the formula actually points at. Outline rather than border so the
+   grid's own 1px lines don't shift. */
+.cell.referenced {
+  outline-width: 2px;
+  outline-style: solid;
+  outline-offset: -2px;
+}
+
+.cell.ref0 {
+  outline-color: var(--mb-color-accent0);
+}
+
+.cell.ref1 {
+  outline-color: var(--mb-color-accent1);
+}
+
+.cell.ref2 {
+  outline-color: var(--mb-color-accent2);
+}
+
+.cell.ref3 {
+  outline-color: var(--mb-color-accent3);
+}
+
+.cell.editingCell {
+  padding: 0;
+  overflow: visible;
+  /* Positioning context for .cellInput below, so a narrow (e.g. blank,
+     auto-width) column doesn't clip the formula being typed into it —
+     the input pops out over neighboring cells instead, same as Excel. */
+  position: relative;
+}
+
+/* Only shows on hover over its column header, so the header stays clean
+   until you reach for it — the side panel used to own this action. */
+.removeFieldButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin-left: 2px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mb-color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.fieldHeaderRow th:hover .removeFieldButton,
+.gutterCell:hover .removeFieldButton,
+.removeFieldButton:focus-visible {
+  opacity: 1;
+}
+
+/* Unlike remove, this one is always visible: it's the answer to a column
+   that's showing a "can't be saved" warning, so hiding it until hover
+   would hide the way out of the problem. Tinted so it reads as the
+   constructive option next to the destructive one. */
+.summarizeFieldButton {
+  opacity: 1;
+  color: var(--mb-color-brand);
+}
+
+.summarizeFieldButton:hover {
+  background: var(--mb-color-background-hover);
+  color: var(--mb-color-brand);
+}
+
+.removeFieldButton:hover {
+  background: var(--mb-color-background-hover);
+  color: var(--mb-color-text-primary);
+}
+
+/* Anchored under the cell being edited (its td is position:relative via
+   .editingCell), the way Sheets attaches its function list to the active
+   cell rather than parking it up by the formula bar. */
+.suggestionList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 320px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 30;
+  /* Cells can be right-aligned; the list never should be. */
+  text-align: left;
+  cursor: default;
+}
+
+.suggestionListRight {
+  left: auto;
+  right: 0;
+}
+
+.renameInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 4px;
+  border: none;
+  outline: 2px solid var(--mb-color-brand);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-weight: 600;
+}
+
+.cellInput {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  min-width: 160px;
+  height: 100%;
+  min-height: 24px;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: none;
+  outline: 2px solid var(--mb-color-brand);
+  outline-offset: -2px;
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  z-index: 10;
+}
+
+.totalsRow th,
+.totalsRow td {
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-secondary);
+  font-weight: 600;
+  padding: 4px 8px;
+}

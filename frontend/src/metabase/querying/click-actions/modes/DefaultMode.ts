@@ -1,9 +1,8 @@
 import { ColumnFormattingAction } from "metabase/visualizations/click-actions/actions/ColumnFormattingAction";
 import { HideColumnAction } from "metabase/visualizations/click-actions/actions/HideColumnAction";
 
-import { CombineColumnsAction } from "../actions/CombineColumnsAction";
+import { AddFormulaColumnAction } from "../actions/AddFormulaColumnAction";
 import { CopyValueAction } from "../actions/CopyValueAction";
-import { ExtractColumnAction } from "../actions/ExtractColumnAction";
 import { NativeQueryClickFallback } from "../actions/NativeQueryClickFallback";
 import type { QueryClickActionsMode } from "../types";
 
@@ -14,8 +13,10 @@ export const DefaultMode: QueryClickActionsMode = {
     CopyValueAction,
     HideColumnAction,
     ColumnFormattingAction,
-    ExtractColumnAction,
-    CombineColumnsAction,
+    // Replaces the previously-separate ExtractColumnAction and
+    // CombineColumnsAction with one general "Add formula column" entry —
+    // see AddFormulaColumnAction's own comment for why.
+    AddFormulaColumnAction,
   ],
   fallback: NativeQueryClickFallback,
 };
