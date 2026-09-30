@@ -1363,9 +1363,10 @@
                                   :distance)]
                 ;; A row beyond the cosine cutoff is dropped by the vector arm; the keyword arm may still surface it
                 ;; via RRF, so treat it as a candidate within the cutoff and only call it not-matching past it.
-                (if (and distance (> distance max-cosine-distance))
-                  {:type :not-matching :details {:max-cosine-distance max-cosine-distance :distance distance}}
-                  {:type :candidate :details {:distance distance}})))))))))
+                (let [cutoff (distance-cutoff search-context)]
+                  (if (and distance (> distance cutoff))
+                    {:type :not-matching :details {:max-cosine-distance cutoff :distance distance}}
+                    {:type :candidate :details {:distance distance}}))))))))))
 
 (comment
   (def embedding-model (embedding/get-configured-model))
