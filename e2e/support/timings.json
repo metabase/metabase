@@ -945,19 +945,19 @@
       "duration": 54585
     },
     {
-      "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-reproductions-1.cy.spec.js",
+      "spec": "../test/scenarios/filters-reproductions/dashboard-filters-reproductions-1.cy.spec.js",
       "duration": 126694
     },
     {
-      "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-reproductions-2.cy.spec.js",
+      "spec": "../test/scenarios/filters-reproductions/dashboard-filters-reproductions-2.cy.spec.js",
       "duration": 125394
     },
     {
-      "spec": "../test/scenarios/dashboard-filters-2/dashboard-filters-with-question-revert.cy.spec.js",
+      "spec": "../test/scenarios/filters-reproductions/dashboard-filters-with-question-revert.cy.spec.js",
       "duration": 23494
     },
     {
-      "spec": "../test/scenarios/filters/filters-reproductions.cy.spec.js",
+      "spec": "../test/scenarios/filters-reproductions/filters-reproductions.cy.spec.js",
       "duration": 96871
     },
     {
