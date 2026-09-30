@@ -256,7 +256,7 @@ export const moveParameter =
           message: (
             <Text
               className={cx(CS.flex, CS.flexFull, CS.flexNoShrink)}
-              c="text-primary-inverse"
+              c="inherit"
               w="8rem"
             >{t`Filter moved`}</Text>
           ),
