@@ -65,7 +65,7 @@
   (testing "GHY-4638: when the model's query changes while its metadata is refreshed, the refresh does not write"
     (let [mp      (mt/metadata-provider)
           query   (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-          refresh card.metadata/refresh-metadata]
+          refresh (mt/original-fn #'card.metadata/refresh-metadata)]
       (mt/with-temp [:model/Card {model-id :id} {:type :model, :dataset_query query}]
         (stale-metadata! model-id)
         (let [after-edit (atom nil)]
@@ -77,6 +77,21 @@
                                         (refresh card opts))]
             (events/publish-event! :event/table-fields-added {:table-id (mt/id :venues)}))
           (is (= @after-edit (t2/select-one-fn :result_metadata :model/Card :id model-id))))))))
+
+(deftest table-fields-added-keeps-concurrent-metadata-edit-test
+  (testing "GHY-4638: when the model's metadata changes while it is refreshed, the refresh does not overwrite the edit"
+    (let [mp      (mt/metadata-provider)
+          query   (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+          refresh (mt/original-fn #'card.metadata/refresh-metadata)]
+      (mt/with-temp [:model/Card {model-id :id} {:type :model, :dataset_query query}]
+        (let [edited (mapv #(assoc % :display_name "Edited") (stale-metadata! model-id))]
+          (mt/with-dynamic-fn-redefs [card.metadata/refresh-metadata
+                                      (fn [card opts]
+                                        ;; the user's save, landing while the handler infers
+                                        (t2/update! :model/Card model-id {:result_metadata edited})
+                                        (refresh card opts))]
+            (events/publish-event! :event/table-fields-added {:table-id (mt/id :venues)}))
+          (is (= edited (t2/select-one-fn :result_metadata :model/Card :id model-id))))))))
 
 (deftest table-fields-added-handler-does-not-throw-test
   (testing "GHY-4638: a failure in the handler does not reach sync, which would skip the rest of the Table's sync"

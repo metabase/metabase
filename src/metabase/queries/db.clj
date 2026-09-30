@@ -142,12 +142,21 @@
              :type     :model
              :archived false))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without touching `updated_at`."
+(mu/defn set-card-result-metadata-if-unchanged!
+  "Set the result metadata of the Card with `card-id` to `result-metadata` without touching `updated_at`, but only if
+  its query and result metadata still equal those in `expected`. Returns whether it wrote."
   [card-id         :- ::lib.schema.id/card
+   expected        :- [:map {:closed true}
+                       [:dataset_query   :metabase.lib.schema/query]
+                       [:result_metadata [:maybe ::queries.schema/card.result-metadata]]]
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/with-transaction [_conn]
+    ;; lock the row so that no save can land between the check and the write
+    (let [current (t2/select-one [:model/Card :dataset_query :result_metadata] :id card-id {:for :update})]
+      (boolean
+       (when (= expected (select-keys current [:dataset_query :result_metadata]))
+         (t2/update! :model/Card card-id {:result_metadata result-metadata
+                                          :updated_at      :updated_at}))))))
 
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."

@@ -24,12 +24,13 @@
   (when (single-table-mbql-model? table-id model)
     (let [old-metadata (:result_metadata model)
           new-metadata (card.metadata/refresh-metadata model {})]
-      ;; an empty result means the query could not be inferred; keep the old metadata instead of wiping it. A query
-      ;; that changed since it was read means a user edited the model, and their save owns the metadata.
+      ;; an empty result means the query could not be inferred; keep the old metadata instead of wiping it. A query or
+      ;; metadata that changed since it was read means a user edited the model, and their save owns the metadata.
       (when (and (seq new-metadata)
-                 (not= new-metadata old-metadata)
-                 (= (:dataset_query model) (queries.db/card-dataset-query (:id model))))
-        (queries.db/set-card-result-metadata! (:id model) new-metadata)))))
+                 (not= new-metadata old-metadata))
+        (queries.db/set-card-result-metadata-if-unchanged! (:id model)
+                                                           (select-keys model [:dataset_query :result_metadata])
+                                                           new-metadata)))))
 
 (methodical/defmethod events/publish-event! ::event
   "Refresh the result metadata of the single-table models on a Table that sync found new Fields in, so the models show
