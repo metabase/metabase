@@ -39,7 +39,9 @@ describe("scenarios > question > joined questions", () => {
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Reviews - Product → Reviewer",
     });
-    H.queryBuilderMain().findByText("Body").should("not.exist");
+    H.queryBuilderMain()
+      .findByText("Reviews - Product → Body")
+      .should("not.exist");
 
     // Post-join filters on the joined table (metabase#12221, metabase#15570)
     H.openNotebook();
@@ -128,7 +130,9 @@ describe("scenarios > question > joined questions", () => {
       lhsSampleColumn: "TOTAL",
       rhsSampleColumn: "question b - PRODUCT_ID → RATING",
     });
-    H.queryBuilderMain().findByText("EAN").should("not.exist");
+    H.queryBuilderMain()
+      .findByText("question b - PRODUCT_ID → EAN")
+      .should("not.exist");
 
     H.openNotebook();
     H.filter({ mode: "notebook" });
@@ -202,7 +206,7 @@ describe("scenarios > question > joined questions", () => {
       lhsSampleColumn: "Product ID",
       rhsSampleColumn: "Q2 - Product → Sum of Rating",
     });
-    H.queryBuilderMain().findByText("Q2 → ID").should("not.exist");
+    H.queryBuilderMain().findByText("Q2 - Product → ID").should("not.exist");
 
     H.openNotebook();
     // add a custom column on top of the steps from the #13000 repro which was simply asserting
