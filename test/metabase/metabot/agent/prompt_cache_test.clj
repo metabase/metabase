@@ -49,7 +49,8 @@
     "has_fulltext_search"
     "has_substring_or_search"
     "has_substring_and_search"
-    "has_keyword_search"})
+    "has_keyword_search"
+    "has_library_retrieval"})
 
 (def ^:private bare-control-tags
   "`{% … %}` tags that carry no variable reference (loop/branch scaffolding), always cache-safe."

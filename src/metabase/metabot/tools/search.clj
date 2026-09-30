@@ -965,15 +965,15 @@
 ;; while its engine serves this instance (`:available?`), and each profile gets variants that carry its own entity
 ;; types and scope arguments.
 
-(defn- semantic-available? [] (= :ok (search.engine/engine-status :search.engine/semantic)))
-(defn- fulltext-available? [] (= :fulltext (search.engine/keyword-flavour)))
-(defn- substring-or-available? [] (= :substring-or (search.engine/keyword-flavour)))
-(defn- substring-and-available? [] (= :substring-and (search.engine/keyword-flavour)))
+(defn- semantic-available? [_ctx] (= :ok (search.engine/engine-status :search.engine/semantic)))
+(defn- fulltext-available? [_ctx] (= :fulltext (search.engine/keyword-flavour)))
+(defn- substring-or-available? [_ctx] (= :substring-or (search.engine/keyword-flavour)))
+(defn- substring-and-available? [_ctx] (= :substring-and (search.engine/keyword-flavour)))
 
 (defn- semantic-unavailable-note
   "What the prompt says about `semantic_search` when it isn't offered. Nothing here is sensitive: it names the kind of
   thing that is missing, never configuration details."
-  []
+  [_ctx]
   {:purpose    "finds data by what it means, even when its name and description use different words"
    :missing    "matching by meaning, so synonyms and paraphrases only match when they share words"
    :reason     (if (= :unsupported (search.engine/engine-status :search.engine/semantic))
@@ -1091,7 +1091,7 @@
         ;; vector-only search doesn't fall back to a keyword engine; point the model at the keyword tool instead
         (if (= :semantic-search-error (:type (ex-data e)))
           (throw (tool-error (str "Semantic search isn't working right now. Use `"
-                                  (if (fulltext-available?) "fulltext_search" "substring_search")
+                                  (if (fulltext-available? nil) "fulltext_search" "substring_search")
                                   "` instead, with the likely words.")))
           (throw e))))))
 

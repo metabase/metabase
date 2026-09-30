@@ -9,7 +9,6 @@
   (:require
    [malli.error :as me]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.capabilities :as capabilities]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.settings :as metabot.settings]
@@ -111,7 +110,8 @@
  {:name            :embedding_next
   :prompt-template "embedding-next.selmer"
   :max-iterations  15
-  :tools           [#'tools/nlq-semantic-search-tool
+  :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/nlq-semantic-search-tool
                     #'tools/nlq-fulltext-search-tool
                     #'tools/nlq-substring-or-search-tool
                     #'tools/nlq-substring-and-search-tool
@@ -125,7 +125,8 @@
  {:name            :internal
   :prompt-template "internal.selmer"
   :max-iterations  15
-  :tools           [#'tools/semantic-search-tool
+  :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
                     #'tools/substring-or-search-tool
                     #'tools/substring-and-search-tool
@@ -172,26 +173,12 @@
                         #'tools/replace-sql-query-tool
                         #'tools/ask-for-sql-clarification-tool]})
 
-;; :nlq and :nlq-fallback are a pair selected by the library index's health (see [[get-profile]]): when the
-;; library index can serve queries the agent discovers data through retrieve_library_entities; otherwise it
-;; falls back to the general nlq search. They differ only in the discovery tool and the prompt that explains
-;; it. The redirect keeps the external profile-id :nlq, so telemetry / recent-views / skills are unaffected.
 (register-profile!
  {:name            :nlq
   :prompt-template "natural-language-querying-only.selmer"
   :max-iterations  15
   :tools           [#'tools/retrieve-library-entities-tool
-                    #'tools/read-resource-tool
-                    #'tools/construct-notebook-query-tool
-                    #'tools/create-chart-tool
-                    #'tools/edit-chart-tool
-                    #'tools/save-entity-tool]})
-
-(register-profile!
- {:name            :nlq-fallback
-  :prompt-template "natural-language-querying-fallback.selmer"
-  :max-iterations  15
-  :tools           [#'tools/nlq-semantic-search-tool
+                    #'tools/nlq-semantic-search-tool
                     #'tools/nlq-fulltext-search-tool
                     #'tools/nlq-substring-or-search-tool
                     #'tools/nlq-substring-and-search-tool
@@ -220,7 +207,8 @@
  {:name            :slackbot
   :prompt-template "slackbot.selmer"
   :max-iterations  15
-  :tools           [#'tools/semantic-search-tool
+  :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
                     #'tools/substring-or-search-tool
                     #'tools/substring-and-search-tool
@@ -238,7 +226,8 @@
   :temperature     0.3
   :system-prompt-context #'tools.explorations/research-plan-system-context
   :skills?         false
-  :tools           [#'tools/semantic-search-tool
+  :tools           [#'tools/retrieve-library-entities-tool
+                    #'tools/semantic-search-tool
                     #'tools/fulltext-search-tool
                     #'tools/substring-or-search-tool
                     #'tools/substring-and-search-tool
@@ -276,10 +265,11 @@
           tool-vars))
 
 (defn- available?
-  "Whether a tool var can serve this turn: true unless its `:available?` metadata says otherwise."
-  [tool-var]
+  "Whether a tool var can serve this turn: true unless its `:available?` metadata, a function of the request
+  context `{:metabot-id ... :profile-id ...}`, says otherwise."
+  [tool-var ctx]
   (if-let [pred (:available? (meta tool-var))]
-    (boolean (pred))
+    (boolean (pred ctx))
     true))
 
 (defn- tool-map
@@ -296,14 +286,6 @@
 
 ;;; API
 
-(defn- nlq-fallback?
-  "Whether a :nlq request should be served the general-search fallback: true when the library index
-  can't answer (not configured/licensed, or empty). Keeps data discovery working before the first reconcile
-  and on OSS / unlicensed instances."
-  [profile-id]
-  (and (= profile-id :nlq)
-       (not (entity-retrieval/entity-retrieval-available?))))
-
 (defn profile-registered?
   "Whether a profile with `profile-id` is registered."
   [profile-id]
@@ -312,63 +294,53 @@
 (defn get-profile
   "Get profile configuration by profile-id keyword.
   The `:model` in the returned profile is resolved from the `llm-metabot-provider`
-  setting at call time, so it always reflects the current admin configuration.
-
-  A :nlq request whose library index can't serve queries is transparently served the :nlq-fallback
-  profile's discovery tool and prompt (see [[nlq-fallback?]]); the profile's `:name` stays :nlq so
-  telemetry, recent-views, and skill matching are unaffected."
+  setting at call time, so it always reflects the current admin configuration."
   [profile-id]
   (if-let [profile (get @*profiles profile-id)]
-    (let [profile (if (nlq-fallback? profile-id)
-                    (if-let [fb (get @*profiles :nlq-fallback)]
-                      (assoc profile :tools (:tools fb) :prompt-template (:prompt-template fb))
-                      ;; The redirect target should always be registered; if it isn't, serve :nlq
-                      ;; unredirected rather than a profile with nil tools/prompt.
-                      (do (log/warn "nlq-fallback profile is not registered; serving :nlq unredirected")
-                          profile))
-                    profile)]
-      (assoc profile :model (metabot.settings/llm-metabot-provider)))
+    (assoc profile :model (metabot.settings/llm-metabot-provider))
     ;; An unregistered profile-id is a wiring bug; warn so it's diagnosable (callers handle the nil).
     (log/warnf "No metabot profile registered for %s" profile-id)))
 
 (defn profile->tools
   "Tool registry for an ALREADY-RESOLVED profile, filtered by capabilities and `*current-user-scope*`.
   Returns a map of tool-name -> tool-var.
-  Takes the resolved profile (not an id) so callers that also need the profile's prompt resolve it once via
-  [[get-profile]] — its nlq availability redirect must be probed a single time, or the prompt and tools
-  could disagree. When the profile exposes any skills, `load_skill` is injected for on-demand loading.
+  `ctx` is the request context `{:metabot-id ... :profile-id ...}` that tools' `:available?` checks read. When the profile exposes any skills, `load_skill` is injected for on-demand loading.
   Profiles with `:skills? false` never get `load_skill` (see [[metabase.metabot.skills/build-skill-manifest]])."
-  [profile capabilities]
-  (when profile
-    (let [base     (->> (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
-                        (filter available?)
-                        tool-map)
-          manifest (skills/build-skill-manifest profile (keys base) capabilities)]
-      (cond-> base
-        ;; Register load_skill whenever the profile has ANY skills — on-demand (catalog) or
-        ;; always-on. Always-on bodies are inlined, but their presence still implies a
-        ;; skill-bearing, possibly dialect-capable profile whose `dialect-preload-parts` emit a
-        ;; synthetic `load_skill` call that must resolve to a registered tool.
-        (or (seq (:catalog manifest)) (seq (:always-on manifest)))
-        (assoc "load_skill" #'tools/load-skill-tool)))))
+  ([profile capabilities]
+   (profile->tools profile capabilities {}))
+  ([profile capabilities ctx]
+   (when profile
+     (let [base     (->> (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
+                         (filter #(available? % ctx))
+                         tool-map)
+           manifest (skills/build-skill-manifest profile (keys base) capabilities)]
+       (cond-> base
+         ;; Register load_skill whenever the profile has ANY skills — on-demand (catalog) or
+         ;; always-on. Always-on bodies are inlined, but their presence still implies a
+         ;; skill-bearing, possibly dialect-capable profile whose `dialect-preload-parts` emit a
+         ;; synthetic `load_skill` call that must resolve to a registered tool.
+         (or (seq (:catalog manifest)) (seq (:always-on manifest)))
+         (assoc "load_skill" #'tools/load-skill-tool))))))
 
 (defn unavailable-tools
   "The tools `profile` would offer this turn but can't, for the system prompt's \"Unavailable tools\" section. These are
   the tools the profile, capabilities and scope allow whose name no available tool carries, and that describe
   themselves with an `:unavailable-note`. Each entry is `{:name ... :purpose ...}`, plus whichever of `:missing`,
-  `:reason` and `:workaround` the tool supplies."
-  [profile capabilities]
-  (when profile
-    (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
-          available-names (into #{} (comp (filter available?) (map #(:tool-name (meta %)))) allowed)]
-      (->> allowed
-           (remove #(available-names (:tool-name (meta %))))
-           (keep (fn [tool-var]
-                   (when-let [note (:unavailable-note (meta tool-var))]
-                     (assoc (note) :name (:tool-name (meta tool-var))))))
-           (into (sorted-map) (map (juxt :name identity)))
-           vals
-           vec))))
+  `:reason` and `:workaround` the tool supplies (its `:unavailable-note` takes the same `ctx` as `:available?`)."
+  ([profile capabilities]
+   (unavailable-tools profile capabilities {}))
+  ([profile capabilities ctx]
+   (when profile
+     (let [allowed         (-> profile :tools (filter-by-capabilities capabilities) filter-by-scope)
+           available-names (into #{} (comp (filter #(available? % ctx)) (map #(:tool-name (meta %)))) allowed)]
+       (->> allowed
+            (remove #(available-names (:tool-name (meta %))))
+            (keep (fn [tool-var]
+                    (when-let [note (:unavailable-note (meta tool-var))]
+                      (assoc (note ctx) :name (:tool-name (meta tool-var))))))
+            (into (sorted-map) (map (juxt :name identity)))
+            vals
+            vec)))))
 
 (defn get-tools-for-profile
   "Resolve a profile by id and return its capability/scope-filtered tool registry (see [[profile->tools]]).

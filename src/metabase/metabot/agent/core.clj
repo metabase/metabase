@@ -472,14 +472,14 @@
   [{:keys [messages state metabot-id profile-id context tracking-opts conversation-id]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
-        ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
-        ;; prompt and the tools so they can't disagree about whether the curated library tool is offered.
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        base-tools   (profiles/profile->tools profile capabilities)
+        ;; what tools' `:available?` checks read, e.g. whether this metabot is confined to a collection
+        tool-ctx     {:metabot-id metabot-id :profile-id profile-id}
+        base-tools   (profiles/profile->tools profile capabilities tool-ctx)
         ;; resolved alongside the tools, so the prompt's "Unavailable tools" section matches what was offered
-        profile      (assoc profile :unavailable-tools (profiles/unavailable-tools profile capabilities))
+        profile      (assoc profile :unavailable-tools (profiles/unavailable-tools profile capabilities tool-ctx))
         seeded       (-> (or state {})
                          (seed-state context)
                          (seed-chart-configs context)

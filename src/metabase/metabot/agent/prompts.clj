@@ -162,6 +162,7 @@
             has-substring-search? (contains? tools "substring_search")
             has-semantic-search? (contains? tools "semantic_search")
             has-fulltext-search? (contains? tools "fulltext_search")
+            has-library?         (contains? tools "retrieve_library_entities")
             perms                (or scope/*current-user-metabot-permissions*
                                      scope/perm-type-defaults)
             ;; The SQL guidance tells the model to load SQL skills and use the SQL tools, so gate it
@@ -178,6 +179,7 @@
                                   :has_substring_or_search  (and has-substring-search? (= :substring-or flavour))
                                   :has_substring_and_search (and has-substring-search? (= :substring-and flavour))
                                   :has_keyword_search       (or has-fulltext-search? has-substring-search?)
+                                  :has_library_retrieval    has-library?
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to
@@ -190,10 +192,7 @@
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
                                   :custom_instructions      (not-empty
                                                              (case template-name
-                                                               ;; both nlq templates (curated + general-search
-                                                               ;; fallback) take the nlq custom instructions
-                                                               ("natural-language-querying-only.selmer"
-                                                                "natural-language-querying-fallback.selmer")
+                                                               "natural-language-querying-only.selmer"
                                                                (metabot.settings/metabot-nlq-system-prompt)
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)

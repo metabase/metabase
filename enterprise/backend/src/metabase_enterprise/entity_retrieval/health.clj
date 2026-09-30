@@ -1,10 +1,10 @@
 (ns metabase-enterprise.entity-retrieval.health
   "Health-inspector check for NLQ (natural-language-query) curated retrieval.
 
-  The `:nlq` Metabot profile uses this tool; when the tool is unavailable we swap the profile out for
-  `:nlq-fallback`, which uses the regular search tool.
+  Metabot offers this tool beside its search tools; when it is unavailable Metabot searches with the regular search
+  tools instead.
 
-  The swap is silent, so a broken index would otherwise go unnoticed -- this check surfaces it.
+  Nothing fails when that happens, so a broken index would otherwise go unnoticed -- this check surfaces it.
 
   :health can take the following values:
   -     nil = not enabled

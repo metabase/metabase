@@ -56,10 +56,10 @@
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 15 (:max-iterations profile)))
-        ;; In tests the library index can't answer, so :nlq is transparently served the general-search
-        ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
+        ;; library retrieval sits beside the search tools; which are offered each turn is covered by
+        ;; nlq-data-discovery-test
         (is (contains? (tool-names profile) "fulltext_search"))
-        (is (not (contains? (tool-names profile) "retrieve_library_entities")))
+        (is (contains? (tool-names profile) "retrieve_library_entities"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
@@ -146,42 +146,50 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
-    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
-          embedding  (tool-names (profiles/get-profile :embedding_next))
-          fallback   (tool-names (profiles/get-profile :nlq-fallback))
-          ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
-          curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
-                       (tool-names (profiles/get-profile :nlq)))]
-      ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
-      ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "semantic_search" "fulltext_search" "substring_search") (conj "retrieve_library_entities"))))))
+  (testing "nlq and embedding_next discover data the same way: library retrieval beside the search tools"
+    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
+      (is (= (tool-names (profiles/get-profile :nlq))
+             (tool-names (profiles/get-profile :embedding_next))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
         (is (contains? tools (keyword-search-tool-name)))
         (is (contains? tools "construct_notebook_query"))))))
 
-(deftest nlq-data-discovery-fallback-test
-  (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
+(deftest nlq-data-discovery-test
+  (testing "library retrieval is offered beside the search tools whenever it can serve"
     (binding [scope/*current-user-scope* api-scope/unrestricted]
-      (testing "entity retrieval AVAILABLE -> curated library tool, no general-search fallback"
+      (testing "index available -> library retrieval and a keyword search tool"
         (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
           (let [tools (profiles/get-tools-for-profile :nlq [])]
-            (is (contains? tools "retrieve_library_entities")
-                "the curated library tool is offered when the index can serve queries")
-            (is (not (contains? tools (keyword-search-tool-name)))
-                "the general-search fallback is filtered out when the library is available")
-            (is (contains? tools "construct_notebook_query")))))
-      (testing "entity retrieval UNAVAILABLE -> general-search fallback, no curated library tool"
+            (is (contains? tools "retrieve_library_entities"))
+            (is (contains? tools (keyword-search-tool-name))))))
+      (testing "index unavailable -> only the search tools, and the prompt says why the library is missing"
         (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly false)]
-          (let [tools (profiles/get-tools-for-profile :nlq [])]
-            (is (not (contains? tools "retrieve_library_entities"))
-                "the curated library tool is gated out when the index can't serve queries")
-            (is (contains? tools (keyword-search-tool-name))
-                "the general-search fallback keeps the agent from having zero discovery tools")
-            (is (contains? tools "construct_notebook_query"))))))))
+          (let [profile (profiles/get-profile :nlq)
+                tools   (profiles/profile->tools profile [])]
+            (is (not (contains? tools "retrieve_library_entities")))
+            (is (contains? tools (keyword-search-tool-name)))
+            (is (=? [{:name "retrieve_library_entities" :reason "library search isn't set up on this instance"}]
+                    (filter #(= "retrieve_library_entities" (:name %))
+                            (profiles/unavailable-tools profile []))))))))))
+
+(deftest library-withheld-where-it-cannot-honour-limits-test
+  (testing "library retrieval is withheld from a metabot confined to a collection, or limited to curated content"
+    (binding [scope/*current-user-scope* api-scope/unrestricted]
+      (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Scope"}
+                       :model/Metabot    {confined :entity_id} {:name "confined bot" :collection_id coll-id}
+                       :model/Metabot    {curated :entity_id}  {:name "curated bot" :use_verified_content true}
+                       :model/Metabot    {open :entity_id}     {:name "open bot"}]
+          (let [offered? (fn [metabot-id profile-id]
+                           (contains? (profiles/profile->tools (profiles/get-profile profile-id) []
+                                                               {:metabot-id metabot-id :profile-id profile-id})
+                                      "retrieve_library_entities"))]
+            (is (not (offered? confined :nlq)) "confined to a collection")
+            (is (offered? confined :internal) "the internal profile isn't confined")
+            (is (not (offered? curated :internal)) "limited to curated content")
+            (is (offered? open :nlq))))))))
 
 (deftest terminal-tools-test
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"
@@ -246,10 +254,12 @@
                   :purpose    string?
                   :reason     "semantic search isn't set up on this instance"
                   :workaround string?}]
-                (profiles/unavailable-tools (profiles/get-profile :internal) [])))))
+                (filter #(= "semantic_search" (:name %))
+                        (profiles/unavailable-tools (profiles/get-profile :internal) []))))))
     (testing "an available tool, or a keyword variant whose sibling serves, is not listed"
       (mt/with-dynamic-fn-redefs [search.engine/engine-status (constantly :ok)]
-        (is (empty? (profiles/unavailable-tools (profiles/get-profile :internal) [])))))))
+        (is (not-any? #(#{"semantic_search" "fulltext_search" "substring_search"} (:name %))
+                      (profiles/unavailable-tools (profiles/get-profile :internal) [])))))))
 
 (deftest register-profile-alternatives-test
   (testing "tools may share a name only as alternatives that each declare :available?"
