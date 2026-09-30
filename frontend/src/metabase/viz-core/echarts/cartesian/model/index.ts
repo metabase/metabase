@@ -150,7 +150,7 @@ export const getCartesianChartModel = (
 ): CartesianChartModel => {
   const hasResponsiveTicks =
     renderingContext.cartesianSize != null &&
-    renderingContext.cartesianSize !== "large";
+    renderingContext.cartesianSize !== "fullscreen";
   const cardsColumns = getCardsColumns(rawSeries, settings);
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);

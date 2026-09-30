@@ -30,8 +30,19 @@ const CARTESIAN_TICKS: Record<
   VisualizationTheme["cartesian"]["ticks"]
 > = {
   small: { fontSize: 12, marginX: 8, marginY: 12 },
-  medium: { fontSize: 12, marginX: 8, marginY: 16 },
-  large: { fontSize: 14, marginX: 12, marginY: 24 },
+  medium: { fontSize: 12, marginX: 8, marginY: 12 },
+  large: { fontSize: 12, marginX: 8, marginY: 16 },
+  fullscreen: { fontSize: 14, marginX: 12, marginY: 24 },
+};
+
+const CARTESIAN_AXIS_TITLE: Record<
+  CartesianChartSize,
+  VisualizationTheme["cartesian"]["axisTitle"]
+> = {
+  small: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+  medium: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
+  large: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
+  fullscreen: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
 };
 
 export function getCartesianChartSize(size?: {
@@ -39,10 +50,13 @@ export function getCartesianChartSize(size?: {
   height: number;
 }): CartesianChartSize {
   if (size === undefined) {
-    return "large";
+    return "fullscreen";
   }
 
-  const { medium, large } = CARTESIAN_CHART_BREAKPOINTS;
+  const { medium, large, fullscreen } = CARTESIAN_CHART_BREAKPOINTS;
+  if (size.width >= fullscreen.width && size.height >= fullscreen.height) {
+    return "fullscreen";
+  }
   if (size.width >= large.width && size.height >= large.height) {
     return "large";
   }
@@ -58,7 +72,7 @@ export function getCartesianChartSize(size?: {
 export function getVisualizationTheme({
   theme,
   isDashboard,
-  cartesianSize = "large",
+  cartesianSize = "fullscreen",
   isStaticViz,
 }: {
   theme: Partial<MantineThemeOther>;
@@ -80,6 +94,7 @@ export function getVisualizationTheme({
     getSizeInPx(value, baseFontSize) ?? baseFontSize ?? 14;
 
   const ticks = CARTESIAN_TICKS[cartesianSize];
+  const axisTitle = CARTESIAN_AXIS_TITLE[cartesianSize];
 
   return {
     cartesian: {
@@ -89,6 +104,12 @@ export function getVisualizationTheme({
         fontSize: theme.hasCustomChartFontSize
           ? px(cartesian.label.fontSize)
           : ticks.fontSize,
+      },
+      axisTitle: {
+        ...axisTitle,
+        fontSize: theme.hasCustomChartFontSize
+          ? px(cartesian.label.fontSize)
+          : axisTitle.fontSize,
       },
       goalLine: {
         label: { fontSize: px(cartesian.goalLine.label.fontSize) },

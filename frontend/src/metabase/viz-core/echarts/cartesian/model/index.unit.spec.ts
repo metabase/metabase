@@ -85,12 +85,14 @@ describe.each([
     },
   );
 
-  it.each(["small", "medium", "large", undefined] as const)(
+  it.each(["small", "medium", "large", "fullscreen", undefined] as const)(
     "derives responsive ticks and default formatting from the %s size tier",
     (cartesianSize) => {
       const model = buildModel("auto", cartesianSize);
       const isResponsive =
-        cartesianSize === "small" || cartesianSize === "medium";
+        cartesianSize === "small" ||
+        cartesianSize === "medium" ||
+        cartesianSize === "large";
 
       expect(model.leftAxisModel?.hasResponsiveTicks).toBe(isResponsive);
       expect(model.leftAxisModel?.formatter(1000)).toBe(

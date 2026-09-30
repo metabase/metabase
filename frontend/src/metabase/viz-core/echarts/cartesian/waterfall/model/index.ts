@@ -41,7 +41,7 @@ export const getWaterfallChartModel = (
 ): WaterfallChartModel => {
   const hasResponsiveTicks =
     renderingContext.cartesianSize != null &&
-    renderingContext.cartesianSize !== "large";
+    renderingContext.cartesianSize !== "fullscreen";
   // Waterfall chart support one card only
   const [singleRawSeries] = rawSeries;
   const { data } = singleRawSeries;

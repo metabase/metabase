@@ -1,4 +1,5 @@
 import type { ColorPalette } from "metabase/ui/colors/types";
+import type { VisualizationGridSize } from "metabase/viz-core";
 import type {
   Card,
   ColumnFormattingSetting,
@@ -24,6 +25,7 @@ export type RenderChartOptions = {
   height?: number;
   // When true, width/height are treated as the exact output box
   fitWithinBounds?: boolean;
+  gridSize?: VisualizationGridSize;
 };
 
 export type RenderChartDashcardSettings = DashCardVisualizationSettings & {

@@ -92,26 +92,41 @@ const getChartContext = (): RenderingContext => {
 
 describe("getChartLayout", () => {
   it.each([
-    { name: "large", options: {}, fontSize: 14, marginX: 12, marginY: 24 },
+    {
+      name: "fullscreen",
+      options: {},
+      fontSize: 14,
+      marginX: 12,
+      marginY: 24,
+      axisTitleFontSize: 14,
+    },
     {
       name: "small",
       options: { cartesianSize: "small" as const },
       fontSize: 12,
       marginX: 8,
       marginY: 12,
+      axisTitleFontSize: 11,
     },
     {
       name: "medium",
-      options: {
-        cartesianSize: "medium" as const,
-      },
+      options: { cartesianSize: "medium" as const },
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+      axisTitleFontSize: 12,
+    },
+    {
+      name: "large",
+      options: { cartesianSize: "large" as const },
       fontSize: 12,
       marginX: 8,
       marginY: 16,
+      axisTitleFontSize: 12,
     },
   ])(
     "measures and renders $name ticks with matching styles",
-    ({ options, fontSize, marginX, marginY }) => {
+    ({ options, fontSize, marginX, marginY, axisTitleFontSize }) => {
       const chartContext = {
         ...getChartContext(),
         theme: getVisualizationTheme({
@@ -167,18 +182,17 @@ describe("getChartLayout", () => {
       expect(axes.yAxis).toHaveLength(2);
       for (const axis of axes.yAxis) {
         expect(axis.axisLabel).toMatchObject({ fontSize, margin: marginY });
-        expect(axis.nameTextStyle?.fontSize).toBe(13);
+        expect(axis.nameTextStyle?.fontSize).toBe(axisTitleFontSize);
+        expect(axis.nameTextStyle?.fontWeight).toBe(700);
       }
     },
   );
 
   describe.each([
-    { name: "large", options: {} },
+    { name: "fullscreen", options: {} },
     { name: "small", options: { cartesianSize: "small" as const } },
-    {
-      name: "medium",
-      options: { cartesianSize: "medium" as const },
-    },
+    { name: "medium", options: { cartesianSize: "medium" as const } },
+    { name: "large", options: { cartesianSize: "large" as const } },
   ])("hidden $name axes", ({ options }) => {
     it.each([false, true])(
       "preserves existing space with split panels %s",
@@ -213,6 +227,45 @@ describe("getChartLayout", () => {
           isSplitPanels ? 0 : 12,
         );
       },
+    );
+  });
+
+  it("does not reserve padding for empty x- or y-axis titles", () => {
+    const chartContext = getChartContext();
+    const {
+      fontSize: axisTitleFontSize,
+      marginX,
+      marginY,
+    } = chartContext.theme.cartesian.axisTitle;
+    const chartSettings = createMockVisualizationSettings({
+      ...settings,
+      "graph.x_axis.labels_enabled": true,
+      "graph.y_axis.labels_enabled": true,
+    });
+
+    const getLayout = (xLabel: string, yLabel: string) =>
+      getChartLayout(
+        {
+          ...input,
+          xAxisModel: { ...xAxisModel, label: xLabel },
+          leftAxisModel: { ...yAxisModel, label: yLabel },
+        },
+        chartSettings,
+        false,
+        640,
+        360,
+        chartContext,
+      );
+
+    const empty = getLayout("", "");
+    const titled = getLayout("Created At", "Count");
+
+    expect(empty.padding.bottom).toBe(CHART_STYLE.padding.y);
+    expect(titled.padding.bottom).toBe(
+      empty.padding.bottom + axisTitleFontSize / 2 + marginX,
+    );
+    expect(titled.padding.left).toBe(
+      empty.padding.left + axisTitleFontSize + marginY,
     );
   });
 

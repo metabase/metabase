@@ -63,7 +63,7 @@ export function getScatterPlotModel(
 ): ScatterPlotModel {
   const hasResponsiveTicks =
     renderingContext.cartesianSize != null &&
-    renderingContext.cartesianSize !== "large";
+    renderingContext.cartesianSize !== "fullscreen";
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
   const cardsColumns = getCardsColumns(rawSeries, settings);

@@ -27,10 +27,7 @@ import { TimelineEventsBand } from "./TimelineEventsBand";
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { useTimelineEventsHover } from "./use-timeline-events-hover";
-import {
-  getDashboardAdjustedSettings,
-  getHoveredFromHighlighted,
-} from "./utils";
+import { getHoveredFromHighlighted, getSizeAdjustedSettings } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
   const { timelineEvents } = useTimelineEvents(props);
@@ -47,7 +44,6 @@ function CartesianChartInner(props: VisualizationProps) {
     hideLegend,
     rawSeries,
     settings: originalSettings,
-    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -61,6 +57,8 @@ function CartesianChartInner(props: VisualizationProps) {
     isQueryBuilder,
     isVisualizerCard,
     isFullscreen,
+    isMobile,
+    gridSize,
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
@@ -74,14 +72,13 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
-        ? getDashboardAdjustedSettings?.({
-            settings: originalSettings,
-            height: outerHeight,
-            width: outerWidth,
-          })
-        : originalSettings,
-    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
+      getSizeAdjustedSettings({
+        settings: originalSettings,
+        height: outerHeight,
+        width: outerWidth,
+        gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
+      }),
+    [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =

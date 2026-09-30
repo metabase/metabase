@@ -349,6 +349,9 @@ export type VisualizationSettings = {
    */
   column_settings?: Record<string, ColumnSettings>;
 
+  /** Show the x-axis title. `"auto"` hides it on short cards. */
+  "graph.x_axis.labels_enabled"?: boolean | "auto";
+
   /** Override the x-axis label. */
   "graph.x_axis.title_text"?: string;
 
@@ -365,6 +368,9 @@ export type VisualizationSettings = {
 
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
+
+  /** Show the y-axis title. `"auto"` hides it on narrow cards. */
+  "graph.y_axis.labels_enabled"?: boolean | "auto";
 
   /** Override the y-axis label. On a split chart this labels the left axis. */
   "graph.y_axis.title_text"?: string;

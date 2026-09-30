@@ -6,6 +6,7 @@ export const PLOT_HEIGHT_BREAKPOINTS = {
 } as const;
 
 export const CARTESIAN_CHART_BREAKPOINTS = {
-  medium: { width: 640, height: 360 },
-  large: { width: 900, height: 480 },
+  medium: { width: 300, height: 200 },
+  large: { width: 640, height: 360 },
+  fullscreen: { width: 900, height: 480 },
 } as const;

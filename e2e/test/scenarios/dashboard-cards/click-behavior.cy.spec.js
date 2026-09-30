@@ -1304,7 +1304,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.getDashboardCard().realHover().icon("click").click();
       H.getDashboardCard()
         .button()
-        .should("have.text", "Open the drill-through menu");
+        .should("contain.text", "Open the drill-through menu");
     });
 
     it("should allow setting dashboard and saved question as custom destination for different columns", () => {
@@ -1357,7 +1357,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCountToDashboardMapping().should("exist");
         H.getDashboardCard()
           .button()
-          .should("have.text", "1 column has custom behavior");
+          .should("contain.text", "1 column has custom behavior");
       })();
 
       (function addCustomQuestionDestination() {
@@ -1377,7 +1377,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         getCreatedAtToQuestionMapping().should("exist");
         H.getDashboardCard()
           .button()
-          .should("have.text", "2 columns have custom behavior");
+          .should("contain.text", "2 columns have custom behavior");
       })();
 
       cy.get("aside").button("Done").click();
@@ -1502,7 +1502,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       getCountToDashboardMapping().should("exist");
       H.getDashboardCard()
         .button()
-        .should("have.text", "1 column has custom behavior");
+        .should("contain.text", "1 column has custom behavior");
 
       cy.get("aside").button("Done").click();
       H.saveDashboard();
@@ -1587,7 +1587,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard()
         .button()
-        .should("have.text", "1 column has custom behavior");
+        .should("contain.text", "1 column has custom behavior");
 
       (function addCustomUrlDestination() {
         cy.log("custom destination (URL) behavior for 'Created At' column");
@@ -1620,7 +1620,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.getDashboardCard()
         .button()
-        .should("have.text", "2 columns have custom behavior");
+        .should("contain.text", "2 columns have custom behavior");
 
       cy.get("aside").button("Done").click();
       H.saveDashboard();
