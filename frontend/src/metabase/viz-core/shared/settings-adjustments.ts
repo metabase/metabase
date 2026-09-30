@@ -18,13 +18,10 @@ const HIDE_Y_AXIS_THRESHOLD: Threshold = {
   pixelHeight: 150,
 };
 
-const HIDE_Y_AXIS_TITLE_THRESHOLD: Threshold = {
+const HIDE_AXIS_LABELS_THRESHOLD: Threshold = {
   gridWidth: 12,
-  pixelWidth: 500,
-};
-
-const HIDE_X_AXIS_TITLE_THRESHOLD: Threshold = {
   gridHeight: 6,
+  pixelWidth: 500,
   pixelHeight: 250,
 };
 
@@ -72,22 +69,19 @@ export const getSizeAdjustedSettings = ({
     adjusted["line.interpolate"] = "cardinal";
   }
 
+  const shouldHideAxisLabels = isBelowThreshold(
+    HIDE_AXIS_LABELS_THRESHOLD,
+    width,
+    height,
+    gridSize,
+  );
+
   if (adjusted["graph.y_axis.labels_enabled"] === "auto") {
-    adjusted["graph.y_axis.labels_enabled"] = !isBelowThreshold(
-      HIDE_Y_AXIS_TITLE_THRESHOLD,
-      width,
-      height,
-      gridSize,
-    );
+    adjusted["graph.y_axis.labels_enabled"] = !shouldHideAxisLabels;
   }
 
   if (adjusted["graph.x_axis.labels_enabled"] === "auto") {
-    adjusted["graph.x_axis.labels_enabled"] = !isBelowThreshold(
-      HIDE_X_AXIS_TITLE_THRESHOLD,
-      width,
-      height,
-      gridSize,
-    );
+    adjusted["graph.x_axis.labels_enabled"] = !shouldHideAxisLabels;
   }
 
   if (isBelowThreshold(HIDE_Y_AXIS_THRESHOLD, width, height, gridSize)) {

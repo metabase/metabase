@@ -5,37 +5,23 @@ import { getSizeAdjustedSettings } from "./settings-adjustments";
 describe("getSizeAdjustedSettings", () => {
   describe("pixel fallback (no gridSize)", () => {
     it.each([
-      { width: 499, expected: false },
-      { width: 500, expected: true },
+      { width: 499, height: 400, expected: false },
+      { width: 500, height: 400, expected: true },
+      { width: 800, height: 249, expected: false },
+      { width: 800, height: 250, expected: true },
     ])(
-      "resolves auto y-axis titles to $expected at width $width",
-      ({ width, expected }) => {
-        const settings = getSizeAdjustedSettings({
-          settings: createMockVisualizationSettings({
-            "graph.y_axis.labels_enabled": "auto",
-          }),
-          width,
-          height: 400,
-        });
-
-        expect(settings["graph.y_axis.labels_enabled"]).toBe(expected);
-      },
-    );
-
-    it.each([
-      { height: 249, expected: false },
-      { height: 250, expected: true },
-    ])(
-      "resolves auto x-axis titles to $expected at height $height",
-      ({ height, expected }) => {
+      "resolves auto axis labels together to $expected at $width x $height",
+      ({ width, height, expected }) => {
         const settings = getSizeAdjustedSettings({
           settings: createMockVisualizationSettings({
             "graph.x_axis.labels_enabled": "auto",
+            "graph.y_axis.labels_enabled": "auto",
           }),
-          width: 800,
+          width,
           height,
         });
 
+        expect(settings["graph.y_axis.labels_enabled"]).toBe(expected);
         expect(settings["graph.x_axis.labels_enabled"]).toBe(expected);
       },
     );
@@ -73,29 +59,13 @@ describe("getSizeAdjustedSettings", () => {
 
   describe("gridSize", () => {
     it.each([
-      {
-        gridSize: { width: 12, height: 6 },
-        expectedY: true,
-        expectedX: true,
-      },
-      {
-        gridSize: { width: 11, height: 6 },
-        expectedY: false,
-        expectedX: true,
-      },
-      {
-        gridSize: { width: 12, height: 5 },
-        expectedY: true,
-        expectedX: false,
-      },
-      {
-        gridSize: { width: 11, height: 5 },
-        expectedY: false,
-        expectedX: false,
-      },
+      { gridSize: { width: 12, height: 6 }, expected: true },
+      { gridSize: { width: 11, height: 6 }, expected: false },
+      { gridSize: { width: 12, height: 5 }, expected: false },
+      { gridSize: { width: 11, height: 5 }, expected: false },
     ])(
-      "resolves auto titles for $gridSize.width x $gridSize.height to y=$expectedY x=$expectedX",
-      ({ gridSize, expectedY, expectedX }) => {
+      "resolves auto axis labels together to $expected at grid $gridSize.width x $gridSize.height",
+      ({ gridSize, expected }) => {
         const settings = getSizeAdjustedSettings({
           settings: createMockVisualizationSettings({
             "graph.x_axis.labels_enabled": "auto",
@@ -106,8 +76,8 @@ describe("getSizeAdjustedSettings", () => {
           gridSize,
         });
 
-        expect(settings["graph.y_axis.labels_enabled"]).toBe(expectedY);
-        expect(settings["graph.x_axis.labels_enabled"]).toBe(expectedX);
+        expect(settings["graph.y_axis.labels_enabled"]).toBe(expected);
+        expect(settings["graph.x_axis.labels_enabled"]).toBe(expected);
       },
     );
 
