@@ -1322,12 +1322,14 @@
                :as      :stream}
               post-req))
       (testing "the body is a Chat Completions request with an empty model, since the endpoint serves one"
-        (is (=? {:model          ""
-                 :stream         true
-                 :stream_options {:include_usage true}
-                 :messages       [{:role "user" :content "hi"}]
-                 :max_tokens     pos-int?}
-                (json/decode+kw (:body post-req))))))))
+        (let [body (json/decode+kw (:body post-req))]
+          (is (=? {:model          ""
+                   :stream         true
+                   :stream_options {:include_usage true}
+                   :messages       [{:role "user" :content "hi"}]}
+                  body))
+          (testing "and, like vLLM chat, no output cap"
+            (is (not (contains? body :max_tokens)))))))))
 
 (deftest google-raw-dedicated-endpoint-host-test
   (testing "a dedicated endpoint is served on the DNS name its resource reports, in either spelling Google uses, also when the base URL names Google's host for the location"
