@@ -150,8 +150,9 @@
 
 (def ^:private DuplicatedEntity
   "A hydrated peer of a duplicated finding: another entity **of the same type** sharing the flagged
-  entity's normalized name. `{id, name, entity_type, card_type?, view_count?}` - `card_type`
-  (question/model/metric) only on card peers. Card/dashboard/document peers carry their live
+  entity's normalized name. `{id, name, entity_type, card_type?, namespace?, view_count?}` - `card_type`
+  (question/model/metric) only on card peers, `namespace` only on collection peers.
+  Card/dashboard/document peers carry their live
   `view_count` for judging which duplicate is the abandoned one; transforms have no view concept, so
   transform peers carry no usage signal."
   [:map
@@ -159,6 +160,7 @@
    [:name        [:maybe :string]]
    [:entity_type :keyword]
    [:card_type   {:optional true} [:maybe :keyword]]
+   [:namespace   {:optional true} [:maybe :keyword]]
    [:view_count  {:optional true} :int]])
 
 (def ^:private DuplicatedDetails

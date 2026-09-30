@@ -306,17 +306,19 @@ describe("ImbalancedContentPage", () => {
     const { router } = setup({
       findings: FINDINGS,
       urlParams: {},
-      lastUsedParams: { sort_column: "content-count", sort_direction: "desc" },
+      lastUsedParams: { sort_column: "created-at", sort_direction: "desc" },
     });
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "sort-column": "content-count",
-      "sort-direction": "desc",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "sort-column": "created-at",
+        "sort-direction": "desc",
+      });
     });
     expect(getLastRequestUrl().searchParams.get("sort-column")).toBe(
-      "content-count",
+      "created-at",
     );
   });
   it("marks the filter button once non-default filters are applied", async () => {
@@ -332,7 +334,7 @@ describe("ImbalancedContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     await userEvent.click(
-      within(popover).getByRole("checkbox", { name: "Models" }),
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
     );
 
     await waitFor(() => {
@@ -346,7 +348,7 @@ describe("ImbalancedContentPage", () => {
     setup({
       findings: FINDINGS,
       total: 50,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { entityTypes: ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -356,14 +358,14 @@ describe("ImbalancedContentPage", () => {
       expect(getLastRequestUrl().searchParams.get("offset")).toBe("25");
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
-      "model",
+      "dashboard",
     ]);
   });
 
   it("resets to all entity types when the last selected type is deselected", async () => {
     const { router } = setup({
       findings: FINDINGS,
-      urlParams: { entityTypes: ["model"] },
+      urlParams: { entityTypes: ["dashboard"] },
     });
     await waitForListToLoad();
 
@@ -372,21 +374,13 @@ describe("ImbalancedContentPage", () => {
     );
     const popover = await screen.findByRole("dialog");
     await userEvent.click(
-      within(popover).getByRole("checkbox", { name: "Models" }),
+      within(popover).getByRole("checkbox", { name: "Dashboards" }),
     );
 
     await waitFor(() => {
       expect(getUrlQuery(router)).toEqual({});
     });
-    const allEntityTypes = [
-      "Questions",
-      "Models",
-      "Metrics",
-      "Dashboards",
-      "Documents",
-      "Transforms",
-      "Collections",
-    ];
+    const allEntityTypes = ["Dashboards", "Documents", "Collections"];
     allEntityTypes.forEach((label) => {
       expect(
         within(popover).getByRole("checkbox", { name: label }),
@@ -394,13 +388,41 @@ describe("ImbalancedContentPage", () => {
     });
   });
   describe("sorting", () => {
+    it("does not offer sorting by mixed-unit crowded content counts", async () => {
+      const { router } = setup({
+        findings: FINDINGS,
+        urlParams: { sortColumn: "content-count" },
+      });
+      await waitForListToLoad();
+
+      const header = screen.getByRole("columnheader", {
+        name: "Content count",
+      });
+      expect(header).not.toHaveAttribute("aria-sort");
+      await userEvent.click(header);
+      expect(getUrlQuery(router)).toEqual({});
+    });
+
+    it("sorts empty content by its comparable count", async () => {
+      const { router } = setup({ mode: "empty", findings: FINDINGS });
+      await waitForListToLoad();
+
+      await userEvent.click(
+        screen.getByRole("columnheader", { name: /^Content count/ }),
+      );
+      await waitFor(() => {
+        expect(getUrlQuery(router)).toEqual({
+          "sort-column": "content-count",
+          "sort-direction": "asc",
+        });
+      });
+    });
     it.each([
       ["Name", "name"],
       ["Type", "entity-type"],
       ["Location", "collection-name"],
       ["Created by", "created-by"],
       ["Created at", "created-at"],
-      ["Content count", "content-count"],
     ])("sorts by %s", async (header, sortColumn) => {
       const { router } = setup({ findings: FINDINGS });
       await waitForListToLoad();

@@ -16,8 +16,9 @@ import type {
   ContentDiagnosticsDuplicatedFinding,
 } from "metabase-types/api";
 
-import { trackContentDiagnosticsEntityOpened } from "../../analytics";
+import { trackContentDiagnosticsDuplicateOpened } from "../../analytics";
 import { DiagnosticsSidebar } from "../DiagnosticsSidebar";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 import {
   getDuplicateEntityName,
   getDuplicateEntityUrl,
@@ -26,8 +27,6 @@ import {
 } from "../utils";
 
 import S from "./DuplicatedContentSidebar.module.css";
-
-const TOOLTIP_OPEN_DELAY_MS = 300;
 
 type DuplicatedContentSidebarProps = {
   finding: ContentDiagnosticsDuplicatedFinding;
@@ -102,12 +101,12 @@ function DuplicateEntityRow({ entity }: DuplicateEntityRowProps) {
   const typeLabel = getEntityTypeLabel(entity);
 
   const trackEntityOpened = () =>
-    trackContentDiagnosticsEntityOpened({
+    trackContentDiagnosticsDuplicateOpened({
       tab: "duplicated",
       entityId: entity.id,
       entityType: entity.entity_type,
     });
-  const linkLabel = `${name}, ${typeLabel}`;
+  const linkLabel = t`${name}, ${typeLabel}`;
 
   return (
     <Group

@@ -16,15 +16,24 @@ export const getAllParamValues = (param: QueryParam): string[] => {
 
 export function parsePage(param: QueryParam): number {
   const value = getFirstParamValue(param);
-  const parsed = parseInt(value || "0", 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  const parsed = Number(value || "0");
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
 }
 
 export function parseSortColumn<TColumn extends string>(
   param: QueryParam,
   columns: readonly TColumn[],
   defaultColumn: TColumn,
-): TColumn {
+): TColumn;
+export function parseSortColumn<TColumn extends string>(
+  param: QueryParam,
+  columns: readonly TColumn[],
+): TColumn | undefined;
+export function parseSortColumn<TColumn extends string>(
+  param: QueryParam,
+  columns: readonly TColumn[],
+  defaultColumn?: TColumn,
+): TColumn | undefined {
   const value = getFirstParamValue(param);
   return value && isSortColumn(value, columns) ? value : defaultColumn;
 }
@@ -32,7 +41,14 @@ export function parseSortColumn<TColumn extends string>(
 export function parseSortDirection(
   param: QueryParam,
   defaultDirection: SortDirection,
-): SortDirection {
+): SortDirection;
+export function parseSortDirection(
+  param: QueryParam,
+): SortDirection | undefined;
+export function parseSortDirection(
+  param: QueryParam,
+  defaultDirection?: SortDirection,
+): SortDirection | undefined {
   const value = getFirstParamValue(param);
   return value === "asc" || value === "desc" ? value : defaultDirection;
 }

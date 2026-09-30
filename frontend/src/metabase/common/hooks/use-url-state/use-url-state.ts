@@ -14,6 +14,10 @@ type BaseState = Record<string, unknown>;
 export type UrlStateConfig<State extends BaseState> = {
   parse: (query: UrlStateQuery) => State;
   serialize: (state: State) => UrlStateQuery;
+  /** Replacing keeps controls such as filters out of browser history. */
+  replace?: boolean;
+  /** Read external navigation (including Back) into state. Off for legacy consumers. */
+  syncFromLocation?: boolean;
 };
 
 type PatchUrlStateOptions = {
@@ -38,12 +42,20 @@ export const URL_UPDATE_DEBOUNCE_DELAY = 300;
  */
 export function useUrlState<State extends BaseState>(
   location: Location,
-  { parse, serialize }: UrlStateConfig<State>,
+  {
+    parse,
+    serialize,
+    replace = false,
+    syncFromLocation = false,
+  }: UrlStateConfig<State>,
 ): [State, UrlStateActions<State>] {
   const navigate = useNavigate();
   const [state, setState] = useState(() =>
     parse(parseSearchQuery(location.search)),
   );
+  const parseRef = useLatest(parse);
+  const lastWrittenSearchRef = useRef<string | null>(null);
+  const previousSearchRef = useRef(location.search);
 
   const immediateRef = useRef(false);
   const shouldDebounce = useCallback(() => {
@@ -70,13 +82,13 @@ export function useUrlState<State extends BaseState>(
 
   const updateUrl = useCallback(
     (state: State) => {
-      const newLocation = {
-        ...location,
-        search: queryToSearch(serialize(state)),
-      };
-      navigate(newLocation);
+      const search = queryToSearch(serialize(state));
+      if (search !== location.search) {
+        lastWrittenSearchRef.current = search;
+        navigate({ ...location, search }, { replace, state: location.state });
+      }
     },
-    [location, serialize, navigate],
+    [location, serialize, navigate, replace],
   );
 
   const updateUrlRef = useLatest(updateUrl);
@@ -92,6 +104,21 @@ export function useUrlState<State extends BaseState>(
       );
     }
   });
+
+  useEffect(() => {
+    if (previousSearchRef.current === location.search) {
+      return;
+    }
+    previousSearchRef.current = location.search;
+    if (lastWrittenSearchRef.current === location.search) {
+      lastWrittenSearchRef.current = null;
+      return;
+    }
+    if (syncFromLocation) {
+      immediateRef.current = true;
+      setState(parseRef.current(parseSearchQuery(location.search)));
+    }
+  }, [location.search, parseRef, syncFromLocation]);
 
   useEffect(() => {
     updateUrlRef.current(urlState);

@@ -18,7 +18,11 @@ import {
 } from "metabase/ui";
 import type { ContentDiagnosticsBaseFinding } from "metabase-types/api";
 
-import { trackContentDiagnosticsEntityOpened } from "../../analytics";
+import {
+  trackContentDiagnosticsEntityOpened,
+  trackContentDiagnosticsLocationOpened,
+} from "../../analytics";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 import type { ContentDiagnosticsTab } from "../types";
 import {
   getBreadcrumbLinks,
@@ -31,8 +35,6 @@ import {
 } from "../utils";
 
 import S from "./DiagnosticsSidebar.module.css";
-
-const TOOLTIP_OPEN_DELAY_MS = 300;
 
 export type SidebarExtraInfo = {
   label: string;
@@ -68,7 +70,7 @@ export function DiagnosticsSidebar<T extends ContentDiagnosticsBaseFinding>({
     >
       <Stack gap="lg" flex="0 0 auto">
         <SidebarHeader finding={finding} tab={tab} onClose={onClose} />
-        <LocationSection finding={finding} />
+        <LocationSection finding={finding} tab={tab} />
         <InfoSection finding={finding} extraInfo={extraInfo} />
         {children}
       </Stack>
@@ -137,9 +139,10 @@ function SidebarHeader({ finding, tab, onClose }: SidebarHeaderProps) {
 
 type LocationSectionProps = {
   finding: ContentDiagnosticsBaseFinding;
+  tab: ContentDiagnosticsTab;
 };
 
-function LocationSection({ finding }: LocationSectionProps) {
+function LocationSection({ finding, tab }: LocationSectionProps) {
   const links = getBreadcrumbLinks(finding);
 
   return (
@@ -156,9 +159,12 @@ function LocationSection({ finding }: LocationSectionProps) {
             lh="1rem"
             to={link.url}
             target="_blank"
+            onClick={() => trackContentDiagnosticsLocationOpened(tab, link.id)}
           >
             <Group gap="sm" wrap="nowrap">
-              {link.icon != null && <FixedSizeIcon name={link.icon} />}
+              {link.icon != null && (
+                <FixedSizeIcon name={link.icon} aria-hidden />
+              )}
               {link.label}
             </Group>
           </Anchor>

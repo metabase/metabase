@@ -5,6 +5,7 @@ import { Ellipsified, Text, type TreeTableColumnDef } from "metabase/ui";
 import type { ContentDiagnosticsStaleFinding } from "metabase-types/api";
 
 import { getCommonColumns } from "../common-columns";
+import { TOOLTIP_OPEN_DELAY_MS } from "../constants";
 
 export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>[] {
   const { name, entityType, collectionName, createdBy, createdAt } =
@@ -23,7 +24,7 @@ export function getColumns(): TreeTableColumnDef<ContentDiagnosticsStaleFinding>
         return <Text c="text-secondary">{t`Never`}</Text>;
       }
       return (
-        <Ellipsified tooltipProps={{ openDelay: 300 }}>
+        <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY_MS }}>
           <DateTime value={last_active_at} unit="day" />
         </Ellipsified>
       );

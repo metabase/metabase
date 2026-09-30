@@ -1,7 +1,10 @@
-import type { CardType } from "./card";
+import type { CardId, CardType } from "./card";
 import type { CollectionId, CollectionNamespace } from "./collection";
+import type { DashboardId } from "./dashboard";
+import type { DocumentId } from "./document";
 import type { PaginationRequest } from "./pagination";
 import type { SortDirection } from "./sorting";
+import type { TransformId } from "./transform";
 import type { UserId } from "./user";
 
 export const CONTENT_DIAGNOSTICS_IMBALANCED_FINDING_TYPES = [
@@ -153,12 +156,21 @@ export type ContentDiagnosticsBaseFindingDetails = {
   view_count?: number;
 };
 
+// The diagnostics API returns numeric entity ids; collection root and dashboard
+// slug identifiers are not part of this wire contract.
+export type ContentDiagnosticsEntityId =
+  | CardId
+  | Extract<CollectionId, number>
+  | Extract<DashboardId, number>
+  | DocumentId
+  | TransformId;
+
 export type ContentDiagnosticsBaseFinding = {
   id: number;
   finding_type: ContentDiagnosticsFindingType;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
-  entity_id: number;
+  entity_id: ContentDiagnosticsEntityId;
   detected_at: string;
   entity_display_name: string | null;
   created_at: string | null;
@@ -258,6 +270,7 @@ export type ContentDiagnosticsDuplicateEntity = {
   name: string | null;
   entity_type: ContentDiagnosticsEntityType;
   card_type?: CardType | null;
+  namespace?: CollectionNamespace;
   view_count?: number;
 };
 

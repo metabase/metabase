@@ -8,6 +8,7 @@ import {
 } from "__support__/server-mocks";
 import {
   type TestRouter,
+  act,
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
@@ -236,6 +237,17 @@ describe("StaleContentPage", () => {
 
     await screen.findByRole("treegrid");
     await userEvent.click(screen.getByLabelText("Select all"));
+    const bulkActions = screen.getByTestId("content-diagnostics-bulk-actions");
+    expect(
+      within(screen.getByTestId("monitor-main")).getByTestId(
+        "content-diagnostics-bulk-actions",
+      ),
+    ).toBe(bulkActions);
+    expect(bulkActions).toHaveStyle({
+      position: "absolute",
+      left: "50%",
+      bottom: "var(--mantine-spacing-lg)",
+    });
     await userEvent.click(
       screen.getByRole("button", { name: "Move to trash" }),
     );
@@ -378,6 +390,26 @@ describe("StaleContentPage", () => {
     await userEvent.click(screen.getByLabelText("Next page"));
 
     expect(getUrlQuery(router)).toEqual({ page: "1" });
+  });
+
+  it("clamps a page that no longer exists after a refetch", async () => {
+    const { router } = setup({
+      urlParams: { page: 1 },
+      getResponse: (url) =>
+        createMockListStaleFindingsResponse({
+          data:
+            new URL(url, "http://localhost").searchParams.get("offset") === "25"
+              ? []
+              : FINDINGS,
+          total: 2,
+        }),
+    });
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+      expect(getLastRequestUrl().searchParams.get("offset")).toBe("0");
+    });
+    expect(await screen.findByText("Sales overview")).toBeInTheDocument();
   });
 
   it("clears the page parameter when navigating back to the first page", async () => {
@@ -625,12 +657,36 @@ describe("StaleContentPage", () => {
 
     await waitForListToLoad();
 
-    expect(getUrlQuery(router)).toEqual({
-      "entity-types": "model",
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({
+        "entity-types": "model",
+      });
     });
     expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
       "model",
     ]);
+  });
+
+  it("uses the URL after external navigation to the current tab", async () => {
+    const { router } = setup({
+      findings: FINDINGS,
+      urlParams: { entityTypes: ["model"] },
+    });
+    await waitForListToLoad();
+    expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual([
+      "model",
+    ]);
+
+    act(() => {
+      router?.navigate(Urls.staleContent());
+    });
+
+    await waitFor(() => {
+      expect(getUrlQuery(router)).toEqual({});
+      expect(getLastRequestUrl().searchParams.getAll("entity-types")).toEqual(
+        [],
+      );
+    });
   });
 
   it("prefers URL params over the last-used filter", async () => {
