@@ -24,6 +24,7 @@ module.exports = {
     "^Components/Documents",
     "^Components/Feedback/Alert",
     "^Components/Feedback/Loader Overview",
+    "^Components/Text/Anchor Overview$",
     "^Components/Ask Before Using/Chip Overview",
     "^Components/Data display/Badge Sizes and variants",
     "^Components/Navigation/NavLink Overview",
