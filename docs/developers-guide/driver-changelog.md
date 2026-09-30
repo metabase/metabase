@@ -24,7 +24,14 @@ title: Driver interface changelog
   - `metabase.lib.core/desugar-filter-clause` → `driver-api/desugar-filter-clause`
   - `metabase.lib.core/negate-boolean-expression` → `driver-api/negate-boolean-expression`
 
+  Drivers that call the `driver-api` versions will not need to change if the time config gains more options, or these
+  functions gain more arguments.
+
   The `metabase.util.date-2` arities without `t`, which used the current time, have been removed.
+  With a config argument in front, a call written for the old signature, such as `(truncate t :day)`, would have
+  quietly matched one of them and used the current time instead of `t`.
+  Without them it fails with an arity error, and so will calls that miss any argument added later.
+
   The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
   take the start of the week as their last argument, e.g. `(driver-api/start-of-week)`.
 
