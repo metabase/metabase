@@ -71,6 +71,7 @@
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
   :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
   :metabase/validate-logging                                 {:level :warning}
+  :metabase/validate-mb-app-db-migrations-test               {:level :warning}
   :metabase/validate-mb-driver-tests                         {:level :warning}
   :metabase/validate-mb-once                                 {:level :warning}
 
@@ -528,7 +529,7 @@
    metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
-   metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
+   metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations!
    metabase.channel.render.js.svg/with-static-viz-context                                                                    hooks.common/with-one-top-level-binding
    metabase.channel.template.handlebars-helper/defhelper                                                                     hooks.metabase.channel.template.handlebars-helper/defhelper
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
