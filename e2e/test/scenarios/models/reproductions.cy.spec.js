@@ -79,10 +79,14 @@ describe("issue 19737", () => {
 
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
+      H.entityPickerModalItem(0, personalCollectionName).click();
       H.entityPickerModalLevel(1).findByText(modelName).should("be.visible");
-      cy.findByText("First collection").should("not.exist");
-      H.entityPickerModalLevel(1).should("exist");
-      H.entityPickerModalLevel(2).should("not.exist");
+
+      H.entityPickerModalItem(0, "Our analytics").click();
+      H.entityPickerModalLevel(1).should("be.visible");
+      H.entityPickerModalLevel(1)
+        .findByText("First collection")
+        .should("not.exist");
     });
   });
 });
@@ -232,7 +236,7 @@ describe("issue 23449", () => {
   const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
   function turnIntoModel() {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
 
     H.openQuestionActions();
     cy.findByText("Turn into a model").click();
@@ -240,7 +244,7 @@ describe("issue 23449", () => {
 
     cy.wait("@cardUpdate");
     // Turning the question into a model re-runs its query
-    cy.wait("@cardQuery").then(({ response }) => {
+    cy.wait("@modelQuery").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
   }

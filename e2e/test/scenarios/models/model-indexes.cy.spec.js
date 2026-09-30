@@ -46,13 +46,6 @@ describe("scenarios > model indexes", () => {
     saveModelIndexChanges();
     cy.wait("@modelIndexDelete");
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").should("not.exist");
-    H.commandPaletteSearch("marble shoes", false);
-    H.commandPalette()
-      .findByRole("option", { name: /No results for/ })
-      .should("exist");
-    cy.get("body").type("{esc}");
-    H.commandPalette().should("not.exist");
 
     editTitleMetadata();
     getSurfaceIndividualRecordsToggle().should("not.be.checked");

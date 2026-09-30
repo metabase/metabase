@@ -195,6 +195,8 @@ describe("scenarios > models metadata", () => {
       .should("contain", "Pre-tax ($)")
       .and("not.contain", "Tax ($)")
       .and("contain", "TAX");
+    H.sidesheet().findByLabelText("Close").click();
+    H.sidesheet().should("not.exist");
 
     cy.log(
       "Ensure that a question created from this model inherits its metadata.",
