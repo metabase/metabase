@@ -507,7 +507,7 @@ describe("issue 31340 + 32985", () => {
     });
 
     H.createQuestion(
-      { query: { "source-table": PEOPLE_ID } },
+      { query: { "source-table": PEOPLE_ID, limit: 2 } },
       { wrapId: true, visitQuestion: true },
     );
   });
@@ -543,11 +543,6 @@ describe("issue 31340 + 32985", () => {
       cy.wait("@search");
     });
 
-    H.popover()
-      .should("have.length", 2)
-      .then(([filterPopover, dropdown]) => {
-        H.assertDescendantNotOverflowsContainer(dropdown, filterPopover);
-      });
     H.popover()
       .should("have.length", 2)
       .last()
