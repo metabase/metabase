@@ -5,9 +5,9 @@
    [metabase.oauth-server.core :as oauth-server]))
 
 (def options
-  "Options for [[metabase.server.core/make-handler]]: the MCP origins CORS allows, and the OAuth bearer tokens and MCP
-  UI credentials the session middleware accepts.
-  The fns are vars, so they satisfy Malli's function schema and pick up settings and redefinitions at call time."
+  "Options for [[metabase.server.core/make-handler]].
+  They add MCP origins to CORS and let the session middleware accept OAuth bearer tokens and MCP UI credentials.
+  The fns are passed as vars, so redefining one takes effect without rebuilding the handler."
   {:cors               {:origins-fn         #'mcp/cors-origins
                         :sandbox-origin?-fn #'mcp/sandbox-origin?}
    :oauth-bearer       {:extract-token     #'oauth-server/extract-bearer-token

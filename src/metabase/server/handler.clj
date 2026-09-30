@@ -85,13 +85,11 @@
   ;; ▼▼▼ The returned `handlers` will see the requests in order from BOTTOM-TO-TOP, but the middleware is CONSTRUCTED/WRAPPED from TOP-TO-BOTTOM. ▼▼▼
   (->> [        ;; Inside of the middleware onion
         #'mw.exceptions/catch-uncaught-exceptions    ; catch any Exceptions that weren't passed to `raise`
-        (fn [handler]
-          (#'mw.exceptions/catch-api-exceptions handler cors)) ; catch exceptions and return them with configured headers
+        #(#'mw.exceptions/catch-api-exceptions % cors) ; catch exceptions and return them in our expected format
         #'mw.log/log-api-call                        ; log info about the request, db call counts etc.
         #'agent-api.usage/wrap-record-cli-usage      ; record CLI usage analytics for metabase-cli REST API calls
         #'mw.browser-cookie/ensure-browser-id-cookie ; add cookie to identify browser; add `:browser-id` to the request
-        (fn [handler]
-          (#'mw.security/add-security-headers handler cors)) ; Add security, cache, and CORS headers
+        #(#'mw.security/add-security-headers % cors) ; Add HTTP headers to API responses to prevent them from being cached
         #'mw.json/wrap-json-body                     ; extracts json POST/PUT body and makes it available on request
         #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
         #'mw.json/wrap-streamed-json-response        ; middleware to automatically serialize suitable objects as JSON in responses
@@ -104,8 +102,7 @@
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
-        (fn [handler]
-          (#'mw.session/wrap-current-user-info handler options)) ; sets :metabase-user-id and other info from a valid session, API key, or configured credential
+        #(#'mw.session/wrap-current-user-info % options) ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
         #'mw.pf-cache/wrap-premium-features-cache-check ; check cookie to refresh premium features cache if needed
         #'mw.settings-cache/wrap-settings-cache-check ; check cookie to refresh settings cache if needed
         #'analytics/embedding-mw                     ; reads sdk client headers, binds them to *client* and *version*, and tracks sdk-response metrics
@@ -127,8 +124,7 @@
        (remove nil?)))
 
 (def ^:private Options
-  "Middleware configuration the application supplies: extra CORS origins, and the credentials beyond sessions and API
-  keys that authenticate a request."
+  "Middleware configuration from the application: extra CORS origins, and credentials beyond sessions and API keys."
   [:map
    {:closed true}
    [:cors {:optional true}

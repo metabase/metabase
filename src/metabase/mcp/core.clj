@@ -70,7 +70,7 @@
       (into (comp (keep #(get-in % [:form :metadata :scope]))
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
-      ;; The v2 surface's scopes, read from the require-free leaf rather than from the registry (see [[v2-scopes]]).
+      ;; The v2 surface's scopes, read from the require-free leaf rather than the registry (see [[v2-scopes]]).
       (into mcp.paths/v2-surface-scopes)))
 
 (defn v2-scopes
@@ -78,9 +78,9 @@
    [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
    what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
 
-   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]] rather than from the registries.
-   The registries report only the tools whose namespaces happen to be loaded, and reaching them from here would put
-   `metabot.scope` on the load path of everything that loads this namespace (see [[metabase.mcp.paths]]).
+   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]], not the registries.
+   The registries report only the tools whose namespaces happen to be loaded.
+   Reaching them from here would also pull `metabot.scope` in wherever this namespace loads (see [[metabase.mcp.paths]]).
    `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
   []
   mcp.paths/v2-surface-scopes)

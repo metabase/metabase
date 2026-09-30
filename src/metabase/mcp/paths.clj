@@ -5,10 +5,10 @@
    [[metabase.api-routes.routes]] and the resource-metadata endpoints in
    [[metabase.oauth-server.api.metadata]] — and for the scope sets the v2 surface accepts and advertises.
 
-   A leaf namespace, with no requires, so both the handler and the OAuth server can read it without a dependency cycle.
+   A leaf namespace with no requires, so the handler and OAuth server can read it without a dependency cycle.
    Anything `metabase.mcp.core` reaches joins the load path of every namespace that loads it.
-   Pulling `metabot.scope`, and through it `premium-features`, onto that path has deadlocked namespace loading with a
-   methodical protocol error at web-server start.
+   Pulling `metabot.scope`, and through it `premium-features`, onto that path has deadlocked namespace loading
+   with a methodical protocol error at web-server start.
    Keep this namespace dependency-free.")
 
 (set! *warn-on-reflection* true)
