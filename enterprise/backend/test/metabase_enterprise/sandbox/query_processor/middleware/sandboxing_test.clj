@@ -2349,3 +2349,49 @@
         (is (true? (-> result :data :is_sandboxed)))
         (is (= 22 (count (mt/rows result))))
         (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest sandboxed-binned-query-still-works-test
+  (testing "BOT-2115: stripping fingerprints from results must not break binning, which needs them in preprocessing"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                         (mt/mbql-query venues
+                                           {:aggregation [[:count]]
+                                            :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 10}}]]}))]
+        (is (=? {:status "completed", :data {:is_sandboxed true}} result))
+        (is (= 22 (reduce + (map second (mt/rows result)))))
+        (is (=? {:binning_info {:binning_strategy "num-bins"}} (first (mt/cols result))))
+        (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest sandboxed-cached-results-omit-fingerprints-test
+  (testing "BOT-2115: a cached result replayed to a sandboxed user carries no fingerprint"
+    (cache-test/with-mock-cache! [save-chan]
+      (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                        :attributes {:price 1}}
+        (letfn [(run-query []
+                  (qp/process-query (assoc (mt/mbql-query venues)
+                                           :cache-strategy {:type             :ttl
+                                                            :multiplier       60
+                                                            :avg-execution-ms 10
+                                                            :min_duration_ms  0})))]
+          (let [result (run-query)]
+            (is (nil? (:cached (:cache/details result))))
+            (is (every? nil? (vals (col-fingerprints result)))))
+          (testing "cache entry should be saved within 5 seconds"
+            (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+              (is (= save-chan chan))))
+          (let [result (run-query)]
+            (is (true? (:cached (:cache/details result))))
+            (is (every? nil? (vals (col-fingerprints result))))))))))
+
+(deftest sandboxed-pivot-results-omit-fingerprints-test
+  (testing "BOT-2115: pivot query results for a sandboxed user carry no fingerprint"
+    (met/with-gtaps! {:gtaps      {:venues (venues-price-mbql-gtap-def)}
+                      :attributes {:price 1}}
+      (let [result (qp.pivot/run-pivot-query
+                    (merge (mt/mbql-query venues
+                             {:aggregation [[:count]]
+                              :breakout    [$price $category_id]})
+                           {:pivot-rows [0] :pivot-cols [1]}))]
+        (is (=? {:status :completed} result))
+        (is (every? nil? (vals (col-fingerprints result))))))))
