@@ -283,6 +283,13 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     H.CustomExpressionEditor.type("[Ba");
     H.CustomExpressionEditor.completion("Bar").should("be.visible");
   });
+});
+
+describe("scenarios > question > custom column > typing suggestion > reviews", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
 
   it("distinct inside custom expression should suggest non-numeric types (metabase#13469)", () => {
     H.openReviewsTable({ mode: "notebook" });

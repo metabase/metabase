@@ -243,6 +243,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText(/The id of the user/);
     });
 
+    // Move the mouse off the info icon so the hovercard can't cover the next click
+    cy.findByTestId("step-data-0-0").realHover();
+    H.hovercard().should("not.exist");
+
     H.popover().contains("Custom Expression").click();
 
     H.CustomExpressionEditor.type("[Cre");

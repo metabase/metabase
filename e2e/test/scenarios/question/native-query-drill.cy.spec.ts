@@ -116,7 +116,7 @@ describe("scenarios > question > native query drill", () => {
     });
   });
 
-  describe("query builder drills", () => {
+  describe("query builder drills and brush filters", () => {
     it("column-extract, column-filter, distribution, sort, summarize, and summarize-column-by-time drills", () => {
       cy.log("column-extract drill: from column header");
       H.createNativeQuestion(ordersTableQuestionDetails, {
@@ -318,10 +318,8 @@ describe("scenarios > question > native query drill", () => {
         .click();
       cy.get(H.POPOVER_ELEMENT).should("not.exist");
     });
-  });
 
-  describe("query builder brush filters", () => {
-    it("numeric filter", () => {
+    it("numeric brush filter", () => {
       H.createNativeQuestion(numericLineQuestionDetails, {
         visitQuestion: true,
       });
@@ -331,7 +329,7 @@ describe("scenarios > question > native query drill", () => {
       H.assertQueryBuilderRowCount(5);
     });
 
-    it("coordinates filter", () => {
+    it("coordinates brush filter", () => {
       cy.log("pin map");
       H.createNativeQuestion(pinMapQuestionDetails, { visitQuestion: true });
       cy.findByTestId("visualization-root").realHover();

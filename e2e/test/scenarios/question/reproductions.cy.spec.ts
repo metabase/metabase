@@ -372,7 +372,7 @@ describe("issue 53170", () => {
   );
 });
 
-describe("issue 57398", () => {
+describe("filter picker and query running state", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -719,7 +719,7 @@ describe("issue 66210", () => {
   });
 });
 
-describe("issue #67767", () => {
+describe("native query preview on small screens", () => {
   const SCREEN_WIDTH = 630;
 
   beforeEach(() => {
