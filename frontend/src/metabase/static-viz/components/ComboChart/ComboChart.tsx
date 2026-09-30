@@ -21,10 +21,6 @@ import { calculateLegendRows } from "../Legend/utils";
 
 const WIDTH = 540;
 const HEIGHT = 360;
-// TEMPORARY(row-chart-migration): legacy StaticRowChart's default size, so Loki
-// diffs compare like with like. Remove before shipping; 540×360 is intended.
-const LEGACY_ROW_WIDTH = 620;
-const LEGACY_ROW_HEIGHT = 440;
 const LEGEND_PADDING = 8;
 
 registerEChartsModules();
@@ -33,16 +29,13 @@ export const ComboChart = ({
   rawSeries,
   settings,
   renderingContext,
-  width: widthProp,
-  height: heightProp,
+  width = WIDTH,
+  height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
   fitWithinBounds = false,
 }: StaticChartProps) => {
   const isRowChart = rawSeries[0]?.card.display === "row";
-  // TEMPORARY(row-chart-migration): revert to `width = WIDTH` / `height = HEIGHT` defaults.
-  const width = widthProp ?? (isRowChart ? LEGACY_ROW_WIDTH : WIDTH);
-  const height = heightProp ?? (isRowChart ? LEGACY_ROW_HEIGHT : HEIGHT);
 
   const baseChartModel = getCartesianChartModel(
     rawSeries,
