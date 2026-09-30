@@ -162,7 +162,8 @@
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
-  card fields are declared locally: the model layer doesn't depend on the REST card schema."
+  card fields are declared locally: the model layer doesn't depend on the REST card schema. `source_card_id`, if
+  given, must be a Card the user can read; the new card inherits its timeline selection for permission purposes."
   [:map {:closed true}
    [:name ms/NonBlankString]
    [:dataset_query ::lib-be.schema/maybe-legacy-query]
@@ -173,7 +174,8 @@
    [:display ms/NonBlankString]
    [:visualization_settings ms/VisualizationSettings]
    [:result_metadata {:optional true} [:maybe ::queries.schema/card.result-metadata]]
-   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]])
+   [:cache_ttl {:optional true} [:maybe ms/PositiveInt]]
+   [:source_card_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (defn- create-card!
   "The single choke point every document card-creation path (create, update, copy) funnels through. Runs the same
@@ -239,14 +241,16 @@
   (when (seq cards-to-create)
     (reduce-kv
      (fn [result-map original-key card-data]
-       (let [;; Merge document info into card data
+       (let [source-card-id   (:source_card_id card-data)
+             ;; Merge document info into card data
              ;; Cards inherit document's collection_id if not explicitly specified
              merged-card-data (-> card-data
+                                  (dissoc :source_card_id)
                                   (assoc :document_id document-id)
                                   (cond-> (nil? (:collection_id card-data))
                                     (assoc :collection_id document-collection-id)))
-             ;; Create the card using the queries core function
-             new-card (create-card! merged-card-data creator)]
+             new-card         (card/with-copy-source-card (some->> source-card-id (api/read-check :model/Card))
+                                (create-card! merged-card-data creator))]
          (assoc result-map original-key (:id new-card))))
      {}
      cards-to-create)))
