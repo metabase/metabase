@@ -32,8 +32,12 @@ const argTypes = {
 
 type SidesheetProps = ComponentProps<typeof Sidesheet>;
 
-// Sidesheet portals outside the Storybook root; capture the full viewport and overlay.
-const sidesheetLokiParameters = { loki: { chromeSelector: "body" } };
+// Wait for the portaled panel, then capture the full viewport and overlay.
+const sidesheetLokiParameters = {
+  loki: {
+    chromeSelector: 'body:has([data-testid="sidesheet"]:not([data-hidden]))',
+  },
+};
 
 const DefaultTemplate = (args: SidesheetProps) => (
   <Sidesheet {...args}>Call me Ishmael ...</Sidesheet>
