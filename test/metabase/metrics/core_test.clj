@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -476,6 +477,68 @@
                          :default               true
                          :default-temporal-unit :year)]
                  (bucket-by (first once) :month))))))))
+
+(deftest ^:parallel recover-pre-curation-default-dimension-legacy-mbql-breakout-test
+  ;; Pre-curation metrics were mostly authored in legacy MBQL. Converting it tags every field ref with
+  ;; `:lib/transformation-added-base-type`, which the dimension mapping targets never carry.
+  (let [mp         (mt/metadata-provider)
+        orders     (lib.metadata/table mp (mt/id :orders))
+        columns    (lib/breakoutable-columns (lib/query mp orders))
+        created-at (m/find-first #(= (mt/id :orders :created_at) (:id %)) columns)
+        category   (m/find-first #(and (= (mt/id :products :category) (:id %))
+                                       (= (mt/id :orders :product_id) (:fk-field-id %)))
+                                 columns)
+        mappings   [{:type :table, :table-id (mt/id :orders),   :dimension-id uuid-1, :target (lib/ref created-at)}
+                    {:type :table, :table-id (mt/id :products), :dimension-id uuid-2, :target (lib/ref category)}]
+        dimensions [{:id uuid-1, :name "col1", :effective-type :type/DateTime}
+                    {:id uuid-2, :name "col2", :effective-type :type/Text}]
+        legacy     (fn [breakout]
+                     (lib/query mp {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)
+                                               :aggregation  [[:count]]
+                                               :breakout     [breakout]}}))]
+    (testing "a bucketed own-table breakout recovers the default and its unit"
+      (is (= [(assoc (first dimensions) :default true, :default-temporal-unit :month)
+              (second dimensions)]
+             (metrics/recover-pre-curation-default-dimension
+              dimensions mappings
+              (legacy [:field (mt/id :orders :created_at) {:temporal-unit :month}])))))
+    (testing "an implicitly-joined breakout recovers the default"
+      (is (= [(first dimensions)
+              (assoc (second dimensions) :default true)]
+             (metrics/recover-pre-curation-default-dimension
+              dimensions mappings
+              (legacy [:field (mt/id :products :category) {:source-field (mt/id :orders :product_id)}])))))))
+
+(deftest pre-curation-legacy-metric-recovers-default-dimension-on-read-test
+  (testing "a pre-curation metric stored as legacy MBQL gets its breakout's dimension as the default on read"
+    (mt/with-temp [:model/Card metric {:name          "Legacy Metric"
+                                       :type          :metric
+                                       :database_id   (mt/id)
+                                       :table_id      (mt/id :orders)
+                                       :dataset_query (metric-query)}]
+      ;; Raw UPDATE, so the row looks like it was written before curated dimensions existed.
+      (t2/query-one {:update :report_card
+                     :set    {:card_schema        23
+                              :dimensions         nil
+                              :dimension_mappings nil
+                              :dataset_query      (json/encode
+                                                   {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :orders)
+                                                               :aggregation  [[:count]]
+                                                               :breakout     [[:field (mt/id :orders :created_at)
+                                                                               {:temporal-unit :month}]]}})}
+                     :where  [:= :id (:id metric)]})
+      (let [{:keys [dimensions dimension_mappings]} (t2/select-one :model/Card :id (:id metric))
+            default (filter :default dimensions)
+            target  (some #(when (= (:id (first default)) (:dimension-id %)) (:target %)) dimension_mappings)]
+        (is (seq dimensions)
+            "The schema upgrade should have backfilled the full dimension set")
+        (is (= 1 (count default)))
+        (is (= :month (:default-temporal-unit (first default))))
+        (is (= (mt/id :orders :created_at) (nth target 2 nil)))))))
 
 ;;; ------------------------------------------ Database-wide backfill ------------------------------------------
 
