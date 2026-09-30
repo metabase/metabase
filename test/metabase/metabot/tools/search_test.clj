@@ -1230,10 +1230,12 @@
 (deftest confined-collection-is-not-overridable-test
   (testing "an embedded metabot (and the nlq profile) is confined to its own collection — that is a
             containment boundary, not a default. An explicit collection-id, which the v2 search tool
-            passes from a caller-supplied filter, must not widen or relocate the search outside that
-            collection."
+            passes from a caller-supplied filter, may narrow the search within that collection but must
+            not widen or relocate it."
     (mt/with-test-user :crowberto
       (mt/with-temp [:model/Collection {confined-id :id}  {:name "Bot's collection"}
+                     :model/Collection {child-id :id}     {:name     "Inside the bot's collection"
+                                                           :location (format "/%d/" confined-id)}
                      :model/Collection {elsewhere-id :id} {:name "Somewhere else"}
                      :model/Metabot {metabot-eid :entity_id} {:name          "confined bot"
                                                               :collection_id confined-id}]
@@ -1253,6 +1255,8 @@
             (is (= confined-id (collection-for {}))))
           (testing "an explicit collection-id elsewhere cannot escape the confinement"
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
+          (testing "an explicit collection-id inside the confinement narrows the search"
+            (is (= child-id (collection-for {:collection-id child-id}))))
           (testing "an unconfined metabot still honours an explicit collection-id"
             (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
               (is (= elsewhere-id (collection-for {:metabot-id    open-eid

@@ -462,13 +462,32 @@
           result-lists (mapv deref futures)]
       (reciprocal-rank-fusion result-lists))))
 
+(defn- scoped-collection-id
+  "The collection a search is limited to. A confined metabot (embedded, or the nlq profile) keeps every search
+  inside its configured collection: a caller-supplied collection narrows the scope only when it is the configured
+  one or lies beneath it, and is ignored otherwise. Unconfined, the caller's collection applies as given."
+  [caller-id configured-id]
+  (cond
+    (nil? configured-id)        caller-id
+    (nil? caller-id)            configured-id
+    (= caller-id configured-id) caller-id
+
+    (some-> (:location (metabot.db/collection caller-id))
+            (str/includes? (str "/" configured-id "/")))
+    caller-id
+
+    :else
+    (do (log/infof "[METABOT-SEARCH] Collection %s is outside the configured collection %s; searching %s"
+                   caller-id configured-id configured-id)
+        configured-id)))
+
 (defn search
   "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic.
 
   Optional filter keys threaded straight into the search context: `created-by` (set of user ids),
-  `archived`, `collection-id` (numeric, scopes to the collection subtree; overrides the metabot's
-  own confined collection), `offset`. `filters-only?` makes a call with no queries run a single
+  `archived`, `collection-id` (numeric, scopes to the collection subtree; see [[scoped-collection-id]]
+  for how it combines with a confined metabot's own collection), `offset`. `filters-only?` makes a call with no queries run a single
   nil-query search — a pure listing over the active filters — instead of returning nothing.
 
   Each query fetches its full ranked pool (`ranked-results`), the pools are fused by rank, and the
@@ -502,13 +521,12 @@
                           (:use_verified_content metabot)
                           false)
         embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
-        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
-        ;; collection. That is a containment boundary, not a default, so a caller-supplied
-        ;; collection-id — which the v2 search tool fills from a request filter — can never
-        ;; replace it. Unconfined, the caller's collection-id applies.
-        confined-id     (when (or embedded-metabot? (= profile-id "nlq"))
-                          (:collection_id metabot))
-        collection-id   (or confined-id collection-id)
+        ;; A confined metabot (embedded, or the nlq profile) may only search inside its own collection.
+        ;; That is a containment boundary, not a default: a caller-supplied collection-id — which the v2
+        ;; search tool fills from a request filter — can narrow the search within it but never widen it.
+        collection-id   (scoped-collection-id collection-id
+                                              (when (or embedded-metabot? (= profile-id "nlq"))
+                                                (:collection_id metabot)))
         limit           (or limit 50)
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
@@ -629,24 +647,6 @@
                       (remove #(query-broadening-stopwords (u/lower-case-en %))))]
       (when (> (count tokens) 1)
         (str/join " or " tokens)))))
-
-(defn- scoped-collection-id
-  "The collection a search is limited to. A metabot configured with a collection keeps every search inside
-  it: a caller-supplied collection narrows the scope only when it is the configured one or lies beneath it."
-  [caller-id configured-id]
-  (cond
-    (nil? configured-id)        caller-id
-    (nil? caller-id)            configured-id
-    (= caller-id configured-id) caller-id
-
-    (some-> (:location (metabot.db/collection caller-id))
-            (str/includes? (str "/" configured-id "/")))
-    caller-id
-
-    :else
-    (do (log/infof "[METABOT-SEARCH] Collection %s is outside the configured collection %s; searching %s"
-                   caller-id configured-id configured-id)
-        configured-id)))
 
 ;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
 ;; semantic queries, fused by rank, paginated) behind MCP v2's `search` tool and `/v1/search`. [[search-by-query]] is
