@@ -1,21 +1,74 @@
-import type { DataAppLinkProps } from "embedding-sdk-bundle/lib/data-app/router";
-import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 
-export const DataAppLink = ({ to, children, ...rest }: DataAppLinkProps) => {
-  const BundleDataAppLink =
-    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.DataAppLink;
+import {
+  getBasename,
+  navigate,
+} from "embedding-sdk-package/lib/private/data-app-routing";
 
-  if (!BundleDataAppLink) {
-    return (
-      <a href={to} {...rest}>
-        {children}
-      </a>
-    );
-  }
+export interface DataAppLinkProps extends Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "href"
+> {
+  to: string;
+  children?: ReactNode;
+}
+
+/**
+ * Internal-only navigation link inside a data app.
+ *
+ * Renders a plain anchor rather than a router `<Link>`: a data app is mounted
+ * outside the app's route tree, so it has no router context to read.
+ */
+export const DataAppLink = ({
+  to,
+  children,
+  onClick,
+  target,
+  rel,
+  ...rest
+}: DataAppLinkProps) => {
+  const href = getBasename() + to;
+
+  const isExternalTarget = target != null && target !== "_self";
+  const resolvedRel = rel ?? (isExternalTarget ? "noopener noreferrer" : rel);
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (isExternalTarget) {
+      // Explicit `target="_blank"` etc. — let the browser handle it.
+      return;
+    }
+
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      // Modifier keys / middle / right click — the browser handles it (new tab,
+      // download, etc.). Don't preventDefault; the native action is wanted.
+      return;
+    }
+
+    event.preventDefault();
+    navigate(to);
+  };
 
   return (
-    <BundleDataAppLink to={to} {...rest}>
+    <a
+      href={href}
+      target={target}
+      rel={resolvedRel}
+      onClick={handleClick}
+      {...rest}
+    >
       {children}
-    </BundleDataAppLink>
+    </a>
   );
 };

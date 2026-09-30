@@ -554,13 +554,24 @@ export type UseMetabaseQueryResult<
   refetch: () => Promise<void>;
 };
 
+/**
+ * Marks a query as declared through `defineQuery`. The query hooks accept only
+ * marked queries, so an inline query object is a compile-time error.
+ *
+ * @category useMetabaseQuery
+ */
+export declare class DefinedQuery {
+  private readonly definedWithDefineQuery: true;
+}
+
 export type UseMetabaseQuery = <
   TEntity extends TableSchema | undefined = undefined,
   TSchema = unknown,
-  const TQuery = MetabaseQueryOptions<TEntity, TSchema>,
+  const TQuery = MetabaseQueryOptions<TEntity, TSchema> & DefinedQuery,
   const TDynamic = undefined,
 >(
   query: TQuery &
+    DefinedQuery &
     (TQuery extends MetabaseQueryOptions<TEntity, TSchema>
       ? TQuery extends { source: unknown }
         ? RequireAggregationsForBreakouts<TQuery>

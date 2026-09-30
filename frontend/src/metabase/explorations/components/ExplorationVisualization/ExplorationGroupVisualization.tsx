@@ -4,8 +4,8 @@ import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 import { noop } from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { explorationApi } from "metabase/api/exploration";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { useDispatch, useSelector } from "metabase/redux";

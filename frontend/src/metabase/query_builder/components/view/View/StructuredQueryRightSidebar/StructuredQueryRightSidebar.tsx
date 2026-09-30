@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 
 import type { Dayjs } from "metabase/dayjs";
-import type { QueryModalType } from "metabase/querying/constants";
+import type { QueryModalType } from "metabase/redux/store";
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 

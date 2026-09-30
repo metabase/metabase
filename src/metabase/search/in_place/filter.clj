@@ -32,6 +32,27 @@
 (def ^:private true-clause [:= [:inline 1] [:inline 1]])
 (def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
+(def ^:private HoneySQLQuery
+  "A partially-built Honey SQL query map for the legacy (index-free) search query. Mirrors
+  `metabase.search.in-place.legacy/HoneySQLQuery` (duplicated here to avoid a circular require)."
+  [:schema
+   {:registry
+    {::expr  [:or :keyword :string number? :boolean nil?
+              [:sequential [:ref ::expr]]
+              [:set [:ref ::expr]]
+              [:ref ::query]]
+     ::query [:map {:closed true}
+              [:select    {:optional true} [:sequential [:ref ::expr]]]
+              [:from      {:optional true} [:sequential [:ref ::expr]]]
+              [:where     {:optional true} [:ref ::expr]]
+              [:with      {:optional true} [:sequential [:ref ::expr]]]
+              [:join      {:optional true} [:sequential [:ref ::expr]]]
+              [:left-join {:optional true} [:sequential [:ref ::expr]]]
+              [:union-all {:optional true} [:sequential [:ref ::expr]]]
+              [:order-by  {:optional true} [:sequential [:ref ::expr]]]
+              [:limit     {:optional true} [:ref ::expr]]]}}
+   [:ref ::query]])
+
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
   A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
@@ -413,7 +434,7 @@
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
-  [honeysql-query :- :map
+  [honeysql-query :- HoneySQLQuery
    model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [models

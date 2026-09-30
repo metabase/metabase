@@ -77,29 +77,115 @@
      :default-logo?  (= logo-url default-logo-url)
      :brand-color    (sanitize-css-color (get colors "brand"))}))
 
+(defn- full-access-warning
+  [client-name]
+  [:div.warning
+   [:span.mark "!"]
+   [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
+    (or client-name "this application") " can do, including reading and changing all data you "
+    "can reach. Only approve it for a tool you trust and control."]])
+
 (defn- render-scope-list
-  "Render the requested OAuth scopes as a hiccup list so the user sees exactly what they're granting.
-   `scopes` is a vector of `{:scope <string> :description <localized-string-or-raw-scope>}` maps.
+  "Render the requested OAuth scopes as a hiccup list of checkboxes named `granted_scope`, so the user sees exactly
+   what they're granting and picks which of it to grant. `scopes` is a vector of
+   `{:scope <string> :description <localized-string-or-raw-scope> :full-access? <bool> :locked? <bool>}` maps, rendered
+   in order.
+
+   A `:locked?` scope is ticked, disabled, and labelled as always granted; every other scope starts unticked and can be
+   ticked. A `:full-access?` scope carries the full-access warning in its own row.
 
    Shows the human description and the raw scope string: the description is readable, the raw string
    is the precise, unambiguous grant the token will carry — both matter when approving a broad scope.
    When a scope has no registered description (it falls back to the raw string) the raw span is
    omitted to avoid showing the same value twice."
-  [scopes]
+  [scopes client-name]
   (when (seq scopes)
     [:ul.scopes
-     (for [{:keys [scope description full-access?]} scopes]
-       [:li (when full-access? {:class "full"})
-        [:span {:class (if full-access? "dot full" "dot")}]
-        (if full-access? [:strong description] [:span description])
-        (when (not= description scope)
-          [:span.raw scope])])]))
+     (for [{:keys [scope description full-access? locked?]} scopes]
+       [:li {:class (not-empty (str/join " " (cond-> [] full-access? (conj "full") locked? (conj "locked"))))}
+        [:label
+         [:input (cond-> {:type "checkbox" :name "granted_scope" :value scope}
+                   locked? (assoc :checked true :disabled true))]
+         [:span.text
+          (if full-access? [:strong description] [:span description])
+          (when (not= description scope)
+            [:span.raw scope])]
+         (when locked?
+           [:span.always "Always granted"])]
+        (when full-access?
+          (full-access-warning client-name))])]))
+
+(def ^:private consent-form-script
+  "Progressive enhancement for the consent form; the server enforces everything it does. Keeps Authorize disabled while
+   no scope checkbox is ticked (a locked, always-granted one counts), and debounces the decision: on submit it shows a
+   spinner on the clicked button and disables both, re-enabling them if the page is restored from the bfcache."
+  "(function () {
+  var form = document.getElementById('consent-form');
+  if (!form) { return; }
+  var buttons = form.querySelectorAll('button[name=\"approved\"]');
+  var allow = form.querySelector('button.allow');
+  var boxes = form.querySelectorAll('input[type=\"checkbox\"]');
+  var submitting = false;
+  var lastClicked = null;
+
+  function syncAllow() {
+    if (submitting || !allow || boxes.length === 0) { return; }
+    var anyTicked = false;
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].checked) { anyTicked = true; }
+    }
+    allow.disabled = !anyTicked;
+  }
+
+  function removeDecisionInput() {
+    var input = form.querySelector('input[type=\"hidden\"][name=\"approved\"]');
+    if (input) { input.parentNode.removeChild(input); }
+  }
+
+  for (var i = 0; i < buttons.length; i++) {
+    buttons[i].addEventListener('click', function () { lastClicked = this; });
+  }
+
+  form.addEventListener('change', syncAllow);
+
+  form.addEventListener('submit', function (event) {
+    if (submitting) { event.preventDefault(); return; }
+    var submitter = event.submitter || lastClicked;
+    if (!submitter || submitter.name !== 'approved') { return; }
+    submitting = true;
+    // A disabled button is left out of the submitted form, so carry its decision in a hidden input.
+    removeDecisionInput();
+    var decision = document.createElement('input');
+    decision.type = 'hidden';
+    decision.name = 'approved';
+    decision.value = submitter.value;
+    form.appendChild(decision);
+    submitter.classList.add('loading');
+    submitter.setAttribute('aria-busy', 'true');
+    for (var i = 0; i < buttons.length; i++) { buttons[i].disabled = true; }
+  });
+
+  window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) { return; }
+    submitting = false;
+    removeDecisionInput();
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].disabled = false;
+      buttons[i].classList.remove('loading');
+      buttons[i].removeAttribute('aria-busy');
+    }
+    syncAllow();
+  });
+
+  syncAllow();
+})();")
 
 (defn render-consent-page
   "Render a server-side HTML consent page for the OAuth authorization flow.
 
-   `scopes` is a vector of `{:scope :description}` maps describing what the client is requesting; it is
-   shown to the user so a broad grant (e.g. full account access) is never approved blindly."
+   `scopes` is a vector of `{:scope :description :full-access? :locked?}` maps describing what the client is
+   requesting, in display order; each is shown as a `granted_scope` checkbox (see [[render-scope-list]]) so a broad
+   grant (e.g. full account access) is never approved blindly."
   [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
@@ -128,14 +214,18 @@
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
                    .scopes { list-style: none; margin: 0 0 1.5rem; padding: 0;
                              border: 1px solid #f0f0f0; border-radius: 8px; }
-                   .scopes li { display: flex; align-items: baseline; gap: 0.5rem;
-                                padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
+                   .scopes li { padding: 0.75rem 1rem; font-size: 0.875rem; color: #4c5773; }
                    .scopes li + li { border-top: 1px solid #f0f0f0; }
-                   .scopes .dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%;
-                                  background: " brand-color "; transform: translateY(-1px); }
+                   .scopes label { display: flex; align-items: baseline; gap: 0.5rem; cursor: pointer; }
+                   .scopes input { flex: 0 0 auto; margin: 0; accent-color: " brand-color ";
+                                   transform: translateY(2px); cursor: pointer; }
+                   .scopes .text { flex: 1 1 auto; display: flex; flex-wrap: wrap; column-gap: 0.5rem; }
                    .scopes .raw { font-family: monospace; font-size: 0.75rem; color: #949aab; }
+                   .scopes li.locked label, .scopes li.locked input { cursor: default; }
+                   .scopes .always { flex: 0 0 auto; font-size: 0.75rem; color: #949aab; white-space: nowrap; }
                    .scopes li.full strong { color: #2e353b; }
-                   .scopes .dot.full { background: #e35a4c; width: 8px; height: 8px; }
+                   .scopes li.full input { accent-color: #e35a4c; }
+                   .scopes li .warning { margin: 0.625rem 0 0; }
                    .warning { display: flex; gap: 0.5rem; align-items: flex-start;
                               background: #fdf3f2; border: 1px solid #f7d3cf; border-radius: 8px;
                               padding: 0.75rem 1rem; margin-bottom: 1.5rem;
@@ -148,9 +238,16 @@
                             font-family: inherit; cursor: pointer;
                             transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease; }
                    .allow { background: " brand-color "; color: #fff; border: 1px solid " brand-color "; }
-                   .allow:hover { filter: brightness(0.9); }
+                   .allow:hover:not(:disabled) { filter: brightness(0.9); }
                    .deny  { background: #fff; color: #4c5773; border: 1px solid #ddd; }
-                   .deny:hover  { background: #f9fbfc; border-color: #ccc; }"))]]
+                   .deny:hover:not(:disabled)  { background: #f9fbfc; border-color: #ccc; }
+                   button:disabled { cursor: default; opacity: 0.55; }
+                   button.loading:disabled { opacity: 1; }
+                   button.loading::before { content: ''; display: inline-block; width: 0.875em; height: 0.875em;
+                                            margin-right: 0.5em; vertical-align: -0.125em; border-radius: 50%;
+                                            border: 2px solid; border-right-color: transparent;
+                                            animation: consent-spin 0.7s linear infinite; }
+                   @keyframes consent-spin { to { transform: rotate(360deg); } }"))]]
        [:body
         [:div.consent
          [:div.logo
@@ -160,18 +257,12 @@
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
          [:p.subtitle (or client-name "This application") " is requesting access to "
           [:strong (appearance/application-name)] " on your behalf:"]
-         (when (some :full-access? scopes)
-           [:div.warning
-            [:span.mark "!"]
-            [:span "This grants " [:strong "complete access to your account"] " — anything you can do, "
-             (or client-name "this application") " can do, including reading and changing all data you "
-             "can reach. Only approve it for a tool you trust and control."]])
-         (render-scope-list scopes)
-         (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
-           [:p.destination "Redirects to " [:strong redirect-host]])
          ;; Absolute action: a root-relative path would drop the subpath when Metabase is hosted
          ;; under one (site-url like https://example.com/metabase).
-         [:form {:method "POST" :action (absolute-url "/oauth/authorize/decision")}
+         [:form {:id "consent-form" :method "POST" :action (absolute-url "/oauth/authorize/decision")}
+          (render-scope-list scopes client-name)
+          (when-let [redirect-host (some-> (:redirect_uri oauth-params) not-empty (java.net.URI.) (.getHost))]
+            [:p.destination "Redirects to " [:strong redirect-host]])
           [:input {:type "hidden" :name "csrf_token" :value csrf-token}]
           [:input {:type "hidden" :name "params_sig" :value params-sig}]
           (for [[k v] oauth-params
@@ -180,4 +271,5 @@
             [:input {:type "hidden" :name (name k) :value v}])
           [:div.actions
            [:button.deny {:type "submit" :name "approved" :value "false"} "Cancel"]
-           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]]]))))
+           [:button.allow {:type "submit" :name "approved" :value "true"} "Authorize"]]]]
+        [:script {:nonce nonce} (h/raw consent-form-script)]]]))))

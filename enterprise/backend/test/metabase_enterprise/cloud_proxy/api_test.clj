@@ -63,7 +63,7 @@
 (deftest superuser-operations-test
   (testing "superuser operations require superuser"
     (mt/with-premium-features #{:hosting}
-      (with-redefs [hm.client/call mock-hm-call]
+      (mt/with-dynamic-fn-redefs [hm.client/call mock-hm-call]
         (doseq [op ["mb-plan-trial-up" "mb-plan-trial-up-available"
                     "mb-plan-change-plan" "mb-plan-change-plan-preview"]]
           (testing (str "operation " op " requires superuser")
@@ -71,7 +71,7 @@
                    (mt/user-http-request :rasta :post 403 (str "ee/cloud-proxy/" op)))))))))
   (testing "superuser can access superuser operations"
     (mt/with-premium-features #{:hosting}
-      (with-redefs [hm.client/call mock-hm-call]
+      (mt/with-dynamic-fn-redefs [hm.client/call mock-hm-call]
         (doseq [op ["mb-plan-trial-up" "mb-plan-trial-up-available"
                     "mb-plan-change-plan" "mb-plan-change-plan-preview"]]
           (testing (str "superuser can access " op)
@@ -94,7 +94,7 @@
 (deftest response-key-conversion-test
   (testing "response keys are converted to snake_case for frontend"
     (mt/with-premium-features #{:hosting}
-      (with-redefs [hm.client/call mock-hm-call]
+      (mt/with-dynamic-fn-redefs [hm.client/call mock-hm-call]
         (let [resp (mt/user-http-request :crowberto :post 200 "ee/cloud-proxy/mb-plan-trial-up-available")]
           (is (contains? resp :plan_alias))
           (is (not (contains? resp :plan-alias))))

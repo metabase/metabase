@@ -9,15 +9,13 @@ import type {
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
-  SdkIframeEmbedBaseSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type {
   SdkIframeDashboardEmbedSettings,
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
+  SdkIframeEmbedBaseSettings,
   SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
+} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { getVisibleParameters } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-visible-parameters";
+import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import type { EntityToken } from "metabase-types/api/entity";
 
 export const buildEmbedAttributes = ({

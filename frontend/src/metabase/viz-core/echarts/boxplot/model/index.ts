@@ -315,6 +315,7 @@ const createBoxPlotYAxisModel = (
   yAxisScaleTransforms: ReturnType<typeof getAxisTransforms>,
   isCompactFormatting: boolean | undefined,
   hasResponsiveTicks: boolean,
+  isSplitRightAxis = false,
 ): YAxisModel | null => {
   if (dataKeys.length === 0) {
     return null;
@@ -328,6 +329,7 @@ const createBoxPlotYAxisModel = (
     columnByDataKey,
     {
       hasResponsiveTicks,
+      isSplitRightAxis,
       formattingOptions:
         isCompactFormatting === undefined
           ? undefined
@@ -402,6 +404,7 @@ const getBoxPlotYAxesModels = (
       yAxisScaleTransforms,
       isCompactFormatting,
       hasResponsiveTicks,
+      leftAxisSeriesKeys.size > 0,
     ),
     leftAxisSeriesKeys,
     rightAxisSeriesKeys,

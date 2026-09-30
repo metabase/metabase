@@ -17,9 +17,7 @@ import { SetupSsoPage } from "./SetupSsoPage";
 
 const defaultChecklist: SetupGuideChecklist = {
   "add-data": false,
-  "configure-ai": false,
   "configure-row-column-security": false,
-  "create-custom-theme": false,
   "create-dashboard": false,
   "create-tenants": false,
   "create-test-embed": false,
@@ -42,7 +40,7 @@ const setup = ({
   setupPropertiesEndpoints(settings);
   setupUpdateSettingsEndpoint();
 
-  fetchMock.get("path:/api/embedding-hub/checklist", {
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
     checklist: { ...defaultChecklist, ...checklist },
     "data-isolation-strategy": null,
   });
@@ -51,13 +49,16 @@ const setup = ({
   });
 
   return renderWithProviders(
-    <Route path="/embedding/get-started/sso" element={<SetupSsoPage />} />,
+    <Route
+      path="/admin/embedding/setup-guide/sso"
+      element={<SetupSsoPage />}
+    />,
     {
       storeInitialState: createMockState({
         settings: createMockSettingsState(settings),
       }),
       withRouter: true,
-      initialRoute: "/embedding/get-started/sso",
+      initialRoute: "/admin/embedding/setup-guide/sso",
     },
   );
 };

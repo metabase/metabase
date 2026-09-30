@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -31,6 +32,7 @@
      (when-let [unit (lib/raw-temporal-bucket col)]
        {:unit unit}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *type-info*
   "This is the type info for the LHS in something like
 
@@ -231,13 +233,15 @@
 
 (def ^:private raw-value? (complement lib/clause?))
 
-;; Some queries carry temporal literals in their portable / wire form — e.g. Metabot's representations
-;; repair wraps `between` bounds as `[:absolute-datetime {} "2024-01-01" :day]`, and on CLJS a string
-;; is the only representation. The comparison arms below parse temporal strings that arrive as *raw*
-;; values, but would otherwise skip ones already wrapped in `:absolute-datetime`, leaving a bare string
-;; that later middleware (e.g. `optimize-temporal-filters`) chokes on. This predicate lets those arms
-;; detect such clauses; the unit travels with the string so a `:year`/`:month` literal keeps its bucket
-;; instead of collapsing to the field's default when re-parsed.
+;; Some queries carry temporal literals in their portable / wire form — e.g. a Metabot-built query
+;; whose repair layer leaves a bucketed literal as written wherever moving the bucket onto the column
+;; would change the predicate, such as `[:absolute-datetime {} "2025-01-01" :month]` inside a
+;; `count-where`; and on CLJS a string is the only representation. The comparison arms below parse
+;; temporal strings that arrive as *raw* values, but would otherwise skip ones already wrapped in
+;; `:absolute-datetime`, leaving a bare string that later middleware (e.g. `optimize-temporal-filters`)
+;; chokes on. This predicate lets those arms detect such clauses; the unit travels with the string so
+;; a `:year`/`:month` literal keeps its bucket instead of collapsing to the field's default when
+;; re-parsed.
 (defn- string-valued-absolute-datetime
   "If `x` is an `:absolute-datetime` clause whose literal is still an (unparsed) string, return a
   `[string unit]` pair of that inner string and the clause's temporal unit; otherwise `nil`."
@@ -386,7 +390,7 @@
                             :semantic_type nil,
                             :database_type \"VARCHAR\",
                             :name \"description\"}]]]"
-  [mbql :- [:cat :keyword [:* :any]]]
+  [mbql :- ::lib.schema.mbql-clause/clause]
   (-> mbql
       lib/->mbql5
       (as-> $mbql (binding [*type-info* (fn [_query _path clause]

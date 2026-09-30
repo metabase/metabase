@@ -46,7 +46,6 @@ export const TestConnectionButton = ({ values }: TestConnectionButtonProps) => {
       disabled={isLoading || !values[URL_KEY]}
       loading={isLoading}
       onClick={handleTestConnection}
-      variant="outline"
     >
       {t`Test connection`}
     </Button>

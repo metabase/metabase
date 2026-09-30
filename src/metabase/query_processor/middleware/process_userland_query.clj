@@ -83,7 +83,12 @@
         ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
         ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
         ;; dynamic vars would still be bound).
-        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+        json-query      (:json_query execution-info)
+        execution-info' (-> execution-info
+                            (dissoc :json_query)
+                            analytics.core/include-sdk-info
+                            add-running-time
+                            (cond-> json-query (assoc :json_query json-query)))]
     (if qp.util/*execute-async?*
       (grouper/submit! @save-execution-metadata-queue execution-info')
       (save-execution-metadata!* [execution-info']))))
@@ -205,6 +210,7 @@
              :is_db_routed    (qp.middleware.enterprise/currently-db-routed?)}
       destination-db-id (assoc :database_id destination-db-id))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *execution-context-ref*
   "Bound to an atom by [[process-userland-query-middleware]] for each userland query.
   [[capture-execution-context-middleware]] writes the snapshotted impersonation/db-routing context here while the

@@ -3,6 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
+   [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 

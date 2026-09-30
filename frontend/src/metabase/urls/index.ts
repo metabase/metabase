@@ -10,7 +10,6 @@ export * from "./data-apps";
 export * from "./data-studio";
 export * from "./dependencies";
 export * from "./documents";
-export * from "./embedding-hub";
 export * from "./explorations";
 export * from "./indexed-entities";
 export * from "./metabase-protocol";

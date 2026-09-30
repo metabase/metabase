@@ -30,6 +30,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.schema]
    [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -387,6 +388,7 @@
     ;; self-heal.
     (check-and-schedule-tasks-for-db! (t2.realize/realize database))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *normalizing-details*
   "Track whether we're calling [[driver/normalize-db-details]] already to prevent infinite
   recursion. [[driver/normalize-db-details]] is actually done for side effects!"
@@ -405,6 +407,7 @@
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
+           (:id database)
            (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
@@ -631,9 +634,11 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-    (let [driver (driver.u/database->driver database)]
+    (let [driver (if-let [engine (:engine database)]
+                   (keyword engine)
+                   (driver.u/database->driver (:id database)))]
       (if (some? driver)
-        (driver.u/sensitive-fields (driver.u/database->driver database))
+        (driver.u/sensitive-fields driver)
         driver.u/default-sensitive-fields))
     driver.u/default-sensitive-fields))
 
@@ -690,7 +695,7 @@
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
-                 :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
                  :cache_ttl]
@@ -710,6 +715,7 @@
                  :is_stub          false
                  :uploads_enabled  false}}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *include-h2-in-extract?*
   "When false (the default), [[serdes/extract-query]] skips H2 databases because they are rejected at import time
   by [[assert-not-h2!]]. Round-trip tests that exercise H2 throughout — and rebind `assert-not-h2!` accordingly —

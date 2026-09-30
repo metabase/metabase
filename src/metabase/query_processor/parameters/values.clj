@@ -73,7 +73,10 @@
     ::params.types/no-value
     ::single-value
     [:sequential ::single-value]
-    :map]])
+    ::params.types/referenced-card-query
+    ::params.types/referenced-table-query
+    ::params.types/referenced-query-snippet
+    ::params.types/temporal-unit]])
 
 (mu/defn- tag-targets
   "Given a template tag, returns a set of `target` structures that can be used to target the tag.
@@ -366,7 +369,7 @@
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
   changed for security purposes (avoiding SQL injection), but since users have come to expect comma-separated numeric
   values to work we'll allow that (with validation) and return a vector to be converted to a list in the native query."
-  [value]
+  [value :- [:or number? :string [:sequential [:or number? :string]]]]
   (cond
     ;; already parsed
     (number? value)
@@ -384,7 +387,8 @@
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- ::lib.schema.common/base-type value]
+  [effective-type :- ::lib.schema.common/base-type
+   value          :- :string]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -419,7 +423,8 @@
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
   additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
-  [param-type :- ::lib.schema.template-tag/type value]
+  [param-type :- ::lib.schema.template-tag/type
+   value      :- ::parsed-param-value]
   (cond
     (= value lib/parsed-param-no-value-placeholder)
     value

@@ -13,9 +13,22 @@
    [metabase.search.in-place.legacy :as legacy]
    [metabase.search.ingestion.query :as ingestion.query]
    [metabase.search.schema :as search.schema]
+   [metabase.search.spec :as search.spec]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(def ^:private SearchIndexRow
+  "A row of the search index table: `search.spec/attr-columns` (with `:id`/`:created_at`/`:updated_at` renamed the
+  way `metabase.search.appdb.index/document->entry` renames them), the base columns, and the extra columns the
+  active engine specialization adds, each value a Honey SQL 2 expression."
+  (into [:map {:closed true}]
+        (for [column (into #{:model :display_data :legacy_input :model_id :model_created_at :model_updated_at
+                             :updated_at :search_vector :with_native_query_vector :search_terms
+                             :native_search_terms}
+                           (remove #{:id :created_at :updated_at} search.spec/attr-columns))]
+          [column {:optional true} ::h2x/expr])))
 
 (mu/defn spec-index-reducible-rows
   "A reducible of the indexable rows of `search-model` (see `metabase.search.ingestion.query/spec-index-query`)
@@ -58,7 +71,7 @@
   [index-table            :- [:or :keyword :string]
    search-ctx             :- search.config/SearchContext
    search-string          :- [:maybe :string]
-   view-count-percentiles :- [:map-of :keyword [:maybe number?]]]
+   view-count-percentiles :- [:map-of (into [:enum] search.spec/search-models) [:maybe [:or number? :string]]]]
   (t2/query (search.scoring/with-scores search-ctx
               (search.scoring/scorers search-ctx view-count-percentiles)
               (appdb.query/base-filtered-query index-table search-ctx search-string [:legacy_input]))))
@@ -108,8 +121,11 @@
   (t2/query (sql.helpers/drop-table :if-exists table-name)))
 
 (mu/defn drop-search-index-table!
-  "Drop the search index table named `table-name`."
+  "Drop the search index table named `table-name`, throwing if it is already gone."
   [table-name :- [:or :keyword :string]]
+  ;; `IF EXISTS` cannot reliably report whether it dropped a table.
+  ;; PostgreSQL emits only a JDBC warning, which Toucan does not expose, and H2 emits nothing.
+  ;; Let an absent table throw so callers can detect races.
   (t2/query (sql.helpers/drop-table table-name)))
 
 (mu/defn create-search-index-table!
@@ -132,7 +148,7 @@
   "Upsert `entries` into the search index `table`, on conflict of `(model, model_id)` overwriting every other column
   with the new value."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (when (seq entries)
     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
           excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
@@ -185,7 +201,7 @@
 (mu/defn insert-rows!
   "Insert `entries` into the search index `table`."
   [table   :- [:or :keyword :string]
-   entries :- [:sequential :map]]
+   entries :- [:sequential SearchIndexRow]]
   (t2/insert! table entries))
 
 (mu/defn index-entry-count
@@ -253,19 +269,24 @@
   [version :- :string]
   (t2/delete! :model/SearchIndexMetadata :version version))
 
-(mu/defn delete-index-metadata-by-name-on-conn!
-  "Delete the SearchIndexMetadata rows named `index-name`, on `conn`."
+(mu/defn delete-index-metadata-by-name!
+  "Delete the SearchIndexMetadata rows named `index-name` using `conn`."
   [conn       :- (ms/InstanceOfClass java.sql.Connection)
    index-name :- :string]
   (t2/delete! :conn conn :model/SearchIndexMetadata :index_name index-name))
 
-(mu/defn delete-index-metadata!
-  "Delete the SearchIndexMetadata row of `engine`, `version`, `lang-code`, and `index-name`."
+(mu/defn delete-non-active-index-metadata!
+  "Delete the pending or retired SearchIndexMetadata rows of `engine`, `version`, `lang-code`, and `index-name`."
   [engine     :- :keyword
    version    :- :string
    lang-code  :- :string
    index-name :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :index_name index-name))
+  (t2/delete! :model/SearchIndexMetadata
+              :engine engine
+              :version version
+              :lang_code lang-code
+              :index_name index-name
+              :status [:not= :active]))
 
 (mu/defn index-metadata
   "The name, status, and creation time of the active and pending SearchIndexMetadata rows of `engine`, `version`, and
@@ -295,6 +316,19 @@
    version   :- :string
    lang-code :- :string]
   (t2/exists? :model/SearchIndexMetadata :engine engine :version version :lang_code lang-code :status :pending))
+
+(mu/defn lock-pending-index-metadata!
+  "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
+  Must be called inside the transaction that will promote the row."
+  [engine    :- :keyword
+   version   :- :string
+   lang-code :- :string]
+  (t2/select-one [:model/SearchIndexMetadata :id]
+                 :engine engine
+                 :version version
+                 :lang_code lang-code
+                 :status :pending
+                 {:for :update}))
 
 (mu/defn delete-retired-index-metadata!
   "Delete the retired SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."

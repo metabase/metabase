@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useSetting } from "metabase/settings";

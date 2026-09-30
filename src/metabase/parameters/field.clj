@@ -14,7 +14,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp])
+   [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema])
   (:import
    (java.text NumberFormat)))
 
@@ -53,12 +54,15 @@
       ;; -> ((14 \"Marilyne Mohr\")
              (36 \"Margot Farrell\")
              (48 \"Maryam Douglas\"))"
-  ([field search-field]
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field]
    (search-values field search-field nil nil))
-  ([field search-field value]
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field
+    value        :- [:maybe ms/NonBlankString]]
    (search-values field search-field value nil))
-  ([field
-    search-field
+  ([field        :- ::warehouse-schema.schema/field
+    search-field :- ::warehouse-schema.schema/field
     value        :- [:maybe ms/NonBlankString]
     maybe-limit  :- [:maybe ms/PositiveInt]]
    (try
@@ -73,7 +77,11 @@
 (mu/defn field->values :- ms/FieldValuesResult
   "Fetch FieldValues, if they exist, for a `field` and return them in an appropriate format for public/embedded
   use-cases."
-  [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}]
+  [{has-field-values-type :has_field_values, field-id :id, has_more_values :has_more_values, :as field}
+   :- [:merge
+       ::warehouse-schema.schema/field
+       [:map {:closed true}
+        [:has_more_values {:optional true} [:maybe :boolean]]]]]
   ;; TODO: explain why using remapped fields is restricted to `has_field_values=list`
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]

@@ -90,7 +90,7 @@ export interface DatasetColumn {
   fk_target_field_id?: FieldId | null;
   should_index?: boolean;
 
-  remapping?: Map<RowValue, string | number>;
+  remapping?: Map<RowValue, RowValue>;
 }
 
 export interface ResultsMetadata {

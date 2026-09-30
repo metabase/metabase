@@ -109,9 +109,9 @@
       (testing "Is the validation of results working?"
         (is (#'tf/validate-results {"VenuesEnhanced" {:entity     (mi/instance
                                                                    :model/Card
-                                                                   {:result_metadata [{:base_type :type/Number, :name "AvgPrice"}
-                                                                                      {:base_type :type/Number, :name "MaxPrice"}
-                                                                                      {:base_type :type/Number, :name "MinPrice"}]})
+                                                                   {:result_metadata [{:base_type :type/Number, :name "AvgPrice", :display_name "AvgPrice"}
+                                                                                      {:base_type :type/Number, :name "MaxPrice", :display_name "MaxPrice"}
+                                                                                      {:base_type :type/Number, :name "MinPrice", :display_name "MinPrice"}]})
                                                       :dimensions {"D1" [:field 1 nil]}}}
                                    (first @tf.specs/*transform-specs*))))
       (testing "... and do we throw if we didn't get what we expected?"

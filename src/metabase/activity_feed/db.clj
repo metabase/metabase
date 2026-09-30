@@ -118,7 +118,7 @@
 
 (mu/defn table
   "The Table with `id`, or nil."
-  [id :- ::lib.schema.id/table]
+  [id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection

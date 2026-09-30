@@ -402,11 +402,13 @@
 
 (deftest validate-metabot-provider-google-model-format-test
   (with-connections [configured-anthropic configured-google]
-    (testing "accepts a publisher-qualified model"
+    (testing "accepts a publisher-qualified model, or a Model Garden endpoint"
       (mt/with-temporary-setting-values [llm-metabot-provider "google/google/gemini-3.5-flash"]
         (is (= "google/google/gemini-3.5-flash" (metabot.settings/llm-metabot-provider))))
       (mt/with-temporary-setting-values [llm-metabot-provider "google/anthropic/claude-haiku-4-5@20251001"]
-        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider)))))))
+        (is (= "google/anthropic/claude-haiku-4-5@20251001" (metabot.settings/llm-metabot-provider))))
+      (mt/with-temporary-setting-values [llm-metabot-provider "google/endpoints/1234567890123456789"]
+        (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-metabot-provider)))))))
 
 (deftest validate-metabot-provider-google-rejects-an-unqualified-model-test
   (with-connections [configured-anthropic configured-google]
@@ -470,6 +472,12 @@
                                                       :base-url "https://my-resource.services.ai.azure.com/openai"})]
         (with-selected-model "azure/openai/my-gpt-deployment"
           (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-mini-model))))))
+    (testing "so does a Google connection that serves a Model Garden endpoint"
+      (with-connections [(connection "google" "google" {:oauth-access-token "ya29.test"
+                                                        :project-id         "my-project"
+                                                        :endpoint-id        "1234567890123456789"})]
+        (with-selected-model "google/endpoints/1234567890123456789"
+          (is (= "google/endpoints/1234567890123456789" (metabot.settings/llm-mini-model))))))
     (testing "so does a model reference naming a connection that does not exist"
       (with-connections []
         (with-selected-model "gone/some-model"
