@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import {
   getGroupNameLocalized,
@@ -69,13 +70,28 @@ export function getToolsAccessState(
   return allowedCount === tools.length ? "all" : "some";
 }
 
-function toolAccessEntries(
+// A tool set to its author's default gets no entry, so it keeps following the default if that changes.
+function withToolsAllowed(
+  toolAccess: Record<string, McpToolAccess>,
   tools: McpTool[],
-  access: McpToolAccess,
+  allowed: boolean,
 ): Record<string, McpToolAccess> {
-  return Object.fromEntries(
-    tools.map((tool): [string, McpToolAccess] => [tool.name, access]),
+  const [atDefault, overridden] = _.partition(
+    tools,
+    (tool) => (tool.default_access === "allowed") === allowed,
   );
+  return {
+    ..._.omit(
+      toolAccess,
+      atDefault.map((tool) => tool.name),
+    ),
+    ...Object.fromEntries(
+      overridden.map((tool): [string, McpToolAccess] => [
+        tool.name,
+        allowed ? "yes" : "no",
+      ]),
+    ),
+  };
 }
 
 function enableGroupWithOnlyTools(
@@ -86,11 +102,11 @@ function enableGroupWithOnlyTools(
   return {
     ...permission,
     mcp_enabled: true,
-    tool_access: {
-      ...permission.tool_access,
-      ...toolAccessEntries(allTools, "no"),
-      ...toolAccessEntries(tools, "yes"),
-    },
+    tool_access: withToolsAllowed(
+      withToolsAllowed(permission.tool_access, allTools, false),
+      tools,
+      true,
+    ),
   };
 }
 
@@ -105,10 +121,7 @@ export function setToolsAllowed(
   }
   const next: McpGroupPermission = {
     ...permission,
-    tool_access: {
-      ...permission.tool_access,
-      ...toolAccessEntries(tools, allowed ? "yes" : "no"),
-    },
+    tool_access: withToolsAllowed(permission.tool_access, tools, allowed),
   };
   if (allowed) {
     return next;
@@ -116,7 +129,7 @@ export function setToolsAllowed(
   const anyAllowed = allTools.some(
     (other) => resolveToolAccess(next, other) === "yes",
   );
-  return anyAllowed ? next : { ...next, mcp_enabled: false };
+  return anyAllowed ? next : getDisabledPermission(permission.group_id);
 }
 
 function getScopeRank(scope: string): number {

@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
    [metabase.util :as u]
@@ -29,6 +30,11 @@
                                [:description    :string]
                                [:default_access [:enum "allowed" "denied"]]]]]
    [:permissions [:sequential group-permission-schema]]])
+
+(def ^:private policy-lock
+  "Serializes every write to the MCP tool policy across the cluster, so a PUT validated against one mode can't land
+  after a switch to the other, and two PUTs can't both insert a group's first row."
+  ::policy)
 
 (def ^:private no-access-permission
   "What a group with no row gets."
@@ -93,21 +99,23 @@
    {:keys [permissions]} :- [:map {:closed true}
                              [:permissions [:sequential group-permission-schema]]]]
   (api/check-superuser)
-  (check-known-tools! permissions)
-  (check-visible-groups! permissions)
-  (t2/with-transaction [_conn]
-    (doseq [{:keys [group_id] :as permission} permissions]
-      (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access]))))
+  (cluster-lock/with-cluster-lock policy-lock
+    (check-known-tools! permissions)
+    (check-visible-groups! permissions)
+    (t2/with-transaction [_conn]
+      (doseq [{:keys [group_id] :as permission} permissions]
+        (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access])))))
   (permissions-response))
 
 (defn- switch-mode!
   "Switch permission modes in one transaction: delete the rows of the groups the destination mode hides and seed the
   groups it enables on entry that have no row yet."
   [advanced?]
-  (t2/with-transaction [_conn]
-    (mcp.db/delete-hidden-group-permissions! advanced?)
-    (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
-      (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission))))
+  (cluster-lock/with-cluster-lock policy-lock
+    (t2/with-transaction [_conn]
+      (mcp.db/delete-hidden-group-permissions! advanced?)
+      (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
+        (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission)))))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to group-level MCP tool access. Removes the rows of All Users and All tenant users, so access comes only

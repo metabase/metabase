@@ -3931,6 +3931,7 @@
    :api     #{metabase-enterprise.mcp.api.permissions metabase-enterprise.mcp.init}
    :uses    #{analytics
               api
+              app-db
               lib.schema
               mcp
               metabot

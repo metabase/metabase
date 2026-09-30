@@ -99,18 +99,21 @@ describe("isToolAllowed", () => {
 });
 
 describe("setToolsAllowed", () => {
-  it("allowing one tool writes yes for it", () => {
-    expect(setToolsAllowed(enabled, allTools, [search], true)).toEqual({
-      group_id: 2,
-      mcp_enabled: true,
-      tool_access: { search: "yes" },
-    });
+  it("unchecking and re-checking a tool allowed by default restores the saved permission", () => {
+    const unchecked = setToolsAllowed(enabled, allTools, [search], false);
+    expect(unchecked.tool_access).toEqual({ search: "no" });
+    expect(setToolsAllowed(unchecked, allTools, [search], true)).toEqual(
+      enabled,
+    );
   });
 
-  it("allowing several tools writes yes for each and keeps the other entries", () => {
+  it("allowing several tools allowed by default drops their entries and keeps the other entries", () => {
     expect(
       setToolsAllowed(
-        { ...enabled, tool_access: { run_sql: "yes", search: "no" } },
+        {
+          ...enabled,
+          tool_access: { run_sql: "yes", search: "no", question_write: "yes" },
+        },
         allTools,
         writeTools,
         true,
@@ -118,12 +121,7 @@ describe("setToolsAllowed", () => {
     ).toEqual({
       group_id: 2,
       mcp_enabled: true,
-      tool_access: {
-        run_sql: "yes",
-        search: "no",
-        question_write: "yes",
-        transform_write: "yes",
-      },
+      tool_access: { run_sql: "yes", search: "no" },
     });
   });
 
@@ -150,10 +148,10 @@ describe("setToolsAllowed", () => {
     });
   });
 
-  it("allowing a bucket while MCP is off switches it on, allows the bucket, and pins every other tool to no", () => {
+  it("allowing a bucket while MCP is off switches it on, allows the bucket, and turns every other tool off", () => {
     expect(
       setToolsAllowed(
-        { ...disabled, tool_access: { search: "yes" } },
+        { ...disabled, tool_access: { search: "yes", run_sql: "yes" } },
         allTools,
         writeTools,
         true,
@@ -161,17 +159,11 @@ describe("setToolsAllowed", () => {
     ).toEqual({
       group_id: 2,
       mcp_enabled: true,
-      tool_access: {
-        search: "no",
-        run_query: "no",
-        run_sql: "no",
-        question_write: "yes",
-        transform_write: "yes",
-      },
+      tool_access: { search: "no", run_query: "no" },
     });
   });
 
-  it("denying the last tool that still resolves to yes switches MCP off and keeps every entry", () => {
+  it("denying the last tool that still resolves to yes switches MCP off and clears every entry", () => {
     expect(
       setToolsAllowed(
         {
@@ -185,23 +177,14 @@ describe("setToolsAllowed", () => {
     ).toEqual({
       group_id: 2,
       mcp_enabled: false,
-      tool_access: {
-        question_write: "no",
-        search: "no",
-        run_query: "no",
-        transform_write: "no",
-      },
+      tool_access: {},
     });
   });
 
-  it("denying every tool switches MCP off with an entry per tool kept", () => {
-    const manyTools = Array.from({ length: 24 }, (_, index) =>
-      createMockMcpTool({ name: `tool_${index}` }),
+  it("denying every tool switches MCP off with no entries", () => {
+    expect(setToolsAllowed(enabled, allTools, allTools, false)).toEqual(
+      disabled,
     );
-    const next = setToolsAllowed(enabled, manyTools, manyTools, false);
-    expect(next.mcp_enabled).toBe(false);
-    expect(Object.keys(next.tool_access)).toHaveLength(24);
-    expect(Object.values(next.tool_access)).toEqual(Array(24).fill("no"));
   });
 
   it("a denied-default tool with no entry reads unchecked and allowing it writes yes", () => {
