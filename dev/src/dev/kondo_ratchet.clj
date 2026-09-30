@@ -608,7 +608,10 @@
 
   Tracked only in [[*ratchets-file*]], not split per test/prod like :ignore-counts is: `config.edn`'s
   `test-namespaces`/`source-namespaces` groups separate cleanly, but others (e.g. `driver-namespaces`)
-  cover both, so there's no reliable per-suppression attribution without restructuring `config.edn`."
+  cover both, so there's no reliable per-suppression attribution without restructuring `config.edn`.
+  Doing that later would mean splitting those mixed groups apart, changing this function to track which
+  group an entry came from instead of summing by linter name, and top-level `:linters`/`:config-in-comment`
+  entries would still have no test/prod home -- real effort for a softer guarantee than :ignore-counts."
   ([]
    (config-suppressions (edn/read-string (slurp kondo-config-file))))
   ([config]
