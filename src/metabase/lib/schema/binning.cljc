@@ -74,8 +74,9 @@
     [:metadata-fn {:optional true} ifn?]]])
 
 (mr/def ::binning-option
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :option/binning]]
    [:display-name :string]
    [:mbql [:maybe ::binning]]
-   [:default {:optional true} :boolean]])
+   [:default {:optional true} :boolean]
+   [:selected {:optional true} :boolean]])

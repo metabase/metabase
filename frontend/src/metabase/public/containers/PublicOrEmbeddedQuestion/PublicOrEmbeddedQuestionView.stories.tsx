@@ -6,7 +6,6 @@ import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
-import { createMockMetadata } from "__support__/metadata";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
@@ -95,7 +94,6 @@ const defaultArgs: Partial<
   ComponentProps<typeof PublicOrEmbeddedQuestionView>
 > = {
   card: createMockCard({ id: CARD_BAR_ID, name: "Bar", display: "bar" }),
-  metadata: createMockMetadata({}),
   titled: true,
   bordered: true,
   getParameters: () => [],

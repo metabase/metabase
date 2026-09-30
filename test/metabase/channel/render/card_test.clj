@@ -560,12 +560,12 @@
 
 (def ^:private goal-referenced-entities
   {"card" {"42" {:status "completed"
-                 :data   {:cols [{:name "target"}]
+                 :data   {:cols [{:name "target" :display_name "Target" :base_type :type/Integer}]
                           :rows [[80]]}}}})
 
 (deftest ^:parallel render-resolves-dynamic-goal-line-test
   (testing "a graph.goal_value entity ref is substituted before the settings reach the JS renderer"
-    (doseq [display [:line :bar :row]]
+    (doseq [display [:area :bar :boxplot :combo :line :row :scatter :waterfall]]
       (testing display
         (let [captured (atom nil)
               card     {:id                     1
@@ -575,8 +575,11 @@
                                                  :graph.metrics    ["y"]
                                                  :graph.show_goal  true
                                                  :graph.goal_value goal-ref}}
-              data     {:cols                [{:name "x" :base_type :type/Text}
-                                              {:name "y" :base_type :type/Integer :source :aggregation}]
+              data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                              {:name         "y"
+                                               :display_name "Y"
+                                               :base_type    :type/Integer
+                                               :source       :aggregation}]
                         :rows                [["a" 1] ["b" 2]]
                         :referenced_entities goal-referenced-entities}]
           (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
@@ -599,8 +602,11 @@
                                                                             :graph.show_goal  true
                                                                             :graph.goal_value goal-ref}}]
       (let [captured (atom nil)
-            data     {:cols                [{:name "x" :base_type :type/Text}
-                                            {:name "y" :base_type :type/Integer :source :aggregation}]
+            data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                            {:name         "y"
+                                             :display_name "Y"
+                                             :base_type    :type/Integer
+                                             :source       :aggregation}]
                       :rows                [["a" 1] ["b" 2]]
                       :referenced_entities goal-referenced-entities}]
         (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
@@ -633,8 +639,11 @@
                                                                                :graph.show_goal  show-goal
                                                                                :graph.goal_value goal-ref}}}}]
           (let [captured (atom nil)
-                data     {:cols                [{:name "x" :base_type :type/Text}
-                                                {:name "y" :base_type :type/Integer :source :aggregation}]
+                data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                                {:name         "y"
+                                                 :display_name "Y"
+                                                 :base_type    :type/Integer
+                                                 :source       :aggregation}]
                           :rows                [["a" 1] ["b" 2]]
                           :referenced_entities goal-referenced-entities}]
             (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
@@ -667,12 +676,12 @@
                     :name                   "gauge with dynamic segment"
                     :display                :gauge
                     :visualization_settings {:gauge.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
-          data     {:cols             [{:name "count" :base_type :type/Integer}]
+          data     {:cols             [{:name "count" :display_name "Count" :base_type :type/Integer}]
                     :rows             [[42]]
                     :referenced_entities goal-referenced-entities}]
-      (with-redefs [js.svg/gauge (fn [card _data]
-                                   (reset! captured (:visualization_settings card))
-                                   (byte-array 0))]
+      (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
+                                                 (reset! captured (:visualization_settings card))
+                                                 (byte-array 0))]
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
 
@@ -683,7 +692,7 @@
                      :display                :scalar
                      :visualization_settings {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
           data      (fn [value]
-                      {:cols                [{:name "count" :base_type :type/Integer}]
+                      {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
                        :rows                [[value]]
                        :viz-settings        {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}
                        :referenced_entities goal-referenced-entities})
@@ -701,8 +710,8 @@
                     :name                   "gauge with self-column bound"
                     :display                :gauge
                     :visualization_settings {:gauge.segments [{:min 0 :max "target" :color "#84BB4C"}]}}
-          data     {:cols [{:name "count" :base_type :type/Integer}
-                           {:name "target" :base_type :type/Integer}]
+          data     {:cols [{:name "count" :display_name "Count" :base_type :type/Integer}
+                           {:name "target" :display_name "Target" :base_type :type/Integer}]
                     :rows [[42 80]]}]
       (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
                                                  (reset! captured (:visualization_settings card))
@@ -724,8 +733,11 @@
                                        :graph.metrics    ["y"]
                                        :graph.show_goal  show-goal
                                        :graph.goal_value goal-ref}}
-        data {:cols                [{:name "x" :base_type :type/Text}
-                                    {:name "y" :base_type :type/Integer :source :aggregation}]
+        data {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                    {:name         "y"
+                                     :display_name "Y"
+                                     :base_type    :type/Integer
+                                     :source       :aggregation}]
               :rows                [["a" 1]]
               :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}]
     ;; render-pulse-card-for-display returns the content hiccup directly

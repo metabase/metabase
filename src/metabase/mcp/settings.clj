@@ -56,16 +56,6 @@
   :export?    true
   :doc        false)
 
-(defsetting mcp-v2-disabled-tools
-  (deferred-tru "v2 MCP tool names to disable, stored as CSV. Disabled tools are hidden from tools/list and rejected by tools/call.")
-  :type       :csv
-  :default    []
-  :visibility :admin
-  :export?    false
-  :encryption :no
-  :audit      :getter
-  :doc        false)
-
 (def ^:private ^:const default-query-handle-ttl-hours
   "Default for [[mcp-query-handle-ttl-hours]]. One source, referenced by both the setting's `:default`
    and its getter's fallback, so the two can't drift."

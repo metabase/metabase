@@ -6,6 +6,7 @@ import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import {
   getHasTokenFeature,
+  getInitStatus,
   getIsGuestEmbedRaw,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
@@ -81,13 +82,25 @@ export function useSdkUsageProblem({
   // are reflected here.
   const usageProblem = useSdkSelector(getUsageProblem);
 
+  const initStatus = useSdkSelector(getInitStatus);
+
+  // Until init finishes, the problem can be wrongly inferred from the assumed
+  // settings values above, before the real ones load.
+  const isInitFinished =
+    initStatus.status === "success" || initStatus.status === "error";
+
   useEffect(() => {
     // Log the problem to the console once.
-    if (!hasLoggedRef.current && allowConsoleLog) {
+    if (
+      !hasLoggedRef.current &&
+      allowConsoleLog &&
+      isInitFinished &&
+      usageProblem
+    ) {
       printUsageProblemToConsole(usageProblem);
       hasLoggedRef.current = true;
     }
-  }, [usageProblem, allowConsoleLog, dispatch]);
+  }, [usageProblem, allowConsoleLog, isInitFinished, dispatch]);
 
   return usageProblem;
 }

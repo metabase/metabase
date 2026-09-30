@@ -8,7 +8,6 @@ base_type: type/Float
 effective_type: type/Float
 dimensions: []
 position: 2
-custom_position: 0
 database_position: 2
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}

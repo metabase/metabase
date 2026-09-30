@@ -42,6 +42,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -387,7 +389,7 @@
     (let [field  (cond-> field
                    ;; a caller may hand us a Field hydrated with its Table, which is not part of column metadata
                    (t2/model field) (-> (dissoc :table) (lib-be/instance->metadata :metadata/column)))
-          result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+          result (metadata-from-qp/table-query
                   (:table-id field)
                   (fn [query]
                     (-> query

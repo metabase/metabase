@@ -476,7 +476,7 @@
   [{:keys [provider endpoint api-key model-name vector-dimensions texts record-tokens? extra-body snowplow?
            network-policy-floor instance-token?]
     :as opts}
-   :- [:map
+   :- [:map {:closed true}
        [:provider       :string]
        [:endpoint       :string]
        [:api-key        {:optional true} [:maybe :string]]
@@ -485,9 +485,11 @@
        [:texts          [:sequential :string]]
        [:record-tokens? :boolean]
        [:snowplow?      {:optional true} [:maybe :boolean]]
-       [:extra-body     {:optional true} [:maybe :map]]
+       [:extra-body     {:optional true} [:maybe [:map {:closed true}
+                                                  [:dimensions {:optional true} pos-int?]]]]
        [:network-policy-floor {:optional true} [:maybe [:enum :external-only :allow-private :allow-all]]]
-       [:instance-token?      {:optional true} [:maybe :boolean]]]]
+       [:instance-token?      {:optional true} [:maybe :boolean]]
+       [:type                 {:optional true} [:maybe [:enum :query :index]]]]]
   ;; Outside the try: a malformed endpoint is neither a service failure nor something to log per batch.
   (let [policy-opts (llm.settings/llm-request-opts network-policy-floor endpoint)]
     (try

@@ -131,6 +131,7 @@ export const ChartSettingSegmentsEditor = ({
       )}
 
       <Button
+        size="lg"
         leftSection={<Icon name="add" />}
         fullWidth
         variant="subtle"

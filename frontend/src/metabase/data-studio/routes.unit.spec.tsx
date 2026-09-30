@@ -1,8 +1,12 @@
+import fetchMock from "fetch-mock";
+
 import { lazyLoaders } from "__support__/lazy-routes";
 import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
+import { delay } from "__support__/utils";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
@@ -25,27 +29,52 @@ describe("data-studio routes", () => {
 function setupIndexRedirect({
   hasSeenGuide,
   isAdmin = false,
+  transformsLoading,
 }: {
-  hasSeenGuide: boolean;
+  hasSeenGuide: boolean | Promise<boolean>;
   isAdmin?: boolean;
+  transformsLoading?: Promise<void>;
 }) {
-  setupUserKeyValueEndpoints({
-    namespace: "data_studio",
-    key: "hasSeenGuide",
-    value: hasSeenGuide,
-  });
+  if (typeof hasSeenGuide === "boolean") {
+    setupUserKeyValueEndpoints({
+      namespace: "data_studio",
+      key: "hasSeenGuide",
+      value: hasSeenGuide,
+    });
+  } else {
+    fetchMock.get(
+      "path:/api/user-key-value/namespace/data_studio/key/hasSeenGuide",
+      async () =>
+        new Response(JSON.stringify(await hasSeenGuide), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+  }
 
-  renderWithProviders(
+  return renderWithProviders(
     <Route path="/">
       <Route path="data-studio">
         <Route index element={<DataStudioIndexRedirect />} />
         <Route path="guide" element={<div data-testid="guide-page" />} />
         <Route path="data" element={<div data-testid="data-index" />} />
         <Route path="library" element={<div data-testid="library-index" />} />
-        <Route
-          path="transforms"
-          element={<div data-testid="transforms-index" />}
-        />
+        {transformsLoading ? (
+          <Route
+            path="transforms"
+            lazy={async () => {
+              await transformsLoading;
+              return {
+                Component: () => <div data-testid="transforms-index" />,
+              };
+            }}
+          />
+        ) : (
+          <Route
+            path="transforms"
+            element={<div data-testid="transforms-index" />}
+          />
+        )}
       </Route>
     </Route>,
     {
@@ -77,6 +106,27 @@ describe("Data Studio index redirect", () => {
     setupIndexRedirect({ hasSeenGuide: true });
 
     expect(await screen.findByTestId("library-index")).toBeInTheDocument();
+    expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+
+  it("lets a navigation the user already started finish", async () => {
+    const hasSeenGuide = defer<boolean>();
+    const transformsModule = defer<void>();
+    const { router } = setupIndexRedirect({
+      hasSeenGuide: hasSeenGuide.promise,
+      isAdmin: true,
+      transformsLoading: transformsModule.promise,
+    });
+
+    act(() => router?.navigate("/data-studio/transforms"));
+
+    // The redirect resolves while the lazy route is still loading.
+    hasSeenGuide.resolve(false);
+    await delay(0);
+
+    transformsModule.resolve();
+
+    expect(await screen.findByTestId("transforms-index")).toBeInTheDocument();
     expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
   });
 });

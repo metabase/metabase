@@ -69,27 +69,30 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
   },
 );
 
-describe("static normalized stacked bar chart with a dynamic goal", () => {
-  it("reads the answered goal as a percentage of the stack", () => {
-    const svg = toSvg(
-      createSeries(
-        "bar",
-        createMockReferencedEntitiesResults({ column: "goal", value: 50 }),
-        {
-          "graph.metrics": ["count", "sum"],
-          "stackable.stack_type": "normalized",
-        },
-      ),
-    );
+describe.each(["bar", "area"] as const)(
+  "static normalized stacked %s chart with a dynamic goal",
+  (display) => {
+    it("reads the answered goal as a percentage of the stack", () => {
+      const svg = toSvg(
+        createSeries(
+          display,
+          createMockReferencedEntitiesResults({ column: "goal", value: 50 }),
+          {
+            "graph.metrics": ["count", "sum"],
+            "stackable.stack_type": "normalized",
+          },
+        ),
+      );
 
-    expect(svg).toContain(GOAL_LABEL);
-    // the axis stays within 0-100%, instead of stretching to a 50x stack
-    expect(svg).not.toContain("5000%");
-    // and the line sits halfway between the 0% and 100% ticks
-    const midpoint = (getTickY(svg, "0%") + getTickY(svg, "100%")) / 2;
-    expect(getGoalLineY(svg)).toBeCloseTo(midpoint, 0);
-  });
-});
+      expect(svg).toContain(GOAL_LABEL);
+      // the axis stays within 0-100%, instead of stretching to a 50x stack
+      expect(svg).not.toContain("5000%");
+      // and the line sits halfway between the 0% and 100% ticks
+      const midpoint = (getTickY(svg, "0%") + getTickY(svg, "100%")) / 2;
+      expect(getGoalLineY(svg)).toBeCloseTo(midpoint, 0);
+    });
+  },
+);
 
 function getTickY(svg: string, label: string) {
   const match = svg.match(

@@ -22,6 +22,7 @@ To change your Metabase font:
 3. In the Admin console, go to **Settings** > **Appearance** > **Branding**
 4. Under **Font**, select from a list of included fonts:
 
+- [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono)
 - [Lato](https://fonts.google.com/specimen/Lato)
 - [Lora](https://fonts.google.com/specimen/Lora)
 - [Merriweather](https://fonts.google.com/specimen/Merriweather)

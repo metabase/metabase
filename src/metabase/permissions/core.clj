@@ -1,6 +1,5 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
    [metabase.permissions.data-access-token]
    [metabase.permissions.models.application-permissions-revision]
@@ -42,6 +41,8 @@
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
+  data-app-group-ids
+  data-app-view-data-permission-level
   disable-perms-cache
   download-perms-level
   full-database-permission-for-user

@@ -62,22 +62,12 @@
      (let [breakout-indexes (range num-breakouts)]
        (into [] (filter #(zero? (bit-and (bit-shift-left 1 %) (ensure-is-int pivot-group))) breakout-indexes))))))
 
-(defn- remove-item-by-index
-  "Remove an item with the given `index` from collection `v`."
-  [coll index-to-remove]
-  (reduce-kv (fn [acc i x]
-               (if (<= i index-to-remove)
-                 acc
-                 (conj acc x)))
-             (subvec coll 0 index-to-remove)
-             coll))
-
 (defn- process-grouped-rows
   "Processes rows for a specific pivot group value (k).
    Returns a tuple of [active-breakout-indexes, rows-with-pivot-column-removed]."
   [pivot-group rows pivot-group-index num-breakouts]
   (let [active-indexes (get-active-breakout-indexes pivot-group num-breakouts)
-        processed-rows (mapv #(remove-item-by-index % pivot-group-index) rows)]
+        processed-rows (mapv #(perf/remove-by-index % pivot-group-index) rows)]
     [active-indexes processed-rows]))
 
 (defn split-pivot-data
@@ -190,40 +180,38 @@
 (defn- select-indexes
   "Given a row, returns a subset of its values according to the provided indexes."
   [row indexes]
-  (mapv #(nth row %) indexes))
+  (perf/mapv #(nth row %) indexes))
 
 (defn- build-values-by-key
   "Creates a mapping from row and column indexes to the values, as well as
   metadata used for conditional formatting and drill-throughs."
   [rows cols row-indexes col-indexes val-indexes]
-  (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
-    (reduce
-     (fn [acc row]
-       (let [value-key  (perf/mapv ensure-consistent-type (select-indexes row col-and-row-indexes))
-             values     (select-indexes row val-indexes)
-             data       (into []
-                              (map-indexed
-                               (fn [index value]
-                                 {:value value
-                                  :colIdx index}))
-                              row)
-             dimensions (into []
-                              (keep-indexed (fn [index value]
-                                              (when (= (:source (nth cols index)) "breakout")
-                                                {:value value
-                                                 :colIdx index})))
-                              row)
-             col-names  (->> (select-indexes cols val-indexes)
-                             (map :name)
-                             (into []))]
-         (assoc acc
-                value-key
-                {:values values
-                 :valueColNames col-names
-                 :data data
-                 :dimensions dimensions})))
-     {}
-     rows)))
+  (let [col-and-row-indexes (into (vec col-indexes) row-indexes)
+        col-names (perf/mapv :name (select-indexes cols val-indexes))
+        breakout-col-indexes (vec (keep-indexed (fn [index col]
+                                                  (when (= (:source col) "breakout")
+                                                    index))
+                                                cols))]
+    (persistent!
+     (reduce
+      (fn [acc row]
+        (let [value-key  (perf/mapv #(ensure-consistent-type (nth row %)) col-and-row-indexes)
+              values     (select-indexes row val-indexes)
+              data       (perf/mapv-indexed (fn [^long index value]
+                                              {:value value
+                                               :colIdx index})
+                                            row)
+              dimensions (perf/mapv (fn [index]
+                                      {:value (nth row index)
+                                       :colIdx index})
+                                    breakout-col-indexes)]
+          (assoc! acc value-key
+                  {:values values
+                   :valueColNames col-names
+                   :data data
+                   :dimensions dimensions})))
+      (transient {})
+      rows))))
 
 (defn- sort-orders-from-settings
   [col-settings indexes]
@@ -550,22 +538,17 @@
   `sum-where`, `share`). Without them, clicking a pivot cell for `CountIf([X] = Y)` drills without the `X = Y` filter
   (#79023)."
   [values-by-key index-values value-formatters val-indexes color-getter]
-  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)
-        formatted-values (format-values values value-formatters)]
-    (if-not data
-      formatted-values
-      (map-indexed
-       (fn [index value]
-         (assoc value
-                :clicked {:data       data
-                          :dimensions dimensions
-                          :colIdx     (nth val-indexes index)
-                          :value      (nth values index)}
-                :backgroundColor (color-getter
-                                  (nth values index)
-                                  index
-                                  (nth valueColNames index))))
-       formatted-values))))
+  (let [{:keys [values valueColNames data dimensions]} (get values-by-key index-values)]
+    (if data
+      (map-indexed (fn [index value]
+                     {:value ((nth value-formatters index) value)
+                      :clicked {:data       data
+                                :dimensions dimensions
+                                :colIdx     (nth val-indexes index)
+                                :value      value}
+                      :backgroundColor (color-getter value index (nth valueColNames index))})
+                   values)
+      (format-values values value-formatters))))
 
 (defn- is-subtotal?
   "Determines if a cell is a subtotal based on its position."

@@ -3,10 +3,10 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type { EnterpriseSettingKey } from "metabase-types/api";
 
@@ -132,13 +132,14 @@ export function ImageUploadWidget({
                       ? fileName
                       : t`Remove uploaded image`}
                 </Text>
+                {/* TODO: replace with ActionIcon (GDGT-2457) */}
                 {!isDefaultImage && (
                   <Button
-                    leftSection={<Icon name="close" />}
                     variant="subtle"
-                    c="text-primary"
+                    color="neutral"
+                    size="sm"
+                    leftSection={<Icon name="close" />}
                     ml="lg"
-                    size="compact-md"
                     onClick={handleRemove}
                     aria-label={t`Remove custom illustration`}
                   />

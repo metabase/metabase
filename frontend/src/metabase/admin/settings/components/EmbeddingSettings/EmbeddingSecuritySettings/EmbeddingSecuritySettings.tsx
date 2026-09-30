@@ -3,7 +3,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+} from "metabase/settings-components";
 
 import { CorsInputWidget } from "./CorsInputWidget";
 import { SameSiteSelectWidget } from "./SameSiteSelectWidget";

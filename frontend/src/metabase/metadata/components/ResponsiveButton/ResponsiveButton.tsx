@@ -2,7 +2,7 @@ import { useElementSize } from "@mantine/hooks";
 import { useLayoutEffect } from "react";
 import _ from "underscore";
 
-import { Button, type ButtonProps, Flex, Icon, Tooltip } from "metabase/ui";
+import { Button, type ButtonProps, Icon, Tooltip } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 interface Props extends Omit<ButtonProps, "leftSection"> {
   children: string;
@@ -33,19 +33,14 @@ export const ResponsiveButton = ({
       <Tooltip disabled={showLabel} label={children}>
         <Button
           aria-label={children}
-          h={32}
           leftSection={
-            showLabel && showIconWithLabel ? <Icon name={icon} /> : undefined
+            !showLabel || showIconWithLabel ? <Icon name={icon} /> : undefined
           }
           px={showLabel ? (showIconWithLabel ? "sm" : "lg") : "xxs"}
-          py="xxs"
-          size="xs"
           w={showLabel ? undefined : 32}
           {...props}
         >
-          <Flex align="center" justify="center" h="100%" w="100%">
-            {showLabel ? children : <Icon name={icon} size={16} />}
-          </Flex>
+          {showLabel ? children : null}
         </Button>
       </Tooltip>
 
@@ -61,18 +56,13 @@ export const ResponsiveButton = ({
       >
         <Button
           disabled
-          h={32}
           hidden
           leftSection={showIconWithLabel ? <Icon name={icon} /> : undefined}
           px={showIconWithLabel ? "sm" : "lg"}
-          py="xxs"
           ref={measureRef}
-          size="xs"
           {...props}
         >
-          <Flex align="center" justify="center" h="100%" w="100%">
-            {children}
-          </Flex>
+          {children}
         </Button>
       </span>
     </>

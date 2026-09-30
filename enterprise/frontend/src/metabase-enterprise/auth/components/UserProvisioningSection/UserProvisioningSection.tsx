@@ -3,14 +3,14 @@ import cx from "classnames";
 import { useEffect, useId, useState } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useAdminSetting } from "metabase/settings";
 import {
   SETTINGS_CARD_DESCRIPTION_PROPS,
   SETTINGS_CARD_TITLE_PROPS,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { useSelector } from "metabase/redux";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useAdminSetting } from "metabase/settings";
+} from "metabase/settings-components";
 import { Box, Flex, Switch, Text, Title } from "metabase/ui";
 
 import S from "./UserProvisioningSection.module.css";

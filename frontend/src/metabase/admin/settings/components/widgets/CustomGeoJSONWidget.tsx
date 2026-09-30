@@ -16,6 +16,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
   Button,
@@ -33,8 +34,6 @@ import type {
   CustomGeoJSONSetting,
   GeoJSONData,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 export const CustomGeoJSONWidget = () => {
   const [map, setMap] = useState<CustomGeoJSONMap | undefined>();
@@ -228,7 +227,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                 <td className={AdminS.TableActions}>
                   <Button
                     variant="filled"
-                    color="feedback-negative"
+                    color="negative"
                     onClick={() => setMapIdToDelete(mapId)}
                   >{t`Remove`}</Button>
                 </td>
@@ -420,6 +419,7 @@ const EditMap = ({
             />
             <Button
               ml="sm"
+              size="lg"
               disabled={!map.url}
               variant={geoJson ? "default" : "filled"}
               onClick={onLoadGeoJson}

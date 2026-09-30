@@ -1,5 +1,5 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Outlet } from "metabase/router";
 import { Box } from "metabase/ui";
 

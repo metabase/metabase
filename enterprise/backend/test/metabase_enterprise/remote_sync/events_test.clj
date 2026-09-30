@@ -416,6 +416,98 @@
                  :status "update"}
                 (first entries)))))))
 
+(defn- rso-statuses
+  "`{[model_type model_id] status}` for every RemoteSyncObject."
+  []
+  (into {} (map (juxt (juxt :model_type :model_id) :status)) (t2/select :model/RemoteSyncObject)))
+
+(defn- with-synced-nested-subtree!
+  "Calls `f` with `{:root :folder :sub-folder :card :sub-card :sibling-card}` ids: a remote-synced root holding a
+  sibling card and a folder, which holds a card and a sub-folder with its own card. Every entity except the root
+  has a synced RemoteSyncObject row."
+  [f]
+  (mt/with-temp [:model/Collection {root :id}         {:name "Root" :is_remote_synced true :location "/"}
+                 :model/Collection {folder :id}       {:name "Folder" :is_remote_synced true :location (str "/" root "/")}
+                 :model/Collection {sub-folder :id}   {:name "Sub" :is_remote_synced true :location (str "/" root "/" folder "/")}
+                 :model/Card       {card :id}         {:name "Card" :collection_id folder}
+                 :model/Card       {sub-card :id}     {:name "Sub Card" :collection_id sub-folder}
+                 :model/Card       {sibling-card :id} {:name "Sibling Card" :collection_id root}]
+    (t2/delete! :model/RemoteSyncObject)
+    (t2/insert! :model/RemoteSyncObject
+                (for [[model-type model-id coll-id] [["Collection" folder folder]
+                                                     ["Collection" sub-folder sub-folder]
+                                                     ["Card" card folder]
+                                                     ["Card" sub-card sub-folder]
+                                                     ["Card" sibling-card root]]]
+                  {:model_type model-type :model_id model-id :model_collection_id coll-id
+                   :model_name "x" :status "synced" :status_changed_at (t/offset-date-time)}))
+    (f {:root root :folder folder :sub-folder sub-folder :card card :sub-card sub-card :sibling-card sibling-card})))
+
+(defn- set-subtree-archived!
+  "Sets `archived` on `folder` and its contents, as archiving and unarchiving a collection do in bulk SQL."
+  [{:keys [folder sub-folder card sub-card]} archived]
+  (t2/update! :model/Collection :id [:in [folder sub-folder]] {:archived archived})
+  (t2/update! :model/Card :id [:in [card sub-card]] {:archived archived}))
+
+(deftest collection-update-event-archived-cascades-delete-to-subtree-test
+  (testing "GHY-4399: archiving a nested collection marks its descendant collections and all contents of its subtree
+            'delete', and leaves content outside the subtree alone"
+    (with-synced-nested-subtree!
+      (fn [{:keys [folder sub-folder card sub-card sibling-card] :as ids}]
+        (set-subtree-archived! ids true)
+        (events/publish-event! :event/collection-update
+                               {:object (t2/select-one :model/Collection :id folder) :user-id (mt/user->id :rasta)})
+        (is (= {["Collection" folder]     "delete"
+                ["Collection" sub-folder] "delete"
+                ["Card" card]             "delete"
+                ["Card" sub-card]         "delete"
+                ["Card" sibling-card]     "synced"}
+               (rso-statuses)))))))
+
+(deftest collection-update-event-unarchived-restores-subtree-test
+  (testing "GHY-4399: unarchiving a collection before the next push marks its unarchived contents 'update' again, so
+            the push does not delete their files; content still archived on its own stays 'delete'"
+    (with-synced-nested-subtree!
+      (fn [{:keys [folder sub-folder card sub-card sibling-card] :as ids}]
+        (set-subtree-archived! ids true)
+        (events/publish-event! :event/collection-update
+                               {:object (t2/select-one :model/Collection :id folder) :user-id (mt/user->id :rasta)})
+        (set-subtree-archived! ids false)
+        (t2/update! :model/Card :id sub-card {:archived true})
+        (events/publish-event! :event/collection-update
+                               {:object (t2/select-one :model/Collection :id folder) :user-id (mt/user->id :rasta)})
+        (is (= {["Collection" folder]     "update"
+                ["Collection" sub-folder] "update"
+                ["Card" card]             "update"
+                ["Card" sub-card]         "delete"
+                ["Card" sibling-card]     "synced"}
+               (rso-statuses)))))))
+
+(deftest collection-update-event-archive-cascades-to-transforms-test
+  (testing "GHY-4399: archiving a Transforms folder marks the transforms in it 'delete', and unarchiving it marks them
+            'update' again; transforms have no archived column, so their folder's archived state decides"
+    (mt/with-temporary-setting-values [remote-sync-transforms true]
+      (mt/with-temp [:model/Collection {folder :id}    {:name "Folder" :namespace "transforms" :location "/"}
+                     :model/Transform  {transform :id} {:name "Transform" :collection_id folder}]
+        (t2/delete! :model/RemoteSyncObject)
+        (t2/insert! :model/RemoteSyncObject
+                    (for [[model-type model-id] [["Collection" folder] ["Transform" transform]]]
+                      {:model_type model-type :model_id model-id :model_collection_id folder
+                       :model_name "x" :status "synced" :status_changed_at (t/offset-date-time)}))
+        (let [set-archived! (fn [archived]
+                              (t2/update! :model/Collection :id folder {:archived archived})
+                              (events/publish-event! :event/collection-update
+                                                     {:object  (t2/select-one :model/Collection :id folder)
+                                                      :user-id (mt/user->id :rasta)}))]
+          (set-archived! true)
+          (is (= {["Collection" folder]   "delete"
+                  ["Transform" transform] "delete"}
+                 (rso-statuses)))
+          (set-archived! false)
+          (is (= {["Collection" folder]   "update"
+                  ["Transform" transform] "update"}
+                 (rso-statuses))))))))
+
 (deftest collection-update-event-no-entry-for-normal-collection-test
   (testing "collection-update event doesn't create entry for non-remote-synced collections"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}]
@@ -1117,10 +1209,6 @@
 
 ;;; Field Event Tests
 
-;; Field RSO tracking has been replaced by FieldUserSettings RSO tracking.
-;; field-update events now track FieldUserSettings (user-curated metadata) rather than raw Field rows.
-;; See the FieldUserSettings RSO Tracking section below for the current behavior tests.
-
 (deftest field-update-event-no-entry-for-unpublished-table-test
   (testing "field-update event creates no RSOs for an unpublished table"
     (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
@@ -1149,12 +1237,11 @@
                              {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))))))
 
-;;; ----------------------------------------- FieldUserSettings RSO Tracking ------------------------------------------
-;; In git-sync mode, field updates should track FieldUserSettings RSOs only — not Field RSOs.
-;; Field YAMLs are replaced by FieldUserSettings YAMLs (user-curated metadata only).
+;;; ----------------------------------------- TableUserSettings RSO Tracking from Field Events --------------------------
 
-(deftest field-update-creates-only-fus-rso-when-fus-exists-test
-  (testing "field-update on an eligible field with a FUS row creates ONLY a FieldUserSettings RSO — no Field RSO"
+(deftest field-update-creates-table-user-settings-rso-when-fus-exists-test
+  (testing "field-update on an eligible field with a FUS row creates a TableUserSettings RSO for its Table — no
+            Field or FieldUserSettings RSO"
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
@@ -1162,9 +1249,9 @@
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)) "exactly one RSO — no Field RSO alongside the FUS RSO")
-        (is (=? {:model_type     "FieldUserSettings"
-                 :model_id       (:id field)
+        (is (= 1 (count entries)) "exactly one RSO — the Table's TableUserSettings, no Field/FieldUserSettings RSO")
+        (is (=? {:model_type     "TableUserSettings"
+                 :model_id       (:id table)
                  :status         "update"
                  :model_table_id (:id table)}
                 (first entries)))))))
@@ -1272,14 +1359,15 @@
        (assert-removal-survived coll-id card)))))
 
 (deftest field-update-no-rso-when-no-fus-row-test
-  (testing "field-update on an eligible field with NO FUS row creates no RSOs at all"
+  (testing "field-update on an eligible field with NO FUS row, and no TableUserSettings row either, creates no
+            RSOs at all"
     (mt/with-temp [:model/Collection coll  {:is_remote_synced true :name "Remote-Sync" :type "library-data"}
                    :model/Table      table {:name "T" :is_published true :collection_id (:id coll)}
                    :model/Field      field {:name "f" :table_id (:id table) :base_type :type/Text}]
       (t2/delete! :model/RemoteSyncObject)
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))
-          "no RSOs created — field has no user-curated metadata to track"))))
+          "no RSOs created — neither the Field nor the Table has user-curated metadata to track"))))
 
 (deftest field-update-no-rso-for-unpublished-table-test
   (testing "field-update creates no RSOs when the table is not published"
@@ -1301,23 +1389,24 @@
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (is (empty? (t2/select :model/RemoteSyncObject))))))
 
-(deftest field-update-fus-rso-marks-removed-when-table-leaves-sync-scope-test
-  (testing "existing FieldUserSettings RSO is marked removed when table leaves sync scope — no Field RSO created"
+(deftest field-update-table-user-settings-rso-marks-removed-when-table-leaves-sync-scope-test
+  (testing "existing TableUserSettings RSO is marked removed when the field's table leaves sync scope — no
+            Field or FieldUserSettings RSO created"
     (mt/with-temp [:model/Collection synced {:is_remote_synced true :name "Synced" :type "library-data"}
                    :model/Collection normal {:name "Normal" :type "library-data"}
                    :model/Table      table  {:name "T" :is_published true :collection_id (:id synced)}
                    :model/Field      field  {:name "f" :table_id (:id table) :base_type :type/Text}]
       (t2/insert! :model/FieldUserSettings {:field_id (:id field) :description "curated"})
       (t2/delete! :model/RemoteSyncObject)
-      (t2/insert! :model/RemoteSyncObject {:model_type        "FieldUserSettings"
-                                           :model_id          (:id field)
-                                           :model_name        "f"
+      (t2/insert! :model/RemoteSyncObject {:model_type        "TableUserSettings"
+                                           :model_id          (:id table)
+                                           :model_name        "T"
                                            :model_table_id    (:id table)
                                            :status            "synced"
                                            :status_changed_at (t/offset-date-time)})
       (t2/update! :model/Table (:id table) {:collection_id (:id normal)})
       (events/publish-event! :event/field-update {:object field :user-id (mt/user->id :rasta)})
       (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)) "still only one RSO — no Field RSO added")
+        (is (= 1 (count entries)) "still only one RSO — no Field/FieldUserSettings RSO added")
         (is (= "removed"
-               (:status (t2/select-one :model/RemoteSyncObject :model_type "FieldUserSettings" :model_id (:id field)))))))))
+               (:status (t2/select-one :model/RemoteSyncObject :model_type "TableUserSettings" :model_id (:id table)))))))))

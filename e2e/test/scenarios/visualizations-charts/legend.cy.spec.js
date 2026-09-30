@@ -264,12 +264,9 @@ describe("scenarios > visualizations > legend", () => {
 
     H.getDashboardCard(1).within(() => {
       H.echartsContainer().findByText("500").should("exist"); // max y-axis value
-      cy.findByText(/And \d+ more/).click();
+      cy.findByText("And 39 more").click();
     });
-    H.popover()
-      .contains('[data-testid="legend-item"]', "TX")
-      .findByLabelText("Hide series")
-      .click();
+    H.popover().within(() => hideSeries(29)); // TX (Texas);
     H.getDashboardCard(1).click(); // click outside of popover to close it
     H.getDashboardCard(1).within(() =>
       H.echartsContainer().findByText("500").should("not.exist"),

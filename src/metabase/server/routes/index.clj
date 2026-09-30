@@ -18,6 +18,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
+   [ring.util.codec :as codec]
    [ring.util.response :as response]
    [stencil.core :as stencil])
   (:import
@@ -132,12 +133,26 @@
   "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
   (partial entrypoint "data-app" :embeddable))
 
+(defn- login-redirect
+  "302 to the login page, returning the user to the top-level `/apps/...` page for the
+   `/embed/apps/...` iframe document they asked for (the bare iframe shell is not a page
+   a person would want to land on). `site-url` is nil until a superuser's first request
+   sets it, and this is reached by signed-out visitors: `str` drops the nil, so the
+   redirect is then relative."
+  [{:keys [uri query-string]}]
+  (let [target (cond-> (str/replace-first uri #"^/embed/" "/")
+                 (seq query-string) (str "?" query-string))]
+    (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
+
 (defn data-app
   "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
-   data-app entrypoint rather than in the top-level route table."
+   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
+   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
+   users may see."
   [request respond raise]
-  (if (premium-features/enable-data-apps?)
-    (data-app-shell request respond raise)
-    (respond nil)))
+  (cond
+    (not (premium-features/enable-data-apps?)) (respond nil)
+    (nil? (:metabase-user-id request))         (respond (login-redirect request))
+    :else                                      (data-app-shell request respond raise)))

@@ -41,7 +41,6 @@ describe("TableListContainer", () => {
   it("resolves the database from the route param, not from a prop", async () => {
     setup();
 
-    // The name only reaches the header if `useParams` fed `getDatabase`.
     expect(
       await screen.findAllByText("Tables in Test Database"),
     ).not.toHaveLength(0);

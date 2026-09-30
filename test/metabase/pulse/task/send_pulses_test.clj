@@ -9,6 +9,7 @@
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.util :as mt.util]
@@ -189,7 +190,7 @@
           (testing "sanity check that there are no triggers"
             (is (empty? (all-send-pulse-triggers))))
           (testing "init-send-pulse-triggers! should create triggers for each pulse-channel"
-            (#'task.send-pulses/init-dashboard-subscription-triggers!)
+            (#'task.send-pulses-trigger/init-dashboard-subscription-triggers!)
             (is (=? #{(pulse-channel-test/pulse->trigger-info pulse-1 daily-at-1am [pc-1-1 pc-1-2])
                       ;; pc-2-1 has the same schedule as pc-1-1 and pc-1-2 but it's not on the same trigger because it's a
                       ;; different schedule
@@ -354,7 +355,7 @@
           (testing "sanity check that it has triggers to begin with"
             (is (not-empty pulse-triggers)))
           (testing "init send pulse triggers are idempotent if the pulse channel doesn't change"
-            (#'task.send-pulses/init-dashboard-subscription-triggers!)
+            (#'task.send-pulses-trigger/init-dashboard-subscription-triggers!)
             (is (= pulse-triggers (pulse-channel-test/send-pulse-triggers pulse-id)))))))))
 
 (deftest init-send-pulse-triggers-skip-alert-test
@@ -368,4 +369,4 @@
                                               :channel_type :slack
                                               :details      {:channel "#random"}}
                                              daily-at-1am)]
-        (is (not (contains? (set (map :id (#'task.send-pulses/active-dashsub-pcs))) pc-id)))))))
+        (is (not (contains? (set (map :id (#'task.send-pulses-trigger/active-dashsub-pcs))) pc-id)))))))

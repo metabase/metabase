@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.actions.core :as actions]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.typed-schemas.common :as common]
    [metabase.typed-schemas.db :as typed-schemas.db]
@@ -94,35 +95,20 @@
         "boolean"            "boolean"
         nil))))
 
-(defn- template-tag-name-from-target
-  "Returns the template-tag name referenced by an action parameter target."
-  [target]
-  (when (sequential? target)
-    (let [[op inner] target]
-      (when (and (or (= op :variable) (= op "variable"))
-                 (sequential? inner))
-        (let [[tag-op tag-name] inner]
-          (when (or (= tag-op :template-tag) (= tag-op "template-tag"))
-            (cond
-              (string? tag-name)  tag-name
-              (keyword? tag-name) (clojure.core/name tag-name)
-              :else               nil)))))))
+(defn- template-tag-value-type
+  "Returns the type a template tag's values carry: a field filter's `:type` is always `:dimension`, so its
+  `:widget-type` (e.g. `:date/single`) is what tells us the value type."
+  [{:keys [type widget-type]}]
+  (if (= type :dimension)
+    widget-type
+    type))
 
 (defn- query-action-template-tag-types
-  "Returns template-tag types for query action parameters."
+  "Returns template-tag value types for query action parameters, or nil when the action has no usable query."
   [{:keys [type dataset_query]}]
-  (when (and (= (lib.schema.common/normalize-keyword type) :query) dataset_query)
-    (let [stage-tags (some-> dataset_query :stages first :template-tags)
-          native-tags (some-> dataset_query :native :template-tags)
-          tags (or stage-tags native-tags)]
-      (into {}
-            (for [[tag-key tag] tags]
-              [(or (:name tag)
-                   (cond
-                     (string? tag-key)  tag-key
-                     (keyword? tag-key) (clojure.core/name tag-key)
-                     :else              nil))
-               (:type tag)])))))
+  (when (= (lib.schema.common/normalize-keyword type) :query)
+    ;; a stored query that failed to deserialize comes back as {}, which Lib rejects
+    (some-> dataset_query not-empty lib/all-template-tags-map (update-vals template-tag-value-type))))
 
 (defn- model-action-error-message
   "Returns the error message for model action schema failures."
@@ -155,7 +141,7 @@
         resolved-type (or (param-type->js-type type)
                           (param-type->js-type
                            (get tag-types
-                                (template-tag-name-from-target target)))
+                                (some-> target lib/parameter-target-template-tag-name)))
                           "unknown")]
     (m/assoc-some
      {:slug resolved-slug
@@ -183,11 +169,7 @@
   "Returns action details from the actions module, preserving lookup error context."
   [model]
   (try
-    (actions/select-actions
-     nil
-     :model_id (:id model)
-     :archived false
-     :type [:not= "http"])
+    (actions/select-actions-non-http-for-models [model] #{(:id model)})
     (catch Exception exception
       (throw (ex-info (model-action-error-message model (ex-message exception))
                       (error-data-with-cause-message
@@ -242,19 +224,73 @@
       :keyDisambiguator id
       :actions          (common/keyed-map action-schemas)})))
 
+(defn- interrupted-exception?
+  "Returns true when `exception`, or one of its causes, is an InterruptedException."
+  [exception]
+  (or (instance? InterruptedException exception)
+      (some-> (ex-cause exception) interrupted-exception?)))
+
+(defn- rethrow-if-interrupted!
+  "Rethrows `exception` when interrupted, so cancellations are not swallowed as errors."
+  [exception]
+  (when (interrupted-exception? exception)
+    (throw exception)))
+
+(defn- model-error-entry
+  "Returns a schema error entry for a model that could not be built."
+  [model exception]
+  (m/assoc-some
+   {:type    "modelError"
+    :modelId (:id model)
+    :message (or (ex-message exception) "unknown error")}
+   :modelName (:name model)))
+
+(defn- bulk-action-schema-builder
+  "Returns a `model -> action-schemas` function backed by one bulk action lookup,
+  or nil when that lookup fails so [[model-schemas]] resolves each model on its own."
+  [models model-ids]
+  (try
+    (let [action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
+          action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
+      (fn [model]
+        (model-action-schemas model
+                              (get action-rows-by-model-id (:id model))
+                              (get action-details-by-model-id (:id model)))))
+    ;; Broad on purpose: the per-model fallback recomputes the same result, so degrading masks nothing.
+    (catch Exception exception
+      (rethrow-if-interrupted! exception)
+      nil)))
+
+(defn- collect-model-schema
+  "Reduces one model into `{:models [...] :errors [...]}`.
+
+  Only the structured `ExceptionInfo` a bad model raises becomes an error entry;
+  anything else is an unexpected bug and propagates instead of masking it."
+  [acc build-action-schemas model]
+  (let [{:keys [schema error]}
+        (try
+          {:schema (model-schema model (build-action-schemas model))}
+          (catch clojure.lang.ExceptionInfo exception
+            (rethrow-if-interrupted! exception)
+            {:error (model-error-entry model exception)}))]
+    (cond-> acc
+      schema (update :models conj schema)
+      error  (update :errors conj error))))
+
 (defn model-schemas
-  "Returns model schemas, with optional database and collection scopes."
+  "Returns `{:models [...] :errors [...]}`, with optional database and collection scopes.
+
+  A model that cannot be built becomes an `:errors` entry instead of failing the rest."
   [database-ids collection-ids]
   (let [models (schema.common/select-schema-cards :model database-ids collection-ids)]
     (if (seq models)
-      (let [model-ids                  (set (map :id models))
-            action-rows-by-model-id    (group-by :model_id (action-rows model-ids))
-            action-details-by-model-id (group-by :model_id (resolved-action-details-for-models models))]
-        (for [model models
-              :let [action-schemas (model-action-schemas model
-                                                         (get action-rows-by-model-id (:id model))
-                                                         (get action-details-by-model-id (:id model)))
-                    schema         (model-schema model action-schemas)]
-              :when schema]
-          schema))
-      [])))
+      (let [model-ids            (set (map :id models))
+            ;; The bulk lookup avoids N+1s; when a broken model makes it throw we
+            ;; fall back to resolving each model's actions on its own.
+            build-action-schemas (or (bulk-action-schema-builder models model-ids)
+                                     model-action-schemas)]
+        (reduce (fn [acc model]
+                  (collect-model-schema acc build-action-schemas model))
+                {:models [] :errors []}
+                models))
+      {:models [] :errors []})))

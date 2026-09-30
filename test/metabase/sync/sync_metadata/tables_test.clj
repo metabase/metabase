@@ -78,7 +78,7 @@
                          (:engine (mt/db))
                          dbdef
                          (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
-        (sync/sync-database! (mt/db) {:sync :schema})
+        (sync/sync-database! (mt/db) {:scan :schema})
         (is (=? {:active true
                  :description "added comment"}
                 (t2/select-one :model/Table (mt/id :user))))))))

@@ -175,7 +175,9 @@
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)]
+                                     :when (or before after)
+                                     :let [before (some-> before (update-keys u/qualified-name))
+                                           after  (some-> after (update-keys u/qualified-name))]]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
                                   :before before
                                   :after  after}])]

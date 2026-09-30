@@ -57,7 +57,7 @@
     :value           - the numeric value
     :modified-z-score - the modified Z-score"
   [values :- [:sequential number?]
-   labels :- [:sequential :any]]
+   labels :- [:sequential ::stats.types/axis-value]]
   (when-let [z-scores (compute-modified-z-scores values)]
     (let [indices (vec (argops/argfilter #(> (Math/abs (double %)) modified-z-threshold) z-scores))
           values-vec (vec values)
@@ -88,7 +88,7 @@
     :diff            - the period-over-period change that was flagged
     :modified-z-score - the modified Z-score of the diff"
   [values :- [:sequential number?]
-   labels :- [:sequential :any]]
+   labels :- [:sequential ::stats.types/axis-value]]
   (let [values-vec (vec values)
         labels-vec (vec labels)
         diffs (mapv - (rest values-vec) values-vec)]

@@ -1,4 +1,4 @@
-import type { CollectionItemModel } from "./collection";
+import type { CollectionItemModel, CollectionType } from "./collection";
 import type { EnterpriseSettings } from "./settings";
 import type { UserId } from "./user";
 import type { CardDisplayType } from "./visualization";
@@ -18,7 +18,8 @@ export type RemoteSyncEntityModel =
   | "transform"
   | "transformtag"
   | "transformjob"
-  | "pythonlibrary";
+  | "pythonlibrary"
+  | "glossary";
 
 export type RemoteSyncEntityStatus =
   | "create"
@@ -147,25 +148,41 @@ export type RemoteSyncCollectionRef = {
 };
 
 export type RemoteSyncRemedyCollection = RemoteSyncCollectionRef & {
+  type: CollectionType;
   personal: boolean;
 };
 
 export type RemoteSyncDependencyRemedy =
   | { type: "collection"; collection: RemoteSyncRemedyCollection }
   | { type: "library" }
-  | { type: "none" };
+  | { type: "none"; collection?: RemoteSyncCollectionRef | null };
+
+export type RemoteSyncDependentModel =
+  | RemoteSyncDependencyModel
+  | "collection"
+  | "timeline";
+
+export type RemoteSyncDependencyEntity = {
+  model: RemoteSyncDependentModel;
+  id: number;
+  name: string;
+  display?: CardDisplayType;
+};
 
 export type RemoteSyncIneligibleDependency = {
   model: RemoteSyncDependencyModel;
   id: number;
   name: string;
-  /** `null` is the root collection; absent means the backend couldn't resolve one. */
+  /** Where it lives — `null` is the root collection, absent means we couldn't resolve one. */
   collection?: RemoteSyncCollectionRef | null;
-  remedy: RemoteSyncDependencyRemedy;
+  display?: CardDisplayType;
+  used_by: RemoteSyncDependencyEntity[];
 };
 
-export type RemoteSyncDependencyFailure = {
-  collection: RemoteSyncCollectionRef;
+export type RemoteSyncRequiredSync = {
+  remedy: RemoteSyncDependencyRemedy;
+  syncable: boolean;
+  blocks: RemoteSyncCollectionRef[];
   dependencies: RemoteSyncIneligibleDependency[];
 };
 
@@ -175,7 +192,7 @@ export type RemoteSyncDependencyErrorResponse = {
   error_code: typeof UNSYNCED_DEPENDENCIES_ERROR_CODE;
   error: string;
   errors: {
-    collections: RemoteSyncDependencyFailure[];
+    required: RemoteSyncRequiredSync[];
   };
 };
 
@@ -200,6 +217,13 @@ export type RemoteSyncOutcome =
   | { kind: "push-skipped" }
   | { kind: "merged"; pulled: number; pushed: number; branch: string };
 
+export type RemoteSyncTaskUser = {
+  id: UserId;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+};
+
 export type RemoteSyncTask = {
   id: number;
   sync_task_type: RemoteSyncTaskType;
@@ -208,9 +232,12 @@ export type RemoteSyncTask = {
   started_at: string | null;
   ended_at: string | null;
   last_progress_report_at: string | null;
+  last_heartbeat_at?: string | null;
   error_message: string | null;
   outcome?: RemoteSyncOutcome | null;
   initiated_by: UserId;
+  /** Absent on auto-imports, which have no initiating user. */
+  initiated_by_user?: RemoteSyncTaskUser | null;
   conflicts?: string[];
 };
 

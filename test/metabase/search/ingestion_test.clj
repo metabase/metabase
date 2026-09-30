@@ -33,7 +33,7 @@
                    :name        "Test Name"
                    :description "Test Description"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name Test Description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text with map format and transforms"
@@ -42,7 +42,7 @@
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "CamelCaseTest Camel Case Test Simple description"
                (#'search.ingestion/searchable-text record))))))
   (testing "searchable-text filters out blank values"
@@ -51,7 +51,7 @@
                    :name        "Test Name"
                    :description "  " ;; whitespace only
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "Test Name"
                (#'search.ingestion/searchable-text record)))))))
 
@@ -62,7 +62,7 @@
                    :name        "Sales Dashboard"
                    :description "Shows quarterly sales data"
                    :other-field "Other Value"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Sales Dashboard\ndescription: Shows quarterly sales data"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text with map format"
@@ -71,7 +71,7 @@
           record  {:model       "dashboard"
                    :name        "Test Dashboard"
                    :description "A test dashboard"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[dashboard]\nname: Test Dashboard\ndescription: A test dashboard"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text filters out blank values"
@@ -80,14 +80,14 @@
                    :name        "Test Card"
                    :description "  "
                    :empty-field nil}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[card]\nname: Test Card"
                (#'search.ingestion/embeddable-text record))))))
   (testing "embeddable-text does not apply transform functions"
     (let [spec-fn (constantly {:search-terms {:name search.spec/explode-camel-case}})
           record  {:model "table"
                    :name  "CamelCaseTest"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[table]\nname: CamelCaseTest"
                (#'search.ingestion/embeddable-text record))
             "Transformation functions should not be applied to embeddable text for semantic search"))))
@@ -97,7 +97,7 @@
           record  {:model    "document"
                    :name     "Q3 Planning"
                    :document "the full document body"}]
-      (with-redefs [search.spec/spec spec-fn]
+      (mt/with-dynamic-fn-redefs [search.spec/spec spec-fn]
         (is (= "[document]\nname: Q3 Planning"
                (#'search.ingestion/embeddable-text record))
             "Excluded fields must not appear in the semantic-search embedding text")
@@ -203,10 +203,12 @@
 (deftest bulk-ingest!-caches-metadata-providers-test
   (testing "bulk-ingest! caches metadata providers so the factory is only called once per database-id"
     (let [factory-calls (atom 0)]
-      (with-redefs [search.engine/active-engines                                (fn []
-                                                                                  (simulate-metadata-lookups)
-                                                                                  nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (search.ingestion/bulk-ingest! [])
         (is (= 1 @factory-calls)
             "Factory should be called once, not once per metadata-provider lookup")))))
@@ -215,10 +217,12 @@
   (testing "bulk-ingest! reuses an outer cache and does not rebuild providers already in it"
     (let [factory-calls  (atom 0)
           existing-cache (atom (cache/basic-cache-factory {}))]
-      (with-redefs [search.engine/active-engines (fn []
-                                                   (simulate-metadata-lookups)
-                                                   nil)
-                    metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
+      (mt/with-dynamic-fn-redefs
+        [search.engine/active-engines
+         (fn []
+           (simulate-metadata-lookups)
+           nil)
+         metadata.jvm/application-database-metadata-provider-factory (counting-factory factory-calls)]
         (binding [metadata.jvm/*metadata-provider-cache* existing-cache]
           (metadata.jvm/application-database-metadata-provider 1)
           (let [pre-calls @factory-calls]

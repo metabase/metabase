@@ -1,21 +1,13 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
-import { createMockMetadata } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { getHelpText } from "metabase/querying/expressions";
 import { checkNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
-import {
-  DEFAULT_TEST_QUERY,
-  createMetadataProvider,
-} from "metabase-lib/test-helpers";
+import type * as Lib from "metabase-lib";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import {
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { HelpText, type HelpTextProps } from "../HelpText";
 
@@ -44,13 +36,7 @@ export async function setup({
     }),
   });
 
-  const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
-  const provider = createMetadataProvider({
-    databaseId: SAMPLE_DB_ID,
-    metadata,
-  });
-  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
-  const query = Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
+  const database = createSampleDatabase();
 
   const props: HelpTextProps = {
     enclosingFunction: {
@@ -58,8 +44,7 @@ export async function setup({
       name: "concat",
       ...enclosingFunction,
     },
-    query,
-    metadata,
+    database,
     reportTimezone,
     expressionMode,
   };
@@ -85,5 +70,5 @@ export async function setup({
     reportTimezone,
   );
 
-  return { database, metadata, helpText };
+  return { database, helpText };
 }

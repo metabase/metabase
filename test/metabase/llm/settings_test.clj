@@ -4,6 +4,7 @@
    [metabase.config.core :as config]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.util.http :as u.http])
   (:import
@@ -215,9 +216,12 @@
         (is (= :allow-all (llm.settings/llm-allowed-networks))))
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
         (is (= :allow-private (llm.settings/llm-allowed-networks)))))
-    (testing "a value that is not one of the policies fails closed"
+    (testing "a value that is not one of the policies is refused outright: startup reads this Setting, so the
+             instance does not come up on a policy nobody chose"
       (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow_all"]
-        (is (= :external-only (llm.settings/llm-allowed-networks)))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                              (llm.settings/llm-allowed-networks)))))
     (testing "it is not settable: nobody loosens it through the API"
       (is (thrown? Exception (setting/set! :llm-allowed-networks :allow-all)))))
   (testing "a value that reached the application database some other way is ignored"
@@ -442,3 +446,15 @@
   (testing "can be overridden"
     (mt/with-temporary-setting-values [llm-rate-limit-per-ip 200]
       (is (= 200 (llm.settings/llm-rate-limit-per-ip))))))
+
+(deftest llm-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first LLM request to discover it"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_LLM_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! :metabase.llm.provider.settings/llm-allowed-networks))))))

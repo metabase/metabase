@@ -14,7 +14,7 @@
    [metabase.util.performance :refer [every? mapv empty?]]))
 
 (mu/defn- merge-defaults :- ::lib.schema.join/join
-  [join]
+  [join :- ::lib.schema.join/join]
   (merge {:strategy lib.schema.join/default-strategy}
          (when (str/starts-with? (:alias join) lib/legacy-default-join-alias)
            {:qp/keep-default-join-alias true})
