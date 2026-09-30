@@ -55,10 +55,10 @@ const getDescription = (database: Database): string => {
   const isDone = isSyncCompleted(database);
   const isError = isSyncAborted(database);
 
-  if (isError && database.initial_sync_error) {
-    return t`Sync failed: ${database.initial_sync_error}`;
-  } else if (isError) {
-    return t`Sync failed`;
+  if (isError) {
+    return database.initial_sync_error
+      ? t`Sync failed: ${database.initial_sync_error}`
+      : t`Sync failed`;
   } else if (isDone) {
     return t`Syncing completed`;
   } else {
