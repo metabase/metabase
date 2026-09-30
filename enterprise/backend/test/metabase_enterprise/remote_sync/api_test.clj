@@ -851,6 +851,50 @@
                     (is (= #{"actions/create_venue.yaml" "actions/rename_venue.yaml"}
                            (into #{} (filter #(str/starts-with? % "actions/")) (repo-files))))))))))))))
 
+(deftest push-tracks-action-changes-on-pushed-model-test
+  (testing "GHY-4722: creating, editing, and deleting an action on an already-pushed model each reach the repo on the next push"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/Action :model/Card]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
+            (let [source     (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                  repo-file  #(source.p/read-file (source.p/snapshot source) %)
+                  push!      #(wait-for-task-completion
+                               (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+              (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                                 remote-sync-token "test-token"
+                                                 remote-sync-branch "main"]
+                (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)
+                                            settings/check-and-update-remote-settings! (constantly nil)
+                                            impl/finish-remote-config! (constantly nil)]
+                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings" {:collections {coll-id true}})
+                  (let [model (mt/user-http-request :crowberto :post 200 "card"
+                                                    {:name                   "Venues Model"
+                                                     :type                   "model"
+                                                     :collection_id          coll-id
+                                                     :display                "table"
+                                                     :visualization_settings {}
+                                                     :dataset_query          (mt/mbql-query venues)})]
+                    (is (remote-sync.task/successful? (push!)))
+                    (is (nil? (repo-file "actions/create_venue.yaml")))
+                    (let [action (mt/user-http-request :crowberto :post 200 "action"
+                                                       {:name     "Create Venue"
+                                                        :type     "implicit"
+                                                        :kind     "row/create"
+                                                        :model_id (:id model)})]
+                      (testing "a new action"
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (some? (repo-file "actions/create_venue.yaml"))))
+                      (testing "an edited action"
+                        (mt/user-http-request :crowberto :put 200 (str "action/" (:id action))
+                                              {:description "Adds a venue"})
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (str/includes? (str (repo-file "actions/create_venue.yaml")) "Adds a venue")))
+                      (testing "a deleted action"
+                        (mt/user-http-request :crowberto :delete 204 (str "action/" (:id action)))
+                        (is (remote-sync.task/successful? (push!)))
+                        (is (nil? (repo-file "actions/create_venue.yaml")))))))))))))))
+
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 
 (deftest current-task-requires-superuser-test

@@ -67,6 +67,29 @@
       (remote-sync.db/insert-rsos! rows))
     (count rows)))
 
+(defn track-untracked-actions!
+  "Insert a 'create' ledger row for every unarchived Action with none whose model is in the Collections with
+  `collection-ids`. Returns the number of rows inserted."
+  [collection-ids]
+  (let [action-spec (spec/spec-for-model-key :model/Action)
+        timestamp   (t/offset-date-time)
+        rows        (when (seq collection-ids)
+                      (for [action (remote-sync.db/untracked-actions-in-collections (vec collection-ids))]
+                        (merge {:model_type        "Action"
+                                :model_id          (:id action)
+                                :status            "create"
+                                :status_changed_at timestamp}
+                               (spec/build-sync-object-fields action-spec action))))]
+    (when (seq rows)
+      (remote-sync.db/insert-rsos! rows))
+    (count rows)))
+
+(defn backfill-action-tracking!
+  "Insert a 'create' ledger row for every untracked Action of a model in a remote-synced collection, so an instance
+  upgraded with synced models still pushes their actions. Returns the number of rows inserted."
+  []
+  (track-untracked-actions! (remote-sync.db/remote-synced-collection-ids)))
+
 (defn disable-library-tracking!
   "Remove all snippet, snippets-namespace collection, and glossary tracking entries."
   []
@@ -217,8 +240,12 @@
         (doseq [child (remote-sync.db/eligible-children (:model-key child-spec) fk model-id filter)]
           (when (spec/check-eligibility child-spec child)
             (create-or-update-sync-object-from-spec! child-spec (:id child) status)))
-        ;; Ineligible branch: mark existing child RSOs as removed
-        (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
+        ;; Ineligible branch: mark existing child RSOs as removed. Only a Table's children record their parent on
+        ;; the RSO row (model_table_id); others are found through their own FK column.
+        (doseq [child-rso (if (= :model/Table (:model-key model-spec))
+                            (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)
+                            (remote-sync.db/active-rsos-of-children (:model-key child-spec) (:model-type child-spec)
+                                                                    fk model-id))]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
 (defn- handle-model-event-from-spec

@@ -654,6 +654,28 @@
           (is (= 1 (t2/count :model/Card :entity_id a-eid))
               "exactly one card for the entity — no duplicate from a stale file"))))))
 
+(deftest pull-removes-action-missing-from-repo-test
+  (testing "GHY-4722: a pull deletes a synced model's action that the repo no longer has"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write
+                                       remote-sync-transforms false]
+      (mt/with-temp [:model/Collection {coll-id :id}   {:name "Bench" :is_remote_synced true :location "/"}
+                     :model/Card       {model-id :id}  {:name "Model" :type :model :collection_id coll-id
+                                                        :database_id (mt/id) :dataset_query (venues-query)}
+                     :model/Action     {action-id :id} {:type :implicit :name "Create Venue" :model_id model-id}]
+        (t2/delete! :model/RemoteSyncObject)
+        (doseq [[model-type model-id] [["Collection" coll-id] ["Card" model-id] ["Action" action-id]]]
+          (seed-create-row! model-type model-id))
+        (let [mock       (rs.test/create-mock-source :initial-files {"main" {}})
+              action-eid (t2/select-one-fn :entity_id :model/Action :id action-id)]
+          (impl/export! (source.p/snapshot mock) (new-task!) "init")
+          (is (entity-exported? mock action-eid) "the action is in the repo")
+          ;; another instance deletes the action and pushes
+          (swap! (:files-atom mock) update "main"
+                 (fn [tree] (into {} (remove (fn [[_ content]] (str/includes? content action-eid))) tree)))
+          (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!)))))
+          (is (not (t2/exists? :model/Action :id action-id))
+              "the pull deleted the local action"))))))
+
 (deftest two-same-named-creates-use-incremental-path-test
   (with-exported-collection!
     (fn [{:keys [mock coll-id]}]

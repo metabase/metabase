@@ -64,8 +64,9 @@
   Takes a sequence of remote-synced collection IDs and imported-data map from spec/extract-imported-entities.
   For each entity-id based model, deletes entities whose entity_id is not in the imported set.
 
-  Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :collection_id
-  for others). Models without :scope-key (like TransformTag) are deleted globally by entity_id.
+  Models with :scope-key in their spec are scoped to synced collections (using :id for Collection, :model_id through
+  the model Card for Action, :collection_id for others). Models without :scope-key (like TransformTag) are deleted
+  globally by entity_id.
 
   Path-based models (Table, Field) are not removed here - they are controlled by published table settings.
 
@@ -76,10 +77,7 @@
           :let [entity-ids (get by-entity-id (:model-type model-spec) [])]]
     (remote-sync.db/delete-removed-instances!
      model-key
-     {:scope-key             (get-in model-spec [:removal :scope-key])
-      :synced-collection-ids synced-collection-ids
-      :entity-ids            entity-ids
-      :removal-conditions    (spec/removal-conditions model-spec)})))
+     (spec/removal-opts model-spec synced-collection-ids entity-ids))))
 
 (defn- quoted
   "Wraps `s` in backticks so that leading and trailing whitespace is visible to the reader."
@@ -865,10 +863,7 @@
   (into #{}
         (filter (fn [{:keys [model_type model_id]}]
                   (and (not (and (= model_type model-type) (= model_id model-id)))
-                       ;; Actions have no spec and never get a RemoteSyncObject row; they travel with the model
-                       ;; or dashboard that pulls them in.
-                       (or (spec/spec-for-model-type model_type)
-                           (= "Action" model_type))
+                       (spec/spec-for-model-type model_type)
                        (not (remote-sync.db/rso-exists? model_type model_id)))))
         (export-closure model-type model-id)))
 
