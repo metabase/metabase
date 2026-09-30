@@ -5,7 +5,12 @@ import {
   setupRemoteSyncCancelTaskEndpoint,
 } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  settlePendingUpdates,
+  waitFor,
+} from "__support__/ui";
 import type { RemoteSyncOutcome, RemoteSyncTaskUser } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -206,19 +211,20 @@ describe("SyncProgressModal", () => {
   });
 
   describe("started-by line", () => {
-    it("names the initiating user and the start time", () => {
+    it("names the initiating user and the start time", async () => {
       setup({
         isCancelled: true,
         startedAt: STARTED_AT,
         initiatedByUser: INITIATED_BY_USER,
       });
+      await settlePendingUpdates();
 
       expect(screen.getByTestId("sync-started-by")).toHaveTextContent(
         `Started by Cynthia Balusek at ${STARTED_AT_TIME}`,
       );
     });
 
-    it("falls back to the email when the user has no name", () => {
+    it("falls back to the email when the user has no name", async () => {
       setup({
         isCancelled: true,
         startedAt: STARTED_AT,
@@ -228,14 +234,16 @@ describe("SyncProgressModal", () => {
           last_name: null,
         },
       });
+      await settlePendingUpdates();
 
       expect(screen.getByTestId("sync-started-by")).toHaveTextContent(
         `Started by cynthia@example.com at ${STARTED_AT_TIME}`,
       );
     });
 
-    it("shows only the start time for a task with no initiating user", () => {
+    it("shows only the start time for a task with no initiating user", async () => {
       setup({ isError: true, startedAt: STARTED_AT, initiatedByUser: null });
+      await settlePendingUpdates();
 
       expect(screen.getByTestId("sync-started-by")).toHaveTextContent(
         `Started at ${STARTED_AT_TIME}`,
