@@ -511,7 +511,8 @@
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
     (doseq [[model-key ds] (group-by model-key-of deletes)]
-      (search/delete! model-key (mapv :model_id ds)))
+      ;; the search index stores model_id as text
+      (search/delete! model-key (mapv (comp str :model_id) ds)))
     (report 0.95 {:force? true})
     (log/info "Successfully reloaded entities from git repository")
     {:status :success
