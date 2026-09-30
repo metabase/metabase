@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [flatland.ordered.set :as ordered-set]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
@@ -207,10 +208,10 @@
     (compile! identifier context)))
 
 (defn- values! [rows context]
-  (let [columns (keys (first rows))]
-    (-identifier-list! columns context))
-  (append-sql! context " VALUES ")
-  (interpose-fn rows #(-list! (vals %) context) #(append-sql! context ", ")))
+  (let [columns (into (ordered-set/ordered-set) (mapcat keys) rows)]
+    (-identifier-list! columns context)
+    (append-sql! context " VALUES ")
+    (interpose-fn rows #(-list! (map (or % {}) columns) context) #(append-sql! context ", "))))
 
 (defn- update! [identifier context]
   (append-sql! context "UPDATE ")

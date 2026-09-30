@@ -248,9 +248,9 @@
                            :values      [{:a "x" :b "y"}]} :postgres))))
 
 (deftest ^:parallel insert-into-multiple-rows-test
-  (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?), (?, ?)" "x" "y" "z" "w"]
+  (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\", \"c\") VALUES (?, ?, NULL), (?, ?, ?)" "a1" "b1" "a2" "b2" "c2"]
          (funnysql/format {:insert-into :my_table
-                           :values      [{:a "x" :b "y"} {:a "z" :b "w"}]} :postgres))))
+                           :values      [{:a "a1", :b "b1"} {:a "a2", :b "b2", :c "c2"}]} :postgres))))
 
 (deftest ^:parallel on-conflict-do-update-set-test
   (is (= ["INSERT INTO \"my_table\" (\"a\", \"b\") VALUES (?, ?) ON CONFLICT (\"a\") DO UPDATE SET \"b\" = ?, \"c\" = ?" "x" "y" "z" "a"]
