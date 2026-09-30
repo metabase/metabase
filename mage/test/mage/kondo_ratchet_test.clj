@@ -421,3 +421,70 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             [1 2 3])))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Per-symbol attribution
+;;;; ---------------------------------------------------------------------------
+
+(def ^:private claim-nearest' #'kondo-ratchet/claim-nearest)
+(def ^:private usage-candidates' #'kondo-ratchet/usage-candidates)
+(def ^:private attribute-linter' #'kondo-ratchet/attribute-linter)
+
+(deftest claim-nearest-test
+  (testing "each occurrence claims the nearest candidate at or after its line, in order"
+    (is (= [[{:line 1} [1 'a]] [{:line 5} [7 'b]]]
+           (claim-nearest' [{:line 1} {:line 5}] [[1 'a] [7 'b]]))))
+  (testing "a claimed candidate can't be reused, even by a closer later occurrence"
+    (is (= [[{:line 1} [2 'a]] [{:line 2} [3 'b]]]
+           (claim-nearest' [{:line 1} {:line 2}] [[2 'a] [3 'b]]))))
+  (testing "an occurrence with no remaining candidate at or after its line is left unpaired"
+    (is (= [[{:line 10} nil]]
+           (claim-nearest' [{:line 10}] [[1 'a]]))))
+  (testing "no occurrences, no candidates"
+    (is (= [] (claim-nearest' [] [[1 'a]])))
+    (is (= [[{:line 1} nil]] (claim-nearest' [{:line 1}] [])))))
+
+(deftest usage-candidates-test
+  (let [usages-by-file {"f.clj" [{:to 'a.b, :name 'x, :row 3}
+                                 {:to 'a.b, :name 'y, :row 5}
+                                 {:to 'a.b, :name 'z, :row 1}]}]
+    (testing "only usages resolving to a known symbol count, sorted by row"
+      (is (= [[1 'a.b/z] [3 'a.b/x]]
+             (usage-candidates' usages-by-file "f.clj" #{'a.b/z 'a.b/x}))))
+    (testing "an unknown file or an empty known set yields no candidates"
+      (is (= [] (usage-candidates' usages-by-file "other.clj" #{'a.b/z})))
+      (is (= [] (usage-candidates' usages-by-file "f.clj" #{}))))
+    (testing "a namespace-usage (no :name) resolves by :to alone"
+      (is (= [[2 'clojure.tools.logging]]
+             (usage-candidates' {"f.clj" [{:to 'clojure.tools.logging, :row 2}]}
+                                "f.clj" #{'clojure.tools.logging}))))))
+
+(deftest attribute-linter-test
+  (testing "a matched occurrence contributes 1 to its resolved symbol's per-symbol count; other linters on
+            the same occurrence don't matter"
+    (let [occurrences [{:file "f.clj", :line 3, :linters [:discouraged-var :unused-binding], :justified? true}]
+          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[3 'a.b/x]])]
+      (is (= {:a.b/x 1} actual))
+      (is (= [] unattributed))))
+  (testing "an occurrence with no matching candidate contributes nothing and is reported unattributed"
+    (let [occurrences [{:file "f.clj", :line 3, :linters [:discouraged-var], :justified? false}]
+          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [])]
+      (is (= {} actual))
+      (is (= occurrences unattributed))))
+  (testing "occurrences not naming the linter aren't candidates for a claim"
+    (let [occurrences [{:file "f.clj", :line 1, :linters [:unused-binding], :justified? true}]
+          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[1 'a.b/x]])]
+      (is (= {} actual))
+      (is (= [] unattributed))))
+  (testing "two occurrences of the same linter in one file each claim their own nearest candidate"
+    (let [occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}
+                       {:file "f.clj", :line 10, :linters [:discouraged-var], :justified? true}]
+          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[2 'a.b/x] [12 'a.b/y]])]
+      (is (= {:a.b/x 1, :a.b/y 1} actual))
+      (is (= [] unattributed))))
+  (testing "two occurrences resolving to the same symbol both count toward it"
+    (let [occurrences [{:file "f.clj", :line 1, :linters [:discouraged-var], :justified? true}
+                       {:file "f.clj", :line 10, :linters [:discouraged-var], :justified? true}]
+          {:keys [actual unattributed]} (attribute-linter' occurrences :discouraged-var [[2 'a.b/x] [12 'a.b/x]])]
+      (is (= {:a.b/x 2} actual))
+      (is (= [] unattributed)))))

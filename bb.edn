@@ -311,18 +311,21 @@
                   (project-tests/run!)))}
 
   kondo-ratchets
-  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka; seconds, not a test run)."
+  {:doc "Validate the kondo and module ratchet files against the source tree (Babashka scan, seconds; plus a
+         scoped kondo pass, seconds more, only over files carrying a :discouraged-var/:discouraged-namespace
+         ignore -- to attribute those to their per-symbol budget)."
    :examples [["./bin/mage kondo-ratchets" "Fail on an invalid ratchets file, an over-budget suppression, or a missing justification comment"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/check))}
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/check {:attribute mage.kondo-ratchet/attribute-occurrences!}))}
 
   kondo-ratchets-shrink
   {:doc "Lower kondo and module budgets to match the source tree. This is the only Mage task that writes the ratchet files."
    :examples [["./bin/mage kondo-ratchets-shrink" "Lower budgets to current counts without raising over-budget entries"]
-              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]]
-   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it)"]]
-   :requires [[dev.kondo-ratchet]]
-   :task (task! (dev.kondo-ratchet/fix! (:options parsed)))}
+              ["./bin/mage kondo-ratchets-shrink --seed :some-linter" "Set :some-linter's budget to its current count when introducing the linter"]
+              ["./bin/mage kondo-ratchets-shrink --seed :discouraged-var" "Split a whole discouragement linter into one budget per symbol, all seeded (unused ones at zero)"]]
+   :options [["-s" "--seed LINTER" "Set LINTER's budget to the actual count (may add or raise it); a bare :discouraged-var/:discouraged-namespace seeds every configured symbol"]]
+   :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
+   :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."

@@ -2,6 +2,7 @@
   "Tooling around the inline ignore ratchets that needs a real kondo run (slow: a minute or two):
   report ignores kondo considers redundant, and bulk-insert ignores when landing a new linter."
   (:require
+   [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.string :as str]
    [dev.kondo-ratchet :as kondo-ratchet]
@@ -24,6 +25,115 @@
         findings (:findings (edn/read-string (str/join "\n" out)))]
     (cond->> findings
       linter (filter #(= (:type %) linter)))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Per-symbol attribution for :discouraged-var / :discouraged-namespace
+;;;; ---------------------------------------------------------------------------
+
+(defn- kondo-analysis!
+  "Kondo's `:var-usages` and `:namespace-usages` analysis over `files` (empty when `files` is empty, to
+  avoid linting the whole default roots). Reports every reference kondo resolves, whether or not an
+  ignore suppresses the finding at that site -- analysis collection and finding suppression are
+  independent, which is what lets an ignored site still be attributed to the symbol it covers.
+
+  JSON, not `:format :edn`: a generated var can carry a name that prints as valid Clojure but doesn't
+  read back as it -- `(lib.common/defop / ...)` in `metabase.lib.expression` derives a var literally
+  named `/-clause`, which `clojure.edn/read-string` rejects. JSON has no such restriction, and every
+  field this namespace reads back out (`:to`, `:name`, `:filename`, row/col numbers) is a string or
+  number either way, so nothing downstream needs to change to consume it."
+  [files]
+  (if (empty? files)
+    {}
+    (let [config (pr-str {:output {:format :json, :analysis {:var-usages true, :namespace-usages true}}})
+          {:keys [out]} (apply shell/sh* {:quiet? true}
+                               "clojure" "-M:kondo" "--config" config "--lint" files)]
+      (:analysis (json/parse-string (str/join "\n" out) true)))))
+
+(defn- claim-nearest
+  "Pair each occurrence in `targets` (sorted ascending by `:line`) with the nearest `[row val]` candidate
+  in `usages` (sorted ascending by row) at or after its line, each candidate claimed at most once.
+  Returns `[[occurrence val-or-nil] ...]` in `targets`' order. Relies on both sequences being row-ordered
+  already: an ignore's target usage never precedes an earlier ignore's, since an ignore always precedes
+  what it covers, so once a usage falls behind the current line it can never match a later occurrence
+  either and is safe to drop."
+  [targets usages]
+  (loop [targets targets, usages usages, acc []]
+    (if-let [occurrence (first targets)]
+      (let [usages (drop-while (fn [[row _val]] (< row (:line occurrence))) usages)]
+        (recur (rest targets) (rest usages) (conj acc [occurrence (first usages)])))
+      acc)))
+
+(defn- resolved-symbol
+  "The fully-qualified symbol a var-usage or namespace-usage resolves to."
+  [usage]
+  (if (:name usage)
+    (symbol (str (:to usage)) (str (:name usage)))
+    (symbol (str (:to usage)))))
+
+(defn- usage-candidates
+  "`[row sym]` pairs, sorted by row, for the usages in `usages-by-file` under `file` whose resolved
+  symbol is in `known`."
+  [usages-by-file file known]
+  (->> (get usages-by-file file)
+       (keep (fn [usage]
+               (let [sym (resolved-symbol usage)]
+                 (when (contains? known sym)
+                   [(:row usage) sym]))))
+       (sort-by first)))
+
+(defn- attribute-linter
+  "Per-symbol actual counts ([[kondo-ratchet/discouraged-count-key]]) and unattributed occurrences for one
+  linter's ignore occurrences in one file's worth of `occurrences`, matched against `candidates` (from
+  [[usage-candidates]]). An occurrence that can't be matched to a known symbol's usage is reported in
+  `:unattributed` rather than guessed at."
+  [occurrences linter candidates]
+  (let [targets (->> occurrences
+                     (filter #(some #{linter} (:linters %)))
+                     (sort-by :line))
+        pairs   (claim-nearest targets candidates)]
+    {:actual       (frequencies (keep (fn [[_occurrence usage]]
+                                        (some-> usage second kondo-ratchet/discouraged-count-key))
+                                      pairs))
+     :unattributed (for [[occurrence usage] pairs
+                         :when (nil? usage)]
+                     occurrence)}))
+
+(defn attribute-discouraged
+  "Per-symbol actual counts for `:discouraged-var` and `:discouraged-namespace` from `occurrences` (from
+  `dev.kondo-ratchet/scan`), using `analysis` (from [[kondo-analysis!]]) to find which known symbol's usage
+  an ignore covers: the nearest matching usage at or after the ignore's line, in the same file
+  ([[claim-nearest]]). Returns `{:discouraged-var-actual _, :discouraged-namespace-actual _, :unattributed
+  _}` -- the shape `dev.kondo-ratchet/check`/`fix!` expect from `:attribute`. An ignored occurrence that
+  can't be matched to a known symbol's usage is reported under `:unattributed` rather than guessed at."
+  [occurrences analysis]
+  (let [var-known  (kondo-ratchet/discouraged-symbols :discouraged-var)
+        ns-known   (kondo-ratchet/discouraged-symbols :discouraged-namespace)
+        var-usages (group-by :filename (:var-usages analysis))
+        ns-usages  (group-by :filename (:namespace-usages analysis))
+        per-file   (for [[file file-occurrences] (group-by :file occurrences)
+                         :let [var-result (attribute-linter file-occurrences :discouraged-var
+                                                            (usage-candidates var-usages file var-known))
+                               ns-result  (attribute-linter file-occurrences :discouraged-namespace
+                                                            (usage-candidates ns-usages file ns-known))]]
+                     {:discouraged-var-actual       (:actual var-result)
+                      :discouraged-namespace-actual (:actual ns-result)
+                      :unattributed                 (concat (:unattributed var-result) (:unattributed ns-result))})]
+    {:discouraged-var-actual       (apply merge-with + {} (map :discouraged-var-actual per-file))
+     :discouraged-namespace-actual (apply merge-with + {} (map :discouraged-namespace-actual per-file))
+     :unattributed                 (mapcat :unattributed per-file)}))
+
+(defn attribute-occurrences!
+  "The `:attribute` [[dev.kondo-ratchet/check]]/`fix!` need to resolve `:discouraged-var` /
+  `:discouraged-namespace` occurrences to per-symbol actual counts ([[attribute-discouraged]]), running
+  kondo only over the files that actually carry one of those ignores. Those two commands stay
+  dependency-free and never call kondo themselves; this is the seam that does."
+  [occurrences]
+  (let [files (->> occurrences
+                   (filter #(some kondo-ratchet/discouragement-linters (:linters %)))
+                   (map :file)
+                   distinct
+                   sort)]
+    (attribute-discouraged occurrences (kondo-analysis! files))))
 
 (def keep-marker
   "Comment token marking an ignore as a verified `:redundant-ignore` false positive.

@@ -34,6 +34,9 @@
 (def ^:private module-config-file
   ".clj-kondo/config/modules/config.edn")
 
+(def ^:private kondo-config-file
+  ".clj-kondo/config.edn")
+
 (defn- read-ratchets-form
   "The one EDN map at `path`.
   An empty file, a non-map, or a second form is an error rather than an empty policy set, so a damaged
@@ -53,8 +56,24 @@
                         {:file path})))
       form)))
 
+(def discouragement-linters
+  "Linters backed by a symbol -> policy config map, each with its own dedicated top-level ratchet field
+  ([[discouraged-count-field]]) instead of sharing one budget across every symbol it covers."
+  #{:discouraged-var :discouraged-namespace})
+
+(defn discouraged-count-field
+  "The top-level ratchets.edn field holding `linter`'s per-symbol budgets, a member of
+  [[discouragement-linters]]: `:discouraged-var` -> `:discouraged-var-counts`."
+  [linter]
+  (keyword (str (name linter) "-counts")))
+
+(def ^:private discouraged-count-fields
+  (into #{} (map discouraged-count-field) discouragement-linters))
+
 (def ^:private empty-policies
-  {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})
+  (into {:ignore-counts {}, :config-counts {}, :comment-exempt #{}}
+        (map (fn [field] [field {}]))
+        discouraged-count-fields))
 
 (defn- validate-budgets!
   "Throw unless `budgets`, the value of `field`, maps names to non-negative integers."
@@ -72,12 +91,18 @@
   "Validate and return `ratchets`:
 
   - `:ignore-counts` maps linters to non-negative integers or `:unlimited`
+  - `:discouraged-var-counts` / `:discouraged-namespace-counts` ([[discouraged-count-fields]]) each map a
+    per-symbol key ([[discouraged-count-key]]) to a non-negative integer -- no `:unlimited`, since the
+    point of a per-symbol budget is a tight, countable number
   - `:config-counts` maps linters to non-negative integers
-  - `:comment-exempt` is a set of linters
+  - `:comment-exempt` is a set of linters -- unaffected by the two fields above: exemption from the
+    justification-comment requirement is a policy about the linter, not about which symbol a given
+    ignore happens to cover, so it stays keyed by the plain linter name
 
   All names must be keywords. Throws on malformed input."
   [ratchets]
-  (let [{:keys [ignore-counts config-counts comment-exempt]} (merge empty-policies ratchets)]
+  (let [merged                                      (merge empty-policies ratchets)
+        {:keys [ignore-counts config-counts comment-exempt]} merged]
     (when-not (map? ignore-counts)
       (throw (ex-info ":ignore-counts must be a map of linter policies"
                       {:ignore-counts ignore-counts})))
@@ -87,13 +112,18 @@
         (throw (ex-info (format "%s has invalid policy %s; expected a non-negative integer or :unlimited"
                                 linter (pr-str policy))
                         {:linter linter, :policy policy}))))
+    (doseq [field discouraged-count-fields]
+      (validate-budgets! field (get merged field)))
     (validate-budgets! :config-counts config-counts)
     (when-not (set? comment-exempt)
       (throw (ex-info ":comment-exempt must be a set of linters"
                       {:comment-exempt comment-exempt})))
     ;; the merge keys on (str linter) and renders the same way, so a non-keyword name would be rewritten
     ;; as a keyword, collide with one, or produce a file that no longer reads back
-    (doseq [policy-name (concat (keys ignore-counts) (keys config-counts) comment-exempt)]
+    (doseq [policy-name (concat (keys ignore-counts)
+                                (mapcat (comp keys #(get merged %)) discouraged-count-fields)
+                                (keys config-counts)
+                                comment-exempt)]
       (when-not (keyword? policy-name)
         (throw (ex-info (format "%s is not a linter name; policies and exemptions are keyed by keyword"
                                 (pr-str policy-name))
@@ -252,8 +282,74 @@
   "Diagnostics from tools other than kondo that ignores still name, plus `:all` for the vector-less form."
   #{:all :clojure-lsp/unused-public-var})
 
+(defn- discouraged-symbols-in
+  "Symbols configured under `linter` in one config node's `:linters` map, or nil when `x` has none."
+  [linter x]
+  (when (map? x)
+    (let [entries (get-in x [:linters linter])]
+      (when (map? entries)
+        (keys entries)))))
+
+(defn discouraged-symbols
+  "Every symbol configured under `linter` (a member of [[discouragement-linters]]) anywhere in `config`
+  (default: `.clj-kondo/config.edn`): the top-level `:linters` map, and every `:config-in-ns` /
+  `:config-in-call` scope, which can add entries that exist nowhere at the top level. A scope only
+  narrows *where* a policy applies -- it never gives the same symbol a second identity -- so scopes are
+  unioned into one set rather than kept apart, the same way [[linters-map-keys]] unions linter names."
+  ([linter]
+   (discouraged-symbols linter (edn/read-string (slurp kondo-config-file))))
+  ([linter config]
+   (let [found (atom #{})]
+     (walk/prewalk (fn [x]
+                     (when-let [syms (discouraged-symbols-in linter x)]
+                       (swap! found into syms))
+                     x)
+                   config)
+     @found)))
+
+(def ^:private enterprise-prefix
+  "metabase-enterprise.")
+
+(def ^:private oss-prefix
+  "metabase.")
+
+(defn- drop-metabase-prefix
+  "`s` with the common `metabase.` prefix dropped, or `metabase-enterprise.` shortened to `ee.` -- not
+  dropped outright, since an OSS namespace and its enterprise mirror of the same shape (e.g.
+  `metabase.entity-retrieval.core` / `metabase-enterprise.entity-retrieval.core`) would otherwise
+  collapse onto the same name."
+  [s]
+  (cond
+    (str/starts-with? s enterprise-prefix) (str "ee." (subs s (count enterprise-prefix)))
+    (str/starts-with? s oss-prefix)        (subs s (count oss-prefix))
+    :else                                  s))
+
+(defn discouraged-count-key
+  "The ratchet key for `sym`, a symbol configured under a [[discouragement-linters]] entry, mirroring its
+  own namespace and name rather than the linter that discourages it -- which linter is already implied
+  by whichever [[discouraged-count-field]] this key lives under. A var symbol's namespace becomes the
+  keyword's namespace and its name becomes the keyword's name:
+  `metabase.entity-retrieval.core/search-unfiltered` -> `:entity-retrieval.core/search-unfiltered`, its
+  enterprise counterpart -> `:ee.entity-retrieval.core/search-unfiltered` ([[drop-metabase-prefix]]
+  disambiguates them). A bare namespace symbol (no `/`) has no name segment to split out, so it becomes
+  an unnamespaced keyword: `clojure.tools.logging` -> `:clojure.tools.logging`."
+  [sym]
+  (if-let [ns-part (namespace sym)]
+    (keyword (drop-metabase-prefix ns-part) (name sym))
+    (keyword (drop-metabase-prefix (name sym)))))
+
+(defn discouraged-count-keys
+  "Every ratchet key for `linter` (a member of [[discouragement-linters]]), from [[discouraged-symbols]]."
+  ([linter]
+   (discouraged-count-keys linter (edn/read-string (slurp kondo-config-file))))
+  ([linter config]
+   (into #{} (map discouraged-count-key) (discouraged-symbols linter config))))
+
 (defn known-linters
-  "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]]."
+  "Every linter name a policy may use: kondo's built-ins, the repository's own, and [[external-linters]].
+  [[discouragement-linters]] entries validate separately, against [[discouraged-count-keys]] -- see
+  [[validate-discouraged-counts!]] -- since their per-symbol keys live in their own ratchet fields, not
+  mixed in with ordinary linter names here."
   []
   (into (builtin-linters) cat [(repository-linters) external-linters]))
 
@@ -283,6 +379,50 @@
                               (known-linter-hint))
                       {:unknown (vec unknown)})))))
 
+(defn unknown-discouraged-keys
+  "Keys in `ratchets`' [[discouraged-count-field]] for `linter` that aren't currently configured under it
+  ([[discouraged-count-keys]]), sorted -- a var whose config.edn entry was renamed or removed, or a typo."
+  [ratchets linter]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (remove (discouraged-count-keys linter))
+        (keys (get ratchets (discouraged-count-field linter)))))
+
+(defn discouraged-in-ignore-counts
+  "[[discouragement-linters]] present in `ignore-counts`, sorted -- a flat entry there is stale once a
+  linter has its own [[discouraged-count-field]]: every occurrence still names the bare linter in
+  `:linters` (attribution never rewrites it, see [[fix!]]), so a flat budget here would double-count every
+  occurrence its dedicated field already covers. [[fix!]] strips these; [[check]] fails on them."
+  [ignore-counts]
+  (into (sorted-set-by #(compare (str %1) (str %2)))
+        (filter discouragement-linters)
+        (keys ignore-counts)))
+
+(defn ignore-counts-occurrences
+  "`occurrences` for `:ignore-counts` bookkeeping: [[discouragement-linters]] dropped from each occurrence's
+  `:linters`, since every ignore naming one still names it whether or not it has a flat `:ignore-counts`
+  entry -- they're tracked per-symbol instead ([[discouraged-count-field]]), so a flat entry (or its
+  absence) must not affect `:ignore-counts`' over-budget/missing-budget accounting either way. Other
+  linters on the same occurrence, and `:comment-exempt`/`:config-counts` bookkeeping elsewhere, are
+  unaffected -- only this view feeds `:ignore-counts`."
+  [occurrences]
+  (map #(update % :linters (partial remove discouragement-linters)) occurrences))
+
+(defn validate-discouraged-counts!
+  "Throw one error per [[discouragement-linters]] whose [[discouraged-count-field]] names a symbol not
+  currently configured under it."
+  [ratchets]
+  (doseq [linter discouragement-linters
+          :let   [unknown (unknown-discouraged-keys ratchets linter)]
+          :when  (seq unknown)]
+    (throw (ex-info (format "%s names %d %s symbol%s not configured in %s: %s"
+                            *ratchets-file*
+                            (count unknown)
+                            linter
+                            (if (= 1 (count unknown)) "" "s")
+                            kondo-config-file
+                            (str/join ", " unknown))
+                    {:linter linter, :unknown (vec unknown)}))))
+
 (defn- validate-test-config-counts!
   "Throw unless `test-ratchets` has an empty :config-counts -- config-level suppressions are tracked only
   in `prod-file` (see [[config-suppressions]]), and [[fix!]] silently drops anything here otherwise.
@@ -302,6 +442,7 @@
     (let [test-ratchets (read-ratchets)]
       (when-not (disabled? test-ratchets)
         (validate-linters! test-ratchets known)
+        (validate-discouraged-counts! test-ratchets)
         (validate-test-config-counts! test-ratchets prod-file))
       test-ratchets)))
 
@@ -575,9 +716,6 @@
           (remove still-needed)
           exempt)))
 
-(def ^:private kondo-config-file
-  ".clj-kondo/config.edn")
-
 (defn- excluded-items
   "How many items an `:exclude` value waives: sequential entries count each, and a map's values count
   their elements when sequential (`{compojure.core [GET POST]}` is 2) or 1 otherwise (a scoping map like
@@ -647,10 +785,16 @@
      [linter entry])))
 
 (def ^:private shared-header
-  (str ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling.\n"
+  (str ";; :discouraged-var-counts / :discouraged-namespace-counts budget those two linters per symbol instead\n"
+       ";; of per linter -- keyed by the symbol's own namespace/name, not the linter (`ee.` marks an enterprise\n"
+       ";; namespace, so it can't collide with its OSS counterpart of the same shape).\n"
+       ";; Each :ignore-counts value is a non-negative integer budget, or :unlimited for no ceiling; every other\n"
+       ";; budget is a plain non-negative integer.\n"
        ";; Checks fail when a count exceeds its numeric budget; unused budget is allowed.\n"
-       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line.\n"
-       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one.\n"
+       ";; Any ignore outside :comment-exempt needs an explanatory comment directly above or trailing on its line;\n"
+       ";; this is a per-linter policy, so it stays keyed by the plain linter name even for the two split above.\n"
+       ";; `./bin/mage kondo-ratchets-shrink` lowers budgets unless `--seed` explicitly adds or raises one; a bare\n"
+       ";; `--seed :discouraged-var`/`:discouraged-namespace` seeds every symbol configured under it at once.\n"
        ";; The workflow runs it on master, so feature branches do not need to record reductions.\n"
        ";; Raising or adding a budget (`--seed` for inline ignores, a manual edit otherwise) or widening the\n"
        ";; exemptions must be explained in the PR.\n"
@@ -686,21 +830,39 @@
                        (format (str "%-" width "s %s") (str linter) (str n))))
            "}"))))
 
+(def ^:private ratchet-field-order
+  "Top-level fields of a rendered ratchets.edn, in the order [[render]] writes them. Field names are
+  padded to a common column ([[render]]'s `width`), so a long field like `:discouraged-namespace-counts`
+  doesn't force every shorter field's name out of alignment with it -- each field's *own* wrapped entries
+  align under its own opening bracket instead."
+  (into [:ignore-counts] cat [(sort discouraged-count-fields) [:config-counts :comment-exempt]]))
+
+(defn- field-prefix
+  "The literal text before `field`'s value on its own line: nothing for the map's own opening `{` (the
+  first field), a leading space for every other field, then the field name padded to `width` and a space."
+  [first? field width]
+  (str (if first? "{" " ") (format (str "%-" width "s ") (str field))))
+
 (defn- render-policies
-  [header {:keys [ignore-counts config-counts comment-exempt]} config-counts?]
-  (let [counts-indent (apply str (repeat (count "{:ignore-counts  {") \space))
-        exempt-indent (apply str (repeat (count " :comment-exempt #{") \space))]
+  [header ratchets config-counts?]
+  (let [fields (cond->> ratchet-field-order (not config-counts?) (remove #{:config-counts}))
+        width  (apply max (map (comp count str) fields))
+        line   (fn [first? k]
+                 (let [prefix (field-prefix first? k width)]
+                   (str (when-not first? "\n")
+                        prefix
+                        (if (= k :comment-exempt)
+                          (let [exempt (:comment-exempt ratchets)]
+                            (if (empty? exempt)
+                              "#{}"
+                              (str "#{"
+                                   (str/join (str "\n" (apply str (repeat (+ (count prefix) 2) \space)))
+                                             (sort-by str exempt))
+                                   "}")))
+                          (render-counts (get ratchets k)
+                                         (apply str (repeat (inc (count prefix)) \space)))))))]
     (str header
-         "{:ignore-counts  " (render-counts ignore-counts counts-indent)
-         (when config-counts?
-           (str "\n :config-counts  " (render-counts config-counts counts-indent)))
-         "\n :comment-exempt "
-         (if (empty? comment-exempt)
-           "#{}"
-           (str "#{"
-                (str/join (str "\n" exempt-indent)
-                          (sort-by str comment-exempt))
-                "}"))
+         (apply str (map-indexed (fn [i k] (line (zero? i) k)) fields))
          "}\n")))
 
 (defn render
@@ -769,7 +931,10 @@
         (into (set base) (concat ours theirs))))
 
 (def ^:private merge-fields
-  #{:comment-exempt :config-counts :ignore-counts})
+  (into #{:comment-exempt :config-counts :ignore-counts} discouraged-count-fields))
+
+(def ^:private merge-count-fields
+  (disj merge-fields :comment-exempt))
 
 (defn- validate-merge-shape
   "`ratchets` when it contains only the policy fields and `:disabled`, and each policy field passes
@@ -787,21 +952,20 @@
 (defn merge-ratchets
   "Three-way merge `base`, `ours`, and `theirs`, validating every stage first.
   A disabled target stays disabled; a disabled incoming stage leaves `ours` unchanged. Otherwise merge
-  count maps with [[merge-counts]] and exemptions with [[merge-exemptions]]."
+  every count field ([[merge-count-fields]]) with [[merge-counts]] and exemptions with [[merge-exemptions]]."
   [base ours theirs]
   (let [[base ours theirs] (map validate-merge-shape [base ours theirs])]
     (cond
       (disabled? ours)   {:disabled true}
       (disabled? theirs) ours
-      :else              {:ignore-counts  (merge-counts (:ignore-counts base {})
-                                                        (:ignore-counts ours {})
-                                                        (:ignore-counts theirs {}))
-                          :config-counts  (merge-counts (:config-counts base {})
-                                                        (:config-counts ours {})
-                                                        (:config-counts theirs {}))
-                          :comment-exempt (merge-exemptions (:comment-exempt base #{})
-                                                            (:comment-exempt ours #{})
-                                                            (:comment-exempt theirs #{}))})))
+      :else              (into {:comment-exempt (merge-exemptions (:comment-exempt base #{})
+                                                                  (:comment-exempt ours #{})
+                                                                  (:comment-exempt theirs #{}))}
+                               (map (fn [field]
+                                      [field (merge-counts (get base field {})
+                                                           (get ours field {})
+                                                           (get theirs field {}))]))
+                               merge-count-fields))))
 
 (defn merge-module-ratchets
   "Three-way merge module budgets, validating every stage first."
@@ -811,23 +975,28 @@
 (defn lowered-counts
   "`recorded` with each bounded budget lowered to its actual count; bounded entries with no ignores go.
   An `:unlimited` policy is kept as written, even at zero: it records a decision about the linter, not a count.
-  Linters in `seeded` get their budget set outright — the explicit escape hatch for landing a new linter.
-  Otherwise never raises a budget, never adds one."
-  [recorded actual seeded]
-  (let [seeded? (set seeded)]
-    (into (sorted-by-str
-           (for [linter seeded
-                 :when  (pos? (get actual linter 0))]
-             [linter (get actual linter)]))
-          (keep (fn [[linter budget]]
-                  (let [n (get actual linter 0)]
-                    (cond
-                      (seeded? linter)      nil
-                      (= budget :unlimited) [linter budget]
-                      (zero? n)             nil
-                      (< n budget)          [linter n]
-                      :else                 [linter budget]))))
-          recorded)))
+  Linters in `seeded` get their budget set outright — the explicit escape hatch for landing a new linter --
+  except a linter with no ignores is dropped rather than written at zero, unless it's also in `bulk-zero`:
+  seeding a whole [[discouragement-linters]] entry (`--seed :discouraged-var`, no specific var) writes
+  every one of its symbols, including the ones with no ignores yet, the same as landing a brand-new linter
+  writes it at zero. Otherwise never raises a budget, never adds one."
+  ([recorded actual seeded]
+   (lowered-counts recorded actual seeded #{}))
+  ([recorded actual seeded bulk-zero]
+   (let [seeded? (set seeded)]
+     (into (sorted-by-str
+            (for [linter seeded
+                  :when  (or (contains? bulk-zero linter) (pos? (get actual linter 0)))]
+              [linter (get actual linter 0)]))
+           (keep (fn [[linter budget]]
+                   (let [n (get actual linter 0)]
+                     (cond
+                       (seeded? linter)      nil
+                       (= budget :unlimited) [linter budget]
+                       (zero? n)             nil
+                       (< n budget)          [linter n]
+                       :else                 [linter budget]))))
+           recorded))))
 
 (defn unexercised-unlimited
   "Linters with an `:unlimited` policy in `ignore-counts` and no ignores in `actual`, sorted."
@@ -854,44 +1023,96 @@
       (str "WARNING: :comment-exempt is no longer needed for these linters: " (str/join ", " linters)
            " -- delete the stale entries by hand"))))
 
+(defn unattributed-lines
+  "Warning lines for `unattributed` occurrences (from `:attribute` -- see [[check]]/[[fix!]]): an ignore
+  naming a [[discouragement-linters]] linter that couldn't be resolved to a symbol currently configured
+  under it, in practice so far always a stale ignore rather than a matching failure."
+  [unattributed]
+  (for [{:keys [file line linters]} unattributed]
+    (format "WARNING: %s:%d names %s but no configured symbol's usage matches -- probably a stale ignore, check with `./bin/mage kondo-redundant-ignores`"
+            file line (vec linters))))
+
+(defn- seed-lines
+  "[[fix!]]'s report lines for `seeded` keys in one count field: seeded at its actual count, seeded at
+  zero for a [[resolve-seed]] `bulk-zero` key (landing a whole [[discouragement-linters]] entry), or a
+  warning when there's nothing to seed (an ordinary seed of a linter with no ignores)."
+  [recorded actual seeded bulk-zero]
+  (for [name seeded
+        :let [n (get actual name 0)]]
+    (cond
+      (pos? n)                   (format "seeded %s at %d" name n)
+      (contains? bulk-zero name) (format "seeded %s at 0" name)
+      (contains? recorded name)  (format "WARNING: %s has no inline ignores -- dropping its policy" name)
+      :else                      (format "WARNING: %s has no inline ignores -- nothing to seed" name))))
+
+(defn- budget-lines
+  "[[fix!]]'s report lines for bounded (non-`:unlimited`), non-seeded entries in one count field: dropped
+  at zero, lowered to actual, or over budget (suggesting `--seed` on the name `seed-hint` returns for it)."
+  [recorded actual seeded seed-hint]
+  (for [[name budget] (sort-by (comp str first) (apply dissoc recorded seeded))
+        :let          [n (get actual name 0)]
+        ;; a hand-written 0 with no ignores is dropped too, so it needs a line
+        :when         (and (integer? budget) (or (not= n budget) (zero? budget)))]
+    (cond
+      (zero? n)    (format "dropped %s (no ignores left)" name)
+      (< n budget) (format "lowered %s %d -> %d" name budget n)
+      :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
+                           name budget n (seed-hint name)))))
+
+(defn- missing-budget-lines
+  "[[fix!]]'s report lines for entries with ignores but no budget at all, suggesting `--seed` on the name
+  `seed-hint` returns for it."
+  [recorded actual seeded seed-hint]
+  (for [[name n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys recorded))))]
+    (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed %s`"
+            name n (seed-hint name))))
+
+(defn- discouraged-change-lines
+  "[[change-report]]'s lines for one [[discouragement-linters]] field: seeded/dropped/lowered/over-budget,
+  same shape as `:ignore-counts`' but against `actual` (per-symbol counts from `:attribute`, not occurrence
+  counts) and never suggesting `--seed` on one specific symbol -- only the whole linter can be re-seeded."
+  [recorded actual seeded bulk-zero linter]
+  (let [seed-hint (constantly (str linter))]
+    (concat (seed-lines recorded actual seeded bulk-zero)
+            (budget-lines recorded actual seeded seed-hint)
+            (missing-budget-lines recorded actual seeded seed-hint))))
+
 (defn- ignore-change-report
-  "Change-report lines for one file's :ignore-counts, scoped to `occurrences`: seeding, lowered/dropped/
-  over-budget counts, unused `:unlimited` policies, and ignores with no budget entry. Its :comment-exempt
-  is reported separately, via [[stale-exemptions-warning]], so callers can place it relative to other
-  sections (e.g. after config/module counts, as [[change-report]] does).
+  "Change-report lines for one file's inline-ignore budgets, scoped to `occurrences`: seeding,
+  lowered/dropped/over-budget counts, unused `:unlimited` policies, and ignores with no budget entry, for
+  `:ignore-counts` and both [[discouraged-count-field]]s, then stale discouraged-var/namespace ignores.
+  `attribution` is the `:attribute` result for `occurrences` (see [[fix!]]); `field`/`seeded`/`bulk-zero`
+  are [[resolve-seed]]'s result, and only the count field a seed targets gets seed reporting.
+  Its :comment-exempt is reported separately, via [[stale-exemptions-warning]], so callers can place it
+  relative to other sections (e.g. after config/module counts, as [[change-report]] does).
   Shared by [[change-report]] (the prod ratchets file) and [[fix!]]'s pass over the test ratchets file."
-  [ignore-counts occurrences seeded]
-  (let [actual (actual-counts occurrences)]
+  [{:keys [ignore-counts discouraged-var-counts discouraged-namespace-counts]} occurrences
+   {:keys [discouraged-var-actual discouraged-namespace-actual unattributed]} field seeded bulk-zero]
+  (let [ignore-counts (apply dissoc ignore-counts discouragement-linters)
+        actual        (actual-counts (ignore-counts-occurrences occurrences))
+        seeded-in     (fn [f] (if (= field f) seeded []))
+        bulk-in       (fn [f] (if (= field f) bulk-zero #{}))]
     (concat
-     (for [linter seeded
-           :let   [n (get actual linter 0)]]
-       (cond
-         (pos? n)                         (format "seeded %s at %d" linter n)
-         (contains? ignore-counts linter) (format "WARNING: %s has no inline ignores -- dropping its policy"
-                                                  linter)
-         :else                            (format "WARNING: %s has no inline ignores -- nothing to seed"
-                                                  linter)))
-     (for [[linter budget] (sort-by (comp str first) (apply dissoc ignore-counts seeded))
-           :let            [n (get actual linter 0)]
-           ;; a hand-written 0 with no ignores is dropped too, so it needs a line
-           :when           (and (integer? budget) (or (not= n budget) (zero? budget)))]
-       (cond
-         (zero? n)    (format "dropped %s (no ignores left)" linter)
-         (< n budget) (format "lowered %s %d -> %d" linter budget n)
-         :else        (format "WARNING: %s is over budget (%d recorded, %d actual) -- remove ignores, or accept them all with `--seed %s`"
-                              linter budget n linter)))
-     (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts seeded) actual) vector)
-     (for [[linter n] (sort-by (comp str first) (apply dissoc actual (concat seeded (keys ignore-counts))))]
-       (format "WARNING: %s has %d ignores but no budget entry -- seed one with `./bin/mage kondo-ratchets-shrink --seed %s`"
-               linter n linter)))))
+     (seed-lines ignore-counts actual (seeded-in :ignore-counts) (bulk-in :ignore-counts))
+     (budget-lines ignore-counts actual (seeded-in :ignore-counts) identity)
+     (some-> (unexercised-unlimited-warning (apply dissoc ignore-counts (seeded-in :ignore-counts)) actual) vector)
+     (missing-budget-lines ignore-counts actual (seeded-in :ignore-counts) identity)
+     (discouraged-change-lines discouraged-var-counts discouraged-var-actual
+                               (seeded-in :discouraged-var-counts) (bulk-in :discouraged-var-counts)
+                               :discouraged-var)
+     (discouraged-change-lines discouraged-namespace-counts discouraged-namespace-actual
+                               (seeded-in :discouraged-namespace-counts) (bulk-in :discouraged-namespace-counts)
+                               :discouraged-namespace)
+     (unattributed-lines unattributed))))
 
 (defn change-report
   "The lines [[fix!]] prints for budget changes, budget violations, unused `:unlimited` policies, and
-  stale comment exemptions."
-  [{:keys [ignore-counts config-counts comment-exempt]} module-ratchets
-   occurrences config-actual module-actual seeded]
+  stale comment exemptions. See [[ignore-change-report]] for `attribution`, `field`, `seeded` and
+  `bulk-zero`."
+  [{:keys [config-counts comment-exempt] :as ratchets} module-ratchets
+   occurrences attribution config-actual module-actual field seeded bulk-zero]
   (concat
-   (ignore-change-report ignore-counts occurrences seeded)
+   (ignore-change-report ratchets occurrences attribution field seeded bulk-zero)
    (for [[linter {:keys [recorded actual]}] (count-drift config-counts config-actual)]
      (cond
        (zero? actual)       (format "dropped config %s (no suppressions left)" linter)
@@ -907,16 +1128,30 @@
                                    metric recorded actual)))
    (some-> (stale-exemptions-warning comment-exempt occurrences) vector)))
 
+(def ^:private policy-count-fields
+  "The count fields both the prod and the test ratchets file carry."
+  (into [:ignore-counts] (sort discouraged-count-fields)))
+
+(defn- test-field
+  "The name [[shrink-summary]] gives a test ratchets file's `field`."
+  [field]
+  (keyword (str "test-" (name field))))
+
 (def ^:private count-fields
-  [:ignore-counts :config-counts :module-counts :test-ignore-counts])
+  (concat policy-count-fields [:config-counts :module-counts] (map test-field policy-count-fields)))
 
 (defn- display-name
   [field linter]
-  (case field
-    :config-counts      (str ":config/" (subs (str linter) 1))
-    :module-counts       (str ":module/" (subs (str linter) 1))
-    :test-ignore-counts (str ":test/" (subs (str linter) 1))
-    (str linter)))
+  (let [k (subs (str linter) 1)]
+    (case field
+      :discouraged-var-counts            (str ":discouraged-var/" k)
+      :discouraged-namespace-counts      (str ":discouraged-namespace/" k)
+      :config-counts                     (str ":config/" k)
+      :module-counts                     (str ":module/" k)
+      :test-ignore-counts                (str ":test/" k)
+      :test-discouraged-var-counts       (str ":test/discouraged-var/" k)
+      :test-discouraged-namespace-counts (str ":test/discouraged-namespace/" k)
+      (str linter))))
 
 (defn- shrink-changes
   [before after]
@@ -985,11 +1220,13 @@
   "The budgets in a prod, module, and test ratchet file triple, combined into the shape
   [[shrink-summary]] compares."
   [ratchets-path module-ratchets-path test-ratchets-path]
-  (let [read-ratchets* #(binding [*ratchets-file* %] (read-ratchets))]
-    (assoc (read-ratchets* ratchets-path)
-           :module-counts      (binding [*module-ratchets-file* module-ratchets-path]
-                                 (read-module-ratchets))
-           :test-ignore-counts (:ignore-counts (read-ratchets* test-ratchets-path)))))
+  (let [read-ratchets* #(binding [*ratchets-file* %] (read-ratchets))
+        test-ratchets  (read-ratchets* test-ratchets-path)]
+    (into (assoc (read-ratchets* ratchets-path)
+                 :module-counts (binding [*module-ratchets-file* module-ratchets-path]
+                                  (read-module-ratchets)))
+          (for [field policy-count-fields]
+            [(test-field field) (get test-ratchets field)]))))
 
 (defn shrink-pr-body-from-files
   "[[shrink-pr-body]] for ratchet files on disk, before and after shrinking."
@@ -998,49 +1235,101 @@
                   (read-ratchet-snapshots after modules-after test-after)
                   workflow-url))
 
+(defn- resolve-seed
+  "Where `seed` (a linter keyword or its `:foo` string form) writes a budget, and which keys to write even
+  at zero: a bare [[discouragement-linters]] name (`--seed :discouraged-var`, no specific var) targets
+  that linter's own [[discouraged-count-field]] and expands to every symbol currently configured under it
+  ([[discouraged-count-keys]]) -- landing a whole discouragement linter needs one budget per symbol from
+  the start, the same as landing any other new linter writes it at zero, not just the symbols already
+  carrying an ignore. Seeding one specific symbol directly isn't supported -- re-running the bulk seed is
+  idempotent and simpler than a second CLI syntax for one key. Any other linter targets `:ignore-counts`
+  and seeds just itself, only when it has ignores, as before.
+  Returns `{:field _, :seeded [...], :bulk-zero #{...}}`; `:field` is `:ignore-counts` and the other two
+  are empty when `seed` is nil."
+  [seed]
+  (if-not seed
+    {:field :ignore-counts, :seeded [], :bulk-zero #{}}
+    (let [linter (keyword (str/replace-first seed #"^:" ""))]
+      (if (contains? discouragement-linters linter)
+        (let [keys (vec (sort-by str (discouraged-count-keys linter)))]
+          {:field (discouraged-count-field linter), :seeded keys, :bulk-zero (set keys)})
+        {:field :ignore-counts, :seeded [linter], :bulk-zero #{}}))))
+
+(def ^:private no-attribution
+  "Default `:attribute` for [[check]]/[[fix!]]: no real kondo run, so every [[discouragement-linters]]
+  field reads as having no ignores at all."
+  (constantly {:discouraged-var-actual {}, :discouraged-namespace-actual {}, :unattributed []}))
+
 (defn fix!
   "Lower budgets and normalize the prod, test, and module ratchet files.
   Refuses to touch a file containing an unknown linter or to seed one, rather than silently dropping it.
   `--seed LINTER` (`{:seed \"...\"}` here) sets that budget to the actual count and bounds an unlimited
-  one, independently in whichever file(s) actually have occurrences for it.
+  one, independently in whichever file(s) actually have occurrences for it ([[resolve-seed]] for the
+  bulk-seed case of a bare [[discouragement-linters]] name, which targets that linter's own
+  [[discouraged-count-field]] instead of `:ignore-counts`).
+  `:attribute` (default [[no-attribution]]) takes occurrences from [[scan]] and returns
+  `{:discouraged-var-actual _, :discouraged-namespace-actual _, :unattributed _}` -- the seam a caller with
+  a real kondo run uses to resolve which symbol each `:discouraged-var`/`:discouraged-namespace` ignore
+  covers; this namespace stays dependency-free and never does that itself. It's called once per file, with
+  that file's occurrences.
   Prints a [[change-report]] per file, or `unchanged` on a no-op.
   Does nothing, including seeding, when [[*ratchets-file*]] sets `:disabled` to `true`; the test ratchets
   file honors its own `:disabled` independently, skipping only its own pass."
   ([]
    (fix! nil))
-  ([{:keys [seed]}]
-   (let [{:keys [ignore-counts config-counts comment-exempt] :as ratchets} (read-ratchets)]
+  ([{:keys [seed attribute], :or {attribute no-attribution}}]
+   (let [{:keys [config-counts] :as ratchets} (read-ratchets)]
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
-       (let [module-ratchets (read-module-ratchets)
-             known           (known-linters)
-             _               (validate-linters! ratchets known)
-             test-ratchets   (read-validated-test-ratchets known *ratchets-file*)
-             test-disabled?  (disabled? test-ratchets)
-             seeded          (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
-             _               (validate-seed! seeded known)
-             occurrences     (scan)
+       (let [module-ratchets  (read-module-ratchets)
+             known            (known-linters)
+             _                (validate-linters! ratchets known)
+             _                (validate-discouraged-counts! ratchets)
+             test-ratchets    (read-validated-test-ratchets known *ratchets-file*)
+             test-disabled?   (disabled? test-ratchets)
+             {:keys [field seeded bulk-zero]} (resolve-seed seed)
+             _                (when (= field :ignore-counts) (validate-seed! seeded known))
+             occurrences      (scan)
              {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
-             actual          (actual-counts prod-occ)
-             test-actual     (actual-counts test-occ)
-             config-actual   (config-suppressions)
-             module-actual   (module-escape-hatches)
-             outputs         (cond-> [[*ratchets-file*
-                                       (render {:ignore-counts  (lowered-counts ignore-counts actual seeded)
-                                                :config-counts  (lowered-counts config-counts config-actual [])
-                                                :comment-exempt comment-exempt})]
-                                      [*module-ratchets-file*
-                                       (render-module-ratchets
-                                        (lowered-counts module-ratchets module-actual []))]]
-                               (not test-disabled?)
-                               (conj [*test-ratchets-file*
-                                      (render-test {:ignore-counts  (lowered-counts (:ignore-counts test-ratchets)
-                                                                                    test-actual seeded)
-                                                    :comment-exempt (:comment-exempt test-ratchets)})]))
-             changed         (filterv (fn [[path text]] (not= (slurp path) text)) outputs)]
-         (run! println (change-report ratchets module-ratchets prod-occ config-actual module-actual seeded))
+             attribution      (attribute prod-occ)
+             test-attribution (if test-disabled? (no-attribution test-occ) (attribute test-occ))
+             config-actual    (config-suppressions)
+             module-actual    (module-escape-hatches)
+             seeded-for       (fn [f] (if (= field f) seeded []))
+             bulk-zero-for    (fn [f] (if (= field f) bulk-zero #{}))
+             lowered          (fn [policies occs {:keys [discouraged-var-actual discouraged-namespace-actual]}]
+                                {:ignore-counts                (lowered-counts (apply dissoc (:ignore-counts policies)
+                                                                                      discouragement-linters)
+                                                                               (actual-counts occs)
+                                                                               (seeded-for :ignore-counts))
+                                 :discouraged-var-counts       (lowered-counts (:discouraged-var-counts policies)
+                                                                               discouraged-var-actual
+                                                                               (seeded-for :discouraged-var-counts)
+                                                                               (bulk-zero-for :discouraged-var-counts))
+                                 :discouraged-namespace-counts (lowered-counts (:discouraged-namespace-counts policies)
+                                                                               discouraged-namespace-actual
+                                                                               (seeded-for :discouraged-namespace-counts)
+                                                                               (bulk-zero-for :discouraged-namespace-counts))
+                                 :comment-exempt               (:comment-exempt policies)})
+             outputs          (cond-> [[*ratchets-file*
+                                        (render (assoc (lowered ratchets prod-occ attribution)
+                                                       :config-counts (lowered-counts config-counts config-actual [])))]
+                                       [*module-ratchets-file*
+                                        (render-module-ratchets
+                                         (lowered-counts module-ratchets module-actual []))]]
+                                (not test-disabled?)
+                                (conj [*test-ratchets-file*
+                                       (render-test (lowered test-ratchets test-occ test-attribution))]))
+             changed          (filterv (fn [[path text]] (not= (slurp path) text)) outputs)]
+         (doseq [[path policies] (cond-> [[*ratchets-file* ratchets]]
+                                   (not test-disabled?) (conj [*test-ratchets-file* test-ratchets]))
+                 linter          (discouraged-in-ignore-counts (:ignore-counts policies))]
+           (println (format "dropped stale :ignore-counts entry for %s in %s (tracked per-symbol in %s now)"
+                            linter path (discouraged-count-field linter))))
+         (run! println (change-report ratchets module-ratchets prod-occ attribution
+                                      config-actual module-actual field seeded bulk-zero))
          (when-not test-disabled?
-           (run! println (concat (ignore-change-report (:ignore-counts test-ratchets) test-occ seeded)
+           (run! println (concat (ignore-change-report test-ratchets test-occ test-attribution field seeded bulk-zero)
                                  (some-> (stale-exemptions-warning (:comment-exempt test-ratchets) test-occ)
                                          vector))))
          (if (empty? changed)
@@ -1050,23 +1339,42 @@
              (println (str "wrote " path)))))))))
 
 (defn- ignore-check-lines
-  "Budget, justification, and formatting diagnostics for one ratchets file's :ignore-counts and
-  :comment-exempt, scoped to `occurrences`. `ratchets-file` names the file in the not-normalized message, and
-  `render-fn` gives its canonical text.
+  "Budget, justification, and formatting diagnostics for one ratchets file's inline-ignore budgets
+  (`:ignore-counts` and both [[discouraged-count-field]]s) and :comment-exempt, scoped to `occurrences`.
+  `attribution` is the `:attribute` result for `occurrences` (see [[check]]). `ratchets-file` names the
+  file in the not-normalized message, and `render-fn` gives its canonical text.
   Shared by [[check-report]] (the prod ratchets file) and [[check]]'s pass over the test ratchets file."
-  [ratchets-file render-fn {:keys [ignore-counts comment-exempt] :or {comment-exempt #{}} :as ratchets}
-   occurrences ratchets-text]
-  (let [over        (over-budget ignore-counts occurrences)
-        uncommented (unjustified comment-exempt occurrences)
-        budget-line (fn [[k {:keys [recorded actual]}]]
-                      (format "  %s: %d recorded, %d actual" k recorded actual))]
+  [ratchets-file render-fn
+   {:keys [ignore-counts discouraged-var-counts discouraged-namespace-counts comment-exempt]
+    :or   {comment-exempt #{}}
+    :as   ratchets}
+   occurrences {:keys [discouraged-var-actual discouraged-namespace-actual]} ratchets-text]
+  (let [over                       (over-budget ignore-counts (ignore-counts-occurrences occurrences))
+        stale-flat                 (discouraged-in-ignore-counts ignore-counts)
+        discouraged-var-over       (counts-over-budget discouraged-var-counts discouraged-var-actual)
+        discouraged-namespace-over (counts-over-budget discouraged-namespace-counts discouraged-namespace-actual)
+        uncommented                (unjustified comment-exempt occurrences)
+        budget-line                (fn [[k {:keys [recorded actual]}]]
+                                     (format "  %s: %d recorded, %d actual" k recorded actual))]
     (concat
+     (when (seq stale-flat)
+       [(str ":ignore-counts still has a flat budget for " (str/join ", " stale-flat)
+             " -- each now has its own field (" (str/join ", " (map discouraged-count-field stale-flat))
+             "); run `./bin/mage kondo-ratchets-shrink` to drop the stale entry")])
      (when (seq over)
        (cons (str "over budget -- remove an ignore, or seed the budget with"
                   " `./bin/mage kondo-ratchets-shrink --seed <linter>` and explain the increase in the PR:")
              (mapcat (fn [[_ {:keys [examples]} :as entry]]
                        (cons (budget-line entry) (map #(str "    " %) examples)))
                      over)))
+     (when (seq discouraged-var-over)
+       (cons (str "discouraged-var symbols over budget -- remove an ignore, or accept them all with"
+                  " `./bin/mage kondo-ratchets-shrink --seed :discouraged-var` and explain the increase in the PR:")
+             (map budget-line discouraged-var-over)))
+     (when (seq discouraged-namespace-over)
+       (cons (str "discouraged-namespace symbols over budget -- remove an ignore, or accept them all with"
+                  " `./bin/mage kondo-ratchets-shrink --seed :discouraged-namespace` and explain the increase in the PR:")
+             (map budget-line discouraged-namespace-over)))
      (when (seq uncommented)
        (cons (str "ignores without required comments -- add a `;;` comment above the form or at the end"
                   " of the same line, explaining why the suppression is necessary:")
@@ -1079,15 +1387,16 @@
 
 (defn check-report
   "Diagnostics for budget violations, unjustified ignores, and noncanonical ratchet text.
-  Lower counts are valid; post-merge automation records them."
+  Lower counts are valid; post-merge automation records them.
+  `attribution` is the `:attribute` result for `occurrences` (see [[check]])."
   [{:keys [config-counts] :as ratchets}
-   module-ratchets occurrences config-actual module-actual ratchets-text module-ratchets-text]
+   module-ratchets occurrences attribution config-actual module-actual ratchets-text module-ratchets-text]
   (let [config-over (counts-over-budget config-counts config-actual)
         module-over (counts-over-budget module-ratchets module-actual)
         budget-line (fn [[k {:keys [recorded actual]}]]
                       (format "  %s: %d recorded, %d actual" k recorded actual))]
     (concat
-     (ignore-check-lines *ratchets-file* render ratchets occurrences ratchets-text)
+     (ignore-check-lines *ratchets-file* render ratchets occurrences attribution ratchets-text)
      (when (seq config-over)
        (cons (str "config suppressions over budget -- remove the entry from " kondo-config-file
                   ", or raise the budget manually and explain the increase in the PR:")
@@ -1114,43 +1423,52 @@
 (defn check
   "Validate the prod, test, and module ratchet files and current counts. Fail on missing or malformed
   configuration, unknown linters, budget violations, or unjustified ignores. Report stale unlimited
-  policies and exemptions without failing. `{:disabled true}` in [[*ratchets-file*]] disables checking
-  entirely; the test ratchets file honors its own `:disabled` independently, skipping only its own checks."
-  []
-  ;; Turn validation errors into concise Mage output instead of a Babashka stack trace.
-  (try
-    (let [ratchets (read-ratchets)]
-      (if (disabled? ratchets)
-        (println (str *ratchets-file* " is disabled -- nothing to check"))
-        (let [known (known-linters)]
-          (validate-linters! ratchets known)
-          (let [module-ratchets (read-module-ratchets)
-                test-ratchets   (read-validated-test-ratchets known *ratchets-file*)
-                test-disabled?  (disabled? test-ratchets)
-                occurrences     (scan)
-                {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
-                lines           (concat
-                                 (check-report ratchets module-ratchets prod-occ
-                                               (config-suppressions) (module-escape-hatches)
-                                               (slurp *ratchets-file*) (slurp *module-ratchets-file*))
-                                 (when-not test-disabled?
-                                   (ignore-check-lines *test-ratchets-file* render-test test-ratchets test-occ
-                                                       (slurp *test-ratchets-file*))))]
-            (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts prod-occ)) println)
-            (some-> (stale-exemptions-warning (:comment-exempt ratchets) prod-occ) println)
-            (when-not test-disabled?
-              (some-> (unexercised-unlimited-warning (:ignore-counts test-ratchets) (actual-counts test-occ)) println)
-              (some-> (stale-exemptions-warning (:comment-exempt test-ratchets) test-occ) println))
-            (if (empty? lines)
-              (do
-                (println (format "ok -- %d ignore forms within %d policies"
-                                 (count prod-occ) (count (:ignore-counts ratchets))))
-                (when-not test-disabled?
-                  (println (format "ok -- %d test ignore forms within %d test policies"
-                                   (count test-occ) (count (:ignore-counts test-ratchets))))))
-              (do (run! println lines)
-                  (exit! "ratchet files drifted from the source tree")))))))
-    (catch clojure.lang.ExceptionInfo e
-      (if (:babashka/exit (ex-data e))
-        (throw e)
-        (fail! (ex-message e))))))
+  policies, stale exemptions, and unattributed discouraged-var/namespace occurrences without failing.
+  `{:disabled true}` in [[*ratchets-file*]] disables checking entirely; the test ratchets file honors its
+  own `:disabled` independently, skipping only its own checks.
+  `:attribute` (default [[no-attribution]]) resolves per-symbol actual counts -- see [[fix!]]."
+  ([]
+   (check nil))
+  ([{:keys [attribute], :or {attribute no-attribution}}]
+   ;; Turn validation errors into concise Mage output instead of a Babashka stack trace.
+   (try
+     (let [ratchets (read-ratchets)]
+       (if (disabled? ratchets)
+         (println (str *ratchets-file* " is disabled -- nothing to check"))
+         (let [known (known-linters)]
+           (validate-linters! ratchets known)
+           (validate-discouraged-counts! ratchets)
+           (let [module-ratchets  (read-module-ratchets)
+                 test-ratchets    (read-validated-test-ratchets known *ratchets-file*)
+                 test-disabled?   (disabled? test-ratchets)
+                 occurrences      (scan)
+                 {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
+                 attribution      (attribute prod-occ)
+                 test-attribution (if test-disabled? (no-attribution test-occ) (attribute test-occ))
+                 lines            (concat
+                                   (check-report ratchets module-ratchets prod-occ attribution
+                                                 (config-suppressions) (module-escape-hatches)
+                                                 (slurp *ratchets-file*) (slurp *module-ratchets-file*))
+                                   (when-not test-disabled?
+                                     (ignore-check-lines *test-ratchets-file* render-test test-ratchets test-occ
+                                                         test-attribution (slurp *test-ratchets-file*))))]
+             (some-> (unexercised-unlimited-warning (:ignore-counts ratchets) (actual-counts prod-occ)) println)
+             (some-> (stale-exemptions-warning (:comment-exempt ratchets) prod-occ) println)
+             (run! println (unattributed-lines (:unattributed attribution)))
+             (when-not test-disabled?
+               (some-> (unexercised-unlimited-warning (:ignore-counts test-ratchets) (actual-counts test-occ)) println)
+               (some-> (stale-exemptions-warning (:comment-exempt test-ratchets) test-occ) println)
+               (run! println (unattributed-lines (:unattributed test-attribution))))
+             (if (empty? lines)
+               (do
+                 (println (format "ok -- %d ignore forms within %d policies"
+                                  (count prod-occ) (count (:ignore-counts ratchets))))
+                 (when-not test-disabled?
+                   (println (format "ok -- %d test ignore forms within %d test policies"
+                                    (count test-occ) (count (:ignore-counts test-ratchets))))))
+               (do (run! println lines)
+                   (exit! "ratchet files drifted from the source tree")))))))
+     (catch clojure.lang.ExceptionInfo e
+       (if (:babashka/exit (ex-data e))
+         (throw e)
+         (fail! (ex-message e)))))))

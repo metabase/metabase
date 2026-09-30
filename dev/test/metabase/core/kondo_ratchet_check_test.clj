@@ -18,23 +18,38 @@
 
 (defn- report-lines
   "Return [[kondo-ratchet/check-report]] output for `ratchets`. Supply the defaults that
-  [[kondo-ratchet/read-ratchets]] adds to a partial file."
+  [[kondo-ratchet/read-ratchets]] adds to a partial file. `ratchets` may carry `:discouraged-var-actual` /
+  `:discouraged-namespace-actual` (default `{}`) as a test-only convenience, the same way it carries
+  `:module-counts` for the module ratchets."
   ([ratchets occurrences text]
-   (report-lines ratchets occurrences {} {} text))
+   (report-lines ratchets occurrences {} text))
   ([ratchets occurrences config-actual text]
    (report-lines ratchets occurrences config-actual {} text))
   ([ratchets occurrences config-actual module-actual text]
-   (let [module-ratchets (:module-counts ratchets {})]
+   (let [module-ratchets               (:module-counts ratchets {})
+         discouraged-var-actual        (:discouraged-var-actual ratchets {})
+         discouraged-namespace-actual  (:discouraged-namespace-actual ratchets {})]
      (vec (kondo-ratchet/check-report (-> {:config-counts {}, :comment-exempt #{}}
                                           (merge ratchets)
-                                          (dissoc :module-counts))
-                                      module-ratchets occurrences config-actual module-actual text
+                                          (dissoc :module-counts :discouraged-var-actual :discouraged-namespace-actual))
+                                      module-ratchets occurrences
+                                      {:discouraged-var-actual       discouraged-var-actual
+                                       :discouraged-namespace-actual discouraged-namespace-actual}
+                                      config-actual module-actual text
                                       (kondo-ratchet/render-module-ratchets module-ratchets))))))
 
 (deftest ^:parallel clean-test
   (let [ratchets {:ignore-counts {:a 2, :b 1}}]
     (is (= []
            (report-lines ratchets (occurrences {:a 2, :b 1}) (kondo-ratchet/render ratchets))))))
+
+(deftest ^:parallel stale-flat-discouraged-entry-test
+  (let [ratchets {:ignore-counts {:discouraged-var 3, :a 1}}]
+    (is (= [(str ":ignore-counts still has a flat budget for :discouraged-var -- each now has its own field "
+                 "(:discouraged-var-counts); run `./bin/mage kondo-ratchets-shrink` to drop the stale entry")]
+           (report-lines ratchets (occurrences {:discouraged-var 3, :a 1}) (kondo-ratchet/render ratchets)))
+        "a flat entry for a linter with its own per-symbol field fails the check even when its count
+         happens to match, since it silently double-counts once a real over-budget symbol shows up")))
 
 (deftest ^:parallel over-budget-test
   (let [ratchets {:ignore-counts {:a 1}}]
@@ -75,6 +90,21 @@
             "  :new: 0 recorded, 1 actual"]
            (report-lines ratchets [] {:a 2, :b 1, :new 1} (kondo-ratchet/render ratchets)))
         "a lowered config count passes; growth and new entries are reported")))
+
+(deftest ^:parallel discouraged-counts-over-budget-test
+  (let [ratchets {:ignore-counts                 {}
+                  :discouraged-var-counts        {:a/x 1}
+                  :discouraged-namespace-counts  {:some.ns 1}
+                  :discouraged-var-actual        {:a/x 2, :a/new 1}
+                  :discouraged-namespace-actual  {:some.ns 3}}]
+    (is (= ["discouraged-var symbols over budget -- remove an ignore, or accept them all with `./bin/mage kondo-ratchets-shrink --seed :discouraged-var` and explain the increase in the PR:"
+            "  :a/new: 0 recorded, 1 actual"
+            "  :a/x: 1 recorded, 2 actual"
+            "discouraged-namespace symbols over budget -- remove an ignore, or accept them all with `./bin/mage kondo-ratchets-shrink --seed :discouraged-namespace` and explain the increase in the PR:"
+            "  :some.ns: 1 recorded, 3 actual"]
+           (report-lines ratchets [] (kondo-ratchet/render ratchets)))
+        "each field reports over-budget symbols separately, suggesting a bulk re-seed of the whole linter
+         rather than one specific symbol")))
 
 (deftest ^:parallel module-over-budget-test
   (let [ratchets {:ignore-counts {}, :module-counts {:api-any 1, :friend-edges 3}}]
