@@ -478,8 +478,6 @@ categories:
             url: "installation-and-operation/metabase-cli"
           - name: "Usage analytics"
             url: "usage-and-performance-tools/usage-analytics"
-          - name: "Security center"
-            url: "installation-and-operation/security-center"
           - name: "Admin tools"
             url: "monitor/erroring-questions"
           - name: "Panopticon"
@@ -551,6 +549,12 @@ categories:
             url: "permissions/notifications"
           - name: "Configuring permissions for embedding"
             url: "permissions/embedding"
+      - name: "Security"
+        pages:
+          - name: "Security best practices for self-hosting"
+            url: "installation-and-operation/security-best-practices-self-hosting"
+          - name: "Security center"
+            url: "installation-and-operation/security-center"
 
   - name: Other resources
     pages:

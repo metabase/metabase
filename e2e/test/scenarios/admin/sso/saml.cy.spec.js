@@ -1,9 +1,6 @@
 const { H } = cy;
 
-import {
-  checkGroupConsistencyAfterDeletingMappings,
-  crudGroupMappingsWidget,
-} from "./shared/group-mappings-widget";
+import { checkGroupMappingsWidget } from "./shared/group-mappings-widget";
 import { getSamlCertificate, setupSaml } from "./shared/helpers";
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
@@ -11,12 +8,12 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-    cy.intercept("PUT", "/api/setting").as("updateSettings");
+    cy.intercept("PUT", /\/api\/setting$/).as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
   });
 
-  it("should allow to save and enable saml", () => {
+  it("should allow to save and enable saml, then update its settings", () => {
     cy.visit("/admin/settings/authentication/saml");
 
     enterSamlSettings();
@@ -27,10 +24,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
 
     H.goToAuthOverviewPage();
     getSamlCard().findByText("Active").should("exist");
-  });
 
-  it("should allow to update saml settings", () => {
-    setupSaml();
+    cy.log("Update the existing settings");
     cy.visit("/admin/settings/authentication/saml");
 
     H.typeAndBlurUsingLabel(
@@ -47,7 +42,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     getSamlCard().findByText("Active").should("exist");
   });
 
-  it("should allow to disable and enable saml", () => {
+  it("should allow to disable and enable saml, then reset its settings", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication");
 
@@ -60,12 +55,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     H.popover().findByText("Resume").click();
     cy.wait("@updateSetting");
     getSamlCard().findByText("Active").should("exist");
-  });
 
-  it("should allow to reset saml settings", () => {
-    setupSaml();
-    cy.visit("/admin/settings/authentication");
-
+    cy.log("Deactivating resets the saml settings");
     getSamlCard().icon("ellipsis").click();
     H.popover().findByText("Deactivate").click();
     H.modal().button("Deactivate").click();
@@ -98,12 +89,8 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
       );
     });
 
-    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups", () => {
-      crudGroupMappingsWidget("saml");
-    });
-
-    it("should allow deleting mappings with groups, while keeping remaining mappings consistent with their undeleted groups", () => {
-      checkGroupConsistencyAfterDeletingMappings("saml");
+    it("should allow deleting mappings along with deleting, or clearing users of, mapped groups, while keeping remaining mappings consistent", () => {
+      checkGroupMappingsWidget("saml");
     });
   });
 });

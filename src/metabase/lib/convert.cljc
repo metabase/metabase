@@ -770,11 +770,13 @@
           query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                         :native
                         :query)]
-      (->> (merge (dissoc base :stages :parameters :lib.convert/converted?)
-                  (cond-> {:type query-type}
-                    (seq inner-query) (assoc query-type inner-query)
-                    (seq parameters)  (assoc :parameters parameters)))
-           (lib.normalize/normalize ::mbql.s/Query)))
+      (lib.normalize/normalize ::mbql.s/Query
+                               (merge (dissoc base :stages :parameters :lib.convert/converted?)
+                                      (cond-> {:type query-type}
+                                        (seq inner-query) (assoc query-type inner-query)
+                                        (seq parameters)  (assoc :parameters parameters)))
+                               ;; MBQL 5 has no raw-int Field IDs, so any raw int here is a literal
+                               {:legacy-int-field-ids? false}))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (lib.util/format "Error converting MBQL 5 query to legacy MBQL query: %s" (ex-message e))
                       {:query query}

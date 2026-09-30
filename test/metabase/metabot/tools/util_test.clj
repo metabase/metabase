@@ -84,6 +84,15 @@
              :hour         12
              :day-of-month :mid})))))
 
+(deftest ^:parallel schedule->schedule-map-drops-unknown-days-test
+  (is (= [nil nil]
+         (for [day ["" "mo"]]
+           (:schedule_day
+            (metabot.tools.util/schedule->schedule-map
+             {:frequency   :daily
+              :hour        9
+              :day-of-week day}))))))
+
 (deftest metabot-scope-query-test
   (testing "metabot-scope-query with collection hierarchy"
     (mt/dataset test-data
