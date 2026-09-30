@@ -355,13 +355,14 @@
    :api  #{metabase.app-db.cluster-lock ; TODO (Chris 2026-09-16) -- callers should go through app-db.core
            metabase.app-db.core
            metabase.app-db.init
+           metabase.app-db.quartz
            metabase.app-db.setting
            metabase.app-db.setup
            metabase.app-db.sql-errors
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
-           task
+           task.secure-delegate
            util
            util.classloader
            util.config}
@@ -1169,6 +1170,7 @@
    :ns-prefix "metabase.agent-lib"
    :api #{metabase.agent-lib.representations metabase.agent-lib.representations.repair metabase.agent-lib.representations.resolve}
    :uses #{lib
+           lib.be
            lib.metadata
            lib.schema
            models
@@ -1309,6 +1311,7 @@
    :module-exports #{mcp.oauth-server}
    :api  #{metabase.mcp.callback-api
            metabase.mcp.core
+           metabase.mcp.http-handler
            metabase.mcp.init
            metabase.mcp.usage
            metabase.mcp.v2.api}
@@ -1554,16 +1557,13 @@
           metabase.llm.provider
           metabase.llm.settings
           metabase.llm.startup}
-   :uses #{analytics
-           api
-           driver
+   :uses #{api
            lib
            lib.be
            lib.metadata
            lib.schema
            metabot
            models
-           parameters
            permissions
            premium-features
            request
@@ -1571,11 +1571,9 @@
            setup
            sql-tools
            startup
-           sync
            util
            util.config
-           warehouse-schema-overlay
-           warehouses.schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2049,7 +2047,8 @@
 
   queries
   {:team "Graphy"
-   :api  #{metabase.queries.core
+   :api  #{metabase.queries.card-schema
+           metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
@@ -2453,10 +2452,9 @@
 
   segments
   {:team "Graphy"
-   :api  #{metabase.segments.api
-           metabase.segments.schema}
+   :module-exports #{segments.rest}
+   :api  #{metabase.segments.schema}
    :uses #{api
-           events
            lib
            lib.be
            lib.schema
@@ -2467,10 +2465,23 @@
            users
            util
            warehouse-schema-overlay
-           warehouses.schema
-           xrays}
+           warehouses.schema}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
+
+  segments.rest
+  {:team "Graphy"
+   :api  #{metabase.segments.rest.api}
+   :uses #{api
+           events
+           lib
+           lib.be
+           models
+           permissions
+           segments
+           util
+           xrays}
+   :model-imports #{:model/Segment}}
 
   server
   {:team "UX West"
@@ -2492,22 +2503,18 @@
            embedding
            lib.be
            lib.schema
-           mcp
-           mcp.oauth-server
            metabot.agent-api
            premium-features
            query-processor
            request
            session
            settings
-           sso
            system
            tracing
            users
            util
            util.config
-           enterprise/custom-viz-plugin
-           enterprise/sso}
+           enterprise/custom-viz-plugin}
    :model-imports #{:model/Session}}
 
   session
@@ -2630,7 +2637,7 @@
   {:team "UX West"
    :module-exports #{sso.auth-identity}
    :api     #{metabase.sso.api
-              metabase.sso.api.slack-connect
+              metabase.sso.auth-wrapper
               metabase.sso.core
               metabase.sso.init
               metabase.sso.settings}
@@ -2645,7 +2652,8 @@
               startup
               system
               util
-              util.config}
+              util.config
+              enterprise/sso}
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
@@ -2743,14 +2751,12 @@
 
   task
   {:team "UX West"
-   :module-exports #{task.history}
-   :api  #{metabase.task.bootstrap
-           metabase.task.core}
+   :module-exports #{task.history task.secure-delegate}
+   :api  #{metabase.task.core}
    :uses #{app-db
            tracing
            util
-           util.classloader
-           util.config}}
+           util.classloader}}
 
   task.history
   {:team "UX West"
@@ -2772,6 +2778,11 @@
            util.config}
    :model-exports #{:model/TaskHistory :model/TaskRun}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
+
+  task.secure-delegate
+  {:team "UX West"
+   :api  #{metabase.task.secure-delegate.core}
+   :uses #{util util.classloader util.config}}
 
   testing-api
   {:team "DevEx"
@@ -2841,7 +2852,8 @@
   {:team "DevEx"
    :api  #{metabase.tracing.core
            metabase.tracing.init}
-   :uses #{events
+   :uses #{app-db
+           events
            settings
            task
            util
@@ -2995,6 +3007,7 @@
            metrics
            models
            permissions
+           queries
            system
            util
            warehouse-schema-overlay}
@@ -3146,7 +3159,7 @@
                      util.config
                      util.graph}
    :api  :any
-   :uses #{settings util.classloader util.config}}
+   :uses #{util.classloader util.config}}
 
   util.classloader
   {:team "DevEx"

@@ -5,6 +5,7 @@
    [metabase.ai-tracing.core :as ait]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.mcp.db :as mcp.db]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
@@ -678,6 +679,7 @@
                                {:request-options {:headers (assoc headers "mcp-session-id" session-id)}})))))
         (testing "the request it authenticates is stamped `::scope/mcp-ui`, never unrestricted"
           (let [info (#'mw.session/current-user-info-for-mcp-ui-credential
+                      (:mcp-ui-credentials mcp.http-handler/options)
                       {:request-method :get
                        :uri            "/api/embed-mcp/bootstrap"
                        :headers        {"x-metabase-mcp-ui-auth" credential}})]
@@ -688,6 +690,7 @@
         (testing "a route the credential's scope claim does not cover is authenticated but not scope-checked"
           (is (false? (:token-scopes-checked
                        (#'mw.session/current-user-info-for-mcp-ui-credential
+                        (:mcp-ui-credentials mcp.http-handler/options)
                         {:request-method :post
                          :uri            "/api/dataset"
                          :headers        {"x-metabase-mcp-ui-auth"

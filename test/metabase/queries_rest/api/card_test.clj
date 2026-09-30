@@ -3321,7 +3321,12 @@
                  (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card)))))))
       (testing "Endpoint should 404 if Card doesn't exist"
         (is (= "Not found."
-               (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))))
+               (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE)))))
+      (testing "GHY-4650: Endpoint should 404 if Card is archived, as for dashboards"
+        (mt/with-temp [:model/Card card (assoc (shared-card) :archived true)]
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :delete 404 (format "card/%d/public_link" (u/the-id card)))))
+          (is (some? (t2/select-one-fn :public_uuid :model/Card :id (u/the-id card)))))))))
 
 (deftest share-card-audit-log-test
   (testing "POST /api/card/:id/public_link creates audit log entry"
@@ -4557,6 +4562,38 @@
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:collection_id other-coll-id})))
     (testing "We can't set the `type`"
       (is (mt/user-http-request :crowberto :put 400 (str "card/" card-id) {:type "model"})))))
+
+(deftest full-card-put-on-dashboard-internal-card-used-on-other-dashboards-test
+  ;; #82237
+  (mt/with-temp [:model/Collection    {coll-id :id}       {}
+                 :model/Dashboard     {home-dash-id :id}  {:collection_id coll-id}
+                 :model/Dashboard     {other-dash-id :id} {}
+                 :model/Card          {card-id :id}       {:dashboard_id  home-dash-id
+                                                           :dataset_query (mt/mbql-query venues)}
+                 :model/DashboardCard _                   {:card_id card-id :dashboard_id other-dash-id}]
+    (let [card (t2/select-one :model/Card :id card-id)]
+      (testing "the whole writable card, current dashboard_id included, is accepted the way the FE sends it"
+        (is (=? {:name "edited" :dashboard_id home-dash-id}
+                (mt/user-http-request :crowberto :put 200 (str "card/" card-id)
+                                      {:name                   "edited"
+                                       :cache_ttl              nil
+                                       :type                   "question"
+                                       :dataset_query          (:dataset_query card)
+                                       :display                "table"
+                                       :description            nil
+                                       :visualization_settings {}
+                                       :parameters             []
+                                       :parameter_mappings     []
+                                       :archived               false
+                                       :enable_embedding       false
+                                       :embedding_params       nil
+                                       :collection_id          coll-id
+                                       :dashboard_id           home-dash-id
+                                       :collection_position    nil
+                                       :collection_preview     true
+                                       :result_metadata        (:result_metadata card)}))))
+      (testing "the other dashboard still has its dashcard"
+        (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id other-dash-id))))))
 
 (deftest dashboard-questions-get-autoplaced-on-unarchive-or-placement
   (mt/with-temp [:model/Collection {coll-id :id} {}
