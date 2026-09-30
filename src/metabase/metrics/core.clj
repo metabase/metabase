@@ -148,7 +148,7 @@
       {:dimensions         (lib-metric/extract-persisted-dimensions dimensions)
        :dimension-mappings dimension-mappings})))
 
-(defn modernize-early-dimensions
+(defn modernize-pre-curation-dimensions
   "Given the `:dimensions` of an old `:type :metric` card from schema <= 23, modernize it to schema 24.
 
   In practice this means that implicitly joined dimensions (those with `:group {:type \"connection\"}`) need to use

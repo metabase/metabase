@@ -688,10 +688,10 @@
     (not= :metric (keyword (:type card))) card   ; Ignore non-:metric cards
     (empty? (:dataset_query card))        card   ; And those without real queries
 
-    ;; If the `:dimensions` are populated, modernize the representation to the current form.
-    (:dimensions card)                    (update card :dimensions metrics/modernize-early-dimensions)
+    ;; If the `:dimensions` are populated, update their (pre-curation) representation to the current form.
+    (:dimensions card)                    (update card :dimensions metrics/modernize-pre-curation-dimensions)
 
-    ;; If the `:dimensions` are unset, populate them with the present representation but with legacy semantics:
+    ;; If the `:dimensions` are unset, populate them with the present representation but with pre-curation semantics:
     ;; all implicitly joinable columns become dimensions, not just "available" dimensions.
     :else
     (let [{:keys [dimensions dimension-mappings]} (metrics/compute-full-dimension-set (:dataset_query card))]
