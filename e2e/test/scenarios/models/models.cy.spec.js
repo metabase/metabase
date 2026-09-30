@@ -172,7 +172,7 @@ describe("scenarios > models", () => {
     cy.location("pathname").should("eq", "/collection/root");
   });
 
-  it("changes model's display to table", () => {
+  it("allows to undo turning a question into a model, and shows the model info modal only once", () => {
     H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
 
     H.echartsContainer();
@@ -180,20 +180,19 @@ describe("scenarios > models", () => {
 
     turnIntoModel();
 
+    cy.log("changes model's display to table");
     H.tableInteractive();
     H.echartsContainer().should("not.exist");
-  });
 
-  it("only shows model info modal once when turning a question into a model", () => {
-    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    H.echartsContainer();
-
-    turnIntoModel();
     H.undoToast().findByText("This is a model now.").should("exist");
     H.undo();
     cy.wait("@cardUpdate");
 
+    H.echartsContainer();
     H.openQuestionActions();
+    assertIsQuestion();
+
+    cy.log("only shows model info modal once");
     H.popover().within(() => {
       cy.icon("model").click();
     });
@@ -203,27 +202,25 @@ describe("scenarios > models", () => {
     H.modal().should("not.exist");
   });
 
-  it("allows to undo turning a question into a model", () => {
-    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-    H.echartsContainer();
-
-    turnIntoModel();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("This is a model now.");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Undo").click();
-
-    H.echartsContainer();
-    H.openQuestionActions();
-    assertIsQuestion();
-  });
-
-  it("allows to turn a model back into a saved question", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+  it("allows to open, turn back, and duplicate a model", () => {
     cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("cardUpdate");
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+    cy.intercept("POST", "/api/card").as("cardCreate");
 
+    cy.log("shows 404 when opening a question with a /model URL");
+    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText(/We're a little lost/i);
+
+    cy.log("redirects to /model URL when opening a model with /question URL");
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
+    cy.visit("/question/" + ORDERS_QUESTION_ID);
+    cy.wait("@dataset");
     H.openQuestionActions();
+    assertIsModel();
+    cy.url().should("include", "/model");
+
+    cy.log("turns a model back into a saved question");
     H.popover().within(() => {
       cy.findByText("Turn back to saved question").click();
     });
@@ -240,14 +237,8 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
     H.openQuestionActions();
     assertIsModel();
-  });
 
-  it("allows duplicating a model", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-    cy.intercept("POST", "/api/card").as("cardCreate");
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-
-    H.openQuestionActions();
+    cy.log("duplicates a model");
     H.popover().within(() => {
       cy.findByText("Duplicate").click();
     });
@@ -274,22 +265,6 @@ describe("scenarios > models", () => {
     cy.findByTestId("qb-header")
       .should("contain.text", "Orders - Duplicate")
       .and("contain.text", "First collection");
-  });
-
-  it("shows 404 when opening a question with a /dataset URL", () => {
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/We're a little lost/i);
-  });
-
-  it("redirects to /model URL when opening a model with /question URL", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-    // Important - do not use visitQuestion(ORDERS_QUESTION_ID) here!
-    cy.visit("/question/" + ORDERS_QUESTION_ID);
-    cy.wait("@dataset");
-    H.openQuestionActions();
-    assertIsModel();
-    cy.url().should("include", "/model");
   });
 
   describe("data picker", () => {
@@ -448,7 +423,8 @@ describe("scenarios > models", () => {
       });
     });
 
-    it("can create a question by filtering and summarizing a model", () => {
+    it("can create questions from a model and edit its info", () => {
+      cy.log("create a question by filtering and summarizing a model");
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
@@ -487,9 +463,8 @@ describe("scenarios > models", () => {
       });
 
       cy.location("pathname").should("match", /^\/question\/\d+-q1$/);
-    });
 
-    it("can create a question using table click actions", () => {
+      cy.log("create a question using table click actions");
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
@@ -503,19 +478,18 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
+      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q2" });
 
       assertQuestionIsBasedOnModel({
-        questionName: "Q1",
+        questionName: "Q2",
         model: "Orders Model",
         collection: "Our analytics",
         table: "Orders",
       });
 
-      cy.location("pathname").should("match", /^\/question\/\d+-q1$/);
-    });
+      cy.location("pathname").should("match", /^\/question\/\d+-q2$/);
 
-    it("can edit model info", () => {
+      cy.log("edit model info");
       cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateCard");
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");

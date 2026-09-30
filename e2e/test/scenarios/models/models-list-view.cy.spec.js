@@ -57,6 +57,25 @@ describe("scenarios > models list view", () => {
       cy.log("Display data as list after saving");
       cy.findByTestId("dataset-edit-bar").should("not.exist");
       cy.findByTestId("list-view").should("be.visible");
+
+      cy.log("Preserve list view after model duplication");
+      H.openQuestionActions();
+      H.popover().findByTextEnsureVisible("Duplicate").click();
+      H.modal().findByTextEnsureVisible("Duplicate").click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("qb-header").within(() => {
+        cy.findByText("Native Model - Duplicate").should("be.visible");
+      });
+      cy.findByTestId("list-view").should("be.visible");
+
+      cy.log("Change list view to table when saved as question");
+      H.openQuestionActions();
+      H.popover()
+        .findByTextEnsureVisible("Turn back to saved question")
+        .click();
+      H.undoToast().should("contain.text", "This is a question now");
+      cy.findByTestId("list-view").should("not.exist");
     });
 
     it("should allow to customize list view", () => {
@@ -271,93 +290,6 @@ describe("scenarios > models list view", () => {
   });
 
   describe("advanced scenarios", () => {
-    it("should preserve list view after model duplication", () => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.createNativeQuestion(
-        {
-          name: "Native Model",
-          type: "model",
-          native: {
-            query: "SELECT * FROM ORDERS LIMIT 5",
-          },
-        },
-        { visitQuestion: true },
-      );
-      H.openQuestionActions();
-
-      // Going through full flow, because for some reason `display: list` is not preserved on BE.
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-
-      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
-
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("List").click();
-      });
-
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      cy.wait("@dataset");
-
-      cy.findByTestId("list-view").should("be.visible");
-
-      H.openQuestionActions();
-
-      H.popover().findByTextEnsureVisible("Duplicate").click();
-      H.modal().findByTextEnsureVisible("Duplicate").click();
-      cy.wait("@dataset");
-
-      cy.log("Display data as list after duplication");
-      cy.findByTestId("qb-header").within(() => {
-        cy.findByText("Native Model - Duplicate").should("be.visible");
-      });
-      cy.findByTestId("list-view").should("be.visible");
-    });
-
-    it("should change list view to table when saved as question", () => {
-      H.restore();
-      cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
-      H.createNativeQuestion(
-        {
-          name: "Native Model",
-          type: "model",
-          native: {
-            query: "SELECT * FROM ORDERS LIMIT 5",
-          },
-        },
-        { visitQuestion: true },
-      );
-      H.openQuestionActions();
-
-      // Going through full flow, because for some reason `display: list` is not preserved on BE.
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-
-      cy.findByTestId("dataset-edit-bar").findByText("Settings").click();
-
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("List").click();
-      });
-
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      cy.wait("@dataset");
-
-      cy.findByTestId("list-view").should("be.visible");
-
-      H.openQuestionActions();
-
-      H.popover()
-        .findByTextEnsureVisible("Turn back to saved question")
-        .click();
-      cy.wait("@dataset");
-      H.undoToast().should("contain.text", "This is a question now");
-      cy.findByTestId("list-view").should("not.exist");
-    });
-
     it("should consider mini bar chart setting for quantity/score columns", () => {
       H.restore();
       cy.signInAsAdmin();

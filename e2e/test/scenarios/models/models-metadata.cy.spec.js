@@ -28,7 +28,25 @@ describe("scenarios > models metadata", () => {
       H.createQuestion(modelDetails, { visitQuestion: true, wrapId: true });
     });
 
-    it("should edit GUI model metadata", () => {
+    it("should edit GUI model metadata, cancel changes, and clear it when turned back into a question", () => {
+      cy.log("cancel metadata changes");
+      H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
+
+      H.openColumnOptions("Subtotal");
+      H.renameColumn("Subtotal", "Pre-tax");
+      H.setColumnType("No semantic type", "Currency");
+
+      H.datasetEditBar().button("Cancel").click();
+      H.modal().button("Discard changes").click();
+      H.datasetEditBar().should("not.exist");
+
+      cy.findAllByTestId("header-cell")
+        .filter(":contains(Subtotal)")
+        .should("not.contain", "$");
+      cy.findAllByTestId("header-cell").should("not.contain", "Pre-tax");
+
+      cy.log("edit metadata");
       H.openQuestionActions();
 
       H.popover().findByTextEnsureVisible("89%").realHover();
@@ -51,6 +69,10 @@ describe("scenarios > models metadata", () => {
       H.setColumnType("No semantic type", "Currency");
       H.saveMetadataChanges();
 
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
+
       cy.log(
         "Ensure that a question created from this model inherits its metadata.",
       );
@@ -60,41 +82,12 @@ describe("scenarios > models metadata", () => {
       cy.findAllByTestId("header-cell")
         .should("contain", "Pre-tax ($)")
         .and("not.contain", "Subtotal");
-    });
 
-    it("allows for canceling changes", () => {
-      H.openQuestionActions("Edit metadata");
-      H.waitForLoaderToBeRemoved();
-
-      const RENAMED_COLUMN = "Pre-tax";
-
-      H.openColumnOptions("Subtotal");
-      H.renameColumn("Subtotal", RENAMED_COLUMN);
-      H.setColumnType("No semantic type", "Currency");
-
-      H.datasetEditBar().button("Cancel").click();
-      H.modal().button("Discard changes").click();
-      H.datasetEditBar().should("not.exist");
-
-      cy.findAllByTestId("header-cell")
-        .filter(":contains(Subtotal)")
-        .should("not.contain", "$");
-      cy.findAllByTestId("header-cell").should("not.contain", RENAMED_COLUMN);
-    });
-
-    it("clears custom metadata when a model is turned back into a question", () => {
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-      H.waitForLoaderToBeRemoved();
-
-      H.openColumnOptions("Subtotal");
-      H.renameColumn("Subtotal", "Pre-tax");
-      H.setColumnType("No semantic type", "Currency");
-      H.saveMetadataChanges();
-
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Pre-tax ($)")
-        .and("not.contain", "Subtotal");
+      cy.log(
+        "clear custom metadata when the model is turned back into a question",
+      );
+      cy.get("@questionId").then((id) => H.visitModel(id));
+      cy.findAllByTestId("header-cell").should("contain", "Pre-tax ($)");
 
       H.openQuestionActions();
       H.popover()

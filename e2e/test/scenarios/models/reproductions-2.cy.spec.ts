@@ -143,7 +143,8 @@ describe("issue 32037", () => {
     cy.location("pathname").as("modelPathname");
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+  it("should show unsaved changes modal and allow to discard changes when editing model's query and metadata (metabase#32037)", () => {
+    cy.log("query");
     H.openQuestionActions("Edit query definition");
     cy.button("Save changes").should("be.disabled");
     H.filter({ mode: "notebook" });
@@ -156,9 +157,8 @@ describe("issue 32037", () => {
     cy.go("back");
 
     verifyDiscardingChanges();
-  });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+    cy.log("metadata");
     H.openQuestionActions("Edit metadata");
     H.waitForLoaderToBeRemoved();
     cy.button("Save changes").should("be.disabled");
@@ -246,12 +246,12 @@ describe("issue 51925", () => {
   });
 });
 
-describe("issue 56698", () => {
+describe("issues 56698 and 57557", () => {
   beforeEach(() => {
     H.restore();
   });
 
-  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+  it("should create an editable ad-hoc query based on a read-only native model, and hide the query definition without data permissions (metabase#56698, metabase#57557)", () => {
     cy.log("create a native model");
     cy.signInAsNormalUser();
     H.createNativeQuestion(
@@ -263,34 +263,17 @@ describe("issue 56698", () => {
       { wrapId: true, idAlias: "modelId" },
     );
 
-    cy.log("verify that we create an editable ad-hoc query");
+    cy.log("verify that we create an editable ad-hoc query (metabase#56698)");
     cy.signIn("readonlynosql");
     cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
     H.assertQueryBuilderRowCount(2);
     H.summarize();
     H.rightSidebar().button("Done").click();
     H.assertQueryBuilderRowCount(1);
-  });
-});
 
-describe("issue 57557", () => {
-  beforeEach(() => {
-    H.restore();
-  });
-
-  it("should not allow to see the query definition for a user without data permissions (metabase#57557)", () => {
-    cy.log("create a native model");
-    cy.signInAsNormalUser();
-    H.createNativeQuestion(
-      {
-        name: "Native model",
-        native: { query: "select 1 union all select 2" },
-        type: "model",
-      },
-      { wrapId: true, idAlias: "modelId" },
+    cy.log(
+      "verify that query editing functionality is hidden (metabase#57557)",
     );
-
-    cy.log("verify that query editing functionality is hidden");
     cy.signIn("nodata");
     cy.get("@modelId").then((modelId) =>
       H.visitModel(Number(modelId), { hasDataAccess: false }),
@@ -313,7 +296,7 @@ describe("issue 57557", () => {
   });
 });
 
-describe("issue 56775", () => {
+describe("issues 56775 and 55486", () => {
   const MODEL_NAME = "Model 56775";
 
   beforeEach(() => {
@@ -331,37 +314,6 @@ describe("issue 56775", () => {
     );
   });
 
-  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
-    H.openNotebook();
-    cy.button("Visualize").click();
-
-    cy.go("back");
-    H.openQuestionActions("Edit query definition");
-
-    cy.log("verify that the model definition is visible");
-    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
-    H.getNotebookStep("data").findByText("Products").should("be.visible");
-  });
-});
-describe("issue 55486", () => {
-  const MODEL_NAME = "Model 55486";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createQuestion(
-      {
-        type: "model",
-        name: MODEL_NAME,
-        query: {
-          "source-table": PRODUCTS_ID,
-          limit: 5,
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
   function checkIsShowingMetadataEditorTab() {
     cy.findByTestId("editor-tabs-columns").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
@@ -372,9 +324,18 @@ describe("issue 55486", () => {
     H.getNotebookStep("data").should("be.visible");
   }
 
-  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+  it("should render the correct query and editor tabs after using the back and forward buttons in a model (metabase#56775, metabase#55486)", () => {
+    H.openNotebook();
+    cy.button("Visualize").click();
+
+    cy.go("back");
     H.openQuestionActions("Edit query definition");
 
+    cy.log("verify that the model definition is visible (metabase#56775)");
+    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
+    H.getNotebookStep("data").findByText("Products").should("be.visible");
+
+    cy.log("navigate between the editor tabs (metabase#55486)");
     H.datasetEditBar().findByText("Columns").click();
     checkIsShowingMetadataEditorTab();
 
@@ -389,7 +350,7 @@ describe("issue 55486", () => {
     cy.go("back");
     checkIsShowingQueryEditorTab();
 
-    cy.log("Forward button should show the query editor");
+    cy.log("Forward button should show the metadata editor");
     cy.go("forward");
     checkIsShowingMetadataEditorTab();
 

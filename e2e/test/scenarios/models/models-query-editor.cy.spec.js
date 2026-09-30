@@ -21,7 +21,7 @@ describe("scenarios > models query editor", () => {
       });
     });
 
-    it("allows to edit GUI model query", () => {
+    it("allows to edit GUI model query, cancel changes, and locks display to table", () => {
       cy.visit(`/model/${ORDERS_QUESTION_ID}`);
       cy.wait("@dataset");
 
@@ -45,6 +45,57 @@ describe("scenarios > models query editor", () => {
       );
       cy.location("hash").should("eq", "");
 
+      cy.log("cancel query changes");
+      H.openQuestionActions();
+
+      H.popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Row limit").click();
+      cy.findByPlaceholderText("Enter a limit").type("2").blur();
+
+      cy.findByTestId("run-button").click();
+      cy.wait("@dataset");
+
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+
+      cy.button("Cancel").click();
+      H.modal().button("Discard changes").click();
+      cy.wait("@cardQuery");
+
+      cy.url()
+        .should("include", `/model/${ORDERS_QUESTION_ID}`)
+        .and("not.include", "/query");
+      cy.location("hash").should("eq", "");
+
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
+
+      cy.log("lock display to table");
+      cy.visit(`/model/${ORDERS_QUESTION_ID}/query`);
+
+      H.summarize({ mode: "notebook" });
+
+      selectFromDropdown("Count of rows");
+
+      cy.findByTestId("run-button").click();
+      cy.wait("@dataset");
+
+      // FE chooses the scalar visualization to display count of rows for regular questions
+      H.tableInteractiveHeader().should("contain", "Count");
+      H.tableInteractive().should("contain", "18,760");
+      cy.findByTestId("scalar-value").should("not.exist");
+
+      cy.button("Cancel").click();
+      H.modal().button("Discard changes").click();
+      H.datasetEditBar().should("not.exist");
+
+      cy.log("edit the query");
       H.openQuestionActions();
 
       H.popover().within(() => {
@@ -77,65 +128,10 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("not.contain", "109.22");
     });
-
-    it("allows for canceling changes", () => {
-      cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-      cy.wait("@dataset");
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
-
-      H.openQuestionActions();
-
-      H.popover().within(() => {
-        cy.findByText("Edit query definition").click();
-      });
-
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Row limit").click();
-      cy.findByPlaceholderText("Enter a limit").type("2").blur();
-
-      cy.findByTestId("run-button").click();
-      cy.wait("@dataset");
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("not.contain", "109.22");
-
-      cy.button("Cancel").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@cardQuery");
-
-      cy.url()
-        .should("include", `/model/${ORDERS_QUESTION_ID}`)
-        .and("not.include", "/query");
-      cy.location("hash").should("eq", "");
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
-    });
-
-    it("locks display to table", () => {
-      cy.visit(`/model/${ORDERS_QUESTION_ID}/query`);
-
-      H.summarize({ mode: "notebook" });
-
-      selectFromDropdown("Count of rows");
-
-      cy.findByTestId("run-button").click();
-      cy.wait("@dataset");
-
-      // FE chooses the scalar visualization to display count of rows for regular questions
-      H.tableInteractiveHeader().should("contain", "Count");
-      H.tableInteractive().should("contain", "18,760");
-      cy.findByTestId("scalar-value").should("not.exist");
-    });
   });
 
   describe("native models", () => {
-    it("allows to edit native model query", () => {
+    it("allows to edit native model query and cancel changes", () => {
       H.createNativeQuestion(
         {
           name: "Native Model",
@@ -151,6 +147,33 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
+      cy.log("cancel query changes");
+      H.openQuestionActions();
+
+      H.popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
+
+      cy.url().should("include", "/query");
+      cy.button("Save changes").should("be.disabled");
+
+      H.NativeEditor.focus().type("{backspace}2");
+
+      H.runNativeQuery();
+
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("not.contain", "109.22");
+
+      cy.button("Cancel").click();
+      H.modal().button("Discard changes").click();
+      cy.wait("@cardQuery");
+
+      cy.get("[data-testid=cell-data]")
+        .should("contain", "37.65")
+        .and("contain", "109.22");
+
+      cy.log("edit the query");
       H.openQuestionActions();
 
       H.popover().within(() => {
@@ -176,48 +199,6 @@ describe("scenarios > models query editor", () => {
       cy.get("[data-testid=cell-data]")
         .should("contain", "37.65")
         .and("not.contain", "109.22");
-    });
-
-    it("allows for canceling changes", () => {
-      H.createNativeQuestion(
-        {
-          name: "Native Model",
-          type: "model",
-          native: {
-            query: "SELECT * FROM orders limit 5",
-          },
-        },
-        { visitQuestion: true },
-      );
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
-
-      H.openQuestionActions();
-
-      H.popover().within(() => {
-        cy.findByText("Edit query definition").click();
-      });
-
-      cy.url().should("include", "/query");
-      cy.button("Save changes").should("be.disabled");
-
-      H.NativeEditor.focus().type("{backspace}2");
-
-      H.runNativeQuery();
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("not.contain", "109.22");
-
-      cy.button("Cancel").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@cardQuery");
-
-      cy.get("[data-testid=cell-data]")
-        .should("contain", "37.65")
-        .and("contain", "109.22");
     });
 
     it("handles failing queries", () => {

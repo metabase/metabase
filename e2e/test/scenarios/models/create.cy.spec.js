@@ -59,6 +59,16 @@ describe("scenarios > models > create", () => {
   it("user without a collection access should still be able to create and save a model in his own personal collection", () => {
     cy.intercept("POST", "/api/card").as("createModel");
 
+    cy.log(
+      "a user without native permissions should not be able to initiate a new model creation",
+    );
+    cy.signIn("nosql");
+    cy.visit("/browse/models");
+    cy.findByTestId("browse-models-header").within(() => {
+      cy.findByRole("heading").should("contain", "Models").and("be.visible");
+      cy.findByLabelText("Create a new model").should("not.exist");
+    });
+
     cy.signIn("nocollection");
     cy.visit("/browse/models");
 
@@ -76,15 +86,6 @@ describe("scenarios > models > create", () => {
       .click();
     cy.wait("@createModel");
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
-  });
-
-  it("should not be possible to initiate a new model creation without native permissions", () => {
-    cy.signIn("nosql");
-    cy.visit("/browse/models");
-    cy.findByTestId("browse-models-header").within(() => {
-      cy.findByRole("heading").should("contain", "Models").and("be.visible");
-      cy.findByLabelText("Create a new model").should("not.exist");
-    });
   });
 });
 
