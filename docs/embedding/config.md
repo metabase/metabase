@@ -95,7 +95,7 @@ To customize how embeds fetch the JWT, set `fetchRequestToken` in `defineMetabas
 
 ### Preview embeds during development
 
-To preview embeds without setting up authentication, use your own Metabase session or an API key. Both work only in local development.
+To preview embeds without setting up authentication, use your own Metabase session or an API key. Both are for development only.
 
 - **Use your existing session (web components only)**: in `defineMetabaseConfig()`, set `useExistingUserSession: true`. The embed renders using your Metabase session. Only supported in Google Chrome.
 - **Use an API key**: set `apiKey` in `defineMetabaseConfig()` (web components) or `defineMetabaseAuthConfig()` (SDK). Only works on localhost. See [authenticating locally with API keys](./authentication.md#authenticating-locally-with-api-keys).

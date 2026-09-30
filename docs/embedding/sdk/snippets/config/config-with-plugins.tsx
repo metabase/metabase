@@ -11,7 +11,8 @@ const Example = ({ children }: PropsWithChildren) => (
   <MetabaseProvider
     authConfig={authConfig}
     pluginsConfig={{
-      mapQuestionClickActions: () => [], // Add your custom actions here
+      // Return the default actions, plus any custom actions you add
+      mapQuestionClickActions: (clickActions) => clickActions,
     }}
   >
     {children}
