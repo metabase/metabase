@@ -1,31 +1,26 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { setupForContentTranslationTest } from "metabase/content-translation/test-utils";
 import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { FieldPicker, type FieldPickerItem } from "./FieldPicker";
+import {
+  type SampleTableName,
+  createSampleTableQuery,
+  getColumnNames,
+} from "../../test-utils";
+
+import {
+  FieldPicker,
+  type FieldPickerItem,
+  MIN_SEARCHABLE_COLUMN_COUNT,
+} from "./FieldPicker";
 
 const STAGE_INDEX = 0;
 
 interface SetupOpts {
+  tableName?: SampleTableName;
   selectedColumnNames?: string[];
-}
-
-function createQuery(selectedColumnNames?: string[]) {
-  return Lib.createTestQuery(SAMPLE_PROVIDER, {
-    stages: [
-      {
-        source: { type: "table", id: ORDERS_ID },
-        fields: selectedColumnNames?.map((name) => ({
-          type: "column",
-          sourceName: "ORDERS",
-          name,
-        })),
-      },
-    ],
-  });
 }
 
 function isColumnSelected({ columnInfo }: FieldPickerItem) {
@@ -37,13 +32,16 @@ function isColumnDisabled(item: FieldPickerItem, items: FieldPickerItem[]) {
   return isColumnSelected(item) && isOnlySelected;
 }
 
-function setup({ selectedColumnNames }: SetupOpts = {}) {
-  const query = createQuery(selectedColumnNames);
+function createFieldPicker({
+  tableName = "ORDERS",
+  selectedColumnNames,
+}: SetupOpts = {}) {
+  const query = createSampleTableQuery(tableName, selectedColumnNames);
   const columns = Lib.fieldableColumns(query, STAGE_INDEX);
   const onToggle = jest.fn();
   const onToggleColumns = jest.fn();
 
-  renderWithProviders(
+  const component = (
     <FieldPicker
       query={query}
       stageIndex={STAGE_INDEX}
@@ -53,20 +51,38 @@ function setup({ selectedColumnNames }: SetupOpts = {}) {
       onToggle={onToggle}
       onToggleColumns={onToggleColumns}
       data-testid="fields-picker"
-    />,
+    />
   );
 
-  return { query, columns, onToggle, onToggleColumns };
+  return { component, query, columns, onToggle, onToggleColumns };
+}
+
+function setup(opts: SetupOpts = {}) {
+  const { component, ...rest } = createFieldPicker(opts);
+  renderWithProviders(component);
+  return rest;
+}
+
+function setupSearchable(opts: Omit<SetupOpts, "tableName"> = {}) {
+  return setup({ ...opts, tableName: "PEOPLE" });
+}
+
+function getSearchInput() {
+  return screen.getByLabelText("Search columns");
 }
 
 function getOptions() {
   return within(screen.getByRole("listbox")).getAllByRole("option");
 }
 
-function getColumnNames(query: Lib.Query, columns: Lib.ColumnMetadata[]) {
-  return columns.map(
-    (column) => Lib.displayInfo(query, STAGE_INDEX, column).name,
-  );
+function getOptionNames() {
+  return getOptions().map((option) => option.getAttribute("aria-label"));
+}
+
+function getHighlightedOptionName() {
+  return screen
+    .queryByRole("option", { selected: true })
+    ?.getAttribute("aria-label");
 }
 
 function getToggledColumnName(
@@ -82,7 +98,7 @@ function getToggledColumnNames(
   query: Lib.Query,
 ): [string[], boolean] {
   const [columns, isSelected] = onToggleColumns.mock.calls[0];
-  return [getColumnNames(query, columns), isSelected];
+  return [getColumnNames(query, STAGE_INDEX, columns), isSelected];
 }
 
 describe("FieldPicker", () => {
@@ -95,6 +111,13 @@ describe("FieldPicker", () => {
     );
     expect(getOptions()).toHaveLength(columns.length);
     expect(screen.getByLabelText("Select all")).toBeChecked();
+  });
+
+  it("should not show a search box when there are few columns", () => {
+    const { columns } = setup();
+
+    expect(columns.length).toBeLessThan(MIN_SEARCHABLE_COLUMN_COUNT);
+    expect(screen.queryByLabelText("Search columns")).not.toBeInTheDocument();
   });
 
   it("should reflect selection and disabled state on the options", () => {
@@ -144,7 +167,7 @@ describe("FieldPicker", () => {
 
   it("should navigate the list with the arrow keys and toggle with Enter", async () => {
     const { onToggle, query, columns } = setup();
-    const [, secondColumnName] = getColumnNames(query, columns);
+    const [, secondColumnName] = getColumnNames(query, STAGE_INDEX, columns);
 
     screen.getByLabelText("Select all").focus();
     await userEvent.keyboard("{ArrowDown}{Enter}");
@@ -164,7 +187,9 @@ describe("FieldPicker", () => {
     await userEvent.click(screen.getByLabelText("Select all"));
 
     expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
-      getColumnNames(query, columns).filter((name) => name !== "ID"),
+      getColumnNames(query, STAGE_INDEX, columns).filter(
+        (name) => name !== "ID",
+      ),
       true,
     ]);
   });
@@ -175,8 +200,199 @@ describe("FieldPicker", () => {
     await userEvent.click(screen.getByLabelText("Select all"));
 
     expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
-      getColumnNames(query, columns),
+      getColumnNames(query, STAGE_INDEX, columns),
       false,
     ]);
+  });
+
+  describe("searching", () => {
+    it("should mark the search box for autofocus when there are many columns", () => {
+      const { columns } = setupSearchable();
+
+      expect(columns.length).toBeGreaterThanOrEqual(
+        MIN_SEARCHABLE_COLUMN_COUNT,
+      );
+      expect(getSearchInput()).toHaveAttribute("data-autofocus");
+    });
+
+    it("should filter columns case-insensitively", async () => {
+      setupSearchable();
+
+      await userEvent.type(getSearchInput(), "TUDE");
+
+      expect(getOptionNames()).toEqual(["Latitude", "Longitude"]);
+      expect(screen.getByRole("status")).toHaveTextContent("2 columns found");
+    });
+
+    it("should keep the search box while the filtered list is short", async () => {
+      setupSearchable();
+
+      await userEvent.type(getSearchInput(), "email");
+
+      expect(getOptionNames()).toEqual(["Email"]);
+      expect(getSearchInput()).toBeInTheDocument();
+    });
+
+    it("should show an empty state when nothing matches", async () => {
+      setupSearchable();
+
+      await userEvent.type(getSearchInput(), "does not exist");
+
+      expect(screen.getByText("No columns found")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("0 columns found");
+      expect(
+        screen.queryByLabelText("Select all of these"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should toggle a column by clicking it in the filtered list", async () => {
+      const { onToggle, query } = setupSearchable({
+        selectedColumnNames: ["ID"],
+      });
+
+      await userEvent.type(getSearchInput(), "email");
+      await userEvent.click(screen.getByRole("option", { name: "Email" }));
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(getToggledColumnName(onToggle, query)).toEqual(["EMAIL", true]);
+    });
+
+    it("should highlight the first match while typing and toggle it with Enter", async () => {
+      const { onToggle, query } = setupSearchable({
+        selectedColumnNames: ["ID"],
+      });
+
+      await userEvent.type(getSearchInput(), "email");
+      expect(getHighlightedOptionName()).toBe("Email");
+
+      await userEvent.keyboard("{Enter}");
+
+      expect(getToggledColumnName(onToggle, query)).toEqual(["EMAIL", true]);
+      expect(getSearchInput()).toHaveFocus();
+    });
+
+    it("should move the highlight with the arrow keys from the search box", async () => {
+      const { onToggle, query } = setupSearchable({
+        selectedColumnNames: ["ID"],
+      });
+
+      await userEvent.type(getSearchInput(), "tude");
+      expect(getHighlightedOptionName()).toBe("Latitude");
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(getHighlightedOptionName()).toBe("Longitude");
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(getHighlightedOptionName()).toBe("Latitude");
+
+      await userEvent.keyboard("{ArrowDown}{Enter}");
+      expect(getToggledColumnName(onToggle, query)).toEqual([
+        "LONGITUDE",
+        true,
+      ]);
+    });
+
+    it("should restore the full list when the search is cleared", async () => {
+      const { columns } = setupSearchable();
+
+      await userEvent.type(getSearchInput(), "email");
+      await userEvent.click(screen.getByLabelText("Clear search"));
+
+      expect(getSearchInput()).toHaveValue("");
+      expect(screen.getByLabelText("Select all")).toBeInTheDocument();
+      expect(getOptions()).toHaveLength(columns.length);
+    });
+
+    it("should return focus to the search box when the search is cleared", async () => {
+      setupSearchable();
+
+      await userEvent.type(getSearchInput(), "email");
+      await userEvent.click(screen.getByLabelText("Clear search"));
+
+      await waitFor(() => expect(getSearchInput()).toHaveFocus());
+    });
+
+    it("should render each column once across repeated searches", async () => {
+      const { columns } = setupSearchable();
+      const allNames = getOptionNames();
+
+      for (const term of ["tude", "email", "zzz"]) {
+        await userEvent.type(getSearchInput(), term);
+        await userEvent.clear(getSearchInput());
+
+        expect(getOptionNames()).toEqual(allNames);
+        expect(getOptions()).toHaveLength(columns.length);
+        expect(screen.getAllByText("ID")).toHaveLength(1);
+      }
+    });
+
+    describe("'Select all of these'", () => {
+      it("should replace 'Select all' while searching and describe the match count", async () => {
+        setupSearchable();
+
+        await userEvent.type(getSearchInput(), "tude");
+
+        const checkbox = screen.getByLabelText("Select all of these");
+        expect(checkbox).toBeChecked();
+        expect(checkbox).toHaveAccessibleDescription("2 columns found");
+        expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument();
+      });
+
+      it("should only select the matching columns that aren't selected yet", async () => {
+        const { onToggleColumns, query } = setupSearchable({
+          selectedColumnNames: ["ID", "LONGITUDE"],
+        });
+
+        await userEvent.type(getSearchInput(), "tude");
+        const checkbox = screen.getByLabelText("Select all of these");
+        expect(checkbox).not.toBeChecked();
+        await userEvent.click(checkbox);
+
+        expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
+          ["LATITUDE"],
+          true,
+        ]);
+      });
+
+      it("should only deselect the matching columns when they are all selected", async () => {
+        const { onToggleColumns, query } = setupSearchable();
+
+        await userEvent.type(getSearchInput(), "tude");
+        await userEvent.click(screen.getByLabelText("Select all of these"));
+
+        expect(getToggledColumnNames(onToggleColumns, query)).toEqual([
+          ["LATITUDE", "LONGITUDE"],
+          false,
+        ]);
+      });
+
+      it("should be disabled when the only matches can't be toggled", async () => {
+        setupSearchable({ selectedColumnNames: ["ID"] });
+
+        await userEvent.type(getSearchInput(), "id");
+
+        expect(getOptionNames()).toEqual(["ID"]);
+        expect(screen.getByLabelText("Select all of these")).toBeDisabled();
+      });
+    });
+
+    it("should match against the translated column name", async () => {
+      const { component } = createFieldPicker({ tableName: "PEOPLE" });
+      setupForContentTranslationTest({
+        component,
+        enterprisePlugins: ["content_translation"],
+        tokenFeatures: { content_translation: true },
+        staticallyEmbedded: true,
+        dictionary: [{ msgid: "Email", msgstr: "Correo", locale: "en" }],
+      });
+
+      expect(
+        await screen.findByRole("option", { name: "Correo" }),
+      ).toBeInTheDocument();
+
+      await userEvent.type(getSearchInput(), "corr");
+
+      expect(getOptionNames()).toEqual(["Correo"]);
+    });
   });
 });
