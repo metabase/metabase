@@ -116,7 +116,8 @@
 
 (mr/def ::tool-argument-value
   "A JSON value inside a tool call's arguments. Object keys are strings off the wire and keywords once decoded -
-  at every depth, since the arguments are keywordized whole."
+  at every depth, since the arguments are keywordized whole. `:metabase.request.schema/json-value` only admits
+  string keys, so it can't stand in here."
   [:or
    :string
    :keyword
