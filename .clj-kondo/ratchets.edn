@@ -60,6 +60,7 @@
                   :main-without-gen-class                  1
                   :metabase/defsetting-must-specify-export 1
                   :metabase/defsetting-namespace           1
+                  :metabase/discourage-dynamic-vars        1
                   :metabase/prefer-with-dynamic-fn-redefs  4
                   :metabase/t2-query-namespace             2
                   :metabase/table-or-field-query           1
