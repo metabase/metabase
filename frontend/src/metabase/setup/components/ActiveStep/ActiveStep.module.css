@@ -1,9 +1,7 @@
 .root {
-  --step-padding: var(--mantine-spacing-xxl);
+  --step-padding: 2rem;
 
   padding: var(--step-padding);
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-sm);
 }
 
 @media (--breakpoint-min-sm) {

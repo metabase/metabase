@@ -67,7 +67,14 @@ export const DataUsageStep = ({
           href={docsUrl}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </Box>
-      <Flex className={S.toggle} align="center" mr="xxl" mb="lg" p="lg">
+      <Flex
+        align="center"
+        mr="xxl"
+        mb="lg"
+        p="lg"
+        bd="2px solid var(--mb-color-border-neutral)"
+        bdrs="sm"
+      >
         <Switch
           flex="0 0 auto"
           checked={isTrackingAllowed}

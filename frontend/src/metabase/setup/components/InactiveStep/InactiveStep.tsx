@@ -18,11 +18,12 @@ export const InactiveStep = ({
   return (
     <Box
       component="section"
-      className={S.root}
       pos="relative"
       py="lg"
       px="xxl"
       mb="xl"
+      bd="1px solid var(--mb-color-border-neutral)"
+      bdrs="sm"
       bg="background_page-primary"
       role="listitem"
       aria-label={title}

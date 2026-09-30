@@ -1,9 +1,0 @@
-.root {
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-sm);
-}
-
-.body {
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-xxs);
-}

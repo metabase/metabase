@@ -67,6 +67,8 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         mb="xxl"
         p="sm"
         mah="17.5rem"
+        bd="1px solid var(--mb-color-border-neutral)"
+        bdrs="xxs"
       >
         {locales.map((item) => (
           <LocaleItem
@@ -117,11 +119,16 @@ const LocaleItem = ({
         autoFocus={checked}
         onChange={handleChange}
       />
-      <span
+      <Box
+        component="span"
         className={cx(S.localeButton, { [S.localeButtonChecked]: checked })}
+        display="block"
+        p="sm"
+        bdrs="xxs"
+        fw={700}
       >
         {locale.name}
-      </span>
+      </Box>
     </Box>
   );
 };

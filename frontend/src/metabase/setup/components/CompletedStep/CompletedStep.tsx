@@ -12,7 +12,6 @@ import {
   getUserEmail,
 } from "../../selectors";
 
-import S from "./CompletedStep.module.css";
 import { trackNewsletterToggleClicked } from "./analytics";
 
 export const CompletedStep = (): JSX.Element | null => {
@@ -44,15 +43,16 @@ export const CompletedStep = (): JSX.Element | null => {
   return (
     <Stack
       component="section"
-      className={S.root}
       p="xxxl"
       gap="xxl"
       mb="xl"
+      bd="1px solid var(--mb-color-border-neutral)"
+      bdrs="sm"
       bg="background_page-primary"
     >
       <Title order={2}>{t`You're all set up!`}</Title>
       {shouldOfferAiConfig && (
-        <Box className={S.body} p="xl">
+        <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="xxs" p="xl">
           <Flex align="center" justify="space-between" gap="xl">
             <Box>
               <Text fw="bold">{t`Want to use AI in Metabase?`}</Text>
@@ -67,7 +67,7 @@ export const CompletedStep = (): JSX.Element | null => {
           </Flex>
         </Box>
       )}
-      <Box className={S.body} p="xl">
+      <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="xxs" p="xl">
         <Switch
           checked={checkboxValue}
           onChange={handleSwitchToggle}

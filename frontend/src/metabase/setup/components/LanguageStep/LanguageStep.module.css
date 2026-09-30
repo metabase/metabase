@@ -1,7 +1,5 @@
 .localeGroup {
   overflow-y: scroll;
-  border: 1px solid var(--mb-color-border-neutral);
-  border-radius: var(--mantine-radius-xxs);
 }
 
 .localeInput {
@@ -12,13 +10,9 @@
 }
 
 .localeButton {
-  display: block;
-  padding: var(--mantine-spacing-sm);
   color: var(--mb-color-text-primary);
   border: 2px solid var(--mb-color-core-white);
-  border-radius: var(--mantine-radius-xxs);
   background-color: var(--mb-color-background_page-primary);
-  font-weight: 700;
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
