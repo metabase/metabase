@@ -38,7 +38,7 @@
         },
         "model_id": {
             "type": "string",
-            "description": "The model the tokens were used on: for Metabot, the connection key plus the model, e.g. 'openrouter-1/anthropic/claude-sonnet-4.6'; for SQL generation and embeddings, the model alone.",
+            "description": "The model the tokens were used on: for Metabot, the connection key plus the model, e.g. 'openrouter-1/anthropic/claude-sonnet-4.6'; for embeddings, the model alone.",
             "maxLength": 255
         },
         "provider": {
@@ -46,7 +46,7 @@
                 "string",
                 "null"
             ],
-            "description": "The type of the connection the call went through: for Metabot, the connection's provider type, e.g. 'anthropic' or 'openrouter', or 'metabase' for the Metabase AI service; 'anthropic' for SQL generation; 'ai-service' for semantic search embeddings, whichever OpenAI-compatible endpoint serves them. Unlike the connection key at the start of a Metabot model_id, it is never a name an admin chose.",
+            "description": "The type of the connection the call went through: for Metabot, the connection's provider type, e.g. 'anthropic' or 'openrouter', or 'metabase' for the Metabase AI service; 'ai-service' for semantic search embeddings, whichever OpenAI-compatible endpoint serves them. Unlike the connection key at the start of a Metabot model_id, it is never a name an admin chose.",
             "maxLength": 255
         },
         "model_name": {
@@ -54,7 +54,7 @@
                 "string",
                 "null"
             ],
-            "description": "The model Metabase asked the provider for. For Metabot it is model_id without the connection key at its start, and for the Metabase AI service without the 'anthropic/' after the key too: e.g. 'claude-sonnet-4-6', 'anthropic/claude-sonnet-4.6' on OpenRouter, or on Azure the model family plus the deployment name, e.g. 'openai/my-deployment'. For SQL generation and embeddings it equals model_id.",
+            "description": "The model Metabase asked the provider for. For Metabot it is model_id without the connection key at its start, and for the Metabase AI service without the 'anthropic/' after the key too: e.g. 'claude-sonnet-4-6', 'anthropic/claude-sonnet-4.6' on OpenRouter, or on Azure the model family plus the deployment name, e.g. 'openai/my-deployment'. For embeddings it equals model_id.",
             "maxLength": 255
         },
         "total_tokens": {
@@ -80,7 +80,7 @@
                 "integer",
                 "null"
             ],
-            "description": "Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Metabot sends 0 when the provider reports no cache usage; SQL generation and embeddings send null.",
+            "description": "Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens). Metabot sends 0 when the provider reports no cache usage; embeddings send null.",
             "minimum": 0,
             "maximum": 2147483647
         },
@@ -89,7 +89,7 @@
                 "integer",
                 "null"
             ],
-            "description": "Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Metabot sends 0 when the provider reports no cache usage; SQL generation and embeddings send null.",
+            "description": "Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens). Metabot sends 0 when the provider reports no cache usage; embeddings send null.",
             "minimum": 0,
             "maximum": 2147483647
         },
@@ -129,7 +129,7 @@
                 "string",
                 "null"
             ],
-            "description": "The source/trigger of the request (e.g. 'metabot_agent' or 'document_generate_content' for Metabot, 'oss_metabot' for SQL generation). Indicates which API endpoint or workflow initiated the LLM call. Null for embeddings.",
+            "description": "The source/trigger of the request (e.g. 'metabot_agent' or 'document_generate_content' for Metabot). Indicates which API endpoint or workflow initiated the LLM call. Null for embeddings.",
             "maxLength": 255
         }
     },
