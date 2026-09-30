@@ -68,6 +68,7 @@ export const MetabotGreeting = ({
     { skip: !canUseNlq },
   );
   const suggestedPrompts = suggestedPromptsReq.currentData?.prompts;
+  const showSuggestions = canUseNlq && suggestedPrompts?.length !== 0;
 
   const handleSubmit = () => metabot.submitInput(metabot.prompt);
   const inputDisabled =
@@ -130,36 +131,37 @@ export const MetabotGreeting = ({
           </Box>
         </Paper>
 
-        <Stack gap="md">
-          <Text fz="xs" c="text-secondary" mt="1.5rem">
-            {t`Suggestions`}
-          </Text>
-          <Box
-            className={S.promptSuggestionsContainer}
-            data-testid="metabot-prompt-suggestions"
-          >
-            {canUseNlq
-              ? suggestedPrompts?.map(({ prompt }, index) => (
-                  <UnstyledButton
-                    key={index}
-                    className={S.promptSuggestion}
-                    style={{ animationDelay: `${index * 75}ms` }}
-                    onClick={() => metabot.submitInput(prompt)}
-                  >
-                    <Flex align="flex-start" gap="sm">
-                      <Icon
-                        name="bolt"
-                        size={16}
-                        c="icon-brand"
-                        style={{ marginTop: "4px" }}
-                      />
-                      <Text>{prompt}</Text>
-                    </Flex>
-                  </UnstyledButton>
-                ))
-              : null}
-          </Box>
-        </Stack>
+        {showSuggestions && (
+          <Stack gap="md">
+            <Text fz="xs" c="text-secondary" mt="1.5rem">
+              {t`Suggestions`}
+            </Text>
+            <Box
+              className={S.promptSuggestionsContainer}
+              data-testid="metabot-prompt-suggestions"
+            >
+              {suggestedPrompts?.map(({ prompt }, index) => (
+                <UnstyledButton
+                  key={index}
+                  className={S.promptSuggestion}
+                  style={{ animationDelay: `${index * 75}ms` }}
+                  onClick={() => metabot.submitInput(prompt)}
+                >
+                  <Flex align="flex-start" gap="sm">
+                    <Icon
+                      name="bolt"
+                      size={16}
+                      c="icon-brand"
+                      flex="0 0 auto"
+                      style={{ marginTop: "4px" }}
+                    />
+                    <Text>{prompt}</Text>
+                  </Flex>
+                </UnstyledButton>
+              ))}
+            </Box>
+          </Stack>
+        )}
       </Stack>
       <AIProviderConfigurationModal
         opened={isAiProviderConfigurationModalOpen}

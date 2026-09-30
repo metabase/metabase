@@ -114,6 +114,10 @@
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
+
+  &:empty {
+    display: none;
+  }
 }
 
 .messageContainerUser {
