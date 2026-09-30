@@ -2689,8 +2689,14 @@
                 node))))
         (stage-refs stage)))
 
+(def ^:private max-listed-column-names
+  "Most column names one list in an unresolved-ref message carries; wide sources are truncated."
+  100)
+
 (defn- column-names [cols]
-  (str/join ", " (map :name cols)))
+  (cond-> (str/join ", " (map :name (take max-listed-column-names cols)))
+    (> (count cols) max-listed-column-names)
+    (str (format ", ... and %d more" (- (count cols) max-listed-column-names)))))
 
 (defn- unresolved-ref-message
   "The agent-facing message for `bad`, an unresolved ref, listing the columns it could have named."
