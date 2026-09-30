@@ -28,6 +28,9 @@ describe("personal collections", () => {
       cy.wait("@getSessionProperties");
 
       H.navigationSidebar()
+        .findByText("Your personal collection")
+        .should("be.visible");
+      H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
         .should("not.exist");
 
@@ -151,11 +154,27 @@ describe("personal collections", () => {
         });
 
         it("should be able to edit collection(s) inside personal collection", () => {
+          cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+
           // Create new collection inside previously added collection
           addNewCollection("Bar");
           cy.get("@sidebar").findByText("Bar").click();
           cy.findByPlaceholderText("Add title").type("1").blur();
+          cy.wait("@updateCollection")
+            .its("response.statusCode")
+            .should("eq", 200);
           cy.findByPlaceholderText("Add description").type("ex-bar").blur();
+          cy.wait("@updateCollection")
+            .its("response.statusCode")
+            .should("eq", 200);
+
+          cy.findByTestId("collection-name-heading").should(
+            "have.value",
+            "Bar1",
+          );
+          cy.findByTestId("collection-caption")
+            .findByText("ex-bar")
+            .should("be.visible");
 
           cy.get("@sidebar").findByText("Foo").click();
           cy.get("@sidebar").findByText("Bar1");

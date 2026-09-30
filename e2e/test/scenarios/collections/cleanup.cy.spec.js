@@ -41,8 +41,21 @@ describe("scenarios > collections > clean up", () => {
           cy.findByText("Usage analytics").click();
           cy.findByText("Custom reports").click();
         });
+        cy.location("pathname")
+          .should("match", /^\/collection\/\d+/)
+          .then((pathname) => {
+            const customReportsId = parseInt(pathname.split("/")[2], 10);
+            H.createQuestion({
+              name: "Custom report question",
+              query: { "source-table": STATIC_ORDERS_ID },
+              collection_id: customReportsId,
+            });
+            H.visitCollection(customReportsId);
+          });
+        H.main().findByText("Custom report question").should("be.visible");
         collectionMenu().click();
         H.popover().within(() => {
+          cy.findByText("Edit permissions").should("be.visible");
           cy.findByText("Clear out unused items").should("not.exist");
         });
 
@@ -67,9 +80,16 @@ describe("scenarios > collections > clean up", () => {
 
         cy.log("should not show in empty collections");
         H.createCollection({ name: "Empty" }).then(({ body: { id } }) => {
+          cy.intercept({
+            method: "GET",
+            pathname: `/api/collection/${id}/items`,
+            query: { limit: "0" },
+          }).as("emptyCollectionItemCount");
           H.visitCollection(id);
+          cy.wait("@emptyCollectionItemCount");
           collectionMenu().click();
           H.popover().within(() => {
+            cy.findByText("Edit permissions").should("be.visible");
             cy.findByText("Clear out unused items").should("not.exist");
           });
         });
@@ -121,12 +141,15 @@ describe("scenarios > collections > clean up", () => {
                 req.on("response", (res) => {
                   res.send(assocIn(res.body, ["is_sample"], true));
                 });
-              });
+              }).as("sampleCollection");
 
               // assert we don't show clean up option
               H.visitCollection(id);
+              cy.wait("@sampleCollection");
+              H.main().findByText("Bulk question 1").should("be.visible");
               collectionMenu().click();
               H.popover().within(() => {
+                cy.findByText("Edit permissions").should("be.visible");
                 cy.findByText("Clear out unused items").should("not.exist");
               });
             });
@@ -135,8 +158,11 @@ describe("scenarios > collections > clean up", () => {
       });
 
       it("should not show to users who do not have write permissions to a collection", () => {
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
         cy.signIn("readonly");
         H.visitCollection(FIRST_COLLECTION_ID);
+        H.getCollectionActions().should("be.visible");
         collectionMenu().should("not.exist");
       });
     });

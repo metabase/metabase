@@ -141,12 +141,15 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           });
 
           cy.log("metabase#55382");
-          cy.findByRole("dialog", { name: "Upload error details" })
-            .findByRole("button", { name: "Close" })
-            .click();
+          closeUploadErrorDetails();
 
+          cy.intercept("PUT", "/api/collection/*").as("trashCollection");
           H.openCollectionMenu();
           H.popover().findByText("Move to trash").click();
+          H.modal().button("Move to trash").click();
+          cy.wait("@trashCollection");
+
+          cy.findByTestId("toast-undo").should("contain", "Trashed collection");
           cy.findByRole("dialog", { name: "Upload error details" }).should(
             "not.exist",
           );
@@ -380,7 +383,7 @@ function uploadToExisting({
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByRole("status")
       .last()
-      .findByText(/Data (added|replaced)/i, {
+      .findByText(uploadMode === "replace" ? /Data replaced/i : /Data added/i, {
         timeout: 10 * 1000,
       });
   } else {

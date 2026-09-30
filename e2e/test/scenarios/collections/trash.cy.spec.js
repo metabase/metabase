@@ -1,6 +1,7 @@
 import { P, isMatching } from "ts-pattern";
 
 const { H } = cy;
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
@@ -8,6 +9,8 @@ import {
   ORDERS_QUESTION_ID,
   READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collections > trash", () => {
   beforeEach(() => {
@@ -22,6 +25,7 @@ describe("scenarios > collections > trash", () => {
         type: "model",
         name: "Model A",
         native: { query: "select * from products limit 5" },
+        collection_position: 1,
       },
       true,
     );
@@ -63,11 +67,13 @@ describe("scenarios > collections > trash", () => {
     });
 
     cy.log("there should not be pins in the trash");
+    collectionTable().findByText("Model A").should("be.visible");
     cy.findByTestId("pinned-items").should("not.exist");
 
     cy.log("trash should not appear in 'our analtyics'");
     visitRootCollection();
     collectionTable().within(() => {
+      cy.findByText("Orders").should("be.visible");
       cy.findByText("Trash").should("not.exist");
     });
 
@@ -101,6 +107,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("trash should not appear in collection permissions sidebar");
     cy.visit("/admin/permissions/collections");
+    H.sidebar().findByText("First collection").should("be.visible");
     H.sidebar().findByText("Trash").should("not.exist");
   });
 
@@ -556,6 +563,14 @@ describe("scenarios > collections > trash", () => {
       });
       cy.findByTestId("toast-card").should("not.exist");
 
+      visitRootCollection();
+      collectionTable().within(() => {
+        cy.findByText("Collection A").should("exist");
+        cy.findByText("Dashboard A").should("exist");
+        cy.findByText("Question A").should("exist");
+      });
+      cy.visit("/trash");
+
       cy.log("user should be able to bulk move out of trash");
       selectItem("Collection B");
       selectItem("Dashboard B");
@@ -598,9 +613,9 @@ describe("scenarios > collections > trash", () => {
       cy.findByTestId("toast-card")
         .should("be.visible")
         .within(() => {
-          cy.findByText("Restore").should("not.be.disabled");
-          cy.findByText("Move").should("not.be.disabled");
-          cy.findByText("Delete permanently").should("not.be.disabled").click();
+          cy.button("Restore").should("be.enabled");
+          cy.button("Move").should("be.enabled");
+          cy.button("Delete permanently").should("be.enabled").click();
         });
 
       H.modal().within(() => {
@@ -621,13 +636,14 @@ describe("scenarios > collections > trash", () => {
     createQuestion(
       {
         name: "Question A",
-        query: { "source-table": 1, limit: 10 },
+        query: { "source-table": ORDERS_ID, limit: 10 },
       },
       true,
     ).as("question");
 
     cy.get("@question").then((question) => {
       H.visitQuestion(question.id);
+      archiveBanner().should("be.visible");
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
@@ -646,6 +662,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.get("@dashboard").then((dashboard) => {
       H.visitDashboard(dashboard.id);
+      archiveBanner().should("be.visible");
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
@@ -919,13 +936,20 @@ describe("scenarios > collections > trash", () => {
     assertChecked("Orders Model");
 
     cy.log("Going through with action should reset selection");
+    cy.intercept("DELETE", "/api/card/*").as("deleteCard");
     cy.findByTestId("toast-card")
       .should("be.visible")
       .findByText("Delete permanently")
       .click();
 
     H.modal().findByText("Delete permanently").click();
-    assertChecked("Orders, Count", false);
+    cy.wait(["@deleteCard", "@deleteCard"]);
+    cy.findByTestId("toast-card").should("not.exist");
+    collectionTable().within(() => {
+      cy.findByText("Orders, Count").should("be.visible");
+      cy.findByText("Orders").should("not.exist");
+      cy.findByText("Orders Model").should("not.exist");
+    });
   });
 });
 

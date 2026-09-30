@@ -44,7 +44,11 @@ describe("scenarios > collections > tenant collections list", () => {
     H.main().findByText("Deactivated Tenant").should("not.exist");
 
     cy.log("all collections should be clickable links");
-    cy.findAllByRole("link").should("have.length.at.least", tenants.length);
+    tenants.forEach((tenant) => {
+      H.main()
+        .findByRole("link", { name: new RegExp(tenant.name) })
+        .should("be.visible");
+    });
 
     cy.log("can navigate to tenant collection");
     H.main().findByText("Tenant 01").click();

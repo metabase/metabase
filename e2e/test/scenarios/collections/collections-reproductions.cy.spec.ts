@@ -244,7 +244,7 @@ describe("issue 56567", () => {
       cy.wait("@savePermissions");
 
       // Checks permissions for collection A is set to "View" as expected
-      cy.visit(`/admin/permissions/collections/${collectionBId}`);
+      cy.visit(`/admin/permissions/collections/${collectionAId}`);
       H.assertPermissionTable(getTestPermissionsTable("View"));
 
       // Check the permission set to collection A was propagated to collection B

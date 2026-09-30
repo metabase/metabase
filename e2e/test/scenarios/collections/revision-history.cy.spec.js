@@ -36,10 +36,12 @@ describe("revision history", () => {
 
       openRevisionHistory();
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(/created this/);
-
-      cy.findAllByText("Revert").should("not.exist");
+      H.sidesheet().within(() => {
+        cy.findAllByTestId("revision-history-event")
+          .should("have.length", 1)
+          .and("contain.text", "created this");
+        cy.findByTestId("question-revert-button").should("not.exist");
+      });
     });
   });
 
@@ -85,9 +87,11 @@ describe("revision history", () => {
               openRevisionHistory();
               H.sidesheet().within(() => {
                 cy.findByRole("tab", { name: "History" }).click();
-                cy.findByText(/added a card/)
-                  .siblings("button")
-                  .should("not.exist");
+                cy.findAllByTestId("revision-history-event").should(
+                  "have.length",
+                  2,
+                );
+                cy.findByText(/added a card/).should("be.visible");
                 cy.findByText(/rearranged the cards/).should("not.exist");
               });
             });
@@ -126,6 +130,10 @@ describe("revision history", () => {
               cy.skipOn(user === "nodata");
 
               H.visitQuestion(ORDERS_QUESTION_ID);
+              cy.findByTestId("saved-question-header-title").should(
+                "have.value",
+                "Orders renamed",
+              );
 
               cy.log("open revision history via the header button");
               cy.findByTestId("revision-history-button").click();
@@ -163,20 +171,32 @@ describe("revision history", () => {
         onlyOn(permission === "view", () => {
           describe(`${user} user`, () => {
             it("should not see question nor dashboard revert buttons (metabase#13229)", () => {
+              cy.signInAsAdmin();
+              cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+                name: "Orders renamed",
+              });
               cy.signIn(user);
 
               H.visitDashboard(ORDERS_DASHBOARD_ID);
               openRevisionHistory();
-              cy.findAllByRole("button", { name: "Revert" }).should(
-                "not.exist",
-              );
+              H.sidesheet().within(() => {
+                cy.findAllByTestId("revision-history-event").should(
+                  "have.length.gte",
+                  2,
+                );
+                cy.findByTestId("question-revert-button").should("not.exist");
+              });
 
               H.visitQuestion(ORDERS_QUESTION_ID);
-              cy.findByRole("button", { name: /Edited .*/ }).click();
-
-              cy.findAllByRole("button", { name: "Revert" }).should(
-                "not.exist",
-              );
+              H.questionInfoButton().click();
+              H.sidesheet().within(() => {
+                cy.findByRole("tab", { name: "History" }).click();
+                cy.findAllByTestId("revision-history-event").should(
+                  "have.length.gte",
+                  2,
+                );
+                cy.findByTestId("question-revert-button").should("not.exist");
+              });
             });
           });
         });

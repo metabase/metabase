@@ -13,7 +13,6 @@ const PERMISSIONS = {
 
 describe("collection permissions", () => {
   beforeEach(() => {
-    cy.intercept("GET", "/api/search*").as("search");
     H.restore();
   });
 
@@ -140,11 +139,44 @@ describe("collection permissions", () => {
                 onlyOn(user !== "nodata", () => {
                   describe("collections", () => {
                     it("shouldn't be able to archive/edit root or personal collection", () => {
+                      const { first_name, last_name } = USERS[user];
+
                       cy.visit("/collection/root");
-                      cy.icon("edit").should("not.exist");
-                      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                      cy.findByText("Your personal collection").click();
-                      cy.icon("edit").should("not.exist");
+                      cy.findByTestId("collection-name-heading").should(
+                        "contain",
+                        "Our analytics",
+                      );
+                      if (user === "admin") {
+                        H.openCollectionMenu();
+                        H.popover().within(() => {
+                          cy.findByText("Edit permissions").should(
+                            "be.visible",
+                          );
+                          cy.findByText("Move").should("not.exist");
+                          cy.findByText("Move to trash").should("not.exist");
+                        });
+                      } else {
+                        H.getCollectionActions()
+                          .findByLabelText("More info")
+                          .should("be.visible");
+                        H.getCollectionActions()
+                          .icon("ellipsis")
+                          .should("not.exist");
+                      }
+
+                      H.navigationSidebar()
+                        .findByText("Your personal collection")
+                        .click();
+                      cy.findByTestId("collection-name-heading").should(
+                        "contain",
+                        `${first_name} ${last_name}'s Personal Collection`,
+                      );
+                      H.getCollectionActions()
+                        .findByLabelText("More info")
+                        .should("be.visible");
+                      H.getCollectionActions()
+                        .icon("ellipsis")
+                        .should("not.exist");
                     });
 
                     it("should cancel, trash, and undo trashing a sub-collection, and not allow editing it once archived (metabase#15289, metabase#12489)", () => {
@@ -293,8 +325,9 @@ describe("collection permissions", () => {
             });
 
             ["/", "/collection/root"].forEach((route) => {
-              it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
+              it(`should not be offered to save dashboard in collections they have \`read\` access to from ${route} (metabase#15281)`, () => {
                 const { first_name, last_name } = USERS[user];
+                cy.intercept("GET", "/api/search*").as("search");
                 cy.visit(route);
                 cy.icon("add").click();
                 // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -315,7 +348,7 @@ describe("collection permissions", () => {
                   cy.findByPlaceholderText("Search…").type("third{Enter}");
 
                   cy.wait("@search");
-                  cy.findByText(/Loading/i).should("not.exist");
+                  cy.findByText("We didn't find anything").should("be.visible");
                   cy.findByText("Third collection").should("not.exist");
                 });
               });
@@ -440,6 +473,7 @@ function move(item) {
 }
 
 function duplicate(item) {
+  cy.intercept("POST", "/api/dashboard/*/copy").as("copyDashboard");
   cy.visit("/collection/root");
   H.openCollectionItemMenu(item);
   cy.findByText("Duplicate").click();
@@ -447,6 +481,7 @@ function duplicate(item) {
     .as("modal")
     .within(() => {
       clickButton("Duplicate");
+      cy.wait("@copyDashboard");
       cy.findByText("Failed").should("not.exist");
     });
   cy.get("@modal").should("not.exist");

@@ -39,6 +39,9 @@ describe("scenarios > collections > collection picker with tenants", () => {
       H.openCollectionMenu();
 
       H.popover().within(() => {
+        cy.findByText("Move").should("be.visible");
+        cy.findByText("Move to trash").should("be.visible");
+
         cy.log("Should not have 'Make collection official' option");
         cy.findByText("Make collection official").should("not.exist");
         cy.findByText("Remove Official badge").should("not.exist");
@@ -53,16 +56,16 @@ describe("scenarios > collections > collection picker with tenants", () => {
         .click();
 
       cy.findByTestId("new-collection-modal").within(() => {
-        cy.log("Should not see 'Collection type' picker");
-        cy.findByText(/Collection type/i).should("not.exist");
-        cy.findByText("Regular").should("not.exist");
-        cy.findByText("Official").should("not.exist");
-
         cy.log("Verify we're creating inside the shared collection");
         cy.findByTestId("collection-picker-button").should(
           "contain",
           "Test Shared Collection",
         );
+
+        cy.log("Should not see 'Collection type' picker");
+        cy.findByText(/Collection type/i).should("not.exist");
+        cy.findByText("Regular").should("not.exist");
+        cy.findByText("Official").should("not.exist");
 
         cy.log("Edge case: Change target collection to a normal collection");
         cy.findByTestId("collection-picker-button").click();

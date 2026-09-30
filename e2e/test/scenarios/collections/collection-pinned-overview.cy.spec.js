@@ -84,11 +84,10 @@ describe("scenarios > collection pinned items overview", () => {
 
     H.getPinnedSection().within(() => {
       cy.findByText("A question").should("be.visible");
+      cy.get("@getCardQuery.all").should("have.length", 0);
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
-
-    cy.get("@getCardQuery.all").should("have.length", 0);
   });
 
   it("should be able to pin a model", () => {

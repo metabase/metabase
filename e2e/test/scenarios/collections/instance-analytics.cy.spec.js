@@ -178,10 +178,11 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       );
       visitCollection(CUSTOM_REPORTS_COLLECTION_NAME);
 
-      cy.findByTestId("collection-menu").within(() => {
-        cy.icon("ellipsis").click();
-        cy.contains("Move to trash").should("not.exist");
-        cy.contains("Move").should("not.exist");
+      H.openCollectionMenu();
+      H.popover().within(() => {
+        cy.findByText("Edit permissions").should("be.visible");
+        cy.findByText("Move to trash").should("not.exist");
+        cy.findByText("Move").should("not.exist");
       });
 
       visitCollection(ANALYTICS_COLLECTION_NAME);
@@ -206,7 +207,10 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       );
       visitCollection(ANALYTICS_COLLECTION_NAME);
 
-      cy.findByTestId("collection-menu").icon("ellipsis").should("not.exist");
+      H.getCollectionActions()
+        .findByLabelText("Edit permissions")
+        .should("be.visible");
+      H.getCollectionActions().icon("ellipsis").should("not.exist");
 
       visitCollection("Our analytics");
 
@@ -335,14 +339,16 @@ describe("question and dashboard links", () => {
       cy.signInAsNormalUser();
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openQuestionInfoSidesheet()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openQuestionInfoSidesheet().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
-      H.openDashboardInfoSidebar()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openDashboardInfoSidebar().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
     });
   });
 
@@ -355,15 +361,17 @@ describe("question and dashboard links", () => {
     it("should never appear in OSS", () => {
       H.visitQuestion(ORDERS_QUESTION_ID);
 
-      H.openQuestionInfoSidesheet()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openQuestionInfoSidesheet().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
 
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
-      H.openDashboardInfoSidebar()
-        .findByRole("link", { name: /Insights/i })
-        .should("not.exist");
+      H.openDashboardInfoSidebar().within(() => {
+        cy.findByRole("tab", { name: "Overview" }).should("be.visible");
+        cy.findByRole("link", { name: /Insights/i }).should("not.exist");
+      });
     });
   });
 });
