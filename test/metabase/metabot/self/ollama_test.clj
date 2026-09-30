@@ -1072,7 +1072,7 @@
     (mt/with-temporary-setting-values [llm-providers []]
       (testing "a base URL alone synthesizes a self-hosted connection and reaches that server"
         (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url base-url]
-          (is (= {:base-url base-url} (connection-config)))
+          (is (= {:base-url base-url :hosting "self-hosted"} (connection-config)))
           (is (= (str base-url "/models") (url-for (connection-config))))))
       (testing "a key plus MB_LLM_OLLAMA_HOSTING=cloud synthesizes a Cloud connection and reaches Cloud"
         (mt/with-temp-env-var-value! [mb-llm-ollama-api-key "sk-env"

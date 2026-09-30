@@ -803,16 +803,43 @@
   (when (= type-name (:type overlay))
     overlay))
 
+(defn- with-implied-ollama-hosting
+  "An Ollama overlay whose base URL selects a self-hosted deployment. The URL applies to nothing else, so a variable
+  setting it would otherwise sit inert under a stored Cloud connection. `MB_LLM_OLLAMA_HOSTING`, where set, still
+  decides. The implied `:hosting` is attributed to the URL's variable, the one the operator actually set.
+
+  Its ugly and ollama-specific but doing this in generic way was even uglier."
+  [{:keys [config vars] :as supplied}]
+  (if (and (:base-url config) (not (:hosting config)))
+    (-> supplied
+        (assoc-in [:config :hosting] ollama-self-hosted)
+        (assoc-in [:vars :hosting] (:base-url vars)))
+    supplied))
+
 (defn- env-overlays
   "The environment's contribution to each connection key, resolved on every read so editing a variable takes effect
   on the next restart without anything having to be migrated or re-saved."
   []
   (into {}
         (keep (fn [[conn-key spec]]
-                (let [{:keys [config] :as supplied} (env-supplied-fields spec)]
+                (let [{:keys [config] :as supplied} (cond-> (env-supplied-fields spec)
+                                                      (= "ollama" (:type spec)) with-implied-ollama-hosting)]
                   (when (seq config)
                     [conn-key (assoc supplied :type (:type spec))]))))
         single-provider-settings))
+
+(defn- env-overlay
+  "The environment's overlay for a connection of `type-name` stored under `conn-key`, or nil where it supplies
+  nothing for it — see [[applicable-overlay]] for which overlay reaches it."
+  [conn-key type-name]
+  (applicable-overlay (get (env-overlays) conn-key) type-name))
+
+(defn- supplying-env-var
+  "The variable that supplies `field` of the connection stored under `conn-key` — not always the field's own, see
+  [[with-implied-ollama-hosting]] — or the field's own variable where the environment supplies nothing for it."
+  [conn-key type-name field]
+  (or (get-in (env-overlay conn-key type-name) [:vars field])
+      (get (connection-env-vars type-name) field)))
 
 (defn- env-managed-connection
   "The managed connection `MB_LLM_METABOT_PROVIDER` demands: a `metabase/...` reference pinned by the environment
@@ -971,12 +998,11 @@
     (drop-fields-warning-once!
      conn :secret captured
      (fn [field]
-       (let [vars (connection-env-vars type)]
-         (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
-                         "its credentials have to come from the environment as well. Set %s to keep using it.")
-                    (name field) conn-key
-                    (get vars moved "the environment")
-                    (get vars field "the matching environment variable")))))))
+       (log/warnf (str "Ignoring the stored %s of the %s LLM connection: %s points it at another server, so "
+                       "its credentials have to come from the environment as well. Set %s to keep using it.")
+                  (name field) conn-key
+                  (or (supplying-env-var conn-key type moved) "the environment")
+                  (get (connection-env-vars type) field "the matching environment variable"))))))
 
 (defn assert-credentials-not-captured!
   "Reject a credential the caller has just typed for a connection the environment points at another server.
@@ -989,7 +1015,7 @@
   `submitted` is the caller's own input: a blank clears a field and a mask is the client echoing back what is
   already stored, so neither is anyone asking for a credential to be sent anywhere. `conn` carries the config the
   credential would land in, which is what decides whether the connection moved."
-  [{type-name :type :keys [config]} submitted env-config]
+  [{conn-key :key type-name :type :keys [config]} submitted env-config]
   (when-let [moved (moved-destination-field type-name config env-config)]
     (when-let [field (first (filter (fn [field-key]
                                       (let [value (u/trimmed-string (get submitted field-key))]
@@ -998,14 +1024,13 @@
                                              (not (contains? env-config field-key)))))
                                     ;; sorted so a type with several secrets always names the same one
                                     (sort (secret-field-keys type-name))))]
-      (let [vars (connection-env-vars type-name)]
-        (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
-                             (get vars moved "The environment")
-                             (get vars field "the matching environment variable"))
-                        {:status-code 400
-                         :api-error   true
-                         :error-code  :llm-credentials-must-come-from-env
-                         :field       field}))))))
+      (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
+                           (or (supplying-env-var conn-key type-name moved) "The environment")
+                           (get (connection-env-vars type-name) field "the matching environment variable"))
+                      {:status-code 400
+                       :api-error   true
+                       :error-code  :llm-credentials-must-come-from-env
+                       :field       field})))))
 
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
@@ -1014,7 +1039,7 @@
   For a writer deciding about a connection that does not exist yet, which cannot read the overlay off a
   stored one — see [[applicable-overlay]] for which overlay reaches it."
   [conn-key type-name]
-  (:config (applicable-overlay (get (env-overlays) conn-key) type-name)))
+  (:config (env-overlay conn-key type-name)))
 
 (defn effective-config
   "What the stored connection `conn` will run on once `env-config` is layered over it.
@@ -1265,40 +1290,8 @@
   [type-name field]
   (boolean (some #{field} (destination-fields type-name))))
 
-(defn- env-pinned-destination
-  "The [[destination-fields]] key of `type-name` that `env-fields` pins, or nil where the environment pins
-  none of them.
-
-  One member pins the whole group: Ollama's `:hosting` decides whether the stored `:base-url` is read at
-  all, so a URL a variable pins is pinned only while the deployment is pinned with it."
-  [type-name env-fields]
-  (some (set env-fields) (destination-fields type-name)))
-
-(defn- env-managed-destination-ex
-  "The refusal for a write that would move a connection off a destination the environment owns.
-
-  `pinned` is the [[destination-fields]] key whose variable owns it — named in the message, since that
-  variable is the only thing the operator can act on — and `field` is the one the caller tried to write.
-  The two differ where a caller writes the other half of the group."
-  [type-name pinned field]
-  (ex-info (tru "This connection''s address comes from {0}. Change it there."
-                (get (connection-env-vars type-name) pinned "an environment variable"))
-           {:status-code 400
-            :api-error   true
-            :error-code  :llm-destination-is-env-managed
-            :field       field}))
-
-(defn env-locked-fields
-  "The config keys an API caller may not write, for a connection of `type-name` whose `env-fields` the
-  environment supplies: every field the environment supplies, plus the rest of the destination group when
-  it pins any of it — see [[env-pinned-destination]]."
-  [type-name env-fields]
-  (cond-> (set env-fields)
-    (env-pinned-destination type-name env-fields) (into (destination-fields type-name))))
-
 (defn assert-destination-change-authorized!
-  "Reject moving a connection: outright when the environment pins part of its destination, and otherwise
-  while it carries a secret the API caller did not freshly supply.
+  "Reject moving a connection while it carries a secret the API caller did not freshly supply.
 
   `old-config` and `new-config` are the effective configs before and after the edit, including environment overlays;
   registry defaults and normalization are applied here before comparing their [[destination-fields]]. `submitted-config` is the
@@ -1319,32 +1312,23 @@
                                   value
                                   (not (setting/obfuscated-value? value)))))
          missing-secrets (remove fresh-secret? carried-secrets)
-         moved-fields    (filter #(not= (get old-config %) (get new-config %))
-                                 (destination-fields type-name))]
-     (when (seq moved-fields)
-       (let [moved  (first moved-fields)
-             pinned (env-pinned-destination type-name env-fields)]
-         (cond
-           ;; first, and regardless of credentials: an operator who pinned part of the address pinned the
-           ;; whole of it, so nothing the caller holds buys a move off it
-           pinned
-           (throw (env-managed-destination-ex type-name pinned moved))
+         moved           (some #(when (not= (get old-config %) (get new-config %)) %)
+                               (destination-fields type-name))]
+     (when (and moved (seq missing-secrets))
+       (throw (ex-info (cond
+                         (some env-fields missing-secrets)
+                         (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
 
-           (seq missing-secrets)
-           (throw (ex-info (cond
-                             (some env-fields missing-secrets)
-                             (tru "This connection''s credentials come from environment variables. Point it at a different server there too.")
+                         legacy-setting?
+                         (tru "Use the provider connection settings to move this connection and enter the credentials again.")
 
-                             legacy-setting?
-                             (tru "Use the provider connection settings to move this connection and enter the credentials again.")
-
-                             :else
-                             (tru "Enter this connection''s credentials again to point it at a different server."))
-                           {:status-code 400
-                            :api-error   true
-                            :error-code  :llm-destination-change-requires-credentials
-                            :field       moved
-                            :secrets     (mapv name missing-secrets)}))))))))
+                         :else
+                         (tru "Enter this connection''s credentials again to point it at a different server."))
+                       {:status-code 400
+                        :api-error   true
+                        :error-code  :llm-destination-change-requires-credentials
+                        :field       moved
+                        :secrets     (mapv name missing-secrets)}))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1402,7 +1386,13 @@
               ;; become live the day the operator drops the variable. The connection settings cannot be this
               ;; strict — the form resubmits every field it disabled, so there an echo is the normal case.
               (when (contains? (:env-fields live) field)
-                (throw (env-managed-destination-ex group-type field field)))
+                ;; the variable is named since it is the only thing the operator can act on
+                (throw (ex-info (tru "This connection''s address comes from {0}. Change it there."
+                                     (or (supplying-env-var conn-key group-type field) "an environment variable"))
+                                {:status-code 400
+                                 :api-error   true
+                                 :error-code  :llm-destination-is-env-managed
+                                 :field       field})))
               (assert-destination-change-authorized! group-type current-config new-config {field value}
                                                      (:env-fields live) {:legacy-setting? true}))
             (when value

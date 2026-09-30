@@ -846,22 +846,34 @@
       (is (nil? (:base-url (stored-config "anthropic")))
           "and with the overlay gone nothing was planted: the connection is back on the type's default"))))
 
-(deftest env-pinned-destination-cannot-be-moved-by-its-other-half-test
-  (testing "a URL a variable pins is pinned only while `:hosting`, which decides whether it is read, is too"
-    (let [refused {:message    "This connection's address comes from MB_LLM_OLLAMA_API_BASE_URL. Change it there."
-                   :error-code "llm-destination-is-env-managed"}]
-      (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "self-hosted"})]]
-        (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://pinned.internal:11434/v1"]
-          (testing "the connection settings, even with a freshly entered Cloud key — no credential buys the move"
-            (is (=? refused (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
-                                                  {:config {:hosting "cloud" :api-key "sk-cloud-new"}}))))
-          (testing "and the per-provider setting, which writes the deployment on its own"
-            (is (=? refused (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-hosting"
-                                                  {:value "cloud"}))))
-          (is (= "self-hosted" (:hosting (stored-config "ollama"))))
-          (testing "so the form reports the whole group as uneditable, not just the field the variable names"
-            (is (=? [{:key "ollama" :env_fields ["base-url" "hosting"]}]
-                    (mt/user-http-request :crowberto :get 200 "llm/providers"))))))))
+(deftest env-base-url-pins-the-self-hosted-deployment-test
+  (testing "an env base URL selects the self-hosted deployment, so `:hosting` is the environment's as well"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "self-hosted"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://pinned.internal:11434/v1"]
+        (testing "the connection settings drop it like any other env-supplied field"
+          (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+            (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                  {:config {:hosting "cloud" :api-key "sk-cloud-new"}})))
+        (testing "the per-provider setting refuses it, naming the variable the operator actually set"
+          (is (=? {:message    "This connection's address comes from MB_LLM_OLLAMA_API_BASE_URL. Change it there."
+                   :error-code "llm-destination-is-env-managed"}
+                  (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-hosting" {:value "cloud"}))))
+        (is (= "self-hosted" (:hosting (stored-config "ollama"))))
+        (testing "and the form reports both as uneditable"
+          (is (=? [{:key "ollama" :env_fields ["base-url" "hosting"]}]
+                  (mt/user-http-request :crowberto :get 200 "llm/providers")))))))
+  (testing "a stored Cloud connection runs self-hosted, and its Cloud key does not follow it to the operator's server"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "cloud"
+                                                                                     :api-key "sk-cloud"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://pinned.internal:11434/v1"]
+        (let [[conn] (mt/user-http-request :crowberto :get 200 "llm/providers")]
+          (is (=? {:key        "ollama"
+                   :usable     true
+                   :env_vars   ["MB_LLM_OLLAMA_API_BASE_URL"]
+                   :env_fields ["base-url" "hosting"]}
+                  conn))
+          (is (= {:hosting "self-hosted" :base-url "http://pinned.internal:11434/v1"}
+                 (:config conn)))))))
   (testing "re-saving the connection unchanged is not a move, so the form's own echo still goes through"
     (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
                                                                   {:hosting "self-hosted" :api-key "sk-stored"})]]
@@ -870,6 +882,18 @@
           (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
                                 {:config {:hosting "self-hosted"}})
           (is (= "self-hosted" (:hosting (stored-config "ollama")))))))))
+
+(deftest env-hosting-self-hosted-leaves-the-base-url-editable-test
+  (testing "`self-hosted` picks no server, so the admin still chooses the URL"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:base-url "http://ollama.internal:11434/v1"})]]
+      (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "self-hosted"]
+        (is (=? [{:key "ollama" :env_fields ["hosting"]}]
+                (mt/user-http-request :crowberto :get 200 "llm/providers")))
+        (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [& _] {:models []})]
+          (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                {:config {:base-url "http://other.internal:11434/v1"}}))
+        (is (= "http://other.internal:11434/v1" (:base-url (stored-config "ollama"))))))))
 
 (deftest legacy-credential-setting-refuses-a-connection-on-its-own-base-url-test
   (testing (str "The per-provider settings write one field at a time, so a credential entered through them arrives "

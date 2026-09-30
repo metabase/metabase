@@ -630,11 +630,13 @@
                                                                   (dissoc self-hosted-ollama :hosting))]]
       (mt/with-temp-env-var-value! [mb-llm-ollama-hosting "cloud"]
         (is (nil? (:api-key (llm.provider/credentials "ollama")))))))
-  (testing "an address Cloud makes inert addresses nothing, so an overlay changing it moves no request"
-    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
-                                                                  (assoc self-hosted-ollama :hosting "cloud"))]]
+  (testing "an env address selects the self-hosted deployment, so a stored Cloud connection moves with it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama" {:hosting "cloud"
+                                                                                     :api-key "sk-cloud-key"})]]
       (mt/with-temp-env-var-value! [mb-llm-ollama-api-base-url "http://elsewhere.example.com:11434/v1"]
-        (is (= "sk-entered-for-our-own-server" (:api-key (llm.provider/credentials "ollama")))))))
+        (is (= {:hosting "self-hosted" :base-url "http://elsewhere.example.com:11434/v1"}
+               (llm.provider/credentials "ollama"))
+            "and the Cloud key does not follow it to the operator's server"))))
   (testing (str "a variable filling in a field the connection left blank supplies a destination rather than "
                 "moving one, so the field-by-field shadowing every other setting gets is unaffected")
     (mt/with-temporary-setting-values [llm-providers [(connection "anthropic" "anthropic"
