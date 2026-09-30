@@ -1133,7 +1133,8 @@
 (deftest public-link-marks-dashboard-dirty-test
   (testing "GHY-4650: creating or revoking a dashboard's public link lists the dashboard in GET /dirty"
     (test-helpers/with-clean-object
-      (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
         (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
                        :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}]
           (mark-pushed! "Dashboard" (:id dash) (:id coll))
@@ -1149,7 +1150,8 @@
 (deftest public-link-marks-card-dirty-test
   (testing "GHY-4650: creating or revoking a card's public link lists the card in GET /dirty"
     (test-helpers/with-clean-object
-      (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
         (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
                        :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
           (mark-pushed! "Card" (:id card) (:id coll))
@@ -1161,6 +1163,25 @@
           (testing "revoke"
             (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
             (is (contains? (dirty-ids "card") (:id card)))))))))
+
+(deftest public-link-on-read-only-instance-is-not-dirty-test
+  (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-only]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card)))))))))
 
 (deftest dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"

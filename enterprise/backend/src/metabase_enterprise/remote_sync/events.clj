@@ -16,6 +16,7 @@
    - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)
    - NativeQuerySnippet, snippets-namespace Collections, Glossary (when Library is remote-synced)"
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.source :as source]
@@ -221,6 +222,10 @@
         (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
+(defn- public-link-topic?
+  [topic]
+  (str/includes? (name topic) "-public-link-"))
+
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
    Checks eligibility, determines status, and creates/updates the sync object."
@@ -233,6 +238,11 @@
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
+      ;; admins can still change public links on read-only instances, but that change can never be pushed
+      (and (public-link-topic? topic)
+           (not (spec/model-editable? (:model-key model-spec) object)))
+      nil
+
       eligible?
       (do
         (log/infof "Creating remote sync object entry for %s %s (status: %s)"
