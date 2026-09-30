@@ -319,6 +319,10 @@
     (is (= "anthropic/claude-sonnet-4-5"
            (llm.provider/connection-model "azure" {:model-family    "anthropic"
                                                    :deployment-name "claude-sonnet-4-5"}))))
+  (testing "Google names a Model Garden endpoint by the collection its ID belongs to, and nothing without an ID"
+    (is (= "endpoints/1234567890123456789"
+           (llm.provider/connection-model "google" {:endpoint-id " 1234567890123456789 "})))
+    (is (nil? (llm.provider/connection-model "google" {:oauth-access-token "ya29.token"}))))
   (testing "a half-filled connection names no model rather than a malformed one"
     (is (nil? (llm.provider/connection-model "azure" {:model-family "openai"})))
     (is (nil? (llm.provider/connection-model "azure" {:model-family    "openai"

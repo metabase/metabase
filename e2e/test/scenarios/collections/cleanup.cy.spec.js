@@ -240,7 +240,9 @@ describe("scenarios > collections > clean up", () => {
               isMatching(
                 {
                   event: "moved-to-trash",
-                  event_detail: P.union("dashboard", "question"),
+                  // "dataset" because `bulkCreateQuestions` seeds `type: "model"` cards, and the
+                  // stale listing labels those `model: "dataset"`.
+                  event_detail: P.union("dashboard", "question", "dataset"),
                   target_id: P.number,
                   triggered_from: "cleanup_modal",
                   duration_ms: P.number,

@@ -173,6 +173,7 @@
    [:location            {:optional true} [:maybe :string]]
    [:auth-method         {:optional true} [:maybe :string]]
    [:base-url            {:optional true} [:maybe :string]]
+   [:endpoint-id         {:optional true} [:maybe :string]]
    ;; recorded by the connect-time probe, not entered by the admin
    [:probed-model        {:optional true} [:maybe :string]]])
 

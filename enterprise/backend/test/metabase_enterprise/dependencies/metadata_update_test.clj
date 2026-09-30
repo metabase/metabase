@@ -130,7 +130,7 @@
                                               :to_entity_id child-id}]
             (is (= #{8}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card :id :result_metadata :card_schema]
+                                     [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
             (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
@@ -140,7 +140,7 @@
                                       :user-id api/*current-user-id*}))
             (is (= #{9}
                    (t2/select-fn-set (comp count :result_metadata)
-                                     [:model/Card :id :result_metadata :card_schema]
+                                     [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                      :id [:in [parent-id child-id grandchild-id]])))))))))
 
 (deftest ^:synchronized native-card-update-does-not-update-children-test
@@ -165,7 +165,7 @@
                                       :user-id api/*current-user-id*}))
             (is (= nil
                    (t2/select-one-fn :result_metadata
-                                     [:model/Card :id :result_metadata :card_schema]
+                                     [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                      :id child-id)))))))))
 
 (deftest ^:synchronized model-update-passes-down-new-values-test
@@ -201,7 +201,7 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "new-name"] [grandchild-id "new-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card :id :result_metadata :card_schema]
+                                       [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-respects-child-overrides-test
@@ -244,7 +244,7 @@
                                         :user-id api/*current-user-id*}))
               (is (= #{[child-id "child-name"] [grandchild-id "grandchild-name"]}
                      (t2/select-fn-set (juxt :id #(get-in % [:result_metadata 0 :display_name]))
-                                       [:model/Card :id :result_metadata :card_schema]
+                                       [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                        :id [:in [child-id grandchild-id]]))))))))))
 
 (deftest ^:synchronized model-update-stops-recursing-when-child-metadata-is-unchanged-test
@@ -286,7 +286,7 @@
                                         :user-id api/*current-user-id*}))
               (is (= nil
                      (t2/select-one-fn #(get-in % [:result_metadata 0 :display_name])
-                                       [:model/Card :id :result_metadata :card_schema]
+                                       [:model/Card :id :result_metadata :card_schema :type :database_id :dataset_query :dimensions :dimension_mappings]
                                        :id grandchild-id))))))))))
 
 (defn- with-syncable-db! [thunk]
