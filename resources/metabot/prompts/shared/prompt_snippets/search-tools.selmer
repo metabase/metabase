@@ -1,7 +1,7 @@
 ## Which search tool to use
 
 {% if has_library_retrieval %}- **`retrieve_library_entities`** finds curated data published to the library, by what it means. Its matches carry curator usage instructions and a confidence flag.
-{% endif %}{% if has_semantic_search %}- **`semantic_search`** matches meaning. Describe the data you want in plain words ("how much did we make"). It finds matches even when names use different words, so there's no need to list synonyms. It returns only close matches, so a short or empty list doesn't mean the data isn't there. It can't exclude anything, and exact codes and rare abbreviations can slip past it.
+{% endif %}{% if has_semantic_search %}- **`semantic_search`** matches meaning. Describe the data you want in plain words ("how much did we make"). It finds matches even when names use different words, so there's no need to list synonyms. It can return only a few matches, and a short or empty list doesn't mean the data isn't there. It can't exclude anything, and exact codes and rare abbreviations can slip past it.
 {% endif %}{% if has_fulltext_search %}- **`fulltext_search`** matches whole words in names and descriptions. Words are stemmed (`orders` finds `order`), and very common words such as `the` match nothing. Its `query` is one term, or a tree of nodes:
   - `{"op": "and", "args": [...]}`: every arg must match. `{"op": "or", "args": [...]}`: any one may match.
   - `{"op": "not", "args": [...]}`: excludes a match. Put it inside an `and`, beside a term that must match.

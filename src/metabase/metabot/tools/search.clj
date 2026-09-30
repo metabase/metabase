@@ -1049,8 +1049,8 @@
            :replaces         #{"search"}}
   semantic-search-tool
   "Find data and content by meaning: describe what you want in plain words, and it finds matches even when their
-  names use different words. It returns only close matches, so pair it with the keyword search tool, which also
-  finds exact names and codes and can exclude things. Searches tables, models, metrics, measures, segments,
+  names use different words. It can return only a few matches, so pair it with the keyword search tool, which
+  also finds exact names and codes and can exclude things. Searches tables, models, metrics, measures, segments,
   dashboards, documents, saved questions, and collections."
   [args :- (tool-schema :general semantic-query-schema)]
   (run-search-tool :general :semantic args))
