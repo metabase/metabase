@@ -58,8 +58,9 @@
             "events :prefix should be a keyword")
         (is (vector? (get-in spec [:events :types]))
             "events :types should be a vector")
-        (is (every? #{:create :update :delete :publish :unpublish} (get-in spec [:events :types]))
-            "events :types should only contain :create, :update, :delete, :publish, :unpublish")))))
+        (is (every? #{:create :update :delete :publish :unpublish :public-link-created :public-link-deleted}
+                    (get-in spec [:events :types]))
+            "events :types should only contain :create, :update, :delete, :publish, :unpublish, :public-link-created, :public-link-deleted")))))
 
 (deftest all-specs-have-valid-tracking-test
   (testing "Every spec has valid tracking configuration"
