@@ -58,6 +58,6 @@
                  (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
 (defn time-config
-  "The time config for this instance, for the date and time functions that take one."
+  "The `time-config` map that date and time functions take, built from this instance's settings."
   []
   {:start-of-week (start-of-week)})

@@ -187,9 +187,9 @@
       (t/plus (t/days (dec value)))))
 
 (defmethod common/number->timestamp :day-of-week [value options]
-  ;; Metabase uses 1 to mean the start of the week, based on the Metabase setting for the first day of the week.
+  ;; Metabase numbers weekdays from 1, starting on the first day of the week in `options`.
   ;; Moment uses 0 as the first day of the week in its configured locale.
-  ;; For Java, get the first day of the week from `options`, and offset by `(dec value)` for the current day.
+  ;; For Java, find that first day and add `(dec value)` days.
   (number->timestamp value (start-of-week options)))
 
 (defmethod common/number->timestamp :day-of-week-iso [value _]

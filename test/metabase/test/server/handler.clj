@@ -9,7 +9,7 @@
 
 (mu/defn- make-test-handler :- ::api.macros/handler
   []
-  ;; late-bound: a static require here makes loading `metabase.test` load every API namespace
+  ;; Resolved here because a static require would make loading `metabase.test` load every API namespace.
   (let [api-routes    (requiring-resolve 'metabase.api-routes.core/routes)
         server-routes (server/make-routes auth-wrapper/routes api-routes)
         handler       (server/make-handler server-routes {:cors mcp/cors})]

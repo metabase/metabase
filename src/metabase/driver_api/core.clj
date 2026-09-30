@@ -190,7 +190,7 @@
   []
   qp.pipeline/*canceled-chan*)
 
-;; The functions below fill in the instance's time config, so drivers need not build it at each call.
+;; These fill in the instance's time config, so drivers don't have to pass one.
 
 (defn desugar-filter-clause
   "[[metabase.lib.core/desugar-filter-clause]] with this instance's time config."

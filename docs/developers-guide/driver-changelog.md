@@ -12,17 +12,20 @@ title: Driver interface changelog
 
 ## Metabase 0.64.0
 
-- `metabase.util.date-2/extract`, `truncate`, `bucket`, `range`, and `comparison-range` now take a `time-config` map
-  as their first argument, e.g. `[time-config t unit]`, instead of reading the `start-of-week` setting. The arities
-  without `t`, which used the current time, have been removed. Drivers should call `driver-api/date-extract`,
-  `date-truncate`, `date-bucket`, `date-range`, and `date-comparison-range` instead. They take the old arguments and
-  fill in the instance's time config.
+- Date and time functions that depended on the `start-of-week` setting now take a `time-config` map as their first
+  argument. Drivers should call the `driver-api` versions instead, which take the old arguments and fill in the
+  instance's time config:
 
-- `metabase.lib.core/desugar-filter-clause` and `negate-boolean-expression` now take a `time-config` map as their
-  first argument. Drivers should call `driver-api/desugar-filter-clause` and `driver-api/negate-boolean-expression`,
-  which take the old arguments.
+  - `metabase.util.date-2/extract` → `driver-api/date-extract`
+  - `metabase.util.date-2/truncate` → `driver-api/date-truncate`
+  - `metabase.util.date-2/bucket` → `driver-api/date-bucket`
+  - `metabase.util.date-2/range` → `driver-api/date-range`
+  - `metabase.util.date-2/comparison-range` → `driver-api/date-comparison-range`
+  - `metabase.lib.core/desugar-filter-clause` → `driver-api/desugar-filter-clause`
+  - `metabase.lib.core/negate-boolean-expression` → `driver-api/negate-boolean-expression`
 
-- The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
+  The `metabase.util.date-2` arities without `t`, which used the current time, have been removed.
+  The `:first-day-of-week`, `:first-week-of-year`, and `:week-of-year` methods of `metabase.util.date-2/adjuster` now
   take the start of the week as their last argument, e.g. `(driver-api/start-of-week)`.
 
 - `metabase.driver.sql.normalize/default-schema` now takes the database as well as the driver:

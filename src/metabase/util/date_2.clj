@@ -345,9 +345,9 @@
     :hour        (t/truncate-to t :hours)
     :day         (t/truncate-to t :days)
     :week        (-> (.with t (adjuster :first-day-of-week start-of-week)) (t/truncate-to :days))
-    :month       (-> (t/adjust t :first-day-of-month)           (t/truncate-to :days))
-    :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
-    :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days))))
+    :month       (-> (t/adjust t :first-day-of-month)                     (t/truncate-to :days))
+    :quarter     (-> (.with t (adjuster :first-day-of-quarter))           (t/truncate-to :days))
+    :year        (-> (t/adjust t :first-day-of-year)                      (t/truncate-to :days))))
 
 (mu/defn bucket :- [:or number? TemporalInstance]
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
