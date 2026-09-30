@@ -47,7 +47,7 @@
                       error-substr [:concat
                                     [:substring
                                      :latest_qe.error
-                                     [:inline (if (= (mdb/db-type) :mysql) 1 0)]
+                                     [:inline (if (#{:mysql :sqlite} (mdb/db-type)) 1 0)]
                                      [:inline 60]]
                                     "..."]
                       dash-count   [:coalesce :dash_card.count [:inline 0]]]

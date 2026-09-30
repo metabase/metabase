@@ -64,41 +64,45 @@
 (defn update-subscription-trigger!
   "Update the trigger for a notification subscription if it exists and needs to be updated."
   [{:keys [id type cron_schedule] :as notification-subscription}]
-  (let [existing-trigger (first (task/existing-triggers send-notification-job-key (send-notification-trigger-key id)))]
-    (cond
-      ;; delete trigger if type changes
-      (and
-       (not= type :notification-subscription/cron)
-       existing-trigger)
-      (do
-        (log/infof "Deleting trigger for subscription %d because of type changes" id)
-        (task/delete-trigger! (-> existing-trigger :key triggers/key)))
+  (task/do-after-app-db-commit
+   (fn []
+     (let [existing-trigger (first (task/existing-triggers send-notification-job-key (send-notification-trigger-key id)))]
+       (cond
+         ;; delete trigger if type changes
+         (and
+          (not= type :notification-subscription/cron)
+          existing-trigger)
+         (do
+           (log/infof "Deleting trigger for subscription %d because of type changes" id)
+           (task/delete-trigger! (-> existing-trigger :key triggers/key)))
 
-      ;; do nothing if type is not cron
-      (not= type :notification-subscription/cron)
-      nil
+         ;; do nothing if type is not cron
+         (not= type :notification-subscription/cron)
+         nil
 
-      ;; create new if there is no existing trigger
-      (not existing-trigger)
-      (do
-        (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
-        (create-new-trigger! notification-subscription))
+         ;; create new if there is no existing trigger
+         (not existing-trigger)
+         (do
+           (log/infof "Creating new trigger for subscription %d with schedule %s" id cron_schedule)
+           (create-new-trigger! notification-subscription))
 
-      (not= cron_schedule (:schedule existing-trigger))
-      (do
-        (log/infof "Rescheduling trigger for subscription %d from %s to %s" id (:schedule existing-trigger) cron_schedule)
-        (task/delete-trigger! (-> existing-trigger :key triggers/key))
-        (create-new-trigger! notification-subscription))
+         (not= cron_schedule (:schedule existing-trigger))
+         (do
+           (log/infof "Rescheduling trigger for subscription %d from %s to %s" id (:schedule existing-trigger) cron_schedule)
+           (task/delete-trigger! (-> existing-trigger :key triggers/key))
+           (create-new-trigger! notification-subscription))
 
-      :else
-      (log/infof "No changes to trigger for subscription %d" id))))
+         :else
+         (log/infof "No changes to trigger for subscription %d" id))))))
 
 (defn delete-trigger-for-subscription!
   "Delete the trigger for a notification subscription."
   [notification-subscription-id]
-  (when-first [trigger (task/existing-triggers send-notification-job-key (send-notification-trigger-key notification-subscription-id))]
-    (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
-    (task/delete-trigger! (-> trigger :key triggers/key))))
+  (task/do-after-app-db-commit
+   (fn []
+     (when-first [trigger (task/existing-triggers send-notification-job-key (send-notification-trigger-key notification-subscription-id))]
+       (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
+       (task/delete-trigger! (-> trigger :key triggers/key))))))
 
 (defn- active-cron-subscription-id->subscription
   []
@@ -107,15 +111,17 @@
 (defn update-send-notification-triggers-timezone!
   "Update the timezone of all SendNotification triggers if the report timezone changes."
   []
-  (let [triggers              (-> send-notification-job-key task/job-info :triggers)
-        new-timezone          (send-notification-timezone)
-        subscription-id->cron (update-vals (active-cron-subscription-id->subscription) :cron_schedule)]
-    (doseq [trigger triggers
-            :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
-      (let [trigger-key     (:key trigger)
-            subscription-id (send-notification-trigger-key->subscription-id trigger-key)]
-        (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
-        (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron subscription-id)))))))
+  (task/do-after-app-db-commit
+   (fn []
+     (let [triggers              (-> send-notification-job-key task/job-info :triggers)
+           new-timezone          (send-notification-timezone)
+           subscription-id->cron (update-vals (active-cron-subscription-id->subscription) :cron_schedule)]
+       (doseq [trigger triggers
+               :when (not= new-timezone (:timezone trigger))] ; skip if timezone is the same
+         (let [trigger-key     (:key trigger)
+               subscription-id (send-notification-trigger-key->subscription-id trigger-key)]
+           (log/infof "Updating timezone of trigger %s to %s. Was: %s" trigger-key new-timezone (:timezone trigger))
+           (task/reschedule-trigger! (build-trigger subscription-id (get subscription-id->cron subscription-id)))))))))
 
 (defn init-send-notification-triggers!
   "Initialize all notification subscription triggers.

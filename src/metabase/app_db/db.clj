@@ -14,7 +14,7 @@
 
 (mu/defn current-timestamp-string
   "The application DB's own current timestamp, as a string, for app DB type `db-type`."
-  ^String [db-type :- [:enum :h2 :mysql :postgres]]
+  ^String [db-type :- [:enum :h2 :mysql :postgres :sqlite]]
   ;; for MySQL, cast(current_timestamp AS char); for H2 & Postgres, cast(current_timestamp AS text)
   (let [cast-form (h2x/cast (if (= db-type :mysql) :char :text) (h2x/current-datetime-honeysql-form db-type))]
     (:timestamp (t2/query-one {:select [[cast-form :timestamp]]}))))
@@ -23,10 +23,10 @@
 
 (mu/defn changelog-by-id
   "The Liquibase changelog row with `changelog-id` in the app DB of type `db-type`, or nil."
-  [db-type      :- [:enum :h2 :mysql :postgres]
+  [db-type      :- [:enum :h2 :mysql :postgres :sqlite]
    changelog-id :- :string]
   (let [table-name (case db-type
-                     (:postgres :h2) "databasechangelog"
+                     (:postgres :h2 :sqlite) "databasechangelog"
                      :mysql          "DATABASECHANGELOG")]
     (t2/query-one [(format "select * from %s where id = ?" table-name) changelog-id])))
 

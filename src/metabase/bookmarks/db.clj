@@ -311,6 +311,6 @@
       :order-by  [[:bookmark_ordering.ordering (case (mdb/db-type)
                                                  ;; NULLS LAST is not supported by MySQL, but this is default
                                                  ;; behavior for MySQL anyway
-                                                 (:postgres :h2) :asc-nulls-last
+                                                 (:postgres :h2 :sqlite) :asc-nulls-last
                                                  :mysql          :asc)]
                   [:created_at :desc]]})))

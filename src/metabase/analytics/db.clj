@@ -15,7 +15,12 @@
 (mu/defn first-user-date-joined
   "The earliest join date among all Users, or nil."
   []
-  (t2/select-one-fn :min [:model/User [:%min.date_joined :min]]))
+  (if (= :sqlite (app-db/db-type))
+    ;; SQLite discards the declared timestamp type for MIN expressions, returning an untyped string.
+    ;; Selecting the column directly preserves the OffsetDateTime required by timestamp settings.
+    (t2/select-one-fn :date_joined [:model/User :date_joined]
+                      {:where [:not= :date_joined nil], :order-by [[:date_joined :asc]]})
+    (t2/select-one-fn :min [:model/User [:%min.date_joined :min]])))
 
 (mu/defn sample-database-exists?
   "Whether a sample Database exists."

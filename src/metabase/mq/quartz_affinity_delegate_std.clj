@@ -11,7 +11,8 @@
               :name metabase.mq.QueueAffinityStdDelegate
               :exposes-methods {rtp superRtp})
   (:require
-   [metabase.mq.quartz-affinity :as quartz-affinity]))
+   [metabase.mq.quartz-affinity :as quartz-affinity]
+   [metabase.task.core :as task]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,3 +27,8 @@
   [this conn no-later no-earlier max-count]
   (quartz-affinity/select-trigger-to-acquire conn no-later no-earlier max-count
                                              (fn [sql] (.superRtp this sql))))
+
+(defn -getObjectFromBlob
+  "Preserve allowlisted deserialization when queue affinity replaces the secure delegate."
+  [_this rs col-name]
+  (task/object-from-blob-std rs col-name))

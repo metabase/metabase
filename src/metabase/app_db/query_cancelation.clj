@@ -13,6 +13,10 @@
   [_db-type ^java.sql.SQLException e]
   (= (.getErrorCode e) mdb.h2/statement-was-canceled-error-code))
 
+(defmethod query-canceled-exception?* :sqlite
+  [_db-type ^java.sql.SQLException e]
+  (= 9 (.getErrorCode e))) ; SQLITE_INTERRUPT
+
 (defn- sql-state
   [^java.sql.SQLException e]
   (loop [exception e]

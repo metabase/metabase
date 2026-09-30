@@ -23,7 +23,7 @@
   (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
     (case (mdb/db-type)
-      (:postgres :h2)
+      (:postgres :h2 :sqlite)
       (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
 
       (:mysql :mariadb)

@@ -42,14 +42,14 @@
 
 (def supported-db?
   "All the databases which we have implemented fulltext search for."
-  #{:postgres :h2})
+  #{:postgres :h2 :sqlite})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
   (supported-db? (mdb/db-type)))
 
 (defmethod search.engine/disjunction :search.engine/appdb [_ terms]
   (when (seq terms)
-    (if (or (= (mdb/db-type) :h2)
+    (if (or (#{:h2 :sqlite} (mdb/db-type))
             (= 1 (count terms)))
       terms
       [(str/join " OR " (map #(str "(" % ")") terms))])))

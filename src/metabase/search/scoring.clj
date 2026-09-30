@@ -30,8 +30,8 @@
   lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
   `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
   rejects 'g'.
-  Only :postgres and :h2 can reach this: the appdb engine is gated to those (see
-  [[metabase.search.appdb.core/supported-db?]]) and semantic search passes :postgres explicitly."
+  SQLite instead normalizes names at ingestion and compares the stored normalized value.
+  Semantic search passes :postgres explicitly."
   ([expr] (normalize-text-expr (mdb/db-type) expr))
   ([db-type expr]
    ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.
@@ -50,12 +50,12 @@
 (defn size
   "Prefer items whose value is larger, up to some saturation point. Items beyond that point are equivalent."
   [column ceiling]
-  [:least
+  [(if (= :sqlite (mdb/db-type)) :min :least)
    [:inline 1]
    [:/
     [:coalesce column [:inline 0]]
     ;; protect against div / 0
-    [:greatest
+    [(if (= :sqlite (mdb/db-type)) :max :greatest)
      [:inline 1]
      (if (number? ceiling)
        [:inline (double ceiling)]
@@ -66,20 +66,27 @@
   ([from-column to-column ceiling-in-days]
    (inverse-duration (mdb/db-type) from-column to-column ceiling-in-days))
   ([db-type from-column to-column ceiling-in-days]
-   (let [ceiling [:inline ceiling-in-days]]
-     [:/
-      [:greatest
-       [:- ceiling
-        [:/
-         ;; Use seconds for granularity in the fraction.
-         (if (= :mysql db-type)
-           [:coalesce
-            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
-            [:* ceiling (double seconds-in-a-day)]]
-           [[::h2x/extract :epoch [:- to-column from-column]]])
-         [:inline (double seconds-in-a-day)]]]
-       [:inline 0]]
-      ceiling])))
+   (if (= :sqlite db-type)
+     (let [ceiling [:inline (double ceiling-in-days)]
+           ;; HoneySQL needs an explicit nesting form for a subquery used as a function's only argument.
+           from-expr (if (map? from-column) [:nest from-column] from-column)
+           elapsed [:- [:julianday to-column] [:julianday from-expr]]]
+       [:/ [:max [:- ceiling [:coalesce elapsed ceiling]] 0.0]
+        ceiling])
+     (let [ceiling [:inline ceiling-in-days]]
+       [:/
+        [:greatest
+         [:- ceiling
+          [:/
+           ;; Use seconds for granularity in the fraction.
+           (if (= :mysql db-type)
+             [:coalesce
+              [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
+              [:* ceiling (double seconds-in-a-day)]]
+             [[::h2x/extract :epoch [:- to-column from-column]]])
+           [:inline (double seconds-in-a-day)]]]
+         [:inline 0]]
+        ceiling]))))
 
 (defn- cast-to-text
   [column]
@@ -90,7 +97,8 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)]
+  (let [one-day-ago (h2x/add-interval-honeysql-form (mdb/db-type)
+                                                    (h2x/current-datetime-honeysql-form (mdb/db-type)) -1 :day)]
     ^:allow-subquery
     {:select [[[:case
                 ;; Transforms get a hardcoded 1-day last_viewed_at because we don't track views on them

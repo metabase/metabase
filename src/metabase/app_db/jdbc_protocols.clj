@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.sqlite :as sqlite]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -22,7 +23,9 @@
 
 (defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
-  (.setObject stmt index object target-sql-type))
+  (if (sqlite/connection? (.getConnection stmt))
+    (.setString stmt index (sqlite/temporal-value object))
+    (.setObject stmt index object target-sql-type)))
 
 (extend-protocol jdbc/ISQLParameter
   ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
@@ -174,13 +177,45 @@
   [rs rsmeta indexes]
   (mapv
    (fn [i]
-     (-> (read-column rs rsmeta i)
+     (-> (if (sqlite/connection? (.getConnection (.getStatement ^ResultSet rs)))
+           (sqlite/read-column rs rsmeta i)
+           (read-column rs rsmeta i))
          (jdbc/result-set-read-column rsmeta i)))
    indexes))
 
 ;;;; [[next.jdbc]] and Toucan 2 mappings
 
 (extend-protocol next.jdbc.prepare/SettableParameter
+  LocalDate
+  (set-parameter [t ^PreparedStatement stmt i]
+    (if (sqlite/connection? (.getConnection stmt))
+      (jdbc/set-parameter t stmt i)
+      (.setObject stmt i t)))
+
+  LocalTime
+  (set-parameter [t ^PreparedStatement stmt i]
+    (if (sqlite/connection? (.getConnection stmt))
+      (jdbc/set-parameter t stmt i)
+      (.setObject stmt i t)))
+
+  LocalDateTime
+  (set-parameter [t ^PreparedStatement stmt i]
+    (if (sqlite/connection? (.getConnection stmt))
+      (jdbc/set-parameter t stmt i)
+      (.setObject stmt i t)))
+
+  OffsetDateTime
+  (set-parameter [t ^PreparedStatement stmt i]
+    (if (sqlite/connection? (.getConnection stmt))
+      (jdbc/set-parameter t stmt i)
+      (.setObject stmt i t)))
+
+  OffsetTime
+  (set-parameter [t ^PreparedStatement stmt i]
+    (if (sqlite/connection? (.getConnection stmt))
+      (jdbc/set-parameter t stmt i)
+      (.setObject stmt i t)))
+
   ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
   Instant
   (set-parameter [t stmt i]
@@ -200,4 +235,10 @@
   (if (= (.getColumnTypeName rsmeta i) "citext")
     (fn get-citext-as-string []
       (.getString rset i))
+    (next-method conn model rset rsmeta i)))
+
+(methodical/defmethod t2.jdbc.read/read-column-thunk :around :default
+  [conn model rset rsmeta i]
+  (if (sqlite/connection? conn)
+    (fn [] (sqlite/read-column rset rsmeta i))
     (next-method conn model rset rsmeta i)))

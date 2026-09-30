@@ -566,6 +566,9 @@
   (case db-type
     :h2       (with-database-type-info :%now "timestamp")
     :mysql    (with-database-type-info [:now [:inline 6]] "timestamp")
+    :sqlite   (with-database-type-info
+               [:|| [:strftime (literal "%Y-%m-%d %H:%M:%f") (literal "now")] (literal "000")]
+               "timestamp")
     :postgres (with-database-type-info :%now "timestamptz")))
 
 (defn- format-postgres-interval
@@ -671,6 +674,18 @@
     :else
     (dateadd-h2 unit amount hsql-form)))
 
+(defmethod add-interval-honeysql-form :sqlite
+  [db-type hsql-form amount unit]
+  (case unit
+    :quarter (recur db-type hsql-form (clojure.core/* amount 3) :month)
+    :week (recur db-type hsql-form (clojure.core/* amount 7) :day)
+    :millisecond (recur db-type hsql-form (clojure.core// amount 1000.0) :second)
+    (do
+      (when-not (and (number? amount) (#{:second :minute :hour :day :month :year} unit))
+        (throw (ex-info "Invalid SQLite interval" {:amount amount :unit unit})))
+      [:|| [:strftime (literal "%Y-%m-%d %H:%M:%f") hsql-form
+            (literal (str (num amount) " " (name unit)))] (literal "000")])))
+
 (defmethod add-interval-honeysql-form :default
   [db-type hsql-form amount unit]
   (throw (ex-info (clojure.core/format (str "metabase.util.honey-sql-2/add-interval-honeysql-form not implemented for db-type %s. "
@@ -710,6 +725,10 @@
 (defmethod calculate-interval-honeysql-form :h2
   [_db-type end-form start-form]
   [:datediff (literal "MILLISECOND") start-form end-form])
+
+(defmethod calculate-interval-honeysql-form :sqlite
+  [_db-type end-form start-form]
+  [:- [:julianday end-form] [:julianday start-form]])
 
 (defmethod calculate-interval-honeysql-form :default
   [db-type end-form start-form]

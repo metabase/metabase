@@ -1,10 +1,12 @@
 (ns metabase.search.appdb.scoring
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.config :as search.config]
-   [metabase.search.scoring :as search.scoring]))
+   [metabase.search.scoring :as search.scoring]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn all-scores
   "Score stats for each scorer"
@@ -22,31 +24,36 @@
   "The default constituents of the search ranking scores. `view-count-percentiles` maps each model to its view-count
   percentile (see `metabase.search.db/view-count-percentile-rows`)."
   [{:keys [search-string] :as search-ctx} view-count-percentiles]
-  (if (search.scoring/no-scoring-required? search-ctx)
-    {:model       [:inline 1]}
-    ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
-    ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:text         (specialization/text-score)
-     :view-count   (view-count-expr view-count-percentiles)
-     :pinned       (search.scoring/truthy :pinned)
-     :bookmarked   search.scoring/bookmark-score-expr
-     :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] [:now] search.config/stale-time-in-days)
-     :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)
-     :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model        (search.scoring/model-rank-expr search-ctx)
-     :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
-     :exact        (if search-string
-                     ;; normalize both sides in the database, in case it behaves differently to our helper
-                     (search.scoring/equal (search.scoring/normalize-text-expr :search_index.name)
-                                           (search.scoring/normalize-text-expr search-string))
-                     [:inline 0])
-     :prefix       (if search-string
-                     ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                     (search.scoring/prefix (search.scoring/normalize-text-expr :search_index.name)
-                                            (search.scoring/normalize-text search-string))
-                     [:inline 0])
-     :library      (search.scoring/library-score-expr)
-     :data-layer   (search.scoring/data-layer-score-expr search-ctx)}))
+  (let [sqlite? (= :sqlite (mdb/db-type))
+        now (h2x/current-datetime-honeysql-form (mdb/db-type))
+        normalized-name (if sqlite? :search_index.normalized_name
+                            (search.scoring/normalize-text-expr :search_index.name))]
+    (if (search.scoring/no-scoring-required? search-ctx)
+      {:model       [:inline 1]}
+      ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
+      ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
+      {:text         (specialization/text-score)
+       :view-count   (view-count-expr view-count-percentiles)
+       :pinned       (search.scoring/truthy :pinned)
+       :bookmarked   search.scoring/bookmark-score-expr
+       :recency      (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at] now search.config/stale-time-in-days)
+       :user-recency (search.scoring/inverse-duration (search.scoring/user-recency-expr search-ctx) now search.config/stale-time-in-days)
+       :dashboard    (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
+       :model        (search.scoring/model-rank-expr search-ctx)
+       :mine         (search.scoring/equal :search_index.creator_id (:current-user-id search-ctx))
+       :exact        (if search-string
+                       ;; SQLite stores the same normalization at ingestion; other engines normalize in SQL.
+                       (search.scoring/equal normalized-name
+                                             (if sqlite? (search.scoring/normalize-text search-string)
+                                                 (search.scoring/normalize-text-expr search-string)))
+                       [:inline 0])
+       :prefix       (if search-string
+                       ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
+                       (search.scoring/prefix normalized-name
+                                              (search.scoring/normalize-text search-string))
+                       [:inline 0])
+       :library      (search.scoring/library-score-expr)
+       :data-layer   (search.scoring/data-layer-score-expr search-ctx)})))
 
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."

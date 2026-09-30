@@ -100,8 +100,10 @@
 (mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
   [database :- (ms/InstanceOf :model/Database)]
-  (doseq [task all-tasks]
-    (delete-trigger! database task)))
+  (task/do-after-app-db-commit
+   (fn []
+     (doseq [task all-tasks]
+       (delete-trigger! database task)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
@@ -173,14 +175,16 @@
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf :model/Database)]
-  (doseq [task all-tasks]
-    (cond
-      (:is_stub database)
-      (log/info (u/format-color :red "Not scheduling sync task for stub database"))
+  (task/do-after-app-db-commit
+   (fn []
+     (doseq [task all-tasks]
+       (cond
+         (:is_stub database)
+         (log/info (u/format-color :red "Not scheduling sync task for stub database"))
 
-      (and (= audit/audit-db-id (:id database))
-           (= task sync-analyze-task-info))
-      (log/info (u/format-color :red "Not scheduling sync task for audit database"))
+         (and (= audit/audit-db-id (:id database))
+              (= task sync-analyze-task-info))
+         (log/info (u/format-color :red "Not scheduling sync task for audit database"))
 
-      :else
-      (update-db-trigger-if-needed! database task))))
+         :else
+         (update-db-trigger-if-needed! database task))))))

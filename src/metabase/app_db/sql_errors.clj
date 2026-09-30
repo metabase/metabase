@@ -41,6 +41,17 @@
 (defn- sql-error-kind [^SQLException e]
   (let [state (.getSQLState e)]
     (cond
+      (and (instance? org.sqlite.SQLiteException e)
+           (contains? #{org.sqlite.SQLiteErrorCode/SQLITE_CONSTRAINT_PRIMARYKEY
+                        org.sqlite.SQLiteErrorCode/SQLITE_CONSTRAINT_UNIQUE}
+                      (.getResultCode ^org.sqlite.SQLiteException e)))
+      :duplicate-key
+
+      (and (instance? org.sqlite.SQLiteException e)
+           (= org.sqlite.SQLiteErrorCode/SQLITE_ERROR (.getResultCode ^org.sqlite.SQLiteException e))
+           (re-find #"no such table:" (or (.getMessage e) "")))
+      :table-not-found
+
       (contains? table-not-found-states state)
       :table-not-found
 

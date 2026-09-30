@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - property:
+      name: timestamp_type
+      value: timestamp with time zone
+      dbms: sqlite
+  - property:
+      name: blob.type
+      value: blob
+      dbms: sqlite
+  - property:
+      name: text.type
+      value: text
+      dbms: sqlite
+  - property:
+      name: boolean.type
+      value: boolean
+      dbms: sqlite
+  - property:
+      name: databasechangelog.name
+      value: DATABASECHANGELOG
+      dbms: sqlite
+  - changeSet:
+      id: v65.2026-09-24T00:00:00-sqlite-baseline
+      author: metabase
+      dbms: sqlite
+      comment: SQLite v65 baseline; historical changesets are represented by sqlite/baseline-changesets.edn
+      changes:
+        - sqlFile:
+            path: sqlite/baseline.sql
+            splitStatements: true
+            stripComments: true
+  # The wrapper removes only the immutable baseline manifest's exact identities.
+  # This leaves future changesets in any release directory on the normal upgrade path.
+  - include:
+      file: liquibase.yaml

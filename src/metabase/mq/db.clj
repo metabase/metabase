@@ -37,17 +37,17 @@
    now            :- ms/TemporalInstant
    created-before :- ms/TemporalInstant
    limit          :- ms/PositiveInt
-   for-clause     :- [:sequential :keyword]]
-  (t2/query {:select   [:id :queue_name :payload :publish_attempts]
-             :from     [:queue_message_outbox]
-             :where    [:and
-                        [:> :id after-id]
-                        [:or
-                         [:and [:= :next_attempt_at nil] [:< :created_at created-before]]
-                         [:<= :next_attempt_at now]]]
-             :order-by [[:id :asc]]
-             :limit    limit
-             :for      for-clause}))
+   for-clause     :- [:maybe [:sequential :keyword]]]
+  (t2/query (cond-> {:select   [:id :queue_name :payload :publish_attempts]
+                     :from     [:queue_message_outbox]
+                     :where    [:and
+                                [:> :id after-id]
+                                [:or
+                                 [:and [:= :next_attempt_at nil] [:< :created_at created-before]]
+                                 [:<= :next_attempt_at now]]]
+                     :order-by [[:id :asc]]
+                     :limit    limit}
+              for-clause (assoc :for for-clause))))
 
 (mu/defn bump-outbox-row!
   "Increment the publish attempts of the `queue_message_outbox` row with `id` and schedule its next attempt,

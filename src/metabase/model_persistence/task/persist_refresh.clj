@@ -336,12 +336,14 @@
                      "Scheduling persistence refreshes for database %d: trigger: %s"
                      (u/the-id database) (.. trigger getKey getName)))
     (persisted-info/ready-database! (u/the-id database))
-    (try (task/add-trigger! trigger)
-         (catch ObjectAlreadyExistsException _e
-           (log/info
-            (u/format-color 'green "Persistence already present for database %d: trigger: %s"
-                            (u/the-id database)
-                            (.. trigger getKey getName)))))))
+    (task/do-after-app-db-commit
+     (fn []
+       (try (task/add-trigger! trigger)
+            (catch ObjectAlreadyExistsException _e
+              (log/info
+               (u/format-color 'green "Persistence already present for database %d: trigger: %s"
+                               (u/the-id database)
+                               (.. trigger getKey getName)))))))))
 
 (defn schedule-refresh-for-individual!
   "Schedule a refresh of an individual [[PersistedInfo record]]. Done through quartz for locking purposes."
@@ -351,12 +353,14 @@
      (u/format-color 'green
                      "Scheduling refresh for model: %d"
                      (:card_id persisted-info)))
-    (try (task/add-trigger! trigger)
-         (catch ObjectAlreadyExistsException _e
-           (log/info
-            (u/format-color :green "Persistence already present for model %d %s"
-                            (:card_id persisted-info)
-                            (.. trigger getKey getName)))))))
+    (task/do-after-app-db-commit
+     (fn []
+       (try (task/add-trigger! trigger)
+            (catch ObjectAlreadyExistsException _e
+              (log/info
+               (u/format-color :green "Persistence already present for model %d %s"
+                               (:card_id persisted-info)
+                               (.. trigger getKey getName)))))))))
 ;; other errors?
 
 (defn job-info-by-db-id

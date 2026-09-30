@@ -79,7 +79,7 @@
   "A random `:order-by` clause, using the database's native random function."
   []
   [[[(case (mdb/db-type)
-       :postgres :random
+       (:postgres :sqlite) :random
        :rand)]]])
 
 (mu/defn prompts

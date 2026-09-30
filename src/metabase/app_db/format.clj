@@ -17,7 +17,7 @@
   (let [^Dialect dialect (case (app-db.connection/db-type)
                            :mysql    Dialect/MySql
                            :postgres Dialect/PostgreSql
-                           :h2       Dialect/StandardSql)]
+                           (:h2 :sqlite) Dialect/StandardSql)]
     (SqlFormatter/of dialect)))
 
 (mu/defn format-sql :- [:maybe :string]
