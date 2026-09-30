@@ -44,7 +44,10 @@ describe("useAnsweredGoalValue", () => {
   });
 
   it("resolves a self column from the first row", () => {
-    expect(setup(DATA, "count").result.current).toEqual({ value: 50 });
+    expect(setup(DATA, "count").result.current).toEqual({
+      value: 50,
+      column: DATA.cols[0],
+    });
   });
 
   it("fails for a self column that does not exist", () => {
@@ -61,7 +64,10 @@ describe("useAnsweredGoalValue", () => {
         .referenced_entities,
     };
 
-    expect(setup(data, CARD_REF).result.current).toEqual({ value: 250 });
+    expect(setup(data, CARD_REF).result.current).toEqual({
+      value: 250,
+      column: expect.objectContaining({ name: "goal" }),
+    });
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 
@@ -73,7 +79,12 @@ describe("useAnsweredGoalValue", () => {
     const { result } = setup(DATA, CARD_REF);
     expect(result.current).toEqual(RESOLVING);
 
-    await waitFor(() => expect(result.current).toEqual({ value: 250 }));
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        value: 250,
+        column: expect.objectContaining({ name: "goal" }),
+      }),
+    );
     const call = fetchMock.callHistory.lastCall("path:/api/dataset");
     expect(await call?.request?.json()).toMatchObject({
       referenced_entities: [{ type: "card", id: 9 }],

@@ -87,7 +87,7 @@ function resolveSelfColumnValue(
     };
   }
 
-  return { value };
+  return { value, column: data.cols[columnIndex] };
 }
 
 function resolveForeignColumnRef(
@@ -146,7 +146,7 @@ function resolveForeignColumnRef(
     };
   }
 
-  return { value };
+  return { value, column: result.data.cols[columnIndex] };
 }
 
 function toNumberOrNull(raw: RowValue | undefined): number | null {
