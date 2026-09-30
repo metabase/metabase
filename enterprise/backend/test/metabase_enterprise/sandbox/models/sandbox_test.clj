@@ -464,40 +464,40 @@
     (mt/with-premium-features #{:sandboxes}
       (testing "for a non-admin"
         (with-mixed-policies!
-         (fn [{:keys [policy chain free policy-snippet dep-snippet free-snippet]}]
-           (mt/with-test-user :rasta
-             (doseq [[coll msg] [[policy         card-msg]
-                                 [chain          card-msg]
-                                 [policy-snippet snippet-msg]
-                                 [dep-snippet    snippet-msg]]]
-               (testing (str "a Collection with a policy dependency in it: " (:name coll))
-                 (testing "archiving is refused and rolled back"
-                   (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
-                   (is (false? (archived? coll)))
-                   (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
-                   (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
-                 (testing "deleting is refused and nothing is deleted"
-                   (let [before (+ (t2/count :model/Card :collection_id (:id coll))
-                                   (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
-                     (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection (:id coll))))
-                     (is (t2/exists? :model/Collection :id (:id coll)))
-                     (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
-                                      (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))
-             (doseq [coll [free free-snippet]]
-               (testing (str "a Collection with no policy dependency in it: " (:name coll))
-                 (testing "may be archived"
-                   (archive-collection! coll)
-                   (is (true? (archived? coll))))
-                 (testing "and deleted"
-                   (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))
+          (fn [{:keys [policy chain free policy-snippet dep-snippet free-snippet]}]
+            (mt/with-test-user :rasta
+              (doseq [[coll msg] [[policy         card-msg]
+                                  [chain          card-msg]
+                                  [policy-snippet snippet-msg]
+                                  [dep-snippet    snippet-msg]]]
+                (testing (str "a Collection with a policy dependency in it: " (:name coll))
+                  (testing "archiving is refused and rolled back"
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
+                    (is (false? (archived? coll)))
+                    (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
+                    (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
+                  (testing "deleting is refused and nothing is deleted"
+                    (let [before (+ (t2/count :model/Card :collection_id (:id coll))
+                                    (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection (:id coll))))
+                      (is (t2/exists? :model/Collection :id (:id coll)))
+                      (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
+                                       (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))
+              (doseq [coll [free free-snippet]]
+                (testing (str "a Collection with no policy dependency in it: " (:name coll))
+                  (testing "may be archived"
+                    (archive-collection! coll)
+                    (is (true? (archived? coll))))
+                  (testing "and deleted"
+                    (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))
       (testing "an admin may archive and then delete all of them"
         (with-mixed-policies!
-         (fn [colls]
-           (mt/with-test-user :crowberto
-             (doseq [coll (vals colls)]
-               (testing (:name coll)
-                 (archive-collection! coll)
-                 (is (true? (archived? coll)))))
-             (doseq [coll (vals colls)]
-               (testing (:name coll)
-                 (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))))
+          (fn [colls]
+            (mt/with-test-user :crowberto
+              (doseq [coll (vals colls)]
+                (testing (:name coll)
+                  (archive-collection! coll)
+                  (is (true? (archived? coll)))))
+              (doseq [coll (vals colls)]
+                (testing (:name coll)
+                  (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))))
