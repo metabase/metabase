@@ -233,6 +233,7 @@
                  acc))
              stage stage))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *HACK-disable-ref-validation*
   "Whether to validate join aliases in field refs and expression refs. This is only disable-able as a hack to support
   X-Rays code which generates fragments of stages that drop joins and expressions and then adds them again after the

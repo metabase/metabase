@@ -387,9 +387,7 @@
                                (some->> (:dataset-query metric-card) (lib/query metadata-provider))
                                (set (keep :id base-filterable-cols))))
          visible-cols (when query-needed?
-                        (->> (lib/visible-columns base-query)
-                             permission-filter-columns
-                             (map #(metabot.tools.u/add-table-reference base-query %))))
+                        (permission-filter-columns (lib/visible-columns base-query)))
          default-temporal-breakout (when (and query-needed? with-default-temporal-breakout?)
                                      (->> breakouts
                                           (map #(lib/find-matching-column % visible-cols))

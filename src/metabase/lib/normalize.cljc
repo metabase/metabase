@@ -52,17 +52,24 @@
               (pr-str (me/humanize (:explain error))))
   (:value error))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *error-fn*
   default-error-fn)
 
-(defn- coercer [schema]
-  (mr/cached ::coercer
+(defn- coercer [schema legacy-int-field-ids?]
+  (mr/cached (if legacy-int-field-ids? ::coercer ::coercer.no-legacy-int-field-ids)
              schema
              (fn []
-               (let [respond identity
-                     raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
+               (let [respond     identity
+                     raise       #'*error-fn* ; capture var rather than the bound value at the time this is eval'ed
+                     transformer (if legacy-int-field-ids?
+                                   (mtx/transformer mtx/default-value-transformer
+                                                    {:name :normalize}
+                                                    {:name :legacy-int-field-ids})
+                                   (mtx/transformer mtx/default-value-transformer
+                                                    {:name :normalize}))]
                  (log/debugf "Building :normalize coercer for schema %s" (pr-str schema))
-                 (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
+                 (mc/coercer schema transformer respond raise)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
@@ -79,17 +86,20 @@
   Pass in a `nil` schema to automatically attempt to infer the schema based on `x` itself.
 
   By default, does not throw Exceptions -- just logs them and returns what it was able to normalize, but you can pass
-  in the option `{:throw? true}` to have it throw exceptions when normalization fails."
+  in the option `{:throw? true}` to have it throw exceptions when normalization fails.
+
+  Legacy MBQL schemas treat a raw positive integer in a comparison's first argument as an MBQL 2 Field ID, e.g.
+  `[:= 1 1]` => `[:= [:field 1 nil] 1]`. Pass `{:legacy-int-field-ids? false}` to keep it as a literal."
   ([x]
    (normalize nil x))
 
   ([schema x]
    (normalize schema x nil))
 
-  ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
+  ([schema x {:keys [throw? legacy-int-field-ids?], :or {throw? false, legacy-int-field-ids? true}, :as _options}]
    (let [schema (or schema (infer-schema x))
          thunk  (^:once fn* []
-                  ((coercer schema) x))]
+                  ((coercer schema legacy-int-field-ids?) x))]
      (if throw?
        (binding [*error-fn* (fn [error]
                               (throw (ex-info (i18n/tru "Normalization error")
