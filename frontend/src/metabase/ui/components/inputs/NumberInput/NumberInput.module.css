@@ -16,6 +16,14 @@
   color: var(--mb-color-icon-primary);
   background-color: var(--mb-color-background_surface-primary);
 
+  &:hover {
+    background-color: var(--mb-color-background_surface-primary-hover);
+  }
+
+  &:active {
+    background-color: var(--mb-color-background_surface-primary-pressed);
+  }
+
   &:last-of-type {
     border-top: 0.5px solid var(--mb-color-border-neutral-strong);
   }

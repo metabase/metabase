@@ -21,6 +21,10 @@
   /* Properly alignment with BaseCell, to avoid text flickering (BaseCell has only border-bottom 1px) */
   border-top-width: 0;
 
+  /* Hold the value in place when editing starts: BaseCell pads 12px, and the
+     transparent 1px side border counts toward that offset. */
+  padding-inline: 11px;
+
   /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
   &:focus {
     outline: 2px solid var(--mb-color-background_surface-selected);
