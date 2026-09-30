@@ -68,7 +68,8 @@
    :- [:maybe [:map {:closed true}
                [:context       {:optional true} ::lib.schema.info/context]
                [:export-format {:optional true} ::qp.schema/export-format]
-               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
+               [:was-pivot     {:optional true} [:maybe :boolean]]
+               [:referenced-entities-specs {:optional true} qp.referenced-entities/specs-schema]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table

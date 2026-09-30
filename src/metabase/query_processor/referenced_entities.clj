@@ -40,7 +40,7 @@
 (def specs-schema
   "Schema for the `referenced_entities` request param."
   [:maybe [:sequential {:max max-specs}
-           [:map
+           [:map {:closed true}
             [:type (into [:enum] (keys entity-types))]
             [:id :int]
             [:columns {:optional true} [:maybe [:sequential :string]]]
