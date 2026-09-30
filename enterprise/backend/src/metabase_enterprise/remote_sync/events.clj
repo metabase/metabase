@@ -221,12 +221,6 @@
         (doseq [child-rso (remote-sync.db/active-child-rsos (:model-type child-spec) model-id)]
           (create-or-update-sync-object-from-spec! child-spec (:model_id child-rso) "removed"))))))
 
-(def ^:private public-link-topics
-  #{:event/card-public-link-created
-    :event/card-public-link-deleted
-    :event/dashboard-public-link-created
-    :event/dashboard-public-link-deleted})
-
 (defn- handle-model-event-from-spec
   "Generic event handler that uses a spec for all configuration.
    Checks eligibility, determines status, and creates/updates the sync object."
@@ -237,9 +231,9 @@
         existing-entry (remote-sync.db/rso model-type model-id)
         status         (spec/determine-status model-spec topic object)]
     (cond
-      ;; admins can still change public links on read-only instances, but that change can never be pushed
-      (and (contains? public-link-topics topic)
-           (not (spec/model-editable? (:model-key model-spec) object)))
+      ;; a synced item on a read-only instance can still change (e.g. an admin's public link), but that change can
+      ;; never be pushed, so tracking it would only block the next pull
+      (not (spec/model-editable? (:model-key model-spec) object))
       nil
 
       eligible?
