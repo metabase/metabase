@@ -80,4 +80,42 @@ describe("GridLayout", () => {
     expect(screen.getByTestId("item-1")).toBeInTheDocument();
     expect(screen.getByTestId("item-2")).toBeInTheDocument();
   });
+
+  test("sizes the container to the visible layout, not hidden cards (metabase#65908)", () => {
+    // Card "3" is in layouts but not in items, like a card hidden for having no results.
+    const rowHeight = 100;
+    const verticalMargin = 10;
+
+    const props: ComponentProps<typeof GridLayout> = {
+      ...defaultProps,
+      isEditing: false,
+      rowHeight,
+      layouts: {
+        desktop: [
+          { i: "1", x: 0, y: 0, w: 2, h: 2 },
+          { i: "2", x: 2, y: 0, w: 2, h: 2 },
+          { i: "3", x: 0, y: 100, w: 2, h: 2 },
+        ],
+        mobile: [
+          { i: "1", x: 0, y: 0, w: 1, h: 1 },
+          { i: "2", x: 0, y: 1, w: 1, h: 1 },
+        ],
+      },
+    };
+
+    const { container } = renderWithProviders(
+      <ThemeProvider>
+        <GridLayout {...props} />
+      </ThemeProvider>,
+    );
+
+    const visibleLowestCellPoint = 2;
+    const expectedHeight =
+      (rowHeight + verticalMargin) * visibleLowestCellPoint;
+
+    // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container
+    const grid = container.querySelector(".react-grid-layout");
+    expect(grid).not.toBeNull();
+    expect(grid).toHaveStyle({ height: `${expectedHeight}px` });
+  });
 });
