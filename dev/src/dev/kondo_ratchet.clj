@@ -293,6 +293,18 @@
                             *ratchets-file* prod-file)
                     {:file *ratchets-file*}))))
 
+(defn- read-validated-test-ratchets
+  "[[read-ratchets]] for [[*test-ratchets-file*]], validated against `known` linters and for a nonempty
+  :config-counts -- both skipped when the file is `{:disabled true}`. `prod-file` should be
+  [[*ratchets-file*]]'s value from before the call, so errors name the right file."
+  [known prod-file]
+  (binding [*ratchets-file* *test-ratchets-file*]
+    (let [test-ratchets (read-ratchets)]
+      (when-not (disabled? test-ratchets)
+        (validate-linters! test-ratchets known)
+        (validate-test-config-counts! test-ratchets prod-file))
+      test-ratchets)))
+
 (defn validate-seed!
   "Throw when a linter in `seeded` is not known, so `--seed` never writes a policy the check rejects."
   [seeded known]
@@ -508,7 +520,7 @@
   (`test/`, `enterprise/backend/test/`, `modules/drivers/*/test/`, ...)? Decides whether its budget
   belongs to [[*ratchets-file*]] or [[*test-ratchets-file*]]."
   [{:keys [file]}]
-  (contains? (set (str/split file #"/")) "test"))
+  (boolean (some #{"test"} (str/split file #"/"))))
 
 (defn actual-counts
   "Per-linter occurrence counts for `occurrences`, as returned by [[scan]]."
@@ -959,13 +971,7 @@
        (let [module-ratchets (read-module-ratchets)
              known           (known-linters)
              _               (validate-linters! ratchets known)
-             prod-file       *ratchets-file*
-             test-ratchets   (binding [*ratchets-file* *test-ratchets-file*]
-                               (let [t (read-ratchets)]
-                                 (when-not (disabled? t)
-                                   (validate-linters! t known)
-                                   (validate-test-config-counts! t prod-file))
-                                 t))
+             test-ratchets   (read-validated-test-ratchets known *ratchets-file*)
              test-disabled?  (disabled? test-ratchets)
              seeded          (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
              _               (validate-seed! seeded known)
@@ -1075,13 +1081,7 @@
         (let [known (known-linters)]
           (validate-linters! ratchets known)
           (let [module-ratchets (read-module-ratchets)
-                prod-file       *ratchets-file*
-                test-ratchets   (binding [*ratchets-file* *test-ratchets-file*]
-                                  (let [t (read-ratchets)]
-                                    (when-not (disabled? t)
-                                      (validate-linters! t known)
-                                      (validate-test-config-counts! t prod-file))
-                                    t))
+                test-ratchets   (read-validated-test-ratchets known *ratchets-file*)
                 test-disabled?  (disabled? test-ratchets)
                 occurrences     (scan)
                 {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
