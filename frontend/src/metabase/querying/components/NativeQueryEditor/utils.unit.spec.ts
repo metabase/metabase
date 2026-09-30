@@ -1,6 +1,7 @@
 import {
   canFormatForEngine,
   formatQuery,
+  formatQueryForComparison,
 } from "metabase/querying/components/NativeQueryEditor/utils";
 
 const formattingTestCases = [
@@ -208,5 +209,29 @@ describe("utils", () => {
         expect(formatted).toBe(output);
       },
     );
+  });
+
+  describe("formatQueryForComparison", () => {
+    it.each(formattingTestCases)(
+      "should format %s query like formatQuery",
+      async ({ engine, input, output }) => {
+        const formatted = await formatQueryForComparison(input, engine);
+        expect(formatted).toBe(output);
+      },
+    );
+
+    it("should format queries for SQL engines formatQuery does not support", async () => {
+      const formatted = await formatQueryForComparison(
+        "select id from products where [[ id = {{id}} ]]",
+        "sqlite",
+      );
+      expect(formatted).toBe(
+        "SELECT\n  id\nFROM\n  products\nWHERE\n  [[ id = {{id}} ]]",
+      );
+    });
+
+    it("should throw for non-SQL engines", async () => {
+      expect(() => formatQueryForComparison("{}", "mongo")).toThrow();
+    });
   });
 });

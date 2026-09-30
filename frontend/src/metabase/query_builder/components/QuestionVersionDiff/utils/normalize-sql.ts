@@ -1,7 +1,4 @@
-import {
-  canFormatForEngine,
-  formatQuery,
-} from "metabase/querying/components/NativeQueryEditor/utils";
+import { formatQueryForComparison } from "metabase/querying/components/NativeQueryEditor/utils";
 
 /**
  * Cheap fallback for SQL the formatter can't handle: trims every line, squashes
@@ -20,18 +17,18 @@ export function collapseWhitespace(sql: string): string {
  * Brings SQL into a canonical layout so that formatting-only edits (line
  * breaks, indentation, spacing, keyword case) disappear from the diff. Uses the
  * same `sql-formatter` configuration as the native editor's "Format query"
- * button, falling back to whitespace collapsing when the engine is not
- * supported or the SQL can't be parsed.
+ * button, falling back to whitespace collapsing for non-SQL engines or SQL the
+ * formatter can't parse.
  */
 export async function normalizeSqlFormatting(
   sql: string,
   engine: string | undefined,
 ): Promise<string> {
-  if (engine && canFormatForEngine(engine)) {
+  if (engine) {
     try {
-      return (await formatQuery(sql, engine)).trim();
+      return (await formatQueryForComparison(sql, engine)).trim();
     } catch {
-      // Unparseable SQL, e.g. vendor-specific syntax; use the fallback below
+      // Non-SQL engine or unparseable SQL; use the fallback below
     }
   }
   return collapseWhitespace(sql);

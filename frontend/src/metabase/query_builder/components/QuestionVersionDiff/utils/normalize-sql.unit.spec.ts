@@ -41,9 +41,21 @@ describe("normalizeSqlFormatting", () => {
     expect(normalized).toContain("[[AND id = {{id}}]]");
   });
 
-  it("falls back to whitespace collapsing for unsupported engines", async () => {
-    expect(await normalizeSqlFormatting("SELECT  a\n   FROM t", "sqlite")).toBe(
-      "SELECT a\nFROM t",
+  it("formats SQL for engines the query editor can't format", async () => {
+    const [compact, formatted] = await Promise.all([
+      normalizeSqlFormatting("select a,b from t where x=1", "sqlite"),
+      normalizeSqlFormatting(
+        "SELECT\n  a,\n  b\nFROM t\nWHERE x = 1",
+        "sqlite",
+      ),
+    ]);
+
+    expect(compact).toBe(formatted);
+  });
+
+  it("falls back to whitespace collapsing for non-SQL engines", async () => {
+    expect(await normalizeSqlFormatting('{  "a":   1 }', "mongo")).toBe(
+      '{ "a": 1 }',
     );
     expect(await normalizeSqlFormatting("SELECT  a", undefined)).toBe(
       "SELECT a",
