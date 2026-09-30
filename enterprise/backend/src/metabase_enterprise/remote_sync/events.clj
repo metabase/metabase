@@ -8,6 +8,7 @@
    that are part of remote-synced collections."
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -93,11 +94,26 @@
 
 ;; Model change tracking event handlers
 
+(def ^:private public-link-topics
+  #{:event/card-public-link-created
+    :event/card-public-link-deleted
+    :event/dashboard-public-link-created
+    :event/dashboard-public-link-deleted})
+
+(defn- untracked-public-link-change?
+  "True when `topic` is a public-link change on a read-only instance. Such a change can never be pushed, so tracking
+  it would only block the next pull."
+  [topic]
+  (and (contains? public-link-topics topic)
+       (= :read-only (settings/remote-sync-type))))
+
 ;; Card events
 (derive ::card-change-event :metabase/event)
 (derive :event/card-create ::card-change-event)
 (derive :event/card-update ::card-change-event)
 (derive :event/card-delete ::card-change-event)
+(derive :event/card-public-link-created ::card-change-event)
+(derive :event/card-public-link-deleted ::card-change-event)
 
 (methodical/defmethod events/publish-event! ::card-change-event
   [topic event]
@@ -108,9 +124,14 @@
                  "delete"
                  (case topic
                    :event/card-create "create"
-                   :event/card-update "update"
+                   (:event/card-update
+                    :event/card-public-link-created
+                    :event/card-public-link-deleted) "update"
                    :event/card-delete "delete"))]
     (cond
+      (untracked-public-link-change? topic)
+      nil
+
       ;; Card is in a remote-synced collection - create or update entry
       in-remote-synced?
       (do
@@ -128,6 +149,8 @@
 (derive :event/dashboard-create ::dashboard-change-event)
 (derive :event/dashboard-update ::dashboard-change-event)
 (derive :event/dashboard-delete ::dashboard-change-event)
+(derive :event/dashboard-public-link-created ::dashboard-change-event)
+(derive :event/dashboard-public-link-deleted ::dashboard-change-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-change-event
   [topic event]
@@ -138,9 +161,14 @@
                  "delete"
                  (case topic
                    :event/dashboard-create "create"
-                   :event/dashboard-update "update"
+                   (:event/dashboard-update
+                    :event/dashboard-public-link-created
+                    :event/dashboard-public-link-deleted) "update"
                    :event/dashboard-delete "delete"))]
     (cond
+      (untracked-public-link-change? topic)
+      nil
+
       ;; Dashboard is in a remote-synced collection - create or update entry
       in-remote-synced?
       (do
