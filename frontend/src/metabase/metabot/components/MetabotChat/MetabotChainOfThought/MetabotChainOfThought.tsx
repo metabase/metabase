@@ -66,9 +66,11 @@ const ChainOfThought = ({
   );
   const isActive = (index: number) => isStreaming && index === activeIndex;
 
-  const headerContent = isStreaming
-    ? preview
-    : settledHeader(durationMs, thinkingOnly);
+  const headerContent = isStreaming ? (
+    <span className={Animation.shimmerText}>{preview}</span>
+  ) : (
+    settledHeader(durationMs, thinkingOnly)
+  );
 
   const stepReasoningLabel = (index: number): string => {
     const start = part.steps[index].startedAtMs;

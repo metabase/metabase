@@ -83,12 +83,52 @@
   transform-origin: center center;
 }
 
+@keyframes shimmer-text {
+  0% {
+    background-position: 120%;
+  }
+
+  100% {
+    background-position: -20%;
+  }
+}
+
+/* Sweeps a highlight across the text to signal in-progress work. The text is
+ * painted by the background, so set --shimmer-base-color rather than color. */
+.shimmerText {
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size:
+    250% 100%,
+    auto;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - var(--shimmer-spread, 3rem)),
+      var(--shimmer-highlight-color, var(--mb-color-background_page-primary)),
+      transparent calc(50% + var(--shimmer-spread, 3rem))
+    ),
+    linear-gradient(
+      var(--shimmer-base-color, var(--mb-color-text-secondary)),
+      var(--shimmer-base-color, var(--mb-color-text-secondary))
+    );
+  background-position: 50%;
+  animation: shimmer-text 2000ms ease infinite;
+}
+
 /* This improves a11y and helps e2e testing */
 @media (prefers-reduced-motion: reduce) {
   .popInFromBottom,
   .slideLeft,
   .popToast,
   .fadeIn {
+    animation: none;
+  }
+
+  .shimmerText {
+    color: var(--shimmer-base-color, var(--mb-color-text-secondary));
+    background-image: none;
     animation: none;
   }
 }
