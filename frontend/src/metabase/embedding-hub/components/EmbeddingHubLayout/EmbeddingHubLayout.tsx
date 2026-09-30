@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useUserKeyValue } from "metabase/current-user";
+import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
 import { useEnsureDefaultEmbeddingThemes } from "metabase/embedding/themes/hooks";
 import {
   AreaLayout,
@@ -9,7 +10,6 @@ import {
   AreaTab,
 } from "metabase/nav/components/AreaLayout";
 import { useDispatch } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -158,9 +158,9 @@ export function isUnder(pathname: string, base: string) {
 }
 
 /**
- * Pinned to the bottom of the nav, per the design. It dispatches into the same
- * `id: "embed"` modal the admin button uses, which is why the embedding hub's routes
- * mount inside AppComponent -- NewModals lives there.
+ * Pinned to the bottom of the nav, per the design. It opens the embed wizard,
+ * which is why the embedding hub's routes mount inside AppComponent --
+ * EmbedSetupModals lives there.
  */
 function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
   const dispatch = useDispatch();
@@ -170,11 +170,7 @@ function NewEmbedNavButton({ showLabel }: { showLabel: boolean }) {
       label={t`New embed`}
       icon="add"
       showLabel={showLabel}
-      onClick={() =>
-        dispatch(
-          setOpenModalWithProps({ id: "embed", props: { initialState: {} } }),
-        )
-      }
+      onClick={() => dispatch(openEmbedJsWizard({}))}
     />
   );
 }
