@@ -1663,6 +1663,9 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
 
+      // The SDK build lives in `beforeEach` rather than `before` on purpose:
+      // Cypress never retries a failed `before all` hook, so a slow install
+      // there fails the whole suite with no second attempt.
       cy.log("Build the SDK so we can use the repo-local CLI");
       cy.exec(`mkdir -p ${tmpDir}`);
       cy.exec(
