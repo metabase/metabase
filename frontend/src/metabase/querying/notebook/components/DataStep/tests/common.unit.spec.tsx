@@ -1,4 +1,3 @@
-import type { Screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
@@ -205,7 +204,7 @@ describe("DataStep", () => {
       await setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expectSelectAllToBeChecked(screen);
+      expectElementToBePartiallyChecked(screen.getByLabelText("Select all"));
       expect(screen.getByLabelText("ID")).toHaveAttribute(
         "aria-selected",
         "true",
@@ -226,7 +225,7 @@ describe("DataStep", () => {
       await setup({ step: createMockNotebookStep({ query }) });
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expectSelectAllToBeChecked(screen);
+      expectElementToBePartiallyChecked(screen.getByLabelText("Select all"));
       expect(screen.getByLabelText("ID")).toHaveAttribute(
         "aria-selected",
         "true",
@@ -569,13 +568,6 @@ describe("DataStep", () => {
   });
 });
 
-/**  Asserts that the "Select all" combobox option is checked.  */
-function expectSelectAllToBeChecked(screen: Screen) {
-  // toBeChecked() throws on aria-checked="mixed", and toBePartiallyChecked()
-  // only supports checkboxes, not options.
-  // eslint-disable-next-line jest-dom/prefer-checked
-  expect(screen.getByLabelText("Select all")).toHaveAttribute(
-    "aria-checked",
-    "mixed",
-  );
+function expectElementToBePartiallyChecked(element: HTMLElement) {
+  expect(element).toHaveAttribute("aria-checked", "mixed");
 }

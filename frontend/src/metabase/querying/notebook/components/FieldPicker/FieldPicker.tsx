@@ -228,7 +228,6 @@ export const FieldPicker = ({
           <Combobox.EventsTarget
             aria-haspopup={undefined}
             aria-controls={undefined}
-            autoComplete={undefined}
           >
             <Combobox.Options
               aria-label={t`Columns`}
