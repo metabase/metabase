@@ -895,8 +895,14 @@ describe("hasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
+    expect(isDynamicGoalSetting("area", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("area", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("bar", "graph.goal_value")).toBe(true);
     expect(isDynamicGoalSetting("bar", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("boxplot", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("boxplot", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("combo", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("combo", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
     expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
@@ -905,6 +911,10 @@ describe("dynamic goal settings per display", () => {
     expect(isDynamicGoalSetting("row", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
     expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("scatter", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("scatter", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("waterfall", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("waterfall", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
   });
 

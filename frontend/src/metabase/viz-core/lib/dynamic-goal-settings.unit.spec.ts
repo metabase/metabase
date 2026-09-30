@@ -7,11 +7,18 @@ import {
 
 describe("getDynamicGoalSettingKeys", () => {
   it("lists the goal settings a display resolves", () => {
+    expect(getDynamicGoalSettingKeys("area")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("bar")).toEqual(["graph.goal_value"]);
+    expect(getDynamicGoalSettingKeys("boxplot")).toEqual(["graph.goal_value"]);
+    expect(getDynamicGoalSettingKeys("combo")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("gauge")).toEqual(["gauge.segments"]);
     expect(getDynamicGoalSettingKeys("line")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("row")).toEqual(["graph.goal_value"]);
     expect(getDynamicGoalSettingKeys("scalar")).toEqual(["scalar.segments"]);
+    expect(getDynamicGoalSettingKeys("scatter")).toEqual(["graph.goal_value"]);
+    expect(getDynamicGoalSettingKeys("waterfall")).toEqual([
+      "graph.goal_value",
+    ]);
   });
 
   it("lists nothing for displays without dynamic goals, and for no display", () => {
