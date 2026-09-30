@@ -1803,7 +1803,9 @@ describe("admin > custom visualizations", () => {
       cy.log(
         "When the dev server is stopped, the visualization should revert to the default",
       );
-      cy.task("stopCustomVizDevServer", devServerPid);
+      cy.task("stopCustomVizDevServer", devServerPid).then(() => {
+        devServerPid = null;
+      });
       cy.reload();
       H.main().findByText("18,760", { timeout: 15000 }).should("be.visible");
     });
