@@ -540,30 +540,11 @@
                       (not (lib/has-clauses? query stage-number))))
                (range 0 (count (:stages query))))))
 
-(defn- publish-action-events!
-  "Publish `topic` for each of `actions`, which a bulk change to their model touched without going through the
-  Action API."
-  [topic actions]
-  (doseq [action actions]
-    (events/publish-event! topic {:object action :user-id api/*current-user-id*})))
-
 (defn- disable-implicit-action-for-model!
   "Delete all implicit actions of a model if exists."
   [model-id]
-  (when-let [action-ids (not-empty (queries.db/implicit-action-ids-for-model model-id))]
-    (let [actions (filter #(contains? action-ids (:id %)) (queries.db/actions-for-model model-id))]
-      (queries.db/delete-actions! action-ids)
-      (publish-action-events! :event/action-delete actions))))
-
-(defn- retire-actions-for-model!
-  "Archive the explicit actions and delete the implicit actions of the model Card with `model-id`, which is becoming
-  a question."
-  [model-id]
-  (let [{implicit true explicit false} (group-by #(= :implicit (:type %)) (queries.db/actions-for-model model-id))]
-    (queries.db/archive-explicit-actions-for-model! model-id)
-    (queries.db/delete-implicit-actions-for-model! model-id)
-    (publish-action-events! :event/action-update (map #(assoc % :archived true) (remove :archived explicit)))
-    (publish-action-events! :event/action-delete implicit)))
+  (when-let [action-ids (queries.db/implicit-action-ids-for-model model-id)]
+    (queries.db/delete-actions! action-ids)))
 
 ;;; TODO (Cam 7/21/25) -- icky to have some of the before-update stuff live in the before-update method below and then
 ;;; some but not all of it live in this `pre-update` function... all of the before-update stuff should live in a single
@@ -600,7 +581,8 @@
       ;; Changing from a Model to a Question: archive associated actions
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
-        (retire-actions-for-model! id))
+        (queries.db/archive-explicit-actions-for-model! id)
+        (queries.db/delete-implicit-actions-for-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection
@@ -878,9 +860,7 @@
   ;; Notification's before-delete deletes the NotificationCard, which would make a subquery
   ;; return empty by the time the actual DELETE executes.
   (when-let [notification-ids (seq (queries.db/card-notification-ids id))]
-    (queries.db/delete-notifications! notification-ids))
-  ;; The database deletes the card's actions through the foreign key, so announce them while the card still exists.
-  (publish-action-events! :event/action-delete (queries.db/actions-for-model id)))
+    (queries.db/delete-notifications! notification-ids)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1230,10 +1210,9 @@
         (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
           (queries.db/update-card! dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
 
-(defn update-card!
-  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
-  included, otherwise the metadata will be saved to the database asynchronously."
-  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+(defn- update-card-in-db!
+  "Write `card-updates` to the Card and the rows that depend on it, in one transaction."
+  [card-before-update card-updates actor delete-old-dashcards?]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
@@ -1261,7 +1240,33 @@
       (update-associated-parameters! card-before-update card-updates)
       (catch Throwable e
         (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (collection/check-for-remote-sync-update card-before-update))
+    (collection/check-for-remote-sync-update card-before-update)))
+
+(defn- retired-action-events
+  "The `[topic action]` pairs that announce how an update to a model retired its actions: `:event/action-delete` with
+  the old action for each of `actions-before` absent from `actions-after`, and `:event/action-update` with the new
+  action for each one that became archived."
+  [actions-before actions-after]
+  (let [id->after (m/index-by :id actions-after)]
+    (for [before actions-before
+          :let   [after (id->after (:id before))]
+          :when  (or (nil? after) (and (:archived after) (not (:archived before))))]
+      (if after
+        [:event/action-update after]
+        [:event/action-delete before]))))
+
+(defn update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously. Publishes `:event/card-update`, plus
+  an action event for each action of a model that the update deletes or archives."
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+  ;; The card hooks delete or archive a model's actions without events, so compare the actions before and after.
+  (let [actions-before (when (= :model (keyword (:type card-before-update)))
+                         (queries.db/actions-for-model (:id card-before-update)))]
+    (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)
+    (when (seq actions-before)
+      (doseq [[topic action] (retired-action-events actions-before (queries.db/actions-for-model (:id card-before-update)))]
+        (events/publish-event! topic {:object action :user-id api/*current-user-id*}))))
   ;; Fetch the updated Card from the DB
   (let [card (queries.db/card (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`

@@ -895,18 +895,30 @@
                         (is (remote-sync.task/successful? (push!)))
                         (is (nil? (repo-file "actions/create_venue.yaml")))))))))))))))
 
-(defn- do-with-pushed-model-actions!
-  "Pushes a synced model with an implicit action (`actions/create_venue.yaml`) and a query action
-  (`actions/rename_venue.yaml`) through the API, then calls `f` with `{:model :push! :repo-file}`."
+(defn- do-with-pushed-model!
+  "Pushes a model \"Venues Model\" in a synced collection through the API, then calls `f` with a map of:
+  `:coll-id`, `:model`, `:model-path` (its YAML path in the repo), `:push!` and `:pull!` (each returns the finished
+  task), `:repo-file` (path -> content or nil), `:repo-files` (the set of paths), and `:commit-remote!`, which takes
+  `{:upsert {path content} :delete [path]}` and commits it straight to the repo, as another instance's push would."
   [f]
   (mt/with-temporary-setting-values [remote-sync-type :read-write]
     (mt/with-actions-enabled
       (mt/with-model-cleanup [:model/Action :model/Card]
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Synced" :location "/"}]
-          (let [source    (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
-                repo-file #(source.p/read-file (source.p/snapshot source) %)
-                push!     #(wait-for-task-completion
-                            (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))]
+          (let [source         (test-helpers/versioned-source :current "v-remote" :trees {"v-remote" {}})
+                repo-file      #(source.p/read-file (source.p/snapshot source) %)
+                repo-files     #(set (source.p/list-files (source.p/snapshot source)))
+                push!          #(wait-for-task-completion
+                                 (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})))
+                pull!          #(wait-for-task-completion
+                                 (:task_id (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})))
+                commit-remote! (fn [{:keys [upsert delete]}]
+                                 (let [commit (source.p/open-commit (source.p/snapshot source))]
+                                   (doseq [[path content] upsert]
+                                     (source.p/stage-upsert! commit {:path path :content content}))
+                                   (doseq [path delete]
+                                     (source.p/stage-delete! commit path))
+                                   (source.p/finish-commit! commit "Another instance's change")))]
             (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                                remote-sync-token "test-token"
                                                remote-sync-branch "main"]
@@ -921,21 +933,37 @@
                                                    :display                "table"
                                                    :visualization_settings {}
                                                    :dataset_query          (mt/mbql-query venues)})]
-                  (mt/user-http-request :crowberto :post 200 "action"
-                                        {:name "Create Venue" :type "implicit" :kind "row/create" :model_id (:id model)})
-                  (mt/user-http-request :crowberto :post 200 "action"
-                                        {:name          "Rename Venue"
-                                         :type          "query"
-                                         :model_id      (:id model)
-                                         :database_id   (mt/id)
-                                         :dataset_query {:type     "native"
-                                                         :database (mt/id)
-                                                         :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
-                                         :parameters    []})
                   (is (remote-sync.task/successful? (push!)))
-                  (is (some? (repo-file "actions/create_venue.yaml")))
-                  (is (some? (repo-file "actions/rename_venue.yaml")))
-                  (f {:model model :push! push! :repo-file repo-file}))))))))))
+                  (f {:coll-id        coll-id
+                      :model          model
+                      :model-path     (some #(when (str/includes? % "venues_model") %) (repo-files))
+                      :push!          push!
+                      :pull!          pull!
+                      :repo-file      repo-file
+                      :repo-files     repo-files
+                      :commit-remote! commit-remote!}))))))))))
+
+(defn- do-with-pushed-model-actions!
+  "Pushes a synced model with an implicit action (`actions/create_venue.yaml`) and a query action
+  (`actions/rename_venue.yaml`) through the API, then calls `f` with the map from [[do-with-pushed-model!]]."
+  [f]
+  (do-with-pushed-model!
+   (fn [{:keys [model push! repo-file] :as ctx}]
+     (mt/user-http-request :crowberto :post 200 "action"
+                           {:name "Create Venue" :type "implicit" :kind "row/create" :model_id (:id model)})
+     (mt/user-http-request :crowberto :post 200 "action"
+                           {:name          "Rename Venue"
+                            :type          "query"
+                            :model_id      (:id model)
+                            :database_id   (mt/id)
+                            :dataset_query {:type     "native"
+                                            :database (mt/id)
+                                            :native   {:query "UPDATE venues SET name = 'x' WHERE id = 1"}}
+                            :parameters    []})
+     (is (remote-sync.task/successful? (push!)))
+     (is (some? (repo-file "actions/create_venue.yaml")))
+     (is (some? (repo-file "actions/rename_venue.yaml")))
+     (f ctx))))
 
 (deftest push-after-model-becomes-question-removes-actions-test
   (testing "GHY-4722: turning a pushed model into a question removes its actions from the repo on the next push"
@@ -964,6 +992,42 @@
        (is (remote-sync.task/successful? (push!)))
        (is (nil? (repo-file "actions/create_venue.yaml")))
        (is (nil? (repo-file "actions/rename_venue.yaml")))))))
+
+(defn- insert-untracked-action!
+  "Inserts a query action on the model with `model-id` straight into the app DB, so no event records it in the
+  remote sync ledger. Returns its id."
+  [model-id]
+  (t2/insert-returning-pk! :model/Action {:name       "Local Action"
+                                          :type       :query
+                                          :model_id   model-id
+                                          :created_at :%now
+                                          :updated_at :%now}))
+
+(deftest pull-that-deletes-a-model-keeps-the-ledger-clean-test
+  (testing "GHY-4722: a pull that deletes a model with a local, untracked action leaves the instance clean"
+    (do-with-pushed-model!
+     (fn [{:keys [model model-path pull! commit-remote!]}]
+       (insert-untracked-action! (:id model))
+       (commit-remote! {:delete [model-path]})
+       (let [task (pull!)]
+         (is (remote-sync.task/successful? task))
+         (is (= "pulled" (get-in task [:outcome :kind]))))
+       (is (not (t2/exists? :model/Card (:id model))))
+       (is (false? (remote-sync.object/dirty?)))
+       (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
+
+(deftest pull-that-turns-a-model-into-a-question-keeps-the-ledger-clean-test
+  (testing "GHY-4722: a pull that turns a model with a local, untracked action into a question leaves the instance clean"
+    (do-with-pushed-model!
+     (fn [{:keys [model model-path pull! repo-file commit-remote!]}]
+       (insert-untracked-action! (:id model))
+       (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "type: model" "type: question")}})
+       (let [task (pull!)]
+         (is (remote-sync.task/successful? task))
+         (is (= "pulled" (get-in task [:outcome :kind]))))
+       (is (= :question (t2/select-one-fn :type :model/Card (:id model))))
+       (is (false? (remote-sync.object/dirty?)))
+       (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 

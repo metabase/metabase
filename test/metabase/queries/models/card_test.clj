@@ -796,32 +796,49 @@
     (t2/insert! :model/ImplicitAction {:action_id implicit :kind "row/create"})
     (f {:model-id model-id :implicit implicit :query query :archived archived})))
 
+(defn- update-model!
+  "Updates the model Card with `model-id` through [[card/update-card!]], as the API does."
+  [model-id changes]
+  (mt/with-test-user :crowberto
+    (card/update-card! {:card-before-update (t2/select-one :model/Card model-id)
+                        :card-updates       changes})))
+
+(defn- filtered-venues-query
+  "A venues query with a filter, which does not support implicit actions."
+  []
+  (let [mp (mt/metadata-provider)]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
+
 (deftest model-becoming-question-publishes-action-events-test
-  (testing "GHY-4722: turning a model into a question announces its archived and deleted actions"
+  (testing "GHY-4722: update-card! announces the actions it archives and deletes when a model becomes a question"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit query]}]
        (is (= #{[:event/action-update query true]
                 [:event/action-delete implicit false]}
-              (action-events-during! #(t2/update! :model/Card model-id {:type :question}))))))))
+              (action-events-during! #(update-model! model-id {:type :question}))))))))
 
 (deftest model-query-without-implicit-support-publishes-action-events-test
-  (testing "GHY-4722: a model query that no longer supports implicit actions announces their deletion"
+  (testing "GHY-4722: update-card! announces the implicit actions it deletes when a model query no longer supports them"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit]}]
-       (let [mp       (mt/metadata-provider)
-             filtered (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                          (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
-         (is (= #{[:event/action-delete implicit false]}
-                (action-events-during! #(t2/update! :model/Card model-id {:dataset_query filtered})))))))))
+       (is (= #{[:event/action-delete implicit false]}
+              (action-events-during! #(update-model! model-id {:dataset_query (filtered-venues-query)}))))))))
 
-(deftest model-delete-publishes-action-events-test
-  (testing "GHY-4722: deleting a model announces the deletion of all its actions"
-    (do-with-model-actions!
-     (fn [{:keys [model-id implicit query archived]}]
-       (is (= #{[:event/action-delete implicit false]
-                [:event/action-delete query false]
-                [:event/action-delete archived true]}
-              (action-events-during! #(t2/delete! :model/Card model-id))))))))
+(deftest model-changes-outside-update-card-publish-no-action-events-test
+  (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
+    (testing "a model becoming a question"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:type :question})))))))
+    (testing "a model query that no longer supports implicit actions"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/update! :model/Card model-id {:dataset_query (filtered-venues-query)})))))))
+    (testing "a deleted model"
+      (do-with-model-actions!
+       (fn [{:keys [model-id]}]
+         (is (= #{} (action-events-during! #(t2/delete! :model/Card model-id)))))))))
 
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"

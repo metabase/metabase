@@ -19,6 +19,7 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -2496,6 +2497,18 @@
               (with-cards-in-writeable-collection! card
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
                 (t2/select-one :model/Card :id (u/the-id card)))))))
+
+(deftest delete-model-publishes-action-delete-events-test
+  (testing "GHY-4722: deleting a model announces the deletion of each of its actions, which the database removes with it"
+    (mt/with-temp [:model/Card   {model-id :id} {:type :model :dataset_query (mt/mbql-query venues)}
+                   :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
+                   :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
+      (let [published (atom #{})]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
+                                                            (when (= :event/action-delete topic)
+                                                              (swap! published conj (:id object))))]
+          (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
+        (is (= #{query archived} @published))))))
 
 ;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesnt-exist-should-return-a-404---1957-

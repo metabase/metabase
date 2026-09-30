@@ -143,6 +143,11 @@
    changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
   (t2/update! :model/Card card-id changes))
 
+(mu/defn actions-for-model
+  "The Actions of the model Card with `model-id`."
+  [model-id :- ::lib.schema.id/card]
+  (t2/select :model/Action :model_id model-id))
+
 (mu/defn delete-card!
   "Delete the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
