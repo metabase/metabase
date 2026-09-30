@@ -17,28 +17,28 @@ function illustrationUrlPattern(settingKey) {
   return new RegExp(`api/session/illustration/${settingKey}\\?v=[0-9a-f]{16}`);
 }
 
-function checkIllustrationResponse(url, imageBase64) {
+function checkIllustrationResponse({ url, imageBase64 }) {
   cy.request({ url, encoding: "base64" }).then((response) => {
     expect(response.headers["content-type"]).to.eq("image/jpeg");
     expect(response.body).to.eq(imageBase64);
   });
 }
 
-function checkBackgroundIllustration(testId, settingKey, imageBase64) {
+function checkBackgroundIllustration({ testId, settingKey, imageBase64 }) {
   cy.findByTestId(testId)
     .should("have.css", "background-image")
     .and("match", illustrationUrlPattern(settingKey))
     .then((backgroundImage) => {
       const url = String(backgroundImage).match(/url\("(.+)"\)/)[1];
-      checkIllustrationResponse(url, imageBase64);
+      checkIllustrationResponse({ url, imageBase64 });
     });
 }
 
-function checkNoResultsIllustration(settingKey, imageBase64) {
+function checkNoResultsIllustration({ settingKey, imageBase64 }) {
   cy.findByAltText("No results")
     .should("have.prop", "src")
     .and("match", illustrationUrlPattern(settingKey))
-    .then((src) => checkIllustrationResponse(src, imageBase64));
+    .then((src) => checkIllustrationResponse({ url: src, imageBase64 }));
 }
 
 const MB = 1024 * 1024;
@@ -299,21 +299,21 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
                 cy.signOut();
                 cy.log("the login page loads the image from its URL");
                 cy.visit("/");
-                checkBackgroundIllustration(
-                  "login-page-illustration",
-                  "login-page-illustration-custom",
-                  logo_data,
-                );
+                checkBackgroundIllustration({
+                  testId: "login-page-illustration",
+                  settingKey: "login-page-illustration-custom",
+                  imageBase64: logo_data,
+                });
 
                 cy.log("the unsubscribe page loads the image from its URL");
                 cy.visit(
                   "/unsubscribe?hash=hash&email=email&pulse-id=pulse-id",
                 );
-                checkBackgroundIllustration(
-                  "unsubscribe-page-illustration",
-                  "login-page-illustration-custom",
-                  logo_data,
-                );
+                checkBackgroundIllustration({
+                  testId: "unsubscribe-page-illustration",
+                  settingKey: "login-page-illustration-custom",
+                  imageBase64: logo_data,
+                });
               },
             );
 
@@ -363,11 +363,11 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
             (logo_data) => {
               cy.visit("/");
-              checkBackgroundIllustration(
-                "landing-page-illustration",
-                "landing-page-illustration-custom",
-                logo_data,
-              );
+              checkBackgroundIllustration({
+                testId: "landing-page-illustration",
+                settingKey: "landing-page-illustration-custom",
+                imageBase64: logo_data,
+              });
             },
           );
 
@@ -445,18 +445,18 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           H.visitDashboard("@dashboardId");
           cy.get("@logoData").then((logo_data) => {
-            checkNoResultsIllustration(
-              "no-data-illustration-custom",
-              logo_data,
-            );
+            checkNoResultsIllustration({
+              settingKey: "no-data-illustration-custom",
+              imageBase64: logo_data,
+            });
           });
 
           H.visitQuestion("@questionId");
           cy.get("@logoData").then((logo_data) => {
-            checkNoResultsIllustration(
-              "no-data-illustration-custom",
-              logo_data,
-            );
+            checkNoResultsIllustration({
+              settingKey: "no-data-illustration-custom",
+              imageBase64: logo_data,
+            });
           });
 
           cy.log("test no illustration");
@@ -518,10 +518,10 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
               "This aren't the objects you're looking for",
             );
             cy.get("@logoData").then((logo_data) => {
-              checkNoResultsIllustration(
-                "no-object-illustration-custom",
-                logo_data,
-              );
+              checkNoResultsIllustration({
+                settingKey: "no-object-illustration-custom",
+                imageBase64: logo_data,
+              });
             });
           });
 
