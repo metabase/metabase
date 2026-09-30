@@ -7,12 +7,17 @@
 
 .dots {
   --bright: var(--mb-color-icon-primary);
-  --dim: var(--mb-color-icon-disabled);
+  --dim: var(--mb-color-border-strong);
 
   width: 0.25rem;
   aspect-ratio: 1;
   border-radius: 50%;
   animation: dots 350ms infinite linear alternate;
+
+  [data-mantine-color-scheme="dark"] & {
+    --bright: rgba(255, 255, 255, 0.74);
+    --dim: rgba(255, 255, 255, 0.22);
+  }
 }
 
 @keyframes dots {
