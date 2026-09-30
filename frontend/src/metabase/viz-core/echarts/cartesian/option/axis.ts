@@ -8,6 +8,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationTheme,
 } from "../../../types";
 import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
@@ -27,8 +28,18 @@ import { getPaddedAxisLabel } from "./utils";
 
 const NORMALIZED_RANGE = { min: 0, max: 1 };
 
-export const getAxisNameGap = (ticksWidth: number): number => {
-  return ticksWidth + CHART_STYLE.axisNameMargin;
+export const getXAxisNameGap = (
+  ticksHeight: number,
+  theme: VisualizationTheme,
+): number => {
+  return ticksHeight + theme.cartesian.axisTitle.marginX;
+};
+
+export const getYAxisNameGap = (
+  ticksWidth: number,
+  theme: VisualizationTheme,
+): number => {
+  return ticksWidth + theme.cartesian.axisTitle.marginY;
 };
 
 const getCustomAxisRange = (
@@ -79,8 +90,8 @@ export const getAxisNameDefaultOption = (
   nameRotate: rotate,
   nameTextStyle: {
     color: getColor("text-primary"),
-    fontSize: theme.cartesian.label.fontSize,
-    fontWeight: CHART_STYLE.axisName.weight,
+    fontSize: theme.cartesian.axisTitle.fontSize,
+    fontWeight: theme.cartesian.axisTitle.fontWeight,
     fontFamily,
   },
 });
@@ -160,7 +171,10 @@ const getCommonDimensionAxisOptions = (
   settings: ComputedVisualizationSettings,
   renderingContext: RenderingContext,
 ) => {
-  const nameGap = getAxisNameGap(chartLayout.ticksDimensions.xTicksHeight);
+  const nameGap = getXAxisNameGap(
+    chartLayout.ticksDimensions.xTicksHeight,
+    renderingContext.theme,
+  );
   const { getColor } = renderingContext;
   return {
     ...getAxisNameDefaultOption(
@@ -364,7 +378,7 @@ export const buildMetricAxis = (
   renderingContext: RenderingContext,
 ): YAXisOption => {
   const shouldFlipAxisName = position === "right";
-  const nameGap = getAxisNameGap(ticksWidth);
+  const nameGap = getYAxisNameGap(ticksWidth, renderingContext.theme);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
   const rangeMin = "min" in range ? range.min : undefined;

@@ -1,4 +1,4 @@
-import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
+import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
 import {
@@ -25,7 +25,7 @@ export function getEmbeddingCartesianColors(
     foreground,
     colorScheme,
   );
-  const theme = isDarkTheme ? METABASE_DARK_THEME : METABASE_LIGHT_THEME;
+  const theme = isDarkTheme ? getDarkTheme() : getLightTheme();
   let gridlineColor = "var(--mb-color-chart-axis)";
 
   if (border && axis === undefined) {

@@ -222,6 +222,7 @@ function RenderChart(
       width={options.width}
       height={options.height}
       fitWithinBounds={options.fitWithinBounds}
+      gridSize={options.gridSize}
     />,
   );
 }

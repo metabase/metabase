@@ -7,9 +7,9 @@ import {
   NATIVE_EDITOR_ICON_SIZE,
   NativeQueryEditor,
 } from "metabase/querying/components/NativeQueryEditor";
-import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { useSelector } from "metabase/redux";
+import type { QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

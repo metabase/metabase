@@ -8,7 +8,7 @@ import {
   PLUGIN_AUDIT,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { isInternalUser } from "metabase/urls";
 import { handleMetabotSlashCommand } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/slash-commands";
 import {
   getAiAuditingRoutes,
@@ -27,7 +27,11 @@ import { isAuditDb } from "./utils";
 const getUserMenuItems = (user: User): React.ReactNode => [
   <Menu.Item
     component={ForwardRefLink}
-    to={Urls.unsubscribeUser(user)}
+    to={
+      isInternalUser(user)
+        ? `/admin/people/${user.id}/unsubscribe`
+        : `/admin/people/tenants/people/${user.id}/unsubscribe`
+    }
     key="unsubscribe"
   >
     {t`Unsubscribe from all subscriptions / alerts`}

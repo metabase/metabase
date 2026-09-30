@@ -21,7 +21,6 @@ import type {
 } from "metabase-types/api";
 import { clickBehaviorIsValid } from "metabase-types/guards";
 
-import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 
 import { CustomLinkText } from "./CustomLinkText";
@@ -79,9 +78,7 @@ export function CustomURLPicker({
           leftSection={<Icon name="link" />}
           size="lg"
           variant="filled"
-          classNames={{
-            root: LinkOptionsS.ButtonRoot,
-          }}
+          flex="1 1 auto"
           onClick={openModal}
         >
           <SidebarItem.Name>

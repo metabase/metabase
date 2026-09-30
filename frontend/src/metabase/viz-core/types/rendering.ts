@@ -5,6 +5,8 @@ import type {
 } from "metabase/utils/measure-text";
 import type { ColumnSettings, RawSeries, RowValue } from "metabase-types/api";
 
+import type { VisualizationGridSize } from "./definition";
+
 export interface Padding {
   top: number;
   left: number;
@@ -19,7 +21,7 @@ export type Formatter = (
 
 export type Extent = [number, number];
 
-export type CartesianChartSize = "small" | "medium" | "large";
+export type CartesianChartSize = "small" | "medium" | "large" | "fullscreen";
 
 export interface RenderingContext {
   getColor: ColorGetter;
@@ -48,6 +50,12 @@ export interface VisualizationTheme {
       marginX: number;
       marginY: number;
     };
+    axisTitle: {
+      fontSize: number;
+      fontWeight: number;
+      marginX: number;
+      marginY: number;
+    };
     goalLine: {
       label: {
         fontSize: number;
@@ -72,4 +80,5 @@ export interface StaticVisualizationProps {
   width?: number;
   height?: number;
   fitWithinBounds?: boolean;
+  gridSize?: VisualizationGridSize;
 }

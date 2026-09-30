@@ -1,6 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useFormikContext } from "formik";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import _ from "underscore";
 
 import { FormObserver } from "metabase/forms";
@@ -19,7 +19,8 @@ const DEFAULT_INLINE_UPDATE_DEBOUNCE_MS = 300;
  * Calls the update function when form values change.
  * Processes updates sequentially to avoid race conditions.
  *
- * Note: To enable automatic form rollback on error, use `enableReinitialize` on FormProvider.
+ * Failed updates roll back to the latest successfully updated values.
+ * Use `enableReinitialize` when the form should also adopt changing external `initialValues`.
  *
  * @param update - Async function called with new form values
  * @param onSuccess - Optional callback called with the update result on success
@@ -44,9 +45,16 @@ export const FormInlineUpdater = <T, TSuccess>({
   debounceMs = DEFAULT_INLINE_UPDATE_DEBOUNCE_MS,
   onBeforeUpdate,
 }: FormInlineUpdaterProps<T, TSuccess>) => {
-  const { initialValues } = useFormikContext<T>();
+  const { initialValues, resetForm } = useFormikContext<T>();
   const updateInProgress = useRef(false);
   const pendingUpdate = useRef<T | null>(null);
+  const lastSuccessfulValues = useRef(initialValues);
+
+  useEffect(() => {
+    if (!updateInProgress.current) {
+      lastSuccessfulValues.current = initialValues;
+    }
+  }, [initialValues]);
 
   const processUpdate = useCallback(
     async (values: T) => {
@@ -60,10 +68,12 @@ export const FormInlineUpdater = <T, TSuccess>({
 
       try {
         const result = await update(values);
+        lastSuccessfulValues.current = values;
         onSuccess?.(result);
       } catch (err) {
-        // On error, discard any pending updates
+        // On error, discard any pending updates and restore the last saved values
         pendingUpdate.current = null;
+        resetForm({ values: lastSuccessfulValues.current });
         onError?.(err);
         updateInProgress.current = false;
         return;
@@ -78,7 +88,7 @@ export const FormInlineUpdater = <T, TSuccess>({
         await processUpdate(nextValues);
       }
     },
-    [update, onSuccess, onError],
+    [update, onSuccess, onError, resetForm],
   );
 
   const handleChange = useDebouncedCallback(async (values: T) => {

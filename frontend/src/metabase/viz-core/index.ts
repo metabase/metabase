@@ -167,6 +167,11 @@ export {
   TREEMAP_HOVER_OVERLAY_FILL,
 } from "./echarts/graph/treemap/style";
 export { registerEChartsModules } from "./echarts";
+export {
+  DATA_VISIBILITY_ACTION,
+  DATA_VISIBILITY_EVENT,
+  isDataVisibilityResult,
+} from "./echarts/data-visibility";
 export { DIMENSIONS, OTHER_SLICE_KEY } from "./echarts/pie/constants";
 export { getPieChartFormatters } from "./echarts/pie/format";
 export type { PieChartFormatters } from "./echarts/pie/format";
@@ -352,6 +357,7 @@ export {
   fieldSetting,
   getDeduplicatedTableColumnSettings,
   getOptionFromColumn,
+  insertNewColumnSettings,
   metricSetting,
 } from "./lib/settings/utils";
 export {
@@ -417,7 +423,7 @@ export type {
   RowChartTheme,
   Series,
 } from "./shared/components/RowChart/types";
-export { getDashboardAdjustedSettings } from "./shared/settings-adjustments";
+export { getSizeAdjustedSettings } from "./shared/settings-adjustments";
 export {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,

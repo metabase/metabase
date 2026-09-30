@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.driver.h2 :as h2]
+   [metabase.login-history.db :as login-history.db]
    [metabase.request.core :as request]
    [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
@@ -252,11 +253,46 @@
                        [:active             [:= false]]]
                       (t2/select-one :model/LoginHistory :id login-history-id))))))))
 
+(deftest login-survives-concurrent-session-delete-test
+  (testing (str "POST /api/session - SEC-1208: deleting the user's sessions (as a password change does) between the"
+                " session insert and the login_history insert must not fail the login with an"
+                " fk_login_history_session_id violation. Each such failure was a 401 that the throttle counted, so"
+                " enough of them locked out a user with correct credentials.")
+    ;; not `mt/with-temp`: it binds a transaction that the test client conveys into the request, so the login's
+    ;; uncommitted rows would stay invisible to the delete below whether or not the login uses its own transaction
+    (mt/with-model-cleanup [:model/User]
+      (let [email                 (mt/random-email)
+            user-id               (t2/insert-returning-pk! :model/User {:email      email
+                                                                        :first_name "Login"
+                                                                        :last_name  "Race"})
+            _                     (auth-identity/set-password! user-id "Correct-Horse-12!")
+            creds                 {:username email, :password "Correct-Horse-12!"}
+            insert-login-history! (mt/original-fn #'login-history.db/insert-login-history!)
+            ;; more logins than the username throttler allows failures, so a counted failure would lock the user out
+            attempts              11]
+        (mt/with-dynamic-fn-redefs [login-history.db/insert-login-history!
+                                    (fn [row]
+                                      ;; a plain Thread, not a future: a future conveys the login transaction's
+                                      ;; connection binding, and the delete must run on its own connection, as a
+                                      ;; concurrent request would. The join has a timeout because the delete may
+                                      ;; block on the login transaction's uncommitted session row.
+                                      (doto (Thread. ^Runnable (fn [] (t2/delete! :model/Session :user_id user-id)))
+                                        (.start)
+                                        (.join 1000))
+                                      (insert-login-history! row))]
+          (dotimes [_ attempts]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session" creds)))))
+        (testing "the user can still log in, and every login is in their login history"
+          (let [session-key (:id (mt/client :post 200 "session" creds))]
+            (is (= (inc attempts)
+                   (count (mt/client session-key :get 200 "login-history/current"))))))))))
+
 (deftest forgot-password-initiate-reset-test
   (testing "POST /api/session/forgot_password - initiate password reset"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
                   (boolean (t2/select-one :model/AuthIdentity :user_id (mt/user->id :rasta)
@@ -274,9 +310,9 @@
 
 (deftest forgot-password-uses-site-url-test
   (testing "POST /api/session/forgot_password - uses site-url in email"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (let [my-url "abcdefghij"]
         (mt/with-temporary-setting-values [site-url my-url]
           (mt/with-fake-inbox
@@ -305,9 +341,9 @@
 
 (deftest forgot-password-google-sso-enabled-test
   (testing "POST /api/session/forgot_password - Google SSO user cannot reset when Google SSO enabled"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -325,9 +361,9 @@
 
 (deftest forgot-password-google-sso-disabled-test
   (testing "POST /api/session/forgot_password - Google SSO user can reset when Google SSO disabled"
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -348,10 +384,10 @@
     (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
       (testing (str "sso_source = " sso-source)
         ;; Mock sso-source-enabled? to return false (provider is disabled, e.g., after downgrade)
-        (with-redefs [api.session/forgot-password-impl
-                      (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
-                      metabase.sso.settings/sso-source-enabled? (constantly false)]
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                                    metabase.sso.settings/sso-source-enabled? (constantly false)]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
                                                :email      (str (name sso-source) "-user@example.com")
@@ -369,10 +405,10 @@
     (doseq [sso-source [:saml :jwt :oidc :slack :scim]]
       (testing (str "sso_source = " sso-source)
         ;; Mock sso-source-enabled? to return true (provider is active)
-        (with-redefs [api.session/forgot-password-impl
-                      (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
-                      metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
+        (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                    (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                      (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                                    metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
                                                :email      (str (name sso-source) "-user@example.com")
@@ -387,9 +423,9 @@
 
 (deftest forgot-password-event-test
   (mt/with-premium-features #{:audit-app}
-    (with-redefs [api.session/forgot-password-impl
-                  (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+    (mt/with-dynamic-fn-redefs [api.session/forgot-password-impl
+                                (let [orig (mt/original-fn #'api.session/forgot-password-impl)]
+                                  (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-model-cleanup [:model/User]
         (testing "Test that forgot password event is logged."
           (mt/client :post 204 "session/forgot_password"

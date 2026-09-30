@@ -90,7 +90,6 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { key }) => {
         return invalidateTags(error, [
           tag("session-properties"),
-          listTag("setup-guide-checklist"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
           ...(key === "mfa-enforcement" ? [tag("mfa-status")] : []),
 

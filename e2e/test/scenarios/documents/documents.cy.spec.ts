@@ -1859,6 +1859,7 @@ describe("documents", () => {
         .and("contain.text", "Document saved");
       // dismiss after asserting so toasts don't stack into later lookups
       H.undoToast().icon("close").click({ force: true });
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Make another change");
       H.documentContent().click();
@@ -1868,6 +1869,7 @@ describe("documents", () => {
         "be.visible",
       );
       H.undoToast().icon("close").click({ force: true });
+      H.undoToastList().should("have.length", 0);
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();
@@ -1917,7 +1919,10 @@ describe("documents", () => {
         .click();
       cy.wait("@failedRevert");
 
-      H.undoToast().should("contain.text", "Cannot revert: missing document");
+      cy.contains(
+        '[data-testid="toast-undo"]',
+        "Cannot revert: missing document",
+      ).should("be.visible");
     });
   });
 

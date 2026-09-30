@@ -13,7 +13,7 @@ import React, {
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { SmallGenericError } from "metabase/common/components/ErrorPages";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
@@ -164,7 +164,6 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
@@ -633,7 +632,6 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      autoAdjustSettings,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -961,7 +959,6 @@ class Visualization extends PureComponent<
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       series={series}
                       settings={settings}
-                      autoAdjustSettings={!!autoAdjustSettings}
                       showAllLegendItems={showAllLegendItems}
                       hideLegend={hideLegend}
                       showTitle={!!showTitle}

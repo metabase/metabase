@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
+   [metabase-enterprise.custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]

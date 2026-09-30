@@ -76,7 +76,7 @@
 (mu/defn lookup-by-id
   "Given an entity ID string, finds the matching entity. This is useful when writing [[metabase.models.serialization/xform-one]] to
   turn a foreign key from a portable form to an appdb ID. Returns a Toucan entity or nil."
-  [model :- ::model-keyword-or-symbol id-str]
+  [model :- ::model-keyword-or-symbol id-str :- :string]
   (models.db/entity-by-entity-id model id-str))
 
 (defn field-hierarchy

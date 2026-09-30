@@ -20,6 +20,7 @@
 (def ^:private data-file
   "metric-v2-test-data.zip")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^FileSystem *data-fs* nil)
 
 (defn- metric-paths

@@ -44,10 +44,6 @@ export const CHART_STYLE = {
     offset: 4,
     stackedPadding: 2,
   },
-  axisName: {
-    weight: 400,
-  },
-  axisNameMargin: 12,
   padding: {
     x: 8,
     y: 12,

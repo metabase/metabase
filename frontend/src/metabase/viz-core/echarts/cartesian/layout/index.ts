@@ -294,7 +294,7 @@ const getXAxisTicksHeight = (
     `Unexpected "graph.x_axis.axis_enabled" value ${axisEnabledSetting}`,
   );
 
-  return fontSize + CHART_STYLE.axisNameMargin;
+  return fontSize + theme.cartesian.axisTitle.marginX;
 };
 
 const X_LABEL_HEIGHT_RATIO_THRESHOLD = 0.7; // x-axis labels cannot be taller than 70% of chart height
@@ -652,11 +652,14 @@ export const getCartesianChartPadding = (
   chartWidth: number,
   renderingContext: RenderingContext,
 ): Padding => {
-  const { leftAxisModel, rightAxisModel } = input;
-  const { fontSize } = renderingContext.theme.cartesian.label;
-
-  const axisNameFontSize = fontSize;
-  const seriesLabelFontSize = fontSize;
+  const { xAxisModel, leftAxisModel, rightAxisModel } = input;
+  const { fontSize: seriesLabelFontSize } =
+    renderingContext.theme.cartesian.label;
+  const {
+    fontSize: axisTitleFontSize,
+    marginX,
+    marginY,
+  } = renderingContext.theme.cartesian.axisTitle;
 
   const padding: Padding = {
     top: CHART_STYLE.padding.y,
@@ -681,14 +684,13 @@ export const getCartesianChartPadding = (
 
   padding.bottom += ticksDimensions.xTicksHeight;
 
-  const hasXAxisName = settings["graph.x_axis.labels_enabled"];
-  if (hasXAxisName) {
-    padding.bottom += axisNameFontSize / 2 + CHART_STYLE.axisNameMargin;
+  if (xAxisModel.label) {
+    padding.bottom += axisTitleFontSize / 2 + marginX;
   }
 
   // 3. Side (Left and Right) Padding
 
-  const yAxisNameTotalWidth = axisNameFontSize + CHART_STYLE.axisNameMargin;
+  const yAxisNameTotalWidth = axisTitleFontSize + marginY;
 
   padding.left += ticksDimensions.yTicksWidthLeft;
   if (leftAxisModel?.label) {

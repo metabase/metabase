@@ -6,7 +6,7 @@
   (:require
    [malli.core :as mc]
    [malli.transform :as mtx]
-   [malli.util]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections-rest.db :as collections-rest.db]
@@ -21,6 +21,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -70,6 +71,7 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
@@ -135,6 +137,7 @@
 
   When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
   the root, if `collection-id` is `nil`)."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
@@ -254,7 +257,7 @@
 
 (mu/defn- dashboard-question-candidates
   "Implementation for the `dashboard-question-candidates` endpoints."
-  [collection-id]
+  [collection-id :- [:maybe :metabase.lib.schema.id/collection]]
   (api/check-403 api/*is-superuser?*)
   (let [all-cards-in-collection (t2/hydrate (collections-rest.db/top-level-cards-in-collection collection-id) :in_dashboards)]
     (filter
@@ -268,14 +271,24 @@
            (-> card :in_dashboards first :collection_id))))
      all-cards-in-collection)))
 
+(def ^:private CardInDashboard
+  [:map {:closed true}
+   [:name             :string]
+   [:collection_id    [:maybe :metabase.lib.schema.id/collection]]
+   [:description      [:maybe :string]]
+   [:id               :metabase.lib.schema.id/dashboard]
+   [:archived         :boolean]
+   [:enable_embedding :boolean]])
+
 (mu/defn- present-dashboard-question-candidate
-  [{:keys [in_dashboards] :as card}]
+  [{:keys [in_dashboards] :as card}
+   :- [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]
   (-> card
       (select-keys [:id :name :description])
       (assoc :sole_dashboard_info (-> in_dashboards first (select-keys [:id :name :description])))))
 
 (mu/defn- present-dashboard-question-candidates
-  [cards]
+  [cards :- [:sequential [:merge ::queries.schema/card [:map {:closed true} [:in_dashboards [:sequential CardInDashboard]]]]]]
   ;; we're paginating in Clojure rather than in the query itself because the criteria here is quite complicated to
   ;; express in SQL: we need to join to `report_dashboardcard` AND `dashboardcard_series`, and find cards that have
   ;; exactly one matching dashboard across both of those joins. I'm sure it's doable, but for now we can just do this
@@ -346,6 +359,7 @@
 
 (api.macros/defendpoint :get "/root" :- ::Collection
   "Return the 'Root' Collection object with standard details added"
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [namespace]} :- [:map {:closed true}
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
@@ -375,6 +389,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope api-scope/data-app}
   [_route-params
    {:keys [models archived namespace pinned-state sort-column sort-direction official-collections-first
            include-library collection-type show-dashboard-questions
@@ -577,6 +592,7 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
@@ -631,6 +647,7 @@
 
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
+  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned-state sort-column sort-direction official-collections-first

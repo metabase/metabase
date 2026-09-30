@@ -428,9 +428,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestionAndDashboard({
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
-      H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 320 }),
-      );
+      H.getDashboardCard().within(() => H.applyBrushToPoints(1, 6));
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);
     });

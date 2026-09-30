@@ -19,66 +19,101 @@ describe("useBrowserRenderingContext", () => {
       fontSize: 12,
       marginX: 8,
       marginY: 12,
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+    },
+    {
+      width: 299,
+      height: 700,
+      size: "small",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+    },
+    {
+      width: 1100,
+      height: 199,
+      size: "small",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+      axisTitle: { fontSize: 11, fontWeight: 700, marginX: 8, marginY: 16 },
+    },
+    {
+      width: 300,
+      height: 200,
+      size: "medium",
+      fontSize: 12,
+      marginX: 8,
+      marginY: 12,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 639,
       height: 700,
-      size: "small",
+      size: "medium",
       fontSize: 12,
       marginX: 8,
       marginY: 12,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 1100,
       height: 359,
-      size: "small",
+      size: "medium",
       fontSize: 12,
       marginX: 8,
       marginY: 12,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 12, marginY: 16 },
     },
     {
       width: 640,
       height: 360,
-      size: "medium",
+      size: "large",
       fontSize: 12,
       marginX: 8,
       marginY: 16,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
     },
     {
       width: 899,
       height: 700,
-      size: "medium",
+      size: "large",
       fontSize: 12,
       marginX: 8,
       marginY: 16,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
     },
     {
       width: 1100,
       height: 479,
-      size: "medium",
+      size: "large",
       fontSize: 12,
       marginX: 8,
       marginY: 16,
+      axisTitle: { fontSize: 12, fontWeight: 700, marginX: 24, marginY: 24 },
     },
     {
       width: 900,
       height: 480,
-      size: "large",
+      size: "fullscreen",
       fontSize: 14,
       marginX: 12,
       marginY: 24,
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
     },
     {
       width: 1270,
       height: 486,
-      size: "large",
+      size: "fullscreen",
       fontSize: 14,
       marginX: 12,
       marginY: 24,
+      axisTitle: { fontSize: 14, fontWeight: 700, marginX: 40, marginY: 40 },
     },
   ])(
     "uses $size styling for a $width by $height container",
-    ({ width, height, size, fontSize, marginX, marginY }) => {
+    ({ width, height, size, fontSize, marginX, marginY, axisTitle }) => {
       const { result } = setup({ containerSize: { width, height } });
 
       expect(result.current.cartesianSize).toBe(size);
@@ -87,6 +122,7 @@ describe("useBrowserRenderingContext", () => {
         marginX,
         marginY,
       });
+      expect(result.current.theme.cartesian.axisTitle).toEqual(axisTitle);
       expect(result.current.theme.cartesian.label.fontSize).toBe(13);
     },
   );
@@ -99,7 +135,7 @@ describe("useBrowserRenderingContext", () => {
         containerSize: { width: 800, height: 400 },
       });
 
-      expect(result.current.cartesianSize).toBe("medium");
+      expect(result.current.cartesianSize).toBe("large");
       expect(result.current.theme.cartesian.ticks).toEqual({
         fontSize: 12,
         marginX: 8,
@@ -111,7 +147,7 @@ describe("useBrowserRenderingContext", () => {
   it("keeps the default rendering style when dimensions are not supplied", () => {
     const { result } = setup();
 
-    expect(result.current.cartesianSize).toBe("large");
+    expect(result.current.cartesianSize).toBe("fullscreen");
     expect(result.current.theme.cartesian.ticks).toEqual({
       fontSize: 14,
       marginX: 12,
@@ -124,43 +160,48 @@ describe("useBrowserRenderingContext", () => {
       containerSize: { width: 639, height: 480 },
     });
 
-    expect(result.current.cartesianSize).toBe("small");
+    expect(result.current.cartesianSize).toBe("medium");
 
     rerender({
       fontFamily: "Lato",
       containerSize: { width: 640, height: 480 },
     });
-    expect(result.current.cartesianSize).toBe("medium");
+    expect(result.current.cartesianSize).toBe("large");
     expect(result.current.theme.cartesian.ticks.marginY).toBe(16);
 
     rerender({
       fontFamily: "Lato",
       containerSize: { width: 900, height: 480 },
     });
-    expect(result.current.cartesianSize).toBe("large");
+    expect(result.current.cartesianSize).toBe("fullscreen");
     expect(result.current.theme.cartesian.ticks.fontSize).toBe(14);
 
     rerender({
       fontFamily: "Lato",
       containerSize: { width: 900, height: 479 },
     });
-    expect(result.current.cartesianSize).toBe("medium");
+    expect(result.current.cartesianSize).toBe("large");
     expect(result.current.theme.cartesian.ticks.fontSize).toBe(12);
   });
 
   it.each([
     {
       size: "small",
+      before: { width: 100, height: 100 },
+      after: { width: 250, height: 180 },
+    },
+    {
+      size: "medium",
       before: { width: 300, height: 200 },
       after: { width: 600, height: 350 },
     },
     {
-      size: "medium",
+      size: "large",
       before: { width: 640, height: 360 },
       after: { width: 890, height: 470 },
     },
     {
-      size: "large",
+      size: "fullscreen",
       before: { width: 900, height: 480 },
       after: { width: 1500, height: 900 },
     },

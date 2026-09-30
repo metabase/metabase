@@ -57,7 +57,6 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
-  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;

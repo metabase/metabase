@@ -1,0 +1,4 @@
+.root {
+  border: 1px dashed var(--mb-color-border-neutral);
+  border-radius: var(--mantine-radius-sm);
+}

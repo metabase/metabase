@@ -7,8 +7,8 @@ import {
   UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
 import {
-  getDatabasesBasePath,
-  getGroupsBasePath,
+  DATABASES_BASE_PATH,
+  GROUPS_BASE_PATH,
 } from "metabase/admin/permissions/utils/urls";
 import { navigate } from "metabase/router";
 import {
@@ -26,10 +26,10 @@ export const getImpersonatedPostAction = (
 ) =>
   view === "database"
     ? navigate(
-        `${getDatabasesBasePath()}/${entityId.databaseId}/impersonated/group/${groupId}`,
+        `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`,
       )
     : navigate(
-        `${getGroupsBasePath()}/${groupId}/impersonated/database/${entityId.databaseId}`,
+        `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
       );
 
 const UPDATE_IMPERSONATION =

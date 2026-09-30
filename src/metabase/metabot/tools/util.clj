@@ -20,6 +20,15 @@
         terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
+(defn handle-agent-or-api-error
+  "Return an agent output for agent errors and API check refusals, re-throw `e` otherwise. A refusal is an exception
+  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]]."
+  [e]
+  (let [{:keys [agent-error? status-code]} (ex-data e)]
+    (if (and (not agent-error?) (int? status-code) (<= 400 status-code 499))
+      {:output (ex-message e) :status-code status-code}
+      (handle-agent-error e))))
+
 (defn convert-field-type
   "Return tool type for `column`."
   [column]
@@ -93,7 +102,7 @@
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
-         :display_name (lib/display-name query column)
+         :display_name (lib/display-name query (dissoc column :table-reference))
          :type (convert-field-type column)}
         (m/assoc-some :description (:description column)
                       :base_type base-type
@@ -124,17 +133,22 @@
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
+  Keys can be snake_case, as the tool schemas define them, or kebab-case.
   E.g. {:frequency :daily :hour 9} => {:schedule_type \"daily\" :schedule_hour 9 ...}"
-  [{:keys [frequency hour day-of-week day-of-month]}]
-  {:schedule_type  (name frequency)
-   :schedule_hour  hour
-   :schedule_day   (or (some-> day-of-week name (subs 0 3) u/lower-case-en)
-                       (some->> day-of-month
-                                name
-                                u/lower-case-en
-                                (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
-                                second))
-   :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))})
+  [schedule]
+  (let [{:keys [frequency hour day-of-week day-of-month]} (u/normalize-map schedule)]
+    {:schedule_type  (name frequency)
+     :schedule_hour  hour
+     :schedule_day   (or (some->> day-of-week
+                                  name
+                                  u/lower-case-en
+                                  (re-find #"^(?:mon|tue|wed|thu|fri|sat|sun)"))
+                         (some->> day-of-month
+                                  name
+                                  u/lower-case-en
+                                  (re-find #"^(?:first|last)-(mon|tue|wed|thu|fri|sat|sun)")
+                                  second))
+     :schedule_frame (some->> day-of-month name (re-find #"^(?:first|mid|last)"))}))
 
 (defn get-database
   "Get the `fields` of the database with ID `id`."

@@ -851,6 +851,9 @@ describe("scenarios > visualizations > bar chart", () => {
     // Create a bar chart showing count of orders by month for the last 12 months
     H.visitQuestionAdhoc({
       display: "bar",
+      visualization_settings: {
+        "graph.x_axis.axis_enabled": "compact",
+      },
       dataset_query: {
         type: "query",
         query: {

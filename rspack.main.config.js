@@ -28,6 +28,9 @@ const {
   CssVarsDeclarationPlugin,
 } = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
 const {
+  DropStylesEntryScriptPlugin,
+} = require("./frontend/build/shared/rspack/plugins/DropStylesEntryScriptPlugin");
+const {
   RESOLVE_ALIASES,
 } = require("./frontend/build/shared/rspack/resolve-aliases");
 const {
@@ -49,6 +52,10 @@ const isEEBuild = process.env.MB_EDITION === "ee";
 const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
+// Bind to loopback by default so the hot-reload server is not reachable from the
+// local network. Set MB_FRONTEND_DEV_HOST=0.0.0.0 to serve it to other devices
+// (or from inside a container, where the published port is the boundary).
+const HOST = process.env.MB_FRONTEND_DEV_HOST || "127.0.0.1";
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -91,9 +98,7 @@ const SWC_LOADER = {
 
     sourceMaps: true,
     minify: false, // produces same bundle size, but cuts 1s locally
-    env: {
-      targets: ["defaults"],
-    },
+    env: {},
   },
 };
 
@@ -358,6 +363,7 @@ const config = {
       ignoreOrder: true,
     }),
     new OnScriptError(),
+    ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
@@ -465,7 +471,7 @@ if (shouldEnableHotRefresh) {
       // if you want to reduce stats noise
       // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    host: "0.0.0.0",
+    host: HOST,
   };
 
   config.watchOptions = {

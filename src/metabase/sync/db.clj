@@ -75,7 +75,7 @@
 
 (mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
+  [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-in-database
@@ -185,7 +185,7 @@
   "Reducible synced Tables of the Database with `database-id` ordered by schema and name, optionally narrowed to
   `schema-names` and/or `table-names`."
   [database-id  :- ::lib.schema.id/database
-   schema-names :- [:maybe [:or [:set :string] [:sequential :string]]]
+   schema-names :- [:maybe [:or [:set [:maybe :string]] [:sequential [:maybe :string]]]]
    table-names  :- [:maybe [:or [:set :string] [:sequential :string]]]]
   (t2/reducible-select :model/Table
                        :db_id database-id

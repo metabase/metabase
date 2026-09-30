@@ -8,6 +8,7 @@
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
+  transparent: "hsla(0, 0%, 100%, 0)",
   gold: "hsla(50.6, 100%, 50%, 1)",
   upsellGem: "hsla(190, 100%, 50%, 1)",
 
@@ -156,6 +157,16 @@ const baseColors = {
     5: "hsla(0, 100%, 99%, 1)",
   },
 
+  // Lobster Alpha
+  lobsterAlpha: {
+    50: "hsla(358, 71%, 54%, 0.82)",
+    40: "hsla(358, 71%, 54%, 0.69)",
+    30: "hsla(358, 71%, 54%, 0.45)",
+    20: "hsla(358, 71%, 54%, 0.21)",
+    10: "hsla(358, 71%, 54%, 0.07)",
+    5: "hsla(358, 71%, 54%, 0.03)",
+  },
+
   // Flamingo
   flamingo: {
     100: "hsla(334, 75%, 10%, 1)",
@@ -202,6 +213,12 @@ const baseColors = {
   },
 
   // Palm
+  palmAlpha: {
+    30: "hsla(90, 100%, 31%, 0.57)",
+    20: "hsla(90, 100%, 34%, 0.29)",
+    10: "hsla(90, 100%, 41%, 0.13)",
+  },
+
   palm: {
     100: "hsla(94, 85%, 5%, 1)",
     90: "hsla(92, 62%, 10%, 1)",

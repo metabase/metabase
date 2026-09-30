@@ -85,16 +85,19 @@
       ;; The document deliberately gets no base URI so that Batik will not fetch any external references or local files
       (.createDocument factory nil is))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-width*
   "Width to render svg images. Intentionally large to improve quality. Consumers should be aware and resize as
   needed. Email should include width tags; slack automatically resizes inline and provides a nice detail view when
   clicked."
   (float 1200))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *svg-render-height*
   "Height to render svg images. If not bound, will preserve aspect ratio of original image."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
   [[*javascript-visualization*]] use `:width`/`:height` as their intrinsic (logical) SVG
@@ -110,9 +113,14 @@
   An optional `:fit-within?` (default false) tells legended charts to treat `:width`x`:height` as
   the exact output box -- fitting the legend *inside* it rather than stacking it on top (which
   returns an SVG taller than requested and makes it shrink to fit). Used by the PDF renderer so a
-  chart fills its grid cell's full width."
+  chart fills its grid cell's full width.
+
+  An optional `:grid-size` `{:width <cols> :height <rows>}` is the dashcard's dashboard grid size
+  (`size_x`/`size_y`). Used by the PDF renderer so size-dependent settings (e.g. auto axis titles)
+  match the dashboard, independent of the print cell's pixel box."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
@@ -177,6 +185,7 @@
       :content
       svg-string->bytes))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
@@ -191,7 +200,9 @@
                             *chart-size*
                             (assoc :width (:width *chart-size*)
                                    :height (:height *chart-size*)
-                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))))})      (update :type (fnil keyword "unknown"))))
+                                   :fitWithinBounds (boolean (:fit-within? *chart-size*))
+                                   :gridSize (:grid-size *chart-size*)))})
+      (update :type (fnil keyword "unknown"))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"

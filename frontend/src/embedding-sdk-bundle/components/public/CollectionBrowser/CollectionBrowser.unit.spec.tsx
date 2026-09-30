@@ -665,7 +665,7 @@ async function setupAll({
     ...(currentUser ? { currentUser } : {}),
     ...(tokenFeatures ? { tokenFeatures } : {}),
     settingValues: createMockSettings({
-      "enable-embedding-modular": true,
+      "enable-embedding-sdk": true,
       "use-tenants": useTenants,
     }),
   });
