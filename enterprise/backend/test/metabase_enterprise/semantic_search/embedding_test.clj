@@ -159,22 +159,23 @@
     (is (zero? (#'embedding/count-tokens "")))
     (is (nil? (#'embedding/count-tokens nil)))))
 
-(deftest in-process-token-usage-test
+(deftest ^:synchronized in-process-token-usage-test
   (let [model            {:provider "in-process" :model-name "local-model" :vector-dimensions 4}
         unnamed-model    (dissoc model :model-name)
         analytics-calls  (atom [])
         tracking-calls   (atom [])
         resolution-calls (atom [])]
-    (mt/with-dynamic-fn-redefs
-      [embeddings.provider/resolve-model            (fn [requested]
-                                                      (swap! resolution-calls conj requested)
-                                                      (assoc requested :model-name "local-model"))
-       embeddings.provider/embed-text               (fn [_ text _] [text])
-       embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
-       analytics/inc!                               (fn [metric labels value]
-                                                      (swap! analytics-calls conj [metric labels value]))
-       semantic.models.token-tracking/record-tokens (fn [& args]
-                                                      (swap! tracking-calls conj args))]
+    ;; `analytics/inc!` is a hot path; avoid permanently proxying it via with-dynamic-fn-redefs.
+    (with-redefs
+     [embeddings.provider/resolve-model            (fn [requested]
+                                                     (swap! resolution-calls conj requested)
+                                                     (assoc requested :model-name "local-model"))
+      embeddings.provider/embed-text               (fn [_ text _] [text])
+      embeddings.provider/embed-texts              (fn [_ texts _] (mapv vector texts))
+      analytics/inc!                               (fn [metric labels value]
+                                                     (swap! analytics-calls conj [metric labels value]))
+      semantic.models.token-tracking/record-tokens (fn [& args]
+                                                     (swap! tracking-calls conj args))]
       (embedding/get-embedding model "Hello world" :type :query :record-tokens? true)
       (embedding/get-embeddings-batch model ["Hello world" "again"] :type :index :record-tokens? true)
       (testing "local calls report approximate token metrics and persistent usage"

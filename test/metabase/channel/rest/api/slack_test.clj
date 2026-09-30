@@ -201,7 +201,7 @@
             (is (nil? uploaded))
             (is (nil? posted))))))))
 
-(deftest bug-report-legacy-reporter-test
+(deftest ^:synchronized bug-report-legacy-reporter-test
   (testing "POST /api/slack/bug-report"
     (mt/with-prometheus-system! [_ system]
       (mt/with-temp-env-var-value! [mb-bug-reporting-enabled "true"]
@@ -217,7 +217,8 @@
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-bug-report/legacy-reporter)))))
         (testing "a boolean reporter is not counted"
           (let [counted (atom [])]
-            (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & _] (swap! counted conj metric))]
+            ;; `analytics/inc!` is a hot path; avoid permanently proxying it via with-dynamic-fn-redefs.
+            (with-redefs [analytics/inc! (fn [metric & _] (swap! counted conj metric))]
               (post-bug-report! :crowberto 200 {:diagnosticInfo (assoc bug-report-diagnostic-info :reporter true)}))
             (is (not-any? #{:metabase-bug-report/legacy-reporter} @counted))))))))
 
