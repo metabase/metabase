@@ -99,7 +99,30 @@ const getLibraryEntity = (
           }
         : undefined,
     )
-    .otherwise(() => undefined);
+    .with(
+      {
+        model: P.union(
+          "table",
+          "card",
+          "dataset",
+          "metric",
+          "measure",
+          "segment",
+          "dashboard",
+          "collection",
+          "database",
+          "document",
+          "transform",
+          "action",
+          "user",
+          "indexed-entity",
+          "exploration",
+          null,
+        ),
+      },
+      () => undefined,
+    )
+    .exhaustive();
 
 const getEntityHref = (
   data: EntityData,
@@ -124,10 +147,27 @@ const getEntityHref = (
           )
         : undefined,
     )
-    .with({ entity: P.nonNullable }, ({ model, entity }) =>
-      Urls.modelToUrl(entityToUrlableModel(entity, model)),
+    .with(
+      {
+        model: P.union(
+          "card",
+          "dataset",
+          "metric",
+          "dashboard",
+          "collection",
+          "database",
+          "document",
+          "transform",
+          "action",
+          "user",
+        ),
+        entity: P.nonNullable,
+      },
+      ({ model, entity }) =>
+        Urls.modelToUrl(entityToUrlableModel(entity, model)),
     )
-    .otherwise(() => undefined);
+    .with({ entity: P.nullish }, () => undefined)
+    .exhaustive();
 
 export function useSmartLinkEntity({
   id,

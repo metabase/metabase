@@ -13,7 +13,7 @@
 
 .token {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.25rem;
   padding-inline: 0.25rem;
   border-radius: 0.375rem;
@@ -34,6 +34,6 @@
 
 .tokenIcon {
   flex-shrink: 0;
-  margin-bottom: -1px;
+  align-self: center;
   color: var(--mb-color-text-brand);
 }

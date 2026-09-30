@@ -21,6 +21,10 @@
   }
 }
 
+.feedbackList {
+  overflow: hidden;
+}
+
 .feedbackRow {
   &:not(:last-child) {
     border-bottom: 1px solid var(--mb-color-border-neutral-subtle);

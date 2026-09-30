@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
@@ -83,7 +83,6 @@ export function MetabotHoverCard({
   entity: LibraryEntity | undefined;
   children: ReactNode;
 }) {
-  const getIcon = useGetIcon();
   const { targetRef, middlewares } = useBoundaryMiddlewares();
   const { data: library } = PLUGIN_LIBRARY.useGetLibraryCollection({
     skip: !entity,
@@ -97,56 +96,63 @@ export function MetabotHoverCard({
       offset={OFFSET}
       middlewares={middlewares}
       content={
-        entity && (
-          <Stack
-            gap={0}
-            bg="background_surface-primary"
-            c="text-primary"
-            bdrs="md"
-            className={S.clip}
-            data-testid="metabot-hover-card"
-          >
-            <Stack gap="lg" p="lg">
-              <Group gap="xs" c="text-brand" fz="sm" fw="bold">
-                <EntityIcon
-                  {...getIcon({ model: entity.model })}
-                  size="0.75rem"
-                />
-                {getTranslatedEntityName(entity.model)}
-              </Group>
-              <Stack gap="xxs" className={S.text}>
-                <Text fz="md" fw="bold">
-                  {entity.name}
-                </Text>
-                {entity.description && (
-                  <Text fz="md" c="text-secondary">
-                    {entity.description}
-                  </Text>
-                )}
-              </Stack>
-              {entity.model === "table" && (
-                <TableFieldsPill tableId={entity.id} />
-              )}
-            </Stack>
-            <Divider />
-            <Breadcrumbs
-              separator="/"
-              px="lg"
-              py="sm"
-              fz="sm"
-              c="text-secondary"
-              className={S.crumbs}
-            >
-              {getLocationCrumbs(entity, library).map((crumb, index) => (
-                <Crumb key={index} {...crumb} />
-              ))}
-            </Breadcrumbs>
-          </Stack>
-        )
+        entity && <MetabotHoverCardContent entity={entity} library={library} />
       }
     >
       <span ref={targetRef}>{children}</span>
     </Popover>
+  );
+}
+
+function MetabotHoverCardContent({
+  entity,
+  library,
+}: {
+  entity: LibraryEntity;
+  library: LibraryCollection | undefined;
+}) {
+  const getIcon = useGetIcon();
+
+  return (
+    <Stack
+      gap={0}
+      bg="background_surface-primary"
+      c="text-primary"
+      bdrs="md"
+      className={S.clip}
+      data-testid="metabot-hover-card"
+    >
+      <Stack gap="lg" p="lg">
+        <Group gap="xs" c="text-brand" fz="sm" fw="bold">
+          <EntityIcon {...getIcon({ model: entity.model })} size="0.75rem" />
+          {getTranslatedEntityName(entity.model)}
+        </Group>
+        <Stack gap="xxs" className={S.text}>
+          <Text fz="md" fw="bold">
+            {entity.name}
+          </Text>
+          {entity.description && (
+            <Text fz="md" c="text-secondary">
+              {entity.description}
+            </Text>
+          )}
+        </Stack>
+        {entity.model === "table" && <TableFieldsPill tableId={entity.id} />}
+      </Stack>
+      <Divider />
+      <Breadcrumbs
+        separator="/"
+        px="lg"
+        py="sm"
+        fz="sm"
+        c="text-secondary"
+        className={S.crumbs}
+      >
+        {getLocationCrumbs(entity, library).map((crumb, index) => (
+          <Crumb key={index} {...crumb} />
+        ))}
+      </Breadcrumbs>
+    </Stack>
   );
 }
 
@@ -169,27 +175,16 @@ function TableFieldsPill({ tableId }: { tableId: TableId }) {
   }
 
   return (
-    <Group
-      gap={0}
+    <Center
       h="1.5rem"
       w="fit-content"
+      px="xs"
       fz="sm"
       bdrs="xs"
-      className={S.clip}
+      bg="background_page-secondary"
+      c="text-secondary"
     >
-      <Center h="100%" miw="1.5rem" px="xxs" bg="background_page-tertiary">
-        <Text inherit fw="bold">
-          {fieldCount}
-        </Text>
-      </Center>
-      <Center
-        h="100%"
-        px="xs"
-        bg="background_page-secondary"
-        c="text-secondary"
-      >
-        {t`fields`}
-      </Center>
-    </Group>
+      {ngettext(msgid`${fieldCount} field`, `${fieldCount} fields`, fieldCount)}
+    </Center>
   );
 }

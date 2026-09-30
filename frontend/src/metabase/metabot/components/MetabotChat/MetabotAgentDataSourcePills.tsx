@@ -333,7 +333,12 @@ const SourceFeedbackModal = ({
     data-testid="metabot-source-feedback-modal"
   >
     <Stack gap="lg">
-      <Stack gap={0} bdrs="sm" bd="1px solid var(--mb-color-border-neutral)">
+      <Stack
+        gap={0}
+        bdrs="sm"
+        bd="1px solid var(--mb-color-border-neutral)"
+        className={S.feedbackList}
+      >
         {sources.map((source) => (
           <SourceFeedbackRow
             key={`${source.model}-${source.id}`}

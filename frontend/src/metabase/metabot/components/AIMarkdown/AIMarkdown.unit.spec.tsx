@@ -142,8 +142,7 @@ describe("AIMarkdown", () => {
     expect(card).toHaveTextContent("Table");
     expect(card).toHaveTextContent("Orders");
     expect(card).toHaveTextContent("Confirmed orders");
-    expect(await within(card).findByText("2")).toBeInTheDocument();
-    expect(card).toHaveTextContent("fields");
+    expect(await within(card).findByText("2 fields")).toBeInTheDocument();
     expect(
       await within(card).findByRole("link", { name: "Library" }),
     ).toHaveAttribute("href", "/collection/6464-library");

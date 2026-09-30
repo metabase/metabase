@@ -128,7 +128,11 @@ const getComponents = ({
 
     if (href?.startsWith("/")) {
       return (
-        <InternalLink onInternalLinkClick={onInternalLinkClick} href={href}>
+        <InternalLink
+          onInternalLinkClick={onInternalLinkClick}
+          href={href}
+          className={S.link}
+        >
           {children}
         </InternalLink>
       );
@@ -136,7 +140,13 @@ const getComponents = ({
 
     // For external links, set target and rel explicitly
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        {...rest}
+        className={S.link}
+      >
         {children}
       </a>
     );

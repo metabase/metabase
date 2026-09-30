@@ -170,6 +170,11 @@
   margin-top: 0.5rem;
 }
 
+.link {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.125rem;
+}
+
 .smartLink {
   color: var(--mb-color-core-brand);
   font-weight: 700;
@@ -179,7 +184,8 @@
 }
 
 .smartLinkInner {
-  border-bottom: 1px solid var(--mb-color-border-brand);
+  text-decoration: underline dotted;
+  text-underline-offset: 0.125rem;
 }
 
 .icon {
