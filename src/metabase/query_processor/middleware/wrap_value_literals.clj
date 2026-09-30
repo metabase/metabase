@@ -32,6 +32,7 @@
      (when-let [unit (lib/raw-temporal-bucket col)]
        {:unit unit}))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn- ^:dynamic *type-info*
   "This is the type info for the LHS in something like
 

@@ -4,10 +4,12 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *local-redefs*
   "A thread-local mapping from vars to their most recently bound definition."
   {})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *proxy-depths*
   "Thread-local map from redefined var to current recursion depth through its proxy.
    Used to detect capture bugs that would otherwise manifest as StackOverflowError."
