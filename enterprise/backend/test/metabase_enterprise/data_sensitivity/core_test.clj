@@ -155,6 +155,38 @@
               :total_tokens          (* 120 (:requests result))}
              (:usage result))))))
 
+(defn- misbehaving-llm
+  "A canned LLM that answers with `(entry-fn field-name)` and also names a field the table does not have."
+  [entry-fn]
+  (fn [& args]
+    (update-in (apply (canned-llm entry-fn) args) [:result :fields] conj
+               {:name             "ds_no_such_field"
+                :reasoning        "because"
+                :data_sensitivity "PII"
+                :confidence       "high"
+                :semantic_type    llm/no-semantic-type})))
+
+(deftest classify-table-parse-counts-test
+  (mt/with-temp [:model/Field _ {:table_id (mt/id :people) :name "ds_invalid" :base_type :type/Text}
+                 :model/Field _ {:table_id (mt/id :people) :name "ds_missing" :base_type :type/Text}
+                 :model/Field _ {:table_id (mt/id :people) :name "ds_bad_semantic" :base_type :type/Text}]
+    (let [entries {"ds_invalid"      {:data_sensitivity "SECRET"}
+                   "ds_missing"      nil
+                   "ds_bad_semantic" {:semantic_type "type/Nope"}}
+          result  (do-with-llm! (misbehaving-llm #(get entries % {}))
+                                #(core/classify-table! (people-table) :include-values? false :chunk-size 4))]
+      (testing "discarded model output is counted and summed over chunks"
+        (is (< 1 (:requests result)))
+        (is (= {:dropped_unknown  (:requests result)
+                :dropped_invalid  1
+                :dropped_missing  1
+                :semantic_dropped 1}
+               (:parse_counts result))))
+      (testing "a well-behaved response discards nothing"
+        (is (= {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0}
+               (:parse_counts (do-with-llm! (canned-llm (constantly {}))
+                                            #(core/classify-table! (people-table) :include-values? false)))))))))
+
 (deftest classify-table-permission-bypass-test
   (testing "the LLM call runs with all Metabot permissions granted regardless of the user's groups"
     (let [seen (atom nil)]
@@ -218,6 +250,12 @@
                (+ (get-in result [:counts :agree]) (get-in result [:counts :disagree])
                   (get-in result [:counts :new]) (get-in result [:counts :abstain])
                   (get-in result [:counts :dropped]))))))
+    (testing "parse counts are summed over the tables"
+      (let [result (do-with-llm! (misbehaving-llm (constantly {}))
+                                 #(core/classify-database! (mt/db) :include-values? false))]
+        (is (= (count tables) (get-in result [:parse_counts :dropped_unknown])))
+        (is (= (reduce (partial merge-with +) {} (map :parse_counts (:tables result)))
+               (:parse_counts result)))))
     (testing "the schema option restricts the tables"
       (let [schema (:schema (first tables))
             result (do-with-llm! (canned-llm (constantly {}))

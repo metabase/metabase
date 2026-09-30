@@ -48,6 +48,15 @@
    [:dropped          :int]
    [:semantic_changed :int]])
 
+(mr/def ::parse-counts
+  "Model output the parse discarded: entries naming a field the table does not have, fields with an invalid
+  category or no entry at all, and invalid semantic types."
+  [:map
+   [:dropped_unknown  :int]
+   [:dropped_invalid  :int]
+   [:dropped_missing  :int]
+   [:semantic_dropped :int]])
+
 (mr/def ::field-result
   [:map
    [:field_id          pos-int?]
@@ -78,6 +87,7 @@
    [:usage        ::usage]
    [:sample_error [:maybe :string]]
    [:counts       ::counts]
+   [:parse_counts ::parse-counts]
    [:fields       [:sequential ::field-result]]])
 
 (mr/def ::table-error
@@ -90,13 +100,14 @@
 
 (mr/def ::database-result
   [:map
-   [:database_id pos-int?]
-   [:schema      [:maybe :string]]
-   [:tables      [:sequential [:or ::table-result ::table-error]]]
-   [:counts      ::counts]
-   [:usage       ::usage]
-   [:requests    :int]
-   [:failed      :int]])
+   [:database_id  pos-int?]
+   [:schema       [:maybe :string]]
+   [:tables       [:sequential [:or ::table-result ::table-error]]]
+   [:counts       ::counts]
+   [:parse_counts ::parse-counts]
+   [:usage        ::usage]
+   [:requests     :int]
+   [:failed       :int]])
 
 (mr/def ::table-options
   [:merge
@@ -117,6 +128,9 @@
 
 (def ^:private zero-counts
   {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0})
+
+(def ^:private zero-parse-counts
+  {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0})
 
 ;;; Pre-flight
 
@@ -180,6 +194,12 @@
      :dropped          (get by-status :dropped 0)
      :semantic_changed (count (filter :semantic_changed fields))}))
 
+(defn- parse-counts [{:keys [dropped-unknown dropped-invalid dropped-missing semantic-dropped]}]
+  {:dropped_unknown  dropped-unknown
+   :dropped_invalid  dropped-invalid
+   :dropped_missing  dropped-missing
+   :semantic_dropped semantic-dropped})
+
 ;;; Classify
 
 (mu/defn classify-table! :- ::table-result
@@ -205,6 +225,7 @@
      :usage        (:usage classification)
      :sample_error (get-in packet [:sample :error])
      :counts       (field-counts fields)
+     :parse_counts (parse-counts (:counts classification))
      :fields       fields}))
 
 (defn- error-code [e]
@@ -299,10 +320,11 @@
     (when (and (seq results) (empty? succeeded))
       (when-let [fatal (some #(when (:fatal? %) %) outcomes)]
         (throw (:exception fatal))))
-    {:database_id (:id database)
-     :schema      schema
-     :tables      results
-     :counts      (reduce (partial merge-with +) zero-counts (map :counts succeeded))
-     :usage       (reduce (partial merge-with +) zero-usage (map :usage succeeded))
-     :requests    (transduce (map :requests) + 0 succeeded)
-     :failed      (count (filter :error results))}))
+    {:database_id  (:id database)
+     :schema       schema
+     :tables       results
+     :counts       (reduce (partial merge-with +) zero-counts (map :counts succeeded))
+     :parse_counts (reduce (partial merge-with +) zero-parse-counts (map :parse_counts succeeded))
+     :usage        (reduce (partial merge-with +) zero-usage (map :usage succeeded))
+     :requests     (transduce (map :requests) + 0 succeeded)
+     :failed       (count (filter :error results))}))

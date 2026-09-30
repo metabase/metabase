@@ -48,24 +48,27 @@
           (throw e))))))
 
 (api.macros/defendpoint :post "/table/:id" :- ::core/table-result
-  "Classify every active field of the table with the LLM and diff the proposal against the current
+  "Classify every active field of the active table with the LLM and diff the proposal against the current
   `data_sensitivity` labels. Nothing is written; the response is the proposal."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table (api/check-404 (db/table id))]
+  (let [table (api/check-404 (db/active-table id))]
     (api/write-check :model/Database (:db_id table))
     (check-available!)
     (classify #(core/classify-table! table))))
 
 (api.macros/defendpoint :post "/database/:id" :- ::core/database-result
   "Classify every active table of the database, or only those in `schema` when given, with the LLM and diff the
-  proposals against the current `data_sensitivity` labels. Synchronous; nothing is written."
+  proposals against the current `data_sensitivity` labels. Nothing is written. A `schema` with no active tables is
+  a 404. Synchronous: the whole scan runs within the request, so classify a large database one schema at a time."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
    {:keys [schema]} :- [:maybe [:map {:closed true}
                                 [:schema {:optional true} [:maybe ms/NonBlankString]]]]]
   (let [database (api/write-check :model/Database id)]
+    (when schema
+      (api/check-404 (db/active-schema? id schema)))
     (check-available!)
     (classify #(core/classify-database! database :schema schema))))
 

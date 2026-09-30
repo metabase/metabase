@@ -7,10 +7,17 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
+(mu/defn active-table
+  "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn active-schema?
+  "Whether the Database with `database-id` has an active Table in `schema`."
+  [database-id :- ::lib.schema.id/database
+   schema      :- :string]
+  (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                            :where [:and [:= :db_id database-id] [:= :active true] [:= :schema schema]]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."

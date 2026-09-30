@@ -39,8 +39,27 @@
 
 (deftest missing-table-test
   (mt/with-premium-features #{:data-sensitivity}
-    (is (= "Not found."
-           (mt/user-http-request :crowberto :post 404 (table-url Integer/MAX_VALUE))))))
+    (testing "a table that does not exist is not found"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (table-url Integer/MAX_VALUE)))))
+    (testing "an inactive table is not found"
+      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "ds_inactive" :active false}]
+        (is (= "Not found."
+               (mt/user-http-request :crowberto :post 404 (table-url table-id))))))))
+
+(deftest schema-validation-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (core-test/do-with-llm!
+     (core-test/canned-llm (constantly {}))
+     (fn []
+       (testing "a schema with no active tables is not found"
+         (is (= "Not found."
+                (mt/user-http-request :crowberto :post 404 (database-url (mt/id)) {:schema "no_such_schema"}))))
+       (testing "a user without database write access is refused before the schema is looked up"
+         (is (= "You don't have permissions to do that."
+                (mt/user-http-request :rasta :post 403 (database-url (mt/id)) {:schema "no_such_schema"}))))
+       (testing "a blank schema is rejected"
+         (mt/user-http-request :crowberto :post 400 (database-url (mt/id)) {:schema ""}))))))
 
 (deftest unavailable-reason-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -155,9 +174,4 @@
                         (core-test/canned-llm (constantly {}))
                         #(mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:schema schema}))]
           (is (= schema (:schema response)))
-          (is (= (map :id expected) (map :table_id (:tables response)))))
-        (let [response (core-test/do-with-llm!
-                        (core-test/canned-llm (constantly {}))
-                        #(mt/user-http-request :crowberto :post 200 (database-url (mt/id)) {:schema "no_such_schema"}))]
-          (is (= [] (:tables response)))
-          (is (= 0 (:requests response))))))))
+          (is (= (map :id expected) (map :table_id (:tables response)))))))))
