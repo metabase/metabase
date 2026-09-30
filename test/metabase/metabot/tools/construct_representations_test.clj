@@ -1243,6 +1243,29 @@
                    :breakout [[:field {:join-alias "P" :base-type :type/Text} "CATEGORY"]]}
                   (get-in result [:structured-output :query :stages 1]))))))))
 
+(deftest join-columns-resolved-only-for-untyped-join-refs-test
+  (testing "a stage whose `join-alias` refs all carry `base-type` never resolves the join's source"
+    (with-joined-card-mp-and-stubs!
+      (fn []
+        (let [resolved-joins (atom 0)]
+          (mt/with-dynamic-fn-redefs [repr.repair/join-columns-by-alias (fn [& _]
+                                                                          (swap! resolved-joins inc)
+                                                                          {})]
+            (construct/execute-representations-query
+             (query-data
+              {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "joins"        [(assoc (products-join
+                                                    ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]])
+                                                   "conditions" [["=" {}
+                                                                  ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                                  ["field" {"join-alias" "P" "base-type" "type/Integer"} "ID"]]]
+                                                   "fields" [["field" {"join-alias" "P" "base-type" "type/Text"} "CATEGORY"]])]
+                            "aggregation"  [["count" {}]]}]})))
+          (is (= 0 @resolved-joins)))))))
+
 (deftest source-table-join-to-card-by-column-name-test
   (testing "a `source-table:` stage joined onto a card types the joined card's refs by name too"
     (with-joined-card-mp-and-stubs!
