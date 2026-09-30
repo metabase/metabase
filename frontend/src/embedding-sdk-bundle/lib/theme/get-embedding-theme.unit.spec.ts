@@ -2,7 +2,7 @@ import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
-import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
+import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
 
 import { getEmbeddingThemeOverride } from "./get-embedding-theme";
 
@@ -39,16 +39,26 @@ describe("Transform Embedding Theme Override", () => {
       fontFamily: "Roboto",
       colors: {
         "chart-axis": expect.arrayContaining([
-          METABASE_LIGHT_THEME.colors["chart-axis"],
+          getLightTheme().colors["chart-axis"],
         ]),
         brand: expect.arrayContaining(["hotpink"]),
         "core-brand": expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
+        "button_label-default-neutral-default": expect.arrayContaining([
+          "yellow",
+        ]),
+        "button_label-light-neutral-default": expect.arrayContaining([
+          "yellow",
+        ]),
+        "button_label-subtle-neutral-default": expect.arrayContaining([
+          "yellow",
+        ]),
         "text-tertiary": expect.arrayContaining(["green"]),
         "text-disabled": expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["orange"]),
         "background_page-primary": expect.arrayContaining(["orange"]),
         "background_surface-primary": expect.arrayContaining(["orange"]),
+        "button-default-neutral-default": expect.arrayContaining(["orange"]),
         "background-tertiary": expect.arrayContaining(["brown"]),
         "background-secondary": expect.arrayContaining(["brown"]),
         "background_page-secondary": expect.arrayContaining(["brown"]),
@@ -80,11 +90,12 @@ describe("Transform Embedding Theme Override", () => {
       fontFamily: "Roboto",
       colors: {
         "chart-axis": expect.arrayContaining([
-          METABASE_DARK_THEME.colors["chart-axis"],
+          getDarkTheme().colors["chart-axis"],
         ]),
         "background-primary": expect.arrayContaining(["green"]),
         "background_page-primary": expect.arrayContaining(["green"]),
         "background_surface-primary": expect.arrayContaining(["green"]),
+        "button-default-neutral-default": expect.arrayContaining(["green"]),
         "background-tertiary": expect.arrayContaining(["green"]),
         "background-secondary": expect.arrayContaining(["green"]),
         "background_page-secondary": expect.arrayContaining(["green"]),

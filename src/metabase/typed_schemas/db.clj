@@ -29,7 +29,7 @@
   unscoped), in name then id order."
   [card-type      :- [:enum :model :question :metric]
    database-ids   :- [:maybe [:set ::lib.schema.id/database]]
-   collection-ids :- [:maybe [:sequential ::lib.schema.id/collection]]]
+   collection-ids :- [:maybe [:set ::lib.schema.id/collection]]]
   (t2/select :model/Card
              {:where    [:and
                          [:= :type (name card-type)]
@@ -50,9 +50,9 @@
   (t2/select-one [:model/Card :dimensions :dimension_mappings] :id card-id))
 
 (mu/defn table-names
-  "The id, name, and display name of the Tables with `table-ids`."
+  "The id, database id, name, and display name of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :name :display_name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn model-actions
   "The id, model id, name, and type of the unarchived non-HTTP Actions of the model Cards with `model-ids`."

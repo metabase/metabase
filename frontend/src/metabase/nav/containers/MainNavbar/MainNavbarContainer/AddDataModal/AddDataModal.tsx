@@ -24,8 +24,7 @@ interface AddDataModalProps {
   onClose: () => void;
 
   initialTab?: AddDataTab;
-  /** Path of the setup guide that opened this, so the flow can return there. */
-  returnToSetupGuide?: string;
+  fromEmbeddingSetupGuide?: boolean;
 }
 
 interface Tabs {
@@ -55,7 +54,7 @@ const AddDataModalContent = ({
   opened,
   onClose,
   initialTab,
-  returnToSetupGuide,
+  fromEmbeddingSetupGuide,
 }: AddDataModalProps) => {
   const { areUploadsEnabled, canManageUploads, isAdmin, hasAttachedDwh } =
     useAddDataState();
@@ -158,7 +157,7 @@ const AddDataModalContent = ({
             <Tabs.Panel value="db" className={S.panel}>
               <DatabasesPanel
                 canSeeContent={isAdmin}
-                returnToSetupGuide={returnToSetupGuide}
+                fromEmbeddingSetupGuide={fromEmbeddingSetupGuide}
               />
             </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>

@@ -50,6 +50,7 @@
   (shutdown!         [this]
     "Shuts down all queue resources for this backend."))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *backend*
   "The active `QueueBackend` instance. Set by `metabase.mq.init/start!`."
   nil)

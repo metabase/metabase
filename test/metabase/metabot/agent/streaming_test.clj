@@ -101,24 +101,6 @@
           part (streaming/code-edit-part edit-data)]
       (is (= edit-data (:data part))))))
 
-(deftest transform-suggestion-part-test
-  (testing "creates transform_suggestion data part with correct structure"
-    (let [suggestion {:id 1
-                      :name "My Transform"
-                      :description "A test transform"
-                      :source {:type "sql" :query "SELECT 1"}}
-          part (streaming/transform-suggestion-part suggestion)]
-      (is (= :data (:type part)))
-      (is (= "transform_suggestion" (:data-type part)))
-      (is (= suggestion (:data part)))))
-  (testing "handles Python transform suggestion"
-    (let [suggestion {:id 2
-                      :name "Python Transform"
-                      :source {:type "python"
-                               :query "def transform():\n    return pd.DataFrame()"}}
-          part (streaming/transform-suggestion-part suggestion)]
-      (is (= suggestion (:data part))))))
-
 (deftest adhoc-viz-part-test
   (testing "creates adhoc_viz data part with correct structure"
     (let [value {:query {:database 1 :type :query :query {:source-table 1}}
@@ -149,7 +131,6 @@
     (is (= "state" streaming/state-type))
     (is (= "todo_list" streaming/todo-list-type))
     (is (= "code_edit" streaming/code-edit-type))
-    (is (= "transform_suggestion" streaming/transform-suggestion-type))
     (is (= "generated_entity" streaming/generated-entity-type))
     (is (= "adhoc_viz" streaming/adhoc-viz-type))
     (is (= "static_viz" streaming/static-viz-type))))

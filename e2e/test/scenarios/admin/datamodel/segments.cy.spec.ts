@@ -12,29 +12,6 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 
   describe("with no segments", () => {
-    it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
-      cy.visit("/admin/datamodel/segments");
-
-      cy.log("should initially show no segments in UI");
-      cy.get("main").findByText(
-        "Create segments to add them to the Filter dropdown in the query builder",
-      );
-
-      cy.button("New segment").click();
-
-      cy.findByTestId("segment-editor").findByText("Select a table").click();
-      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
-
-      cy.findByTestId("segment-editor").findByText("Orders").should("exist");
-
-      cy.findByTestId("segment-editor")
-        .findByText("Add filters to narrow your answer")
-        .click();
-
-      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
-      H.popover().findByText("Custom Expression");
-    });
-
     it("should show no segments", () => {
       cy.visit("/reference/segments");
 
@@ -44,12 +21,17 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.button("Learn how to create segments").should("be.visible");
     });
 
-    it("should track segment_created event when saving a new segment", () => {
+    it("should have 'Custom Expression' in a filter list and track segment_created event when saving a new segment (metabase#13069)", () => {
       cy.intercept("POST", "/api/segment").as("createSegment");
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
         "getTable",
       );
       cy.visit("/admin/datamodel/segments");
+
+      cy.log("should initially show no segments in UI");
+      cy.get("main").findByText(
+        "Create segments to add them to the Filter dropdown in the query builder",
+      );
 
       cy.button("New segment").click();
 
@@ -62,6 +44,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findByTestId("segment-editor").findByText("Select a table").click();
       H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
       cy.wait("@getTable");
+      cy.findByTestId("segment-editor").findByText("Orders").should("exist");
 
       cy.log("add filter");
       // The "Add filters" button stays disabled until the segment query is built
@@ -71,6 +54,12 @@ describe("scenarios > admin > datamodel > segments", () => {
         .findByRole("button", { name: /Add filters to narrow your answer/ })
         .should("be.enabled")
         .click();
+
+      cy.log(
+        "should have 'Custom Expression' in a filter list (metabase#13069). Fails in v0.36.0 and v0.36.3. It exists in v0.35.4",
+      );
+      H.popover().findByText("Custom Expression").should("exist");
+
       H.popover().findByText("Total").click();
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
@@ -120,7 +109,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
     });
 
-    it("should show the segment fields list and detail view", () => {
+    it("should show the segment fields list and detail view, and not crash when editing a field in segment field detail page (metabase#55322)", () => {
       // In the list
       cy.visit("/reference/segments");
 
@@ -131,11 +120,11 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       // Detail view
       cy.get("main").findByText("Description").should("be.visible");
-      cy.button("See this segment").should("be.visible");
+      cy.findByRole("link", { name: "See this segment" }).should("be.visible");
 
       // Segment fields
       cy.findByRole("link", { name: /Fields in this segment/ }).click();
-      cy.button("See this segment").should("not.exist");
+      cy.findByRole("link", { name: "See this segment" }).should("not.exist");
       cy.get("main")
         .findByText(`Fields in ${SEGMENT_NAME}`)
         .should("be.visible");
@@ -145,9 +134,10 @@ describe("scenarios > admin > datamodel > segments", () => {
         .eq(0)
         .scrollIntoView()
         .should("be.visible");
-    });
 
-    it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
+      cy.log(
+        "should not crash when editing field in segment field detail page (metabase#55322)",
+      );
       cy.get("@segmentId").then((segmentId) => {
         cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
       });
@@ -156,32 +146,6 @@ describe("scenarios > admin > datamodel > segments", () => {
 
       cy.findByPlaceholderText("No description yet").should("be.visible");
       cy.get("main").findByText("Something’s gone wrong").should("not.exist");
-    });
-
-    it("should show up in UI list and should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segments");
-
-      cy.findByRole("table").within(() => {
-        cy.findByText("Filtered by Total is less than 100").should(
-          "be.visible",
-        );
-        cy.findByText("Sample Database").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-      });
-      cy.findByRole("link", { name: /Orders < 100/ })
-        .should("be.visible")
-        .click();
-
-      cy.get("form").within(() => {
-        cy.findByText("Edit Your Segment").should("be.visible");
-        cy.findByText("Sample Database").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-      });
-      cy.findByPlaceholderText("Something descriptive but not too long").should(
-        "have.value",
-        SEGMENT_NAME,
-      );
-      cy.findByRole("link", { name: "Preview" }).should("be.visible");
     });
 
     it("should see a newly asked question in its questions list", () => {
@@ -217,7 +181,35 @@ describe("scenarios > admin > datamodel > segments", () => {
         .should("be.visible");
     });
 
-    it("should update that segment", () => {
+    it("should show up in UI list, show the segment details of a specific id, and update that segment", () => {
+      cy.log(
+        "should show up in UI list and should show the segment details of a specific id",
+      );
+      cy.visit("/admin/datamodel/segments");
+
+      cy.findByRole("table").within(() => {
+        cy.findByText("Filtered by Total is less than 100").should(
+          "be.visible",
+        );
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByRole("link", { name: /Orders < 100/ })
+        .should("be.visible")
+        .click();
+
+      cy.get("form").within(() => {
+        cy.findByText("Edit Your Segment").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByPlaceholderText("Something descriptive but not too long").should(
+        "have.value",
+        SEGMENT_NAME,
+      );
+      cy.findByRole("link", { name: "Preview" }).should("be.visible");
+
+      cy.log("should update that segment");
       cy.visit("/admin");
       cy.findByTestId("admin-navbar-items").contains("Table Metadata").click();
       cy.findByRole("link", { name: /Segments/ }).click();

@@ -1,6 +1,7 @@
-import { useAction } from "@metabase/embedding-sdk-react";
+import { useAction } from "@metabase/embedding-sdk-react/data-app";
 import { useState } from "react";
 
+// @ts-expect-error generated at test time
 import { CreateScore } from "../actions/orders.action";
 
 /**

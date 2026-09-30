@@ -12,6 +12,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -44,7 +45,12 @@ jest.mock(
   }),
 );
 
-function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
+function setup({
+  isGuestEmbed = false,
+  isDataApp = false,
+}: { isGuestEmbed?: boolean; isDataApp?: boolean } = {}) {
+  EMBEDDING_SDK_CONFIG.isDataApp = isDataApp;
+
   setupNotificationChannelsEndpoints({
     email: { configured: true },
   });
@@ -55,7 +61,7 @@ function setup({ isGuestEmbed }: { isGuestEmbed: boolean }) {
       permissions: { can_access_subscription: true },
     }),
     settings: createMockSettingsState({
-      "enable-embedding-modular": true,
+      "enable-embedding-sdk": true,
       "token-features": createMockTokenFeatures({
         embedding_sdk: true,
         advanced_permissions: false,
@@ -81,6 +87,10 @@ async function getFormInputRequests() {
 }
 
 describe("QuestionAlertsButton", () => {
+  afterEach(() => {
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+  });
+
   it("should render the alerts button and call pulse/form_input when not in guest embed mode", async () => {
     setup({ isGuestEmbed: false });
 
@@ -101,5 +111,25 @@ describe("QuestionAlertsButton", () => {
     ).not.toBeInTheDocument();
 
     expect(await getFormInputRequests()).toHaveLength(0);
+  });
+
+  it("should not render the alerts button and should not call pulse/form_input inside a data app", async () => {
+    // An alert is scheduled email delivered out of band, so it is not part of the data-app
+    // surface. `/api/notification` is unscoped for data apps, so an alerts button offered here
+    // would 403 as soon as it was clicked.
+    setup({ isDataApp: true });
+
+    // Give the probe the same window the first test needs to make it, and assert it never
+    // arrives. Asserting straight after render would pass either way, since nothing has
+    // resolved yet at that point.
+    await expect(
+      waitFor(async () => {
+        expect(await getFormInputRequests()).toHaveLength(1);
+      }),
+    ).rejects.toThrow();
+
+    expect(
+      screen.queryByRole("button", { name: "Alerts" }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,96 +1,65 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { StoryFn } from "@storybook/react";
 
 import {
-  VisualizationWrapper,
-  createWaitForResizeToStopDecorator,
+  IsomorphicVisualizationStory,
+  createWaitForChartsDecorator,
 } from "__support__/storybook";
-import { Box } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
+import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { registerVisualization } from "metabase/viz-core";
-import type { RawSeries, VisualizationSettings } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 import {
   createMockCard,
-  createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
 import { BoxPlot } from "./BoxPlot";
 
+export default {
+  title: "viz/BoxPlot",
+  component: BoxPlot,
+};
+
 registerVisualization(BoxPlot);
 
-function ResponsiveBoxPlot({
-  width,
-  height,
-  settings = {},
-}: {
-  width: number;
-  height: number;
-  settings?: VisualizationSettings;
-}) {
-  const rawSeries: RawSeries = [
-    {
-      card: createMockCard({
-        display: "boxplot",
-        visualization_settings: {
-          "graph.dimensions": ["category"],
-          "graph.metrics": ["value"],
-          "graph.show_values": true,
-          "boxplot.show_values_mode": "all",
-          "boxplot.points_mode": "outliers",
-          "graph.y_axis.auto_range": true,
-          ...settings,
-        },
-      }),
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn({
-            name: "category",
-            display_name: "Category",
-            base_type: "type/Text",
-          }),
-          createMockColumn({
-            name: "value",
-            display_name: "Value",
-            base_type: "type/Integer",
-          }),
-        ],
-        rows: ["Alpha", "Beta", "Gamma"].flatMap((category, index) =>
-          [1000, 2000, 2500, 3000, 4000, 15000].map((value) => [
-            category,
-            value * (index + 1),
-          ]),
-        ),
-      }),
-    },
-  ];
-  return (
-    <VisualizationWrapper>
-      <Box w={width} h={height}>
-        <Visualization rawSeries={rawSeries} width={width} height={height} />
-      </Box>
-    </VisualizationWrapper>
-  );
-}
+const Template: StoryFn<{ rawSeries: RawSeries }> = (args) => (
+  <IsomorphicVisualizationStory {...args} />
+);
 
-const meta = {
-  title: "Viz/BoxPlot/Responsive axes",
-  component: ResponsiveBoxPlot,
-  decorators: [createWaitForResizeToStopDecorator()],
-  args: { width: 500, height: 300 },
-} satisfies Meta<typeof ResponsiveBoxPlot>;
-export default meta;
-type Story = StoryObj<typeof meta>;
-
-export const Small: Story = {};
-export const Medium: Story = { args: { width: 700, height: 420 } };
-export const Large: Story = { args: { width: 960, height: 550 } };
-export const ExplicitSettings: Story = {
-  args: {
-    settings: {
-      "graph.label_value_formatting": "full",
-      "graph.y_axis.split_number": 4,
-      "graph.show_goal": true,
-      "graph.goal_value": 60000,
-    },
+const boxesOffScreenSeries: RawSeries = [
+  {
+    card: createMockCard({
+      name: "Boxes off screen",
+      display: "boxplot",
+      visualization_settings: {
+        "graph.dimensions": ["Category"],
+        "graph.metrics": ["Value"],
+        "graph.show_values": true,
+        "boxplot.show_values_mode": "all",
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 40,
+        "graph.y_axis.max": 60,
+      },
+    }),
+    data: createMockDatasetData({
+      cols: [
+        StringColumn({ name: "Category" }),
+        NumberColumn({ name: "Value" }),
+      ],
+      rows: [
+        ["High", 100],
+        ["High", 105],
+        ["High", 110],
+        ["Low", 0],
+        ["Low", 5],
+        ["Low", 10],
+      ],
+    }),
   },
+];
+
+// Value labels use transparent line series that cross the plot between boxes.
+export const AllBoxesOffScreenWithValueLabels = {
+  render: Template,
+  args: { rawSeries: boxesOffScreenSeries },
+  decorators: [createWaitForChartsDecorator({ count: 1 })],
 };

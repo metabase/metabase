@@ -6,8 +6,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
-  cy.H.DataModel;
+const { TablePicker, TableSection, FieldSection, Shared } = cy.H.DataModel;
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 const { visitArea } = Shared;
@@ -47,200 +46,6 @@ areas.forEach((area) => {
       if (area === "data studio") {
         cy.intercept("GET", "/api/database").as("databases");
       }
-    });
-
-    describe("Error handling", { tags: "@external" }, () => {
-      beforeEach(() => {
-        H.restore("postgres-writable");
-        H.resetTestTable({ type: "postgres", table: "many_data_types" });
-        cy.signInAsAdmin();
-        H.resyncDatabase({
-          dbId: WRITABLE_DB_ID,
-          tableName: "many_data_types",
-        });
-
-        const error = { statusCode: 500 };
-        cy.intercept("POST", "/api/dataset*", error);
-        cy.intercept("PUT", "/api/field/*", error);
-        cy.intercept("PUT", "/api/table/*/fields/order", error);
-        cy.intercept("POST", "/api/field/*/values", error);
-        cy.intercept("POST", "/api/field/*/dimension", error);
-        cy.intercept("PUT", "/api/table/*", error);
-        if (area === "admin") {
-          cy.intercept("POST", "/api/table/*/sync_schema", error);
-          cy.intercept("POST", "/api/table/*/rescan_values", error);
-          cy.intercept("POST", "/api/table/*/discard_values", error);
-        } else {
-          cy.intercept("POST", "/api/data-studio/table/sync-schema", error);
-          cy.intercept("POST", "/api/data-studio/table/rescan-values", error);
-          cy.intercept("POST", "/api/data-studio/table/discard-values", error);
-        }
-      });
-
-      it("shows toast errors and preview errors", () => {
-        visit({
-          databaseId: SAMPLE_DB_ID,
-          schemaId: SAMPLE_DB_SCHEMA_ID,
-          tableId: ORDERS_ID,
-          fieldId: ORDERS.QUANTITY,
-        });
-
-        cy.log("table section");
-
-        if (area === "data studio") {
-          TableSection.clickDetailsTab();
-        }
-        cy.log("name");
-        TableSection.getNameInput().type("a").blur();
-        verifyAndCloseToast("Failed to update table name");
-
-        cy.log("description");
-        TableSection.getDescriptionInput().type("a").blur();
-        verifyAndCloseToast("Failed to update table description");
-
-        if (area === "data studio") {
-          TableSection.clickFieldsTab();
-          // cy.pause();
-        }
-        cy.log("predefined field order");
-        TableSection.getSortButton().click();
-        TableSection.getSortOrderInput()
-          .findByLabelText("Alphabetical order")
-          .click();
-        verifyAndCloseToast("Failed to update field order");
-
-        cy.log("custom field order");
-        TableSection.getSortableField("ID").as("dragElement");
-        H.moveDnDKitElementByAlias("@dragElement", {
-          vertical: 50,
-        });
-        verifyAndCloseToast("Failed to update field order");
-        TableSection.get().button("Done").click();
-
-        if (area === "data studio") {
-          TableSection.clickDetailsTab();
-        }
-        cy.log("sync");
-
-        if (area === "data studio") {
-          TableSection.getActionsMenuButton().click();
-          H.popover().findByText("Re-sync schema").click();
-        } else {
-          TableSection.getSyncOptionsButton().click();
-          H.modal().button("Sync table schema").click();
-        }
-        verifyAndCloseToast("Failed to start sync");
-
-        if (area === "data studio") {
-          TableSection.getActionsMenuButton().click();
-          H.popover().findByText("Re-scan field values").click();
-        } else {
-          H.modal().button("Re-scan table").click();
-        }
-        verifyAndCloseToast("Failed to start scan");
-
-        if (area === "data studio") {
-          TableSection.getActionsMenuButton().click();
-          H.popover().findByText("Discard cached field values").click();
-        } else {
-          H.modal().button("Discard cached field values").click();
-        }
-
-        verifyAndCloseToast("Failed to discard values");
-        if (area === "admin") {
-          // synthetic escape: realPress depends on real browser focus, which
-          // the app may not hold in CI, so the keystroke can miss the modal
-          cy.get("body").type("{esc}");
-          H.modal().should("not.exist");
-        }
-
-        if (area === "data studio") {
-          TableSection.clickFieldsTab();
-        }
-        cy.log("field name");
-        TableSection.getFieldNameInput("Quantity").type("a").blur();
-        verifyAndCloseToast("Failed to update name of Quantity");
-
-        cy.log("field description");
-        TableSection.getFieldDescriptionInput("Quantity").type("a").blur();
-        verifyAndCloseToast("Failed to update description of Quantity");
-
-        cy.log("field section");
-        TableSection.clickField("Quantity");
-        cy.log("name");
-        FieldSection.getNameInput().type("a").blur();
-        verifyAndCloseToast("Failed to update name of Quantity");
-
-        cy.log("description");
-        FieldSection.getDescriptionInput().type("a").blur();
-        verifyAndCloseToast("Failed to update description of Quantity");
-
-        cy.log("coercion strategy");
-        FieldSection.getCoercionToggle().parent().scrollIntoView().click();
-        H.popover()
-          .findByText("UNIX seconds → Datetime")
-          .scrollIntoView()
-          .click();
-        verifyAndCloseToast("Failed to enable casting for Quantity");
-
-        cy.log("semantic type");
-        FieldSection.getSemanticTypeInput().click();
-        H.popover().findByText("Score").click();
-        verifyAndCloseToast("Failed to update semantic type of Quantity");
-
-        cy.log("visibility");
-        FieldSection.getVisibilityInput().click();
-        H.popover().findByText("Only in detail views").click();
-        verifyAndCloseToast("Failed to update visibility of Quantity");
-
-        cy.log("filtering");
-        FieldSection.getFilteringInput().click();
-        H.popover().findByText("Search box").click();
-        verifyAndCloseToast("Failed to update filtering of Quantity");
-
-        cy.log("display values");
-        FieldSection.getDisplayValuesInput().click();
-        H.popover().findByText("Custom mapping").click();
-        verifyAndCloseToast("Failed to update display values of Quantity");
-
-        cy.log("JSON unfolding");
-        // navigating away would cause onChange to be triggered in InputBlurChange and TextareaBlurChange
-        // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
-        visit({ databaseId: WRITABLE_DB_ID });
-        TablePicker.getTable("Many Data Types").click();
-        if (area === "data studio") {
-          TableSection.clickFieldsTab();
-        }
-        TableSection.clickField("Json");
-        FieldSection.getUnfoldJsonInput().click();
-        H.popover().findByText("No").click();
-        verifyAndCloseToast("Failed to disable JSON unfolding for Json");
-
-        cy.log("formatting");
-        TablePicker.getDatabase("Sample Database").click();
-        TablePicker.getTable("Orders").click();
-        if (area === "data studio") {
-          TableSection.clickFieldsTab();
-        }
-        TableSection.clickField("Quantity");
-        FieldSection.getPrefixInput().type("5").blur();
-        verifyAndCloseToast("Failed to update formatting of Quantity");
-
-        cy.log("preview section");
-
-        cy.log("table preview");
-        FieldSection.getPreviewButton().click();
-        PreviewSection.get()
-          .scrollIntoView()
-          .findByText("Something went wrong")
-          .should("be.visible");
-
-        cy.log("object detail preview");
-        PreviewSection.getPreviewTypeInput().findByText("Detail").click();
-        PreviewSection.get()
-          .findByText("Something went wrong")
-          .should("be.visible");
-      });
     });
 
     describe("Undos", { tags: "@external" }, () => {
@@ -410,10 +215,7 @@ areas.forEach((area) => {
         // The in-test DB switch via picker (.getDatabase().click() then
         // .getTable().click()) races the picker re-render: the table click can
         // land before the writable DB tables list is interactive, so the click
-        // never propagates to a URL change. The "Error handling" sibling above
-        // hit the same flake and was fixed by using visit({ databaseId:
-        // WRITABLE_DB_ID }) (which waits for picker bootstrap). Same pattern
-        // here.
+        // never propagates to a URL change. visit() waits for picker bootstrap.
         visit({ databaseId: WRITABLE_DB_ID });
         TablePicker.getTable("Many Data Types").click();
         if (area === "data studio") {

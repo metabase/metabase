@@ -155,6 +155,7 @@
             (compare-results export-format (mt/native-query {:query  sql
                                                              :params args}))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *number-of-cans* nil)
 
 (deftest ^:parallel preserve-thread-bindings-test
@@ -328,7 +329,7 @@
           card-defaults     {:dataset_query query, :public_uuid public-uuid, :enable_embedding true}
           user              (or user :rasta)]
       (mt/with-temporary-setting-values [enable-public-sharing true
-                                         enable-embedding-modular true]
+                                         enable-embedding-static true]
         (embed-test/with-new-secret-key!
           ;; allowing `with-temp` here since it's needed to create Dashboards
           #_{:clj-kondo/ignore [:discouraged-var]}

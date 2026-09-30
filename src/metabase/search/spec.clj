@@ -456,8 +456,11 @@
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
   (let [xforms (try
-                 (#'t2.transformed/in-transforms (t2/model instance))
-                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                 (let [model (t2/model instance)]
+                   ;; We know ModelIndexValue to have no transforms.
+                   (when-not (and (keyword? model) (= (name model) "ModelIndexValue"))
+                     (#'t2.transformed/in-transforms model)))
+                 (catch Exception _     ; may happen for other models that have no transforms
                    nil))]
     (reduce-kv
      (fn [m k v]
@@ -510,6 +513,7 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-index-version-hash*
   "Override for tests that need a specific index version."
   nil)

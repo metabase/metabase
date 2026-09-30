@@ -12,6 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *github-output-only?* false)
 
 (def default-modules-which-trigger-drivers
@@ -162,6 +163,7 @@
      explorations
      formatter
      geojson
+     glossary
      indexed-entities
      core.initialization-status
      interestingness

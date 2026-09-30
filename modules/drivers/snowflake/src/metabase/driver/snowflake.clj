@@ -92,7 +92,8 @@
                               :regex/lookaheads-and-lookbehinds       false
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true
-                              :transforms/table                       true}]
+                              :transforms/table                       true
+                              :transforms/testing                     false}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
@@ -119,8 +120,18 @@
   :sunday)
 
 (defmethod driver.sql/default-schema :snowflake
-  [_]
-  "PUBLIC")
+  [driver database]
+  ;; Details naming no schema leave the session without one. Metabase has always read an unqualified reference as
+  ;; PUBLIC in that case, so keep doing so rather than resolving it to nothing.
+  (or (sql-jdbc.execute/do-with-connection-with-options
+       driver database nil
+       (fn [^Connection conn]
+         (not-empty (.getSchema conn))))
+      "PUBLIC"))
+
+(defmethod driver/temp-table-name :snowflake
+  [_driver]
+  (str "MB_TEST_" (u/upper-case-en (str/replace (str (random-uuid)) "-" ""))))
 
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see

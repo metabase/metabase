@@ -14,6 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -74,27 +75,31 @@
     :create (doseq [k [:id :archived :revision_message]]
               (when (contains? args k)
                 (common/throw-teaching-error
-                 (format "`%s` applies to method \"update\" only — remove it from this create call." (name k)))))
+                 (message/msg ["%s applies to method \"update\" only — remove it from this create call."]
+                              (name k)))))
     :update (when (contains? args :table_id)
               (common/throw-teaching-error
-               "`table_id` cannot be changed on update — the server derives it from `definition`'s source table."))))
+               (message/msg [(str "\"table_id\" cannot be changed on update — the "
+                                  "server derives it from \"definition\"'s source table.")])))))
 
 (defn- check-name!
   "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
    `ms/NonBlankString`; the tools' own JSON schema can only say `:min 1`, which \" \" satisfies, so
-   without this the tools would be laxer than the endpoints whose checks they inherit."
+   without this the tools would be laxer than the endpoints whose checks they inherit. `entity` is the
+   server's own entity name."
   [{entity-name :name} entity]
   (when (and (some? entity-name) (str/blank? entity-name))
     (common/throw-teaching-error
-     (format "`name` cannot be blank — pass a short descriptive name for the %s." entity))))
+     (message/msg ["\"name\" cannot be blank — pass a short descriptive name for the %s."] entity))))
 
 (defn- check-revision-message!
+  "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
   [{:keys [revision_message]} entity]
   (when (str/blank? revision_message)
     (common/throw-teaching-error
-     (format (str "`revision_message` is required when method is \"update\" — pass a short sentence describing "
-                  "the change; it is recorded in the %s's revision history.")
-             entity))))
+     (message/msg [(str "\"revision_message\" is required when method is \"update\" — pass a short "
+                        "sentence describing the change; it is recorded in the %s's revision history.")]
+                  entity))))
 
 ;;; --------------------------------------------- Definition handling ----------------------------------------------
 
@@ -117,13 +122,13 @@
   "The sentence every definition-shape teaching error ends with, naming both accepted shapes."
   [kind]
   (case kind
-    :segment (str "`definition` accepts either the bare clause form — the array of filter clauses get_content's "
-                  "\"definition\" include returns for a segment, reassembled onto `table_id` — or a full "
-                  "single-stage query holding only filters.")
-    :measure (str "`definition` accepts either the bare clause form — the aggregation clause get_content's "
-                  "\"definition\" include returns for a measure, as the one-element array or the bare clause, "
-                  "reassembled onto `table_id` — or a full single-stage query holding exactly one "
-                  "aggregation.")))
+    :segment (message/raw (str "`definition` accepts either the bare clause form — the array of filter clauses "
+                               "get_content's \"definition\" include returns for a segment, reassembled onto "
+                               "`table_id` — or a full single-stage query holding only filters."))
+    :measure (message/raw (str "`definition` accepts either the bare clause form — the aggregation "
+                               "clause get_content's \"definition\" include returns for a measure, as "
+                               "the one-element array or the bare clause, reassembled onto `table_id` "
+                               "— or a full single-stage query holding exactly one aggregation."))))
 
 (defn- check-normalizable!
   "Probe `definition` against strict MBQL normalization before handing it to the domain layer.
@@ -135,8 +140,10 @@
     (lib-be/normalize-query nil definition {:strict? true})
     (catch Exception e
       (common/throw-teaching-error
-       (format "`definition` is not a valid MBQL query: %s %s"
-               (common/ellipsize (ex-message e) 300) (accepted-shapes kind))))))
+       (if-let [text (common/exception-message e)]
+         (message/msg ["\"definition\" is not a valid MBQL query: %s %s"]
+                      (common/ellipsize text 300) (accepted-shapes kind))
+         (message/msg ["\"definition\" is not a valid MBQL query. %s"] (accepted-shapes kind)))))))
 
 ;; measure_write is deliberately MBQL-5-only, stricter than POST /api/measure — that endpoint's
 ;; schema still decodes legacy MBQL, but that is a back-compatibility affordance, not an agent path
@@ -146,9 +153,9 @@
   [definition]
   (when-not (= :mbql-version/mbql5 (lib/normalized-mbql-version definition))
     (common/throw-teaching-error
-     (str "A full-query `definition` must be a map with "
-          "\"lib/type\": \"mbql/query\", \"database\", and one entry in \"stages\". "
-          (accepted-shapes :measure)))))
+     (message/msg [(str "A full-query \"definition\" must be a map with \"lib/type\": "
+                        "\"mbql/query\", \"database\", and one entry in \"stages\". %s")]
+                  (accepted-shapes :measure)))))
 
 (defn- clause-form->definition
   "Reassemble the bare clause form onto `table` and resolve it. The clause form names no source of
@@ -196,9 +203,9 @@
   (when-let [defn-table-id (lib/primary-source-table-id (lib-be/normalize-query definition))]
     (when (not= defn-table-id (:id table))
       (common/throw-teaching-error
-       (format (str "`table_id` (%d) and `definition`'s source table (%d) must be the same table. "
-                    "Pass table_id %d, or point `definition` at table %d.")
-               (:id table) defn-table-id defn-table-id (:id table))))))
+       (message/msg [(str "\"table_id\" (%d) and \"definition\"'s source table (%d) must be the "
+                          "same table. Pass table_id %d, or point \"definition\" at table %d.")]
+                    (:id table) defn-table-id defn-table-id (:id table))))))
 
 ;;; ---------------------------------------------- Error translation -----------------------------------------------
 
@@ -222,12 +229,13 @@
     :else           []))
 
 (defn- schema-error-summary
+  "A message listing up to three of `humanized`'s messages, preferring the schema authors' own."
   [humanized]
   (->> (or (seq (distinct (custom-messages humanized)))
            (distinct (humanized-messages humanized)))
        (take 3)
        (map #(common/ellipsize % 200))
-       (str/join "; ")))
+       common/list-message))
 
 (defn- run-domain-write
   "Call `thunk` (a domain create/update fn), translating the model layer's raw validation
@@ -247,13 +255,16 @@
           ;; mu/validate-throw: pre-humanized malli explain output under :error
           (and (:error data) (= (ex-message e) "Value does not match schema"))
           (common/throw-teaching-error
-           (format "Invalid `definition`: %s." (schema-error-summary (:error data))))
+           (message/msg ["Invalid \"definition\": %s."] (schema-error-summary (:error data))))
 
           ;; lib cycle detection and referenced-id existence checks
           (or (contains? data :cycle-path)
               (contains? data :segment-id)
               (contains? data :measure-id))
-          (common/throw-teaching-error (ex-message e))
+          (common/throw-teaching-error
+           (if-let [text (common/exception-message e)]
+             (message/msg ["%s"] text)
+             (message/msg ["\"definition\" references a segment or measure that is missing or forms a cycle."])))
 
           :else
           (throw e))))))
@@ -335,7 +346,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body "segment")
+            _          (check-name! body (message/raw "segment"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
@@ -349,8 +360,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body "segment")
-            _           (check-revision-message! body "segment")
+            _           (check-name! body (message/raw "segment"))
+            _           (check-revision-message! body (message/raw "segment"))
             segment     (resolve-existing :model/Segment id)
             body        (m/update-existing body :definition
                                            (fn [definition]
@@ -403,7 +414,7 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body "measure")
+            _          (check-name! body (message/raw "measure"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
@@ -417,8 +428,8 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body "measure")
-            _           (check-revision-message! body "measure")
+            _           (check-name! body (message/raw "measure"))
+            _           (check-revision-message! body (message/raw "measure"))
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition
                                            (fn [definition]

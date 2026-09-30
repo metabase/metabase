@@ -3,13 +3,13 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { METABASE_DARK_THEME, METABASE_LIGHT_THEME } from "metabase/ui/colors";
+import { getDarkTheme, getLightTheme } from "metabase/ui/colors";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 
 import { SdkThemeProvider } from "./SdkThemeProvider";
 
-const LIGHT_AXIS_COLOR = METABASE_LIGHT_THEME.colors["chart-axis"];
-const DARK_AXIS_COLOR = METABASE_DARK_THEME.colors["chart-axis"];
+const LIGHT_AXIS_COLOR = getLightTheme().colors["chart-axis"];
+const DARK_AXIS_COLOR = getDarkTheme().colors["chart-axis"];
 
 function CartesianThemeProbe() {
   const theme = useMantineTheme();

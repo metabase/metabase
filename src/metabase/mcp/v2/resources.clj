@@ -4,9 +4,11 @@
   Contains the `ui://` iframe shells behind the MCP Apps tools (`visualize_query`, `render_drill_through`)
   and the fields-catalog data resource. Documentation/skill resources land with the skills work.
 
-  Every resource carries a required `:scope` and is matched with [[metabase.mcp.scope/matches?]], the same
-  all-or-nothing gate v2 tools use. There are deliberately no public resources, so there is no looser gate to
-  accidentally ship one through.
+  Every resource carries a `:scope`, matched with [[metabase.mcp.scope/matches?]], and is listed whatever the token's
+  scopes. A data resource is read only by a token holding its scope. A UI shell is read by any token, so it must carry
+  no data: its `:scope` is the scope of the tool that renders it, and only a token holding it gets a UI credential
+  in the render. The data behind the shell stays gated by that tool, `refresh_ui_credential`, and
+  [[metabase.mcp.ui-surface/request-surface]].
 
    Rendering and the `_meta.ui` sandbox block come from [[metabase.mcp.ui-resource]]."
   (:require
@@ -29,20 +31,22 @@
   "Register a v2 MCP data resource, returning its URI. Overwrites any existing entry with the
    same `:uri`. `:render-fn` produces the resource text at read time, so the content is always
    current rather than a snapshot from registration."
-  [resource :- [:map
+  ;; Closed, and `:ui?` stripped even where schemas are not checked: a data resource carrying it would be served to
+  ;; every token without its scope.
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]
                 [:mimeType :string]
                 [:scope :string]
                 [:render-fn fn?]]]
-  (swap! resources* assoc (:uri resource) resource)
+  (swap! resources* assoc (:uri resource) (dissoc resource :ui?))
   (:uri resource))
 
 (mu/defn register-ui-resource!
   "Register a v2 MCP Apps UI resource, returning its URI. Overwrites any existing entry with the
    same `:uri`."
-  [resource :- [:map
+  [resource :- [:map {:closed true}
                 [:uri :string]
                 [:name :string]
                 [:description :string]
@@ -53,41 +57,43 @@
   (:uri resource))
 
 (defn resource-scope
-  "The scope guarding `uri`, or nil when no such resource is registered. UI tools read this so a
+  "The `:scope` of the resource at `uri`, or nil when none is registered. UI tools read this so a
    tool and the resource it renders can never drift onto different scopes."
   [uri]
   (get-in @resources* [uri :scope]))
 
 (defn resource-scopes
-  "The distinct scope strings across all registered v2 resources."
+  "The distinct `:scope` strings across all registered v2 resources."
   []
   (into (sorted-set) (keep :scope) (vals @resources*)))
 
 (defn list-resources
-  "The MCP `resources/list` payload, filtered by `token-scopes`."
-  [token-scopes]
+  "The MCP `resources/list` payload: every registered resource, independent of the caller's scopes."
+  []
   {:resources (into []
-                    (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
-                          (map (fn [resource]
-                                 (cond-> (select-keys resource [:uri :name :description :mimeType])
-                                   (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource))))))
+                    (map (fn [resource]
+                           (cond-> (select-keys resource [:uri :name :description :mimeType])
+                             (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))))
                     (vals @resources*))})
 
 (defn read-resource
-  "Read a registered resource by URI, gated by `token-scopes`. Returns one of
-   `{:status :ok :contents [...]}`, `{:status :scope-denied}`, or `{:status :not-found}`. The
-   single registry lookup keeps the gate atomic with the render, so callers cannot bypass the
-   scope check.
+  "Read a registered resource by URI. Returns `{:status :ok :contents [...]}`, `{:status :not-found}`, or, for a data
+   resource whose `:scope` `token-scopes` does not match, `{:status :scope-denied :required-scope scope}` without
+   rendering it. A UI shell is always `:ok`.
 
-   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]]."
+   `opts` is threaded to the `:render-fn` — see [[metabase.mcp.ui-resource/embed-render-fn]] — except that a UI
+   shell's `:ui-credential` is dropped unless `token-scopes` matches its `:scope`, so a read can never hand a
+   credential to a token that lacks that scope."
   [uri token-scopes opts]
-  (if-let [{:keys [render-fn scope] :as resource} (get @resources* uri)]
-    (if (mcp.scope/matches? token-scopes scope)
-      {:status   :ok
-       :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
-                              (assoc :text (render-fn opts)))
-                    (:ui? resource) (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
-      {:status :scope-denied})
+  (if-let [{:keys [render-fn scope ui?] :as resource} (get @resources* uri)]
+    (let [permitted? (mcp.scope/matches? token-scopes scope)]
+      (if (or permitted? ui?)
+        {:status   :ok
+         :contents [(cond-> (-> (select-keys resource [:uri :mimeType])
+                                (assoc :text (render-fn (cond-> opts
+                                                          (not permitted?) (dissoc :ui-credential)))))
+                      ui? (assoc :_meta (mcp.ui-resource/ui-meta resource)))]}
+        {:status :scope-denied :required-scope scope}))
     {:status :not-found}))
 
 ;;; ------------------------------------------------ Registrations -------------------------------------------------

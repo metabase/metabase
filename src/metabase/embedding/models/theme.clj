@@ -1,6 +1,7 @@
 (ns metabase.embedding.models.theme
   "Model for embedding themes for use in the embedding theme editor."
   (:require
+   [metabase.embedding.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]

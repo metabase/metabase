@@ -120,6 +120,30 @@
                            :message "Failed to build action schemas for model \"Broken\" (card 7): boom"}]}
              (build/fetch-items {:include-models? true} source))))))
 
+(deftest fetch-items-includes-models-only-when-requested-test
+  (let [model-calls (atom [])
+        source      (reify source/SchemaSource
+                      (database-ids [_ _] #{26})
+                      (collection-ids [_ _] nil)
+                      (library-scope [_ _] nil)
+                      (questions [_ _ _] [])
+                      (models [_ database-ids]
+                        (swap! model-calls conj database-ids)
+                        {:models [] :errors []})
+                      (metrics [_ _ _] [])
+                      (tables [_ _ _] [])
+                      (library-tables [_ _] []))]
+    (testing "database scope does not include models by default"
+      (is (= {:models [], :tables [], :metrics [], :errors []}
+             (build/fetch-items {:database {:id 26}} source)))
+      (is (empty? @model-calls)))
+    (testing "include-models scopes models to the database"
+      (is (= {:models [], :tables [], :metrics [], :errors []}
+             (build/fetch-items {:database        {:id 26}
+                                 :include-models? true}
+                                source)))
+      (is (= [#{26}] @model-calls)))))
+
 (deftest create-schema-includes-errors-when-present-test
   (testing "errors are omitted from a healthy schema and included when present"
     (let [base-items {:models [], :tables [], :metrics []}]
@@ -161,7 +185,9 @@
                          :model/Action action {:name "Update order", :model_id (:id model), :type :implicit}
                          :model/ImplicitAction _ {:action_id (:id action), :kind "row/update"}]
             (mt/with-current-user (mt/user->id :crowberto)
-              (let [schema (typed-schemas/build-semantic-schema {:database {:id (mt/id)}} test-info)
+              (let [schema (typed-schemas/build-semantic-schema {:database        {:id (mt/id)}
+                                                                 :include-models? true}
+                                                                test-info)
                     body   (typed-schemas/render-typescript schema)]
                 (testing "every entity kind lands in the schema with its real relationships"
                   (is (=? {:generatedAt "2026-01-01T00:00:00Z"

@@ -3,7 +3,6 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -38,8 +37,8 @@ import type {
 } from "../../types";
 import { assertNumericId, parseDataRouteParams } from "../../types";
 import {
+  DATABASES_BASE_PATH,
   getDatabaseFocusPermissionsUrl,
-  getDatabasesBasePath,
 } from "../../utils/urls";
 
 export function DatabasesPermissionsPage() {
@@ -74,7 +73,7 @@ export function DatabasesPermissionsPage() {
         (item as DataTreeNodeItem).entityId,
       ),
     );
-  const navigateToDatabaseList = () => navigate(getDatabasesBasePath());
+  const navigateToDatabaseList = () => navigate(DATABASES_BASE_PATH);
 
   const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
@@ -88,7 +87,7 @@ export function DatabasesPermissionsPage() {
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
-      navigate(`${getPermissionsBasePath()}/data/${entityType}`);
+      navigate(`/admin/permissions/data/${entityType}`);
     },
     [navigate],
   );

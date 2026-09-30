@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -8,7 +9,6 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
@@ -45,7 +45,7 @@ const state = createMockState({
     databases: [createSampleDatabase()],
   }),
 });
-const metadata = getMetadata(state);
+const metadata = createMockMetadataFromState(state);
 
 const setup = (props: Partial<QueryVisualizationProps> = {}) => {
   const question = new Question(

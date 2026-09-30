@@ -17,6 +17,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,13 +47,21 @@
    ::lib.schema.metadata/segment
    ::lib.schema.metadata/metric])
 
+(def ^:private ExpressionOptions
+  "Like `:metabase.lib.schema.common/options`, but `:lib/uuid` need not be set yet;
+  see [[metabase.lib.options/ensure-uuid]]."
+  [:merge
+   ::lib.schema.common/options
+   [:map {:closed true}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+
 (def ^:private ExpressionParts
   [:schema
    {:registry {::expression-parts
-               [:map
+               [:map {:closed true}
                 [:lib/type [:= :mbql/expression-parts]]
                 [:operator [:or :keyword :string]]
-                [:options :map]
+                [:options ExpressionOptions]
                 [:args [:sequential [:or ExpressionArg [:ref ::expression-parts]]]]]}}
    ::expression-parts])
 
@@ -218,7 +227,8 @@
 
 (mu/defn expression-parts :- [:or ExpressionArg ExpressionParts]
   "Return the parts of the filter clause `arg` in query `query` at stage `stage-number`."
-  ([query value]
+  ([query :- ::lib.schema/query
+    value :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts query -1 value))
 
   ([query :- ::lib.schema/query
@@ -288,7 +298,7 @@
 
   ([operator :- [:or :keyword :string]
     args     :- [:sequential [:or ExpressionArg ExpressionParts ::lib.schema.expression/expression]]
-    options  :- [:maybe :map]]
+    options  :- [:maybe ExpressionOptions]]
    (expression-clause-method {:lib/type :mbql/expression-parts
                               :operator operator
                               :options  options
@@ -656,7 +666,9 @@
 (mu/defn exclude-date-filter-parts :- [:maybe ExcludeDateFilterParts]
   "Destructures an exclude date filter clause created by [[exclude-date-filter-clause]]. Returns `nil` if the clause
   does not match the expected shape."
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col  #(column-metadata-from-ref query stage-number %)
         date-col? #(ref-clause-with-type? % [:type/Date :type/DateTime])
         op->unit  {:get-hour :hour-of-day
@@ -788,7 +800,9 @@
    Can be expanded as needed but only currently defined for a narrow set of date filters.
 
    Falls back to the full filter display-name"
-  [query stage-number filter-clause]
+  [query         :- ::lib.schema/query
+   stage-number  :- :int
+   filter-clause :- ::lib.schema.expression/expression]
   (let [->temporal-name #(u.time/format-unit % nil)
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit= (fn [maybe-clause unit-or-units]
@@ -841,7 +855,7 @@
       (i18n/tru "Is Not Empty")
 
       [:time-interval opts (_ :guard temporal?) n unit]
-      (lib.temporal-bucket/describe-temporal-interval n unit opts)
+      (lib.temporal-bucket/describe-temporal-interval n unit (select-keys opts [:include-current]))
 
       [:relative-time-interval _ (_ :guard temporal?) n unit offset offset-unit]
       (lib.temporal-bucket/describe-temporal-interval-with-offset n unit offset offset-unit)

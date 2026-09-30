@@ -537,9 +537,7 @@ const AgentErroredTurnAlert = ({
       cta={
         isOutOfSync && onRefreshConversation ? (
           <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
+            size="sm"
             onClick={onRefreshConversation}
             data-testid="metabot-chat-message-refresh"
           >
@@ -616,9 +614,7 @@ const AbortedTurnAlert = ({
       cta={
         !debug && onRetry ? (
           <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
+            size="sm"
             onClick={onRetry}
             data-testid="metabot-chat-message-retry"
           >
@@ -677,9 +673,7 @@ const IncompleteTurnAlert = ({
       cta={
         resumePrompt && onContinue ? (
           <Button
-            variant="default"
-            size="compact-xs"
-            fz="xs"
+            size="sm"
             onClick={() => onContinue(resumePrompt)}
             data-testid="metabot-chat-message-continue"
           >

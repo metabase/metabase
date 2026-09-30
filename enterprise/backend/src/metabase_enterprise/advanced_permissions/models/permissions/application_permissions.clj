@@ -46,7 +46,7 @@
 
 (mu/defn permissions-set->application-perms :- GroupPermissionsGraph
   "Get a map of all application permissions for a group."
-  [permission-set]
+  [permission-set :- [:maybe [:set :string]]]
   {:setting      (permission-for-type permission-set :setting)
    :monitoring   (permission-for-type permission-set :monitoring)
    :subscription (permission-for-type permission-set :subscription)})

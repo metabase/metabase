@@ -51,7 +51,6 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
         disabled={isImporting || dirty}
         loading={isImporting}
         onClick={handlePullChanges}
-        variant="outline"
       >
         {t`Pull changes now`}
       </Button>

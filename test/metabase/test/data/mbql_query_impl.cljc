@@ -22,9 +22,13 @@
        (apply (requiring-resolve 'metabase.test.data/id) args))))
 
 ;; TODO: druid-id-fn is just temporary until I figure out proper solution for rebinding that symb.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *id-fn-symb*              `druid-id-fn #_'metabase.test.data/id)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-name-fn-symb*      `field-name)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-base-type-fn-symb* `field-base-type)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *mbql-version*      4)
 
 (defn- token->sigil [token]
@@ -63,9 +67,19 @@
   {:arglists '([strategy token-type source-table-symb & tokens])}
   (fn [strategy token-type & _] [strategy token-type]))
 
+(def ^:private FieldRefOptionValue
+  "A `field-ref` option's value while a `$ids`-style form is being built: either the value itself, or a
+  not-yet-evaluated s-expression (e.g. an `[[metabase.test.data/id]]` call) that produces it."
+  [:or :int :string :keyword :boolean seq? symbol? nil?])
+
 (mu/defn- field-ref
-  [id-or-name                   ; can be integer, string, or a s-expression evaluating to one of these.
-   options    :- [:maybe :map]] ; options should already be a map.
+  [id-or-name :- [:or :int :string seq? symbol?]
+   ;; options should already be a map.
+   options    :- [:maybe [:map {:closed true}
+                          [:base-type     {:optional true} FieldRefOptionValue]
+                          [:source-field  {:optional true} FieldRefOptionValue]
+                          [:join-alias    {:optional true} FieldRefOptionValue]
+                          [:temporal-unit {:optional true} FieldRefOptionValue]]]]
   (case (long *mbql-version*)
     4 [:field id-or-name (not-empty options)]
     5 [:field (or options {}) id-or-name]))
@@ -82,7 +96,10 @@
     4 x
     5 y))
 
-(mu/defn- field-ref-update-options [a-ref f & args]
+(mu/defn- field-ref-update-options
+  [a-ref :- vector?
+   f     :- ifn?
+   & args :- [:* [:or :keyword :metabase.lib.schema.common/non-blank-string]]]
   (field-ref (field-ref->id-or-name a-ref)
              (apply f (field-ref->opts a-ref) args)))
 

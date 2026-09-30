@@ -216,7 +216,7 @@
     (let [mp    (lib.tu/mock-metadata-provider meta/metadata-provider {})
           query (lib/query mp (meta/table-metadata :venues))]
       (is (= :type/*
-             (lib/type-of query [:measure {} 999]))))))
+             (lib/type-of query [:measure {:lib/uuid (str (random-uuid))} 999]))))))
 
 (def ^:private measure-id 100)
 

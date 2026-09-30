@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
@@ -177,32 +178,35 @@
   (let [types  (set type)
         target (cond
                  (contains? types "snippet")
-                 "browse_collection(namespace: \"snippets\")"
+                 (message/raw "browse_collection(namespace: \"snippets\")")
 
                  (contains? types "transform")
-                 "browse_collection(namespace: \"transforms\")"
+                 (message/raw "browse_collection(namespace: \"transforms\")")
 
                  (collection-scoping? args)
-                 (format "browse_collection(id: %s, mode: \"items\"%s%s)"
-                         (pr-str collection_id)
-                         (if (seq types) (str ", type: " (pr-str (vec (sort types)))) "")
-                         (if created_by ", created_by: \"me\"" ""))
+                 (message/msg ["browse_collection(%s)"]
+                              (common/list-message
+                               (cond-> [(message/msg ["id: %s"] collection_id)
+                                        (message/raw "mode: \"items\"")]
+                                 (seq types) (conj (message/msg ["type: [%s]"] (common/list-message (sort types))))
+                                 created_by  (conj (message/raw "created_by: \"me\"")))))
 
                  created_by
-                 (str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") — "
-                      "browse lists your content within a collection, not instance-wide")
+                 (message/raw (str "browse_collection(id: <collection>, mode: \"items\", created_by: \"me\") "
+                                   "— browse lists your content within a collection, not instance-wide"))
 
                  (true? archived)
-                 "browse_collection(id: \"trash\", mode: \"items\")"
+                 (message/raw "browse_collection(id: \"trash\", mode: \"items\")")
 
                  (and (seq types) (every? data-source-types types))
-                 "browse_data (list_databases, then list_tables)"
+                 (message/raw "browse_data (list_databases, then list_tables)")
 
                  :else
-                 "browse_collection(id: <collection>, mode: \"items\") for a specific collection")]
+                 (message/raw "browse_collection(id: <collection>, mode: \"items\") for a specific collection"))]
     (common/throw-teaching-error
-     (str "This is a listing, not a search — it has filters but no term_queries or semantic_queries. "
-          "To browse without a query, use " target "."))))
+     (message/msg [(str "This is a listing, not a search — it has filters but no "
+                        "term_queries or semantic_queries. To browse without a query, use %s.")]
+                  target))))
 
 (def ^:private max-queries-per-list
   "Cap on term_queries/semantic_queries entries. Each entry fans out into its own subsearch (a full
@@ -220,27 +224,27 @@
   [{:keys [recent term_queries semantic_queries] :as args} queries? filters?]
   (when (some str/blank? (concat term_queries semantic_queries))
     (common/throw-teaching-error
-     (str "A blank query matches everything — every term_queries and semantic_queries entry must "
-          "be non-empty. Drop the blank entry.")))
+     (message/msg [(str "A blank query matches everything — every term_queries and "
+                        "semantic_queries entry must be non-empty. Drop the blank entry.")])))
   (when (or (> (count term_queries) max-queries-per-list)
             (> (count semantic_queries) max-queries-per-list))
     (common/throw-teaching-error
-     (format (str "Too many queries — pass at most %d entries each in term_queries and "
-                  "semantic_queries. Combine related queries or drop some.")
-             max-queries-per-list)))
+     (message/msg [(str "Too many queries — pass at most %d entries each in term_queries "
+                        "and semantic_queries. Combine related queries or drop some.")]
+                  max-queries-per-list)))
   (when (some #(> (count %) max-query-length) (concat term_queries semantic_queries))
     (common/throw-teaching-error
-     (format "A query is too long — each term_queries/semantic_queries entry must be at most %d characters."
-             max-query-length)))
+     (message/msg ["A query is too long — each term_queries/semantic_queries entry must be at most %d characters."]
+                  max-query-length)))
   (when (and (true? recent) queries?)
     (common/throw-teaching-error
-     (str "recent: true returns your recently viewed items and cannot be combined with "
-          "term_queries or semantic_queries — drop the queries or drop recent.")))
+     (message/msg [(str "recent: true returns your recently viewed items and cannot be combined "
+                        "with term_queries or semantic_queries — drop the queries or drop recent.")])))
   (when-not (or queries? filters? (true? recent))
     (common/throw-teaching-error
-     (str "Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed "
-          "by type, collection_id, created_by, archived), or recent: true for your recently viewed "
-          "items. To list without a query, browse with browse_collection or browse_data.")))
+     (message/msg [(str "Nothing to search for — pass term_queries and/or semantic_queries (optionally narrowed "
+                        "by type, collection_id, created_by, archived), or recent: true for your recently "
+                        "viewed items. To list without a query, browse with browse_collection or browse_data.")])))
   (when (and filters? (not queries?) (not (true? recent)))
     (browse-redirect! args))
   args)
@@ -269,53 +273,56 @@
         ;; incompatibility check below, so it must not be widened into this one.
         type-omitted?   (and (empty? types) (not (true? recent)))
         effective-types (if type-omitted? engine-searchable-types types)
-        ;; [{:excluded #{...} :label "..." :because "..."}], one entry per narrowing filter. The
+        ;; [{:excluded #{...} :label "..." :because (raw "...")}], one entry per narrowing filter. The
         ;; message is built after the fold, from the final narrowed set — a message built here would
         ;; name this filter's own subtraction and so advertise types a sibling filter also removed.
         narrowed        (atom [])]
     (when (and (contains? types "snippet") (next types))
       (common/throw-teaching-error
-       (format (str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the "
-                    "search index and are paged separately. List them in their own call, and search %s in another.")
-               (str/join ", " (sort (disj types "snippet"))))))
+       (message/msg [(str "type: [\"snippet\"] cannot be combined with other types — snippets aren't in the search "
+                          "index and are paged separately. List them in their own call, and search %s in another.")]
+                    (common/list-message (sort (disj types "snippet"))))))
     (when (and (contains? types "snippet") (seq semantic_queries))
       (common/throw-teaching-error
-       (str "semantic_queries cannot search snippets — snippets aren't in the search index and are "
-            "matched by substring against their name, not semantic similarity. Use term_queries instead, "
-            "or drop semantic_queries.")))
+       (message/msg [(str "semantic_queries cannot search snippets — snippets aren't in the search "
+                          "index and are matched by substring against their name, not semantic "
+                          "similarity. Use term_queries instead, or drop semantic_queries.")])))
     (when created_by
       (when-let [bad (seq (sort (remove created-by-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "created_by"
-                  :because  "don't index a creator"})
+                  :because  (message/raw "don't index a creator")})
           (common/throw-teaching-error
-           (format (str "created_by only applies to types that index a creator: %s. "
-                        "Remove %s from type or drop created_by.")
-                   (str/join ", " (sort created-by-types))
-                   (str/join ", " bad))))))
+           (message/msg [(str "created_by only applies to types that index a "
+                              "creator: %s. Remove %s from type or drop created_by.")]
+                        (common/list-message (sort created-by-types))
+                        (common/list-message bad))))))
     (when (collection-scoping? args)
       (when-let [bad (seq (sort (filter collectionless-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "collection_id"
-                  :because  "don't live in collections"})
+                  :because  (message/raw "don't live in collections")})
           (common/throw-teaching-error
-           (format (str "collection_id cannot filter %s — these types don't live in collections. "
-                        "Remove them from type or drop collection_id.")
-                   (str/join ", " bad)))))
+           (message/msg [(str "collection_id cannot filter %s — these types don't live in "
+                              "collections. Remove them from type or drop collection_id.")]
+                        (common/list-message bad)))))
       (when (contains? types "snippet")
         (common/throw-teaching-error
-         "collection_id cannot filter snippets — list them with type: [\"snippet\"] and no collection_id."))
+         (message/msg [(str "collection_id cannot filter snippets — list them "
+                            "with type: [\"snippet\"] and no collection_id.")])))
       (when (contains? types "transform")
         (common/throw-teaching-error
-         "collection_id cannot filter transforms — the search index doesn't record their collection. Remove transform from type or drop collection_id."))
+         (message/msg [(str "collection_id cannot filter transforms — the search index doesn't record "
+                            "their collection. Remove transform from type or drop collection_id.")])))
       (when (and (contains? types "table")
                  (not (premium-features/has-feature? :library)))
         (common/throw-teaching-error
-         "Filtering tables by collection_id requires the Library feature, which this instance doesn't have — remove table from type or drop collection_id."))
+         (message/msg [(str "Filtering tables by collection_id requires the Library feature, which "
+                            "this instance doesn't have — remove table from type or drop collection_id.")])))
       ;; Two more types a collection-scoped search never covers, each dropped by a different part of
       ;; the engine rather than by the spec's collection attr: transform (no collection recorded in
       ;; the index, so `search-context->applicable-models` drops the model) and, without the Library
@@ -327,40 +334,42 @@
           (swap! narrowed conj
                  {:excluded #{"transform"}
                   :label    "collection_id"
-                  :because  "isn't recorded with a collection in the search index"}))
+                  :because  (message/raw "isn't recorded with a collection in the search index")}))
         (when (and (contains? effective-types "table")
                    (not (premium-features/has-feature? :library)))
           (swap! narrowed conj
                  {:excluded #{"table"}
                   :label    "collection_id"
-                  :because  "isn't filtered by collection without the Library feature"}))))
+                  :because  (message/raw "isn't filtered by collection without the Library feature")}))))
     (when (true? archived)
       (when-let [bad (seq (sort (filter non-archivable-types effective-types)))]
         (if type-omitted?
           (swap! narrowed conj
                  {:excluded (set bad)
                   :label    "archived: true"
-                  :because  "have no archived state"})
+                  :because  (message/raw "have no archived state")})
           (common/throw-teaching-error
-           (format (str "archived: true cannot filter %s — these types have no archived state. "
-                        "Remove them from type or drop archived.")
-                   (str/join ", " bad))))))
+           (message/msg [(str "archived: true cannot filter %s — these types have no "
+                              "archived state. Remove them from type or drop archived.")]
+                        (common/list-message bad))))))
     (when (true? (:recent args))
       (when-let [bad (seq (sort (remove (set (keys type->rv-model)) types)))]
         (common/throw-teaching-error
-         (format "Recents only track %s — remove %s from type or drop recent: true."
-                 (str/join ", " (sort (keys type->rv-model)))
-                 (str/join ", " bad))))
+         (message/msg ["Recents only track %s — remove %s from type or drop recent: true."]
+                      (common/list-message (sort (keys type->rv-model)))
+                      (common/list-message bad))))
       (when (or created_by (collection-scoping? args) (true? archived))
         (common/throw-teaching-error
-         "recent: true supports only the type filter — drop collection_id, created_by, and archived.")))
+         (message/msg [(str "recent: true supports only the type filter — drop collection_id, created_by, "
+                            "and archived.")]))))
     (if (seq @narrowed)
       (let [final-types (vec (sort (reduce set/difference effective-types (map :excluded @narrowed))))
-            type-list   (str/join ", " final-types)]
+            type-list   (common/list-message final-types)]
         {:types       final-types
          :disclosures (mapv (fn [{:keys [excluded label because]}]
-                              (format "%s narrowed the search to %s — %s %s."
-                                      label type-list (str/join ", " (sort excluded)) because))
+                              (message/msg ["%s narrowed the search to %s — %s %s."]
+                                           label type-list
+                                           (common/list-message (sort excluded)) because))
                             @narrowed)})
       {:types nil :disclosures []})))
 
@@ -405,8 +414,8 @@
    narrowing with `type` rather than an offset, unlike the ordinary truncation line."
   [{:keys [returned total offset limit]}]
   (when (and (pos? total) (pos? returned) (>= (+ offset limit) total))
-    (format "Returned %d of at least %d — this is a capped view; narrow with `type` to reach specific items."
-            returned total)))
+    (message/msg ["Returned %d of at least %d — this is a capped view; narrow with \"type\" to reach specific items."]
+                 returned total)))
 
 ;;; ---------------------------------------------- Snippet union ---------------------------------------------------
 
@@ -500,11 +509,11 @@
       (mapv #(projections/project :search-result fmt %) rows))))
 
 (defn- append-lines
-  "Append extra lines (a disclosure, a floor line) to the text block of an already-built MCP
+  "Append extra lines, messages such as a disclosure or a floor line, to the text block of an already-built MCP
    response, after whatever steering line `common/list-content` appended."
   [content lines]
   (if (seq lines)
-    (update-in content [:content 0 :text] str "\n" (str/join "\n" lines))
+    (update-in content [:content 0 :text] str "\n" (str/join "\n" (map message/render lines)))
     content))
 
 (registry/deftool search-tool
@@ -535,7 +544,7 @@
       (if (true? recent)
         (let [fmt (if (:fields args)
                     (common/throw-teaching-error
-                     "`fields` is not supported with recent: true — use response_format instead.")
+                     (message/msg ["\"fields\" is not supported with recent: true — use response_format instead."]))
                     (common/response-format args))
               {:keys [rows total]} (recents-page args fmt limit offset)
               ;; RecentViews retains at most 20 rows per user per model per context and drops
