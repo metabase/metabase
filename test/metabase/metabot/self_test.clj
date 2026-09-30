@@ -633,6 +633,21 @@
                                                 "Available tools: convert-currency, get-time, mock-llm, no-arg.")}})
               result)))))
 
+(deftest ^:parallel tool-executor-xf-retired-tool-test
+  (testing "a call to a retired tool name points at the tools that replaced it"
+    (let [replacement (fn [] {:fn (fn [_args] {:output "ok"}) :doc "replacement" :schema :any :replaces #{"search"}})
+          tools       (assoc test-util/TOOLS
+                             "fulltext_search" (replacement)
+                             "semantic_search" (replacement))
+          chunks      (test-util/parts->aisdk-chunks
+                       [{:type :start :id "msg-r"}
+                        {:type :tool-input :id "call-r" :function "search" :arguments {:query "revenue"}}])]
+      (is (=? {:toolName "search"
+               :error    {:message (str "Tool `search` has been replaced by `fulltext_search` and `semantic_search`. "
+                                        "They match differently: read each description, then write the call for "
+                                        "the one you use.")}}
+              (last (into [] (self.core/tool-executor-xf tools) chunks)))))))
+
 ;;; tool argument validation tests
 
 (defn- schema-tool

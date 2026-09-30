@@ -174,6 +174,7 @@
                        :system-instructions  (:system-instructions m)
                        :capabilities         (:capabilities m)
                        :scope                (:scope m)
+                       :replaces             (:replaces m)
                        :fn                   tool-fn}]
        (assoc acc tool-name tool-def)))
    {}
