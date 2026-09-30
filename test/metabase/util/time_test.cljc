@@ -338,6 +338,23 @@
       :saturday "2021-01-01" 1
       :saturday "2021-01-02" 2)))
 
+(deftest week-of-year-number->timestamp-test
+  ;; Week n starts n - 1 weeks after the start of the week containing Jan 1. When Jan 1 falls mid-week, week 1
+  ;; starts in the previous December, so extracting from that date gives the last week of the previous year.
+  (with-redefs [internal/now (fn [] (from test-epoch))] ; in 2022, where Jan 1 is a Saturday
+    (letfn [(round-trip [start-of-week week]
+              (let [config {:start-of-week start-of-week}]
+                (shared.ut/extract config
+                                   (shared.ut/coerce-to-timestamp week (assoc config :unit :week-of-year))
+                                   :week-of-year)))]
+      (testing "every week round-trips when weeks start on Jan 1"
+        (doseq [week (range 1 54)]
+          (is (= week (round-trip :saturday week)))))
+      (testing "week 1 starts in the previous December when Jan 1 falls mid-week"
+        (is (= 53 (round-trip :sunday 1)))
+        (doseq [week (range 2 54)]
+          (is (= week (round-trip :sunday week))))))))
+
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
        (= exp (-> (shared.ut/parse-unit input unit-in  locale-in)
