@@ -95,11 +95,7 @@ export const LookAndFeelSettings = ({
 
           {canWhitelabel ? (
             <Select
-              label={
-                <Text fw="bold" mb="0.25rem" lh="1rem">
-                  {t`Font`}
-                </Text>
-              }
+              label={t`Font`}
               value={displayOptions.font}
               data={[
                 {

@@ -234,6 +234,7 @@
       (u/prog1 (existing-databases*)
         (reset! cached-existing-databases <>))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *allow-database-creation*
   "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate
   data into Athena or somehow stomping over existing databases and breaking CI. If you want to create a new dataset,
