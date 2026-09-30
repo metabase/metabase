@@ -2,12 +2,21 @@
   (:require
    [clj-kondo.hooks-api :as hooks]))
 
+(defn- ns-analysis
+  "Like `hooks/ns-analysis`, but nil when kondo can't read the namespace's cache entry."
+  [ns-sym]
+  ;; kondo throws on the cache of a cljc namespace with `:deprecated` metadata, e.g. `metabase.legacy-mbql.util`.
+  (try
+    (hooks/ns-analysis ns-sym)
+    (catch Exception _ nil)))
+
 (defn- defn-arity?
   "Look up `var-sym` in `analysis` (the result of `hooks/ns-analysis`, keyed by language)
    and return true iff kondo recorded a non-empty arity for it. clj-kondo only emits
    arities for `defn`-style fns — `defmulti` and plain `def` have neither `:fixed-arities`
    nor `:varargs-min-arity`, so the presence of either is a clean, dynamic signal that
    the var is a regular function we can safely nudge.
+   Follows `potemkin/import-vars` re-exports to the defining namespace; false if that is ambiguous.
 
    We coerce to boolean and `seq`-check `:fixed-arities` so a hypothetical empty set
    doesn't leak through as truthy. The smoke test in `with-redefs-test` empirically
@@ -16,11 +25,19 @@
    rather than silently producing wrong nudges."
   [analysis var-sym]
   (boolean
-   (some (fn [lang-vars]
-           (when-let [v (get lang-vars var-sym)]
-             (or (seq (:fixed-arities v))
-                 (:varargs-min-arity v))))
-         (vals analysis))))
+   (or (some (fn [lang-vars]
+               (when-let [v (get lang-vars var-sym)]
+                 (or (seq (:fixed-arities v))
+                     (:varargs-min-arity v))))
+             (vals analysis))
+       ;; `hooks/ns-analysis` strips each var's `:imported-ns`, so search every namespace this one re-exports from.
+       ;; Any of them could be the one the var was imported from, so all must be readable, and all that define
+       ;; the name must be defns.
+       (let [analyses (map ns-analysis (mapcat :proxied-namespaces (vals analysis)))
+             sources  (filter #(some (fn [lang-vars] (contains? lang-vars var-sym)) (vals %)) analyses)]
+         (and (every? some? analyses)
+              (seq sources)
+              (every? #(defn-arity? % var-sym) sources))))))
 
 (defn- safely-nudgeable-lhs?
   "Is this LHS a regular function (defn) according to kondo's analysis?

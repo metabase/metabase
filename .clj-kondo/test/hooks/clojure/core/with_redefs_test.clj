@@ -22,7 +22,21 @@
     a-multimethod   {:ns example.ns :name a-multimethod}     ; defmulti — no arities
     can-read?       {:ns example.ns :name can-read?}         ; defmulti
     can-query?      {:ns example.ns :name can-query?}        ; defmulti
-    a-value         {:ns example.ns :name a-value}})         ; (def a-value 42) — no arities
+    a-value         {:ns example.ns :name a-value}           ; (def a-value 42) — no arities
+    ;; Re-exported with potemkin/import-vars: kondo records no arity here, see `proxied-vars`.
+    proxied-fn      {:ns example.ns :name proxied-fn}
+    proxied-multi   {:ns example.ns :name proxied-multi}
+    proxied-clash   {:ns example.ns :name proxied-clash}})
+
+(def ^:private proxied-vars
+  "How `example.real-ns`, where the `proxied-*` vars are really defined, looks in its own analysis."
+  '{proxied-fn    {:ns example.real-ns :name proxied-fn :fixed-arities #{1}}
+    proxied-multi {:ns example.real-ns :name proxied-multi}
+    proxied-clash {:ns example.real-ns :name proxied-clash :fixed-arities #{1}}})
+
+(def ^:private other-proxied-vars
+  "A second re-export source that also defines `proxied-clash`, as a defmulti."
+  '{proxied-clash {:ns example.other-ns :name proxied-clash}})
 
 (defn- stub-resolve [{nm :name}]
   (when (symbol? nm)
@@ -31,9 +45,11 @@
         {:ns 'example.ns :name bare}
         {:ns :clj-kondo/unknown-namespace :name bare}))))
 
-(defn- stub-ns-analysis [_ns-sym]
-  ;; All stubbed vars live in `example.ns` for simplicity.
-  {:clj stub-vars})
+(defn- stub-ns-analysis [ns-sym]
+  (get {'example.ns       {:clj (assoc stub-vars :proxied-namespaces '(example.real-ns example.other-ns))}
+        'example.real-ns  {:clj proxied-vars}
+        'example.other-ns {:clj other-proxied-vars}}
+       ns-sym))
 
 (defn- lint
   "Run the hook on the given source. Pass a string to preserve reader-macro literals like
@@ -80,7 +96,10 @@
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
             (lint '(with-redefs [plain-fn   (constantly 1)
                                  plain-fn-2 (fn [] 2)]
-                     (plain-fn)))))))
+                     (plain-fn))))))
+  (testing "a defn re-exported with potemkin/import-vars"
+    (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs}]
+            (lint '(with-redefs [proxied-fn (constantly 1)] :body))))))
 
 (deftest ^:synchronized skips-multimethod-and-value-targets-test
   (testing "defmulti — no arity in analysis, so don't nudge"
@@ -97,7 +116,17 @@
   (testing "mixed bindings — even one non-defn LHS suppresses the nudge"
     (is (= [] (lint '(with-redefs [plain-fn      (fn [x] x)
                                    a-multimethod (fn [& _] nil)]
-                       :body))))))
+                       :body)))))
+  (testing "a defmulti re-exported with potemkin/import-vars"
+    (is (= [] (lint '(with-redefs [proxied-multi (fn [& _] nil)] :body)))))
+  (testing "a name defined by two re-export sources, only one of them a defn"
+    (is (= [] (lint '(with-redefs [proxied-clash (fn [& _] nil)] :body))))
+  (testing "a re-export source kondo can't read might be where the var comes from"
+    (is (= [] (lint '(with-redefs [proxied-clash (fn [& _] nil)] :body)
+                    (fn [ns-sym]
+                      (when (= 'example.other-ns ns-sym)
+                        (throw (ClassCastException. "unreadable cache entry")))
+                      (stub-ns-analysis ns-sym))))))))
 
 (defn- spit-fixture! [^java.io.File f content]
   (.mkdirs (.getParentFile f))
@@ -149,4 +178,31 @@
           (testing "the defmulti and def bindings do not get nudged"
             (is (not (contains? nudge-rows 3)))
             (is (not (contains? nudge-rows 5)))))
+        (finally (delete-tree! tmp-dir))))))
+
+(deftest ^:synchronized integration-follows-potemkin-import-vars-smoke-test
+  (testing "real kondo run: a defn reached through a potemkin/import-vars re-export still gets nudged"
+    (let [tmp-dir   (.toFile (java.nio.file.Files/createTempDirectory
+                              "with-redefs-potemkin-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
+          cache-dir (str tmp-dir "/cache")
+          src       (io/file tmp-dir "src")
+          tst       (io/file tmp-dir "smoke_core_test.clj")]
+      (try
+        (spit-fixture! (io/file src "smoke_impl.clj") "(ns smoke-impl)
+(defn the-defn [x] x)
+")
+        (spit-fixture! (io/file src "smoke_core.clj") "(ns smoke-core
+  (:require [potemkin :as p]
+            [smoke-impl]))
+(p/import-vars
+ [smoke-impl
+  the-defn])
+")
+        (spit-fixture! tst "(ns smoke-core-test
+  (:require
+   [smoke-core :as core]))
+(with-redefs [core/the-defn (constantly nil)] :a)
+")
+        (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs, :row 4}]
+                (run-kondo-twice cache-dir src tst)))
         (finally (delete-tree! tmp-dir))))))
