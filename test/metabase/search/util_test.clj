@@ -82,9 +82,18 @@
     (is (= "!'revenue' & 'revenue'"
            (search-expr "-revenue revenue"))
         "so does a negated word")
+    (is (= "'revenue' <-> 'revenue'"
+           (search-expr "\"revenue revenue"))
+        "within an unfinished phrase too")
+    (is (= "'revenue' & 'revenue'"
+           (search-expr "revenue revenue and"))
+        "a trailing connective is dropped, so the word before it is the final word")
     (is (= "'revenue' & 'rev':*"
            (search-expr "revenue rev"))
-        "a different final word still completes")))
+        "a different final word still completes")
+    (is (= "'revenue' & 'rev':*"
+           (search-expr "revenue rev or"))
+        "including before a trailing connective")))
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))

@@ -148,13 +148,19 @@
 ;; TODO (Chris 2026-09-30) -- A repeated word could also mean "at least that many occurrences": today tsquery ANDs
 ;; the repeats, so "revenue revenue" matches exactly what "revenue" does.
 (defn- last-word-complete?
-  "Whether the final token should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
-  when its word already appears earlier in the input: a repeated word was evidently typed in full."
+  "Whether the final word should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
+  when it already appears earlier in the input: a repeated word was evidently typed in full."
   [trimmed tokens]
-  (and (seq tokens)
-       (not (str/ends-with? trimmed "\""))
-       (let [earlier (into #{} (mapcat token-words) (butlast tokens))]
-         (not (earlier (last (token-words (last tokens))))))))
+  ;; The words the expression is built from, in order: bare `and`/`or` connectives are dropped there, so the word
+  ;; that gets completed is the last of these, not necessarily the last token.
+  (let [words (into []
+                    (comp (remove #{"and" "or"})
+                          (mapcat token-words)
+                          (remove str/blank?))
+                    tokens)]
+    (and (seq words)
+         (not (str/ends-with? trimmed "\""))
+         (not-any? #{(peek words)} (pop words)))))
 
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
