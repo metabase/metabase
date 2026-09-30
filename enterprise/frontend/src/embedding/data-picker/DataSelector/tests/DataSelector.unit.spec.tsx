@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { getIcon, render, screen } from "__support__/ui";
+import { getIcon, render, screen, settlePendingUpdates } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
@@ -376,7 +376,7 @@ describe("DataSelector", () => {
     expect(getIcon("chevrondown")).toBeInTheDocument();
   });
 
-  it("should open database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
         steps={["DATABASE"]}
@@ -387,6 +387,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await settlePendingUpdates();
 
     expect(
       screen.getByRole("heading", { name: "Sample Database" }),
@@ -441,7 +442,7 @@ describe("DataSelector", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
   });
 
-  it("shows an empty state without any databases", () => {
+  it("shows an empty state without any databases", async () => {
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -450,6 +451,7 @@ describe("DataSelector", () => {
         isOpen={true}
       />,
     );
+    await settlePendingUpdates();
 
     expect(
       screen.getByText("To pick some data, you'll need to add some first"),
