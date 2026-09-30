@@ -58,81 +58,75 @@ describe("collection permissions", () => {
                 });
               });
 
-              describe("pin", () => {
-                onlyOn(user !== "admin", () => {
-                  it("pinning should work properly for both questions and dashboards", () => {
-                    cy.visit("/collection/root");
-                    // Assert that we're starting from a scenario with no pins
-                    cy.findByTestId("pinned-items").should("not.exist");
+              it(`should move, duplicate${user === "admin" ? " and archive" : ", archive and pin"} questions and dashboards (metabase#15256, metabase#15253, metabase#15080, metabase#16617)`, () => {
+                cy.log("Move and undo moving a question and a dashboard");
+                move("Orders");
+                move("Orders in a dashboard");
 
-                    pinItem("Orders in a dashboard");
-                    cy.findByTestId("pinned-items")
-                      .findByText("Orders in a dashboard")
-                      .should("be.visible");
+                cy.log(
+                  "Duplicate the dashboard without obstructions from the modal (metabase#15256)",
+                );
+                duplicate("Orders in a dashboard");
 
-                    pinItem("Orders, Count");
-                    cy.findByTestId("pinned-items")
-                      .findByText("Orders, Count")
-                      .should("be.visible");
+                cy.log("Archive and unarchive items");
+                archiveUnarchive("Orders", "question");
+                archiveUnarchive("Orders in a dashboard", "dashboard");
 
-                    // Pinned items also stay in the contents list
-                    cy.findByTestId("collection-table").within(() => {
-                      cy.findByText("Orders in a dashboard");
-                      cy.findByText("Orders, Count");
-                    });
+                if (user !== "nodata") {
+                  H.createNativeQuestion({
+                    name: "Model",
+                    type: "model",
+                    native: {
+                      query: "SELECT 1",
+                    },
                   });
-                });
-              });
+                  archiveUnarchive("Model", "model");
+                }
 
-              describe("move", () => {
-                it("should let a user move/undo move a question and a dashboard", () => {
-                  move("Orders");
-                  move("Orders in a dashboard");
+                cy.log(
+                  "Trashed items show up in the trash (metabase#15080, metabase#16617)",
+                );
+                cy.visit("collection/root");
+                H.openCollectionItemMenu("Orders");
+                H.popover().within(() => {
+                  cy.findByText("Move to trash").click();
                 });
-              });
+                cy.findByTestId("toast-undo").within(() => {
+                  cy.findByText("Trashed question");
+                  cy.icon("close").click();
+                });
+                H.navigationSidebar().within(() => {
+                  cy.findByText("Trash").click();
+                });
+                cy.location("pathname").should("eq", "/trash");
+                // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+                cy.findByText("Orders");
 
-              describe("duplicate", () => {
-                it("should be able to duplicate the dashboard without obstructions from the modal (metabase#15256)", () => {
-                  duplicate("Orders in a dashboard");
-                });
+                if (user !== "admin") {
+                  cy.log("Pin a question and a dashboard");
+                  cy.visit("/collection/root");
+                  // Assert that we're starting from a scenario with no pins
+                  cy.findByTestId("pinned-items").should("not.exist");
+
+                  pinItem("Orders in a dashboard");
+                  cy.findByTestId("pinned-items")
+                    .findByText("Orders in a dashboard")
+                    .should("be.visible");
+
+                  pinItem("Orders, Count");
+                  cy.findByTestId("pinned-items")
+                    .findByText("Orders, Count")
+                    .should("be.visible");
+
+                  // Pinned items also stay in the contents list
+                  cy.findByTestId("collection-table").within(() => {
+                    cy.findByText("Orders in a dashboard");
+                    cy.findByText("Orders, Count");
+                  });
+                }
               });
 
               describe("archive", () => {
-                it("should be able to archive/unarchive items and show archived items in the trash (metabase#15253, metabase#15080, metabase#16617)", () => {
-                  archiveUnarchive("Orders", "question");
-                  archiveUnarchive("Orders in a dashboard", "dashboard");
-
-                  if (user !== "nodata") {
-                    H.createNativeQuestion({
-                      name: "Model",
-                      type: "model",
-                      native: {
-                        query: "SELECT 1",
-                      },
-                    });
-                    archiveUnarchive("Model", "model");
-                  }
-
-                  cy.log(
-                    "Trashed items show up in the trash (metabase#15080, metabase#16617)",
-                  );
-                  cy.visit("collection/root");
-                  H.openCollectionItemMenu("Orders");
-                  H.popover().within(() => {
-                    cy.findByText("Move to trash").click();
-                  });
-                  cy.findByTestId("toast-undo").within(() => {
-                    cy.findByText("Trashed question");
-                    cy.icon("close").click();
-                  });
-                  H.navigationSidebar().within(() => {
-                    cy.findByText("Trash").click();
-                  });
-                  cy.location("pathname").should("eq", "/trash");
-                  // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-                  cy.findByText("Orders");
-                });
-
                 onlyOn(user !== "nodata", () => {
                   describe("collections", () => {
                     it("shouldn't be able to archive/edit root or personal collection", () => {
@@ -263,21 +257,6 @@ describe("collection permissions", () => {
                     });
                   });
                 });
-
-                function archiveUnarchive(item, expectedEntityName) {
-                  cy.visit("/collection/root");
-                  H.openCollectionItemMenu(item);
-                  H.popover().within(() => {
-                    cy.findByText("Move to trash").click();
-                  });
-                  cy.findByText(item).should("not.exist");
-                  cy.findByText(`Trashed ${expectedEntityName}`);
-                  cy.findByText("Undo").click();
-                  cy.findByText(
-                    "Sorry, you don’t have permission to see that.",
-                  ).should("not.exist");
-                  cy.findByText(item);
-                }
               });
             });
           });
@@ -474,4 +453,19 @@ function duplicate(item) {
     });
   cy.get("@modal").should("not.exist");
   cy.findByText(`${item} - Duplicate`);
+}
+
+function archiveUnarchive(item, expectedEntityName) {
+  cy.visit("/collection/root");
+  H.openCollectionItemMenu(item);
+  H.popover().within(() => {
+    cy.findByText("Move to trash").click();
+  });
+  cy.findByText(item).should("not.exist");
+  cy.findByText(`Trashed ${expectedEntityName}`);
+  cy.findByText("Undo").click();
+  cy.findByText("Sorry, you don’t have permission to see that.").should(
+    "not.exist",
+  );
+  cy.findByText(item);
 }

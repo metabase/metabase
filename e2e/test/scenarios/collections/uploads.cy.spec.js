@@ -100,7 +100,8 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         H.expectNoBadSnowplowEvents();
       });
 
-      VALID_CSV_FILES.forEach((testFile) => {
+      // VALID_CSV_FILES[0] is uploaded and checked by the append/replace test below
+      VALID_CSV_FILES.slice(1).forEach((testFile) => {
         it(`Can upload ${testFile.fileName} to a collection`, () => {
           uploadFileToCollection(testFile);
 
@@ -108,18 +109,10 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
             event: "csv_upload_successful",
           });
 
-          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
-
-          H.queryWritableDB(tableQuery, dialect).then((result) => {
-            expect(result.rows.length).to.equal(1);
-            const tableName =
-              result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
-            H.queryWritableDB(
-              `SELECT count(*) as count FROM ${tableName};`,
-              dialect,
-            ).then((result) => {
-              expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
-            });
+          assertUploadedRowCount({
+            dialect,
+            testFile,
+            rowCount: testFile.rowCount,
           });
         });
       });
@@ -154,10 +147,20 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         });
       });
 
-      it("Can append and replace data in an existing table, but not with a different schema", () => {
+      it("Can upload a CSV to a collection, then append and replace data in the table, but not with a different schema", () => {
         const { rowCount } = VALID_CSV_FILES[0];
 
         uploadFileToCollection(VALID_CSV_FILES[0]);
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "csv_upload_successful",
+        });
+        assertUploadedRowCount({
+          dialect,
+          testFile: VALID_CSV_FILES[0],
+          rowCount,
+        });
+
         cy.findByTestId("view-footer").findByText(`Showing ${rowCount} rows`);
 
         cy.log("append with an identical schema");
@@ -193,16 +196,10 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
         closeUploadErrorDetails();
 
         cy.log("rejected uploads leave the table unchanged");
-        const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${VALID_CSV_FILES[0].tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
-        H.queryWritableDB(tableQuery, dialect).then((result) => {
-          const tableName =
-            result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
-          H.queryWritableDB(
-            `SELECT count(*) as count FROM ${tableName};`,
-            dialect,
-          ).then((result) => {
-            expect(Number(result.rows[0].count)).to.equal(rowCount);
-          });
+        assertUploadedRowCount({
+          dialect,
+          testFile: VALID_CSV_FILES[0],
+          rowCount,
         });
       });
     });
@@ -351,6 +348,21 @@ function closeUploadErrorDetails() {
     .findByRole("button", { name: "Close" })
     .click();
   cy.findByRole("dialog", { name: "Upload error details" }).should("not.exist");
+}
+
+function assertUploadedRowCount({ dialect, testFile, rowCount }) {
+  const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+
+  H.queryWritableDB(tableQuery, dialect).then((result) => {
+    expect(result.rows.length).to.equal(1);
+    const tableName = result.rows[0].table_name ?? result.rows[0].TABLE_NAME;
+    H.queryWritableDB(
+      `SELECT count(*) as count FROM ${tableName};`,
+      dialect,
+    ).then((result) => {
+      expect(Number(result.rows[0].count)).to.equal(rowCount);
+    });
+  });
 }
 
 function uploadToExisting({

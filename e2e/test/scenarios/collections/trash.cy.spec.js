@@ -780,8 +780,10 @@ describe("scenarios > collections > trash", () => {
   });
 
   describe("sidebar drag and drop", () => {
-    it("should not allow items in the trash to be moved into the trash, but allow them to be moved out of the trash and allow it to be undone", () => {
-      createDashboard({ name: "Dashboard A" }, true);
+    it("should not allow items in the trash to be moved into the trash, but allow items to be moved out of and into the trash and allow it to be undone", () => {
+      createDashboard({ name: "Dashboard A" }, true).then((dashboard) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
       cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
       cy.visit("/trash");
 
@@ -820,14 +822,16 @@ describe("scenarios > collections > trash", () => {
         cy.findByText(/Deleted items will appear here/).should("not.exist");
         cy.findByText("Dashboard A").should("exist");
       });
-    });
 
-    it("should allow items outside the trash to be moved in the trash and allow it to be undone", () => {
-      createDashboard({
-        name: "Dashboard A",
-        collection_id: FIRST_COLLECTION_ID,
+      cy.log(
+        "should allow items outside the trash to be moved in the trash and allow it to be undone",
+      );
+      cy.get("@dashboardId").then((dashboardId) => {
+        cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+          archived: false,
+          collection_id: FIRST_COLLECTION_ID,
+        });
       });
-      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
       H.visitCollection(FIRST_COLLECTION_ID);
 
       dragAndDrop(
@@ -835,12 +839,12 @@ describe("scenarios > collections > trash", () => {
         H.navigationSidebar().findByText("Trash"),
       );
 
-      cy.get("@updateDashboard.all").should("have.length", 1);
+      cy.get("@updateDashboard.all").should("have.length", 3);
       H.main().findByText("Dashboard A").should("not.exist");
       cy.findByTestId("toast-undo").should("exist");
       H.undo();
 
-      cy.get("@updateDashboard.all").should("have.length", 2);
+      cy.get("@updateDashboard.all").should("have.length", 4);
       H.main().within(() => {
         cy.findByText("Dashboard A").should("exist");
       });

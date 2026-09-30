@@ -57,8 +57,21 @@ describe("scenarios > collection pinned items overview", () => {
     cy.intercept("GET", "/api/**/items?models*").as("getCollectionItems");
   });
 
-  it("should be able to pin a dashboard and keep it in the contents list", () => {
+  it("should be able to pin a question without rendering its visualization, a dashboard while keeping it in the contents list, and a model", () => {
+    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     openRootCollection();
+
+    cy.log("pin a question without rendering its visualization");
+    H.openUnpinnedItemMenu(QUESTION_NAME);
+    H.popover().findByText("Pin this").click();
+    cy.wait(["@getPinnedItems", "@getCollectionItems"]);
+
+    H.getPinnedSection().within(() => {
+      cy.findByText("A question").should("be.visible");
+      cy.get("@getCardQuery.all").should("have.length", 0);
+    });
+
+    cy.log("pin a dashboard and keep it in the contents list");
     H.openUnpinnedItemMenu(DASHBOARD_NAME);
     H.popover().findByText("Pin this").click();
     cy.wait(["@getPinnedItems", "@getCollectionItems"]);
@@ -73,26 +86,15 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(DASHBOARD_NAME).click();
       cy.url().should("include", `/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
-  });
 
-  it("should be able to pin a question without rendering its visualization", () => {
-    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     openRootCollection();
-    H.openUnpinnedItemMenu(QUESTION_NAME);
-    H.popover().findByText("Pin this").click();
-    cy.wait("@getPinnedItems");
-
     H.getPinnedSection().within(() => {
-      cy.findByText("A question").should("be.visible");
-      cy.get("@getCardQuery.all").should("have.length", 0);
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", `/question/${ORDERS_COUNT_QUESTION_ID}`);
     });
-  });
 
-  it("should be able to pin a model", () => {
+    cy.log("pin a model");
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-
     openRootCollection();
     H.openUnpinnedItemMenu(MODEL_NAME);
     H.popover().findByText("Pin this").click();

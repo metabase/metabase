@@ -121,9 +121,10 @@ describe("personal collections", () => {
     });
   });
 
-  describe("all users", () => {
-    // One user per collection-permission class: admin, curate, view, none
-    ["admin", "normal", "readonly", "nocollection"].forEach((user) => {
+  describe("admin and non-admin users", () => {
+    // The test acts only inside the user's own personal collection, where group
+    // collection permissions don't apply; nocollection has the most restricted UI
+    ["admin", "nocollection"].forEach((user) => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
