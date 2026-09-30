@@ -54,7 +54,9 @@ describe("scenarios > collections > trash", () => {
       cy.findByText("Deleted at");
     });
 
-    cy.log("trashed items in collection should have option to move to trash");
+    cy.log(
+      "trashed items should offer restore and permanent delete, not move to trash",
+    );
     toggleEllipsisMenuFor("Collection A");
     H.popover().within(() => {
       cy.findByText("Move to trash").should("not.exist");
@@ -72,7 +74,7 @@ describe("scenarios > collections > trash", () => {
     collectionTable().findByText("Model A").should("be.visible");
     cy.findByTestId("pinned-items").should("not.exist");
 
-    cy.log("trash should not appear in 'our analtyics'");
+    cy.log("trash should not appear in 'our analytics'");
     visitRootCollection();
     collectionTable().within(() => {
       cy.findByText("Orders").should("be.visible");
@@ -489,7 +491,6 @@ describe("scenarios > collections > trash", () => {
     collectionTable().within(() => {
       cy.findByText("Collection B").click();
     });
-    // FUTURE: replace following two lines with commented out code when collections can be deleted
     archiveBanner().findByText("Delete permanently").click();
     H.modal().findByText("Delete Collection B permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();

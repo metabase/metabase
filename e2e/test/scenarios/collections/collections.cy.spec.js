@@ -407,7 +407,7 @@ describe("scenarios > collection defaults", () => {
   });
 
   describe("Collection related issues reproductions", () => {
-    it("should handle moving a question when you don't have access to entire collection path (metabase#44316", () => {
+    it("should handle moving a question when you don't have access to entire collection path (metabase#44316)", () => {
       H.createCollection({
         name: "Collection A",
       }).then(({ body: collectionA }) => {
@@ -710,7 +710,7 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("sub-collection should be available in save and move modals (metabase#14122)", () => {
+    it("sub-collection should be available in move modal (metabase#14122)", () => {
       const COLLECTION = "14122C";
 
       // Create Parent collection within admin's personal collection

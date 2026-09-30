@@ -8,7 +8,7 @@ const ANALYTICS_COLLECTION_NAME = "Usage analytics";
 const CUSTOM_REPORTS_COLLECTION_NAME = "Custom reports";
 const PEOPLE_MODEL_NAME = "People";
 
-describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
+describe("scenarios > Metabase Analytics Collection (AuditV2)", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/field/*/values").as("fieldValues");

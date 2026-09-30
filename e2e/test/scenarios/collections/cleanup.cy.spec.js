@@ -68,7 +68,7 @@ describe("scenarios > collections > clean up", () => {
           cy.findByText("Clear out unused items").should("exist");
         });
 
-        cy.log("should not show in custom analytics collections");
+        cy.log("should not show collection actions in a trashed collection");
         H.popover().within(() => {
           cy.findByText("Move to trash").click();
         });
@@ -95,7 +95,7 @@ describe("scenarios > collections > clean up", () => {
         });
 
         cy.log(
-          "should not recommend the option when there are stale items int he collection",
+          "should recommend the option when there are stale items in the collection",
         );
         H.createCollection({ name: "collection with stale items" }).then(
           ({ body: { id } }) => {
@@ -110,7 +110,6 @@ describe("scenarios > collections > clean up", () => {
                   .format("YYYY-MM-DD"),
               );
 
-              // assert we don't show clean up option
               H.visitCollection(id);
               collectionMenu().click();
               H.popover().within(() => {
@@ -157,7 +156,7 @@ describe("scenarios > collections > clean up", () => {
         );
       });
 
-      it("should not show to users who do not have write permissions to a collection", () => {
+      it("should not show the collection menu to users without write permissions to a collection", () => {
         cy.signInAsAdmin();
         H.activateToken("pro-self-hosted");
         cy.signIn("readonly");
@@ -325,12 +324,9 @@ describe("scenarios > collections > clean up", () => {
           selectAllItems();
           moveToTrash();
 
-          cy.log(
-            "should not longer show alert if user has used the clean up feature",
-          );
           closeCleanUpModal();
 
-          // Ensure that stale items in Our Analytics are maked with a null collection id
+          // Ensure that stale items in Our Analytics are marked with a null collection id
           H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&

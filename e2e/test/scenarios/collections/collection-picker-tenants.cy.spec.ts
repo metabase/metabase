@@ -14,7 +14,7 @@ function createSharedCollection(name: string, parentId?: number) {
   });
 }
 
-describe("scenarios > collections > collection picker with tenants", () => {
+describe("scenarios > collections > official and collection type controls in shared collections", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

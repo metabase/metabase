@@ -91,16 +91,6 @@ describe("personal collections", () => {
         cy.icon("ellipsis").should("not.exist");
       });
 
-      // This leads to an infinite loop and a timeout in the CI
-      // Please see: https://github.com/metabase/metabase/issues/21026#issuecomment-1094114700
-
-      // Check that it's not possible to open permissions modal via URL for personal collection
-      // cy.location().then(location => {
-      //   cy.visit(`${location}/permissions`);
-      //   modal().should("not.exist");
-      //   cy.url().should("eq", String(location));
-      // });
-
       // Go to the newly created sub-collection "Foo"
       H.navigationSidebar().findByText("Foo").click();
       cy.findByDisplayValue("Foo").should("be.enabled");
@@ -113,13 +103,6 @@ describe("personal collections", () => {
         cy.findByText("Move to trash").should("be.visible");
         cy.findByText("Edit permissions").should("not.exist");
       });
-
-      // Check that it's not possible to open permissions modal via URL for personal collection child
-      // cy.location().then(location => {
-      //   cy.visit(`${location}/permissions`);
-      //   modal().should("not.exist");
-      //   cy.url().should("eq", String(location));
-      // });
 
       // Go to random user's personal collection
       H.visitCollection(NO_DATA_PERSONAL_COLLECTION_ID);
@@ -153,7 +136,7 @@ describe("personal collections", () => {
           H.navigationSidebar().as("sidebar").findByText("Foo").click();
         });
 
-        it("should be able to edit collection(s) inside personal collection", () => {
+        it("should be able to edit and trash collection(s) inside personal collection (metabase#15343)", () => {
           cy.intercept("PUT", "/api/collection/*").as("updateCollection");
 
           // Create new collection inside previously added collection
