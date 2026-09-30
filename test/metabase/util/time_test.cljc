@@ -306,6 +306,38 @@
     (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-02" :week-of-year)))
     (is (= "2" (shared.ut/format-unit {:start-of-week :monday} "2023-01-02" :week-of-year)))))
 
+(deftest ^:parallel week-of-year-numbering-test
+  (testing "a week number formats as itself, including week 53"
+    (is (= "53" (format-unit 53 :week-of-year))))
+  (testing "the locale does not change the number"
+    (is (= "1" (shared.ut/format-unit {:start-of-week :monday} "2021-01-01" :week-of-year {:locale "de"}))))
+  ;; The week containing Jan 1 is week 1, so a late-December date whose week reaches into January is still the last
+  ;; week of its own year. The same table runs on the JVM, where `extract` is the backend's, so both agree.
+  (testing "weeks around the year boundary"
+    (are [start-of-week date week]
+         (= (str week) (shared.ut/format-unit {:start-of-week start-of-week} date :week-of-year))
+      :sunday   "2019-12-28" 52
+      :sunday   "2019-12-29" 53
+      :sunday   "2019-12-31" 53
+      :sunday   "2020-01-01" 1
+      :sunday   "2020-01-04" 1
+      :sunday   "2020-01-05" 2
+      :sunday   "2020-12-31" 53
+      :sunday   "2021-01-02" 1
+      :sunday   "2021-01-03" 2
+      :monday   "2019-12-29" 52
+      :monday   "2019-12-30" 53
+      :monday   "2020-01-01" 1
+      :monday   "2020-01-05" 1
+      :monday   "2020-01-06" 2
+      :monday   "2021-01-03" 1
+      :monday   "2021-01-04" 2
+      :saturday "2019-12-28" 53
+      :saturday "2020-01-01" 1
+      :saturday "2020-01-04" 2
+      :saturday "2021-01-01" 1
+      :saturday "2021-01-02" 2)))
+
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
        (= exp (-> (shared.ut/parse-unit input unit-in  locale-in)
