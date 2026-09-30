@@ -47,7 +47,7 @@ describe("issue 29943", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("selects the right column when clicking a column header (metabase#29943, metabase#25884, metabase#34349)", () => {
+  it("selects the right column when clicking a column header and saves the column order (metabase#29943, metabase#39993, metabase#25884, metabase#34349)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -106,7 +106,7 @@ describe("issue 29943", () => {
   });
 });
 
-describe("issues with metadata editing on models with custom expressions", () => {
+describe("issue 35711", () => {
   const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
   const DISCOUNT_FIELD_REF: FieldReference = [
@@ -142,7 +142,7 @@ describe("issues with metadata editing on models with custom expressions", () =>
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711, metabase#39993)", () => {
+  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
     H.createQuestion(
       {
         type: "model",

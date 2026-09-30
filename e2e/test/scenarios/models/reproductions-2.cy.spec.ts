@@ -118,7 +118,7 @@ describe("issue 37300", () => {
     );
   });
 
-  it("should show the table headers even when there are no results (metabase/metabase#37300)", () => {
+  it("should show the table headers even when there are no results (metabase#37300)", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
@@ -476,7 +476,7 @@ describe("issue 38747", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should allow you to drill through with entity qualified ids", () => {
+  it("should allow you to drill through with entity qualified ids (metabase#38747)", () => {
     cy.visit("/model/new");
     cy.findByRole("link", { name: /notebook editor/ }).click();
 
@@ -513,7 +513,7 @@ describe("issue 38747", () => {
       .should("be.visible")
       .click({ waitForAnimations: false });
 
-    // Assert that we're at an adhoc question with aproprate filters
+    // Assert that we're at an adhoc question with appropriate filters
     cy.location("pathname").should("equal", "/question");
     cy.findByTestId("filter-pill").should(
       "contain.text",

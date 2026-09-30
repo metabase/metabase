@@ -573,7 +573,7 @@ describe("scenarios > models", () => {
     });
   });
 
-  describe("listing", () => {
+  describe("dashboards", () => {
     const modelDetails = {
       name: "Orders Model 2",
       query: {

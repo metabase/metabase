@@ -23,7 +23,7 @@ describe("scenarios > models list view", () => {
       );
     });
 
-    it("should allow to change default view", () => {
+    it("should allow to change default view, keep it on duplicates, and drop it for questions", () => {
       H.openQuestionActions();
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();

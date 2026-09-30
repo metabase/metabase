@@ -20,7 +20,7 @@ describe("issue 19180", () => {
     cy.intercept("/api/card/*/query").as("cardQuery");
   });
 
-  it("shouldn't drop native model query results after leaving the query editor", () => {
+  it("shouldn't drop native model query results after leaving the query editor (metabase#19180)", () => {
     H.createNativeQuestion(QUESTION).then(({ body: { id: QUESTION_ID } }) => {
       cy.request("PUT", `/api/card/${QUESTION_ID}`, { type: "model" }).then(
         () => {

@@ -56,7 +56,7 @@ describe("scenarios > models > create", () => {
   });
 
   // This covers creating a GUI model from the browse page + nocollection permissions (2 in 1)
-  it("user without a collection access should still be able to create and save a model in his own personal collection", () => {
+  it("user without a collection access should still be able to create and save a model in his own personal collection, and one without native permissions cannot start a model", () => {
     cy.intercept("POST", "/api/card").as("createModel");
 
     cy.log(

@@ -63,7 +63,7 @@ describe("issue 19737", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
-    // Close the modal so the next time we move the model another model will always be shown
+    // Close the undo toast so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
     cy.findByLabelText("Navigation bar").within(() => {
@@ -345,7 +345,7 @@ describe("issue 29378", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
-  it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
+  it("should not crash the model actions page after searching for an action (metabase#29378)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     H.createAction(ACTION_DETAILS);
 
@@ -388,7 +388,7 @@ function selectModelColumn(column) {
   cy.findAllByTestId("header-cell").contains(column).click();
 }
 
-describe("issue 29517 - nested question based on native model with remapped values", () => {
+describe("issue 29517 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "29517",
     type: "model",
@@ -455,7 +455,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
     });
   });
 
-  it("click behavior to custom destination should work (metabase#29517-2)", () => {
+  it("click behavior to custom destination should work (metabase#29517)", () => {
     H.visitDashboard("@dashboardId");
 
     cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
@@ -475,7 +475,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
   });
 });
 
-describe("issue 53556 - nested question based on native model with remapped values", () => {
+describe("issue 53556 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "53556",
     type: "model",
