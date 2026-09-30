@@ -61,8 +61,8 @@ type CustomIllustrationSettingKey =
 
 const IMAGE_URL_PREFIX = "api/session/illustration/";
 
-// Uploaded images come as URLs relative to the Metabase root. Prefix them with
-// the basename, so they load on subpaths and in the SDK on the host app origin.
+// Prefix the relative URLs of images served by `GET /api/session/illustration/:key`
+// with the basename, so they also work in the embedding SDK and on subpaths.
 export const getCustomIllustrationUrl = (
   state: State,
   key: CustomIllustrationSettingKey,
