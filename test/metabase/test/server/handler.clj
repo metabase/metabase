@@ -1,6 +1,5 @@
 (ns metabase.test.server.handler
   (:require
-   [metabase.api-routes.core :as api-routes]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.core :as mcp]
    [metabase.server.core :as server]
@@ -10,7 +9,9 @@
 
 (mu/defn- make-test-handler :- ::api.macros/handler
   []
-  (let [server-routes (server/make-routes auth-wrapper/routes #'api-routes/routes)
+  ;; late-bound: a static require here makes loading `metabase.test` load every API namespace
+  (let [api-routes    (requiring-resolve 'metabase.api-routes.core/routes)
+        server-routes (server/make-routes auth-wrapper/routes api-routes)
         handler       (server/make-handler server-routes {:cors mcp/cors})]
     (fn [request respond raise]
       (letfn [(raise' [e]
