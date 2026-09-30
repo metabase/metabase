@@ -200,3 +200,68 @@
               ;; Since we couldn't use with-temp, we need to clean up manually.
               (finally
                 (t2/delete! :model/Setting search-col search-value)))))))))
+
+(deftest ^:parallel mark-condition-values-test
+  (testing "GHY-4481: a plain scalar value is marked for binding; keys and everything else are left alone"
+    (let [uuid (random-uuid)
+          date (java.time.LocalDate/of 2026 1 2)]
+      (is (= [:name   [:auto/param "x' OR '1'='1"]
+              :id     [:auto/param 5]
+              :uuid   [:auto/param uuid]
+              :date   [:auto/param date]
+              :nil    nil
+              :flag   false
+              :type   :model
+              :public [:not= nil]
+              :ids    [:in [1 2]]]
+             (#'mdb.query/mark-condition-values
+              [:name   "x' OR '1'='1"
+               :id     5
+               :uuid   uuid
+               :date   date
+               :nil    nil
+               :flag   false
+               :type   :model
+               :public [:not= nil]
+               :ids    [:in [1 2]]]))))))
+
+(defn- sql-looking-value []
+  (str "x-" (random-uuid) "' OR '1'='1"))
+
+(deftest select-or-insert!-compares-select-map-as-data-test
+  (testing "GHY-4481: a SQL-looking string in the select map is compared as data, and stored unmarked"
+    (let [search-value (sql-looking-value)]
+      (try
+        (let [inserted (mdb.query/select-or-insert! :model/Setting {:value search-value}
+                                                    (fn [] {:key (random-setting-name!)}))]
+          (testing "an absent row is inserted with the plain value"
+            (is (= search-value (:value inserted)))
+            (is (= 1 (t2/count :model/Setting :value search-value))))
+          (testing "an existing row is found, and the insert fn is not called"
+            (is (= inserted (mdb.query/select-or-insert! :model/Setting {:value search-value}
+                                                         (fn [] (throw (ex-info "should not insert" {}))))))))
+        (finally
+          (t2/delete! :model/Setting :value search-value))))))
+
+(deftest update-or-insert!-compares-select-map-as-data-test
+  (testing "GHY-4481: a SQL-looking string in the select map is compared as data, and stored unmarked"
+    (let [setting-key (random-setting-name!)
+          search-value (sql-looking-value)]
+      (try
+        (testing "an absent row is inserted with the plain values"
+          (is (= setting-key (mdb.query/update-or-insert! :model/Setting {:key setting-key}
+                                                          (fn [_] {:value search-value}))))
+          (is (= search-value (t2/select-one-fn :value :model/Setting :key setting-key))))
+        (testing "an existing row is found by the SQL-looking value and updated"
+          (let [other-key (random-setting-name!)]
+            (t2/insert! :model/Setting :key other-key :value "other")
+            (try
+              (mdb.query/update-or-insert! :model/Setting {:value search-value}
+                                           (fn [existing] (assoc existing :key setting-key)))
+              (is (= search-value (t2/select-one-fn :value :model/Setting :key setting-key)))
+              (is (= "other" (t2/select-one-fn :value :model/Setting :key other-key)))
+              (is (= 1 (t2/count :model/Setting :value search-value)))
+              (finally
+                (t2/delete! :model/Setting :key other-key)))))
+        (finally
+          (t2/delete! :model/Setting :key setting-key))))))

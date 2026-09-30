@@ -5,6 +5,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- positions [card-ids]
   (mapv #(t2/select-one-fn :collection_position :model/Card :id %) card-ids))
 
@@ -41,3 +43,54 @@
                    :model/Card       {other :id}   {:collection_id coll-id, :collection_position 30001}]
       (api.db/shift-card-positions-from! nil 30001 :+)
       (is (= [30002 30001] (positions [root other]))))))
+
+(deftest ^:parallel mark-condition-values-test
+  (testing "GHY-4481: a plain scalar value is marked for binding; keys and everything else are left alone"
+    (let [uuid (random-uuid)
+          date (java.time.LocalDate/of 2026 1 2)]
+      (is (= [:name   [:auto/param "x' OR '1'='1"]
+              :id     [:auto/param 5]
+              :uuid   [:auto/param uuid]
+              :date   [:auto/param date]
+              :nil    nil
+              :flag   false
+              :type   :model
+              :public [:not= nil]
+              :ids    [:in [1 2]]]
+             (#'api.db/mark-condition-values
+              [:name   "x' OR '1'='1"
+               :id     5
+               :uuid   uuid
+               :date   date
+               :nil    nil
+               :flag   false
+               :type   :model
+               :public [:not= nil]
+               :ids    [:in [1 2]]]))))))
+
+(def ^:private sql-looking-name "x' OR '1'='1")
+
+(deftest entity-by-id-compares-condition-values-as-data-test
+  (testing "GHY-4481: a string condition value is compared as data, and the other condition shapes still work"
+    (mt/with-temp [:model/Card {card-id :id} {:name sql-looking-name, :type :model, :archived false
+                                              :public_uuid (str (random-uuid))}
+                   :model/Card {plain-id :id} {:name "plain"}]
+      (is (nil? (api.db/entity-by-id :model/Card plain-id :name sql-looking-name)))
+      (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :name sql-looking-name))))
+      (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :archived false :public_uuid [:not= nil]))))
+      (is (nil? (api.db/entity-by-id :model/Card card-id :archived true)))
+      (testing "a keyword or string value on a column with a keyword transform"
+        (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type :model))))
+        (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type "model")))))
+      (testing "an id passed as a string"
+        (is (= card-id (:id (api.db/entity-by-id :model/Card (str card-id)))))))))
+
+(deftest entity-exists?-compares-condition-values-as-data-test
+  (testing "GHY-4481: a string condition value is compared as data, and the other condition shapes still work"
+    (mt/with-temp [:model/Card {card-id :id} {:name sql-looking-name, :archived false
+                                              :public_uuid (str (random-uuid))}
+                   :model/Card {plain-id :id} {:name "plain"}]
+      (is (false? (api.db/entity-exists? :model/Card :id plain-id :name sql-looking-name)))
+      (is (true? (api.db/entity-exists? :model/Card :id card-id :name sql-looking-name)))
+      (is (true? (api.db/entity-exists? :model/Card :id card-id :public_uuid [:not= nil] :archived false)))
+      (is (false? (api.db/entity-exists? :model/Card :id plain-id :public_uuid [:not= nil]))))))

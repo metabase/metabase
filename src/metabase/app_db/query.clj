@@ -196,6 +196,19 @@
        ;; a per-driver or driver agnostic way to test the exception.
        ~@body)))
 
+(defn- mark-condition-values
+  "Mark each plain scalar value (string, number, UUID, java.time value) of the flat key-value `kvs` for binding.
+  Keys, nil, booleans, keywords, and operator forms like `[:not= nil]` are returned unchanged."
+  [kvs]
+  ;; Keywords stay unmarked: a column's keyword transform, or the caller's literal, decides what they mean.
+  ;; Values sit at odd indexes; a trailing unpaired arg sits at an even one and passes through.
+  (into [] (map-indexed (fn [i x]
+                          (if (and (odd? i)
+                                   (or (string? x) (number? x) (uuid? x) (instance? java.time.temporal.Temporal x)))
+                            [:auto/param x]
+                            x)))
+        kvs))
+
 (defn select-or-insert!
   "Return a database record if it exists, otherwise create it.
 
@@ -215,7 +228,8 @@
    In the case where there is no underlying db constraint, concurrent calls may still result in duplicates.
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map insert-fn]
-  (let [select-kvs (mapcat identity select-map)
+  ;; Only the lookup is marked: `select-map` itself is merged into the inserted row, where a marker would be stored.
+  (let [select-kvs (mark-condition-values (mapcat identity select-map))
         insert-fn  #(let [instance (insert-fn)]
                       ;; the inserted values must be consistent with the select query
                       (assert (not (u/conflicting-keys? select-map instance))
@@ -253,8 +267,9 @@
    To prevent this in a database agnostic way, during an existing non-serializable transaction, would be non-trivial."
   [model select-map & [update-fn]]
   (let [update-fn  (or update-fn (constantly select-map))
-        select-kvs (mapcat identity select-map)
-        pks        (mapv keyword (t2/primary-keys model))
+        ;; Only the lookup is marked: `select-map` itself is merged into the written row.
+        select-kvs (mark-condition-values (mapcat identity select-map))
+        pks       (mapv keyword (t2/primary-keys model))
         ;; The "pk" used to address an update and as the return value: a scalar for a single-column key
         ;; (unchanged), a `[v1 v2 ...]` vector for a compound key — matching what `insert-returning-pk!`
         ;; returns and what `t2/update!` accepts for a composite key.
