@@ -137,18 +137,37 @@
   [expression]
   (str/replace expression #"(\S+)(?=\s*$)" "$1:*"))
 
+(defn- token-words
+  "The bare words in a token: quotes and a leading negation stripped, phrases split into their words."
+  [token]
+  (-> token
+      (str/replace #"^-|\"" "")
+      str/trim
+      (str/split #"\s+")))
+
+;; TODO (Chris 2026-09-30) -- A repeated word could also mean "at least that many occurrences": today tsquery ANDs
+;; the repeats, so "revenue revenue" matches exactly what "revenue" does.
+(defn- last-word-complete?
+  "Whether the final token should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
+  when its word already appears earlier in the input: a repeated word was evidently typed in full."
+  [trimmed tokens]
+  (and (seq tokens)
+       (not (str/ends-with? trimmed "\""))
+       (let [earlier (into #{} (mapcat token-words) (butlast tokens))]
+         (not (earlier (last (token-words (last tokens))))))))
+
 (defn to-tsquery-expr
   "Given the user input, construct a query in the Postgres tsvector query language."
   [input]
   (str
    (when input
      (let [trimmed        (str/trim input)
-           complete?      (not (str/ends-with? trimmed "\""))
+           tokens         (->> (str/replace trimmed "\\" "\\\\")
+                               split-preserving-quotes
+                               (remove str/blank?))
            ;; TODO also only complete if the :context is appropriate
-           maybe-complete (if complete? complete-last-word identity)]
-       (->> (str/replace trimmed "\\" "\\\\")
-            split-preserving-quotes
-            (remove str/blank?)
+           maybe-complete (if (last-word-complete? trimmed tokens) complete-last-word identity)]
+       (->> tokens
             (partition-by #{"or"})
             (remove #(= (first %) "or"))
             (map process-clause)
