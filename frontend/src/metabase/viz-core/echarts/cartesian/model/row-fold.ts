@@ -15,24 +15,8 @@ import { refitYAxisExtents } from "./axis";
 import type { CartesianChartModel, ChartDataset, Datum } from "./types";
 import { getBarSeriesDataLabelKey } from "./util";
 
-/**
- * Row charts fold the rows that will not fit into a single summed "Other" bar.
- *
- * **The rule, stated once.** A row needs at least `MIN_BAR_HEIGHT` pixels; a
- * grouped breakout needs that much per series, while a stacked one shares a
- * single band. So:
- *
- *     budget = max(floor(plotHeight / (MIN_BAR_HEIGHT * bandCount)), 1)
- *
- * Writing it down matters because the two legacy renderers disagreed: the
- * interactive chart passed the height measured by `ExplicitSize` (net of legend
- * and title chrome) while the static one passed whatever it was handed, so the
- * same data folded differently in the app and in a subscription email. Both now
- * call this with the height available to the plot.
- *
- * The fold keeps `rows`, which lets a tooltip or drill reach what was folded
- * away rather than treating the bar as opaque (UXW-1447).
- */
+// Rows that don't fit fold into one summed "Other" row. One rule for app and
+// email: each band (per series, or one when stacked) needs MIN_BAR_HEIGHT.
 export const MIN_BAR_HEIGHT = 24;
 
 export const getRowChartBudget = (
@@ -52,11 +36,8 @@ const sumInto = (target: Datum, source: Datum, keys: string[]) => {
   });
 };
 
-/**
- * The dataset transforms flag each transformed row with sign markers that the
- * data-label and stack-total series draw from. A summed row needs its own,
- * taken from the summed values since the folded rows' signs can differ.
- */
+// Label series draw only where the dataset transforms left sign markers; set
+// them from the summed values, since folded rows can mix signs.
 const markLabelSigns = (
   total: Datum,
   seriesKeys: string[],
@@ -106,18 +87,13 @@ const foldDataset = (
   folded.forEach((datum) => sumInto(total, datum, seriesKeys));
   if (transformed) {
     markLabelSigns(total, seriesKeys, transformed.isStacked);
-    // Events map a transformed row back to `dataset` through this index; both
-    // datasets fold at the same position, so Other sits at the same one.
+    // Events map transformed rows back to `dataset` by this index.
     total[INDEX_KEY] = kept.length;
   }
 
   return [...kept, total];
 };
 
-/**
- * Apply the fold to every dataset the chart model exposes, so the axis, the
- * series and the labels all agree on which rows exist.
- */
 export const foldRowChartModel = (
   chartModel: CartesianChartModel,
   plotHeight: number,

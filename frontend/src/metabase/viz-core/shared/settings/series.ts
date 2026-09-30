@@ -59,9 +59,7 @@ export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {
     return index === 0 ? "line" : "bar";
   }
 
-  // A row chart's series are bars; only the axes are rotated. Without this the
-  // series display stays "row", which matches no branch in the ECharts series
-  // builder and the chart renders its axes and nothing else.
+  // Row charts are rotated bars; "row" matches no series builder.
   if (cardDisplay === "row") {
     return "bar";
   }

@@ -32,11 +32,7 @@ export interface GoalLineParams {
   isNormalized: boolean;
   toEChartsAxisValue: (value: RowValue) => number | null;
   labelOnLeft: boolean;
-  /**
-   * Row charts put the metric on the horizontal axis, so the goal is an
-   * x-coordinate and the line runs vertically — the transpose of every other
-   * cartesian chart.
-   */
+  /** Row charts: the goal is an x-coordinate and the line runs vertically. */
   isRowChart?: boolean;
 }
 
@@ -83,8 +79,7 @@ export function getGoalLineSeriesOption(
   return {
     id: GOAL_LINE_SERIES_ID,
     type: "custom",
-    // The datum only anchors the series to the coordinate system; which slot
-    // holds the goal depends on which axis carries the metric.
+    // Anchors the series; the goal sits on whichever axis carries the metric.
     data: [
       isRowChart
         ? [scaleTransformedGoalValue, getFirstNonNullXValue(dataset)]
@@ -103,8 +98,6 @@ export function getGoalLineSeriesOption(
       const yStart = coordSys.y;
       const yEnd = coordSys.height + coordSys.y;
 
-      // Rotated: the goal is a position along x and the line spans the plot
-      // vertically. Upright: the reverse.
       const [goalX] = api.coord([scaleTransformedGoalValue, null]);
       const [, goalY] = api.coord([null, scaleTransformedGoalValue]);
 
@@ -128,10 +121,8 @@ export function getGoalLineSeriesOption(
         },
       };
 
-      // Upright, the label sits above the line at one end. Rotated, it sits
-      // above the top of the line — flipping to the left of it when the goal is
-      // close enough to the right edge that a right-aligned label would spill
-      // outside the plot, which is what the legacy renderer did.
+      // Rotated, the label sits above the line and flips left near the right
+      // edge, as the legacy renderer did.
       const labelMargin = CHART_STYLE.goalLine.label.margin;
       const labelWidth =
         (settings["graph.goal_label"] ?? "").length * fontSize * 0.6;

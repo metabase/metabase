@@ -153,6 +153,7 @@ export const getCartesianChartModel = (
   showWarning?: ShowWarning,
   gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
+  const isRowChart = rawSeries[0]?.card.display === "row";
   const cardsColumns = getCardsColumns(rawSeries, settings);
   const columnByDataKey = getCardsColumnByDataKeyMap(rawSeries, cardsColumns);
   const dimensionModel = getDimensionModel(rawSeries, cardsColumns);
@@ -254,5 +255,6 @@ export const getCartesianChartModel = (
     stackedLabelsFormatters,
     dataDensity,
     groupedSeriesModels,
+    isRowChart,
   };
 };

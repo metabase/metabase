@@ -28,13 +28,6 @@ export interface RowChartMetricTicks {
 }
 
 export interface ChartLayout {
-  /**
-   * Row charts put the dimension on the vertical axis and the metrics on the
-   * horizontal one — the reverse of every other cartesian chart. `ChartLayout`
-   * carries the flag because it already reaches every axis, series and grid
-   * builder, so nothing else needs a new parameter.
-   */
-  isRowChart: boolean;
   /** Row charts only: legacy-matched ticks for the horizontal metric axis. */
   metricTicks?: RowChartMetricTicks;
   padding: Padding;

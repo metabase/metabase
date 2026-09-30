@@ -968,9 +968,7 @@ export const getSortedSeriesModels = (
   // On stacked charts we reverse the order of series so that the series
   // order in the sidebar matches series order on the chart.
   // Also it produces historically correct order of series on already saved questions.
-  // A rotated stack grows left to right, so the unreversed order already matches
-  // the chart; reversing would mirror the legend against it and against every
-  // saved row chart.
+  // Row stacks grow left to right, so their order already matches.
   const isReversed = !isRowChart && !isEmpty(settings["stackable.stack_type"]);
   if (isReversed) {
     orderedSeriesModels.reverse();

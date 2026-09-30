@@ -33,7 +33,11 @@ import {
 } from "./utils";
 
 function CartesianChartInner(props: VisualizationProps) {
-  const { timelineEvents } = useTimelineEvents(props);
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    skip: props.card.display === "row",
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,

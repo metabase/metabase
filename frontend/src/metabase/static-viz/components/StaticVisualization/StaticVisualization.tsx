@@ -48,7 +48,6 @@ export const StaticVisualization = ({
     case "bar":
     case "combo":
     case "row":
-      // A row chart is a rotated bar: same model, option builder and SSR path.
       return <ComboChart {...props} />;
     case "scatter":
       return <ScatterPlot {...props} />;

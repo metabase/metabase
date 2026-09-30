@@ -171,7 +171,7 @@ export function buildGridAndSeriesOption(
   const isSplitPanels = chartLayout.panelHeight != null;
 
   const baseGoalSeriesOption = getGoalLineSeriesOption(
-    { ...getGoalLineParams(chartModel), isRowChart: chartLayout.isRowChart },
+    { ...getGoalLineParams(chartModel), isRowChart: chartModel.isRowChart },
     settings,
     renderingContext,
   );
@@ -317,22 +317,12 @@ export const getCartesianChartOption = (
       chartLayout,
       dataSeriesOptions,
     );
-    if (chartLayout.isRowChart) {
-      // The rotation, in one place: ECharts infers a horizontal bar from which
-      // axis is categorical, so the metric axes become x and the dimension
-      // axis becomes y. `inverse` keeps the first row at the top, matching the
-      // legacy renderer and the way a table reads.
-      //
-      // Axis *names* do not come along for free. Each was positioned for the
-      // axis it used to be — gap measured against the wrong tick dimension and
-      // the metric name rotated upright — so both are re-sited here against the
-      // dimension they now run along.
+    if (chartModel.isRowChart) {
+      // The rotation: metric axes become x, the dimension axis becomes y
+      // (`inverse` keeps the first row on top). Axis names are re-sited to match.
       const { ticksDimensions } = chartLayout;
 
-      // The metric axes were built as YAXisOption and the dimension axis as
-      // XAXisOption; rotating swaps which slot they occupy. The option shapes
-      // are structurally compatible, but the two ECharts types do not overlap,
-      // so the reassignment has to be spelled out.
+      // X and Y axis option types are structurally compatible but don't overlap.
       xAxis = (axes.yAxis as unknown as XAXisOption[]).map((axis) => ({
         ...axis,
         nameRotate: 0,
@@ -340,11 +330,8 @@ export const getCartesianChartOption = (
           getAxisNameGap(ticksDimensions.xTicksHeight) +
           CHART_STYLE.rowChartAxisName.metricGapExtra,
         ...getRowMetricTicksOption(axis, chartLayout.metricTicks),
-        // The metric axis hard-codes `axisLine: { show: false }`, because
-        // upright it is the vertical axis and convention there is split lines
-        // only. Rotated it runs along the bottom, where the legacy renderer
-        // drew a line (visx `AxisBottom`, gated on the same setting), so it has
-        // to be put back.
+        // Metric axes hide their line; rotated it runs along the bottom, where
+        // the legacy renderer drew one.
         axisLine: {
           show: !!settings["graph.y_axis.axis_enabled"],
           lineStyle: {

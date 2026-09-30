@@ -108,16 +108,12 @@ export function useModelsAndOption(
     tc,
   ]);
 
-  // Row charts fold the rows that will not fit before anything is measured:
-  // the fold changes which category labels exist, which changes the label
-  // gutter, which changes the plot box. Budgeting off the container height
-  // keeps that ordering acyclic and matches what the legacy renderer did.
+  // Fold before layout: the fold decides which category labels get measured.
   const chartModel = useMemo(
     () =>
       card.display === "row"
         ? foldRowChartModel(
-            // The row branch only runs for `display: "row"`, which always
-            // produces a plain cartesian model — never a waterfall or scatter.
+            // Row charts always produce a plain cartesian model.
             baseChartModel as CartesianChartModel,
             height,
             settings,
@@ -135,17 +131,8 @@ export function useModelsAndOption(
         width,
         height,
         renderingContext,
-        card.display === "row",
       ),
-    [
-      chartModel,
-      settings,
-      width,
-      height,
-      hasTimelineEvents,
-      renderingContext,
-      card.display,
-    ],
+    [chartModel, settings, width, height, hasTimelineEvents, renderingContext],
   );
 
   const timelineEventsModel = useMemo(

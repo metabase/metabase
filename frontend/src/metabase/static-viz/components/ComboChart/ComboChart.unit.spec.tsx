@@ -201,9 +201,8 @@ describe("static row chart", () => {
       }),
     );
 
-    // The width allows about nine ticks: d3 fits steps of 200 under that cap,
-    // where an uncapped hint would tick every 100. The axis still ends at the
-    // rounded 1,100, unlabelled.
+    // ~9 ticks fit: capped d3 steps of 200 (a hint would give 100), ending at an
+    // unlabelled 1,100.
     expect(screen.getByText("1,000")).toBeInTheDocument();
     expect(screen.queryByText("100")).not.toBeInTheDocument();
     expect(screen.queryByText("1,100")).not.toBeInTheDocument();
@@ -219,8 +218,7 @@ describe("static row chart", () => {
       }),
     );
 
-    // Each row is 100, but the rows that don't fit fold into one "Other" row
-    // worth thousands; the axis must reach it rather than stop near 100.
+    // Rows of 100 fold into an "Other" worth thousands; the axis must reach it.
     expect(screen.getByText(/^Other \(\d+\)$/)).toBeInTheDocument();
     expect(screen.getByText("1,000")).toBeInTheDocument();
   });

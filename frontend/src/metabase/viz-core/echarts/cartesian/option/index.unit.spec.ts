@@ -269,7 +269,6 @@ describe("row chart bands", () => {
       chartWidth,
       chartHeight,
       renderingContext,
-      true,
     );
 
     const chart = echarts.init(null, null, {

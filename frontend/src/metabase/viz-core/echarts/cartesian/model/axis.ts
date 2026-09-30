@@ -589,11 +589,8 @@ export function getYAxisModel(
   };
 }
 
-/**
- * Recomputes the left and right axis extents for a replaced dataset, with the
- * same stack partitioning as `getYAxesModels`. The row fold needs this: its
- * "Other" row sums many rows, so it can exceed every extent computed before.
- */
+// For a replaced dataset, e.g. the row fold, whose "Other" row can exceed
+// every extent computed before it.
 export function refitYAxisExtents(
   { leftAxisModel, rightAxisModel, stackModels }: BaseCartesianChartModel,
   transformedDataset: ChartDataset,

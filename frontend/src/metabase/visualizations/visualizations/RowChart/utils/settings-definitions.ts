@@ -8,12 +8,8 @@ import {
 import type { Series, VisualizationSettings } from "metabase-types/api";
 
 export const ROW_CHART_SETTINGS: VisualizationSettingsDefinitions = {
-  // The ECharts engine gates stacked totals on this; the legacy row chart drew
-  // them whenever `graph.show_values` was on. Forced rather than exposed so
-  // behaviour matches today — deciding whether row charts should offer the full
-  // "total / all / segments" choice belongs to the settings pass (UXW-1444).
-  // `getValue`, not `getDefault`: a card switched from a bar chart keeps its
-  // stored value, which legacy ignored.
+  // Totals only, as legacy drew them; `getValue` also ignores a value saved as
+  // a bar chart.
   "graph.show_stack_values": {
     getValue: () => "total",
     getHidden: () => true,
