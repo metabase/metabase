@@ -19,7 +19,6 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
   ChartSettingColorRangeProps,
-  ChartSettingGoalInputProps,
   ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingSegmentedControlProps,
@@ -323,7 +322,7 @@ export type VisualizationSettingsDefinitions = {
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
   prefix?: DatasetColumnSettingDefinition<Value, Props>;
   "progress.color"?: SeriesSettingDefinition<Value, Props>;
-  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalInputProps>;
+  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalValueProps>;
   "progress.value"?: SeriesSettingDefinition<Value, Props>;
   "sankey.edge_color"?: SeriesSettingDefinition<Value, Props>;
   "sankey.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;

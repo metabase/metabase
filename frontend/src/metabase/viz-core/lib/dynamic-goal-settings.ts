@@ -26,6 +26,7 @@ const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   combo: ["graph.goal_value"],
   gauge: ["gauge.segments"],
   line: ["graph.goal_value"],
+  progress: ["progress.goal"],
   row: ["graph.goal_value"],
   scalar: ["scalar.segments"],
   scatter: ["graph.goal_value"],

@@ -63,6 +63,7 @@ const DATASET_QUERY = createMockStructuredDatasetQuery();
 
 type SetupOpts = {
   data?: DatasetData;
+  excludedSelfColumn?: string;
   referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value?: GoalValue | null;
@@ -71,6 +72,7 @@ type SetupOpts = {
 
 function setup({
   data = DATA,
+  excludedSelfColumn,
   referencedEntities = [],
   showSelfColumns,
   value = 0,
@@ -82,6 +84,7 @@ function setup({
       aria-label="Min"
       data={data}
       datasetQuery={DATASET_QUERY}
+      excludedSelfColumn={excludedSelfColumn}
       id="goal-value"
       referencedEntities={referencedEntities}
       showSelfColumns={showSelfColumns}
@@ -249,6 +252,24 @@ describe("GoalValueInput", () => {
       const pill = screen.getByRole("button", { name: "Change value source" });
       expect(await within(pill).findByText("1,514.7")).toBeInTheDocument();
     });
+  });
+
+  it("leaves an excluded column out of the self columns", async () => {
+    const { onChange } = setup({ excludedSelfColumn: "sum" });
+
+    await openMenu();
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Value from this question/ }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith("count");
+  });
+
+  it("still renders an excluded column as a pill when it is the current value", () => {
+    setup({ excludedSelfColumn: "sum", value: "sum" });
+
+    const pill = screen.getByRole("button", { name: "Change value source" });
+    expect(within(pill).getByText("42")).toBeInTheDocument();
   });
 
   it("renders a self reference as a pill with the resolved value", () => {

@@ -468,6 +468,12 @@ export type VisualizationSettings = {
   /** Colored ranges of the gauge; bounds may reference another column or entity. */
   "gauge.segments"?: GoalSegment[];
 
+  /** Result column name the progress bar measures. */
+  "progress.value"?: string;
+
+  /** Progress bar goal: a static number or a column reference, see `GoalValue`. */
+  "progress.goal"?: GoalValue | null;
+
   /** Result column name, or names, used as pie slice dimensions. */
   "pie.dimension"?: string | string[];
 

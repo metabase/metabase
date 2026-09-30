@@ -45,17 +45,10 @@ export type ChartSettingSegmentedControlProps = {
   value: string;
 };
 
-export type ChartSettingGoalInputProps = {
-  id: string;
-  value: number | string;
-  onChange: (value: number | string) => void;
-  columns?: DatasetColumn[];
-  valueField?: string;
-};
-
 export type ChartSettingGoalValueProps = {
   data: DatasetData;
   datasetQuery?: DatasetQuery;
+  excludedSelfColumn?: string;
   id: string;
   // false for visualizations that don't support dynamic goals yet
   isDynamic?: boolean;

@@ -653,6 +653,22 @@
             (is (= (if show-goal 80 goal-ref)
                    (get-in @captured [:visualization :settings :graph.goal_value])))))))))
 
+(deftest ^:parallel render-resolves-dynamic-progress-goal-test
+  (testing "a progress.goal entity ref is substituted before the settings reach the JS renderer"
+    (let [captured (atom nil)
+          card     {:id                     1
+                    :name                   "progress with dynamic goal"
+                    :display                :progress
+                    :visualization_settings {:progress.goal goal-ref}}
+          data     {:cols                [{:name "count" :base_type :type/Integer}]
+                    :rows                [[42]]
+                    :referenced_entities goal-referenced-entities}]
+      (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                    (reset! captured viz-settings)
+                                                    {:type :svg :content "<svg></svg>"})]
+        (channel.render/render-pulse-card-for-display nil card {:data data}))
+      (is (= 80 (:progress.goal @captured))))))
+
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
     (let [captured (atom nil)
