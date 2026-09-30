@@ -59,6 +59,14 @@
         (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type :model))))
         (is (= card-id (:id (api.db/entity-by-id :model/Card card-id :type "model"))))))))
 
+(deftest entity-by-id-string-id-test
+  (testing "GHY-4481: a string id finds a row of a model whose id column is a string, and a SQL-looking one matches nothing"
+    (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :rasta) :title "convo"}]
+      (is (string? convo-id))
+      (is (= convo-id (:id (api.db/entity-by-id :model/MetabotConversation convo-id))))
+      (is (= convo-id (:id (api.db/entity-by-id :model/MetabotConversation convo-id :title "convo"))))
+      (is (nil? (api.db/entity-by-id :model/MetabotConversation sql-looking-name))))))
+
 (deftest entity-exists?-compares-condition-values-as-data-test
   (testing "GHY-4481: a string condition value is compared as data, and the other condition shapes still work"
     (mt/with-temp [:model/Card {card-id :id} {:name sql-looking-name, :archived false
