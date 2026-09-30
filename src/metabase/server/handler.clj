@@ -124,22 +124,27 @@
        (remove nil?)))
 
 (def ^:private Options
-  "Middleware configuration from the application: extra CORS origins, and credentials beyond sessions and API keys."
+  "Middleware configuration from the application: extra CORS origins, and credentials beyond sessions and API keys.
+  Every key is required, so a server built without them fails at startup rather than refusing those credentials."
   [:map
    {:closed true}
-   [:cors {:optional true}
+   [:cors
     [:map
      {:closed true}
      [:origins-fn         ifn?]
      [:sandbox-origin?-fn ifn?]]]
-   [:oauth-bearer       {:optional true} ::mw.session/oauth-bearer]
-   [:mcp-ui-credentials {:optional true} ::mw.session/mcp-ui-credentials]])
+   [:oauth-bearer       ::mw.session/oauth-bearer]
+   [:mcp-ui-credentials ::mw.session/mcp-ui-credentials]])
 
 (def ^:private OptionsOrVar
   [:or Options [:fn {:error/message "a var holding handler options"} var?]])
 
-(defn- current-options [options]
-  (if (var? options) @options options))
+(defn- current-options
+  "The options map, dereferenced if `options` is a var.
+  Throws if it does not match [[Options]]."
+  [options]
+  ;; Checked here because `mu/defn` does not validate schemas in prod.
+  (mu/validate-throw Options (if (var? options) @options options)))
 
 (mu/defn- apply-middleware :- ::api.macros/handler
   [handler :- ::api.macros/handler

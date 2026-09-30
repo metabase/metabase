@@ -1,6 +1,7 @@
 (ns metabase.server.handler-test
   (:require
    [clojure.test :refer :all]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.server.handler :as server.handler]
    [metabase.test.fixtures :as fixtures]
    [metabase.tiles.settings]))
@@ -11,8 +12,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- cors-options [origin]
-  {:cors {:origins-fn         (constantly origin)
-          :sandbox-origin?-fn (constantly false)}})
+  (assoc mcp.http-handler/options :cors {:origins-fn         (constantly origin)
+                                         :sandbox-origin?-fn (constantly false)}))
 
 (def ^:private options
   (cors-options "https://a.example"))
@@ -32,3 +33,10 @@
     (with-redefs [options (cors-options "https://b.example")]
       (is (= "https://b.example" (allowed-origin handler "https://b.example")))
       (is (nil? (allowed-origin handler "https://a.example"))))))
+
+(deftest handler-options-require-credential-fns-test
+  ;; `make-handler` checks this explicitly, since its `mu/defn` schema is not checked in prod.
+  (doseq [k [:oauth-bearer :mcp-ui-credentials]]
+    (testing k
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
+                            (#'server.handler/current-options (dissoc mcp.http-handler/options k)))))))
