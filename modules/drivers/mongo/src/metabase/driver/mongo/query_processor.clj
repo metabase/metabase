@@ -240,6 +240,7 @@
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *next-alias-index*
   "Tracks index of next alias for join compilation. It is bound in [[mbql->native]] to `volatile!` valued 0. Hence
    every compilation starts with a fresh 0. Indices are used in [[handle-join]] to make aliases unique. Index values
@@ -253,6 +254,7 @@
   (vswap! *next-alias-index* inc))
 
 ;; TODO (Cam 2026-07-24) get rid of this dynamic var and attach the mappings directly to the `query` itself
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *field-mappings*
   "The mapping from the fields to the projected names created
   by the nested query."
