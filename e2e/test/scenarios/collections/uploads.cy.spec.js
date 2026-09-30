@@ -358,6 +358,9 @@ function uploadToExisting({
   identicalSchema = true,
   uploadMode = "append",
 }) {
+  cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
+  cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
+
   // assumes we're already looking at an uploadable model page
   cy.findByTestId("qb-header").icon("upload").click();
 

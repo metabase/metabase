@@ -846,6 +846,7 @@ describe("scenarios > collection defaults", () => {
           // Select all
           cy.findByLabelText("Select all items").click();
           assertSelectAllIsIndeterminate(false);
+          cy.findByLabelText("Select all items").should("be.checked");
           H.getPinnedSection()
             .findByRole("checkbox", { name: "Orders, Count" })
             .should("have.attr", "aria-checked", "true");
@@ -868,10 +869,13 @@ describe("scenarios > collection defaults", () => {
             .findByRole("checkbox", { name: "Orders, Count" })
             .click();
           assertSelectAllIsIndeterminate(false);
+          cy.findByLabelText("Select all items").should("be.checked");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
 
+          cy.findByLabelText("Select all items").should("not.be.checked");
+          assertSelectAllIsIndeterminate(false);
           cy.findByTestId("toast-card").should("not.exist");
           H.getPinnedSection().findByText("Orders, Count").should("be.visible");
           H.getPinnedSection()
