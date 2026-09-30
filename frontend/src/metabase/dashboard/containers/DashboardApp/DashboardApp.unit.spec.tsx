@@ -36,7 +36,9 @@ import {
   createMockDashboard,
   createMockDashboardQueryMetadata,
   createMockDatabase,
+  createMockHeadingDashboardCard,
   createMockTable,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 
 const TEST_COLLECTION = createMockCollection();
@@ -59,22 +61,37 @@ const TestHome = () => <div />;
 interface Options {
   dashboard?: Partial<Dashboard>;
   slug?: string;
+  /** Holds the query metadata response until `resolveQueryMetadata` is called. */
+  deferQueryMetadata?: boolean;
 }
 
-function renderDashboardApp({ dashboard, slug }: Options = {}) {
+function renderDashboardApp({
+  dashboard,
+  slug,
+  deferQueryMetadata = false,
+}: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
+  const queryMetadata = createMockDashboardQueryMetadata({
+    databases: [TEST_DATABASE_WITH_ACTIONS],
+  });
+  let resolveQueryMetadata = () => {};
 
   setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
-  setupDashboardQueryMetadataEndpoint(
-    mockDashboard,
-    createMockDashboardQueryMetadata({
-      databases: [TEST_DATABASE_WITH_ACTIONS],
-    }),
-  );
+  if (deferQueryMetadata) {
+    fetchMock.get(
+      `path:/api/dashboard/${dashboardId}/query_metadata`,
+      () =>
+        new Promise((resolve) => {
+          resolveQueryMetadata = () => resolve(queryMetadata);
+        }),
+    );
+  } else {
+    setupDashboardQueryMetadataEndpoint(mockDashboard, queryMetadata);
+  }
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,
@@ -121,6 +138,7 @@ function renderDashboardApp({ dashboard, slug }: Options = {}) {
     router: checkNotNull(router),
     store,
     mockEventListener,
+    resolveQueryMetadata: () => resolveQueryMetadata(),
   };
 }
 
@@ -307,6 +325,34 @@ describe("DashboardApp", () => {
       expect(
         screen.queryByTestId("dashboard-skeleton"),
       ).not.toBeInTheDocument();
+    });
+
+    it("switches to the dashboard's real card layout as soon as it is known, before the load finishes", async () => {
+      const { resolveQueryMetadata } = renderDashboardApp({
+        dashboard: {
+          dashcards: [
+            createMockHeadingDashboardCard({ id: 1, text: "Heading" }),
+            createMockTextDashboardCard({
+              id: 2,
+              text: "First line\nSecond line",
+            }),
+          ],
+        },
+        deferQueryMetadata: true,
+      });
+
+      try {
+        // The generic layout has no text cards, so these can only come from
+        // the dashboard's own layout, drawn while its query metadata loads.
+        expect(
+          await screen.findAllByTestId("dashboard-skeleton-text"),
+        ).toHaveLength(2);
+        expect(screen.queryByTestId("dashboard")).not.toBeInTheDocument();
+      } finally {
+        resolveQueryMetadata();
+      }
+
+      expect(await screen.findByTestId("dashboard")).toBeInTheDocument();
     });
   });
 
