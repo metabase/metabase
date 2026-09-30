@@ -618,64 +618,17 @@
              (validate-and-enrich-documents (boolean archived)))
         (vary-meta assoc :total total))))
 
-(def ^:private query-broadening-stopwords
-  "Tokens we don't include in an OR-broadened fallback query — they'd flood the result
-   set with noise without adding signal."
-  #{"the" "a" "an" "of" "for" "with" "on" "in" "to" "by" "at" "and" "or"})
-
-(defn- broaden-query
-  "When the original keyword query produces zero hits, the agent has typically over-
-   specified — every word is ANDed and one stray qualifier (e.g. \"hard bounce rate
-   campaign\") collapses the result set to empty. As a one-shot fallback we rejoin the
-   meaningful tokens with `or` so the engine compiles them with `|` semantics.
-
-   Returns nil (no fallback) when broadening doesn't apply:
-     - the query is empty or has a single distinct token
-     - the agent already used `or` (so OR-broadening would be redundant)
-     - the agent used a quoted phrase (treat as a deliberate exact-match intent)
-     - the agent excluded a word (OR-joined branches would drop the exclusion and surface exactly what was
-       ruled out)"
-  [q]
-  (when (and q
-             (not (str/includes? q "\""))
-             (not (re-find #"(?i)\bor\b" q))
-             ;; the same test `search.util/to-tsquery-expr` uses to read a word as negated
-             (not (re-find #"(?:^|\s)-\w" q)))
-    (let [tokens (->> (str/split q #"\s+")
-                      ;; Strip clinging edge punctuation so "sales, revenue" broadens to
-                      ;; "sales or revenue", not "sales, or revenue".
-                      (map #(str/replace % #"^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$" ""))
-                      (remove str/blank?)
-                      (remove #(query-broadening-stopwords (u/lower-case-en %))))]
-      ;; Decide on distinct words: repeats of one word OR to the query that just came back empty. Keep the
-      ;; repeats in the output, though: `to-tsquery-expr` reads a repeated final word as typed in full rather
-      ;; than as a prefix, and dropping the repeat would hand that prefix to a different word.
-      (when (> (count (distinct (map u/lower-case-en tokens))) 1)
-        (str/join " or " tokens)))))
-
 ;; TODO (Chris 2026-09-30) -- Two search entry points have diverged. [[search]] is the multi-query search (term and
 ;; semantic queries, fused by rank, paginated) behind MCP v2's `search` tool and `/v1/search`. [[search-by-query]] is
-;; the single-query search the Metabot tools use, with its own engine choice, zero-hit broadening, and richer result
-;; enrichment. We may want to consolidate them once it's clear which shape both callers should share.
+;; the single-query search the Metabot tools use, which pins one engine per call and enriches results further. We may
+;; want to consolidate them once it's clear which shape both callers should share.
 (defn search-by-query
-  "Search for data sources (tables, models, cards, dashboards, metrics, measures,
-   segments, transforms) in Metabase with a single query string. This is the Metabot tools' search.
+  "The Metabot search tools' search: one query, run on one engine, with results shaped and enriched for the model.
 
-   Routes the query to the semantic engine when available — that engine already does
-   hybrid keyword + semantic RRF fusion at the SQL level (see
-   `metabase-enterprise.semantic-search.scoring/rrf-rank-exp`). When semantic isn't
-   available, falls back to the default keyword engine. No metabot-level fusion is
-   needed in either case.
-
-   The keyword (appdb) engine ANDs every token in the input — adding an extra qualifier
-   word can collapse the result set to zero. When the initial call returns no hits we
-   transparently retry once with the tokens OR-joined via [[broaden-query]] so the
-   agent gets *something* useful back. Skipped when the query is a single token, is
-   quoted, or already uses `or`.
-
-   `engine` pins the engine instead of resolving one, and `vector-only?` asks the semantic engine for meaning alone. `search-expr` is a structured keyword query (see
-   `metabase.search.query-expr`): engines that compile it match on it, the others match its leaves as a plain
-   string, and it is never broadened."
+  `engine` is the engine to run, by default the keyword engine. `query` is a plain string, such as a natural-language
+  description for the semantic engine. `search-expr` is a structured keyword query (see `metabase.search.query-expr`):
+  engines that compile it match on it, and the others match its leaves as a plain string. `vector-only?` asks the
+  semantic engine for meaning alone."
   [{:keys [query search-expr engine vector-only? database-id collection-id created-at last-edited-at
            entity-types limit metabot-id profile-id search-native-query weights]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
@@ -699,13 +652,7 @@
                                               (when (or embedded-metabot? (= profile-id "nlq"))
                                                 (:collection_id metabot)))
         limit           (or limit 50)
-        ;; Pick the engine that will actually run the search. Semantic handles its own
-        ;; hybrid (keyword + vector) blend internally, so it gets first refusal when
-        ;; active. Otherwise fall through to whatever the instance's default precedence
-        ;; resolves to — typically appdb, but could be `in-place` on minimal installs.
-        ;; Locking the choice in here (rather than relying on `search-context` to
-        ;; default it later) lets downstream code branch on the actual engine.
-        picked-engine   (or engine (search.engine/resolved-engine))
+        picked-engine   (or engine (search.engine/keyword-engine))
         run-engine      (fn [search-string]
                           (let [search-context
                                 (search/search-context
@@ -734,22 +681,10 @@
                                    search-expr         (assoc :search-expr search-expr)
                                    vector-only?        (assoc :vector-only? true)))]
                             (:data (search/search search-context))))
-        primary         (run-engine (if search-expr (search/query-expr-search-string search-expr) query))
-        ;; The `or`-rewrite only broadens where lowercase `or` compiles to a tsquery `|` — see
-        ;; [[search.engine/tsquery-operators-supported?]] for where that holds. Semantic is excluded
-        ;; on top of that: it already fuses keyword + vector matching, so broadening is redundant.
-        results         (or (when (and (empty? primary)
-                                       (nil? search-expr)
-                                       (not= picked-engine :search.engine/semantic)
-                                       (search.engine/tsquery-operators-supported?))
-                              (when-let [broadened (broaden-query query)]
-                                (log/info "[METABOT-SEARCH] Zero hits; retrying with an OR-broadened query")
-                                (not-empty (run-engine broadened))))
-                            primary)]
+        results         (run-engine (if search-expr (search/query-expr-search-string search-expr) query))]
     (log/info "[METABOT-SEARCH] Search finished" {:engine       picked-engine
                                                   :query-shape  (if search-expr :expression :string)
                                                   :result-count (count results)
-                                                  :broadened?   (not (identical? results primary))
                                                   :entity-types (frequencies (map :model results))})
     (->> results
          (take limit)

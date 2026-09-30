@@ -7,7 +7,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -725,18 +724,14 @@
   (testing "a document in an official collection reads as official under the in-place engine too"
     (mt/with-test-user :crowberto
       (search.tu/with-legacy-search
-        ;; `with-legacy-search` leaves semantic *active* where it's supported, and metabot resolves
-        ;; through `resolved-engine`, which prefers semantic — so on an instance with the feature on
-        ;; this would quietly stop exercising in-place. Force it, then assert we got there.
-        (mt/with-dynamic-fn-redefs [search.engine/active-engines (constantly nil)]
-          (is (= :search.engine/in-place (search.engine/resolved-engine))
-              "this test is only meaningful against the in-place engine")
-          (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
-                         :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
-            (let [doc (->> (search/search-by-query {:query "Ip4" :entity-types ["document"]})
-                           (filter #(= doc-id (:id %)))
-                           first)]
-              (is (=? {:type "document" :official true} doc)))))))))
+        (mt/with-temp [:model/Collection {off-id :id} {:name "Ip4OfficialColl" :authority_level "official"}
+                       :model/Document {doc-id :id}  {:name "Ip4Doc" :collection_id off-id}]
+          (let [doc (->> (search/search-by-query {:query        "Ip4"
+                                                  :engine       :search.engine/in-place
+                                                  :entity-types ["document"]})
+                         (filter #(= doc-id (:id %)))
+                         first)]
+            (is (=? {:type "document" :official true} doc))))))))
 
 (deftest table-collection-edge-cases-test
   ;; A table published at the *root* has no collection row, and the table spec coalesces a display
@@ -896,58 +891,6 @@
               (is (= "Visible Child" rasta-path))
               (is (not (str/includes? rasta-path "Secret Parent"))
                   "the unreadable ancestor's name must not leak into collection_path"))))))))
-
-(deftest ^:parallel broaden-query-test
-  (testing "zero-hit fallback OR-joins meaningful tokens, skipping queries where broadening doesn't apply"
-    (are [in out] (= out (#'search/broaden-query in))
-      "hard bounce rate campaign" "hard or bounce or rate or campaign"  ; every word ANDed -> OR-join
-      "the rate of churn"         "rate or churn"                        ; stopwords dropped
-      "Rate OF Churn"             "Rate or Churn"                        ; stopword match is case-insensitive
-      "revenue"                   nil                                    ; single token, nothing to broaden
-      "a or b"                    nil                                    ; already an OR query
-      "Orders OR Revenue"         nil                                    ; `or` match is case-insensitive too
-      "\"monthly revenue\""       nil                                    ; quoted = deliberate exact match
-      "sales, revenue"            "sales or revenue"                     ; clinging edge punctuation is stripped
-      "sales -refunds"            nil                                    ; an exclusion would be lost across OR branches
-      "sales - refunds"           "sales or refunds"                     ; a lone `-` is not an exclusion
-      "the of for"                nil                                    ; collapses to <2 tokens after stopwords
-      "revenue Revenue, revenue"  nil                                    ; repeats would OR to the same query
-      "sales revenue sales"       "sales or revenue or sales"            ; repeats kept, so the final word stays a repeat (no prefix)
-      "revenue dogs revenue"      "revenue or dogs or revenue"           ; likewise: neither word gets a prefix, as in the original
-      ""                          nil
-      nil                         nil)))
-
-(deftest broaden-query-retry-wiring-test
-  ;; `with-test-user` wraps the whole test so the app DB is initialized *before* any `with-redefs`
-  ;; below stubs `mdb/db-type` — otherwise a lazy DB init inside the redef window would see the H2
-  ;; test DB reporting itself as `:postgres` and fail the version check.
-  (mt/with-test-user :crowberto
-    (testing "a zero-hit search retries once with the broadened query — but only on a Postgres appdb engine"
-      (let [calls       (atom [])
-            fake-search (fn [ctx] (swap! calls conj (:search-string ctx)) {:data []})
-            run!        (fn [engines default db-type]
-                          (reset! calls [])
-                          (with-redefs [search-core/search           fake-search
-                                        search.engine/active-engines (constantly engines)
-                                        search.engine/default-engine (constantly default)
-                                        mdb/db-type                  (constantly db-type)
-                                        ;; No metabot-id and always-empty results, so the metabot
-                                        ;; row is irrelevant; stub the lookup.
-                                        metabot.db/metabot-by-entity-id (constantly nil)]
-                            (#'search/search-by-query {:query "hard bounce rate"}))
-                          @calls)]
-        (testing "Postgres appdb: empty primary triggers a second call with the OR-broadened string"
-          (is (= ["hard bounce rate" "hard or bounce or rate"]
-                 (run! #{:search.engine/appdb} :search.engine/appdb :postgres))))
-        (testing "appdb on H2 does NOT retry — its LIKE-AND token semantics make the OR-join narrower, not broader"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/appdb} :search.engine/appdb :h2))))
-        (testing "semantic engine does NOT retry — it already fuses keyword + vector matching"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/semantic :search.engine/appdb} :search.engine/appdb :postgres))))
-        (testing "in-place engine does NOT retry — LIKE-pattern matching has no `|` notion"
-          (is (= ["hard bounce rate"]
-                 (run! #{:search.engine/in-place} :search.engine/in-place :postgres))))))))
 
 (deftest enrich-with-portable-entity-ids-test
   (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up read_resource call"
