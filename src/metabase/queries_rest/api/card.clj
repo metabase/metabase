@@ -905,7 +905,7 @@
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
   (queries-rest.db/update-card! card-id
                                 {:public_uuid       nil
                                  :made_public_by_id nil})
