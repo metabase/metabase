@@ -29,6 +29,7 @@ import type {
   MeasureId,
   ReferencedEntity,
   ReferencedEntityType,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   isGoalForeignColumnRef,
@@ -63,6 +64,7 @@ export type GoalValueInputProps = {
   referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value: GoalValue | null;
+  visualizationSettings?: VisualizationSettings;
   onChange: (value: GoalValue | null) => void;
 };
 
@@ -75,6 +77,7 @@ export const GoalValueInput = ({
   referencedEntities,
   showSelfColumns = true,
   value,
+  visualizationSettings,
   onChange,
 }: GoalValueInputProps) => {
   const [isMenuOpen, menu] = useDisclosure(false);
@@ -269,6 +272,11 @@ export const GoalValueInput = ({
               isMenuOpen={isMenuOpen}
               resolved={resolved}
               tooltip={pillTooltip}
+              visualizationSettings={
+                isSelfRef
+                  ? visualizationSettings
+                  : sourceInfo.visualizationSettings
+              }
               onKeyDown={handlePillKeyDown}
               onOpenMenu={openMenuFromPill}
               onOpenSource={sourceUrl != null ? openSourceInNewTab : undefined}
@@ -343,8 +351,9 @@ export const GoalValueInput = ({
                 <GoalColumnMenuItem
                   key={column.name}
                   label={column.label}
-                  resolvedValue={resolveGoalValue(data, column.name).value}
+                  resolved={resolveGoalValue(data, column.name)}
                   selected={value === column.name}
+                  visualizationSettings={visualizationSettings}
                   onClick={() => commitValue(column.name)}
                 />
               ))}
@@ -381,8 +390,9 @@ export const GoalValueInput = ({
                     <GoalColumnMenuItem
                       key={column.name}
                       label={column.label}
-                      resolvedValue={resolveEntityColumnValue(column.name)}
+                      resolved={resolveEntityColumnValue(column.name)}
                       selected={foreignRef?.column === column.name}
+                      visualizationSettings={entityInfo.visualizationSettings}
                       onClick={() => selectEntityColumn(column.name)}
                     />
                   ));

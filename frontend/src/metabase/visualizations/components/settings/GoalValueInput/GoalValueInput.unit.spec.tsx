@@ -20,6 +20,7 @@ import {
 import { api, shouldShowNotAuthorizedPage } from "metabase/api/client";
 import { METAKEY } from "metabase/utils/browser";
 import { checkNotNull } from "metabase/utils/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   DatasetData,
   GoalForeignColumnRef,
@@ -27,6 +28,7 @@ import type {
   ReferencedEntitiesResults,
   ReferencedEntity,
   SearchResult,
+  VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockCard,
@@ -64,6 +66,7 @@ type SetupOpts = {
   referencedEntities?: ReferencedEntity[];
   showSelfColumns?: boolean;
   value?: GoalValue | null;
+  visualizationSettings?: VisualizationSettings;
 };
 
 function setup({
@@ -71,6 +74,7 @@ function setup({
   referencedEntities = [],
   showSelfColumns,
   value = 0,
+  visualizationSettings,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   renderWithProviders(
@@ -82,6 +86,7 @@ function setup({
       referencedEntities={referencedEntities}
       showSelfColumns={showSelfColumns}
       value={value}
+      visualizationSettings={visualizationSettings}
       onChange={onChange}
     />,
   );
@@ -174,6 +179,76 @@ describe("GoalValueInput", () => {
     );
 
     expect(onChange).toHaveBeenCalledWith("count");
+  });
+
+  describe("value formatting", () => {
+    const FRACTIONAL_COLUMN = createMockColumn({
+      name: "avg",
+      display_name: "Average",
+      base_type: "type/Float",
+    });
+    const FRACTIONAL_DATA = createMockDatasetData({
+      cols: [FRACTIONAL_COLUMN],
+      rows: [[1514.6666666666667]],
+    });
+
+    it("formats self column values in the menu", async () => {
+      setup({
+        data: createMockDatasetData({
+          cols: [...DATA.cols, FRACTIONAL_COLUMN],
+          rows: [[10, 42, 1514.6666666666667]],
+        }),
+      });
+
+      await openMenu();
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Value from this question/ }),
+      );
+
+      const item = await screen.findByRole("menuitem", { name: /Average/ });
+      expect(within(item).getByText("1,514.67")).toBeInTheDocument();
+    });
+
+    it("formats a self reference pill with this question's column settings", () => {
+      setup({
+        data: FRACTIONAL_DATA,
+        value: "avg",
+        visualizationSettings: {
+          column_settings: {
+            [getColumnKey(FRACTIONAL_COLUMN)]: { decimals: 0, prefix: "~" },
+          },
+        },
+      });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(within(pill).getByText("~1,515")).toBeInTheDocument();
+    });
+
+    it("formats a foreign reference pill with the referenced card's column settings", async () => {
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          visualization_settings: {
+            column_settings: {
+              [getColumnKey(FRACTIONAL_COLUMN)]: { decimals: 1 },
+            },
+          },
+        }),
+      );
+      setup({
+        data: createMockDatasetData({
+          ...DATA,
+          referenced_entities: {
+            card: { 9: { status: "completed", data: FRACTIONAL_DATA } },
+          },
+        }),
+        value: { type: "card", id: 9, column: "avg" },
+      });
+
+      const pill = screen.getByRole("button", { name: "Change value source" });
+      expect(await within(pill).findByText("1,514.7")).toBeInTheDocument();
+    });
   });
 
   it("renders a self reference as a pill with the resolved value", () => {
