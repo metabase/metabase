@@ -540,8 +540,8 @@
 
 (deftest ^:parallel aisdk-xf-nested-object-arguments-validate-test
   (testing "a tool call with object-valued arguments replays as valid LLMRequestOpts input"
-    ;; `parse-tool-arguments` keywordizes nested objects too; the agent loop replays the part on its next iteration,
-    ;; where every adapter validates it against `LLMRequestOpts` (BOT-2190).
+    ;; The agent loop replays tool calls on its next iteration, where every adapter validates them against
+    ;; `LLMRequestOpts`.
     (let [chunks [{:type :tool-input-start :toolCallId "call-1" :toolName "construct_notebook_query"}
                   {:type           :tool-input-delta
                    :toolCallId     "call-1"
@@ -560,9 +560,9 @@
       (is (= [{:type      :tool-input
                :id        "call-1"
                :function  "construct_notebook_query"
-               :arguments {:query         {:lib/type "mbql/query"
-                                           :stages   [{:source-table ["db" "public" "orders"]}]}
-                           :visualization {:chart_type "line"}
+               :arguments {:query         {"lib/type" "mbql/query"
+                                           "stages"   [{"source-table" ["db" "public" "orders"]}]}
+                           :visualization {"chart_type" "line"}
                            :title         "Orders per month"
                            :description   "Monthly orders in 2025"}}]
              parts))
