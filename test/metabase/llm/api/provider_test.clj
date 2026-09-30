@@ -1505,3 +1505,49 @@
         (is (=? {:message "Use the provider connection settings to move this connection and enter the credentials again."}
                 (mt/user-http-request :crowberto :put 400 "setting/llm-ollama-hosting" {:value "cloud"})))
         (is (= "self-hosted" (:hosting (stored-config "ollama"))))))))
+
+(deftest update-answers-for-the-connection-the-admin-will-have-test
+  (testing (str "A field its controller switches off is not part of the connection, so it must not be checked, "
+                "probed, or reported as saved. Validating what arrived instead of what is kept lets a connection "
+                "into the app DB that its own validation refuses.")
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+      (testing "switching Google's method away from the credential it was using leaves nothing to authenticate with"
+        (mt/with-temporary-setting-values [llm-providers [(connection "google" "google"
+                                                                      {:auth-method         "service-account-key"
+                                                                       :service-account-key "{\"type\":\"sa\"}"})]]
+          (is (= "google needs one of: Service account key file or OAuth access token + Project ID."
+                 (:message (mt/user-http-request :crowberto :put 400 "llm/providers/google"
+                                                 {:config {:auth-method "oauth-token" :service-account-key ""}}))))
+          (testing "and the connection it would have left behind is not stored"
+            (is (= {:auth-method "service-account-key" :service-account-key "{\"type\":\"sa\"}"}
+                   (stored-config "google"))))))
+      (testing "an address the edit leaves behind goes, and the answer says so"
+        (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                      {:hosting  "self-hosted"
+                                                                       :base-url "http://ollama.internal:11434/v1"})]]
+          ;; the base URL is not submitted at all, so it survives the merge from storage and the strip
+          ;; is the only thing that can decide it
+          (let [response (mt/user-http-request :crowberto :put 200 "llm/providers/ollama"
+                                               {:config {:hosting "cloud" :api-key "sk-cloud"}})]
+            (is (= {:hosting "cloud" :api-key "sk-cloud"} (stored-config "ollama")))
+            (is (= #{:hosting :api-key} (set (keys (:config response))))
+                "no field the store dropped is reported back as saved"))))
+      (testing "a value really typed into a field the connection switches off is refused rather than dropped"
+        (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                      {:hosting "cloud" :api-key "sk-cloud"})]]
+          (is (=? {:error-code "llm-field-does-not-apply" :field "base-url"}
+                  (mt/user-http-request :crowberto :put 400 "llm/providers/ollama"
+                                        {:config {:hosting  "cloud"
+                                                  :api-key  "sk-cloud"
+                                                  :base-url "http://ollama.internal:11434/v1"}}))))))))
+
+(deftest create-answers-for-the-connection-the-admin-will-have-test
+  (testing "creating runs the same way: what is validated and answered with is what the app DB keeps"
+    (mt/with-temporary-setting-values [llm-providers []]
+      (is (=? {:error-code "llm-field-does-not-apply" :field "base-url"}
+              (mt/user-http-request :crowberto :post 400 "llm/providers"
+                                    {:type   "ollama"
+                                     :config {:hosting  "cloud"
+                                              :api-key  "sk-cloud"
+                                              :base-url "http://ollama.internal:11434/v1"}})))
+      (is (empty? (llm.provider/stored-connections))))))

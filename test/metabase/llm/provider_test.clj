@@ -871,3 +871,28 @@
            (into {}
                  (map (juxt :type #(#'llm.provider/destination-fields (:type %))))
                  (llm.provider/provider-types))))))
+
+(deftest a-setting-refuses-a-field-the-connection-switches-off-test
+  (testing (str "A per-provider setting writes one field at a time, so nothing about the request says where the "
+                "value is going. Storing it anyway would drop it on the way to the app DB and read back as "
+                "nothing, which is a write reported as saved that never was.")
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting "cloud" :api-key "sk-cloud"})]]
+      (let [refusal (try (llm.settings/llm-ollama-api-base-url! "http://ollama.internal:11434/v1")
+                         (catch clojure.lang.ExceptionInfo e e))]
+        (is (= "API base URL does not apply when Where Ollama runs is Cloud." (ex-message refusal)))
+        (testing "naming the field the admin has to change first"
+          (is (= {:status-code 400 :api-error true :error-code :llm-field-does-not-apply :field :base-url}
+                 (ex-data refusal)))))))
+  (testing "clearing one is not a write: a blank leaves nothing behind to be wrong about"
+    (mt/with-temporary-setting-values [llm-providers [(connection "ollama" "ollama"
+                                                                  {:hosting  "cloud"
+                                                                   :api-key  "sk-cloud"
+                                                                   :base-url "http://stale.example.com/v1"})]]
+      (llm.settings/llm-ollama-api-base-url! "")
+      (is (= {:hosting "cloud" :api-key "sk-cloud"}
+             (:config (first (llm.provider/stored-connections)))))))
+  (testing "a connection that never named the controlling field is writable on either side of it"
+    (mt/with-temporary-setting-values [llm-providers [(connection "google" "google" {:project-id "my-project"})]]
+      (llm.settings/llm-google-oauth-access-token! "ya29.token")
+      (is (= "ya29.token" (:oauth-access-token (:config (first (llm.provider/stored-connections)))))))))

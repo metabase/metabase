@@ -526,6 +526,18 @@
         (= value (or (u/trimmed-string (get config field))
                      (:default (field-descriptor type-name field)))))))
 
+(defn- switched-off?
+  "Whether `config` *explicitly* switches `field` off: it sets the `:show-when` controller to
+  something else.
+
+  Stricter than [[field-active?]], which infers from the controller's `:default` — fine for judging a
+  config, not for deleting from one. Google's `:auth-method` defaults to the service account key, so
+  inferring would drop the OAuth token from any connection carrying one without naming the method."
+  [{:keys [show-when]} config]
+  (boolean (when-let [{:keys [field value]} show-when]
+             (when-let [chosen (u/trimmed-string (get config field))]
+               (not= chosen value)))))
+
 (defn- validate-field!
   [type-name {:keys [key label required? prefix default options] :as field} config]
   (when (field-active? type-name field config)
@@ -546,6 +558,46 @@
   [type-name field-key config]
   (when-let [field (field-descriptor type-name field-key)]
     (validate-field! type-name field config)))
+
+(defn- controller-value-label
+  "What the admin's form calls `value` in `field`'s own `:options`, falling back to the value itself."
+  [field value]
+  (if-let [option (u/find-first-map (:options field) [:value] value)]
+    (str (:label option))
+    value))
+
+(defn- assert-field-applies!
+  "Reject writing `field-key` to a connection configured like `config`, which switches it off.
+
+  Nothing may report a value as saved that the store will drop on the way past, so this refuses exactly
+  what [[switched-off?]] would remove and nothing more — a connection that never named its controller
+  keeps writing to both sides of it. The admin is told which other field is the reason, since that is
+  the one they have to change first."
+  [type-name field-key config]
+  (when-let [field (field-descriptor type-name field-key)]
+    (when (switched-off? field config)
+      (let [{controller-key :field} (:show-when field)
+            controller              (field-descriptor type-name controller-key)]
+        (throw (ex-info (tru "{0} does not apply when {1} is {2}."
+                             (str (:label field))
+                             (str (:label controller))
+                             (controller-value-label controller (u/trimmed-string (get config controller-key))))
+                        {:status-code 400
+                         :api-error   true
+                         :error-code  :llm-field-does-not-apply
+                         :field       field-key}))))))
+
+(defn assert-config-applies!
+  "Reject a value the caller really typed into a field the connection it lands on switches off.
+
+  Blank is the form clearing a field it hid, and a mask is the client keeping what is already stored —
+  neither is someone asking for a value to be kept. `config` is the connection those values land on,
+  which is not `submitted` where the environment or the stored connection has a say in it."
+  [type-name submitted config]
+  (doseq [[field-key value] submitted
+          :when             (and (u/trimmed-string value)
+                                 (not (setting/obfuscated-value? value)))]
+    (assert-field-applies! type-name field-key config)))
 
 (defn- config-problem
   "What `type-name`'s `:validate` hook finds wrong with `config`, as a sentence to show the admin, or nil.
@@ -1005,41 +1057,30 @@
             :when (not= (get config field-key) (get previous field-key))]
       (validate-field-value! field config))))
 
-(defn- switched-off?
-  "Whether `config` *explicitly* switches `field` off: it sets the `:show-when` controller to
-  something else.
+(defn config-to-store
+  "What the app DB will keep of `config` — see [[switched-off?]] for what it will not.
 
-  Stricter than [[field-active?]], which infers from the controller's `:default` — fine for judging a
-  config, not for deleting from one. Google's `:auth-method` defaults to the service account key, so
-  inferring would drop the OAuth token from any connection carrying one without naming the method."
-  [{:keys [show-when]} config]
-  (boolean (when-let [{:keys [field value]} show-when]
-             (when-let [chosen (u/trimmed-string (get config field))]
-               (not= chosen value)))))
-
-(defn- drop-switched-off-fields
-  "Strip `conn`'s config of fields it explicitly switches off — see [[switched-off?]].
-
-  The connection form clears them before saving; doing it here covers every other writer, including
-  the per-provider settings, which write one field at a time and so can turn a deployment over
-  without touching the address it leaves behind."
-  [{:keys [type config] :as conn}]
-  (cond-> conn
-    (provider-type type)
-    (assoc :config (into {}
-                         (remove (fn [[field-key _]]
-                                   (when-let [field (field-descriptor type field-key)]
-                                     (switched-off? field config))))
-                         config))))
+  Anything deciding whether a connection is good, asking its server, or telling an admin what was saved
+  has to work from this rather than from what arrived, or it answers for a connection nobody will have."
+  [type-name config]
+  (if-not (provider-type type-name)
+    config
+    (into {}
+          (remove (fn [[field-key _]]
+                    (when-let [field (field-descriptor type-name field-key)]
+                      (switched-off? field config))))
+          config)))
 
 (defn set-connections!
   "Persist `conns` as the stored connection list, dropping the derived annotation keys and any field
   the connection explicitly switches off."
   [conns]
-  (llm.provider.settings/set-llm-providers! (mapv #(-> %
-                                                       (dissoc :source :env-vars :env-fields)
-                                                       drop-switched-off-fields)
-                                                  conns)))
+  (llm.provider.settings/set-llm-providers!
+   (mapv (fn [{:keys [type] :as conn}]
+           (-> conn
+               (dissoc :source :env-vars :env-fields)
+               (update :config #(config-to-store type %))))
+         conns)))
 
 ;;; --------------------------------------------------- Slugs ------------------------------------------------------
 
@@ -1279,7 +1320,9 @@
         value            (u/trimmed-string new-value)
         stored           (stored-connections)
         idx              (first (keep-indexed (fn [i conn] (when (= conn-key (:key conn)) i)) stored))
-        live             (connection conn-key)]
+        live             (connection conn-key)
+        current-config   (or (:config live) {})
+        new-config       (if value (assoc current-config field value) (dissoc current-config field))]
     ;; a client echoing back the mask [[metabase.settings.core/obfuscate-value]] handed it is not entering a new
     ;; value, the same way [[metabase.settings.core/set!]] treats sensitive settings. Both forms are checked: the
     ;; mask of a newline-terminated secret (a JSON key file) matches only untrimmed, while a mask that picked up
@@ -1298,16 +1341,15 @@
               ;; strict — the form resubmits every field it disabled, so there an echo is the normal case.
               (when (contains? (:env-fields live) field)
                 (throw (env-managed-destination-ex group-type field field)))
-              (let [current-config (or (:config live) {})
-                    new-config     (if value
-                                     (assoc current-config field value)
-                                     (dissoc current-config field))]
-                (assert-destination-change-authorized! group-type current-config new-config {field value}
-                                                       (:env-fields live) {:legacy-setting? true})))
+              (assert-destination-change-authorized! group-type current-config new-config {field value}
+                                                     (:env-fields live) {:legacy-setting? true}))
             (when value
               (assert-credential-write-authorized! group-type field live))))
         (when value
-          (validate-config-field! group-type field {field value}))
+          ;; against the whole connection, not the one value: a field is only worth judging — and only
+          ;; worth keeping — in the deployment its own controller puts it in
+          (assert-field-applies! group-type field new-config)
+          (validate-config-field! group-type field new-config))
         (cond
           idx   (set-connections! (update-in stored [idx :config]
                                              (fn [config]
