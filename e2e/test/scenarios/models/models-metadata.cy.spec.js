@@ -101,7 +101,9 @@ describe("scenarios > models metadata", () => {
     });
   });
 
-  it("should edit native model metadata", () => {
+  it("should keep native model metadata in sync with the query, edit it, and revert to a specific metadata revision", () => {
+    cy.intercept("POST", "/api/revision/revert").as("revert");
+
     H.createNativeQuestion(
       {
         name: "Native Model",
@@ -113,6 +115,27 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
+    cy.log("keep metadata in sync with the query");
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit query definition").click();
+
+    H.NativeEditor.clear();
+    H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
+
+    cy.findByTestId("editor-tabs-columns-name").click();
+    cy.wait("@dataset");
+
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 1)
+      .and("have.text", "TOTAL");
+    cy.findByLabelText("Display name").should("have.value", "TOTAL");
+
+    H.datasetEditBar().button("Cancel").click();
+    H.modal().button("Discard changes").click();
+    H.datasetEditBar().should("not.exist");
+    cy.findAllByTestId("header-cell").should("contain", "SUBTOTAL");
+
+    cy.log("Revision 1: edit metadata");
     H.openQuestionActions();
 
     H.popover().findByTextEnsureVisible("37%").realHover();
@@ -137,88 +160,28 @@ describe("scenarios > models metadata", () => {
     H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Pre-tax ($)")
-      .and("not.contain", "Subtotal");
-
-    cy.log(
-      "Ensure that a question created from this model inherits its metadata.",
-    );
-    startQuestionFromModel("Native Model");
-    H.visualize();
-
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Pre-tax ($)")
-      .and("not.contain", "Subtotal");
-  });
-
-  it("should keep metadata in sync with the query", () => {
-    H.createNativeQuestion(
-      {
-        name: "Native Model",
-        type: "model",
-        native: {
-          query: "SELECT * FROM ORDERS LIMIT 5",
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByTextEnsureVisible("Edit query definition").click();
-
-    H.NativeEditor.clear();
-    H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
-
-    cy.findByTestId("editor-tabs-columns-name").click();
-    cy.wait("@dataset");
-
-    cy.findAllByTestId("header-cell")
-      .should("have.length", 1)
-      .and("have.text", "TOTAL");
-    cy.findByLabelText("Display name").should("have.value", "TOTAL");
-  });
-
-  it("should allow reverting to a specific metadata revision", () => {
-    cy.intercept("POST", "/api/revision/revert").as("revert");
-
-    H.createNativeQuestion({
-      name: "Native Model",
-      type: "model",
-      native: {
-        query: "SELECT * FROM ORDERS LIMIT 5",
-      },
-    }).then(({ body: { id: nativeModelId } }) => {
-      cy.visit(`/model/${nativeModelId}/columns`);
-      cy.wait("@cardQuery");
-    });
-
-    H.openColumnOptions("SUBTOTAL");
-    H.mapColumnTo({ table: "Orders", column: "Subtotal" });
-    H.setColumnType("No semantic type", "Currency");
-    H.saveMetadataChanges();
-
-    cy.log("Revision 1");
     H.tableInteractive().within(() => {
-      cy.findByText("Subtotal ($)").should("be.visible");
+      cy.findByText("Pre-tax ($)").should("be.visible");
       cy.findByText("SUBTOTAL").should("not.exist");
     });
+    cy.findAllByTestId("header-cell").should("not.contain", "Subtotal");
 
+    cy.log("Revision 2");
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
 
-    cy.log("Revision 2");
     H.openColumnOptions("TAX");
     H.mapColumnTo({ table: "Orders", column: "Tax" });
     H.setColumnType("No semantic type", "Currency");
     H.saveMetadataChanges();
 
     cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
+      .should("contain", "Pre-tax ($)")
       .and("contain", "Tax ($)")
       .and("not.contain", "TAX");
 
+    cy.log("revert to revision 1");
     cy.reload();
     H.questionInfoButton().click();
 
@@ -229,9 +192,19 @@ describe("scenarios > models metadata", () => {
 
     cy.wait("@revert");
     cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
+      .should("contain", "Pre-tax ($)")
       .and("not.contain", "Tax ($)")
       .and("contain", "TAX");
+
+    cy.log(
+      "Ensure that a question created from this model inherits its metadata.",
+    );
+    startQuestionFromModel("Native Model");
+    H.visualize();
+
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Pre-tax ($)")
+      .and("not.contain", "Subtotal");
   });
 
   it("should allow reordering columns by the edge of column header (metabase#41419)", () => {

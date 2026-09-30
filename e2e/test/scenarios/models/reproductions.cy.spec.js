@@ -34,28 +34,7 @@ describe("issue 19737", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
-    cy.visit("/collection/root");
-
-    moveModel(modelName, personalCollectionName);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Moved model");
-
-    cy.findByLabelText("Navigation bar").within(() => {
-      cy.findByText("New").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText(personalCollectionName).click();
-      cy.findByText(modelName);
-    });
-  });
-
-  it("should not show duplicate models in the data picker after it's moved from a custom collection without refreshing (metabase#19737)", () => {
+  it("should show a moved model once in the data picker without refreshing (metabase#19737)", () => {
     // move "Orders Model" to "First collection"
     cy.visit("/collection/root");
 
@@ -215,10 +194,18 @@ describe("issue 23421", () => {
     cy.signInAsAdmin();
   });
 
-  it("`visualization_settings` should not break UI (metabase#23421)", () => {
+  it("`visualization_settings` with empty or hidden columns should not break UI (metabase#23421)", () => {
     H.createNativeQuestion(emptyColumnsQuestionDetails, {
-      visitQuestion: true,
+      wrapId: true,
+      idAlias: "emptyColumnsModelId",
     });
+    H.createNativeQuestion(hiddenColumnsModelDetails, {
+      wrapId: true,
+      idAlias: "hiddenColumnsModelId",
+    });
+
+    cy.log("empty columns");
+    cy.get("@emptyColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
@@ -226,12 +213,9 @@ describe("issue 23421", () => {
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
-  });
 
-  it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(hiddenColumnsModelDetails, {
-      visitQuestion: true,
-    });
+    cy.log("hidden columns");
+    cy.get("@hiddenColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 

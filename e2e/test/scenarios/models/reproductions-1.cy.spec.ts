@@ -569,7 +569,7 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("be.visible");
   }
 
-  it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
+  it("should show hidden PKs in model metadata editor and object details after creating and updating a model (metabase#33844, metabase#45924)", () => {
     cy.visit("/model/new");
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
@@ -582,9 +582,11 @@ describe("issue 33844", () => {
     cy.wait("@dataset");
     cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     testModelMetadata(true);
-  });
 
-  it("should show hidden PKs in model metadata editor and object details after updating a model (metabase#33844,metabase#45924)", () => {
+    cy.log("update a model");
+    // Fresh aliases so waits don't consume requests from model creation
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
     H.visitModel(ORDERS_QUESTION_ID);
     cy.wait("@dataset");
     H.openQuestionActions();
