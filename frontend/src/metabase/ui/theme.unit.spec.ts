@@ -124,12 +124,12 @@ describe("theme scales", () => {
       ["light", LIGHT_SHADOWS],
       ["dark", DARK_SHADOWS],
     ] as const)("maps every elevation in %s mode", (colorScheme, expected) => {
-      expect(getThemeOverrides(colorScheme).shadows).toEqual(expected);
+      expect(getThemeOverrides({ colorScheme }).shadows).toEqual(expected);
     });
 
     it("uses a stronger shadow set in dark mode", () => {
-      const light = getThemeOverrides("light").shadows ?? {};
-      const dark = getThemeOverrides("dark").shadows ?? {};
+      const light = getThemeOverrides({ colorScheme: "light" }).shadows ?? {};
+      const dark = getThemeOverrides({ colorScheme: "dark" }).shadows ?? {};
 
       for (const key of SHADOW_SCALE_KEYS) {
         expect(dark[key]).not.toEqual(light[key]);
@@ -150,7 +150,8 @@ describe("theme scales", () => {
 
   describe("component defaults", () => {
     it("resolves every scale-based component default to a defined key", () => {
-      const components = getThemeOverrides("dark").components ?? {};
+      const components =
+        getThemeOverrides({ colorScheme: "dark" }).components ?? {};
       const violations: string[] = [];
 
       for (const [componentName, component] of Object.entries(components)) {

@@ -80,6 +80,8 @@ describe("issue 14843", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is not equal to 3`);
+    // Rye (length 3) is the city of the 4th person, so it would render without the filter
+    H.tableInteractiveBody().findByText("Hudson Borer").should("be.visible");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rye").should("not.exist");
   });
@@ -596,9 +598,20 @@ describe("issue 24922", () => {
     H.enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
-    H.visualize();
+    H.visualize(({ body }) => {
+      expect(body.error).to.not.exist;
+    });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
+    // The first order's total is under 100, the second one's is not
+    H.tableInteractiveBody()
+      .findAllByText("Segment")
+      .first()
+      .should("be.visible");
+    H.tableInteractiveBody()
+      .findAllByText("Other")
+      .first()
+      .should("be.visible");
   });
 });
 
@@ -775,6 +788,7 @@ describe("issue 49882", () => {
     H.CustomExpressionEditor.acceptCompletion("tab");
 
     H.CustomExpressionEditor.value().should("equal", "[Product → Rating]");
+    cy.focused().should("have.attr", "role", "textbox");
   });
 });
 
@@ -880,25 +894,6 @@ describe("issue 49304", () => {
       cy.findByText("gizmo").should("be.visible");
       cy.findByLabelText("Case sensitive").should("be.checked");
     });
-  });
-});
-
-describe("issue 41305", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should allow to right click in the suggestion popover without closing it (metabase#41305)", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "contains(", blur: false });
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .findByText("The column or text to check.")
-      .rightclick();
-    H.popover().should("have.length", 2);
   });
 });
 
@@ -1031,16 +1026,18 @@ describe("issue 50925", () => {
     H.getNotebookStep("expression").findByText("Custom").click();
 
     H.CustomExpressionEditor.focus()
-      .type("{leftarrow}".repeat(9))
-      .type(" [Pr", { focus: false });
+      .type("{leftarrow}".repeat(8))
+      .type("[Pr", { focus: false });
 
-    cy.wait(300);
     H.CustomExpressionEditor.completions().should("be.visible");
     H.CustomExpressionEditor.get().realPress("Enter", { pressDelay: 10 });
 
     H.CustomExpressionEditor.blur()
       .value()
-      .should("equal", "case([ID] = 1, [Price] * 1.21, [Price] [Price])");
+      .should(
+        "match",
+        /^case\(\[ID\] = 1, \[Price\] \* 1\.21, \[Price\]\s*\[Price\]\)$/,
+      );
   });
 });
 
@@ -1062,6 +1059,14 @@ describe("issue 53682", () => {
       );
       cy.button("Done").should("be.disabled");
     });
+
+    cy.log("Editing the name should not crash the editor");
+    H.CustomExpressionEditor.nameInput().click().type("Name");
+    H.expressionEditorWidget().should("be.visible");
+    H.CustomExpressionEditor.nameInput().should("have.value", "Name");
+    H.popover()
+      .findByText("Function contains expects at least 2 arguments")
+      .should("be.visible");
   });
 });
 

@@ -35,7 +35,7 @@
    (format "data_apps/%s/%s" dir path) bundle})
 
 (deftest sync-from-snapshot-is-gated-by-the-data-apps-feature-test
-  (testing "the remote-sync entry point does nothing without the :data-apps-preview feature —
+  (testing "the remote-sync entry point does nothing without the :data-apps feature —
             an instance then behaves exactly as if data apps did not exist"
     (let [files (app-files "a" {:name "A" :path "index.js" :bundle "V1"})]
       (mt/with-premium-features #{}
@@ -44,7 +44,7 @@
               "returns nil rather than a sync result")
           (is (not (t2/exists? :model/DataApp :name "a"))
               "materializes no data app")))
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
           (is (=? {:synced 1 :changed 1}
                   (data-app.sync/sync-from-snapshot! (snapshot files)))
@@ -366,7 +366,7 @@
         (is (= "NEW" (String. ^bytes (t2/select-one-fn :bundle :model/DataApp :name "working") "UTF-8")))))))
 
 (deftest pruning-failure-does-not-roll-back-synced-apps-test
-  (mt/with-premium-features #{:data-apps-preview}
+  (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [working-files (app-files "working" {:name "Working" :path "index.js" :bundle "OLD"})
             files (merge working-files (app-files "removed" {:name "Removed" :path "index.js" :bundle "OLD"}))

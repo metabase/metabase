@@ -65,6 +65,7 @@
    ;; selectors, and note that ZWJ/skin-tone sequences render as their component glyphs (no GSUB shaping).
    :emoji            "fonts/pdf/NotoEmoji-Regular.ttf"})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fonts*
   "Per-document map of `{face-keyword {:fallbacks [<phys> ...]} ...}`, where each `<phys>` is
   `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are
@@ -275,6 +276,7 @@
              + 0.0
              (font-runs face (visual-order (normalize-ws s)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :arglists '([face ^String s])}
   *em-width*

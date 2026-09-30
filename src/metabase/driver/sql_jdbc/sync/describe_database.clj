@@ -65,6 +65,7 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *select-probe-query-timeout-seconds*
   "time to wait on the select probe query"
   15)
