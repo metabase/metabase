@@ -164,6 +164,12 @@
       (cache/lookup k)
       :caps))
 
+(defn- read-entry
+  "The cache entry for `k`, counted as a use so the LRU evicts by reads as well as writes."
+  [k]
+  (-> (swap! capabilities-cache #(cond-> % (cache/has? % k) (cache/hit k)))
+      (cache/lookup k)))
+
 ;; Lookups in flight, by cache key. Callers after the same key share one, so a burst for one model —
 ;; page loads against a stale entry, or requests for a model with none — asks once.
 (defonce ^:private in-flight
@@ -206,7 +212,7 @@
   [credentials model]
   (when-not (str/blank? model)
     (let [k (cache-key credentials model)]
-      (if-let [entry (cache/lookup @capabilities-cache k)]
+      (if-let [entry (read-entry k)]
         (do (when (stale? entry)
               (refresh-in-background! credentials model))
             (:caps entry))
@@ -223,7 +229,7 @@
   ;; segment would never fill the cache, so every page load would hand a future the same nothing to do
   (when-not (str/blank? model)
     (let [k     (cache-key credentials model)
-          entry (cache/lookup @capabilities-cache k)]
+          entry (read-entry k)]
       (when (or (nil? entry) (stale? entry))
         (refresh-in-background! credentials model))
       (:caps entry))))

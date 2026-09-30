@@ -138,6 +138,29 @@
         (ollama.capabilities/reasoning-model? (assoc credentials :probed-model "qwen3:8b") "qwen3:8b")
         (is (= 1 (count @seen)))))))
 
+(deftest a-full-cache-evicts-the-model-read-least-recently-test
+  (testing "reads count as use, so the models being asked about are the ones kept"
+    (let [threshold 256
+          model     #(str "model-" %)
+          cached?   #(cache/has? @@#'ollama.capabilities/capabilities-cache
+                                 (#'ollama.capabilities/cache-key credentials (model %)))]
+      (with-server! {}
+        (fn [_]
+          (doseq [i (range threshold)]
+            (ollama.capabilities/reasoning-model? credentials (model i)))
+          (ollama.capabilities/reasoning-model? credentials (model 0))
+          (ollama.capabilities/cached-reasoning-model? credentials (model 1))
+          ;; two past the threshold, so without reads counting both 0 and 1 would be evicted
+          (ollama.capabilities/reasoning-model? credentials (model threshold))
+          (ollama.capabilities/reasoning-model? credentials (model (inc threshold)))
+          (testing "the blocking reader's model survives"
+            (is (cached? 0)))
+          (testing "the cache-only reader's model survives"
+            (is (cached? 1)))
+          (testing "the oldest models nobody read since are the ones evicted"
+            (is (not (cached? 2)))
+            (is (not (cached? 3)))))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; The cache-only read
 ;;; ──────────────────────────────────────────────────────────────────
