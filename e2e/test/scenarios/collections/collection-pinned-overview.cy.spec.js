@@ -53,7 +53,6 @@ describe("scenarios > collection pinned items overview", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
     cy.intercept("GET", "/api/**/items?models*").as("getCollectionItems");
   });
@@ -77,6 +76,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should be able to pin a question without rendering its visualization", () => {
+    cy.intercept("POST", "/api/card/**/query").as("getCardQuery");
     openRootCollection();
     H.openUnpinnedItemMenu(QUESTION_NAME);
     H.popover().findByText("Pin this").click();

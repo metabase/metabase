@@ -25,16 +25,13 @@ describe("scenarios > collection defaults", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/**/items?pinned-state*").as("getPinnedItems");
     cy.intercept("GET", "/api/collection/tree**").as("getTree");
     cy.intercept("GET", "/api/collection/*/items?**").as("getCollectionItems");
   });
 
   describe("new collection button", () => {
     beforeEach(() => {
-      H.restore();
       H.resetSnowplow();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
@@ -133,7 +130,7 @@ describe("scenarios > collection defaults", () => {
       cy.viewport(800, 500);
 
       H.startNewCollectionFromSidebar();
-      cy.findByTestId("new-collection-modal").then((modal) => {
+      cy.findByTestId("new-collection-modal").within(() => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
           { force: true },
@@ -410,11 +407,6 @@ describe("scenarios > collection defaults", () => {
   });
 
   describe("Collection related issues reproductions", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-    });
-
     it("should handle moving a question when you don't have access to entire collection path (metabase#44316", () => {
       H.createCollection({
         name: "Collection A",
@@ -1192,7 +1184,6 @@ describe("scenarios > collection defaults", () => {
 
   describe("x-rays", () => {
     beforeEach(() => {
-      H.restore();
       cy.signInAsNormalUser();
       cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
     });

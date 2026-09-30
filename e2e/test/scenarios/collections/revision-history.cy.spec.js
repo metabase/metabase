@@ -8,7 +8,6 @@ import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
-  no: ["nocollection", "nosql", "none"],
 };
 
 describe("revision history", () => {

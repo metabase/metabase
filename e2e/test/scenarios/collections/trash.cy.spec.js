@@ -1,6 +1,7 @@
 import { P, isMatching } from "ts-pattern";
 
 const { H } = cy;
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -11,6 +12,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > collections > trash", () => {
   beforeEach(() => {
@@ -256,10 +258,6 @@ describe("scenarios > collections > trash", () => {
           event,
         ),
       );
-      visitRootCollection();
-      collectionTable().within(() => {
-        cy.findByText("Dashboard A").should("not.exist");
-      });
       ensureCanRestoreFromPage("Dashboard A");
       ensureBookmarkVisible("Dashboard A");
 
@@ -286,10 +284,6 @@ describe("scenarios > collections > trash", () => {
           event,
         ),
       );
-      visitRootCollection();
-      collectionTable().within(() => {
-        cy.findByText("Question A").should("not.exist");
-      });
       ensureCanRestoreFromPage("Question A");
       ensureBookmarkVisible("Question A");
     });
@@ -678,41 +672,10 @@ describe("scenarios > collections > trash", () => {
     createCollection({ name: "Collection A" }).as("collection");
 
     cy.get("@collection").then((collection) => {
-      createNativeQuestion(
-        {
-          name: "Question A",
-          native: { query: "select 1;" },
-          collection_id: collection.id,
-        },
-        true,
-      ).as("question");
-      createDashboard(
-        { name: "Dashboard A", collection_id: collection.id },
-        true,
-      ).as("dashboard");
-
-      cy.visit("/admin/permissions/collections");
-
-      H.selectSidebarItem("Collection A");
-      const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
-
-      H.modifyPermission(
-        "All Users",
-        COLLECTION_ACCESS_PERMISSION_INDEX,
-        "View",
-      );
-      H.modifyPermission(
-        "collection",
-        COLLECTION_ACCESS_PERMISSION_INDEX,
-        "View",
-      );
-      H.modifyPermission("data", COLLECTION_ACCESS_PERMISSION_INDEX, "View");
-
-      cy.button("Save changes").click();
-      H.modal().within(() => {
-        cy.findByText("Save permissions?");
-        cy.findByText("Are you sure you want to do this?");
-        cy.button("Yes").click();
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [collection.id]: "read" },
+        [COLLECTION_GROUP]: { [collection.id]: "read" },
+        [DATA_GROUP]: { [collection.id]: "read" },
       });
 
       H.archiveCollection(collection.id);

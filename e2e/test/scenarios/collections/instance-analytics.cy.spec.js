@@ -22,7 +22,6 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
     });
 
     it("should not show the sidebar preview when working with instance analyics (metabase#49904)", () => {
-      cy.signInAsAdmin();
       H.visitQuestion(ORDERS_QUESTION_ID);
       cy.findByRole("button", { name: /Editor/ }).click();
       cy.findByLabelText("View SQL").click();
@@ -78,7 +77,7 @@ describe("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
         cy.findByTestId("qb-header").findByText("Save").click();
 
-        cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByTestId("save-question-modal").within(() => {
           cy.findByTestId("dashboard-and-collection-picker-button").findByText(
             "Custom reports",
           );

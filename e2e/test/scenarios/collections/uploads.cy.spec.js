@@ -6,8 +6,6 @@ import { FIXTURE_PATH, VALID_CSV_FILES } from "e2e/support/helpers";
 describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   beforeEach(() => {
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
-    cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
   });
 
   it("Can upload a CSV file to an empty postgres schema", () => {
@@ -200,7 +198,6 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   it("should allow you to choose a model to append to if there are multiple (metabase#53824)", () => {
     H.restore("postgres-writable");
     cy.signInAsAdmin();
-    H.enableTracking();
 
     H.enableUploads("postgres");
     H.headlessUpload(FIRST_COLLECTION_ID, VALID_CSV_FILES[0]);
@@ -228,9 +225,10 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
       .click();
 
     H.popover().findByText(VALID_CSV_FILES[0].humanName).click();
-    cy.findByRole("textbox", { name: "Select a model" })
-      .should("have.value", VALID_CSV_FILES[0].humanName)
-      .click();
+    cy.findByRole("textbox", { name: "Select a model" }).should(
+      "have.value",
+      VALID_CSV_FILES[0].humanName,
+    );
   });
 });
 

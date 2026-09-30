@@ -8,7 +8,6 @@ import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
   view: ["readonly"],
-  no: ["nocollection", "nosql", "none"],
 };
 
 describe("collection permissions", () => {
