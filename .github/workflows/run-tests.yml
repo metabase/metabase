@@ -43,6 +43,41 @@ jobs:
             || 'defer' }}
         run: echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
 
+  # On a PR re-run, asks ci-conductor whether every failure on the head commit is a
+  # confirmed flake. If so, `auto-pass` is 'true' and every test workflow below treats it
+  # as `skip`: the re-run's failed jobs are skipped and each `*-result` check passes.
+  #
+  # Skipped on the first attempt on purpose. "Re-run failed jobs" keeps successful jobs
+  # but re-evaluates skipped ones, which is what lets this run ahead of the test jobs on a
+  # re-run. Once it has run, a later re-run reuses its answer rather than asking again.
+  flaky-rerun:
+    name: Check whether a re-run's failures are flaky
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.run_attempt != '1' &&
+      github.event.pull_request.head.repo.full_name == 'metabase/metabase'
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      auto-pass: ${{ steps.check.outputs.auto-pass }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github
+      - uses: ./.github/actions/prepare-node-bun
+      - name: Ask ci-conductor whether the failures are flaky
+        id: check
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+          CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+          ENG_STATS_URL: ${{ secrets.ENG_STATS_URL }}
+          API_KEY: ${{ secrets.ENG_STATS_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun .github/scripts/flaky-rerun-auto-pass.ts
+
   files-changed:
     needs: should-run
     name: Detect changed files
@@ -235,31 +270,35 @@ jobs:
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.result == 'success')
-    needs: [should-run, files-changed, static-viz-files-changed]
+    needs: [should-run, files-changed, static-viz-files-changed, flaky-rerun]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.backend_all != 'true' &&
-        needs.static-viz-files-changed.outputs.static_viz != 'true' }}
-      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
-      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' }}
-      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' }}
-      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' }}
+        needs.static-viz-files-changed.outputs.static_viz != 'true') }}
+      # The project checks don't honor `skip` (a ratchets-only diff runs them without the
+      # rest of the backend), so an auto-pass turns them off here.
+      force-run: ${{ needs.should-run.outputs.verdict == 'force-run' && needs.flaky-rerun.outputs.auto-pass != 'true' }}
+      run-project-backend-checks: ${{ needs.files-changed.outputs.project_backend_checks == 'true' && needs.flaky-rerun.outputs.auto-pass != 'true' }}
+      run-project-migration-checks: ${{ needs.files-changed.outputs.project_migration_checks == 'true' && needs.flaky-rerun.outputs.auto-pass != 'true' }}
+      run-project-ratchet-checks: ${{ needs.files-changed.outputs.project_ratchet_checks == 'true' && needs.flaky-rerun.outputs.auto-pass != 'true' }}
 
   semantic-search-tests:
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, flaky-rerun]
     uses: ./.github/workflows/semantic-search.yml
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.backend_all != 'true') }}
       smoke-only: >-
         ${{ needs.should-run.outputs.verdict != 'force-run' &&
          !contains(github.event.pull_request.labels.*.name, 'ci:run-semantic-search-tests')
@@ -270,13 +309,14 @@ jobs:
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, flaky-rerun]
     uses: ./.github/workflows/app-db.yml
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.backend_all != 'true') }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   driver-tests:
@@ -284,17 +324,18 @@ jobs:
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
       needs.files-changed.result == 'success')
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, flaky-rerun]
     uses: ./.github/workflows/drivers.yml
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.backend_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.backend_all != 'true') }}
       force-run: ${{ needs.should-run.outputs.verdict == 'force-run' }}
 
   frontend-tests:
-    needs: [should-run, files-changed, create-test-plan]
+    needs: [should-run, files-changed, create-test-plan, flaky-rerun]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -303,23 +344,27 @@ jobs:
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_all != 'true') }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
       skip-lint: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
         needs.files-changed.outputs.frontend_all != 'true' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
+        needs.files-changed.outputs.e2e_all != 'true') }}
       skip-custom-viz: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.custom_viz_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.custom_viz_all != 'true') }}
       skip-ci-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.ci_scripts != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.ci_scripts != 'true') }}
 
   loki-tests:
-    needs: [should-run, files-changed, create-test-plan]
+    needs: [should-run, files-changed, create-test-plan, flaky-rerun]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -327,13 +372,14 @@ jobs:
     uses: ./.github/workflows/loki.yml
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.frontend_loki_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.frontend_loki_all != 'true') }}
       # A skipped/failed planner supplies no artifact, so the suite runs in full.
       test-plan-artifact-id: ${{ needs.create-test-plan.result == 'success' && needs.create-test-plan.outputs.artifact-id || '' }}
 
   e2e-tests:
-    needs: [should-run, files-changed, uberjar, create-test-plan]
+    needs: [should-run, files-changed, uberjar, create-test-plan, flaky-rerun]
     # Skip e2e tests when the uberjar build failed or was cancelled — the
     # downstream tests can't fetch a missing artifact, and we don't want to
     # mask the uberjar failure with a wave of misleading e2e errors. We still
@@ -351,8 +397,9 @@ jobs:
     secrets: inherit
     with:
       skip: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.e2e_all != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.e2e_all != 'true') }}
       # Only narrow specs on pull requests that haven't been forced to run everything.
       # Push and merge-queue runs always use the full suite.
       test-plan-artifact-id: >-
@@ -375,7 +422,7 @@ jobs:
     secrets: inherit
 
   sdk-tests:
-    needs: [should-run, uberjar, embedding-sdk-package, files-changed]
+    needs: [should-run, uberjar, embedding-sdk-package, files-changed, flaky-rerun]
     if: always() && !cancelled()
     uses: ./.github/workflows/embedding-sdk.yml
     secrets: inherit
@@ -396,11 +443,12 @@ jobs:
         ${{ needs.should-run.outputs.verdict == 'force-run' ||
         needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
       skip: >-
-        ${{ needs.embedding-sdk-package.result != 'success' ||
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        needs.embedding-sdk-package.result != 'success' ||
         needs.uberjar.result != 'success' }}
 
   build-scripts-tests:
-    needs: [should-run, files-changed]
+    needs: [should-run, files-changed, flaky-rerun]
     if: |
       !cancelled() &&
       (needs.should-run.outputs.verdict == 'force-run' ||
@@ -409,11 +457,13 @@ jobs:
     secrets: inherit
     with:
       skip-build-scripts: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.build_scripts != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.build_scripts != 'true') }}
       skip-embedder-plugin: >-
-        ${{ needs.should-run.outputs.verdict != 'force-run' &&
-        needs.files-changed.outputs.embedder_plugin != 'true' }}
+        ${{ needs.flaky-rerun.outputs.auto-pass == 'true' ||
+        (needs.should-run.outputs.verdict != 'force-run' &&
+        needs.files-changed.outputs.embedder_plugin != 'true') }}
 
   bundle-size:
     needs: [uberjar, files-changed]

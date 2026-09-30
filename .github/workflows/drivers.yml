@@ -25,6 +25,10 @@ env:
 jobs:
   # This job determines which driver tests should run based on PR context.
   # All decision logic is consolidated in mage driver-decisions.
+  #
+  # Each driver job checks `inputs.skip` itself as well: a re-run keeps this job's
+  # first-attempt decisions, so `skip` is the only way to turn a re-run's failed jobs
+  # off (run-tests.yml's `flaky-rerun` auto-pass does exactly that).
   determine-driver-skips:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -92,7 +96,7 @@ jobs:
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -121,7 +125,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -158,7 +162,7 @@ jobs:
 
   be-tests-bigquery-transforms-python-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
@@ -196,7 +200,7 @@ jobs:
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -258,7 +262,7 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -285,7 +289,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -347,7 +351,7 @@ jobs:
 
   be-tests-h2:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -366,7 +370,7 @@ jobs:
 
   be-tests-h2-oss:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -386,7 +390,7 @@ jobs:
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -510,7 +514,7 @@ jobs:
 
   be-tests-mongo:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -569,7 +573,7 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -624,7 +628,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -648,7 +652,7 @@ jobs:
 
   be-tests-oracle:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     strategy:
@@ -712,7 +716,7 @@ jobs:
 
   be-tests-postgres:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -810,7 +814,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -870,7 +874,7 @@ jobs:
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 50
     strategy:
@@ -966,7 +970,7 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 70
     strategy:
@@ -1028,7 +1032,7 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1053,7 +1057,7 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
@@ -1073,7 +1077,7 @@ jobs:
 
   be-tests-sqlserver:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
@@ -1162,7 +1166,7 @@ jobs:
 
   login-to-ecr:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 15
     permissions:
@@ -1194,7 +1198,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
