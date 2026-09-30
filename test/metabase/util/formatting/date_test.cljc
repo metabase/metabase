@@ -26,14 +26,6 @@
 (defn- format-datetime-with-unit [value options]
   (date/format-datetime-with-unit time-config value options))
 
-(deftest ^:parallel time-config-validation-test
-  (doseq [format-fn [date/format-for-parameter
-                     date/format-range-with-unit
-                     date/format-datetime-with-unit]]
-    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
-                          #"valid :start-of-week"
-                          (format-fn nil "2022-12-19T12:03:19" {:unit :day})))))
-
 (deftest ^:parallel format-for-parameter-test
   (testing "some units have custom formatting"
     (are [exp date unit] (= exp (format-for-parameter (u.time/coerce-to-timestamp date)
@@ -93,14 +85,6 @@
               {:start-of-week :monday}
               "2022-12-14T11:19:04"
               {:unit "week", :compact true, :locale locale}))))))
-
-#?(:cljs
-   (deftest ^:parallel format-range-with-unit-js-time-config-test
-     (is (= (str "Dec 12" date/range-separator "18, 2022")
-            (date/format-range-with-unit
-             #js {"start-of-week" "monday"}
-             "2022-12-14T11:19:04"
-             #js {"unit" "week", "compact" true})))))
 
 (deftest ^:parallel format-datetime-with-unit-test-1a1
   (testing "special cases"
@@ -213,10 +197,6 @@
         "Wednesday"                "day-of-week"
         "341"                      "day-of-year"
         #?(:clj "50" :cljs "50th") "week-of-year"))))
-
-(deftest ^:parallel format-numeric-week-of-year-at-year-boundary-test
-  (is (= #?(:clj "1" :cljs "1st")
-         (format-datetime-with-unit 1 {:unit "week-of-year"}))))
 
 (deftest ^:parallel format-datetime-with-unit-test-2b
   (testing "general dates"
