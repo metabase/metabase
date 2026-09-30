@@ -182,6 +182,7 @@ export function DataStudioLayout() {
 
   return (
     <AreaLayout
+      navStorageKey="data-studio-nav"
       logo={
         <img
           alt={t`Data Studio Logo`}

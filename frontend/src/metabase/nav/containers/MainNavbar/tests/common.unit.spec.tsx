@@ -2,7 +2,9 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { setStoredSidePanelWidth } from "metabase/common/components/ResizableSidePanel";
 import { dayjs } from "metabase/dayjs";
+import { maxSmallMediaQuery } from "metabase/styled-components/theme";
 import * as Urls from "metabase/urls";
 import {
   createMockCard,
@@ -22,6 +24,62 @@ import {
 describe("nav > containers > MainNavbar", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("resizing", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("is resizable at the medium width when open", async () => {
+      await setup();
+
+      const panel = within(screen.getByTestId("main-navbar-root")).getByTestId(
+        "resizable-side-panel",
+      );
+      expect(panel).toHaveStyle({ width: "320px" });
+      expect(
+        within(panel).getByTestId("side-panel-resize-handle"),
+      ).toBeInTheDocument();
+    });
+
+    it("opens at the width the user last resized it to", async () => {
+      setStoredSidePanelWidth("main-nav", 300);
+
+      await setup();
+
+      expect(screen.getByTestId("resizable-side-panel")).toHaveStyle({
+        width: "300px",
+      });
+    });
+
+    it("is not resizable when closed", async () => {
+      await setup({ isOpen: false });
+
+      expect(
+        screen.queryByTestId("resizable-side-panel"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("is not resizable on small screens", async () => {
+      jest.spyOn(window, "matchMedia").mockImplementation((query) => ({
+        matches: query === maxSmallMediaQuery,
+        media: query,
+        onchange: null,
+        addListener: jest.fn(),
+        removeListener: jest.fn(),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+        dispatchEvent: jest.fn(),
+      }));
+
+      await setup();
+
+      expect(screen.getByTestId("main-navbar-root")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("resizable-side-panel"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("homepage link", () => {

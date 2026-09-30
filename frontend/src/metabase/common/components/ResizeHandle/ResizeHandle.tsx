@@ -17,22 +17,9 @@ export const ResizeHandle = forwardRef(function ResizableBoxHandle(
   const { handleAxis, ...rest } = props;
 
   if (handleAxis === "e" || handleAxis === "w") {
-    return (
-      <Flex
-        ref={ref}
-        className={S.vertical}
-        align="center"
-        justify="center"
-        pos="absolute"
-        w="sm"
-        h="100%"
-        top={0}
-        left={rem(-4)}
-        {...rest}
-      >
-        <Box w="xxs" h={THICKNESS} bg="border-neutral" />
-      </Flex>
-    );
+    // No affordance until hovered: a col-resize cursor plus a border-strong
+    // divider appear only when the pointer is over the panel's inner edge.
+    return <div ref={ref} className={S.vertical} {...rest} />;
   } else if (handleAxis === "s" || handleAxis === "n") {
     return (
       <Flex

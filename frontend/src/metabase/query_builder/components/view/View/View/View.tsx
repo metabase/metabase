@@ -266,6 +266,9 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
       .otherwise(() => SIDEBAR_SIZES.NORMAL);
+    const rightSidebarStorageKey = isShowingTimelineSidebar
+      ? "query-builder-timeline"
+      : "query-builder-right";
     return (
       <div className={CS.fullHeight} ref={ref}>
         <Flex
@@ -290,7 +293,11 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                 setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
-            <ViewSidebar side="left" isOpen={showLeftSidebar}>
+            <ViewSidebar
+              side="left"
+              storageKey="query-builder-left"
+              isOpen={showLeftSidebar}
+            >
               <ViewLeftSidebarContainer
                 question={question}
                 result={result}
@@ -305,6 +312,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
             />
             <ViewSidebar
               side="right"
+              storageKey={rightSidebarStorageKey}
               isOpen={showRightSidebar}
               width={rightSidebarWidth}
             >

@@ -28,6 +28,7 @@ export const RunSidebar = memo(function RunSidebar({
 }: RunSidebarProps) {
   return (
     <SidebarResizableBox
+      storageKey="transforms-run-sidebar"
       containerWidth={containerWidth}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}

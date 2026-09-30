@@ -203,7 +203,10 @@ export function DependencyDiagnostics({
         )}
       </MonitorMain>
       {selectedNode != null && (
-        <Sidebar containerWidth={containerWidth}>
+        <Sidebar
+          storageKey="monitor-dependency-diagnostics"
+          containerWidth={containerWidth}
+        >
           <DiagnosticsSidebar
             node={selectedNode}
             mode={mode}

@@ -25,7 +25,7 @@ export const PermissionPageSidebar = styled.aside`
   height: 100%;
   overflow: auto;
   border-left: 1px solid var(--mb-color-border-neutral);
-  max-width: 320px;
+  width: 100%;
 `;
 
 export const TabsContainer = styled.div`

@@ -231,7 +231,10 @@ export function ConversationDetailPage() {
         </Box>
       </MonitorMain>
       {selectedToolCall && (
-        <Sidebar containerWidth={containerWidth}>
+        <Sidebar
+          storageKey="monitor-tool-call-details"
+          containerWidth={containerWidth}
+        >
           <ToolCallDetailsSidebar
             message={selectedToolCall}
             onClose={handleSidebarClose}

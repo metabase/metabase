@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { trackMetricsViewerDimensionSelected } from "metabase/metrics-viewer/analytics";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types";
@@ -288,144 +289,150 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
   const isNoBreakoutSelected = activeDimensionBreakout.type === "scalar";
 
   return (
-    <Box
-      className={S.root}
-      component="aside"
-      data-testid="metrics-viewer-dimension-picker-sidebar"
-      pl="xl"
+    <ResizableSidePanel
+      storageKey="metrics-dimension-picker"
+      side="right"
+      defaultSize="md"
     >
-      <Flex align="center" justify="space-between" pt="xxs" pb="lg">
-        <Flex align="center" gap="sm" miw={0}>
-          {showAllFields && (
-            <ActionIcon
-              aria-label={t`Back`}
-              variant="subtle"
-              onClick={handleBack}
-            >
-              <Icon name="arrow_left" />
-            </ActionIcon>
-          )}
-          <Title order={3} size="h4" fw="bold">
-            {showAllFields ? t`All fields` : t`Break out`}
-          </Title>
-        </Flex>
-        <ActionIcon
-          aria-label={t`Close`}
-          variant="subtle"
-          onClick={closeSidebar}
-        >
-          <Icon name="close" />
-        </ActionIcon>
-      </Flex>
-
-      <Box pb="lg">
-        <TextInput
-          aria-label={t`Search fields`}
-          classNames={{ input: S.searchInput }}
-          leftSection={<Icon name="search" size={14} />}
-          onChange={(event) => setSearchText(event.currentTarget.value)}
-          placeholder={t`Search fields`}
-          size="sm"
-          value={searchText}
-        />
-      </Box>
-
-      <ScrollArea pb="xl" offsetScrollbars="present">
-        {showAllFields && (
-          <AllFieldsList
-            key={isSearching ? "searching" : "browsing"}
-            activeDimensionBreakout={activeDimensionBreakout}
-            sections={filteredSections}
-            metricSourceDataById={sourceDataById}
-            sourceColors={sourceColors}
-            metricSlots={metricSlots}
-            onSelect={handleAllFieldsSelect}
-          />
-        )}
-        {showDefaultView && (
-          <Stack gap="xxs">
-            <Flex align="center" justify="space-between" my="sm">
-              <Text size="md" c="text-secondary">
-                {defaultSectionHeader}
-              </Text>
-              {showSeeAll && (
-                <Button
-                  onClick={handleSeeAll}
-                  variant="transparent"
-                  size="compact-md"
-                >
-                  {t`See all`}
-                </Button>
-              )}
-            </Flex>
-            {isStandaloneMetric ? (
-              <AllFieldsList
-                activeDimensionBreakout={activeDimensionBreakout}
-                sections={filteredSections}
-                metricSourceDataById={sourceDataById}
-                sourceColors={sourceColors}
-                metricSlots={metricSlots}
-                onSelect={handleStandaloneMetricSelect}
-              />
-            ) : showFieldsByCategory ? (
-              <Stack gap="xxs">
-                {categories.map((category) => {
-                  const isSelected =
-                    category.key === selectedDimensionBreakoutCategoryKey;
-                  const isExpanded = category.key === expandedCategoryKey;
-
-                  return (
-                    <CategoryItem
-                      key={category.key}
-                      category={category}
-                      activeDimensionBreakout={activeDimensionBreakout}
-                      metricSlots={metricSlots}
-                      sourceDataById={sourceDataById}
-                      sourceColors={sourceColors}
-                      isSelected={isSelected}
-                      isExpanded={isExpanded}
-                      onCategorySelect={() => handleCategorySelect(category)}
-                      onToggleCategorySettings={() =>
-                        handleToggleCategorySettings(category)
-                      }
-                      onDimensionChange={(slotIndex, dimensionId) =>
-                        handleCategoryDimensionChange(
-                          category,
-                          slotIndex,
-                          dimensionId,
-                        )
-                      }
-                    />
-                  );
-                })}
-              </Stack>
-            ) : (
-              <Text c="text-secondary" ta="center" py="xl">
-                {defaultEmptyStateText}
-              </Text>
-            )}
-            <Box className={S.noBreakoutSection}>
-              <UnstyledButton
-                className={cx(S.noBreakoutButton, {
-                  [S.selected]: isNoBreakoutSelected,
-                })}
-                aria-label={t`No breakout`}
-                aria-pressed={isNoBreakoutSelected}
-                onClick={handleNoBreakout}
+      <Box
+        className={S.root}
+        component="aside"
+        data-testid="metrics-viewer-dimension-picker-sidebar"
+        pl="xl"
+      >
+        <Flex align="center" justify="space-between" pt="xxs" pb="lg">
+          <Flex align="center" gap="sm" miw={0}>
+            {showAllFields && (
+              <ActionIcon
+                aria-label={t`Back`}
+                variant="subtle"
+                onClick={handleBack}
               >
-                <Icon
-                  className={S.noBreakoutIcon}
-                  name="unreferenced"
-                  size={16}
-                />
-                <Text className={S.noBreakoutLabel} component="span">
-                  {t`No breakout`}
+                <Icon name="arrow_left" />
+              </ActionIcon>
+            )}
+            <Title order={3} size="h4" fw="bold">
+              {showAllFields ? t`All fields` : t`Break out`}
+            </Title>
+          </Flex>
+          <ActionIcon
+            aria-label={t`Close`}
+            variant="subtle"
+            onClick={closeSidebar}
+          >
+            <Icon name="close" />
+          </ActionIcon>
+        </Flex>
+
+        <Box pb="lg">
+          <TextInput
+            aria-label={t`Search fields`}
+            classNames={{ input: S.searchInput }}
+            leftSection={<Icon name="search" size={14} />}
+            onChange={(event) => setSearchText(event.currentTarget.value)}
+            placeholder={t`Search fields`}
+            size="sm"
+            value={searchText}
+          />
+        </Box>
+
+        <ScrollArea pb="xl" offsetScrollbars="present">
+          {showAllFields && (
+            <AllFieldsList
+              key={isSearching ? "searching" : "browsing"}
+              activeDimensionBreakout={activeDimensionBreakout}
+              sections={filteredSections}
+              metricSourceDataById={sourceDataById}
+              sourceColors={sourceColors}
+              metricSlots={metricSlots}
+              onSelect={handleAllFieldsSelect}
+            />
+          )}
+          {showDefaultView && (
+            <Stack gap="xxs">
+              <Flex align="center" justify="space-between" my="sm">
+                <Text size="md" c="text-secondary">
+                  {defaultSectionHeader}
                 </Text>
-              </UnstyledButton>
-            </Box>
-          </Stack>
-        )}
-      </ScrollArea>
-    </Box>
+                {showSeeAll && (
+                  <Button
+                    onClick={handleSeeAll}
+                    variant="transparent"
+                    size="compact-md"
+                  >
+                    {t`See all`}
+                  </Button>
+                )}
+              </Flex>
+              {isStandaloneMetric ? (
+                <AllFieldsList
+                  activeDimensionBreakout={activeDimensionBreakout}
+                  sections={filteredSections}
+                  metricSourceDataById={sourceDataById}
+                  sourceColors={sourceColors}
+                  metricSlots={metricSlots}
+                  onSelect={handleStandaloneMetricSelect}
+                />
+              ) : showFieldsByCategory ? (
+                <Stack gap="xxs">
+                  {categories.map((category) => {
+                    const isSelected =
+                      category.key === selectedDimensionBreakoutCategoryKey;
+                    const isExpanded = category.key === expandedCategoryKey;
+
+                    return (
+                      <CategoryItem
+                        key={category.key}
+                        category={category}
+                        activeDimensionBreakout={activeDimensionBreakout}
+                        metricSlots={metricSlots}
+                        sourceDataById={sourceDataById}
+                        sourceColors={sourceColors}
+                        isSelected={isSelected}
+                        isExpanded={isExpanded}
+                        onCategorySelect={() => handleCategorySelect(category)}
+                        onToggleCategorySettings={() =>
+                          handleToggleCategorySettings(category)
+                        }
+                        onDimensionChange={(slotIndex, dimensionId) =>
+                          handleCategoryDimensionChange(
+                            category,
+                            slotIndex,
+                            dimensionId,
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Text c="text-secondary" ta="center" py="xl">
+                  {defaultEmptyStateText}
+                </Text>
+              )}
+              <Box className={S.noBreakoutSection}>
+                <UnstyledButton
+                  className={cx(S.noBreakoutButton, {
+                    [S.selected]: isNoBreakoutSelected,
+                  })}
+                  aria-label={t`No breakout`}
+                  aria-pressed={isNoBreakoutSelected}
+                  onClick={handleNoBreakout}
+                >
+                  <Icon
+                    className={S.noBreakoutIcon}
+                    name="unreferenced"
+                    size={16}
+                  />
+                  <Text className={S.noBreakoutLabel} component="span">
+                    {t`No breakout`}
+                  </Text>
+                </UnstyledButton>
+              </Box>
+            </Stack>
+          )}
+        </ScrollArea>
+      </Box>
+    </ResizableSidePanel>
   );
 }

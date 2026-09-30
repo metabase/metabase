@@ -791,7 +791,11 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
             </DebouncedFrame>
           </Box>
         </Flex>
-        <ViewSidebar side="right" isOpen={!!sidebar}>
+        <ViewSidebar
+          side="right"
+          storageKey="model-editor-right"
+          isOpen={!!sidebar}
+        >
           {sidebar}
         </ViewSidebar>
       </Flex>

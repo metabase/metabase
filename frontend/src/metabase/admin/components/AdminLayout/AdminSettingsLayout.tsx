@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { useLocation } from "metabase/router";
 import { Box } from "metabase/ui";
 
@@ -26,9 +27,20 @@ export const AdminSettingsLayout = ({
     <Box className={S.Wrapper}>
       <Box className={S.Main}>
         {sidebar && (
-          <Box className={S.Sidebar} data-testid="admin-layout-sidebar">
-            {sidebar}
-          </Box>
+          <ResizableSidePanel
+            storageKey="admin-nav"
+            side="left"
+            defaultSize="sm"
+          >
+            <Box
+              className={S.Sidebar}
+              data-testid="admin-layout-sidebar"
+              w="100%"
+              h="100%"
+            >
+              {sidebar}
+            </Box>
+          </ResizableSidePanel>
         )}
         <Box
           ref={contentRef}

@@ -1,3 +1,4 @@
+import { useMediaQuery } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 
 import {
@@ -5,11 +6,13 @@ import {
   useGetCardQuery,
   useGetCollectionQuery,
 } from "metabase/api";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
 import { closeNavbar, openNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { useNavigate } from "metabase/router";
+import { maxSmallMediaQuery } from "metabase/styled-components/theme";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
@@ -108,27 +111,44 @@ function MainNavbarInner({
     });
   }, [location, params, card, dashboard, collection]);
 
+  // On mobile the nav is a full-width (90vw) overlay, and when closed it is
+  // hidden entirely. Only the open, desktop nav is resizable — otherwise the
+  // resize handle would appear over a hidden panel or fight the mobile layout.
+  const isMobile = useMediaQuery(maxSmallMediaQuery, false);
+  const isResizable = isOpen && !isMobile;
+
+  const navContent = (
+    <NavRoot isOpen={isOpen}>
+      <MainNavbarContainer
+        isOpen={isOpen}
+        location={location}
+        params={params}
+        selectedItems={selectedItems}
+        openNavbar={openNavbar}
+        closeNavbar={closeNavbar}
+        onChangeLocation={navigate}
+        {...props}
+      />
+      <NavbarPromoSlot />
+    </NavRoot>
+  );
+
   return (
     <Sidebar
       isOpen={isOpen}
       side="left"
+      isResizable={isResizable}
       aria-hidden={!isOpen}
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >
-      <NavRoot isOpen={isOpen}>
-        <MainNavbarContainer
-          isOpen={isOpen}
-          location={location}
-          params={params}
-          selectedItems={selectedItems}
-          openNavbar={openNavbar}
-          closeNavbar={closeNavbar}
-          onChangeLocation={navigate}
-          {...props}
-        />
-        <NavbarPromoSlot />
-      </NavRoot>
+      {isResizable ? (
+        <ResizableSidePanel storageKey="main-nav" side="left" defaultSize="md">
+          {navContent}
+        </ResizableSidePanel>
+      ) : (
+        navContent
+      )}
     </Sidebar>
   );
 }

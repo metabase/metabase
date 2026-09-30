@@ -45,7 +45,10 @@ export const JobInfoApp = () => {
         )}
       </MonitorMain>
       {jobKey != null && data != null && (
-        <Sidebar containerWidth={containerWidth}>
+        <Sidebar
+          storageKey="monitor-job-triggers"
+          containerWidth={containerWidth}
+        >
           <JobTriggersSidebar jobKey={jobKey} />
         </Sidebar>
       )}

@@ -1,9 +1,10 @@
 import type { SyntheticEvent, TransitionEventHandler } from "react";
-import { forwardRef, useEffect, useState } from "react";
-import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
+import { useEffect, useState } from "react";
+import type { ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
+import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import {
   Notebook,
@@ -11,7 +12,7 @@ import {
 } from "metabase/querying/notebook/components/Notebook";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { Box, Flex, rem } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 
 import { setNotebookNativePreviewSidebarWidth } from "../../../../actions";
 import { getUiControls } from "../../../../store/selectors";
@@ -83,38 +84,6 @@ export const NotebookContainer = ({
   const shouldShowFullWidthNativePreview = useIsSmallScreen();
   const transformStyle = isOpen ? "translateY(0)" : "translateY(-100%)";
 
-  const Handle = forwardRef<
-    HTMLDivElement,
-    Partial<ResizableBoxProps> & {
-      onResize?: any; //Mantine and react-resizable have different opinions on what onResize should be
-      handleAxis?: string; // undocumented prop https://github.com/react-grid-layout/react-resizable/issues/175
-    }
-  >(function Handle(props, ref) {
-    const handleWidth = 10;
-    const borderWidth = 1;
-    const left = rem(-((handleWidth + borderWidth) / 2));
-
-    const { handleAxis, ...rest } = props;
-
-    return (
-      <Box
-        data-testid="notebook-native-preview-resize-handle"
-        ref={ref}
-        {...rest}
-        pos="absolute"
-        top={0}
-        bottom={0}
-        m="auto 0"
-        w={rem(handleWidth)}
-        left={left}
-        style={{
-          zIndex: 5,
-          cursor: "ew-resize",
-        }}
-      ></Box>
-    );
-  });
-
   return (
     <Flex
       pos="absolute"
@@ -162,7 +131,12 @@ export const NotebookContainer = ({
               maxConstraints={[maxSidebarWidth, 0]}
               axis="x"
               resizeHandles={["w"]}
-              handle={<Handle />}
+              handle={
+                <ResizeHandle
+                  handleAxis="w"
+                  data-testid="notebook-native-preview-resize-handle"
+                />
+              }
               onResizeStop={handleResizeStop}
               style={{
                 borderLeft: "1px solid var(--mb-color-border-neutral)",

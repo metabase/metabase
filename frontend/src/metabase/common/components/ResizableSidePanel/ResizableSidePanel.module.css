@@ -1,0 +1,53 @@
+.panel {
+  display: flex;
+  height: 100%;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/*
+ * The resize handle is an invisible strip straddling the panel's inner edge.
+ * There is no affordance until the pointer is over it, at which point the
+ * cursor becomes col-resize and a divider in the border-strong color appears.
+ */
+.handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5rem;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.handleEast {
+  right: -0.25rem;
+}
+
+.handleWest {
+  left: -0.25rem;
+}
+
+.handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: transparent;
+}
+
+.handleEast::after {
+  right: 0.25rem;
+}
+
+.handleWest::after {
+  left: 0.25rem;
+}
+
+.handle:hover::after {
+  background-color: var(--mb-color-border-strong);
+}
+
+.noSelect {
+  user-select: none;
+}

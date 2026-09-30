@@ -15,6 +15,7 @@ import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/hel
 import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { ResizableSidePanel } from "metabase/common/components/ResizableSidePanel";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
@@ -153,10 +154,18 @@ export function PermissionsPageLayout({
       </PermissionPageContent>
 
       {isHelpReferenceOpen && (
-        <PermissionPageSidebar aria-label={t`Permissions help reference`}>
-          <CloseSidebarButtonWithDefault onClick={handleToggleHelpReference} />
-          {helpContent}
-        </PermissionPageSidebar>
+        <ResizableSidePanel
+          storageKey="admin-permissions-help"
+          side="right"
+          defaultSize="md"
+        >
+          <PermissionPageSidebar aria-label={t`Permissions help reference`}>
+            <CloseSidebarButtonWithDefault
+              onClick={handleToggleHelpReference}
+            />
+            {helpContent}
+          </PermissionPageSidebar>
+        </ResizableSidePanel>
       )}
       <NewModal
         title="Someone just changed permissions"

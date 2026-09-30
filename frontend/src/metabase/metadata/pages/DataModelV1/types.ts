@@ -20,7 +20,7 @@ export type ParsedRouteParams = {
   tableId: TableId | undefined;
 };
 
-export type Column = "nav" | "table" | "field" | "preview";
+export type Column = "table" | "field" | "preview";
 
 export interface ColumnSizeConfig {
   flex: number | string;

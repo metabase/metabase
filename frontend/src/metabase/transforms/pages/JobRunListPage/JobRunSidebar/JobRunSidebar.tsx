@@ -67,6 +67,7 @@ export const JobRunSidebar = memo(function JobRunSidebar({
 
   return (
     <SidebarResizableBox
+      storageKey="transforms-job-run-sidebar"
       containerWidth={containerWidth}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}
