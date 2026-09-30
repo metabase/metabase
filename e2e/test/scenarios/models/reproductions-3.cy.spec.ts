@@ -64,42 +64,6 @@ describe("issue 20042", () => {
   });
 });
 
-describe("issue 20045", () => {
-  beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      name: "Orders Model",
-      type: "model",
-    });
-  });
-
-  it("should not add query hash on the rerun (metabase#20045)", () => {
-    cy.visit(`/model/${ORDERS_QUESTION_ID}`);
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
-
-    cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
-
-    cy.wait("@dataset");
-
-    cy.location("pathname").should(
-      "eq",
-      `/model/${ORDERS_QUESTION_ID}-orders-model`,
-    );
-    cy.location("hash").should("eq", "");
-  });
-});
-
 describe("issue 22518", () => {
   beforeEach(() => {
     H.restore();
@@ -363,30 +327,7 @@ describe("issue 31663", () => {
   });
 });
 
-describe("issue 31905", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    cy.intercept("GET", "/api/card/*").as("card");
-
-    H.createQuestion(
-      {
-        name: "Orders Model",
-        type: "model",
-        query: { "source-table": ORDERS_ID, limit: 2 },
-      },
-      { visitQuestion: true },
-    );
-  });
-
-  // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
-  it("should not send more than one same api requests to load a model (metabase#31905)", () => {
-    cy.get("@card.all").should("have.length.lte", 2);
-  });
-});
-
-describe("issue 32963", () => {
+describe("issues 31905 and 32963", () => {
   function assertLineChart() {
     H.openVizTypeSidebar();
     H.leftSidebar().within(() => {
@@ -406,6 +347,7 @@ describe("issue 32963", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/card/*").as("card");
     H.createQuestion(
       {
         name: "Orders Model",
@@ -416,7 +358,11 @@ describe("issue 32963", () => {
     );
   });
 
-  it("should pick sensible display for model based questions (metabase#32963)", () => {
+  it("should load a model once and pick sensible display for model based questions (metabase#31905, metabase#32963)", () => {
+    cy.log("should not send more than one same api request (metabase#31905)");
+    // TODO: This should be 1, but MainNavbar.tsx RTKQ fetch + QB's call to loadCard makes it 2
+    cy.get("@card.all").should("have.length.within", 1, 2);
+
     cy.findByTestId("qb-header")
       .button(/Summarize/)
       .click();

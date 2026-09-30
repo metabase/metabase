@@ -10,6 +10,7 @@ describe("scenarios > models > create", () => {
 
   it("creates a native query model", () => {
     const modelName = "m42";
+    cy.intercept("POST", "/api/card").as("createModel");
 
     navigateToNewModelPage();
 
@@ -17,21 +18,36 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("dataset-edit-bar").button("Cancel").click();
     H.modal().button("Discard changes").click();
 
-    // Now we will create a model
-    navigateToNewModelPage();
+    // Now we will create a model from the browse page
+    cy.visit("/browse/models");
+    cy.findByLabelText("Create a new model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use a native query")
+      .click();
 
     // Clicking on metadata should not work until we run a query
     cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.NativeEditor.focus().type("select 42");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
+
+    cy.log("the editor should not overflow its container (metabase#69722)");
+    H.NativeEditor.type("{enter}".repeat(20));
+    cy.findByTestId("native-query-editor-container")
+      .findByTestId("run-button")
+      .should("be.visible");
+
+    cy.findByTestId("native-query-editor-container")
+      .findByLabelText("Get Answer")
+      .click();
     cy.wait("@dataset");
+    cy.findByTestId("visualization-root").should("contain", "42");
 
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal").within(() => {
       cy.findByLabelText("Name").type(modelName);
       cy.button("Save").click();
     });
+    cy.wait("@createModel");
 
     // After saving, we land on view mode for the model
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
@@ -57,30 +73,6 @@ describe("scenarios > models > create", () => {
       .and("contain", H.getPersonalCollectionName(USERS["nocollection"]))
       .button("Save")
       .click();
-    cy.wait("@createModel");
-    cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
-  });
-
-  it("should be able to create a new native model from the browse page", () => {
-    cy.intercept("POST", "/api/dataset").as("previewModel");
-    cy.intercept("POST", "/api/card").as("createModel");
-
-    cy.visit("/browse/models");
-    cy.findByLabelText("Create a new model").click();
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-    H.NativeEditor.focus().type("select 42");
-    cy.findByTestId("native-query-editor-container")
-      .findByLabelText("Get Answer")
-      .click();
-    cy.wait("@previewModel");
-    cy.findByTestId("visualization-root").should("contain", "42");
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByLabelText("Name").type("m42");
-      cy.button("Save").click();
-    });
     cy.wait("@createModel");
     cy.location("pathname").should("match", /^\/model\/\d+-.*$/);
   });

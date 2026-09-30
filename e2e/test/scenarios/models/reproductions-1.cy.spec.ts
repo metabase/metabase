@@ -38,13 +38,16 @@ describe("issue 29943", () => {
     return H.tableHeaderColumn(name);
   }
 
+  const ID_DESCRIPTION =
+    "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.";
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("selects the right column when clicking a column header (metabase#29943)", () => {
+  it("selects the right column when clicking a column header (metabase#29943, metabase#25884, metabase#34349)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -52,11 +55,13 @@ describe("issue 29943", () => {
           "source-table": ORDERS_ID,
           expressions: {
             Custom: ["+", 1, 1],
+            Country: ["substring", "United States", 1, 20],
           },
           fields: [
             ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
             ["field", ORDERS.TOTAL, { "base-type": "type/Float" }],
             ["expression", "Custom", { "base-type": "type/Integer" }],
+            ["expression", "Country", { "base-type": "type/Text" }],
           ],
           limit: 5, // optimization
         },
@@ -67,6 +72,15 @@ describe("issue 29943", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
+
+    cy.log(
+      "columns without a description show an empty description (metabase#25884, metabase#34349)",
+    );
+    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
+    H.tableHeaderClick("Country");
+    cy.findByLabelText("Description").should("have.text", "");
+    H.tableHeaderClick("ID");
+    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
 
     reorderTotalAndCustomColumns();
     cy.button("Save changes").click();
@@ -152,48 +166,6 @@ describe("issues with metadata editing on models with custom expressions", () =>
 
     cy.findByTestId("editor-tabs-query-name").click();
     assertNoError();
-  });
-});
-
-describe("issues 25884 and 34349", () => {
-  const ID_DESCRIPTION =
-    "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should show empty description input for columns without description in metadata (metabase#25884, metabase#34349)", () => {
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": ORDERS_ID,
-          expressions: {
-            Country: ["substring", "United States", 1, 20],
-          },
-          fields: [
-            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-            ["expression", "Country", { "base-type": "type/Text" }],
-          ],
-          limit: 5, // optimization
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-
-    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
-
-    H.tableHeaderClick("Country");
-    cy.findByLabelText("Description").should("have.text", "");
-
-    H.tableHeaderClick("ID");
-    cy.findByLabelText("Description").should("have.text", ID_DESCRIPTION);
   });
 });
 
@@ -617,19 +589,10 @@ describe("issue 33844", () => {
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
     testModelMetadata(false);
-  });
-});
 
-describe("issue 45924", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-    cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
-  });
-
-  it("should preserve model metadata when re-running the query (metabase#45924)", () => {
+    cy.log(
+      "preserve model metadata when re-running the query (metabase#45924)",
+    );
     H.visitModel(ORDERS_QUESTION_ID);
     cy.wait("@dataset");
     H.openQuestionActions();
@@ -646,7 +609,7 @@ describe("issue 45924", () => {
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-    cy.wait("@updateCard");
+    cy.wait("@updateModel");
     cy.wait("@dataset");
     H.tableInteractive().findByText("ID1").should("be.visible");
   });

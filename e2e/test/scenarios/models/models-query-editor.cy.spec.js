@@ -29,6 +29,22 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
+      cy.log(
+        "rerunning the model should not add a query hash (metabase#20045)",
+      );
+      cy.location("pathname").should(
+        "eq",
+        `/model/${ORDERS_QUESTION_ID}-orders-model`,
+      );
+      cy.location("hash").should("eq", "");
+      cy.findByTestId("qb-header-action-panel").find(".Icon-refresh").click();
+      cy.wait("@dataset");
+      cy.location("pathname").should(
+        "eq",
+        `/model/${ORDERS_QUESTION_ID}-orders-model`,
+      );
+      cy.location("hash").should("eq", "");
+
       H.openQuestionActions();
 
       H.popover().within(() => {
