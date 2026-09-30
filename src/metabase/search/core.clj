@@ -11,6 +11,7 @@
    [metabase.search.impl :as search.impl]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.ingestion.query :as search.ingestion.query]
+   [metabase.search.query-expr :as search.query-expr]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
@@ -39,7 +40,8 @@
   ranked-results
   search-results
   ;; We could avoid exposing this by wrapping `query-model-set` and `search` with it.
-  search-context]
+  search-context
+  query-expr-problems]
  [search.ingestion
   bulk-ingest!]
  [search.ingestion.query
@@ -256,3 +258,18 @@
                               (filter (comp #{model} :model))
                               (map :name))]
       (search.engine/delete! e search-model ids))))
+
+(defn query-expr-schema
+  "The malli schema for a structured keyword query that uses only `ops`; see [[search.query-expr/schema]]."
+  [ops]
+  (search.query-expr/schema ops))
+
+(defn query-expr-limit-error
+  "An error message when a structured keyword query has too many leaves, else nil."
+  [expr]
+  (search.query-expr/limit-error expr))
+
+(defn query-expr-search-string
+  "The plain search string for a structured keyword query: its non-negated leaves joined with spaces."
+  [expr]
+  (search.query-expr/search-string expr))

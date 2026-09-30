@@ -13,6 +13,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.query-expr :as query-expr]
+   [metabase.search.util :as search.util]
    [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
@@ -299,6 +301,8 @@
    [:vector-search-explain?              {:optional true} [:maybe boolean?]]
    [:vector-search-force-index?          {:optional true} [:maybe boolean?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
+   ;; a structured keyword query; engines that compile it use it in place of `:search-string` for matching
+   [:search-expr                         {:optional true} [:maybe (query-expr/schema query-expr/all-ops)]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:curated                             {:optional true} [:maybe true?]]
@@ -341,6 +345,7 @@
            vector-search-explain?
            vector-search-force-index?
            search-native-query
+           search-expr
            search-string
            table-db-id
            verified
@@ -388,6 +393,7 @@
                  (some? vector-search-explain?)              (assoc :vector-search-explain? vector-search-explain?)
                  (some? vector-search-force-index?)          (assoc :vector-search-force-index? vector-search-force-index?)
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? search-expr)                         (assoc :search-expr search-expr)
                  (some? verified)                            (assoc :verified verified)
                  (some? curated)                             (assoc :curated? curated)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
@@ -537,3 +543,23 @@
                                                :search/query-length (count (:search-string search-ctx))
                                                :search/model-count  (count (:models search-ctx))}
     (search-results search-ctx search.engine/model-set (ranked-results search-ctx))))
+
+(defn query-expr-problems
+  "What's wrong with `expr` as a full-text query under the Postgres text-search configuration `lang` (default: the
+  one the index uses), found in one round trip without searching anything:
+
+  - `:empty-leaves`, the texts of the leaves that normalize to nothing (stopwords such as `the`, or a phrase made only of them).
+    Left in, they vanish silently: `revenue AND NOT phrase(\"the and\")` would search just `revenue`.
+  - `:unrestricted?`, true when the whole query can't restrict the index, for example `revenue OR NOT archive`,
+    which matches nearly everything."
+  ([expr]
+   (query-expr-problems expr (search.util/tsv-language)))
+  ([expr lang]
+   (let [leaves (vec (query-expr/leaves expr))
+         row    (search.db/tsquery-shape-row (mapv #(query-expr/->tsquery % lang) leaves)
+                                             (query-expr/->tsquery expr lang))]
+     {:empty-leaves  (into [] (keep-indexed (fn [i leaf]
+                                              (when (zero? (get row (keyword (str "leaf_" i))))
+                                                (query-expr/leaf-text leaf))))
+                           leaves)
+      :unrestricted? (contains? #{"" "T"} (str/trim (str (:querytree row))))})))
