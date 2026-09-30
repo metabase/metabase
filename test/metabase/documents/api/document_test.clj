@@ -2677,6 +2677,28 @@
             (testing "the embedded card is cloned into the document"
               (is (t2/exists? :model/Card :document_id doc-id)))))))))
 
+(deftest put-document-create-card-without-collection-id-in-body-test
+  (testing "PUT /api/document/:id - new cards default to the document's collection when the body omits :collection_id"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Document {doc-id :id} {:name          "My Doc"
+                                                     :collection_id coll-id
+                                                     :document      (documents.test-util/text->prose-mirror-ast "")}]
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+          (mt/user-http-request :rasta
+                                :put 200 (str "document/" doc-id)
+                                {:document {:type    "doc"
+                                            :content [{:type "cardEmbed" :attrs {:id -1 :name nil}}]}
+                                 :cards    {-1 {:name                   "New Card"
+                                                :type                   :question
+                                                :dataset_query          (mt/mbql-query venues)
+                                                :display                :table
+                                                :visualization_settings {}}}})
+          (testing "the card is created in the document's collection"
+            (is (=? [{:name "New Card" :collection_id coll-id}]
+                    (t2/select :model/Card :document_id doc-id)))))))))
+
 (deftest copy-document-containing-native-card-without-native-perms-test
   (testing "POST /api/document/:id/copy - user without native perms can copy a document containing a native card (UXW-5037)"
     (mt/with-non-admin-groups-no-root-collection-perms
