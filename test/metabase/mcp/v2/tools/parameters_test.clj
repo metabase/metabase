@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.mcp.v2.tools.parameters :as parameters]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -40,7 +41,7 @@
     (throw (ex-info (str "get_parameter_values returned a tool-level error: "
                          (-> result :content first :text))
                     {:result result})))
-  (-> result :content first :text))
+  (-> result :content first :text v2.tu/strip-data-boundary))
 
 (defn- params-text
   ([args] (params-text nil args))

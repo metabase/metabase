@@ -139,7 +139,7 @@ const RequiredSyncItem = ({
   });
 
   return (
-    <Accordion.Item value={row.key} mt="sm">
+    <Accordion.Item value={row.key}>
       {/* The switch sits outside the control, so flipping it doesn't also toggle the panel. */}
       <Group
         gap="sm"

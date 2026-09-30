@@ -143,7 +143,7 @@ export function FilterPopoverContent({
           placeholder={t`Search dimensions...`}
           value={searchText}
           onChange={(event) => setSearchText(event.currentTarget.value)}
-          leftSection={<Icon name="search" size={16} />}
+          leftSection={<Icon name="search" />}
           size="md"
           radius="sm"
         />

@@ -54,7 +54,7 @@ export function SimpleDataPickerView({
         <TextInput
           data-autofocus
           type="search"
-          leftSection={<Icon name="search" size={16} aria-hidden />}
+          leftSection={<Icon name="search" aria-hidden />}
           mb="sm"
           placeholder={t`Search…`}
           onChange={(e) => setSearchText(e.target.value ?? "")}

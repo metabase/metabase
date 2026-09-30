@@ -34,6 +34,7 @@ export const inputOverrides = {
         "--input-padding-inline-end": rightSection
           ? sectionWidth(size)
           : rem(paddingFor(size)),
+        "--input-section-icon-size": rem(ICON_SIZE),
         "--input-left-section-width": sectionWidth(size),
         "--input-right-section-width":
           typeof rightSectionWidth === "string"
