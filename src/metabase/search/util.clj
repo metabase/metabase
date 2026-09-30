@@ -151,16 +151,14 @@
 (defn- last-word-complete?
   "Whether the final word should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
   when it already appears earlier in the input: a repeated word was evidently typed in full."
-  [trimmed tokens]
-  ;; The words the expression is built from, in order: bare `and`/`or` connectives are dropped there, so the word
-  ;; that gets completed is the last of these, not necessarily the last token.
-  (let [words (into []
-                    (comp (remove #{"and" "or"})
-                          (mapcat token-words)
-                          (remove str/blank?))
-                    tokens)]
+  [tokens]
+  ;; Bare `and`/`or` connectives are dropped when the expression is built, so the word that gets completed comes
+  ;; from the last token that isn't one, not necessarily the last token.
+  (let [kept  (remove #{"and" "or"} tokens)
+        words (into [] (comp (mapcat token-words) (remove str/blank?)) kept)
+        final (last kept)]
     (and (seq words)
-         (not (str/ends-with? trimmed "\""))
+         (not (and (str/starts-with? final "\"") (str/ends-with? final "\"")))
          (not-any? #{(peek words)} (pop words)))))
 
 (defn to-tsquery-expr
@@ -173,7 +171,7 @@
                                split-preserving-quotes
                                (remove str/blank?))
            ;; TODO also only complete if the :context is appropriate
-           maybe-complete (if (last-word-complete? trimmed tokens) complete-last-word identity)]
+           maybe-complete (if (last-word-complete? tokens) complete-last-word identity)]
        (->> tokens
             (partition-by #{"or"})
             (remove #(= (first %) "or"))

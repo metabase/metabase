@@ -93,7 +93,12 @@
         "a different final word still completes")
     (is (= "'revenue' & 'rev':*"
            (search-expr "revenue rev or"))
-        "including before a trailing connective")))
+        "including before a trailing connective"))
+  (testing "a closed phrase stays exact when a trailing connective follows it"
+    (is (= "'monthly' <-> 'revenue'"
+           (search-expr "\"monthly revenue\" and")))
+    (is (= "'monthly' <-> 'revenue'"
+           (search-expr "\"monthly revenue\" or")))))
 
 (deftest available-tsv-languages-test
   (when (= :postgres (mdb/db-type))
