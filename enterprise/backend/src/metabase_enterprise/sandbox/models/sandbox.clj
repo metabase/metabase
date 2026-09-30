@@ -150,6 +150,10 @@
   map of entity kind (`:card`, `:snippet`, `:segment`, `:measure`) to ids. The Cards sandboxes name directly are in
   `:card` alongside everything those Cards read."
   []
+  ;; Each Card gets its own walk because the metadata provider is scoped to a single Database, and sandboxing Cards span
+  ;; Databases. A possible future optimization: Cards, Segments, and Measures belong to one Database, so a check on one
+  ;; of those could walk only the sandboxing Cards on the same Database. Snippets are not tied to a Database, so a
+  ;; snippet check would still need every sandboxing Card.
   (let [cards (sandbox.db/sandboxing-cards)]
     (-> (transduce (keep (fn [{:keys [dataset_query database_id]}]
                            (when (seq dataset_query)
