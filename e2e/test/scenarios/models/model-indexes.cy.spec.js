@@ -10,7 +10,6 @@ describe("scenarios > model indexes", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/search?q=*").as("searchQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
     cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");

@@ -286,6 +286,34 @@ describe("scenarios > models metadata", () => {
       .should("be.visible");
   });
 
+  it("models metadata tab should show columns with details-only visibility (metabase#22521)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.VENDOR}`, {
+      visibility_type: "details-only",
+    });
+
+    const questionDetails = {
+      name: "22521",
+      type: "model",
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 5,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Title")
+      .and("not.contain", "Vendor");
+
+    H.openQuestionActions();
+    H.popover().findByTextEnsureVisible("Edit metadata").click();
+    H.waitForLoaderToBeRemoved();
+
+    cy.findAllByTestId("header-cell")
+      .contains(/^Vendor$/)
+      .should("be.visible");
+  });
+
   describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
       H.createNativeQuestion(
@@ -391,34 +419,6 @@ describe("scenarios > models metadata", () => {
           });
         });
       });
-    });
-
-    it("models metadata tab should show columns with details-only visibility (metabase#22521)", () => {
-      cy.request("PUT", `/api/field/${PRODUCTS.VENDOR}`, {
-        visibility_type: "details-only",
-      });
-
-      const questionDetails = {
-        name: "22521",
-        type: "model",
-        query: {
-          "source-table": PRODUCTS_ID,
-          limit: 5,
-        },
-      };
-
-      H.createQuestion(questionDetails, { visitQuestion: true });
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Title")
-        .and("not.contain", "Vendor");
-
-      H.openQuestionActions();
-      H.popover().findByTextEnsureVisible("Edit metadata").click();
-      H.waitForLoaderToBeRemoved();
-
-      cy.findAllByTestId("header-cell")
-        .contains(/^Vendor$/)
-        .should("be.visible");
     });
   });
 });

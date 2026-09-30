@@ -644,7 +644,6 @@ describe("issue 34574", () => {
     cy.intercept("GET", "/api/card/*/query_metadata").as("metadata");
     cy.intercept("GET", "/api/card/*").as("card");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("GET", "/api/table/*/fks").as("fks");
     cy.intercept("GET", "/api/collection/root/items?**").as("rootCollection");
     cy.intercept("POST", "api/dataset").as("dataset");
   });
@@ -792,7 +791,6 @@ describe("issue 34514", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
     // It's important to navigate via UI so that there are
     // enough entries in the browser history to go back to.

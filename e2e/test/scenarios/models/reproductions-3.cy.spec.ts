@@ -119,7 +119,6 @@ describe("issue 26091", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/card").as("saveQuestion");
   });
 
   it("should allow to choose a newly created model in the data picker (metabase#26091)", () => {
@@ -259,7 +258,6 @@ describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateCard");
   });
 
   it("should allow to run the model query after changing custom columns (metabase#29951)", () => {

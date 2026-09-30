@@ -1,5 +1,4 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -23,10 +22,12 @@ describe("scenarios > models", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
+  });
 
+  it("allows to turn a GUI question into a model", () => {
     H.createQuestion(
       {
-        name: "Products",
+        name: "Products Model",
         query: { "source-table": PRODUCTS_ID },
       },
       {
@@ -34,9 +35,6 @@ describe("scenarios > models", () => {
         idAlias: "productsQuestionId",
       },
     );
-  });
-
-  it("allows to turn a GUI question into a model", () => {
     H.createQuestion(
       {
         name: "Accounts Model",
@@ -50,9 +48,6 @@ describe("scenarios > models", () => {
     );
 
     cy.get("@productsQuestionId").then((id) => {
-      cy.request("PUT", `/api/card/${id}`, {
-        name: "Products Model",
-      });
       H.visitQuestion(id);
 
       turnIntoModel();
@@ -74,7 +69,7 @@ describe("scenarios > models", () => {
         table: "Products",
       });
 
-      saveQuestionBasedOnModel({ modelId: id, name: "Q1" });
+      saveQuestionBasedOnModel({ name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",
@@ -132,7 +127,7 @@ describe("scenarios > models", () => {
           query: "SELECT * FROM products",
         },
       },
-      { visitQuestion: true, wrapId: true },
+      { visitQuestion: true },
     );
 
     turnIntoModel();
@@ -154,9 +149,7 @@ describe("scenarios > models", () => {
       table: "Products",
     });
 
-    cy.get("@questionId").then((questionId) => {
-      saveQuestionBasedOnModel({ modelId: questionId, name: "Q1" });
-    });
+    saveQuestionBasedOnModel({ name: "Q1" });
 
     assertQuestionIsBasedOnModel({
       questionName: "Q1",
@@ -274,6 +267,10 @@ describe("scenarios > models", () => {
     });
 
     it("transforms the data picker", () => {
+      H.createQuestion({
+        name: "Products",
+        query: { "source-table": PRODUCTS_ID },
+      });
       H.startNewQuestion();
       H.miniPickerBrowseAll().click();
 
@@ -332,8 +329,6 @@ describe("scenarios > models", () => {
     });
 
     it("allows to create a question based on a model", () => {
-      cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
-
       H.startNewQuestion();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
@@ -453,7 +448,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q1" });
+      saveQuestionBasedOnModel({ name: "Q1" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q1",
@@ -478,7 +473,7 @@ describe("scenarios > models", () => {
         table: "Orders",
       });
 
-      saveQuestionBasedOnModel({ modelId: ORDERS_QUESTION_ID, name: "Q2" });
+      saveQuestionBasedOnModel({ name: "Q2" });
 
       assertQuestionIsBasedOnModel({
         questionName: "Q2",

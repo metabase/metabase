@@ -123,9 +123,6 @@ describe("issue 23024", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("PUT", "/api/card/*").as("updateMetadata");
-
     H.restore();
     cy.signInAsAdmin();
 

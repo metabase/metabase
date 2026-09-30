@@ -9,7 +9,6 @@ describe("scenarios > models list view", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       H.createNativeQuestion(
