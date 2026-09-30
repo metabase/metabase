@@ -40,7 +40,7 @@ describe("issue 9339 + 27123", () => {
     cy.log(
       "exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity (metabase#27123)",
     );
-    cy.realPress("Escape");
+    cy.findByDisplayValue("9339").type("{esc}");
     cy.get(H.POPOVER_ELEMENT).should("not.exist");
 
     H.tableHeaderClick("Created At");
