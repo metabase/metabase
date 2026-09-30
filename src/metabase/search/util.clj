@@ -146,7 +146,8 @@
       (str/split #"\s+")))
 
 ;; TODO (Chris 2026-09-30) -- A repeated word could also mean "at least that many occurrences": today tsquery ANDs
-;; the repeats, so "revenue revenue" matches exactly what "revenue" does.
+;; the repeats, so "revenue revenue" matches exactly what "revenue" does. Terms that another term already implies
+;; (the bare `revenue` in `"monthly revenue" revenue`) could likewise be dropped from the expression.
 (defn- last-word-complete?
   "Whether the final word should match as a prefix of a longer word. Not when it closes a quoted phrase, and not
   when it already appears earlier in the input: a repeated word was evidently typed in full."
