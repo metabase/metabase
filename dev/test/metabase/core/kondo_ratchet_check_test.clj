@@ -248,3 +248,46 @@
                                  #"only \{:disabled true\} opts out"
                                  (kondo-ratchet/check))))
          "is missing -- only {:disabled true} opts out of enforcement"))))
+
+(deftest check-unknown-linter-in-test-file-names-the-right-file-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-check-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {:bogus 1}, :config-counts {}, :comment-exempt #{}})))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{})]
+        (let [out (with-out-str
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"names 1 unknown linter: :bogus"
+                                          (kondo-ratchet/check))))]
+          (is (str/includes? out (str (.getPath test-budgets) " names 1 unknown linter: :bogus"))
+              "the test file is named, not the prod file")
+          (is (not (str/includes? out (.getPath budgets)))
+              "the prod file is never mentioned"))))))
+
+(deftest check-rejects-nonempty-test-config-counts-test
+  (let [dir          (.toFile (java.nio.file.Files/createTempDirectory
+                               "kondo-ratchet-check-test"
+                               (make-array java.nio.file.attribute.FileAttribute 0)))
+        budgets      (doto (io/file dir "ratchets.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt #{}})))
+        modules      (doto (io/file dir "module-ratchets.edn")
+                       (spit (kondo-ratchet/render-module-ratchets {})))
+        test-budgets (doto (io/file dir "ratchets-test.edn")
+                       (spit (kondo-ratchet/render {:ignore-counts {}, :config-counts {:a 1}, :comment-exempt #{}})))]
+    (binding [kondo-ratchet/*ratchets-file*        (.getPath budgets)
+              kondo-ratchet/*module-ratchets-file* (.getPath modules)
+              kondo-ratchet/*test-ratchets-file*   (.getPath test-budgets)]
+      (mt/with-dynamic-fn-redefs [kondo-ratchet/known-linters (constantly #{:a})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              (re-pattern (str (java.util.regex.Pattern/quote (.getPath test-budgets))
+                                               " must not set :config-counts -- config-level suppressions"
+                                               " are tracked only in "
+                                               (java.util.regex.Pattern/quote (.getPath budgets))))
+                              (kondo-ratchet/check)))))))

@@ -270,7 +270,8 @@
           (str/join ", " (sort-by str external-linters))))
 
 (defn validate-linters!
-  "Throw one error naming every policy key in `ratchets` that is not a known linter."
+  "Throw one error naming every policy key in `ratchets` that is not a known linter. Names
+  [[*ratchets-file*]] in the message, so call this with it bound to whichever file `ratchets` came from."
   [ratchets known]
   (let [unknown (unknown-linters ratchets known)]
     (when (seq unknown)
@@ -281,6 +282,16 @@
                               (str/join ", " unknown)
                               (known-linter-hint))
                       {:unknown (vec unknown)})))))
+
+(defn- validate-test-config-counts!
+  "Throw unless `test-ratchets` has an empty :config-counts -- config-level suppressions are tracked only
+  in `prod-file` (see [[config-suppressions]]), and [[fix!]] silently drops anything here otherwise.
+  Call with [[*ratchets-file*]] bound to [[*test-ratchets-file*]], so the message names the right file."
+  [test-ratchets prod-file]
+  (when (seq (:config-counts test-ratchets))
+    (throw (ex-info (format "%s must not set :config-counts -- config-level suppressions are tracked only in %s"
+                            *ratchets-file* prod-file)
+                    {:file *ratchets-file*}))))
 
 (defn validate-seed!
   "Throw when a linter in `seeded` is not known, so `--seed` never writes a policy the check rejects."
@@ -492,7 +503,7 @@
       :linters    (:linters m)
       :justified? (:justified? m)})))
 
-(defn- test-occurrence?
+(defn test-occurrence?
   "Does `occurrence` (as returned by [[scan]]) sit under a directory literally named `test`
   (`test/`, `enterprise/backend/test/`, `modules/drivers/*/test/`, ...)? Decides whether its budget
   belongs to [[*ratchets-file*]] or [[*test-ratchets-file*]]."
@@ -946,11 +957,16 @@
      (if (disabled? ratchets)
        (println (str *ratchets-file* " is disabled -- nothing to do"))
        (let [module-ratchets (read-module-ratchets)
-             test-ratchets   (binding [*ratchets-file* *test-ratchets-file*] (read-ratchets))
-             test-disabled?  (disabled? test-ratchets)
              known           (known-linters)
              _               (validate-linters! ratchets known)
-             _               (when-not test-disabled? (validate-linters! test-ratchets known))
+             prod-file       *ratchets-file*
+             test-ratchets   (binding [*ratchets-file* *test-ratchets-file*]
+                               (let [t (read-ratchets)]
+                                 (when-not (disabled? t)
+                                   (validate-linters! t known)
+                                   (validate-test-config-counts! t prod-file))
+                                 t))
+             test-disabled?  (disabled? test-ratchets)
              seeded          (if seed [(keyword (str/replace-first seed #"^:" ""))] [])
              _               (validate-seed! seeded known)
              occurrences     (scan)
@@ -1056,12 +1072,17 @@
     (let [ratchets (read-ratchets)]
       (if (disabled? ratchets)
         (println (str *ratchets-file* " is disabled -- nothing to check"))
-        (do
-          (validate-linters! ratchets (known-linters))
+        (let [known (known-linters)]
+          (validate-linters! ratchets known)
           (let [module-ratchets (read-module-ratchets)
-                test-ratchets   (binding [*ratchets-file* *test-ratchets-file*] (read-ratchets))
+                prod-file       *ratchets-file*
+                test-ratchets   (binding [*ratchets-file* *test-ratchets-file*]
+                                  (let [t (read-ratchets)]
+                                    (when-not (disabled? t)
+                                      (validate-linters! t known)
+                                      (validate-test-config-counts! t prod-file))
+                                    t))
                 test-disabled?  (disabled? test-ratchets)
-                _               (when-not test-disabled? (validate-linters! test-ratchets (known-linters)))
                 occurrences     (scan)
                 {test-occ true, prod-occ false} (group-by test-occurrence? occurrences)
                 lines           (concat

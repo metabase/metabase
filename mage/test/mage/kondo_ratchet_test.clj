@@ -1,11 +1,58 @@
 (ns mage.kondo-ratchet-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [dev.kondo-ratchet :as dev-ratchet]
    [mage.kondo-ratchet :as kondo-ratchet]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
 (def keep-me :loaded)
+
+(defn- with-ratchets-files!
+  "Run `f` with [[dev.kondo-ratchet/*ratchets-file*]] and [[dev.kondo-ratchet/*test-ratchets-file*]]
+  bound to temp files carrying `prod-exempt`/`test-exempt` as their only budgets."
+  [prod-exempt test-exempt f]
+  (let [dir  (.toFile (java.nio.file.Files/createTempDirectory
+                       "kondo-ratchet-test" (make-array java.nio.file.attribute.FileAttribute 0)))
+        prod (doto (io/file dir "ratchets.edn")
+               (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt prod-exempt})))
+        test (doto (io/file dir "ratchets-test.edn")
+               (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt test-exempt})))]
+    (binding [dev-ratchet/*ratchets-file*      (.getPath prod)
+              dev-ratchet/*test-ratchets-file* (.getPath test)]
+      (f))))
+
+(deftest exemption-suggestion-test
+  (let [prod-occ {:file "src/f.clj", :line 1, :linters [:new], :justified? false}
+        test-occ {:file "test/g.clj", :line 1, :linters [:new], :justified? false}]
+    (testing "an unjustified occurrence only in prod code names only the prod file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ])))))
+    (testing "an unjustified occurrence only in test code names only the test file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [test-occ])))))
+    (testing "unjustified occurrences in both name both files"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in both %s and %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file* dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "a file whose own :comment-exempt already covers the linter is not named, even if the other needs it"
+      (with-ratchets-files! #{:new} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "no suggestion once every occurrence is justified"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion
+                    :new [(assoc prod-occ :justified? true) (assoc test-occ :justified? true)])))))
+    (testing "no suggestion when there are no occurrences at all"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion :new [])))))))
 
 (deftest insert-ignore-lines-test
   (testing "inserts at the flagged line's indentation"
