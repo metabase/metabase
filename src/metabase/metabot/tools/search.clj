@@ -896,8 +896,7 @@
   "Restrict results to these entity types. Omit to search across all types this tool supports.")
 
 (def ^:private limit-desc
-  (str "Maximum number of results (default " default-search-limit ", max " max-search-limit "). "
-       "Use a larger value for broad or generic queries; keep the default for narrow, specific ones."))
+  (str "Maximum number of results (default " default-search-limit ", max " max-search-limit ")."))
 
 (defn- entity-types-schema
   [& types]
