@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.ai-tracing.core :as ait]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.paths :as mcp.paths]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
@@ -14,6 +15,8 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -204,6 +207,58 @@
                                   {:database_id (mt/id)
                                    :sql         (str "SELECT '" (str/replace planted-text "'" "''") "' AS X")})]
               (check-planted-text-stays-data text #(ffirst (:rows %))))))))))
+
+(defn- tool-call-as
+  "Initialize a session as `user` and call `tool-name` with `arguments`; returns the tools/call response."
+  [user tool-name arguments]
+  (let [request    #(client/client-full-response (test.users/username->token user)
+                                                 :post endpoint
+                                                 {:request-options {:headers %2}}
+                                                 %1)
+        session-id (get-in (request (jsonrpc-request "initialize" {:capabilities {}}) {})
+                           [:headers "Mcp-Session-Id"])]
+    (request (jsonrpc-request "tools/call" {:name tool-name :arguments arguments})
+             {"mcp-session-id" session-id})))
+
+(deftest get-fields-related-tables-scale-test
+  (testing "GHY-4323: a table with more FK targets than get_fields surfaces as related tables, requested by a
+            non-admin whose query permission is granted per table, so every related table's read check reaches the
+            table-level permission cache"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id :schema "public" :name "hub" :active true}]
+      (let [target-ids (t2/insert-returning-pks! :model/Table
+                                                 (for [i (range 60)]
+                                                   {:db_id db-id :schema "public" :active true
+                                                    :name (str "spoke_" i) :display_name (str "spoke_" i)}))]
+        (t2/insert! :model/Field
+                    (for [[i target-id] (map-indexed vector target-ids)]
+                      {:table_id           table-id :name (str "spoke_" i "_id") :active true
+                       :base_type          :type/Integer :database_type "INT" :semantic_type :type/FK
+                       :fk_target_field_id (t2/insert-returning-pk! :model/Field
+                                                                    {:table_id  target-id :name "id" :active true
+                                                                     :base_type :type/Integer :database_type "INT"
+                                                                     :semantic_type :type/PK})}))
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+          (doseq [id (cons table-id target-ids)]
+            (data-perms/set-table-permission! (perms-group/all-users) id :perms/create-queries :query-builder))
+          (let [looked-up (atom [])
+                response  (let [active-tables-by-ids (mt/original-fn #'mcp.db/active-tables-by-ids)]
+                            (mt/with-dynamic-fn-redefs [mcp.db/active-tables-by-ids
+                                                        (fn [ids]
+                                                          (swap! looked-up conj (count ids))
+                                                          (active-tables-by-ids ids))]
+                              (tool-call-as :rasta "browse_data" {:action "get_fields" :table_ids [table-id]})))
+                result    (get-in response [:body :result])]
+            (testing "the call succeeds — the related tables' read checks don't run one permission query each"
+              (is (= 200 (:status response)))
+              (is (some? result) (pr-str (:body response)))
+              (is (not (:isError result)) (pr-str result)))
+            (testing "the related tables are capped"
+              (let [[_ json] (v2.tu/data-parts (-> result :content first :text))]
+                (is (= 50 (-> (json/decode+kw json) :tables first :related_tables count)))))
+            (testing "the related-table lookup asks for no more ids than it can surface"
+              (is (= [50] @looked-up)))))))))
 
 (deftest initialize-instructions-explain-scope-failures-test
   (testing "GHY-4543: clients replace a scope denial with their own text (Claude Code: \"requires re-authorization

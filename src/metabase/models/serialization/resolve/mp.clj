@@ -277,6 +277,7 @@
 ;;; Content store - Metabase asset lookups by portable entity id or numeric id
 ;;; ============================================================
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *audit-refusals?*
   "Whether a permission-aware [[ContentStore]] audits a refusal, i.e. leaves the ERROR log line
   and `:event/read-permission-failure` that `api/read-check` does, rather than throwing a bare
@@ -344,8 +345,6 @@
       (when (int? card-id)
         ;; `api/read-check` for Cards needs only the parent collection. Avoid loading and
         ;; transforming the entire dataset_query just to export one stable identifier.
-        ;; `:card_schema` must ride along: selecting `:database_id` makes the after-select
-        ;; treat this as a full card row and demand it.
         (models.db/card-serdes-columns card-id)))
     (measure-by-id [_ measure-id]
       (when measure-id

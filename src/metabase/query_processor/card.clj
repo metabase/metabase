@@ -132,6 +132,7 @@
           (assoc :cache-strategy cs)
           (->> (lib/normalize ::lib.schema/query))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
   "In 0.41.0+ you can no longer add arbitrary `:parameters` to a query for a saved question -- only parameters for
   template tags that are part of a /native/ query may be supplied (only native queries can have template tags); the

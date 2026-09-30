@@ -1554,16 +1554,13 @@
           metabase.llm.provider
           metabase.llm.settings
           metabase.llm.startup}
-   :uses #{analytics
-           api
-           driver
+   :uses #{api
            lib
            lib.be
            lib.metadata
            lib.schema
            metabot
            models
-           parameters
            permissions
            premium-features
            request
@@ -1571,11 +1568,9 @@
            setup
            sql-tools
            startup
-           sync
            util
            util.config
-           warehouse-schema-overlay
-           warehouses.schema}
+           warehouse-schema-overlay}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -2049,7 +2044,8 @@
 
   queries
   {:team "Graphy"
-   :api  #{metabase.queries.core
+   :api  #{metabase.queries.card-schema
+           metabase.queries.core
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}
@@ -2384,7 +2380,7 @@
    :model-imports #{:model/DataPermissions :model/Database :model/Table}}
 
   search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{search.embeddings
                      search.entity-retrieval}
    :api  #{metabase.search.api
@@ -2995,6 +2991,7 @@
            metrics
            models
            permissions
+           queries
            system
            util
            warehouse-schema-overlay}
@@ -4124,7 +4121,7 @@
                     :model/User}}
 
   enterprise/search
-  {:team "UX West"
+  {:team "Metabot"
    :module-exports #{enterprise/search.embeddings
                      enterprise/search.entity-retrieval
                      enterprise/search.semantic}

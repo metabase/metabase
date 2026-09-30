@@ -496,6 +496,25 @@ describe("MetabotChainOfThought", () => {
     expect(screen.queryByText("Reading resource")).not.toBeInTheDocument();
   });
 
+  it("keeps a failed resource read out of the aggregated row", async () => {
+    setup(
+      chain({
+        steps: [
+          { kind: "tool", id: "r1", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r2", name: "read_resource", status: "ended" },
+          { kind: "tool", id: "r3", name: "read_resource", status: "errored" },
+        ],
+        startedAtMs: 1000,
+        endedAtMs: 2000,
+      }),
+      false,
+    );
+    await expandChain();
+    expect(screen.getByText("Read 2 resources")).toBeInTheDocument();
+    expect(screen.getByText("Reading resource")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+  });
+
   it("keeps reasoning and entity names out of embedded sessions", async () => {
     const message = chain({
       steps: [

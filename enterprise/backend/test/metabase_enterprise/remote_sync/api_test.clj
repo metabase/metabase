@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.api-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [diehard.core :as dh]
    [java-time.api :as t]
@@ -12,11 +13,14 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.git :as source.git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.driver.settings :as driver.settings]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -205,6 +209,79 @@
                 completed-task (wait-for-task-completion task_id)]
             (is (=? {:status "success" :task_id int?} resp))
             (is (remote-sync.task/successful? completed-task))))))))
+
+(defn- gui-model-yaml
+  "YAML for a GUI model over `db-name`'s PUBLIC.VENUES, in the shape an export writes: the result metadata
+  carries only the model overrides, with no `base_type` and no field `id`."
+  [entity-id collection-id db-name]
+  (-> (test-helpers/generate-card-yaml entity-id "Venues Model" collection-id "model")
+      (str/replace "database_id: test-data (h2)" (str "database_id: " db-name))
+      (str/replace "dataset_query: {}"
+                   (format (str "dataset_query:\n"
+                                "  database: %s\n"
+                                "  type: query\n"
+                                "  query:\n"
+                                "    source-table:\n"
+                                "    - %s\n"
+                                "    - PUBLIC\n"
+                                "    - VENUES")
+                           db-name db-name))
+      (str/replace "result_metadata: null"
+                   (str "result_metadata:\n"
+                        (str/join (for [[col-name display-name] [["ID" "ID"]
+                                                                 ["NAME" "Venue Name"]
+                                                                 ["CATEGORY_ID" "Category ID"]
+                                                                 ["LATITUDE" "Latitude"]
+                                                                 ["LONGITUDE" "Longitude"]
+                                                                 ["PRICE" "Price"]]]
+                                    (format "- display_name: %s\n  name: %s\n  visibility_type: normal\n"
+                                            display-name col-name)))))))
+
+(deftest import-gui-model-before-schema-sync-test
+  (testing (str "GHY-4213: a GUI model imported before the target has synced its table stores untyped columns. "
+                "Once the schema sync runs, the model's columns must get their types and field ids, so that "
+                "the query builder offers typed filters on them.")
+    (let [details       (:details (mt/db))
+          db-name       (mt/random-name)
+          collection-id "ghy4213collectionxxxx"
+          card-eid      "ghy4213modelxxxxxxxxx"]
+      ;; Keep the new database from being synced when it is created, so its tables do not exist yet at import.
+      (mt/with-temporary-setting-values [disable-auto-sync  true
+                                         remote-sync-url    "https://github.com/test/repo.git"
+                                         remote-sync-token  "test-token"
+                                         remote-sync-branch "main"]
+        (test-helpers/commit-with-temp
+         (fn []
+           (mt/with-temp [:model/Database {db-id :id} {:engine "h2" :details details :name db-name}]
+             (let [source (test-helpers/create-mock-source
+                           :initial-files {"main" {(format "collections/%s_ghy/%s_ghy.yaml" collection-id collection-id)
+                                                   (test-helpers/generate-collection-yaml collection-id "GHY 4213" :is-remote-synced true)
+                                                   (format "collections/%s_ghy/cards/%s_venues_model.yaml" collection-id card-eid)
+                                                   (gui-model-yaml card-eid collection-id db-name)}})]
+               (try
+                 (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly source)]
+                   (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import"
+                                                                 {:force true :expected_branch "main"})]
+                     (is (remote-sync.task/successful? (wait-for-task-completion task_id)))))
+                 (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [f]
+                                                                       (binding [driver.settings/*allow-testing-h2-connections* true]
+                                                                         (f)))]
+                   (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id)))
+                 (let [card-id  (t2/select-one-pk :model/Card :entity_id card-eid)
+                       table-id (t2/select-one-pk :model/Table :db_id db-id :name "VENUES")
+                       field-id (fn [field-name]
+                                  (t2/select-one-pk :model/Field :table_id table-id :name field-name))]
+                   (is (=? [{:name "ID"          :base_type "type/BigInteger" :id (field-id "ID")}
+                            {:name "NAME"        :base_type "type/Text"       :id (field-id "NAME")
+                             :display_name "Venue Name"}
+                            {:name "CATEGORY_ID" :base_type "type/Integer"    :id (field-id "CATEGORY_ID")}
+                            {:name "LATITUDE"    :base_type "type/Float"      :id (field-id "LATITUDE")}
+                            {:name "LONGITUDE"   :base_type "type/Float"      :id (field-id "LONGITUDE")}
+                            {:name "PRICE"       :base_type "type/Integer"    :id (field-id "PRICE")}]
+                           (:result_metadata (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))))
+                 (finally
+                   (t2/delete! :model/Card :entity_id card-eid)
+                   (t2/delete! :model/Collection :entity_id collection-id)))))))))))
 
 (deftest import-with-specific-branch-test
   (testing "POST /api/ee/remote-sync/import succeeds with specific branch"
@@ -1031,6 +1108,119 @@
               dirty-items (:dirty response)]
           (is (= 1 (count dirty-items)))
           (is (= "Test Card" (:name (first dirty-items)))))))))
+
+(defn- mark-pushed!
+  "Records `model-id` as synced with the file path and content hash of its current serialized form, the state
+  a push leaves it in."
+  [model-type model-id collection-id]
+  (let [{:keys [path content-hash]} (source/row->file-info {:model_type model-type :model_id model-id})]
+    (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id)
+    (t2/insert! :model/RemoteSyncObject {:model_type          model-type
+                                         :model_id            model-id
+                                         :model_name          "pushed"
+                                         :model_collection_id collection-id
+                                         :status              "synced"
+                                         :status_changed_at   (t/offset-date-time)
+                                         :file_path           path
+                                         :content_hash        content-hash})))
+
+(defn- dirty-ids [model]
+  (->> (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
+       :dirty
+       (filter #(= model (:model %)))
+       (map :id)
+       set))
+
+(deftest public-link-marks-dashboard-dirty-test
+  (testing "GHY-4650: creating or revoking a dashboard's public link lists the dashboard in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash))))
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+            (is (contains? (dirty-ids "dashboard") (:id dash)))))))))
+
+(deftest public-link-marks-card-dirty-test
+  (testing "GHY-4650: creating or revoking a card's public link lists the card in GET /dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (testing "create"
+            (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card))))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (testing "revoke"
+            (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+            (is (contains? (dirty-ids "card") (:id card)))))))))
+
+(defn- fail-first-tracking-write!
+  "Calls `thunk` with the remote sync event handler rigged to throw on its first call only."
+  [thunk]
+  (let [original (mt/original-fn #'spec/determine-status)
+        failed?  (atom false)]
+    (mt/with-dynamic-fn-redefs [spec/determine-status (fn [& args]
+                                                        (if (compare-and-set! failed? false true)
+                                                          (throw (ex-info "simulated tracking failure" {}))
+                                                          (apply original args)))]
+      (thunk))))
+
+(deftest public-link-change-survives-handler-failure-test
+  (testing "GHY-4650: when tracking fails, the link change rolls back, so a retry changes the link and marks the item dirty"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-write]
+        (doseq [[model endpoint] [["dashboard" "dashboard/%d/public_link"]
+                                  ["card"      "card/%d/public_link"]]]
+          (testing model
+            (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                           (if (= model "dashboard") :model/Dashboard :model/Card) entity {:name "Shared" :collection_id (:id coll)}]
+              (let [model-type (if (= model "dashboard") "Dashboard" "Card")
+                    url        (format endpoint (:id entity))]
+                (testing "create"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :post 500 url)
+                     (mt/user-http-request :crowberto :post 200 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))
+                (testing "revoke"
+                  (mark-pushed! model-type (:id entity) (:id coll))
+                  (fail-first-tracking-write!
+                   (fn []
+                     (mt/user-http-request :crowberto :delete 500 url)
+                     (mt/user-http-request :crowberto :delete 204 url)))
+                  (is (contains? (dirty-ids model) (:id entity))))))))))))
+
+(deftest public-link-on-read-only-instance-is-not-dirty-test
+  (testing "GHY-4650: a public link change on a read-only instance does not mark the synced item dirty, since it cannot be pushed"
+    (test-helpers/with-clean-object
+      (mt/with-temporary-setting-values [enable-public-sharing true
+                                         remote-sync-type      :read-only]
+        (mt/with-temp [:model/Collection coll {:name "Remote Collection" :is_remote_synced true :location "/"}
+                       :model/Dashboard dash {:name "Shared Dashboard" :collection_id (:id coll)}
+                       :model/Card card {:name "Shared Card" :collection_id (:id coll)}]
+          (mark-pushed! "Dashboard" (:id dash) (:id coll))
+          (mark-pushed! "Card" (:id card) (:id coll))
+          (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :post 200 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card))))
+          (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (:id dash)))
+          (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (:id card)))
+          (is (not (contains? (dirty-ids "dashboard") (:id dash))))
+          (is (not (contains? (dirty-ids "card") (:id card)))))))))
 
 (deftest dirty-requires-superuser-test
   (testing "GET /api/ee/remote-sync/dirty requires superuser permissions"

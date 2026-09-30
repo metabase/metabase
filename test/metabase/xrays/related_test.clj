@@ -72,6 +72,7 @@
         (is (= ["similar" "broken"]
                (map :name (#'related/rank-by-similarity reference [broken similar]))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *world* {})
 
 (defn- do-with-world [f]
