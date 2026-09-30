@@ -10,6 +10,8 @@
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (comment metabase.audit-app.events.audit-log/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
