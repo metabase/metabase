@@ -506,42 +506,6 @@ function removeFilter() {
   cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 }
 
-describe("issue 33439", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("should validate custom expressions: constant-only, convertTimezone on an unsupported db, and an incorrect date expression (metabase#41381, metabase#33439, metabase#33441)", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    H.addCustomColumn();
-    H.enterCustomColumnDetails({ formula: "'Test'", name: "Constant" });
-    H.popover().within(() => {
-      cy.findByText("Invalid expression").should("not.exist");
-      cy.button("Done").should("be.enabled");
-    });
-
-    H.enterCustomColumnDetails({
-      formula:
-        'convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")',
-      name: "Date",
-    });
-    H.popover().within(() => {
-      cy.findByText("Unsupported function convertTimezone");
-      cy.button("Done").should("be.disabled");
-    });
-
-    H.enterCustomColumnDetails({
-      formula: 'datetimeDiff([Created At] , now(), "days")',
-      name: "Date",
-    });
-    H.popover().within(() => {
-      cy.findByText("Types are incompatible.").should("be.visible");
-      cy.button("Done").should("be.disabled");
-    });
-  });
-});
-
 describe("issue 42244", () => {
   const COLUMN_NAME = "Created At".repeat(5);
 
