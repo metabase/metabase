@@ -483,6 +483,44 @@ describe("getIsVisualized", () => {
     });
     expect(getIsVisualized(state)).toBe(true);
   });
+
+  it("should stay truthy when an implicit pivot table is switched to the raw data view (metabase#56094)", () => {
+    const state = getBaseState({
+      card: createMockCard({
+        display: "table",
+      }),
+      uiControls: {
+        isShowingRawTable: true,
+      },
+      queryResults: [
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                name: "count",
+                base_type: "type/Integer",
+                effective_type: "type/Integer",
+                source: "aggregation",
+              }),
+              createMockColumn({
+                name: "CATEGORY",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+              createMockColumn({
+                name: "VENDOR",
+                base_type: "type/Text",
+                effective_type: "type/Text",
+                source: "breakout",
+              }),
+            ],
+          }),
+        }),
+      ],
+    });
+    expect(getIsVisualized(state)).toBeTruthy();
+  });
 });
 
 describe("getShouldShowUnsavedChangesWarning", () => {
