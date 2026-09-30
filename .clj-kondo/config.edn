@@ -960,8 +960,9 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
-    ;; binding-based test instrumentation is the legitimate use of dynamic vars this ratchet
-    ;; isn't aimed at; :metabase/prefer-with-dynamic-fn-redefs already governs how tests use them.
+    ;; Test fixtures and per-test overrides use `binding`-scoped dynamic vars legitimately; this ratchet
+    ;; isn't aimed at that pattern. Mocking functions that way is the narrower case
+    ;; `:metabase/prefer-with-dynamic-fn-redefs` already covers.
     :metabase/discourage-dynamic-vars                    {:level :off}
     :metabase/t2-query-namespace                         {:level :off}
     :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
