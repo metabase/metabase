@@ -270,13 +270,16 @@
                      ;; grammar's raw answer on the content channel, which is what this transducer
                      ;; exists to keep it off.
                      ;;
-                     ;; two chunks from one, so the first `rf` may already have ended the reduction —
-                     ;; a client that hung up mid-stream does exactly that
+                     ;; the call carries the message `id` because it goes first: `:start` is built from
+                     ;; the first chunk that has one, and without it the call would open before the
+                     ;; message it belongs to. Two chunks from one, so the first `rf` may already have
+                     ;; ended the reduction — a client that hung up mid-stream does exactly that.
                      (u/reduce-preserving-reduced
                       rf result
-                      [call (-> chunk
-                                strip-content
-                                (assoc-in [:choices 0 :finish_reason] "tool_calls"))])
+                      [(assoc call :id (:id chunk))
+                       (-> chunk
+                           strip-content
+                           (assoc-in [:choices 0 :finish_reason] "tool_calls"))])
                      ;; nothing became a call, so nothing may claim one: restating `stop` as
                      ;; `tool_calls` would promise the agent loop a call and hand it none. On `stop`
                      ;; the model answered outside the grammar, and that prose is the only answer

@@ -217,6 +217,13 @@
                  "for a `stop` the grammar failed to shape — on `length` the buffer is a half-written "
                  "call, and half a JSON object is not an answer to show anyone"))))))
 
+(deftest ^:parallel read-back-call-carries-the-message-id-test
+  (testing (str "The call goes out before the chunk it was read from, and `:start` is built from the first "
+                "chunk carrying a message id — so the call has to carry it, or it opens before its message.")
+    (let [out (read-back structured-plan
+                         [(assoc (content-chunk "{\"title\": \"x\"}" "stop") :id "chatcmpl-1")])]
+      (is (= "chatcmpl-1" (:id (first out)))))))
+
 (deftest ^:parallel read-back-stops-when-the-consumer-has-had-enough-test
   (testing (str "The call and the finish chunk that closes it come from one input chunk, so the first is "
                 "handed downstream while the reduction may already be over — the writer ends it as soon "
