@@ -351,12 +351,15 @@
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [t unit {:keys [locale]}]
-  (when-let [^DateTimeFormatter formatter (some-> unit
-                                                  unit-formats
-                                                  t/formatter
-                                                  (cond-> #_formatter locale (.withLocale (i18n/locale locale))))]
-    (.format formatter t)))
+  [time-config t unit {:keys [locale]}]
+  (if (= unit :week-of-year)
+    (str (u.date/extract (select-keys time-config [:start-of-week]) t unit))
+    (when-let [^DateTimeFormatter formatter (some-> unit
+                                                    unit-formats
+                                                    t/formatter
+                                                    (cond-> #_formatter locale
+                                                            (.withLocale (i18n/locale locale))))]
+      (.format formatter t))))
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
@@ -375,7 +378,7 @@
                date-time? (coerce-local-date-time input))]
        (if t
          (or
-          (format-extraction-unit t unit format-options)
+          (format-extraction-unit time-config t unit format-options)
           (cond
             time? (t/format "h:mm a" t)
             date? (t/format "MMM d, yyyy" t)
@@ -387,15 +390,17 @@
        :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
                           " "
                           (if (<= input 11) "AM" "PM"))
+       :week-of-year (str input)
        (or
-        (format-extraction-unit (common/number->timestamp input (assoc time-config :unit unit))
+        (format-extraction-unit time-config
+                                (common/number->timestamp input (assoc time-config :unit unit))
                                 unit
                                 format-options)
         (str input)))
 
      (instance? java.time.temporal.TemporalAccessor input)
      (let [input ^java.time.temporal.TemporalAccessor input]
-       (or (format-extraction-unit input unit format-options)
+       (or (format-extraction-unit time-config input unit format-options)
            (cond
              ;; no hour, must be date
              (not (.isSupported input (t/field :hour-of-day)))

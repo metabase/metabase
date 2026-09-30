@@ -301,7 +301,10 @@
   (is (= "30" (format-unit 30 :minute-of-hour)))
   (is (= "1 PM" (format-unit 13 :hour-of-day)))
   (is (= "12 AM" (format-unit 0 :hour-of-day)))
-  (is (= "1" (format-unit 1 :week-of-year))))
+  (is (= "1" (format-unit 1 :week-of-year)))
+  (testing "week-of-year respects start-of-week"
+    (is (= "1" (shared.ut/format-unit {:start-of-week :sunday} "2023-01-02" :week-of-year)))
+    (is (= "2" (shared.ut/format-unit {:start-of-week :monday} "2023-01-02" :week-of-year)))))
 
 (deftest parse-unit-test
   (are [exp input unit-in unit-out locale-in locale-out]
