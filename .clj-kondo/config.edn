@@ -987,6 +987,9 @@
   metabase.auth-identity.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
+  metabase.usage-metadata.db
+  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
+
   metabase.public-sharing.db
   {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
