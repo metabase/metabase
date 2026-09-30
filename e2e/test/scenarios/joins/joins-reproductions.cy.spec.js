@@ -61,7 +61,7 @@ describe("issue 14793", () => {
       for (let i = 0; i < XRAY_DATASETS; ++i) {
         cy.wait("@postDataset");
       }
-      expect(xhr.status).not.to.eq(500);
+      expect(xhr.response.statusCode).not.to.eq(500);
       expect(xhr.response.body.cause).not.to.exist;
     });
 
@@ -206,8 +206,10 @@ describe("issue 17710, 39448", () => {
     H.openNotebook();
 
     cy.findByTestId("step-join-0-0").within(() => {
-      cy.findByText("ID");
-      cy.findByText("Product ID");
+      cy.findByLabelText("Left column").findByText("Product ID");
+      cy.findByLabelText("Right column").findByText("ID");
+      cy.findAllByLabelText("Left column").should("have.length", 1);
+      cy.findAllByLabelText("Right column").should("have.length", 1);
     });
   });
 });
@@ -319,7 +321,10 @@ describe("issue 18818", () => {
     );
 
     H.openNotebook();
-    cy.findAllByText("CC Rating");
+    H.getNotebookStep("join").within(() => {
+      cy.findByLabelText("Left column").findByText("CC Rating");
+      cy.findByLabelText("Right column").findByText("Quantity");
+    });
   });
 });
 
