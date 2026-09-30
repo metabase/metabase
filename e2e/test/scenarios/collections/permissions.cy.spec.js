@@ -321,7 +321,8 @@ describe("collection permissions", () => {
                   // Test will fail on this step first
                   cy.findByText("First collection").should("not.exist");
                   // This is the second step that makes sure not even search returns collections with read-only access
-                  cy.findByPlaceholderText("Search…").type("third{Enter}");
+                  // Enter would confirm the selected collection and close the picker
+                  cy.findByPlaceholderText("Search…").type("third");
 
                   cy.wait("@search");
                   cy.findByText("We didn't find anything").should("be.visible");

@@ -1494,8 +1494,8 @@ describe("scenarios > collection items listing", () => {
       cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
 
       cy.log("sorting on a page other than the first resets pagination");
+      // The second page is cached, so revisiting it sends no request
       cy.findByLabelText("Next page").click();
-      cy.wait("@getCollectionItems");
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
 

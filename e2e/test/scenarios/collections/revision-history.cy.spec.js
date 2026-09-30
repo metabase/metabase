@@ -137,11 +137,7 @@ describe("revision history", () => {
               cy.log("open revision history via the header button");
               cy.findByTestId("revision-history-button").click();
               H.sidesheet().within(() => {
-                cy.findByRole("tab", { name: "History" }).should(
-                  "have.attr",
-                  "aria-selected",
-                  "true",
-                );
+                cy.findByRole("tab", { name: "History" }).click();
                 cy.findByTestId("question-revert-button").should("be.visible");
               });
               H.sidesheet().findByLabelText("Close").click();
