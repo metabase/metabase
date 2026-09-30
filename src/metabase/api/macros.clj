@@ -423,6 +423,7 @@
 (defn- encoder [schema]
   (mr/cached ::encoder schema #(mc/encoder schema encode-transformer)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enable-response-validation*
   "Whether to validate responses against Malli schemas in [[defendpoint]]... normally enabled for dev/test and disabled
   for prod for performance purposes. You can change this binding if you want to disable it for weird test reasons or

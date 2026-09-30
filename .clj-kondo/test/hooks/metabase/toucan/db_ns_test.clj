@@ -179,6 +179,17 @@
       '(t2/select-one-fn :value :model/Setting :key k)
       ;; a value inside an operator form is reached, rather than the form being treated as a value
       '(t2/select :model/X :id [:in ids])))
+  (testing "GHY-4668: a model written with columns still has its kv-arg values checked"
+    ;; The walker found the model by looking for a `:model/...` keyword, so `[:model/X :col]` hid
+    ;; every pair after it.
+    (are [form] (=? [{:type :metabase/unsafe-app-db-query
+                      :message #".*`prefix`.*reaches a SQL value slot unmarked.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select [:model/X :id :public_uuid] :public_uuid_prefix prefix :archived false)
+      '(t2/select-one [:model/X :id] :public_uuid_prefix prefix)))
+  (testing "GHY-4668: a marked value after a model written with columns is not flagged"
+    (is (empty? (lint-query-call '(t2/select [:model/X :id] :public_uuid_prefix [:auto/param prefix])
+                                 'metabase.foo.db))))
   (testing "a marked or coerced kv-arg value is not flagged"
     (are [form] (empty? (lint-query-call form 'metabase.foo.db))
       '(t2/select :model/X :locale [:auto/param locale])

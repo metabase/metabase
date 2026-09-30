@@ -574,6 +574,7 @@
       lib.metadata.cached-provider/cached-metadata-provider
       lib.metadata.invocation-tracker/invocation-tracker-provider))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *metadata-provider-cache*
   "Bind this to a `(atom (clojure.core.cache/basic-cache-factory {}))` or similar cache-atom, and
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`

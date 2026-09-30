@@ -194,3 +194,10 @@
                {:type "table" :id 1 :matched_doc_type "name" :matched_text "p2"
                 :usage_instructions "u2" :confidence "weak" :similarity 0.3}]
               out)))))
+
+(deftest ^:parallel tool-search-failure-throws-test
+  (testing "a failing library search propagates to the agent loop, which reports the call as failed"
+    (with-unfiltered-search (fn [_ _] (throw (ex-info "Embedding service unavailable" {})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedding service unavailable"
+                            (entity-retrieval/retrieve-library-entities-tool
+                             {:user_search_prompt "revenue per region"}))))))

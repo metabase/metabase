@@ -10,6 +10,20 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
+(deftest ^:parallel handle-agent-or-api-error-test
+  (testing "an API check's refusal goes back to the agent as output"
+    (doseq [status-code [400 403 404]]
+      (is (= {:output "Refused." :status-code status-code}
+             (metabot.tools.util/handle-agent-or-api-error (ex-info "Refused." {:status-code status-code}))))))
+  (testing "an agent error keeps its flags"
+    (is (= {:output "No access." :status-code 403 :terminal-error? true}
+           (metabot.tools.util/handle-agent-or-api-error
+            (ex-info "No access." {:agent-error? true :status-code 403 :terminal-error? true})))))
+  (testing "anything else is rethrown"
+    (doseq [data [{} {:status-code 500}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (metabot.tools.util/handle-agent-or-api-error (ex-info "boom" data)))))))
+
 (deftest ^:parallel schedule->schedule-map-test
   (testing "hourly schedule"
     (is (= {:schedule_type  "hourly"

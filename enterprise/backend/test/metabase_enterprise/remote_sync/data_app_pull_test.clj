@@ -57,7 +57,7 @@
 (deftest data-app-only-pull-counts-app-changes-test
   (testing "a pull whose only change is a data app is reported as a real pull, not pull-skipped / 0 changes"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             (let [outcome (pull-outcome! (app-tree! "sales" "BUNDLE-V1")
@@ -68,7 +68,7 @@
 (deftest data-only-pull-excludes-unchanged-apps-test
   (testing "a serdes-only pull counts serdes content; unchanged data apps add nothing"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection; the data app is byte-for-byte the same as v0.
@@ -80,7 +80,7 @@
 (deftest mixed-pull-counts-serdes-and-apps-test
   (testing "a mixed pull counts serdes content AND the changed data apps"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             ;; v1 adds a collection AND changes the data app's bundle.
@@ -92,7 +92,7 @@
 (deftest data-apps-land-with-the-version-test
   (testing "a pull records the data apps at the snapshot version it commits as the sync base"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             (let [src (rs.test/versioned-source :trees {"v0" (app-tree! "sales" "BUNDLE-V1")
@@ -107,7 +107,7 @@
   (testing "a crash while materializing data apps rolls the version back, so the next pull redoes the import
             instead of skipping a version whose data apps never landed"
     (search.tu/with-index-disabled
-      (mt/with-premium-features #{:data-apps-preview}
+      (mt/with-premium-features #{:data-apps}
         (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-transforms false]
           (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
             (let [src (rs.test/versioned-source :trees {"v0" (app-tree! "sales" "BUNDLE-V1")

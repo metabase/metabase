@@ -405,14 +405,24 @@
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "question" :id card-id}]})]
           (is (re-find #"display_type=\"pie\"" result))))))
-  (testing "dashboard with only type+id fetches name and description from DB"
+  (testing "dashboard with only type+id fetches name, description and filters from DB"
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard {dash-id :id} {:name        "Executive Dashboard"
-                                                     :description "Top-level KPIs"}]
+                                                     :description "Top-level KPIs"
+                                                     :parameters  [{:id   "p1"
+                                                                    :name "Created At"
+                                                                    :type "date/all-options"}
+                                                                   {:id   "p2"
+                                                                    :name "State & Province"
+                                                                    :type "string/="}]}]
         (let [result (user-context/format-viewing-context
                       {:user_is_viewing [{:type "dashboard" :id dash-id}]})]
           (is (re-find #"Executive Dashboard" result))
-          (is (re-find #"Top-level KPIs" result))))))
+          (is (re-find #"Top-level KPIs" result))
+          (is (str/includes? result (str "  <filters>\n"
+                                         "    <filter id=\"p1\" name=\"Created At\" type=\"date/all-options\"/>\n"
+                                         "    <filter id=\"p2\" name=\"State &amp; Province\" type=\"string/=\"/>\n"
+                                         "  </filters>")))))))
   (testing "table with only type+id fetches details including fields from DB"
     (mt/with-test-user :rasta
       (let [result (user-context/format-viewing-context
